@@ -1,12 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Ntilde.Controls;
 
 namespace Ntilde.Tests.Core;
 
@@ -18,14 +21,40 @@ public sealed class TitleBandDoubleClickTests : IClassFixture<TestAppDataRoot>, 
 {
     public void Dispose() => TestMainWindowFactory.DisposeCreatedWindows();
 
-    // Empty tab strip, left of the title-bar items: what the user grabs to move the window.
-    private static readonly Point EmptyBand = new(300, 18);
+    // Further than Avalonia's 4px double-click box, so the next presses start a new double-click.
+    private static readonly Point NextDoubleClick = new(10, 0);
+
+    /// <summary>
+    /// The empty strip between the last tab and the title-bar items, at the band's middle: what the user grabs to move
+    /// the window. Taken from the layout, since tab widths follow the shell's title and differ between machines.
+    /// </summary>
+    private static Point EmptyBand(MainWindow window)
+    {
+        double lastTabRight = window.FindControl<TabControl>("Tabs")!.Items.OfType<TabItem>()
+            .Max(t => t.TranslatePoint(new Point(t.Bounds.Width, 0), window)!.Value.X);
+        double itemsLeft = window.FindControl<StackPanel>("TitleBarItemsHost")!.TranslatePoint(default, window)!.Value.X;
+        return new Point((lastTabRight + itemsLeft) / 2, MainWindow.WindowDragBandHeight(false) / 2);
+    }
+
+    private static string Describe(MainWindow window, Point at) =>
+        $"at {at}: " + string.Join(" < ", ((window.InputHitTest(at) as Visual)?.GetSelfAndVisualAncestors() ?? []).Take(6)
+            .Select(v => v.GetType().Name + ((v as Control)?.Name is { Length: > 0 } name ? "#" + name : "")));
 
     private static void AssertEmptyBand(MainWindow window, Point at)
     {
         var hit = window.InputHitTest(at) as Visual;
         Assert.NotNull(hit);
-        Assert.DoesNotContain(hit!.GetSelfAndVisualAncestors(), v => v is Button or TabItem);
+        Assert.False(hit!.GetSelfAndVisualAncestors().Any(v => v is Button or TabItem or TerminalPane), Describe(window, at));
+    }
+
+    /// <summary>Every left press the window routes, with its click count and who handled it, for failure messages.</summary>
+    private static List<string> RecordPresses(MainWindow window)
+    {
+        var presses = new List<string>();
+        window.AddHandler(InputElement.PointerPressedEvent,
+            (_, e) => presses.Add($"press {e.ClickCount} on {(e.Source as Control)?.GetType().Name}, handled={e.Handled}, state={window.WindowState}"),
+            RoutingStrategies.Bubble, handledEventsToo: true);
+        return presses;
     }
 
     private static void Press(MainWindow window, Point at)
@@ -41,26 +70,35 @@ public sealed class TitleBandDoubleClickTests : IClassFixture<TestAppDataRoot>, 
         Press(window, at);
     }
 
+    private static void AssertState(WindowState expected, MainWindow window, Point at, List<string> presses) =>
+        Assert.True(window.WindowState == expected,
+            $"expected {expected}, was {window.WindowState}; {Describe(window, at)}\n{string.Join("\n", presses)}");
+
     [AvaloniaFact]
     public void Double_clicking_the_empty_title_band_maximizes_and_restores_the_window()
     {
         MainWindow window = WindowTestSupport.NewShownWindow();
-        AssertEmptyBand(window, EmptyBand);
+        Point at = EmptyBand(window);
+        AssertEmptyBand(window, at);
+        AssertEmptyBand(window, at + NextDoubleClick);
+        var presses = RecordPresses(window);
 
-        DoubleClick(window, EmptyBand);
-        Assert.Equal(WindowState.Maximized, window.WindowState);
+        DoubleClick(window, at);
+        AssertState(WindowState.Maximized, window, at, presses);
 
-        // Elsewhere on the band, so the presses count as a new double-click rather than clicks three and four.
-        DoubleClick(window, EmptyBand + new Point(80, 0));
-        Assert.Equal(WindowState.Normal, window.WindowState);
+        // The maximized window is wider, but the strip only grows to the right.
+        DoubleClick(window, at + NextDoubleClick);
+        AssertState(WindowState.Normal, window, at + NextDoubleClick, presses);
     }
 
     [AvaloniaFact]
     public void A_single_click_on_the_title_band_leaves_the_window_state_alone()
     {
         MainWindow window = WindowTestSupport.NewShownWindow();
+        Point at = EmptyBand(window);
+        AssertEmptyBand(window, at);
 
-        Press(window, EmptyBand);
+        Press(window, at);
 
         Assert.Equal(WindowState.Normal, window.WindowState);
     }
@@ -71,13 +109,15 @@ public sealed class TitleBandDoubleClickTests : IClassFixture<TestAppDataRoot>, 
         MainWindow window = WindowTestSupport.NewShownWindow();
         window.EnterFocusMode();
         Dispatcher.UIThread.RunJobs();
-        var inStrip = new Point(300, MainWindow.FocusStripHeight / 2);
+        var at = new Point(300, MainWindow.FocusStripHeight / 2);
+        AssertEmptyBand(window, at);
+        var presses = RecordPresses(window);
 
-        DoubleClick(window, inStrip);
-        Assert.Equal(WindowState.Maximized, window.WindowState);
+        DoubleClick(window, at);
+        AssertState(WindowState.Maximized, window, at, presses);
 
-        DoubleClick(window, inStrip + new Point(80, 0));
-        Assert.Equal(WindowState.Normal, window.WindowState);
+        DoubleClick(window, at + NextDoubleClick);
+        AssertState(WindowState.Normal, window, at + NextDoubleClick, presses);
     }
 
     [AvaloniaFact]
