@@ -389,6 +389,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         SaveSession(RemoteLeaf(remoteGone), localLeaf);
         File.SetLastWriteTimeUtc(AppPaths.SessionFilePath, boot - TimeSpan.FromMinutes(5));
         var lost = new List<TerminalPane>();
+        var attached = new HashSet<TerminalPane>();
 
         MainWindow window = CreateWindow(bootTimeUtc: boot, beforeShow: w =>
         {
@@ -397,15 +398,20 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
             Assert.False(remote.MuxQuietPreviousLost);
             Assert.True(local.MuxQuietPreviousLost);
             foreach (TerminalPane p in AllPanes(w))
+            {
                 p.PersistenceNotice += (pane, title, _, _) => { if (title == TerminalPane.MuxPreviousLostNoticeTitle) lost.Add(pane); };
+                p.PersistentSessionAttached += pane => attached.Add(pane);
+            }
         });
 
         PumpUntil(() => AllPanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "both panes started fresh shells");
         List<Guid> fresh = AllPanes(window).Select(p => p.Session!.Id).ToList();
         Assert.DoesNotContain(remoteGone, fresh);
         Assert.DoesNotContain(localGone, fresh);
-        // Each pane raises its notice in the callback that then asks for the session save: once the file names both, both have spoken.
-        PumpUntil(() => File.ReadAllText(AppPaths.SessionFilePath) is var saved && fresh.All(id => saved.Contains(id.ToString("D"))), "the session file names both new sessions");
+        // Each pane raises its notice in its attach callback, just before PersistentSessionAttached: once both have raised
+        // that, both have spoken. Not the session file: any pane's save writes every pane's session, attached or not, so
+        // it can name the remote pane's new session before that pane's callback has run (a windows-latest failure, #608).
+        PumpUntil(() => attached.Count == 2, "both panes finished attaching");
         Assert.Equal(RemotePanes(window), lost);
     }
 

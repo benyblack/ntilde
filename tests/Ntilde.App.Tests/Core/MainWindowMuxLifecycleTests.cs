@@ -547,15 +547,6 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         File.SetLastWriteTimeUtc(AppPaths.SessionFilePath, savedUtc);
     }
 
-    /// <summary>
-    /// Waits until the session file names each pane's new session. A pane raises its lost notice in the UI-thread
-    /// callback that also asks for that save, and the toast is flushed at the save's priority, ahead of it: once the
-    /// file names them all, every lost notice there will be is on the toast.
-    /// </summary>
-    private static void PumpUntilSaved(IEnumerable<Guid> ids) => PumpUntil(
-        () => File.Exists(AppPaths.SessionFilePath) && File.ReadAllText(AppPaths.SessionFilePath) is var saved && ids.All(id => saved.Contains(id.ToString("D"))),
-        "the session file names every new session");
-
     private static List<Guid> AttachedIds(MainWindow window) =>
         AllPanes(window).Select(p => p.Session).OfType<MuxClientSession>().Where(m => m.IsAttached).Select(m => m.Id).ToList();
 
@@ -573,10 +564,15 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         // Heard from the panes as well as read off the toast: a toast hides itself after a few seconds.
         var notices = new List<string>();
         var heard = new HashSet<TerminalPane>();
+        var attached = new HashSet<TerminalPane>();
         void Listen(MainWindow w)
         {
             foreach (TerminalPane p in AllPanes(w))
-                if (heard.Add(p)) p.PersistenceNotice += (_, title, _, _) => notices.Add(title);
+            {
+                if (!heard.Add(p)) continue;
+                p.PersistenceNotice += (_, title, _, _) => notices.Add(title);
+                p.PersistentSessionAttached += pane => attached.Add(pane);
+            }
         }
 
         MainWindow window = CreateWindow(bootTimeUtc: Boot, beforeShow: Listen);
@@ -588,7 +584,10 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
 
         List<Guid> fresh = AttachedIds(window);
         Assert.Empty(fresh.Intersect(gone));
-        PumpUntilSaved(fresh);
+        // A pane raises its lost notice in its attach callback, just before PersistentSessionAttached, and the toast is
+        // flushed by a job that notice posts: once all three have raised it and the jobs have run, every lost notice
+        // there will be is on the toast. Not the session file: any pane's save writes every pane's session, attached or not.
+        PumpUntil(() => attached.Count == 3, "every pane finished attaching");
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(3, heard.Count);
         Assert.Empty(notices);
@@ -634,14 +633,17 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         PumpUntil(() => AllPanes(second).Count == 2, "launch 2 built the background tab");
         TerminalPane paneB = Assert.Single(AllPanes(second), p => p.MuxSessionIdToRestore == goneB);
         var notices = new List<string>();
+        bool bAttached = false;
         paneB.PersistenceNotice += (_, title, _, _) => notices.Add(title);
+        paneB.PersistentSessionAttached += _ => bAttached = true;
         second.FindControl<TabControl>("Tabs")!.SelectedIndex = 1;
         PumpUntil(() => paneB.Session is MuxClientSession { IsAttached: true }, "tab B started a fresh shell");
 
         Guid freshB = paneB.Session!.Id;
         Assert.NotEqual(goneB, freshB);
         Assert.Contains(freshA, AttachedIds(second));
-        PumpUntilSaved([freshA, freshB]);
+        // B's lost notice would come in its attach callback, just before PersistentSessionAttached.
+        PumpUntil(() => bAttached, "tab B finished attaching");
         Assert.Empty(notices);
     }
 
