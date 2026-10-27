@@ -193,7 +193,7 @@ namespace Ntilde
         /// </param>
         /// <param name="activate">
         /// False leaves the user's active pane and keyboard where they are: the zoomed pane becomes only the tab's
-        /// remembered pane. For a focus-mode close in a tab the user is not on.
+        /// remembered pane. For a close in a tab the user is not on, and for a tab that is closing.
         /// </param>
         private bool ExitPaneZoom(TabItem tabItem, bool publishEvent, bool forTeardown = false, bool activate = true)
         {

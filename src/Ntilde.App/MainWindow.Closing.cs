@@ -58,7 +58,9 @@ namespace Ntilde
 
                 if (_paneZoomStateByTab.ContainsKey(tab))
                 {
-                    ExitPaneZoom(tab, publishEvent: true);
+                    // Not activated: a tab on its way out has nothing to hand the user, and one in the background must
+                    // not take their active pane (the Cancel below gives the asking pane back only on screen).
+                    ExitPaneZoom(tab, publishEvent: true, activate: false);
                 }
 
                 var layoutRoot = GetLayoutRootForTab(tab);
@@ -70,8 +72,12 @@ namespace Ntilde
                         Ntilde.Shell.Mux.SharedCloseChoice choice = await DecidePaneCloseAsync(pane);
                         if (choice == Ntilde.Shell.Mux.SharedCloseChoice.Cancel)
                         {
-                            UpdateActivePane(pane);
-                            FocusPaneTerminal(pane, defer: true);
+                            if (IsSelectedTab(tab))
+                            {
+                                UpdateActivePane(pane);
+                                FocusPaneTerminal(pane, defer: true);
+                            }
+
                             return false;
                         }
 
@@ -97,7 +103,7 @@ namespace Ntilde
         {
             if (_paneZoomStateByTab.ContainsKey(ti))
             {
-                ExitPaneZoom(ti, publishEvent: false);
+                ExitPaneZoom(ti, publishEvent: false, activate: false); // the tab is going: see CloseTabCoreAsync
             }
 
             if (_activePaneByTab.TryGetValue(ti, out var mapped) && _currentPane == mapped)
@@ -192,10 +198,9 @@ namespace Ntilde
 
                 if (_paneZoomStateByTab.ContainsKey(paneTab))
                 {
-                    // In focus mode a close in a tab the user is not on (an agent's) must not make its zoomed pane theirs:
-                    // the tab only remembers it, which the focus-mode branch below repoints if that pane is the one closing.
-                    bool usersTab = !_isFocusMode || _currentPane is not { } current || ReferenceEquals(ResolveOwningTabForPane(current), paneTab);
-                    ExitPaneZoom(paneTab, publishEvent: true, activate: usersTab);
+                    // A close in a tab the user is not on (a shell exiting there, an agent in focus mode) must not make its
+                    // zoomed pane theirs: the tab only remembers it, which step 6 below repoints if that pane is the one closing.
+                    ExitPaneZoom(paneTab, publishEvent: true, activate: IsSelectedTab(paneTab));
                 }
 
                 // Agent-initiated and exit-driven closes bypass the confirmation dialog: an agent
@@ -269,10 +274,11 @@ namespace Ntilde
                         // 5. Dispose the closed pane
                         DisposeControlTree(paneToClose, disposition);
 
-                        // 6. Focus Sibling. In focus mode a pane that is not the user's current pane (an agent
-                        // closing it) must not move the user's active pane or keyboard: only repoint the tab's
-                        // remembered pane when it was the closed one.
-                        if (_isFocusMode && !ReferenceEquals(paneToClose, _currentPane))
+                        // 6. Focus Sibling - only where the user is. A close in a tab they are not on (a shell
+                        // exiting there, an agent in focus mode) must not move their active pane or keyboard, and
+                        // in focus mode neither may an agent's close of another pane in their own tab: only
+                        // repoint the tab's remembered pane when it was the closed one.
+                        if (!IsSelectedTab(paneTab) || (_isFocusMode && !ReferenceEquals(paneToClose, _currentPane)))
                         {
                             if (_activePaneByTab.TryGetValue(paneTab, out var remembered)
                                 && ReferenceEquals(remembered, paneToClose)

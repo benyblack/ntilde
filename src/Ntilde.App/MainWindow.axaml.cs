@@ -177,21 +177,39 @@ namespace Ntilde
 
         private void TopLevel_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
+            // Strictly above: the content starts at the band's height, and its first row is not part of the band.
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed
-                && e.GetPosition(this).Y <= WindowDragBandHeight(_isFocusMode))
+                && e.GetPosition(this).Y < WindowDragBandHeight(_isFocusMode))
             {
                 OnTitleBandPressed(e);
             }
         }
+
+        // The last press OnTitleBandPressed acted on, and where on the screen it was.
+        private PointerPressedEventArgs? _lastTitleBandPress;
+        private PixelPoint _screenPointOfLastTitleBandPress;
 
         /// <summary>
         /// A left press on the title band (focus mode's strip included): a double-click maximizes or restores the window,
         /// any other press drags it. The band is the window's own content, not the system title bar, so Windows sees no
         /// caption double-click of its own there.
         /// </summary>
+        /// <remarks>
+        /// Avalonia counts a double-click by the point in the window, and a drag carries that point along with the window:
+        /// grabbing the band again right after a quick drag reads as a double-click. A native caption compares points on
+        /// the screen, so the second press also has to be within the double-click box of the first there - the same few
+        /// pixels of give, so a double-click whose first press nudged the window still counts.
+        /// </remarks>
         private void OnTitleBandPressed(PointerPressedEventArgs e)
         {
-            if (e.ClickCount == 2)
+            // The title bar's own handler and MainRoot's both see a press on the title bar: act on it once.
+            if (ReferenceEquals(e, _lastTitleBandPress)) return;
+            PixelPoint onScreen = this.PointToScreen(e.GetPosition(this));
+            bool sameSpotOnScreen = WithinDoubleClickBox(_screenPointOfLastTitleBandPress, onScreen, e.Pointer.Type);
+            _lastTitleBandPress = e;
+            _screenPointOfLastTitleBandPress = onScreen;
+
+            if (e.ClickCount == 2 && sameSpotOnScreen)
             {
                 WindowState = ToggledMaximizeState(WindowState);
                 // Once: the title bar's own handler runs first, and this keeps MainRoot's from toggling it back.
@@ -200,6 +218,19 @@ namespace Ntilde
             }
 
             BeginMoveDrag(e);
+        }
+
+        /// <summary>
+        /// Whether two screen points are within the platform's double-click box of each other: the box Avalonia measures a
+        /// double-click by inside the window, in physical pixels. It depends on the pointer: a finger's or a pen's box is far
+        /// larger than a mouse's.
+        /// </summary>
+        private bool WithinDoubleClickBox(PixelPoint first, PixelPoint second, PointerType pointerType)
+        {
+            // The settings Avalonia's own pointer devices count clicks with.
+            Size box = this.GetPlatformSettings()?.GetDoubleTapSize(pointerType) ?? new Size(4, 4);
+            return Math.Abs(second.X - first.X) <= box.Width * RenderScaling / 2
+                && Math.Abs(second.Y - first.Y) <= box.Height * RenderScaling / 2;
         }
 
         private void ToggleVisibility()

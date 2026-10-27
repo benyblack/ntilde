@@ -72,6 +72,12 @@ namespace Ntilde
             return true;
         }
 
+        /// <summary>
+        /// Whether <paramref name="tab"/> is the one on screen. Only a close there may move the user's active pane and
+        /// keyboard; one in another tab only repoints that tab's remembered pane.
+        /// </summary>
+        private bool IsSelectedTab(TabItem tab) => TryGetSelectedTab(out var selected) && ReferenceEquals(selected, tab);
+
         private Guid GetTabId(TabItem tab)
         {
             if (_tabIds.TryGetValue(tab, out var id))
