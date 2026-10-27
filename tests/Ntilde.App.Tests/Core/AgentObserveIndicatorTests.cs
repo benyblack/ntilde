@@ -295,6 +295,7 @@ public class AgentObserveIndicatorTests : IDisposable
         try
         {
             Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", tempRoot);
+            TestAppDataRoot.Isolate(tempRoot); // empties what a first AppPaths initialization may have migrated in
 
             var window = TestMainWindowFactory.Create();
             window.Show();
@@ -317,6 +318,7 @@ public class AgentObserveIndicatorTests : IDisposable
         try
         {
             Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", tempRoot);
+            TestAppDataRoot.Isolate(tempRoot); // empties what a first AppPaths initialization may have migrated in
             await body(NewShownWindow());
         }
         finally
@@ -455,6 +457,7 @@ public class AgentObserveIndicatorTests : IDisposable
         try
         {
             Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", tempRoot);
+            TestAppDataRoot.Isolate(tempRoot); // empties what a first AppPaths initialization may have migrated in
 
             var window = TestMainWindowFactory.Create();
             window.Show();
@@ -1028,6 +1031,7 @@ public class AgentObserveIndicatorTests : IDisposable
         try
         {
             Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", tempRoot);
+            TestAppDataRoot.Isolate(tempRoot); // empties what a first AppPaths initialization may have migrated in
             body(TestMainWindowFactory.Create());
         }
         finally

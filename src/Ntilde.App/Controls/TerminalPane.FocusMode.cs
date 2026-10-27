@@ -50,13 +50,6 @@ namespace Ntilde.Controls
             isOpen && hiddenByFocus ? (true, false) : (!isOpen, hiddenByFocus);
 
         /// <summary>
-        /// Whether focus mode hides the panel an open has just finished showing. An open is a request to see it in the mode
-        /// it was asked in, focus mode included; focus mode entered while it was still connecting hides it, as it hides a
-        /// panel that was already open.
-        /// </summary>
-        internal static bool RemoteFilesHiddenAfterOpen(bool focusAtRequest, bool focusNow) => focusNow && !focusAtRequest;
-
-        /// <summary>
         /// The pane menu's Remote Files entry. A panel focus mode hid is open but not shown, and a click reveals it
         /// (<see cref="ResolveRemoteFilesToggle"/>), so the entry does not offer to hide it.
         /// </summary>
