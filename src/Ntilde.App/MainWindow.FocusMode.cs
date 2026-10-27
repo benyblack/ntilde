@@ -7,7 +7,9 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using Ntilde.Shell.Theming;
 
 namespace Ntilde
@@ -29,15 +31,37 @@ namespace Ntilde
         /// <summary>The top band that drags the window: the strip in focus mode, the title band otherwise.</summary>
         internal static double WindowDragBandHeight(bool focusMode) => focusMode ? FocusStripHeight : 36;
 
-        /// <summary>What a double-click on the strip does: restore a maximised window, maximise anything else.</summary>
+        /// <summary>What a double-click on the title band or the strip does: restore a maximised window, maximise anything else.</summary>
         internal static WindowState ToggledMaximizeState(WindowState current) =>
             current == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+        /// <summary>
+        /// Puts the drawn decorations (the caption buttons) on the theme named <paramref name="key"/>. Avalonia 12.1.3
+        /// rebuilds them on a theme change - the template goes null and back - and hands the new buttons to layers beside
+        /// the window that nothing re-measures, so on Windows they stayed invisible until a resize. Those layers are
+        /// invalidated here.
+        /// </summary>
+        private void SetWindowDecorationsTheme(string key)
+        {
+            WindowDecorationsTheme = (ControlTheme)this.FindResource(key)!;
+            InvalidateLayersBeside(this);
+        }
+
+        /// <summary>Invalidates the measure of every layout sibling of <paramref name="visual"/>, but not of <paramref name="visual"/> itself.</summary>
+        internal static void InvalidateLayersBeside(Visual visual)
+        {
+            if (visual.GetVisualParent() is not { } host) return;
+            foreach (var layer in host.GetVisualChildren().OfType<Layoutable>())
+            {
+                if (!ReferenceEquals(layer, visual)) layer.InvalidateMeasure();
+            }
+        }
 
         internal void EnterFocusMode()
         {
             if (_isFocusMode) return;
             _isFocusMode = true;
-            WindowDecorationsTheme = (ControlTheme)this.FindResource("NtildeFocusWindowDecorationsTheme")!;
+            SetWindowDecorationsTheme("NtildeFocusWindowDecorationsTheme");
             foreach (var pane in AllPanes()) pane.FocusChromeHidden = true;
             ApplyFocusModeChrome();
             RefreshAgentObserveIndicator();
@@ -48,7 +72,7 @@ namespace Ntilde
         {
             if (!_isFocusMode) return;
             _isFocusMode = false;
-            WindowDecorationsTheme = (ControlTheme)this.FindResource("NtildeWindowDecorationsTheme")!;
+            SetWindowDecorationsTheme("NtildeWindowDecorationsTheme");
             // Regenerates every generated title bar item with its own visibility.
             RebuildTitleBar();
             foreach (var pane in AllPanes()) pane.FocusChromeHidden = false;

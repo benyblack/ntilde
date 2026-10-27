@@ -177,20 +177,29 @@ namespace Ntilde
 
         private void TopLevel_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
-            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed
+                && e.GetPosition(this).Y <= WindowDragBandHeight(_isFocusMode))
             {
-                if (e.GetPosition(this).Y <= WindowDragBandHeight(_isFocusMode))
-                {
-                    if (_isFocusMode && e.ClickCount == 2)
-                    {
-                        WindowState = ToggledMaximizeState(WindowState);
-                        e.Handled = true;
-                        return;
-                    }
-
-                    BeginMoveDrag(e);
-                }
+                OnTitleBandPressed(e);
             }
+        }
+
+        /// <summary>
+        /// A left press on the title band (focus mode's strip included): a double-click maximizes or restores the window,
+        /// any other press drags it. The band is the window's own content, not the system title bar, so Windows sees no
+        /// caption double-click of its own there.
+        /// </summary>
+        private void OnTitleBandPressed(PointerPressedEventArgs e)
+        {
+            if (e.ClickCount == 2)
+            {
+                WindowState = ToggledMaximizeState(WindowState);
+                // Once: the title bar's own handler runs first, and this keeps MainRoot's from toggling it back.
+                e.Handled = true;
+                return;
+            }
+
+            BeginMoveDrag(e);
         }
 
         private void ToggleVisibility()
@@ -432,7 +441,7 @@ namespace Ntilde
                 titleBar.PointerPressed += (s, e) =>
                 {
                     if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-                        BeginMoveDrag(e);
+                        OnTitleBandPressed(e);
                 };
                 titleBar.SizeChanged += (_, __) => Dispatcher.UIThread.Post(UpdateTabHeaderViewport, DispatcherPriority.Background);
 
