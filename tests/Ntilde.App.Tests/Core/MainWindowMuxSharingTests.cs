@@ -938,6 +938,37 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     }
 
     /// <summary>
+    /// Cancelling the shared-close prompt of a background tab (a middle-click on it) leaves the user where they are: the
+    /// pane that asked is in a tab they are not on, so it does not become theirs.
+    /// </summary>
+    [AvaloniaFact]
+    public void Cancelling_the_shared_prompt_of_a_background_tab_keeps_the_users_pane()
+    {
+        MainWindow window = CreateWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        var userTab = (TabItem)tabs.Items[0]!;
+        (_, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both attached");
+        TabItem shared = TabOf(window, mine);
+        tabs.SelectedItem = userTab;
+        Dispatcher.UIThread.RunJobs();
+        PropertyInfo currentPane = typeof(MainWindow).GetProperty("_currentPane", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var userPane = (TerminalPane)currentPane.GetValue(window)!;
+        Assert.Same(userTab.Content, userPane);
+        window.ConfirmSharedClose = _ => Task.FromResult(SharedCloseChoice.Cancel);
+
+        var close = (Task<bool>)typeof(MainWindow).GetMethod("CloseTabAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [shared, false])!;
+        PumpUntil(() => close.IsCompleted, "the close finished");
+
+        Assert.False(close.Result);
+        Assert.Contains(shared, tabs.Items.Cast<TabItem>());
+        Assert.Same(userTab, tabs.SelectedItem);
+        Assert.Same(userPane, currentPane.GetValue(window));
+    }
+
+    /// <summary>
     /// The other instance detaches (an ordinary detach) and the daemon has seen it. Runs inside the prompt
     /// seam, on the UI thread: it waits on the server alone and never pumps the dispatcher.
     /// </summary>
