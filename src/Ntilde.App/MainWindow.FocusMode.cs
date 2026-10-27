@@ -31,7 +31,7 @@ namespace Ntilde
         /// <summary>The top band that drags the window: the strip in focus mode, the title band otherwise.</summary>
         internal static double WindowDragBandHeight(bool focusMode) => focusMode ? FocusStripHeight : 36;
 
-        /// <summary>What a double-click on the strip does: restore a maximised window, maximise anything else.</summary>
+        /// <summary>What a double-click on the title band or the strip does: restore a maximised window, maximise anything else.</summary>
         internal static WindowState ToggledMaximizeState(WindowState current) =>
             current == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
