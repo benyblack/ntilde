@@ -130,4 +130,93 @@ public sealed class TitleBandDoubleClickTests : IClassFixture<TestAppDataRoot>, 
 
         Assert.Equal(WindowState.Normal, window.WindowState);
     }
+
+    // PR #605 review: the band ends where the content starts, so the terminal's first row is not part of it.
+    [AvaloniaFact]
+    public void A_double_click_on_the_terminals_first_row_does_not_maximize()
+    {
+        MainWindow window = WindowTestSupport.NewShownWindow();
+        var firstRow = new Point(window.Bounds.Width / 2, MainWindow.WindowDragBandHeight(false));
+        Assert.True(((window.InputHitTest(firstRow) as Visual)?.GetSelfAndVisualAncestors() ?? []).Any(v => v is TerminalPane),
+            Describe(window, firstRow));
+        var presses = RecordPresses(window);
+
+        DoubleClick(window, firstRow);
+
+        AssertState(WindowState.Normal, window, firstRow, presses);
+    }
+
+    // PR #605 review: Avalonia counts a double-click by the point in the window, and a drag moves the window under the
+    // pointer, so grabbing the window again right after a quick drag looked like a double-click on the band.
+    [AvaloniaFact]
+    public void Grabbing_the_band_again_after_the_window_moved_is_not_a_double_click()
+    {
+        MainWindow window = WindowTestSupport.NewShownWindow();
+        Point at = EmptyBand(window);
+        AssertEmptyBand(window, at);
+        var presses = RecordPresses(window);
+
+        Press(window, at);
+        window.Position = new PixelPoint(window.Position.X + 120, window.Position.Y + 80); // the drag that press started
+        Press(window, at);
+
+        Assert.Contains(presses, p => p.StartsWith("press 2", StringComparison.Ordinal)); // Avalonia did count a double-click
+        AssertState(WindowState.Normal, window, at, presses);
+    }
+
+    // PR #605 review: the title bar's own handler and the window's both see a press on the title bar's empty space; the
+    // double-click there must toggle once, not maximize and restore again.
+    [AvaloniaFact]
+    public void A_double_click_on_the_title_bars_empty_space_maximizes_once()
+    {
+        MainWindow window = WindowTestSupport.NewShownWindow();
+        var titleBar = window.FindControl<Grid>("TitleBar")!;
+        Point at = EmptyTitleBarSpot(window, titleBar);
+        var presses = RecordPresses(window);
+
+        DoubleClick(window, at);
+
+        AssertState(WindowState.Maximized, window, at, presses);
+    }
+
+    /// <summary>
+    /// A point whose press bubbles through <paramref name="titleBar"/> without reaching a button: a gap of the title bar.
+    /// The title bar's margin is measured off the caption buttons after the first layout, so the spot is taken once the
+    /// layout has settled, and kept only if hovering it changes nothing.
+    /// </summary>
+    private static Point EmptyTitleBarSpot(MainWindow window, Grid titleBar)
+    {
+        bool IsGap(Point p)
+        {
+            var chain = ((window.InputHitTest(p) as Visual)?.GetSelfAndVisualAncestors() ?? []).ToList();
+            return chain.Contains(titleBar) && !chain.Any(v => v is Button or TabItem or TerminalPane);
+        }
+
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            Point origin = titleBar.TranslatePoint(default, window)!.Value;
+            double bottom = Math.Min(origin.Y + titleBar.Bounds.Height, MainWindow.WindowDragBandHeight(false));
+            for (double y = origin.Y + 1; y < bottom; y += 2)
+            {
+                for (double x = origin.X + 1; x < origin.X + titleBar.Bounds.Width; x += 2)
+                {
+                    var p = new Point(x, y);
+                    if (!IsGap(p)) continue;
+                    window.MouseMove(p);
+                    Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    if (IsGap(p)) return p;
+                    goto rescan;
+                }
+            }
+
+            break;
+        rescan:;
+        }
+
+        Assert.Fail("Test setup failed: no spot of the title bar is free of its buttons.");
+        return default;
+    }
 }

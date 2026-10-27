@@ -177,21 +177,37 @@ namespace Ntilde
 
         private void TopLevel_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
+            // Strictly above: the content starts at the band's height, and its first row is not part of the band.
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed
-                && e.GetPosition(this).Y <= WindowDragBandHeight(_isFocusMode))
+                && e.GetPosition(this).Y < WindowDragBandHeight(_isFocusMode))
             {
                 OnTitleBandPressed(e);
             }
         }
+
+        // The last press OnTitleBandPressed acted on, and where the window was at that press.
+        private PointerPressedEventArgs? _lastTitleBandPress;
+        private PixelPoint _windowPositionAtLastTitleBandPress;
 
         /// <summary>
         /// A left press on the title band (focus mode's strip included): a double-click maximizes or restores the window,
         /// any other press drags it. The band is the window's own content, not the system title bar, so Windows sees no
         /// caption double-click of its own there.
         /// </summary>
+        /// <remarks>
+        /// Avalonia counts a double-click by the point in the window, and a drag carries that point along with the window:
+        /// grabbing the band again right after a quick drag reads as a double-click. A native caption compares points on
+        /// the screen, so here the second press counts only if the window has not moved since the first.
+        /// </remarks>
         private void OnTitleBandPressed(PointerPressedEventArgs e)
         {
-            if (e.ClickCount == 2)
+            // The title bar's own handler and MainRoot's both see a press on the title bar: act on it once.
+            if (ReferenceEquals(e, _lastTitleBandPress)) return;
+            bool windowStayed = Position == _windowPositionAtLastTitleBandPress;
+            _lastTitleBandPress = e;
+            _windowPositionAtLastTitleBandPress = Position;
+
+            if (e.ClickCount == 2 && windowStayed)
             {
                 WindowState = ToggledMaximizeState(WindowState);
                 // Once: the title bar's own handler runs first, and this keeps MainRoot's from toggling it back.
