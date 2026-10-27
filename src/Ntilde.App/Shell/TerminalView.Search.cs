@@ -1,0 +1,78 @@
+using Ntilde.VT;
+
+namespace Ntilde.Shell
+{
+    /// <summary>
+    /// Find in the buffer: the matches, moving between them, and scrolling one into view.
+    /// </summary>
+    public partial class TerminalView
+    {
+        // Search state
+        private List<SearchMatch> _searchMatches = new List<SearchMatch>();
+        private int _activeSearchIndex = -1;
+
+        public event Action<int, int>? SearchStateChanged;
+
+        public void Search(string query, bool useRegex = false, bool caseSensitive = false)
+        {
+            if (_buffer == null) return;
+            _searchMatches = _buffer.FindMatches(query, useRegex, caseSensitive);
+            _activeSearchIndex = _searchMatches.Count > 0 ? 0 : -1;
+
+            if (_activeSearchIndex != -1)
+            {
+                ScrollToMatch(_searchMatches[_activeSearchIndex]);
+            }
+
+            SearchStateChanged?.Invoke(_activeSearchIndex + 1, _searchMatches.Count);
+            InvalidateVisual();
+        }
+
+        public void NextMatch()
+        {
+            if (_searchMatches.Count == 0) return;
+            _activeSearchIndex = (_activeSearchIndex + 1) % _searchMatches.Count;
+            ScrollToMatch(_searchMatches[_activeSearchIndex]);
+            SearchStateChanged?.Invoke(_activeSearchIndex + 1, _searchMatches.Count);
+            InvalidateVisual();
+        }
+
+        public void PrevMatch()
+        {
+            if (_searchMatches.Count == 0) return;
+            _activeSearchIndex = (_activeSearchIndex - 1 + _searchMatches.Count) % _searchMatches.Count;
+            ScrollToMatch(_searchMatches[_activeSearchIndex]);
+            SearchStateChanged?.Invoke(_activeSearchIndex + 1, _searchMatches.Count);
+            InvalidateVisual();
+        }
+
+        public void ClearSearch()
+        {
+            _searchMatches.Clear();
+            _activeSearchIndex = -1;
+            SearchStateChanged?.Invoke(0, 0);
+            InvalidateVisual();
+        }
+
+        private void ScrollToMatch(SearchMatch match)
+        {
+            if (_buffer == null) return;
+
+            int totalLines = _buffer.TotalLines;
+            int viewportRows = _buffer.Rows;
+
+            // match.AbsRow is 0-indexed from top of scrollback
+            // Current viewport shows [totalLines - viewportRows - _scrollOffset, totalLines - _scrollOffset]
+
+            int viewTop = totalLines - viewportRows - _scrollOffset;
+            int viewBottom = totalLines - _scrollOffset;
+
+            if (match.AbsRow < viewTop || match.AbsRow >= viewBottom)
+            {
+                // Put match in the middle if possible
+                int newScrollOffset = totalLines - match.AbsRow - (viewportRows / 2);
+                ScrollOffset = Math.Max(0, Math.Min(newScrollOffset, totalLines - viewportRows));
+            }
+        }
+    }
+}

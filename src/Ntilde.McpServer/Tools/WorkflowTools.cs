@@ -129,7 +129,9 @@ public sealed class WorkflowTools
             "src/Ntilde.Rendering/GlyphCache.cs",
             "src/Ntilde.Rendering/GlyphAtlas.cs",
             "src/Ntilde.App/Shell/TerminalDrawOperation.cs",
-            "src/Ntilde.App/Shell/TerminalView.cs" }),
+            "src/Ntilde.App/Shell/TerminalView.cs",
+            "src/Ntilde.App/Shell/TerminalView.Rendering.cs",
+            "src/Ntilde.App/Shell/TerminalView.Fonts.cs" }),
         (new[] { "pty", "spawn", "process" }, new[] {
             "src/Ntilde.Pty/RustPtySession.cs" }),
         (new[] { "ssh", "key", "auth", "connection", "jump" }, new[] {

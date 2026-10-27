@@ -546,7 +546,7 @@ requires public test classes.
 
 **Owns**
 - Avalonia UI: windows, controls, view-models
-- The currently-in-App renderer composition: `Shell/TerminalView.cs`, `Shell/TerminalDrawOperation.cs` (slated to move to Rendering — #113)
+- The currently-in-App renderer composition: `Shell/TerminalView*.cs` (one partial class), `Shell/TerminalDrawOperation.cs` (slated to move to Rendering — #113)
 - Theme management and bundled fonts
 - Profile import/export (Alacritty, iTerm2, Windows Terminal)
 - Command palette and shortcuts
