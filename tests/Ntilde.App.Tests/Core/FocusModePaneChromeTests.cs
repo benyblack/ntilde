@@ -45,24 +45,92 @@ public sealed class FocusModePaneChromeTests : IClassFixture<TestAppDataRoot>, I
     {
         Assert.Equal(expected, TerminalPane.RemoteFilesMenuHeader(isOpen, hiddenByFocus));
 
-        // Opening from closed goes through OpenRemoteFilesSidebarAsync, which shows the panel (unless focus mode began
-        // while it was connecting, below).
+        // Opening from closed goes through OpenRemoteFilesSidebarAsync, which shows the panel.
         bool shownAfterClick = isOpen
             ? TerminalPane.ResolveRemoteFilesToggle(isOpen, hiddenByFocus) is (true, false)
             : true;
         Assert.Equal(expected == "Remote Files", shownAfterClick);
     }
 
-    // PR #595 review: an open is a request to see the panel in the mode it was asked in. Focus mode entered while the
-    // open was still connecting hides it, as it hides a panel that was already open.
-    [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, true, true)]
-    [InlineData(true, false, false)]
-    public void A_remote_files_open_is_hidden_only_by_focus_mode_entered_while_it_ran(bool focusAtRequest, bool focusNow, bool hidden)
+    // PR #595 and #607 reviews: an open is a request to see the panel, but it can take a while to connect, and what
+    // the user does meanwhile is later and wins - focus mode entered hides the panel, a reveal after that shows it.
+
+    /// <summary>Lists nothing until the test lets the listing finish: an open that is still connecting.</summary>
+    private sealed class PendingDirectoryBrowser : Ntilde.Services.Ssh.IRemoteDirectoryBrowserService
     {
-        Assert.Equal(hidden, TerminalPane.RemoteFilesHiddenAfterOpen(focusAtRequest, focusNow));
+        public TaskCompletionSource<Ntilde.Models.RemoteSidebarListingResult> Listing { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<Ntilde.Models.RemoteSidebarListingResult> ListDirectoryAsync(
+            Guid profileId, Guid sessionId, string remotePath, System.Threading.CancellationToken cancellationToken) => Listing.Task;
+
+        public void Finish() => Listing.SetResult(
+            Ntilde.Models.RemoteSidebarListingResult.Success("~", Array.Empty<Ntilde.Models.RemoteSidebarEntry>()));
+    }
+
+    private static TerminalPane NativeSshPane(PendingDirectoryBrowser browser)
+    {
+        var pane = new TerminalPane(new Ntilde.Shell.TerminalProfile
+        {
+            Name = "Native SSH",
+            Type = Ntilde.Shell.ConnectionType.SSH,
+            SshBackendKind = Ntilde.Platform.Ssh.Models.SshBackendKind.Native,
+            SshHost = "server.example",
+            SshUser = "nova",
+        });
+        pane.ConfigureRemoteFilesSidebarForTest(browser);
+        return pane;
+    }
+
+    private static Task OpenRemoteFiles(TerminalPane pane) => (Task)typeof(TerminalPane)
+        .GetMethod("OpenRemoteFilesSidebarAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+        .Invoke(pane, [Guid.NewGuid(), Guid.NewGuid()])!;
+
+    private static Task ToggleRemoteFiles(TerminalPane pane) => (Task)typeof(TerminalPane)
+        .GetMethod("ToggleRemoteFilesSidebarAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+        .Invoke(pane, null)!;
+
+    [AvaloniaFact]
+    public async Task Focus_mode_entered_while_remote_files_connects_hides_the_panel()
+    {
+        var browser = new PendingDirectoryBrowser();
+        using var pane = NativeSshPane(browser);
+
+        Task open = OpenRemoteFiles(pane);
+        pane.FocusChromeHidden = true;
+        browser.Finish();
+        await open;
+
+        Assert.False(pane.IsRemoteFilesSidebarVisibleForTest());
+    }
+
+    [AvaloniaFact]
+    public async Task A_reveal_while_remote_files_connects_is_kept()
+    {
+        var browser = new PendingDirectoryBrowser();
+        using var pane = NativeSshPane(browser);
+
+        Task open = OpenRemoteFiles(pane);
+        pane.FocusChromeHidden = true;
+        await ToggleRemoteFiles(pane); // the entry reveals the panel focus mode hid
+        browser.Finish();
+        await open;
+
+        Assert.True(pane.IsRemoteFilesSidebarVisibleForTest());
+    }
+
+    [AvaloniaFact]
+    public async Task Remote_files_opened_in_focus_mode_shows_the_panel()
+    {
+        var browser = new PendingDirectoryBrowser();
+        using var pane = NativeSshPane(browser);
+        pane.FocusChromeHidden = true;
+
+        Task open = OpenRemoteFiles(pane);
+        browser.Finish();
+        await open;
+
+        Assert.True(pane.IsRemoteFilesSidebarVisibleForTest());
     }
 
     private static void MakeActable(TerminalPane pane)
