@@ -38,14 +38,13 @@ libraries the publish consumes. Nothing reaches the release page until the smoke
 gate has installed the `.deb` and launched the bundle in a pristine `ubuntu:22.04`
 container.
 
-What has **not** happened yet: no tagged release has run this lane, and the
-`linux-arm64` legs have never executed at all — no arm64 build of this project has
-run in CI or locally. Both arm64 legs of `build_native_linux` and `release_tests`
-carry `continue-on-error` so an arm64 failure cannot withhold the Windows and macOS
-assets, which depend on `build_native_linux` transitively via `release_tests`; see
-the comment block above `publish_linux` in `release.yml` for the exact degraded
-behaviour. `linux_packaging_build` in `ci.yml` runs the same
-`build-deb.sh`/`vpk pack` invocations and asserts every filename pattern above on
+What has **not** happened yet: no tagged release has run this lane. The arm64
+legs *have* run since v0.7.0-rc.1 (2026-09-03) — the full arm64 chain was green,
+real arm64 assets were published, and the arm64 `continue-on-error` was dropped
+the same day (`32d44ff2`); `ci.yml` also runs unit tests on `linux-arm64`
+nightly and on dispatch (#459).
+`linux_packaging_build` in `ci.yml` runs the same `build-deb.sh`/`vpk pack`
+invocations and asserts every filename pattern above on
 every PR that touches this directory, but as a dry run at a fixed `0.0.1-ci`
 version — see "Dry run without cutting a release" below.
 
