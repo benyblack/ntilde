@@ -59,6 +59,31 @@ public sealed class NativeSshSessionTests
     }
 
     [Fact]
+    public async Task EarlyOutput_PastTheReplayBound_KeepsTheNewestOutput()
+    {
+        // #173: the buffer for a late first subscriber had no bound. Three chunks of just under half the
+        // bound each: two fit, a third does not, so the first has to go and the last two replay in order.
+        int chunk = (Ntilde.Pty.PendingOutputReplay.DefaultMaxChars / 2) - 1;
+        var interop = new FakeNativeSshInterop();
+        interop.Enqueue(NativeSshEvent.Data(Encoding.UTF8.GetBytes(new string('a', chunk))));
+        interop.Enqueue(NativeSshEvent.Data(Encoding.UTF8.GetBytes(new string('b', chunk))));
+        interop.Enqueue(NativeSshEvent.Data(Encoding.UTF8.GetBytes(new string('c', chunk))));
+        interop.Enqueue(NativeSshEvent.ExitStatus(0));
+        interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
+
+        using var session = new NativeSshSession(CreateProfile(), interop: interop);
+        var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.OnExit += code => exit.TrySetResult(code);
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+
+        var outputs = new ConcurrentQueue<string>();
+        session.OnOutputReceived += outputs.Enqueue;
+
+        string replayed = string.Concat(outputs);
+        Assert.Equal(new string('b', chunk) + new string('c', chunk), replayed);
+    }
+
+    [Fact]
     public void Constructor_AllowsDynamicForwardProfiles()
     {
         SshProfile profile = CreateProfile();

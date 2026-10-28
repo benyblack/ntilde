@@ -281,7 +281,7 @@ namespace Ntilde.Pty
         private readonly object _outputHandlerGate = new();
         private readonly object _outputInvocationLock = new();
         private Action<string>? _onOutputReceived;
-        private List<string>? _pendingOutputReplay;
+        private PendingOutputReplay? _pendingOutputReplay;
         private bool _hasOutputSubscriberEver;
 
         public event Action<string>? OnOutputReceived
@@ -350,7 +350,7 @@ namespace Ntilde.Pty
                     handler = _onOutputReceived;
                     if (!_hasOutputSubscriberEver && handler == null)
                     {
-                        _pendingOutputReplay ??= new List<string>();
+                        _pendingOutputReplay ??= new PendingOutputReplay();
                         _pendingOutputReplay.Add(text);
                         return;
                     }

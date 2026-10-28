@@ -60,7 +60,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
     private int? _exitCode;
     private Action<int>? _onExit;
     private Action<string>? _onOutputReceived;
-    private List<string>? _pendingOutputReplay;
+    private Ntilde.Pty.PendingOutputReplay? _pendingOutputReplay;
     private bool _hasOutputSubscriberEver;
 
     public NativeSshSession(
@@ -499,13 +499,22 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
     // stream - which is what keeps a byte subscriber (the mux) and a string subscriber identical.
     private void EmitDecoded(byte[] bytes)
     {
-        char[] chars = new char[Ntilde.Pty.Utf8ChunkDecoder.GetMaxCharCount(bytes.Length)];
-        int charCount = _utf8Decoder.Decode(bytes, chars);
+        // One buffer for the session, grown to the largest chunk seen, rather than a new one per chunk (#173).
+        // Only touched under _decodeGate, like the decoder itself.
+        int needed = Ntilde.Pty.Utf8ChunkDecoder.GetMaxCharCount(bytes.Length);
+        if (_decodeChars.Length < needed)
+        {
+            _decodeChars = new char[needed];
+        }
+
+        int charCount = _utf8Decoder.Decode(bytes, _decodeChars);
         if (charCount > 0)
         {
-            EmitText(new string(chars, 0, charCount));
+            EmitText(new string(_decodeChars, 0, charCount));
         }
     }
+
+    private char[] _decodeChars = Array.Empty<char>();
 
     private void EmitErrorAndExit(NativeSshEvent nextEvent)
     {
@@ -575,7 +584,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
                 handler = _onOutputReceived;
                 if (!_hasOutputSubscriberEver && handler == null)
                 {
-                    _pendingOutputReplay ??= new List<string>();
+                    _pendingOutputReplay ??= new Ntilde.Pty.PendingOutputReplay();
                     _pendingOutputReplay.Add(text);
                     return;
                 }
