@@ -43,8 +43,8 @@ $tests = Join-Path $PSScriptRoot "..\tests"
 foreach ($proj in "VT", "Rendering", "Architecture", "Platform", "McpServer", "Mux") {
     & $build test (Join-Path $tests "Ntilde.$proj.Tests") -c Release --no-build --filter $filter
 }
-& $build test (Join-Path $tests "Ntilde.App.Tests") -c Release --no-build --filter "$filter&Lane!=PlatformBoot"
-& $build test (Join-Path $tests "Ntilde.App.Tests") -c Release --no-build --filter "Lane=PlatformBoot&Category!=GoldenSharedPng"
+& $build test (Join-Path $tests "Ntilde.App.Tests") -c Release --no-build --blame-hang-timeout 5m --filter "$filter&Lane!=PlatformBoot"
+& $build test (Join-Path $tests "Ntilde.App.Tests") -c Release --no-build --blame-hang-timeout 5m --filter "Lane=PlatformBoot&Category!=GoldenSharedPng"
 
 Write-Host "=== REPLAY TESTS ==="
 & $build test -c Release --filter Category=Replay

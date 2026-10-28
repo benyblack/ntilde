@@ -42,8 +42,8 @@ filter="Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=St
 for proj in VT Rendering Architecture Platform McpServer Mux; do
     "$BUILD" test "$SCRIPT_DIR/../tests/Ntilde.$proj.Tests" -c Release --no-build --filter "$filter"
 done
-"$BUILD" test "$SCRIPT_DIR/../tests/Ntilde.App.Tests" -c Release --no-build --filter "$filter&Lane!=PlatformBoot"
-"$BUILD" test "$SCRIPT_DIR/../tests/Ntilde.App.Tests" -c Release --no-build --filter "Lane=PlatformBoot&Category!=GoldenSharedPng"
+"$BUILD" test "$SCRIPT_DIR/../tests/Ntilde.App.Tests" -c Release --no-build --blame-hang-timeout 5m --filter "$filter&Lane!=PlatformBoot"
+"$BUILD" test "$SCRIPT_DIR/../tests/Ntilde.App.Tests" -c Release --no-build --blame-hang-timeout 5m --filter "Lane=PlatformBoot&Category!=GoldenSharedPng"
 
 echo "=== REPLAY TESTS ==="
 "$BUILD" test -c Release --filter Category=Replay

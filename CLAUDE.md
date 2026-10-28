@@ -14,12 +14,12 @@ Examples:
 
 The wrappers pass `-nodeReuse:false` and set `DOTNET_CLI_USE_MSBUILD_SERVER=0`, which is required when stdout/stderr is captured by a parent (Claude Code's Bash tool, CI runners, test harnesses).
 
-### Running the full App.Tests suite
+### Running the App.Tests gating lanes
 
 Never run `tests/Ntilde.App.Tests` unfiltered. CI runs it as two separate processes, and mixing them makes the mux/remote/window tests time out and the testhost hang (see the PlatformBoot comment in `.github/workflows/ci.yml`). `ci/run.sh` / `ci/run.ps1` run every lane; to run just App.Tests, use the same two lanes CI does:
 
-- `scripts/build.sh test tests/Ntilde.App.Tests --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot"`
-- `scripts/build.sh test tests/Ntilde.App.Tests --no-build --filter "Lane=PlatformBoot&Category!=GoldenSharedPng"`
+- `scripts/build.sh test tests/Ntilde.App.Tests --blame-hang-timeout 5m --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot"`
+- `scripts/build.sh test tests/Ntilde.App.Tests --no-build --blame-hang-timeout 5m --filter "Lane=PlatformBoot&Category!=GoldenSharedPng"`
 
 ### Why this matters
 
