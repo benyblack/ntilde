@@ -172,5 +172,39 @@ namespace Ntilde.VT
                 Info = this.Info
             };
         }
+
+        /// <summary>True when <paramref name="other"/> has this theme's name and every one of its colors.</summary>
+        public bool HasSameColors(TerminalTheme other)
+        {
+            ArgumentNullException.ThrowIfNull(other);
+            if (Name != other.Name ||
+                Foreground != other.Foreground ||
+                Background != other.Background ||
+                CursorColor != other.CursorColor ||
+                SelectionBackground != other.SelectionBackground ||
+                SelectionForeground != other.SelectionForeground ||
+                CursorText != other.CursorText ||
+                SearchMatch != other.SearchMatch ||
+                SearchMatchActive != other.SearchMatchActive ||
+                Accent != other.Accent ||
+                Success != other.Success ||
+                Warning != other.Warning ||
+                Error != other.Error ||
+                Info != other.Info)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (GetAnsiColor(i, bright: false) != other.GetAnsiColor(i, bright: false) ||
+                    GetAnsiColor(i, bright: true) != other.GetAnsiColor(i, bright: true))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 }

@@ -800,6 +800,7 @@ namespace Ntilde.Shell
         private bool _enableLigatures = false;
         private bool _enableComplexShaping = true;
         private double _minimumContrast = 1.0;
+        private TerminalTheme? _appliedTheme; // a copy of the theme ApplySettings last gave the buffer
         private bool _enableLinkDetection = true;
         private readonly GlyphCache _glyphCache = new();
         private double _lastRenderScalingForRowCache = -1.0;
@@ -999,6 +1000,10 @@ namespace Ntilde.Shell
                 {
                     _typeface = new Typeface(settings.FontFamily);
                 }
+                // Ligatures, shaping and opacity are baked into the cached row pictures.
+                bool rowPicturesStale = settings.EnableLigatures != _enableLigatures ||
+                                        settings.EnableComplexShaping != _enableComplexShaping ||
+                                        Math.Abs(settings.WindowOpacity - _windowOpacity) > 0.0001;
                 _enableLigatures = settings.EnableLigatures;
                 _enableComplexShaping = settings.EnableComplexShaping;
                 double minimumContrast = Math.Clamp(double.IsNaN(settings.MinimumContrast) ? 1.0 : settings.MinimumContrast, 1.0, 21.0);
@@ -1038,24 +1043,39 @@ namespace Ntilde.Shell
                     _buffer.Modes.CursorStyle = _preferredCursorStyle;
                     _buffer.Modes.IsCursorBlinkEnabled = settings.CursorBlink;
 
-                    // Store old theme for color remapping
-                    var oldTheme = _buffer.Theme;
+                    // Every settings save lands here, most of them with the theme unchanged; re-applying
+                    // it anyway remaps every cell and repaints every row in every pane. The copy catches
+                    // a theme edited in place, which leaves _buffer.Theme the very instance it compares to.
+                    var newTheme = settings.ActiveTheme;
+                    bool themeChanged = !_buffer.Theme.HasSameColors(newTheme) ||
+                                        _appliedTheme?.HasSameColors(newTheme) != true;
+                    if (themeChanged)
+                    {
+                        // Store old theme for color remapping
+                        var oldTheme = _buffer.Theme;
 
-                    // Apply new theme
-                    _buffer.Theme = settings.ActiveTheme;
+                        // Apply new theme
+                        _buffer.Theme = newTheme;
+                        _appliedTheme = newTheme.Clone();
 
-                    // Clear row cache as colors are now baked into SKPictures
-                    _rowCache.RequestClear();
+                        // Clear row cache as colors are now baked into SKPictures
+                        _rowCache.RequestClear();
 
-                    // Update all existing cells, remapping old theme colors to new
-                    _buffer.UpdateThemeColors(oldTheme);
+                        // Update all existing cells, remapping old theme colors to new
+                        _buffer.UpdateThemeColors(oldTheme);
 
-                    TerminalLogger.Log(
-                        $"[TerminalView] Theme applied: '{_buffer.Theme.Name}' (was '{oldTheme.Name}'); " +
-                        $"buffer {_buffer.Cols}x{_buffer.Rows}.");
+                        TerminalLogger.Log(
+                            $"[TerminalView] Theme applied: '{_buffer.Theme.Name}' (was '{oldTheme.Name}'); " +
+                            $"buffer {_buffer.Cols}x{_buffer.Rows}.");
 
-                    // Force immediate visual refresh
-                    InvalidateVisual();
+                        // Force immediate visual refresh
+                        InvalidateVisual();
+                    }
+                    else if (rowPicturesStale)
+                    {
+                        _rowCache.RequestClear();
+                        InvalidateVisual();
+                    }
                 }
 
                 // Only recreate resources if font changed
