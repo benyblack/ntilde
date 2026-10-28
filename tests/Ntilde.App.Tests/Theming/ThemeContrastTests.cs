@@ -84,6 +84,19 @@ public class ThemeContrastTests
 
     [Theory]
     [MemberData(nameof(Themes))]
+    public void Agent_wrote_and_agent_watched_stay_distinct(string theme)
+    {
+        // The sidebar dot, the tab chip and the pane's agent segment tell "an agent wrote here" from "an
+        // agent is watching" by colour alone (#595). AgentWatched is Info and AgentWrote is derived
+        // between Warning and Error, so a theme whose status colours collapse could make them one.
+        var t = Tokens(theme);
+        Assert.NotEqual(t[ThemeKeys.AgentWatched], t[ThemeKeys.AgentWrote]);
+        Assert.NotEqual(t[ThemeKeys.TabAgentWatched], t[ThemeKeys.TabAgentWrote]);
+        Assert.NotEqual(t[ThemeKeys.TabChipAgentWatched], t[ThemeKeys.TabChipAgentWrote]);
+    }
+
+    [Theory]
+    [MemberData(nameof(Themes))]
     public void Status_text_reads_on_panels(string theme)
     {
         var t = Tokens(theme);
