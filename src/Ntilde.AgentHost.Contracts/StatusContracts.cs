@@ -29,6 +29,13 @@ public sealed record SessionStatusDto
     [JsonPropertyName("exitCode")]
     public int? ExitCode { get; init; }
 
+    /// <summary>
+    /// For an exited SSH session an agent opened: what the server asked for that only the user can give, one of
+    /// <see cref="AgentHostProtocol.NeedsUserReasons"/> (#610). Absent otherwise.
+    /// </summary>
+    [JsonPropertyName("needsUser")]
+    public string? NeedsUser { get; init; }
+
     /// <summary>The command in flight / last accepted, when shell integration reports it.</summary>
     [JsonPropertyName("currentCommand")]
     public string? CurrentCommand { get; init; }
@@ -73,6 +80,10 @@ public sealed record AgentEventDto
 
     [JsonPropertyName("exitCode")]
     public int? ExitCode { get; init; }
+
+    /// <summary>On the exit of a session that stopped for the user (<see cref="SessionStatusDto.NeedsUser"/>): why.</summary>
+    [JsonPropertyName("needsUser")]
+    public string? NeedsUser { get; init; }
 
     /// <summary>Command duration for <c>commandFinished</c> events.</summary>
     [JsonPropertyName("durationMs")]

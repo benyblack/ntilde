@@ -392,7 +392,7 @@ namespace Ntilde.Controls
         }
 
         public Control ActiveControl => TermView;
-        public ISshInteractionHandler? SshInteractionHandler { get; set; }
+        public Ntilde.Services.Ssh.ISshInteractionService? SshInteractionHandler { get; set; }
 
         public TerminalPane()
         {
@@ -1303,7 +1303,7 @@ namespace Ntilde.Controls
             if ((_muxConnectionLost || ShouldReconnectOnEnter(Session)) && e.Key == Key.Enter)
             {
                 e.Handled = true;
-                Reconnect();
+                ReconnectByUser();
                 return;
             }
 

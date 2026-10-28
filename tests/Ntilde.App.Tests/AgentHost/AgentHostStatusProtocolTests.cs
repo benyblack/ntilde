@@ -84,6 +84,42 @@ public class AgentHostStatusProtocolTests : IDisposable
         Assert.Equal(AgentSessionStatusMachine.StallThresholdSeconds, dto.StallThresholdSeconds);
     }
 
+    /// <summary>
+    /// #610: an agent's SSH connection that stopped because the server asked for something only the user can give
+    /// reports it on every surface the agent reads: getSessionStatus, the exit event, and sessionClosed.
+    /// </summary>
+    [Fact]
+    public async Task A_session_that_stopped_for_the_user_says_so_on_every_surface()
+    {
+        var registry = new AgentSessionRegistry();
+        using var service = NewRunningService(registry);
+        var registration = Register(registry);
+
+        registration.StatusMachine.NotifyExited(-1, AgentNeedsUserReason.ChangedHostKey);
+
+        var status = ResultOf(
+            await HandleAsync(service, AgentHostProtocol.Methods.GetSessionStatus, $"{{\"paneId\":\"{registration.PaneId}\"}}"),
+            AgentHostJsonContext.Default.SessionStatusDto);
+        Assert.Equal(AgentHostProtocol.StatusKinds.Exited, status.Status);
+        Assert.Equal(AgentHostProtocol.NeedsUserReasons.ChangedHostKey, status.NeedsUser);
+
+        registry.Unregister(registration.PaneId);
+        var events = ResultOf(
+            await HandleAsync(service, AgentHostProtocol.Methods.WaitForEvents, "{\"sinceSeq\":0,\"timeoutMs\":1000}"),
+            AgentHostJsonContext.Default.WaitForEventsResult).Events;
+        var exited = Assert.Single(events, e => e.Type == AgentHostProtocol.EventTypes.StatusChanged);
+        Assert.Equal(AgentHostProtocol.NeedsUserReasons.ChangedHostKey, exited.NeedsUser);
+        var closed = Assert.Single(events, e => e.Type == AgentHostProtocol.EventTypes.SessionClosed);
+        Assert.Equal(AgentHostProtocol.NeedsUserReasons.ChangedHostKey, closed.NeedsUser);
+
+        // A session that simply ended carries no reason, and the field stays off the wire.
+        var plain = Register(registry);
+        plain.StatusMachine.NotifyExited(0);
+        var plainResponse = await HandleAsync(service, AgentHostProtocol.Methods.GetSessionStatus, $"{{\"paneId\":\"{plain.PaneId}\"}}");
+        Assert.Null(ResultOf(plainResponse, AgentHostJsonContext.Default.SessionStatusDto).NeedsUser);
+        Assert.False(plainResponse.Result!.Value.TryGetProperty("needsUser", out _));
+    }
+
     [Fact]
     public async Task GetSessionStatus_maps_missing_params_and_unknown_pane_to_distinct_errors()
     {

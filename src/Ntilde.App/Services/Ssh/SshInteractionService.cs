@@ -41,7 +41,19 @@ public sealed class SshInteractionService : ISshInteractionService
         _sessionRegistry = sessionRegistry ?? ActiveSshSessionRegistry.Instance;
     }
 
-    public async Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
+    public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
+    {
+        return HandleAsync(request, needsUser: null, cancellationToken);
+    }
+
+    public ISshInteractionHandler WithoutDialogs(Action<SshInteractionKind> needsUser)
+    {
+        ArgumentNullException.ThrowIfNull(needsUser);
+        return new WithoutDialogsHandler(this, needsUser);
+    }
+
+    /// <param name="needsUser">Null: a prompt that needs the user shows its dialog. Otherwise it is told what was asked, and the prompt is refused (#610).</param>
+    private async Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, Action<SshInteractionKind>? needsUser, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -53,14 +65,14 @@ public sealed class SshInteractionService : ISshInteractionService
         if (!Dispatcher.UIThread.CheckAccess())
         {
             return await Dispatcher.UIThread.InvokeAsync(
-                () => HandleOnUiThreadAsync(request, cancellationToken),
+                () => HandleOnUiThreadAsync(request, needsUser, cancellationToken),
                 DispatcherPriority.Send);
         }
 
-        return await HandleOnUiThreadAsync(request, cancellationToken);
+        return await HandleOnUiThreadAsync(request, needsUser, cancellationToken);
     }
 
-    private async Task<SshInteractionResponse> HandleOnUiThreadAsync(SshInteractionRequest request, CancellationToken cancellationToken)
+    private async Task<SshInteractionResponse> HandleOnUiThreadAsync(SshInteractionRequest request, Action<SshInteractionKind>? needsUser, CancellationToken cancellationToken)
     {
         if (TryHandlePasswordFromVault(request, out SshInteractionResponse response))
         {
@@ -70,19 +82,41 @@ public sealed class SshInteractionService : ISshInteractionService
         Window? owner = _ownerProvider();
         return request.Kind switch
         {
-            SshInteractionKind.UnknownHostKey or SshInteractionKind.ChangedHostKey => await HandleHostKeyAsync(owner, request, cancellationToken),
-            SshInteractionKind.Password => await HandlePasswordAsync(owner, request, cancellationToken),
-            SshInteractionKind.Passphrase => await _authPresenter(owner, CreatePassphraseViewModel(request), cancellationToken),
+            SshInteractionKind.UnknownHostKey or SshInteractionKind.ChangedHostKey => await HandleHostKeyAsync(owner, request, needsUser, cancellationToken),
+            SshInteractionKind.Password => await HandlePasswordAsync(owner, request, needsUser, cancellationToken),
+            SshInteractionKind.Passphrase => await AskUserAsync(needsUser, request.Kind,
+                () => _authPresenter(owner, CreatePassphraseViewModel(request), cancellationToken)),
             // A round with no questions (sshd's PAM sends one after a correct password) has nothing to ask the user.
             SshInteractionKind.KeyboardInteractive when request.KeyboardPrompts.Count == 0 => SshInteractionResponse.FromKeyboardResponses(),
-            SshInteractionKind.KeyboardInteractive => await _authPresenter(owner, CreateKeyboardViewModel(request), cancellationToken),
+            SshInteractionKind.KeyboardInteractive => await AskUserAsync(needsUser, request.Kind,
+                () => _authPresenter(owner, CreateKeyboardViewModel(request), cancellationToken)),
             _ => SshInteractionResponse.Cancel()
         };
     }
 
-    private async Task<SshInteractionResponse> HandlePasswordAsync(Window? owner, SshInteractionRequest request, CancellationToken cancellationToken)
+    /// <summary>
+    /// The one place a prompt reaches the user: <paramref name="present"/> shows its dialog. A connection nobody is waiting
+    /// at (<paramref name="needsUser"/> set; #610) must not open a window over the user's shell - its keystrokes would land
+    /// in it - so the prompt is refused instead, and the caller told what it was.
+    /// </summary>
+    private static Task<SshInteractionResponse> AskUserAsync(
+        Action<SshInteractionKind>? needsUser,
+        SshInteractionKind kind,
+        Func<Task<SshInteractionResponse>> present)
     {
-        SshInteractionResponse response = await _authPresenter(owner, CreatePasswordViewModel(request), cancellationToken);
+        if (needsUser == null)
+        {
+            return present();
+        }
+
+        needsUser(kind);
+        return Task.FromResult(SshInteractionResponse.Cancel());
+    }
+
+    private async Task<SshInteractionResponse> HandlePasswordAsync(Window? owner, SshInteractionRequest request, Action<SshInteractionKind>? needsUser, CancellationToken cancellationToken)
+    {
+        SshInteractionResponse response = await AskUserAsync(needsUser, request.Kind,
+            () => _authPresenter(owner, CreatePasswordViewModel(request), cancellationToken));
         // Held under the server that asked for it, so the password is only ever replayed to that
         // server — never to the next hop of the chain, and never to a transfer's other hops.
         if (request.SessionId.HasValue && request.HasHostIdentity && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
@@ -147,7 +181,7 @@ public sealed class SshInteractionService : ISshInteractionService
         };
     }
 
-    private async Task<SshInteractionResponse> HandleHostKeyAsync(Window? owner, SshInteractionRequest request, CancellationToken cancellationToken)
+    private async Task<SshInteractionResponse> HandleHostKeyAsync(Window? owner, SshInteractionRequest request, Action<SshInteractionKind>? needsUser, CancellationToken cancellationToken)
     {
         NativeKnownHostMatch match = _knownHostsStore.CheckHost(request.Host, request.Port, request.Algorithm, request.Fingerprint);
         if (match == NativeKnownHostMatch.Trusted)
@@ -168,7 +202,8 @@ public sealed class SshInteractionService : ISshInteractionService
             };
         }
 
-        SshInteractionResponse response = await _hostKeyPresenter(owner, CreateHostKeyViewModel(requestToPresent), cancellationToken);
+        SshInteractionResponse response = await AskUserAsync(needsUser, requestToPresent.Kind,
+            () => _hostKeyPresenter(owner, CreateHostKeyViewModel(requestToPresent), cancellationToken));
         if (response.IsAccepted && !response.IsCanceled)
         {
             try
@@ -316,6 +351,15 @@ public sealed class SshInteractionService : ISshInteractionService
         }
 
         return viewModel;
+    }
+
+    /// <summary><see cref="WithoutDialogs"/>: the window's prompts, minus their dialogs.</summary>
+    private sealed class WithoutDialogsHandler(SshInteractionService owner, Action<SshInteractionKind> needsUser) : ISshInteractionHandler
+    {
+        public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
+        {
+            return owner.HandleAsync(request, needsUser, cancellationToken);
+        }
     }
 }
 

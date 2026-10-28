@@ -148,6 +148,27 @@ internal sealed class FakeSshInteractionHandler : ISshInteractionHandler
         throw new NotSupportedException("the factory seam never runs the handler");
 }
 
+/// <summary>
+/// A window's prompt service that is never asked anything itself. Its no-dialog handler (#610) is a fresh
+/// <see cref="FakeSshInteractionHandler"/>, and the callback that handler would report to is kept for the test to call.
+/// </summary>
+internal sealed class FakeSshInteractionService : Ntilde.Services.Ssh.ISshInteractionService
+{
+    public ISshInteractionHandler? WithoutDialogsHandler { get; private set; }
+    public Action<SshInteractionKind>? NeedsUser { get; private set; }
+
+    public Task<SshInteractionResponse> HandleAsync(
+        SshInteractionRequest request, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("the factory seam never runs the handler");
+
+    public ISshInteractionHandler WithoutDialogs(Action<SshInteractionKind> needsUser)
+    {
+        NeedsUser = needsUser;
+        WithoutDialogsHandler = new FakeSshInteractionHandler();
+        return WithoutDialogsHandler;
+    }
+}
+
 public class PaneCapabilityGatingTests
 {
     /// <summary>
@@ -369,7 +390,7 @@ public class PaneSshSessionFactoryTests
     public void SshSpawn_HandsTheFactoryTheProfileDiagnosticsHandlerAndNativeFlag()
     {
         TerminalProfile profile = SshProfile();
-        var handler = new FakeSshInteractionHandler();
+        var handler = new FakeSshInteractionService();
         var session = new PlainFakeTerminalSession { ShellCommand = "ssh someone@example.invalid" };
         var factory = new RecordingSessionFactory(session);
 
@@ -438,6 +459,86 @@ public class PaneSshSessionFactoryTests
         Assert.NotNull(request.Ssh);
 
         Assert.Contains("SSH Connection Failed", ScreenText(pane), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// #610: an SSH pane an agent opened connects with the window's prompts minus their dialogs, so the server's
+    /// questions never open a window over the user's shell. The user's own reconnect makes the pane theirs, and its
+    /// next connection gets the dialogs back.
+    /// </summary>
+    [AvaloniaFact]
+    public void AgentOpenedSshSpawn_ConnectsWithoutDialogs_UntilTheUserReconnects()
+    {
+        TerminalProfile profile = SshProfile();
+        var prompts = new FakeSshInteractionService();
+        var factory = new RecordingSessionFactory(new PlainFakeTerminalSession());
+        using var pane = new TerminalPane(profile, new TerminalSettings { ExperimentalNativeSshEnabled = true }, SshDiagnosticsLevel.None);
+        pane.SshInteractionHandler = prompts;
+        pane.SessionFactory = factory;
+        pane.OpenedByAgent = true;
+
+        pane.CreateAndWireParser();
+        pane.InitializeSessionCore(profile.Command, profile.Arguments, profile, cols: 80, rows: 24);
+
+        Assert.NotNull(prompts.WithoutDialogsHandler);
+        Assert.Same(prompts.WithoutDialogsHandler, factory.LastRequest!.Ssh!.InteractionHandler);
+
+        pane.ReconnectByUser();
+        Assert.False(pane.OpenedByAgent);
+        pane.InitializeSessionCore(profile.Command, profile.Arguments, profile, cols: 80, rows: 24);
+
+        Assert.Same(prompts, factory.LastRequest!.Ssh!.InteractionHandler);
+    }
+
+    /// <summary>
+    /// #610: when the server asked an agent's connection for something only the user can give, the dead pane says what
+    /// it was and how to answer it, and the agent's status says why the session ended.
+    /// </summary>
+    [AvaloniaFact]
+    public void AgentOpenedSshExit_ThatNeededTheUser_SaysSoInThePaneAndToTheAgent()
+    {
+        TerminalProfile profile = SshProfile();
+        var prompts = new FakeSshInteractionService();
+        using var pane = new TerminalPane(profile, new TerminalSettings { ExperimentalNativeSshEnabled = true }, SshDiagnosticsLevel.None);
+        pane.SshInteractionHandler = prompts;
+        pane.SessionFactory = new RecordingSessionFactory(new PlainFakeTerminalSession());
+        pane.OpenedByAgent = true;
+
+        pane.CreateAndWireParser();
+        pane.InitializeSessionCore(profile.Command, profile.Arguments, profile, cols: 120, rows: 24);
+        prompts.NeedsUser!(SshInteractionKind.UnknownHostKey);
+        prompts.NeedsUser!(SshInteractionKind.Password); // the first question is the one reported
+        pane.HandleSessionExitForTesting(-1);
+
+        string screen = ScreenText(pane);
+        Assert.Contains("[SSH session disconnected]", screen, StringComparison.Ordinal);
+        Assert.Contains("An agent opened this connection", screen, StringComparison.Ordinal);
+        Assert.Contains("host key", screen, StringComparison.Ordinal);
+        Assert.Contains("Press Enter to connect yourself", screen, StringComparison.Ordinal);
+        Assert.Equal(
+            Ntilde.AgentHost.AgentNeedsUserReason.HostKey,
+            pane.AgentRegistrationForTesting!.StatusMachine.Snapshot().NeedsUser);
+    }
+
+    /// <summary>A connection that ended on its own, with nothing asked of the user, ends as any SSH pane does.</summary>
+    [AvaloniaFact]
+    public void AgentOpenedSshExit_ThatAskedNothing_IsAnOrdinaryDisconnect()
+    {
+        TerminalProfile profile = SshProfile();
+        var prompts = new FakeSshInteractionService();
+        using var pane = new TerminalPane(profile, new TerminalSettings { ExperimentalNativeSshEnabled = true }, SshDiagnosticsLevel.None);
+        pane.SshInteractionHandler = prompts;
+        pane.SessionFactory = new RecordingSessionFactory(new PlainFakeTerminalSession());
+        pane.OpenedByAgent = true;
+
+        pane.CreateAndWireParser();
+        pane.InitializeSessionCore(profile.Command, profile.Arguments, profile, cols: 120, rows: 24);
+        pane.HandleSessionExitForTesting(255);
+
+        string screen = ScreenText(pane);
+        Assert.Contains("[Press Enter to reconnect]", screen, StringComparison.Ordinal);
+        Assert.DoesNotContain("An agent opened this connection", screen, StringComparison.Ordinal);
+        Assert.Null(pane.AgentRegistrationForTesting!.StatusMachine.Snapshot().NeedsUser);
     }
 
     private static string ScreenText(TerminalPane pane)

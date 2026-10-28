@@ -61,7 +61,14 @@ AI agent ──stdio──▶ Ntilde.McpServer ──per-user local IPC──▶
 4. **Input size cap.** `sendInput` is capped at 32 KiB per call to bound a
    flood; the endpoint is per-user local so this is a robustness bound, not a
    defense against a remote attacker.
-5. **Instant revocation.** Turning the act toggle off is read on the next
+5. **No sign-in dialogs for an agent's SSH connection** (#610). A host-key or
+   password dialog raised for a session the agent spawned would open over the
+   user's shell and catch their keystrokes, and could get a host key trusted,
+   or a password typed, for a connection the user never started. On the native
+   backend such a connection answers only what needs no dialog (a saved
+   password, a trusted host key) and otherwise ends, reporting `needsUser` to
+   the agent; the user reconnects it themselves. See `known-limitations.md`.
+6. **Instant revocation.** Turning the act toggle off is read on the next
    request (volatile flag); turning observe off tears the endpoint down and
    force-closes live connections. Closing the window clears the UI executor and
    allowlist probe.

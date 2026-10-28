@@ -84,6 +84,20 @@ profiles, and explanations of escape sequences.
 With persistent sessions on, an agent also sees the shells the multiplexer keeps that no pane of the
 window shows ([Agents and windowless sessions](persistent-sessions.md#agents-and-windowless-sessions)).
 
+### SSH sessions an agent opens
+
+An agent can open an SSH profile only if you allowlisted it. On the native SSH backend, such a
+session never shows a host-key or password dialog: it would open over the shell you are typing in.
+It signs in only with what needs no question: a host key you already trust, a password saved for
+the profile, or, with connection multiplexing, a connection one of your tabs already has open. If
+the server asks for anything else (a host key you have not trusted, a password that is not saved,
+a key passphrase, a one-time code), the session ends. Its tab says what the server asked, and
+pressing Enter there connects as you, with the usual dialogs. The agent is told why its session
+ended.
+
+So before you allowlist a profile, connect to it once yourself, trust its host key, and save its
+password. With the OpenSSH backend, ssh asks in the terminal itself, in the agent's tab.
+
 ### Seeing what an agent did
 
 A pane shows a live indicator while an agent reads, captures or acts on it, and its tab is marked

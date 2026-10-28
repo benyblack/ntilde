@@ -614,9 +614,10 @@ namespace Ntilde
         /// <summary>Opens a tab and returns its pane - for a template-rule tab, the template's active pane - or null when
         /// none was created.
         /// <paramref name="select"/> false opens it in the background; <paramref name="leaveFocusMode"/> false is for
-        /// callers that are not the user (the agent), which must never end focus mode.</summary>
+        /// callers that are not the user (the agent), which must never end focus mode. <paramref name="openedByAgent"/> marks
+        /// the pane as the agent's (<see cref="TerminalPane.OpenedByAgent"/>): its SSH connection shows no dialogs (#610).</summary>
         TerminalPane? AddTab(TerminalProfile? profile = null, SshDiagnosticsLevel sshDiagnostics = SshDiagnosticsLevel.None,
-            bool select = true, bool leaveFocusMode = true)
+            bool select = true, bool leaveFocusMode = true, bool openedByAgent = false)
         {
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return null;
@@ -690,7 +691,8 @@ namespace Ntilde
                 return templatePane;
             }
 
-            var pane = new TerminalPane(profile, sshDiagnostics);
+            // Marked before the tab is added: the pane starts its session on its first layout, and reads the mark then.
+            var pane = new TerminalPane(profile, sshDiagnostics) { OpenedByAgent = openedByAgent };
             AddTabWithPane(pane, profile.Name, select);
             return pane;
         }

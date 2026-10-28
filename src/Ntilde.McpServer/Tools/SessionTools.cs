@@ -160,7 +160,7 @@ public sealed class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.get_session_status"),
-     Description("Reports what a live Ntilde session is doing right now: running / awaitingInput / idle / exited, with a confidence tier (precise = shell-integration events; heuristic = PTY signals), the in-flight command when known, exit code, and stall state. For a windowless session the status is always heuristic, from the daemon's child-process probe. Read-only. Get paneId from ntilde.list_sessions. Limitation: the heuristic tier detects a running command via the OS process tree, which cannot see processes running inside a WSL distribution or on a remote SSH host — so a genuinely-running command in a WSL or SSH session may report awaitingInput/idle. Native local shells (cmd/PowerShell) are accurate; enabling shell integration upgrades a session to the precise tier, which is accurate regardless.")]
+     Description("Reports what a live Ntilde session is doing right now: running / awaitingInput / idle / exited, with a confidence tier (precise = shell-integration events; heuristic = PTY signals), the in-flight command when known, exit code, and stall state. For a windowless session the status is always heuristic, from the daemon's child-process probe. Read-only. Get paneId from ntilde.list_sessions. Limitation: the heuristic tier detects a running command via the OS process tree, which cannot see processes running inside a WSL distribution or on a remote SSH host — so a genuinely-running command in a WSL or SSH session may report awaitingInput/idle. Native local shells (cmd/PowerShell) are accurate; enabling shell integration upgrades a session to the precise tier, which is accurate regardless. An exited SSH session you spawned may report needsUser: its server asked for something only the user can give, and the result says what to do.")]
     public static async Task<string> GetSessionStatus(
         AgentHostClient client,
         [Description("The pane id (GUID) from ntilde.list_sessions.")] string paneId,
@@ -264,7 +264,7 @@ public sealed class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.spawn_session"),
-     Description("Opens a new terminal tab in the running Ntilde app and returns its paneId (use that id with the other session tools). 'profile' is a profile NAME (case-insensitive); omit it for the default local profile. Local profiles resolve before SSH profiles on a name clash. This is an ACTING tool requiring 'Agent access (observe)' + 'Agent access (act)'; spawning an SSH profile additionally requires that profile to be allowlisted. Every call is shown in the agent activity journal.")]
+     Description("Opens a new terminal tab in the running Ntilde app and returns its paneId (use that id with the other session tools). 'profile' is a profile NAME (case-insensitive); omit it for the default local profile. Local profiles resolve before SSH profiles on a name clash. This is an ACTING tool requiring 'Agent access (observe)' + 'Agent access (act)'; spawning an SSH profile additionally requires that profile to be allowlisted. An SSH session you spawn never shows the user a sign-in dialog: if its server asks for something only the user can give (a host key they have not trusted, a password not saved in Ntilde, a key passphrase, a one-time code), the session exits, and ntilde.get_session_status and ntilde.wait_for_events report needsUser. Every call is shown in the agent activity journal.")]
     public static async Task<string> SpawnSession(
         AgentHostClient client,
         [Description("Profile name to open. Omit or leave empty for the default local profile.")] string? profile = null,
@@ -408,9 +408,34 @@ public sealed class SessionTools
         if (dto.ExitCode is { } exit) sb.Append($", exit code {exit}");
         if (dto.IsStalled) sb.Append($" — STALLED (no output for at least {dto.StallThresholdSeconds}s)");
         sb.AppendLine();
+        if (dto.NeedsUser is { } needsUser) sb.AppendLine(DescribeNeedsUser(needsUser));
         sb.AppendLine($"Status since: {FormatUtc(dto.StatusSinceMs)}; last output: {FormatUtc(dto.LastOutputAtMs)}.");
         sb.Append($"Thresholds: stall after {dto.StallThresholdSeconds}s of silence while running, idle after {dto.IdleThresholdSeconds}s at a prompt.");
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// #610: an SSH session an agent spawned ends rather than raise a sign-in dialog over the user's shell. The agent cannot
+    /// answer the server itself, so it is told what was asked and how the user can clear the way.
+    /// </summary>
+    internal static string DescribeNeedsUser(string needsUser)
+    {
+        string asked = needsUser switch
+        {
+            AgentHostProtocol.NeedsUserReasons.HostKey =>
+                "its server's host key is not trusted yet. Once the user connects and trusts it, new sessions get in without asking.",
+            AgentHostProtocol.NeedsUserReasons.ChangedHostKey =>
+                "its server presented a host key that is NOT the one the user trusted - the server may have been reinstalled, or the connection intercepted. Only the user can check it; do not retry until they have.",
+            AgentHostProtocol.NeedsUserReasons.Password =>
+                "its server asked for a password, and none is saved for this profile. If the user saves it when they connect, new sessions get in without asking.",
+            AgentHostProtocol.NeedsUserReasons.Passphrase =>
+                "it needs the passphrase of the user's private key. A key loaded in an SSH agent would not ask.",
+            AgentHostProtocol.NeedsUserReasons.KeyboardInteractive =>
+                "its server asked a question only the user can answer, such as a one-time code. Every new connection to this server will ask again.",
+            _ => $"its server asked for something only the user can give ({needsUser}).",
+        };
+        return $"NEEDS THE USER: this session never showed the user a sign-in dialog, and it ended because {asked} "
+            + "Ask the user to connect to this profile themselves (Enter in this session's tab does it), then close this session and spawn a new session.";
     }
 
     internal static string FormatEvents(WaitForEventsResult dto, long sinceSeq)
@@ -434,7 +459,7 @@ public sealed class SessionTools
         {
             var details = e.Type == AgentHostProtocol.EventTypes.CommandFinished
                 ? $"exit {(e.ExitCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?")}{(e.DurationMs is { } d ? $", {d} ms" : "")}"
-                : e.ExitCode is { } code ? $"exit {code}" : "-";
+                : e.ExitCode is { } code ? $"exit {code}{(e.NeedsUser is { } why ? $", needs the user: {why}" : "")}" : "-";
             sb.AppendLine($"| {e.Seq} | {FormatUtc(e.TimestampMs)} | {e.PaneId} | {e.Type} | {e.Status} | {details} |");
         }
         return sb.ToString().TrimEnd();

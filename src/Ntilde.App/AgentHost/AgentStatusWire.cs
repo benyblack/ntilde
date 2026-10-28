@@ -35,12 +35,23 @@ namespace Ntilde.AgentHost
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
         };
 
+        public static string ToWire(this AgentNeedsUserReason reason) => reason switch
+        {
+            AgentNeedsUserReason.HostKey => AgentHostProtocol.NeedsUserReasons.HostKey,
+            AgentNeedsUserReason.ChangedHostKey => AgentHostProtocol.NeedsUserReasons.ChangedHostKey,
+            AgentNeedsUserReason.Password => AgentHostProtocol.NeedsUserReasons.Password,
+            AgentNeedsUserReason.Passphrase => AgentHostProtocol.NeedsUserReasons.Passphrase,
+            AgentNeedsUserReason.KeyboardInteractive => AgentHostProtocol.NeedsUserReasons.KeyboardInteractive,
+            _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null),
+        };
+
         public static SessionStatusDto ToDto(this AgentSessionStatusSnapshot snapshot, Guid paneId) => new()
         {
             PaneId = paneId,
             Status = snapshot.Kind.ToWire(),
             Confidence = snapshot.Confidence.ToWire(),
             ExitCode = snapshot.ExitCode,
+            NeedsUser = snapshot.NeedsUser?.ToWire(),
             CurrentCommand = snapshot.CurrentCommand,
             StatusSinceMs = snapshot.StatusSince.ToUnixTimeMilliseconds(),
             LastOutputAtMs = snapshot.LastOutputAt.ToUnixTimeMilliseconds(),

@@ -86,7 +86,8 @@ namespace Ntilde.Controls
                     UpdateRemoteFilesSidebarEntryPointState();
                 }
 
-                WriteSshDisconnectedBanner(code);
+                if (SshNeedsUserBanner() is { } needsUser) WriteBanner(needsUser);
+                else WriteSshDisconnectedBanner(code);
             }
 
             ProcessExited?.Invoke(this, code);

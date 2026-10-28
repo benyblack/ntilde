@@ -596,7 +596,8 @@ namespace Ntilde.AgentHost
             }
 
             var status = registration.StatusMachine.Snapshot();
-            ring?.Append(registration.PaneId, AgentHostProtocol.EventTypes.SessionClosed, status.Kind.ToWire(), DateTimeOffset.UtcNow, status.ExitCode);
+            ring?.Append(registration.PaneId, AgentHostProtocol.EventTypes.SessionClosed, status.Kind.ToWire(), DateTimeOffset.UtcNow, status.ExitCode,
+                needsUser: status.NeedsUser?.ToWire());
         }
 
         private void AttachStatusForwarding(AgentSessionRegistration registration)
@@ -621,7 +622,8 @@ namespace Ntilde.AgentHost
                 evt.Status.ToWire(),
                 evt.Timestamp,
                 evt.ExitCode,
-                evt.Duration is { } d ? (long)d.TotalMilliseconds : null);
+                evt.Duration is { } d ? (long)d.TotalMilliseconds : null,
+                evt.NeedsUser?.ToWire());
 
             _statusSubscriptions[registration] = Handler;
             registration.StatusMachine.EventEmitted += Handler;

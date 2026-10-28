@@ -225,6 +225,23 @@ public class AgentSessionStatusMachineTests
 
         var exitEvent = Assert.Single(events, e => e.Type == AgentSessionEventType.StatusChanged && e.Status == AgentSessionStatusKind.Exited);
         Assert.Equal(137, exitEvent.ExitCode);
+        Assert.Null(exitEvent.NeedsUser);
+        Assert.Null(snapshot.NeedsUser);
+    }
+
+    /// <summary>#610: an SSH connection an agent opened that stopped for the user says what it needed, in both places an agent reads.</summary>
+    [Fact]
+    public void Exit_that_needs_the_user_says_why_in_the_snapshot_and_the_exit_event()
+    {
+        var (machine, _, events) = Make();
+        machine.NotifyExited(-1, AgentNeedsUserReason.Password);
+
+        var snapshot = machine.Snapshot();
+        Assert.Equal(AgentSessionStatusKind.Exited, snapshot.Kind);
+        Assert.Equal(AgentNeedsUserReason.Password, snapshot.NeedsUser);
+
+        var exitEvent = Assert.Single(events, e => e.Type == AgentSessionEventType.StatusChanged && e.Status == AgentSessionStatusKind.Exited);
+        Assert.Equal(AgentNeedsUserReason.Password, exitEvent.NeedsUser);
     }
 
     [Fact]

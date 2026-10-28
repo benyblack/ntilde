@@ -161,7 +161,7 @@ namespace Ntilde
             CommandRegistry.Register("Toggle Focus Mode", "View", () => ToggleFocusMode(), GetEffectiveShortcutBinding("toggle_focus_mode", "Ctrl+Shift+Enter"), "toggle_focus_mode");
             CommandRegistry.Register("Pane: Toggle Zoom", "View", () => TogglePaneZoomForCurrentTab(), GetEffectiveShortcutBinding("toggle_pane_zoom", "Ctrl+Shift+Z"), "toggle_pane_zoom");
             CommandRegistry.Register("Pane: Toggle Broadcast Input (Tab)", "View", () => ToggleBroadcastForCurrentTab(), GetEffectiveShortcutBinding("toggle_broadcast_input", "Ctrl+Shift+B"), "toggle_broadcast_input");
-            CommandRegistry.Register("Pane: Reconnect", "View", () => _currentPane?.Reconnect(), "");
+            CommandRegistry.Register("Pane: Reconnect", "View", () => _currentPane?.ReconnectByUser(), "");
             if (IsMuxPersistenceActive)
             {
                 CommandRegistry.Register("Session: Attach to Session\u2026", "General", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding(ShortcutCatalog.AttachSessionId, ""), ShortcutCatalog.AttachSessionId);
