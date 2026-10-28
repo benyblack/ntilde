@@ -308,7 +308,9 @@ public sealed class NativePortForwardSessionTests
         // The refusal is decided on the 4-byte header, so the address and port behind it were still unread when
         // the session closed the socket - and a close with unread input is a reset, which can throw the reply
         // away before the client reads it. MalformedDynamicRequestDoesNotBreakUnrelatedLocalOrDynamicForwards
-        // failed that way on windows-latest. Reading late makes the race certain instead of occasional.
+        // failed that way on windows-latest. Reading late makes the race certain instead of occasional: wait until
+        // the server has answered (the socket is readable - data, or a reset that already ate it), give a close
+        // right behind the reply a moment to land, and only then read.
         var interop = new FakeNativeSshInterop();
         using var session = new NativePortForwardSession(FakeHandle(23), [CreateDynamicForward(0)], interop);
         int dynamicPort = BoundPort(session);
@@ -319,7 +321,8 @@ public sealed class NativePortForwardSessionTests
         await ReadExactlyAsync(stream, 2, TimeSpan.FromSeconds(2));
 
         await SendSocksCommandRequestAsync(stream, 0x01, "svc-bad.internal", 443, reserved: 0x01);
-        await Task.Delay(500, TestContext.Current.CancellationToken);
+        await WaitUntilAsync(() => client.Client.Poll(0, SelectMode.SelectRead));
+        await Task.Delay(200, TestContext.Current.CancellationToken);
 
         byte[] reply = await ReadExactlyAsync(stream, 10, TimeSpan.FromSeconds(2));
         Assert.Equal(0x05, reply[0]);

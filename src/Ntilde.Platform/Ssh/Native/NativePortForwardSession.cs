@@ -889,9 +889,17 @@ public sealed class NativePortForwardSession : IDisposable
 
             if (!published)
             {
-                _interop.CloseChannel(_sessionHandle, channelId);
+                // The reply first: CloseChannel can throw, and the client should hear the refusal either way.
                 await SendSocksReplyAsync(stream, SocksReplyGeneralFailure, cancellationToken).ConfigureAwait(false);
-                await CloseAfterRefusalAsync(client, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    _interop.CloseChannel(_sessionHandle, channelId);
+                }
+                finally
+                {
+                    await CloseAfterRefusalAsync(client, cancellationToken).ConfigureAwait(false);
+                }
+
                 return;
             }
 
