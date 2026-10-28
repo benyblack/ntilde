@@ -67,12 +67,14 @@ namespace Ntilde.Rendering
                 LuminanceClass = luminanceClass;
             }
 
+            // Size and Scale compare by bit pattern: a cache key wants identity, and a tolerance
+            // would break the Equals/GetHashCode contract the dictionary relies on.
             public bool Equals(GlyphKey other)
             {
                 return Text == other.Text &&
                        Typeface == other.Typeface &&
-                       Size.Equals(other.Size) &&
-                       Scale.Equals(other.Scale) &&
+                       BitConverter.SingleToInt32Bits(Size) == BitConverter.SingleToInt32Bits(other.Size) &&
+                       BitConverter.SingleToInt32Bits(Scale) == BitConverter.SingleToInt32Bits(other.Scale) &&
                        LuminanceClass == other.LuminanceClass;
             }
 
@@ -83,8 +85,8 @@ namespace Ntilde.Rendering
                 var hash = new HashCode();
                 hash.Add(Text);
                 hash.Add(Typeface);
-                hash.Add(Size);
-                hash.Add(Scale);
+                hash.Add(BitConverter.SingleToInt32Bits(Size));
+                hash.Add(BitConverter.SingleToInt32Bits(Scale));
                 hash.Add(LuminanceClass);
                 return hash.ToHashCode();
             }
