@@ -27,17 +27,32 @@ namespace Ntilde.Pty
     /// </remarks>
     public sealed class RawOutputTap
     {
+        /// <summary>
+        /// The most retained output kept for a first subscriber, in bytes (#173). Past it the oldest chunks go and
+        /// the newest is always kept whole - the same policy, and for ASCII output the same amount, as the string
+        /// side's <see cref="PendingOutputReplay"/>.
+        /// </summary>
+        public const int DefaultMaxRetainedBytes = PendingOutputReplay.DefaultMaxChars;
+
         private readonly object _gate = new();
+        private readonly int _maxRetainedBytes;
         private Action<ReadOnlyMemory<byte>>? _handler;
-        private List<byte[]>? _retained = new();
+        private Queue<byte[]>? _retained = new();
+        private long _retainedBytes;
+
+        public RawOutputTap(int maxRetainedBytes = DefaultMaxRetainedBytes)
+        {
+            _maxRetainedBytes = maxRetainedBytes;
+        }
 
         public void Subscribe(Action<ReadOnlyMemory<byte>>? handler)
         {
             if (handler is null) return;
             lock (_gate)
             {
-                List<byte[]>? replay = _retained;
+                Queue<byte[]>? replay = _retained;
                 _retained = null;
+                _retainedBytes = 0;
                 _handler += handler;
                 if (replay is null) return;
                 foreach (byte[] chunk in replay)
@@ -62,6 +77,7 @@ namespace Ntilde.Pty
             lock (_gate)
             {
                 _retained = null;
+                _retainedBytes = 0;
             }
         }
 
@@ -77,7 +93,15 @@ namespace Ntilde.Pty
                     return;
                 }
 
-                _retained?.Add(chunk.ToArray());
+                if (_retained is { } retained)
+                {
+                    retained.Enqueue(chunk.ToArray());
+                    _retainedBytes += chunk.Length;
+                    while (_retainedBytes > _maxRetainedBytes && retained.Count > 1)
+                    {
+                        _retainedBytes -= retained.Dequeue().Length;
+                    }
+                }
             }
         }
 
