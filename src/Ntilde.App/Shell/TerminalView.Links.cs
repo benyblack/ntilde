@@ -23,6 +23,10 @@ namespace Ntilde.Shell
         /// <summary>The link currently underlined under the pointer, if any.</summary>
         internal string? HoveredLinkUriForTest => _hoveredLink?.Uri;
 
+        /// <summary>The underlined columns of the hovered link, if any.</summary>
+        internal (int StartCol, int EndCol)? HoveredLinkColumnsForTest =>
+            _hoveredLink is { } link ? (link.StartCol, link.EndCol) : null;
+
         // One-row memo so we only re-run detection when the pointer moves to a new row.
         private int _hoverScanRow = -1;
         private System.Collections.Generic.IReadOnlyList<Ntilde.VT.Links.LinkSpan> _hoverScanSpans =
@@ -36,14 +40,17 @@ namespace Ntilde.Shell
             var (absRow, col) = ScreenToTerminal(position);
 
             // 1) Explicit OSC 8 link on this cell always takes precedence.
-            string? osc8 = _buffer.GetHyperlinkAbsolute(col, absRow);
-            if (!string.IsNullOrWhiteSpace(osc8))
+            Ntilde.VT.Links.Hyperlink? osc8 = _buffer.GetHyperlinkIdentityAbsolute(col, absRow);
+            if (osc8 != null && !string.IsNullOrWhiteSpace(osc8.Uri))
             {
                 // Only show as clickable if it would actually open (the click asks the same
                 // LinkOpener), so non-openable targets (ftp://, a remote or UNC file: link) don't
                 // underline or show the hand cursor.
-                if (LinkOpener.IsActivatable(osc8))
-                    SetHoveredLink((absRow, col, col, osc8));
+                if (LinkOpener.IsActivatable(osc8.Uri))
+                {
+                    var (startCol, endCol) = Osc8RunAround(osc8, col, absRow);
+                    SetHoveredLink((absRow, startCol, endCol, osc8.Uri));
+                }
                 else
                     ClearHoveredLink();
                 return;
@@ -76,6 +83,31 @@ namespace Ntilde.Shell
             }
 
             ClearHoveredLink();
+        }
+
+        /// <summary>
+        /// The columns of the run of cells around <paramref name="col"/> that belong to the same OSC 8 anchor,
+        /// so the whole link underlines rather than the one cell under the pointer (#95 gap 3). It used to be
+        /// one cell, while a URL the terminal merely guessed at by regex got its full span - the program's
+        /// explicit link got the worse treatment. Same anchor means the same identity instance, not an equal
+        /// URI: two adjacent links to one target are still two links. A link wrapped onto the next row
+        /// underlines on the hovered row only.
+        /// </summary>
+        private (int StartCol, int EndCol) Osc8RunAround(Ntilde.VT.Links.Hyperlink link, int col, int absRow)
+        {
+            int start = col;
+            while (start > 0 && ReferenceEquals(_buffer!.GetHyperlinkIdentityAbsolute(start - 1, absRow), link))
+            {
+                start--;
+            }
+
+            int end = col;
+            while (end < _buffer!.Cols - 1 && ReferenceEquals(_buffer.GetHyperlinkIdentityAbsolute(end + 1, absRow), link))
+            {
+                end++;
+            }
+
+            return (start, end);
         }
 
         private void SetHoveredLink((int AbsRow, int StartCol, int EndCol, string Uri) link)
