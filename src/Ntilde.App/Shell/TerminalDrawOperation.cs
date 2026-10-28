@@ -1607,7 +1607,7 @@ namespace Ntilde.Shell
                                     continue;
                                 }
 
-                                var cached = _glyphCache.GetOrAdd(grapheme, glyphFont, (float)_renderScaling);
+                                var cached = _glyphCache.GetOrAdd(grapheme, glyphFont, (float)_renderScaling, fg);
 
                                 if (cached != null)
                                 {
