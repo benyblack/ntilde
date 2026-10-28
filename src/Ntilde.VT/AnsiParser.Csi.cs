@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Reflection;
 
 namespace Ntilde.VT
 {
@@ -8,6 +9,22 @@ namespace Ntilde.VT
     /// </summary>
     public partial class AnsiParser
     {
+        /// <summary>
+        /// The XTVERSION reply, <c>DCS &gt; | Ntilde &lt;version&gt; ST</c>. The name matches the
+        /// <c>TERM_PROGRAM</c> the PTY layer exports. The version is this assembly's, which the build
+        /// pins for every project in the solution (and a release overrides for all of them), minus any
+        /// <c>+</c> build metadata.
+        /// </summary>
+        internal static readonly string XtVersionReply = $"\x1bP>|Ntilde {TerminalVersion()}\x1b\\";
+
+        private static string TerminalVersion()
+        {
+            string? version = typeof(AnsiParser).Assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                ?? typeof(AnsiParser).Assembly.GetName().Version?.ToString();
+            return string.IsNullOrWhiteSpace(version) ? "0.0.0" : version.Split('+')[0].Trim();
+        }
+
         private void HandleCsi(char finalByte, ReadOnlySpan<char> parameters)
         {
             // CSI format: CSI [leader] [params] [intermediates] final
@@ -514,6 +531,13 @@ namespace Ntilde.VT
                     if (leader == '\0' && intermediates.Length == 1 && intermediates[0] == ' ')
                     {
                         ApplyCursorStyle(argCount > 0 ? validArgs[0] : 0);
+                    }
+                    // XTVERSION - CSI > q / CSI > 0 q asks for the terminal's name and version,
+                    // answered as DCS > | text ST. Tools log it, and some pick features by it.
+                    // Other Ps values are not defined by xterm and stay silent.
+                    else if (leader == '>' && intermediates.Length == 0 && arg0 == 0)
+                    {
+                        OnResponse?.Invoke(XtVersionReply);
                     }
                     break;
                 case 't': // Window operations (xterm). Two pixel-geometry reports are
