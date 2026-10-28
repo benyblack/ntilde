@@ -437,6 +437,54 @@ public class SessionToolsFormattingTests
         Assert.Contains("idle after 60s", text, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// #610: an SSH session an agent opened ends rather than raise a dialog over the user's shell. The agent is told what
+    /// the server asked for and what to do about it, since it cannot answer it itself.
+    /// </summary>
+    [Fact]
+    public void FormatStatus_and_FormatEvents_tell_the_agent_a_session_needs_the_user()
+    {
+        var paneId = Guid.NewGuid();
+        var status = SessionTools.FormatStatus(new SessionStatusDto
+        {
+            PaneId = paneId,
+            Status = AgentHostProtocol.StatusKinds.Exited,
+            Confidence = AgentHostProtocol.StatusConfidences.Heuristic,
+            ExitCode = -1,
+            NeedsUser = AgentHostProtocol.NeedsUserReasons.Password,
+            StatusSinceMs = 1_800_000_000_000,
+            LastOutputAtMs = 1_800_000_000_000,
+            IsStalled = false,
+            StallThresholdSeconds = 30,
+            IdleThresholdSeconds = 60,
+        });
+
+        Assert.Contains("NEEDS THE USER", status, StringComparison.Ordinal);
+        Assert.Contains("password", status, StringComparison.Ordinal);
+        // The user's sign-in brings this session back; a new one would have to sign in again on its own.
+        Assert.Contains("comes back", status, StringComparison.Ordinal);
+        Assert.Contains("Do not spawn a new session", status, StringComparison.Ordinal);
+
+        var events = SessionTools.FormatEvents(new WaitForEventsResult
+        {
+            Events = new[]
+            {
+                new AgentEventDto
+                {
+                    Seq = 5, TimestampMs = 1_800_000_000_000, PaneId = paneId,
+                    Type = AgentHostProtocol.EventTypes.StatusChanged,
+                    Status = AgentHostProtocol.StatusKinds.Exited,
+                    ExitCode = -1,
+                    NeedsUser = AgentHostProtocol.NeedsUserReasons.HostKey,
+                },
+            },
+            NextSeq = 5,
+            OldestSeq = 1,
+        }, sinceSeq: 4);
+
+        Assert.Contains("exit -1, needs the user: hostKey", events, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void FormatEvents_teaches_the_cursor_and_reports_eviction_gaps()
     {

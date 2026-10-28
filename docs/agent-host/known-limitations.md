@@ -51,6 +51,38 @@ it. Installing PSReadLine restores full status.
 (DIRECTION A2 follow-up) — query the foreground process inside the WSL distro /
 over the SSH channel so the heuristic tier is accurate there too.
 
+## An SSH session an agent spawns gets in only if nothing has to be asked
+
+A sign-in dialog for a connection an agent opened would appear over the user's
+shell, often for a tab they are not looking at, and take their keystrokes
+(#610). So on the native SSH backend, a session from `ntilde.spawn_session`
+never shows one. What needs no dialog still works:
+
+- a password saved for the profile in Ntilde's vault,
+- a host key the user already trusts,
+- a profile that shares connections, while the user has a tab on it open
+  (the agent's tab joins that connection and is never asked anything).
+
+Anything else ends the connection: a host key the user has not trusted, or
+one that changed; a password with no saved one to send (none saved, the saved
+one refused, or a jump host's); a key passphrase; a one-time code.
+The session exits, `get_session_status` and its exit event on
+`wait_for_events` carry `needsUser` (`hostKey`, `changedHostKey`, `password`,
+`passphrase`, `keyboardInteractive`), and the pane tells the user what was
+asked. Enter in that pane reconnects as the user, with dialogs, and the same
+session comes back for the agent: its status starts over, announced by a
+`statusChanged` event, and its paneId keeps working. That is the way through
+for a typed password or a one-time code, which a new session would have to
+ask for again. A password the user typed in another tab is not offered to the
+agent's connection: it is remembered per session.
+
+So before allowlisting a profile for agents, connect to it once yourself,
+trust its host key, and save its password. OpenSSH-backend sessions are not
+affected: ssh prompts in the terminal itself, in the pane.
+
+**Still open:** a profile whose sessions persist on its host connects through
+that host's own prompts, which can still show a dialog for an agent's spawn.
+
 ## Other parked follow-ups
 
 From `docs/agent-host/DIRECTION.md` and the milestone design docs:

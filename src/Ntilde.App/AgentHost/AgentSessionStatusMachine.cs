@@ -35,6 +35,7 @@ namespace Ntilde.AgentHost
         private bool _hasActiveChildren;  // heuristic tier: from last sweep
         private bool _exited;
         private int? _exitCode;
+        private AgentNeedsUserReason? _needsUser;
         private string? _currentCommand;
         private DateTimeOffset? _commandStartedAt;
 
@@ -151,12 +152,42 @@ namespace Ntilde.AgentHost
             });
         }
 
-        public void NotifyExited(int exitCode)
+        /// <summary>
+        /// The pane published a new session. After an exit - Enter on a dead pane; for #610, the user signing in to an agent's
+        /// SSH tab that stopped for them - the status starts over as a fresh session's, and the change is announced: exited is
+        /// final for a session, not for its pane. While the last session is live (a mux reattach swaps sessions under a
+        /// running shell) nothing changes.
+        /// </summary>
+        public void NotifySessionStarted()
+        {
+            RunUnderGate(now =>
+            {
+                if (!_exited) return null;
+
+                _exited = false;
+                _exitCode = null;
+                _needsUser = null;
+                // The new shell has to show its shell integration again before the status is precise.
+                _precise = false;
+                _promptSeen = false;
+                _commandInFlight = false;
+                _altScreenActive = false;
+                _hasActiveChildren = false;
+                _currentCommand = null;
+                _commandStartedAt = null;
+                _lastOutputAt = now;
+                return null;
+            });
+        }
+
+        /// <param name="needsUser">Why an SSH connection an agent opened stopped for the user (#610); null for any other exit.</param>
+        public void NotifyExited(int exitCode, AgentNeedsUserReason? needsUser = null)
         {
             RunUnderGate(_ =>
             {
                 _exited = true;
                 _exitCode = exitCode;
+                _needsUser = needsUser;
                 _commandInFlight = false;
                 _currentCommand = null;
                 return null;
@@ -209,6 +240,7 @@ namespace Ntilde.AgentHost
                     Kind = ComputeKind(now),
                     Confidence = _precise ? AgentSessionStatusConfidence.Precise : AgentSessionStatusConfidence.Heuristic,
                     ExitCode = _exitCode,
+                    NeedsUser = _needsUser,
                     CurrentCommand = _currentCommand,
                     StatusSince = _statusSince,
                     LastOutputAt = _lastOutputAt,
@@ -258,7 +290,7 @@ namespace Ntilde.AgentHost
                         _stalled = false; // stall is a running-only condition
                     }
                     _pendingEvents.Enqueue(
-                        MakeEvent(AgentSessionEventType.StatusChanged, after, now, _exited ? _exitCode : null));
+                        MakeEvent(AgentSessionEventType.StatusChanged, after, now, _exited ? _exitCode : null, needsUser: _exited ? _needsUser : null));
                 }
 
                 if (_draining || _pendingEvents.Count == 0)
@@ -317,12 +349,14 @@ namespace Ntilde.AgentHost
             AgentSessionStatusKind status,
             DateTimeOffset timestamp,
             int? exitCode = null,
-            TimeSpan? duration = null) => new()
+            TimeSpan? duration = null,
+            AgentNeedsUserReason? needsUser = null) => new()
             {
                 Type = type,
                 Status = status,
                 Timestamp = timestamp,
                 ExitCode = exitCode,
+                NeedsUser = needsUser,
                 Duration = duration,
             };
     }

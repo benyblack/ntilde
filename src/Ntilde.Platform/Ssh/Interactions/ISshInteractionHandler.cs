@@ -14,4 +14,15 @@ public interface ISshInteractionHandler
     void Authenticated()
     {
     }
+
+    /// <summary>
+    /// A prompt of the shared connection this handler's tab joined was refused. Only the tab that opened a shared connection
+    /// answers its prompts, so this handler was never asked; but the refusal ends the connection, and this tab's shell with
+    /// it. <see cref="Ntilde.Platform.Ssh.Native.NativeSshSharedConnection"/> calls it on its poll thread, before the
+    /// refusal is sent, for every tab that holds the connection except the one that refused.
+    /// </summary>
+    /// <remarks>Default implementation does nothing: a handler that does not report why a connection ended needs no changes.</remarks>
+    void RefusedOnSharedConnection(SshInteractionRequest request)
+    {
+    }
 }

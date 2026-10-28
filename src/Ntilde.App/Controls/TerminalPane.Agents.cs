@@ -348,7 +348,7 @@ namespace Ntilde.Controls
             // relative order is preserved; alt-screen in HandleAltScreenChanged.
             OutputReceived += _ => _agentRegistration?.StatusMachine.NotifyOutput();
             BellReceived += _ => _agentRegistration?.StatusMachine.NotifyBell();
-            ProcessExited += (_, exitCode) => _agentRegistration?.StatusMachine.NotifyExited(exitCode);
+            ProcessExited += (_, exitCode) => _agentRegistration?.StatusMachine.NotifyExited(exitCode, AgentNeedsUser());
         }
 
         /// <summary>

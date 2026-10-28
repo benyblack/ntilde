@@ -143,6 +143,32 @@ public static class AgentHostProtocol
         public const string Exited = "exited";
     }
 
+    /// <summary>
+    /// Wire values for <c>needsUser</c> (#610): what the server asked an SSH connection an agent opened, which only the
+    /// user can give. Ntilde never shows a sign-in dialog for such a connection, so it ends instead, and its exited status
+    /// carries one of these.
+    /// </summary>
+    public static class NeedsUserReasons
+    {
+        /// <summary>The server's host key, which the user has not trusted yet.</summary>
+        public const string HostKey = "hostKey";
+
+        /// <summary>A host key other than the one the user trusted for this server.</summary>
+        public const string ChangedHostKey = "changedHostKey";
+
+        /// <summary>
+        /// A password Ntilde had no saved one to answer with: none is saved, the saved one was refused, or a jump host
+        /// asked (the profile's password is only ever sent to its target).
+        /// </summary>
+        public const string Password = "password";
+
+        /// <summary>The passphrase of the user's private key.</summary>
+        public const string Passphrase = "passphrase";
+
+        /// <summary>A keyboard-interactive question, such as a one-time code.</summary>
+        public const string KeyboardInteractive = "keyboardInteractive";
+    }
+
     /// <summary>Wire values for status confidence: how the status was derived.</summary>
     public static class StatusConfidences
     {

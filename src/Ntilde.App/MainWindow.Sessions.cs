@@ -496,7 +496,7 @@ namespace Ntilde
         /// for restoring a session, not for adding one tab. Building the tab through the restore path is what lets
         /// a template tab hold a split.
         /// </remarks>
-        private bool TryApplyTemplateRuleForProfile(TerminalProfile profile, out TerminalPane? pane)
+        private bool TryApplyTemplateRuleForProfile(TerminalProfile profile, bool openedByAgent, out TerminalPane? pane)
         {
             pane = null;
             var rule = FindTabTemplateRule(_settings.TabTemplateRules, profile.Id);
@@ -510,6 +510,12 @@ namespace Ntilde
 
             TabItem? tabItem = SessionManager.CreateRestoredTabItem(InstantiateTemplateTab(template.Tabs[0]), _settings);
             if (tabItem == null) return false;
+
+            // An agent's spawn: every pane of the tab is the agent's (#610), marked before any of them starts its session.
+            if (openedByAgent)
+            {
+                foreach (TerminalPane templatePane in EnumeratePanes(tabItem.Content as Control)) templatePane.OpenedByAgent = true;
+            }
 
             tabs.Items.Add(tabItem);
             InitializeTabsFromSessions(new[] { tabItem });

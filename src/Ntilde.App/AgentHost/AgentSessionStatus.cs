@@ -29,6 +29,28 @@ namespace Ntilde.AgentHost
         Precise,
     }
 
+    /// <summary>
+    /// What the server asked an SSH connection an agent opened, which only the user can give (#610). Ntilde shows no
+    /// sign-in dialog for such a connection, so it ends, and its exit says which of these it was.
+    /// </summary>
+    public enum AgentNeedsUserReason
+    {
+        /// <summary>The server's host key, which the user has not trusted yet.</summary>
+        HostKey,
+
+        /// <summary>A host key other than the one the user trusted for this server.</summary>
+        ChangedHostKey,
+
+        /// <summary>A password Ntilde had no saved one to answer with (<c>AgentHostProtocol.NeedsUserReasons.Password</c>).</summary>
+        Password,
+
+        /// <summary>The passphrase of the user's private key.</summary>
+        Passphrase,
+
+        /// <summary>A keyboard-interactive question, such as a one-time code.</summary>
+        KeyboardInteractive,
+    }
+
     public enum AgentSessionEventType
     {
         StatusChanged,
@@ -43,6 +65,9 @@ namespace Ntilde.AgentHost
         public required AgentSessionStatusKind Kind { get; init; }
         public required AgentSessionStatusConfidence Confidence { get; init; }
         public int? ExitCode { get; init; }
+
+        /// <summary>Set when the session exited because its SSH connection needed the user (#610).</summary>
+        public AgentNeedsUserReason? NeedsUser { get; init; }
         public string? CurrentCommand { get; init; }
         public required DateTimeOffset StatusSince { get; init; }
         public required DateTimeOffset LastOutputAt { get; init; }
@@ -62,6 +87,9 @@ namespace Ntilde.AgentHost
         public required AgentSessionStatusKind Status { get; init; }
         public required DateTimeOffset Timestamp { get; init; }
         public int? ExitCode { get; init; }
+
+        /// <summary>On the exit of a session that stopped for the user: why (<see cref="AgentSessionStatusSnapshot.NeedsUser"/>).</summary>
+        public AgentNeedsUserReason? NeedsUser { get; init; }
         public TimeSpan? Duration { get; init; }
     }
 }

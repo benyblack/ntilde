@@ -292,6 +292,27 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
         Assert.NotNull(((TerminalPane)spawnedTab.Content!).Session);
     }
 
+    /// <summary>
+    /// #610: the pane an agent spawns is marked as the agent's, so its SSH connection never raises a sign-in dialog over
+    /// the user's shell; the user's own panes are not.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task An_agent_spawn_is_marked_as_the_agents_and_the_users_pane_is_not()
+    {
+        MainWindow window = NewShownWindow();
+        TerminalPane users = CurrentPane(window)!;
+
+        var (result, error) = await ((IAgentActionExecutor)window).SpawnAsync(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Null(error);
+        TerminalPane spawned = TabsOf(window).Items.Cast<TabItem>()
+            .Select(t => t.Content).OfType<TerminalPane>()
+            .Single(p => p.PaneId == result!.Value.PaneId);
+        Assert.True(spawned.OpenedByAgent);
+        Assert.False(users.OpenedByAgent);
+    }
+
     [AvaloniaFact]
     public async Task An_agent_close_in_focus_mode_does_not_select_the_target_tab()
     {

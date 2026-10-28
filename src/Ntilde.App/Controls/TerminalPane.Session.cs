@@ -517,7 +517,7 @@ namespace Ntilde.Controls
                         ? new SshSessionDescriptor(
                             ProfileId: profile!.Id,
                             DiagnosticsLevel: (int)_sshDiagnosticsLevel,
-                            InteractionHandler: SshInteractionHandler,
+                            InteractionHandler: SshPromptsForNewConnection(),
                             NativeSshEnabled: _settings?.ExperimentalNativeSshEnabled ?? false)
                         : null);
 

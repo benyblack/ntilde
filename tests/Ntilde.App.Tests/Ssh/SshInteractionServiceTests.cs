@@ -948,6 +948,215 @@ public sealed class SshInteractionServiceTests
         Assert.Equal(["code", "otp"], response.KeyboardResponses);
     }
 
+    // #610: a connection an agent opened never raises a dialog over the user's shell. What can be answered without one
+    // still is; anything else fails the attempt and says what it needed.
+
+    [AvaloniaFact]
+    public async Task WithoutDialogs_AnUnknownHostKey_FailsAsNeedingTheUser_AndIsNotTrusted()
+    {
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            var knownHosts = new NativeKnownHostsStore(Path.Combine(tempRoot, "native_known_hosts.json"));
+            int presented = 0;
+            var needed = new List<SshInteractionKind>();
+            var service = new SshInteractionService(
+                ownerProvider: () => new Window(),
+                hostKeyPresenter: (_, _, _) =>
+                {
+                    presented++;
+                    return Task.FromResult(SshInteractionResponse.AcceptHostKey());
+                },
+                knownHostsStore: knownHosts);
+
+            SshInteractionResponse response = await service.WithoutDialogs(needed.Add)
+                .HandleAsync(HostKeyRequest("SHA256:test"), CancellationToken.None);
+
+            Assert.Equal(0, presented);
+            Assert.True(response.IsCanceled);
+            Assert.False(response.IsAccepted);
+            Assert.Equal([SshInteractionKind.UnknownHostKey], needed);
+            Assert.Equal(NativeKnownHostMatch.Unknown, knownHosts.CheckHost("example.internal", 22, "ssh-ed25519", "SHA256:test"));
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task WithoutDialogs_AHostKeyThatChanged_SaysSo()
+    {
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            var knownHosts = new NativeKnownHostsStore(Path.Combine(tempRoot, "native_known_hosts.json"));
+            knownHosts.TrustHost("example.internal", 22, "ssh-ed25519", "SHA256:old");
+            var needed = new List<SshInteractionKind>();
+            var service = new SshInteractionService(ownerProvider: () => new Window(), knownHostsStore: knownHosts);
+
+            SshInteractionResponse response = await service.WithoutDialogs(needed.Add)
+                .HandleAsync(HostKeyRequest("SHA256:new"), CancellationToken.None);
+
+            Assert.True(response.IsCanceled);
+            Assert.Equal([SshInteractionKind.ChangedHostKey], needed);
+            Assert.Equal(NativeKnownHostMatch.Mismatch, knownHosts.CheckHost("example.internal", 22, "ssh-ed25519", "SHA256:new"));
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task WithoutDialogs_AHostKeyTheUserTrusts_IsStillAccepted()
+    {
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            var knownHosts = new NativeKnownHostsStore(Path.Combine(tempRoot, "native_known_hosts.json"));
+            knownHosts.TrustHost("example.internal", 22, "ssh-ed25519", "SHA256:test");
+            var needed = new List<SshInteractionKind>();
+            var service = new SshInteractionService(ownerProvider: () => new Window(), knownHostsStore: knownHosts);
+
+            SshInteractionResponse response = await service.WithoutDialogs(needed.Add)
+                .HandleAsync(HostKeyRequest("SHA256:test"), CancellationToken.None);
+
+            Assert.True(response.IsAccepted);
+            Assert.Empty(needed);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task WithoutDialogs_TheProfilesSavedPassword_IsStillUsed()
+    {
+        var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        TerminalProfile profile = CreateProfile("6d1f3a52-2c8b-4e07-9a61-0f5e8c7b2d14");
+        vault.SetSshPasswordForProfile(profile, "vault-secret");
+        var needed = new List<SshInteractionKind>();
+        var service = new SshInteractionService(ownerProvider: () => new Window(), vaultService: vault);
+
+        SshInteractionResponse response = await service.WithoutDialogs(needed.Add)
+            .HandleAsync(TargetPasswordRequest(profile, allowVaultPasswordReuse: true), CancellationToken.None);
+
+        Assert.Equal("vault-secret", response.Secret);
+        Assert.False(response.IsCanceled);
+        Assert.Empty(needed);
+    }
+
+    [AvaloniaFact]
+    public async Task WithoutDialogs_APasswordNobodySaved_FailsAsNeedingTheUser_AndStoresNothing()
+    {
+        var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        var registry = new ActiveSshSessionRegistry();
+        Guid sessionId = Guid.NewGuid();
+        TerminalProfile profile = CreateProfile("8e2a4b63-3d9c-4f18-8b72-1a6f9d8c3e25");
+        int presented = 0;
+        var needed = new List<SshInteractionKind>();
+        var service = new SshInteractionService(
+            ownerProvider: () => new Window(),
+            vaultService: vault,
+            sessionRegistry: registry,
+            authPresenter: (_, _, _) =>
+            {
+                presented++;
+                return Task.FromResult(SshInteractionResponse.FromSecret("typed", rememberPasswordInVault: true));
+            });
+
+        SshInteractionResponse response = await service.WithoutDialogs(needed.Add)
+            .HandleAsync(TargetPasswordRequest(profile, sessionId, allowVaultPasswordReuse: true), CancellationToken.None);
+
+        Assert.Equal(0, presented);
+        Assert.True(response.IsCanceled);
+        Assert.Equal([SshInteractionKind.Password], needed);
+        Assert.False(registry.TryGetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, out _));
+        Assert.Null(vault.GetSshPasswordForProfile(profile));
+    }
+
+    [AvaloniaFact]
+    public async Task WithoutDialogs_APassphraseOrAQuestion_FailsAsNeedingTheUser()
+    {
+        int presented = 0;
+        var needed = new List<SshInteractionKind>();
+        var service = new SshInteractionService(
+            ownerProvider: () => new Window(),
+            authPresenter: (_, vm, _) =>
+            {
+                presented++;
+                return Task.FromResult(vm.BuildResponse());
+            });
+        ISshInteractionHandler agent = service.WithoutDialogs(needed.Add);
+
+        SshInteractionResponse passphrase = await agent.HandleAsync(
+            new SshInteractionRequest { Kind = SshInteractionKind.Passphrase, Prompt = "Passphrase:" },
+            CancellationToken.None);
+        SshInteractionResponse question = await agent.HandleAsync(
+            new SshInteractionRequest
+            {
+                Kind = SshInteractionKind.KeyboardInteractive,
+                KeyboardPrompts = [new SshKeyboardPrompt("Verification code:", false)]
+            },
+            CancellationToken.None);
+        // An empty round asks nothing, so it is answered as it always is.
+        SshInteractionResponse emptyRound = await agent.HandleAsync(
+            new SshInteractionRequest { Kind = SshInteractionKind.KeyboardInteractive, KeyboardPrompts = [] },
+            CancellationToken.None);
+
+        Assert.Equal(0, presented);
+        Assert.True(passphrase.IsCanceled);
+        Assert.True(question.IsCanceled);
+        Assert.False(emptyRound.IsCanceled);
+        Assert.Equal([SshInteractionKind.Passphrase, SshInteractionKind.KeyboardInteractive], needed);
+    }
+
+    /// <summary>
+    /// #610: a tab that joined a shared connection is not asked its prompts - the tab that opened it is - but one that is
+    /// refused ends the connection for it too. It is told what was asked, on the UI thread, with the reason its own
+    /// refusal would have given: a host key that is not the trusted one says so.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task WithoutDialogs_APromptRefusedOnASharedConnection_IsReportedAsNeedingTheUser()
+    {
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            var knownHosts = new NativeKnownHostsStore(Path.Combine(tempRoot, "native_known_hosts.json"));
+            knownHosts.TrustHost("example.internal", 22, "ssh-ed25519", "SHA256:old");
+            var needed = new List<SshInteractionKind>();
+            var service = new SshInteractionService(ownerProvider: () => new Window(), knownHostsStore: knownHosts);
+            ISshInteractionHandler joined = service.WithoutDialogs(kind =>
+            {
+                Assert.True(Dispatcher.UIThread.CheckAccess());
+                needed.Add(kind);
+            });
+
+            // The shared connection's poll thread reports it.
+            await Task.Run(() => joined.RefusedOnSharedConnection(
+                new SshInteractionRequest { Kind = SshInteractionKind.Password, Prompt = "Password:" }));
+            await Task.Run(() => joined.RefusedOnSharedConnection(HostKeyRequest("SHA256:new")));
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal([SshInteractionKind.Password, SshInteractionKind.ChangedHostKey], needed);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    private static SshInteractionRequest HostKeyRequest(string fingerprint) => new()
+    {
+        Kind = SshInteractionKind.UnknownHostKey,
+        Host = "example.internal",
+        Port = 22,
+        Algorithm = "ssh-ed25519",
+        Fingerprint = fingerprint
+    };
+
     private static string CreateTempDirectory()
     {
         string path = Path.Combine(Path.GetTempPath(), $"nova_ssh_interaction_test_{Guid.NewGuid():N}");
