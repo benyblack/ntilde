@@ -298,13 +298,22 @@ namespace Ntilde.Shell
         /// shell leads, so <c>DefaultProfileId</c> lands on the shell the user actually uses
         /// rather than whichever fixed entry happens to exist.</summary>
         private static (string Name, string Command)[] DefaultProfileCandidates() => OperatingSystem.IsWindows()
-            ? new[]
-            {
-                ("Command Prompt", "cmd.exe"),
-                ("PowerShell", "pwsh.exe"),
-                ("Windows PowerShell", "powershell.exe"),
-            }
+            ? WindowsProfileCandidates
             : UnixProfileCandidates(ShellHelper.GetDefaultShell());
+
+        /// <summary>
+        /// The Windows first-run candidates, in <see cref="ShellHelper.GetDefaultShell"/>'s order.
+        /// <c>DefaultProfileId</c> is the first installed one, so the settings default and every
+        /// path that substitutes the default shell (restore, a blank command, the mux daemon) pick
+        /// the same shell. They used to disagree (#349): this list led with cmd, so a machine with
+        /// PowerShell installed defaulted to cmd here and to PowerShell everywhere else.
+        /// </summary>
+        internal static readonly (string Name, string Command)[] WindowsProfileCandidates =
+        {
+            ("PowerShell", "pwsh.exe"),
+            ("Windows PowerShell", "powershell.exe"),
+            ("Command Prompt", "cmd.exe"),
+        };
 
         /// <summary>
         /// The Unix first-run candidates: the login shell, then the fixed trio. A login shell
