@@ -560,7 +560,9 @@ namespace Ntilde
                 Type = source.Type,
                 SplitOrientation = source.SplitOrientation,
                 ProfileId = source.ProfileId,
-                SshProfileId = source.SshProfileId,
+                // SshProfileId is deliberately not carried: an agent can open a profile with a template rule, and
+                // the agent allowlist is checked against that profile only, so a template's SSH pane would connect
+                // with the user's credentials to a host the agent was never allowed. Without it the pane opens local.
                 PaneId = paneId,
                 Command = source.Command,
                 Arguments = source.Arguments,

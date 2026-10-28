@@ -176,8 +176,9 @@ public sealed class TemplateRuleTabTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.Equal(a.Root.Children[1].PaneId, a.ActivePaneId);
         Assert.Equal(a.Root.Children[0].PaneId, a.ZoomedPaneId);
 
-        // An SSH pane stays an SSH pane; a live multiplexer session is not carried into a new tab.
-        Assert.Equal(sshProfile, a.Root.Children[1].SshProfileId);
+        // A live multiplexer session is not carried into a new tab. Nor is an SSH profile: an agent can open a profile
+        // with a template rule, and its allowlist covers that profile only, not the template's SSH hosts.
         Assert.Null(a.Root.Children[1].MuxSessionId);
+        Assert.Null(a.Root.Children[1].SshProfileId);
     }
 }
