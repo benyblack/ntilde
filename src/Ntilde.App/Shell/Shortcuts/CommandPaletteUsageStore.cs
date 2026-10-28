@@ -12,6 +12,7 @@ public sealed class CommandPaletteUsageStore
     private readonly string _path;
     private Dictionary<string, CommandPaletteUsageEntry>? _entries;
     private int _saveVersion;
+    private readonly object _writeGate = new();
 
     public CommandPaletteUsageStore(string path)
     {
@@ -70,7 +71,16 @@ public sealed class CommandPaletteUsageStore
         entries[commandId] = new CommandPaletteUsageEntry(commandId, 1, usedAt);
     }
 
-    public void Save()
+    /// <summary>
+    /// Writes the entries off the calling thread. Best-effort: a failed write is dropped, never thrown.
+    /// </summary>
+    /// <returns>
+    /// The write: it completes once this save is on disk, or as soon as a newer save has replaced
+    /// it - so awaiting the latest save is what tells you the file is current. Callers that don't
+    /// care discard it. Returned for #355: a test that polled the file against a wall clock could
+    /// miss its deadline when the thread pool was saturated.
+    /// </returns>
+    public Task SaveAsync()
     {
         Dictionary<string, CommandPaletteUsageEntry> entries = EnsureEntries();
         Dictionary<string, CommandPaletteUsageEntry> snapshot = new(entries, StringComparer.OrdinalIgnoreCase);
@@ -79,49 +89,60 @@ public sealed class CommandPaletteUsageStore
         string? directory = Path.GetDirectoryName(_path);
         int version = Interlocked.Increment(ref _saveVersion);
 
-        _ = Task.Run(() =>
+        return Task.Run(() =>
         {
-            if (version != Volatile.Read(ref _saveVersion))
+            // One write at a time, with the version checked under the gate: checked outside it, an
+            // older save that passed the check could still finish after a newer one and put stale
+            // entries back on disk.
+            lock (_writeGate)
             {
-                return;
-            }
-
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(directory))
+                if (version != Volatile.Read(ref _saveVersion))
                 {
-                    Directory.CreateDirectory(directory);
+                    return;
                 }
 
-                // Write via a temp sibling + atomic rename (AtomicFile, same pattern as
-                // SessionManager/TerminalSettings) so a concurrent reader never observes a
-                // truncated file. The old File.WriteAllText held a write handle for up to 850ms
-                // under contention (its own sharing-violation window), which this change
-                // eliminates - the write itself is no longer where a concurrent reader can catch
-                // it. What is left, and what this retry actually guards against, is the rename
-                // step alone: on Windows a rename over an open handle needs FILE_SHARE_DELETE, so
-                // if a reader happens to have the destination open at that instant the rename
-                // throws - a reader's hold is brief (open, read, close), so a couple of short
-                // retries clears it rather than silently dropping the save.
-                const int maxAttempts = 3;
-                for (int attempt = 1; attempt <= maxAttempts; attempt++)
-                {
-                    try
-                    {
-                        AtomicFile.WriteAllText(path, json);
-                        break;
-                    }
-                    catch (IOException) when (attempt < maxAttempts)
-                    {
-                        Thread.Sleep(20);
-                    }
-                }
-            }
-            catch
-            {
-                // Keep usage tracking best-effort only.
+                Write(path, directory, json);
             }
         });
+    }
+
+    private static void Write(string path, string? directory, string json)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            // Write via a temp sibling + atomic rename (AtomicFile, same pattern as
+            // SessionManager/TerminalSettings) so a concurrent reader never observes a
+            // truncated file. The old File.WriteAllText held a write handle for up to 850ms
+            // under contention (its own sharing-violation window), which this change
+            // eliminates - the write itself is no longer where a concurrent reader can catch
+            // it. What is left, and what this retry actually guards against, is the rename
+            // step alone: on Windows a rename over an open handle needs FILE_SHARE_DELETE, so
+            // if a reader happens to have the destination open at that instant the rename
+            // throws - a reader's hold is brief (open, read, close), so a couple of short
+            // retries clears it rather than silently dropping the save.
+            const int maxAttempts = 3;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    AtomicFile.WriteAllText(path, json);
+                    break;
+                }
+                catch (IOException) when (attempt < maxAttempts)
+                {
+                    Thread.Sleep(20);
+                }
+            }
+        }
+        catch
+        {
+            // Keep usage tracking best-effort only.
+        }
     }
 
     private Dictionary<string, CommandPaletteUsageEntry> EnsureEntries()

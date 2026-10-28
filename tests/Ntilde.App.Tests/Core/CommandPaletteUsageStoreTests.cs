@@ -4,8 +4,10 @@ namespace Ntilde.Tests.Core;
 
 public sealed class CommandPaletteUsageStoreTests
 {
+    // #355: this used to poll for the file against a 2 s wall clock, and missed it when the
+    // thread pool was saturated by a full parallel run. The save is awaited now - no deadline.
     [Fact]
-    public void RecordUse_PersistsCountAcrossReloads()
+    public async Task RecordUse_PersistsCountAcrossReloads()
     {
         string tempRoot = CreateTempDirectory();
         string path = Path.Combine(tempRoot, "command-palette-usage.json");
@@ -14,15 +16,43 @@ public sealed class CommandPaletteUsageStoreTests
         {
             var store = new CommandPaletteUsageStore(path);
             store.RecordUse("settings", new DateTimeOffset(2026, 5, 26, 12, 0, 0, TimeSpan.Zero));
-            store.Save();
-            WaitFor(
-                () => File.Exists(path) && File.ReadAllText(path).Contains("settings", StringComparison.Ordinal),
-                TimeSpan.FromSeconds(2));
+            await store.SaveAsync();
 
             var reloaded = new CommandPaletteUsageStore(path);
             IReadOnlyDictionary<string, CommandPaletteUsageEntry> snapshot = reloaded.Load();
 
             Assert.Equal(1, snapshot["settings"].UseCount);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Back_to_back_saves_all_complete_and_the_last_one_wins()
+    {
+        // Each save is queued to the pool while the next RecordUse runs, so older saves are
+        // superseded mid-flight. Every task must still complete, and the file must end up with
+        // the newest entries: an older write that finished after a newer one would leave a
+        // lower count behind.
+        string tempRoot = CreateTempDirectory();
+        string path = Path.Combine(tempRoot, "command-palette-usage.json");
+
+        try
+        {
+            var store = new CommandPaletteUsageStore(path);
+            var saves = new List<Task>();
+            for (int i = 0; i < 50; i++)
+            {
+                store.RecordUse("settings", DateTimeOffset.UnixEpoch.AddMinutes(i));
+                saves.Add(store.SaveAsync());
+            }
+
+            await Task.WhenAll(saves);
+
+            IReadOnlyDictionary<string, CommandPaletteUsageEntry> snapshot = new CommandPaletteUsageStore(path).Load();
+            Assert.Equal(50, snapshot["settings"].UseCount);
         }
         finally
         {
@@ -67,52 +97,5 @@ public sealed class CommandPaletteUsageStoreTests
         string path = Path.Combine(Path.GetTempPath(), $"ntilde_usage_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(path);
         return path;
-    }
-
-    private static void WaitFor(Func<bool> condition, TimeSpan timeout)
-    {
-        DateTime deadline = DateTime.UtcNow.Add(timeout);
-        Exception? lastException = null;
-        while (DateTime.UtcNow < deadline)
-        {
-            if (Evaluate(condition, out lastException))
-            {
-                return;
-            }
-
-            Thread.Sleep(25);
-        }
-
-        // M5: a persistent lock (as opposed to a transient one the retry loop below was meant
-        // to ride out) used to surface here as a bare "false" - indistinguishable from "the
-        // condition is legitimately still false". Surfacing the last IOException in the failure
-        // message means a real, un-clearing lock reads as what it is instead of a mystery
-        // timeout.
-        bool finalResult = Evaluate(condition, out lastException);
-        if (!finalResult)
-        {
-            string detail = lastException is not null
-                ? $" Last exception while evaluating the condition: {lastException}"
-                : string.Empty;
-            Assert.Fail($"Condition did not become true within {timeout}.{detail}");
-        }
-    }
-
-    // A transient sharing violation (the writer still has the file open) means the
-    // condition isn't true *yet*, not that polling should abort. Without this, the first
-    // collision between this poll and a concurrent writer fails the test outright instead
-    // of letting the retry loop do its job.
-    private static bool Evaluate(Func<bool> condition, out Exception? exception)
-    {
-        try
-        {
-            exception = null;
-            return condition();
-        }
-        catch (IOException ex)
-        {
-            exception = ex;
-            return false;
-        }
     }
 }

@@ -461,7 +461,7 @@ namespace Ntilde
             try
             {
                 _commandPaletteUsageStore.RecordUse(commandId, DateTimeOffset.UtcNow);
-                _commandPaletteUsageStore.Save();
+                _ = _commandPaletteUsageStore.SaveAsync();
                 _commandPaletteUsage = new Dictionary<string, CommandPaletteUsageEntry>(_commandPaletteUsageStore.Load(), StringComparer.OrdinalIgnoreCase);
             }
             catch
