@@ -686,7 +686,7 @@ namespace Ntilde
             // A background open never applies a template rule. A template tab can hold several panes, and a pane
             // starts its shell on its first layout, which a background tab never gets: an agent's background spawn
             // starts only the pane it is handed back.
-            if (select && TryApplyTemplateRuleForProfile(profile, out TerminalPane? templatePane))
+            if (select && TryApplyTemplateRuleForProfile(profile, openedByAgent, out TerminalPane? templatePane))
             {
                 return templatePane;
             }

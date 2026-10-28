@@ -60,9 +60,9 @@ public sealed class TemplateRuleTabTests : IClassFixture<TestAppDataRoot>, IDisp
         return profile;
     }
 
-    private static TerminalPane? OpenTab(MainWindow window, TerminalProfile profile, bool select = true)
+    private static TerminalPane? OpenTab(MainWindow window, TerminalProfile profile, bool select = true, bool openedByAgent = false)
     {
-        var pane = (TerminalPane?)Invoke(window, "AddTab", profile, SshDiagnosticsLevel.None, select, true);
+        var pane = (TerminalPane?)Invoke(window, "AddTab", profile, SshDiagnosticsLevel.None, select, true, openedByAgent);
         Dispatcher.UIThread.RunJobs();
         return pane;
     }
@@ -116,6 +116,29 @@ public sealed class TemplateRuleTabTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.Equal(zoomed.PaneId, (Guid?)Invoke(window, "GetZoomedPaneIdForTab", split));
         Assert.Same(zoomed, split.Content);
         Assert.Same(split, Invoke(window, "ResolveOwningTabForPane", hidden));
+    }
+
+    /// <summary>
+    /// #610: an agent's spawn that a template rule turns into a template tab hands every pane of that tab to the agent, so
+    /// none of them raises a sign-in dialog over the user's shell. The user's own template tab is theirs.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_template_tab_an_agent_opened_is_the_agents_in_every_pane()
+    {
+        MainWindow window = NewShownWindow();
+        var tabs = TabsOf(window);
+        var (templateName, _) = SaveSplitTemplate();
+        TerminalProfile profile = ProfileWithRule(window, templateName);
+
+        OpenTab(window, profile, openedByAgent: true);
+        var agents = ((Grid)((TabItem)tabs.Items[1]!).Content!).Children.OfType<TerminalPane>().ToList();
+        OpenTab(window, profile);
+        var users = ((Grid)((TabItem)tabs.Items[2]!).Content!).Children.OfType<TerminalPane>().ToList();
+
+        Assert.Equal(2, agents.Count);
+        Assert.All(agents, p => Assert.True(p.OpenedByAgent));
+        Assert.Equal(2, users.Count);
+        Assert.All(users, p => Assert.False(p.OpenedByAgent));
     }
 
     [AvaloniaFact]

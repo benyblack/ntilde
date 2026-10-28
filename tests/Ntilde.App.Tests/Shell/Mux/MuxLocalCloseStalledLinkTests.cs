@@ -57,7 +57,7 @@ public sealed class MuxLocalCloseStalledLinkTests : IClassFixture<TestAppDataRoo
         // The daemon answers the window's startup - a hello, then a spawn and an attach per tab - until a ping.
         Task<MuxRequest?> startup = _answering.ServeAsync(until: r => r.Method == MuxMethods.Ping);
         MainWindow window = CreateWindow();
-        typeof(MainWindow).GetMethod("AddTab", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [null, SshDiagnosticsLevel.None, true, true]);
+        typeof(MainWindow).GetMethod("AddTab", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [null, SshDiagnosticsLevel.None, true, true, false]);
         PumpUntil(() => AllPanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "the second tab attached");
         IReadOnlyList<TerminalPane> panes = AllPanes(window);
         TerminalPane closing = panes[panes.Count - 1];
