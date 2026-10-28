@@ -121,6 +121,59 @@ public sealed class TerminalViewLinkActivationTests
         Assert.Equal("https://example.com/docs", started.FileName);
     }
 
+    /// <summary>
+    /// #95 gap 3: an OSC 8 link underlined only the cell under the pointer, while a URL found by the detector
+    /// underlined its whole span. The whole anchor underlines now, from any cell of it.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(4)]
+    [InlineData(8)]
+    [InlineData(11)]
+    public void Hovering_any_cell_of_an_Osc8_link_underlines_the_whole_link(int hoveredCol)
+    {
+        var (view, _) = CreateView("see " + Osc8("https://example.com/docs", "the docs") + " now");
+
+        view.UpdateHoveredLink(CellCentre(0, hoveredCol));
+
+        Assert.Equal("https://example.com/docs", view.HoveredLinkUriForTest);
+        Assert.Equal((4, 11), view.HoveredLinkColumnsForTest);
+    }
+
+    [AvaloniaFact]
+    public void Adjacent_Osc8_links_to_the_same_target_underline_separately()
+    {
+        // Equal URIs are not one link: without an id, each OSC 8 run is its own anchor.
+        var (view, _) = CreateView(Osc8("https://example.com", "one") + Osc8("https://example.com", "two"));
+
+        view.UpdateHoveredLink(CellCentre(0, 1));
+        Assert.Equal((0, 2), view.HoveredLinkColumnsForTest);
+
+        view.UpdateHoveredLink(CellCentre(0, 4));
+        Assert.Equal((3, 5), view.HoveredLinkColumnsForTest);
+    }
+
+    [AvaloniaFact]
+    public void An_Osc8_id_joins_runs_but_only_the_contiguous_part_underlines()
+    {
+        // The overlay holds one run on one row; cells of the same id elsewhere are not underlined with it.
+        var (view, _) = CreateView(
+            "\u001b]8;id=a;https://example.com\u0007ab\u001b]8;;\u0007--\u001b]8;id=a;https://example.com\u0007cd\u001b]8;;\u0007");
+
+        view.UpdateHoveredLink(CellCentre(0, 1));
+
+        Assert.Equal((0, 1), view.HoveredLinkColumnsForTest);
+    }
+
+    [AvaloniaFact]
+    public void A_detected_url_still_underlines_its_own_span()
+    {
+        var (view, _) = CreateView("see https://example.com now");
+
+        view.UpdateHoveredLink(CellCentre(0, 10));
+
+        Assert.Equal((4, 22), view.HoveredLinkColumnsForTest);
+    }
+
     /// <summary>The URL detector matches any <c>scheme://</c> in plain text, file ones included.</summary>
     [AvaloniaFact]
     public void Detected_plain_text_UNC_file_url_is_inert()
