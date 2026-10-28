@@ -19,7 +19,7 @@ namespace Ntilde.Shell
 
     public static class CommandRegistry
     {
-        private static List<TerminalCommand> _commands = new();
+        private static readonly List<TerminalCommand> _commands = new();
 
         public static void Register(string title, string category, Action action, string shortcut = "", string id = "")
         {
@@ -35,11 +35,17 @@ namespace Ntilde.Shell
 
         public static void Clear() => _commands.Clear();
 
-        public static List<TerminalCommand> GetCommands() => _commands;
+        /// <summary>
+        /// A snapshot of the registered commands. It used to be the backing list itself (#112), so any caller
+        /// could add or remove commands for everyone, and a later Clear and re-register (every settings save
+        /// rebuilds the palette) changed the collection under whoever was holding it.
+        /// </summary>
+        public static IReadOnlyList<TerminalCommand> GetCommands() => _commands.ToArray();
 
+        /// <summary>The matching commands, as a new list the caller owns - for an empty query, all of them.</summary>
         public static List<TerminalCommand> Search(string query)
         {
-            if (string.IsNullOrWhiteSpace(query)) return _commands;
+            if (string.IsNullOrWhiteSpace(query)) return _commands.ToList();
 
             var q = query.ToLowerInvariant();
             return _commands
