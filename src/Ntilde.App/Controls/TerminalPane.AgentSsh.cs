@@ -67,8 +67,8 @@ namespace Ntilde.Controls
                     " Trust it when you connect, and agents can connect on their own."),
                 SshInteractionKind.ChangedHostKey => ("to trust a host key that is NOT the one you trusted for it before",
                     string.Empty),
-                SshInteractionKind.Password => ("for a password, and none is saved for this profile",
-                    " Save the password when you connect, and agents can connect on their own."),
+                SshInteractionKind.Password => ("for a password Ntilde had no saved one for",
+                    " If it is this profile's password, save it when you connect, and agents can connect on their own."),
                 SshInteractionKind.Passphrase => ("for your key's passphrase", string.Empty),
                 _ => ("a question only you can answer, such as a one-time code", string.Empty),
             };

@@ -43,7 +43,7 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
   again either; with it, persistent tabs on such a profile now run its port forwards.
 - **An agent's SSH session no longer opens a dialog over your shell.** When an agent opens a
   native SSH session and the server asks for something only you can give (a host key you have not
-  trusted, a password that is not saved, a key passphrase, a one-time code), the session ends
+  trusted, a password Ntilde has none saved for, a key passphrase, a one-time code), the session ends
   instead of raising a host-key or password dialog that would take your keystrokes. The tab says
   what the server asked, and Enter there connects as you, with the usual dialogs; the agent is told
   why its session ended (`needsUser` in its session status) and carries on in that tab once you

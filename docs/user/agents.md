@@ -90,7 +90,7 @@ An agent can open an SSH profile only if you allowlisted it. On the native SSH b
 session never shows a host-key or password dialog: it would open over the shell you are typing in.
 It signs in only with what needs no question: a host key you already trust, a password saved for
 the profile, or, with connection multiplexing, a connection one of your tabs already has open. If
-the server asks for anything else (a host key you have not trusted, a password that is not saved,
+the server asks for anything else (a host key you have not trusted, a password Ntilde has none saved for,
 a key passphrase, a one-time code), the session ends. Its tab says what the server asked, and
 pressing Enter there connects as you, with the usual dialogs. The agent is told why its session
 ended, and once you have signed in it carries on in that same tab.

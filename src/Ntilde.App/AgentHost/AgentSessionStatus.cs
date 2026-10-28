@@ -41,7 +41,7 @@ namespace Ntilde.AgentHost
         /// <summary>A host key other than the one the user trusted for this server.</summary>
         ChangedHostKey,
 
-        /// <summary>A password, and none is saved for the profile.</summary>
+        /// <summary>A password Ntilde had no saved one to answer with (<c>AgentHostProtocol.NeedsUserReasons.Password</c>).</summary>
         Password,
 
         /// <summary>The passphrase of the user's private key.</summary>

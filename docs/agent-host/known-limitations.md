@@ -64,7 +64,8 @@ never shows one. What needs no dialog still works:
   (the agent's tab joins that connection and is never asked anything).
 
 Anything else ends the connection: a host key the user has not trusted, or
-one that changed; a password nobody saved; a key passphrase; a one-time code.
+one that changed; a password with no saved one to send (none saved, the saved
+one refused, or a jump host's); a key passphrase; a one-time code.
 The session exits, `get_session_status` and its exit event on
 `wait_for_events` carry `needsUser` (`hostKey`, `changedHostKey`, `password`,
 `passphrase`, `keyboardInteractive`), and the pane tells the user what was

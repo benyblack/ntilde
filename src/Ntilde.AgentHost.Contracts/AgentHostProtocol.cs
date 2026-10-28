@@ -156,7 +156,10 @@ public static class AgentHostProtocol
         /// <summary>A host key other than the one the user trusted for this server.</summary>
         public const string ChangedHostKey = "changedHostKey";
 
-        /// <summary>A password, and none is saved for the profile.</summary>
+        /// <summary>
+        /// A password Ntilde had no saved one to answer with: none is saved, the saved one was refused, or a jump host
+        /// asked (the profile's password is only ever sent to its target).
+        /// </summary>
         public const string Password = "password";
 
         /// <summary>The passphrase of the user's private key.</summary>
