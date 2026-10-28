@@ -80,4 +80,130 @@ public class GlyphCacheTests
         Assert.True(cache.EntryCount > 1, $"hot working set not retained after overflow: {cache.EntryCount} entries");
         Assert.True(cache.EntryCount < added, "some cold glyphs should have been dropped on overflow");
     }
+
+    // Skia shapes antialiased edges for the luminance of the colour it draws in. The atlas used to
+    // rasterize everything in white, which made dark text on a light background soft: it was tinted
+    // from a mask shaped for white text. Each foreground now gets the mask Skia would draw in it.
+    [Theory]
+    [InlineData(0xFF000000u)]
+    [InlineData(0xFFFFFFFFu)]
+    [InlineData(0xFF1E66F5u)]
+    [InlineData(0xFF7F7F7Fu)]
+    public void AlphaSprite_MatchesSkiasOwnCoverage_ForTheForeground(uint argb)
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+
+        var foreground = new SKColor(argb);
+        using var cache = new GlyphCache();
+        using var typeface = SKTypeface.Default;
+        using var font = new SKFont(typeface, 14);
+
+        var sprite = cache.GetOrAdd("m", font, 2.0f, foreground);
+
+        Assert.NotNull(sprite);
+        byte[] atlas = SpriteAlpha(cache, sprite.Value, out bool white);
+        byte[] direct = DirectAlpha("m", typeface, 14 * 2.0f, sprite.Value, foreground);
+        Assert.True(white, "an Alpha8 sprite must stay white coverage, since DrawAtlas tints it with Modulate");
+        Assert.Equal(direct, atlas);
+    }
+
+    [Fact]
+    public void DarkAndLightForegrounds_GetSeparateSprites_WhenSkiaShapesThemDifferently()
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+
+        using var cache = new GlyphCache();
+        using var typeface = SKTypeface.Default;
+        using var font = new SKFont(typeface, 14);
+
+        var dark = cache.GetOrAdd("m", font, 2.0f, SKColors.Black)!.Value;
+        var light = cache.GetOrAdd("m", font, 2.0f, SKColors.White)!.Value;
+
+        bool skiaDiffers = !DirectAlpha("m", typeface, 28f, dark, SKColors.Black)
+            .AsSpan().SequenceEqual(DirectAlpha("m", typeface, 28f, dark, SKColors.White));
+        // Where the platform shapes them alike (possibly FreeType on Linux), one entry is correct.
+        Assert.Equal(skiaDiffers, dark.Rect != light.Rect);
+        Assert.Equal(skiaDiffers ? 2 : 1, cache.EntryCount);
+    }
+
+    [Fact]
+    public void ForegroundsWithTheSameShaping_ShareOneSprite()
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+
+        using var cache = new GlyphCache();
+        using var typeface = SKTypeface.Default;
+        using var font = new SKFont(typeface, 14);
+
+        var white = cache.GetOrAdd("A", font, 1.0f, SKColors.White);
+        var nearWhite = cache.GetOrAdd("A", font, 1.0f, new SKColor(0xFE, 0xFE, 0xFE));
+        var translucent = cache.GetOrAdd("A", font, 1.0f, SKColors.White.WithAlpha(128));
+        var defaulted = cache.GetOrAdd("A", font, 1.0f);
+
+        Assert.Equal(white, nearWhite);
+        Assert.Equal(white, translucent);
+        Assert.Equal(white, defaulted);
+        Assert.Equal(1, cache.EntryCount);
+    }
+
+    [Fact]
+    public void ColorGlyph_IgnoresForeground()
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+
+        using var cache = new GlyphCache();
+        using var typeface = SKTypeface.Default;
+        using var font = new SKFont(typeface, 14);
+
+        var onDark = cache.GetOrAdd("\u2B50", font, 1.0f, SKColors.Black);
+        var onLight = cache.GetOrAdd("\u2B50", font, 1.0f, SKColors.White);
+
+        Assert.Equal(onDark, onLight);
+        Assert.Equal(1, cache.EntryCount);
+    }
+
+    /// <summary>The sprite's alpha, and whether its RGB is white coverage (premultiplied r=g=b=a).</summary>
+    private static byte[] SpriteAlpha(GlyphCache cache, GlyphSprite sprite, out bool white)
+    {
+        var (alpha, _) = cache.GetAtlasImages();
+        using SKBitmap bitmap = SKBitmap.FromImage(alpha);
+        int x0 = (int)sprite.Rect.Left, y0 = (int)sprite.Rect.Top;
+        int w = (int)sprite.Rect.Width, h = (int)sprite.Rect.Height;
+        var result = new byte[w * h];
+        white = true;
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                // GetPixel unpremultiplies, so white coverage reads back as white at any alpha.
+                SKColor c = bitmap.GetPixel(x0 + x, y0 + y);
+                result[y * w + x] = c.Alpha;
+                if (c.Alpha > 0 && (c.Red != 255 || c.Green != 255 || c.Blue != 255)) white = false;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>The coverage Skia draws for the glyph in <paramref name="color"/>, framed like the sprite.</summary>
+    private static byte[] DirectAlpha(string text, SKTypeface typeface, float physicalSize, GlyphSprite sprite, SKColor color)
+    {
+        int w = (int)sprite.Rect.Width, h = (int)sprite.Rect.Height;
+        using var physFont = new SKFont(typeface, physicalSize)
+        {
+            Edging = SKFontEdging.Antialias,
+            Hinting = SKFontHinting.Full,
+            Subpixel = true
+        };
+        using var surface = SKSurface.Create(new SKImageInfo(w, h, SKColorType.Rgba8888));
+        surface.Canvas.Clear(SKColors.Transparent);
+        using var paint = new SKPaint { IsAntialias = true, Color = color.WithAlpha(255) };
+        surface.Canvas.DrawText(text, -sprite.OffsetX, -sprite.OffsetY, physFont, paint);
+
+        using SKPixmap pixels = surface.PeekPixels();
+        ReadOnlySpan<byte> rgba = pixels.GetPixelSpan();
+        var result = new byte[w * h];
+        for (int i = 0; i < result.Length; i++) result[i] = rgba[i * 4 + 3];
+        return result;
+    }
 }

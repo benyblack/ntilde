@@ -56,21 +56,26 @@ namespace Ntilde.Rendering
             public readonly SKTypeface Typeface;
             public readonly float Size;
             public readonly float Scale;
+            public readonly byte LuminanceClass;
 
-            public GlyphKey(string text, SKTypeface typeface, float size, float scale)
+            public GlyphKey(string text, SKTypeface typeface, float size, float scale, byte luminanceClass)
             {
                 Text = text;
                 Typeface = typeface;
                 Size = size;
                 Scale = scale;
+                LuminanceClass = luminanceClass;
             }
 
+            // Size and Scale compare by bit pattern: a cache key wants identity, and a tolerance
+            // would break the Equals/GetHashCode contract the dictionary relies on.
             public bool Equals(GlyphKey other)
             {
                 return Text == other.Text &&
                        Typeface == other.Typeface &&
-                       Size.Equals(other.Size) &&
-                       Scale.Equals(other.Scale);
+                       BitConverter.SingleToInt32Bits(Size) == BitConverter.SingleToInt32Bits(other.Size) &&
+                       BitConverter.SingleToInt32Bits(Scale) == BitConverter.SingleToInt32Bits(other.Scale) &&
+                       LuminanceClass == other.LuminanceClass;
             }
 
             public override bool Equals(object? obj) => obj is GlyphKey other && Equals(other);
@@ -80,8 +85,9 @@ namespace Ntilde.Rendering
                 var hash = new HashCode();
                 hash.Add(Text);
                 hash.Add(Typeface);
-                hash.Add(Size);
-                hash.Add(Scale);
+                hash.Add(BitConverter.SingleToInt32Bits(Size));
+                hash.Add(BitConverter.SingleToInt32Bits(Scale));
+                hash.Add(LuminanceClass);
                 return hash.ToHashCode();
             }
         }
@@ -92,7 +98,28 @@ namespace Ntilde.Rendering
         private readonly Dictionary<GlyphKey, CacheEntry> _entries = new();
         private long _usageCounter = 0;
 
-        // Color is NOT part of the key for Alpha8 as we color it during DrawAtlas.
+        // The exact colour is NOT part of the key for Alpha8, as it is tinted during DrawAtlas. Its
+        // luminance class is: see LuminanceClassOf.
+        private readonly List<LuminanceClass> _luminanceClasses = new();
+        private readonly Dictionary<uint, byte> _luminanceClassByColor = new();
+        private SKSurface? _probeSurface;
+        private SKFont? _probeFont;
+        private bool _probeUnusable;
+
+        /// <summary>Colour glyphs are blitted untinted, so they share one key whatever the foreground.</summary>
+        private const byte ColorGlyphClass = byte.MaxValue;
+
+        /// <summary>
+        /// Bound on the colour-to-class memo, which a truecolor gradient could otherwise grow without
+        /// limit. Clearing it only costs one probe per colour the next time each is seen.
+        /// </summary>
+        private const int MaxMemoizedColors = 4096;
+
+        private const string ProbeText = "@";
+        private const float ProbeSize = 32f;
+        private const int ProbeExtent = 48;
+
+        private readonly record struct LuminanceClass(SKColor Representative, byte[] Probe);
 
         public int EntryCount => _entries.Count;
         public long AtlasByteSize => GlyphAtlas.AtlasSize * GlyphAtlas.AtlasSize * 4 * 2; // 2 surfaces, RGBA8888
@@ -102,13 +129,22 @@ namespace Ntilde.Rendering
             _atlas = new GlyphAtlas();
         }
 
-        public GlyphSprite? GetOrAdd(string text, SKFont font, float scale)
+        /// <summary>Looks a glyph up as it would be drawn in white.</summary>
+        public GlyphSprite? GetOrAdd(string text, SKFont font, float scale) =>
+            GetOrAdd(text, font, scale, SKColors.White);
+
+        /// <summary>
+        /// Looks a glyph up as it will be drawn in <paramref name="foreground"/>. Alpha8 sprites are
+        /// still tinted by the caller; the colour only selects which edge shaping the mask gets.
+        /// </summary>
+        public GlyphSprite? GetOrAdd(string text, SKFont font, float scale, SKColor foreground)
         {
             if (string.IsNullOrEmpty(text)) return null;
 
             lock (_lock)
             {
-                var key = new GlyphKey(text, font.Typeface, font.Size, scale);
+                byte luminanceClass = WantsColorGlyph(text) ? ColorGlyphClass : LuminanceClassOf(foreground);
+                var key = new GlyphKey(text, font.Typeface, font.Size, scale, luminanceClass);
 
                 if (_entries.TryGetValue(key, out var entry))
                 {
@@ -326,18 +362,126 @@ namespace Ntilde.Rendering
             var rect = _atlas.Pack(w, h, type);
             if (rect == null) return null;
 
+            // Draw in a colour from the glyph's luminance class, not always white: Skia shapes the
+            // antialiased edge for the colour it draws in (see LuminanceClassOf). Colour glyphs stay
+            // white as before.
+            SKColor rasterColor = key.LuminanceClass == ColorGlyphClass
+                ? SKColors.White
+                : _luminanceClasses[key.LuminanceClass].Representative;
+
             _atlas.DrawGlyph(rect.Value, (canvas) =>
             {
                 using var paint = new SKPaint
                 {
                     IsAntialias = true,
-                    Color = SKColors.White,
+                    Color = rasterColor,
                 };
                 // Shift the pen so the ink's top-left lands on the sprite's top-left.
                 canvas.DrawText(text, -left, -top, physFont, paint);
+
+                if (type == AtlasType.Alpha8 && rasterColor != SKColors.White)
+                {
+                    // DrawAtlas tints with Modulate, which multiplies the sprite's RGB too, so the
+                    // mask has to be white coverage. SrcIn keeps the shaped alpha and whitens the rest.
+                    using var whiten = new SKPaint { Color = SKColors.White, BlendMode = SKBlendMode.SrcIn };
+                    canvas.DrawRect(0, 0, w, h, whiten);
+                }
             }, type);
 
             return new GlyphSprite(rect.Value, type, left, top);
+        }
+
+        /// <summary>
+        /// Which edge shaping Skia gives a glyph drawn in <paramref name="foreground"/>, as an index
+        /// into <c>_luminanceClasses</c>. Must be called under <c>_lock</c>.
+        /// </summary>
+        /// <remarks>
+        /// Skia adjusts antialiased coverage by the luminance of the text colour, so that light text
+        /// on dark and dark text on light both look crisp: light text gets heavier edge pixels, dark
+        /// text lighter ones. The atlas used to rasterize every glyph in white, so in a light theme
+        /// dark text was tinted from a mask shaped for white text and came out soft, with edge pixels
+        /// up to ~1.8x the coverage Skia itself would draw.
+        ///
+        /// There are only a few distinct shapings (four on macOS, from a luminance quantized to a few
+        /// bits), but the colour-to-shaping mapping is Skia- and platform-internal: no standard luma
+        /// formula reproduces it on CoreText. So rather than re-derive it, ask Skia: draw a probe glyph
+        /// in the colour, and classes are the distinct probe masks seen so far. The first colour seen
+        /// for a class becomes its representative and the colour that class's glyphs are rasterized
+        /// in, which by construction yields the same mask as drawing in the real colour. One probe per
+        /// distinct opaque colour, memoized.
+        /// </remarks>
+        private byte LuminanceClassOf(SKColor foreground)
+        {
+            // Alpha does not select the shaping, and the representative must be opaque or the mask
+            // would carry the alpha and be dimmed twice once DrawAtlas tints it.
+            SKColor opaque = foreground.WithAlpha(255);
+            uint rgb = (uint)opaque;
+            if (_luminanceClassByColor.TryGetValue(rgb, out byte known)) return known;
+
+            byte cls = ClassifyByProbe(opaque);
+            if (_luminanceClassByColor.Count >= MaxMemoizedColors) _luminanceClassByColor.Clear();
+            _luminanceClassByColor[rgb] = cls;
+            return cls;
+        }
+
+        private byte ClassifyByProbe(SKColor color)
+        {
+            if (_probeUnusable) return 0;
+
+            byte[]? probe = RasterizeProbe(color);
+            if (probe == null)
+            {
+                // No partially covered pixels to tell shapings apart (no usable default typeface).
+                // Fall back to a single white class, which is the old behaviour. Classes already in
+                // use stay, since atlas entries refer to them by index.
+                if (_luminanceClasses.Count == 0)
+                {
+                    _probeUnusable = true;
+                    _luminanceClasses.Add(new LuminanceClass(SKColors.White, Array.Empty<byte>()));
+                }
+                return 0;
+            }
+
+            for (int i = 0; i < _luminanceClasses.Count; i++)
+            {
+                if (_luminanceClasses[i].Probe.AsSpan().SequenceEqual(probe)) return (byte)i;
+            }
+
+            // Bounded well below ColorGlyphClass by Skia's handful of shapings; if that ever stops
+            // holding, sharing the last class only costs slightly off edge shaping, not wrong output.
+            if (_luminanceClasses.Count >= ColorGlyphClass) return (byte)(_luminanceClasses.Count - 1);
+
+            _luminanceClasses.Add(new LuminanceClass(color, probe));
+            return (byte)(_luminanceClasses.Count - 1);
+        }
+
+        /// <summary>The probe glyph's coverage in <paramref name="color"/>, or null if it has no edge.</summary>
+        private byte[]? RasterizeProbe(SKColor color)
+        {
+            // Same surface type as the atlas, so Skia picks its shaping the same way.
+            _probeSurface ??= SKSurface.Create(new SKImageInfo(ProbeExtent, ProbeExtent, SKColorType.Rgba8888));
+            _probeFont ??= new SKFont(SKTypeface.Default, ProbeSize) { Edging = SKFontEdging.Antialias };
+            if (_probeSurface == null) return null;
+
+            SKCanvas canvas = _probeSurface.Canvas;
+            canvas.Clear(SKColors.Transparent);
+            using (var paint = new SKPaint { IsAntialias = true, Color = color })
+            {
+                canvas.DrawText(ProbeText, 4, ProbeExtent - 12, _probeFont, paint);
+            }
+
+            using SKPixmap pixels = _probeSurface.PeekPixels();
+            ReadOnlySpan<byte> rgba = pixels.GetPixelSpan();
+            var coverage = new byte[ProbeExtent * ProbeExtent];
+            bool anyPartial = false;
+            for (int i = 0; i < coverage.Length; i++)
+            {
+                byte a = rgba[i * 4 + 3];
+                coverage[i] = a;
+                if (a is > 0 and < 255) anyPartial = true;
+            }
+
+            return anyPartial ? coverage : null;
         }
 
         // Reset the atlas and re-pack only the most-recently-used half of the cached glyphs,
@@ -455,6 +599,10 @@ namespace Ntilde.Rendering
                 _disposalQueue.Clear();
 
                 _atlas.Dispose();
+                _probeSurface?.Dispose();
+                _probeFont?.Dispose();
+                _probeSurface = null;
+                _probeFont = null;
             }
         }
     }
