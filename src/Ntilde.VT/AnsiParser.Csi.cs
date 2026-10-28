@@ -534,8 +534,8 @@ namespace Ntilde.VT
                     }
                     // XTVERSION - CSI > q / CSI > 0 q asks for the terminal's name and version,
                     // answered as DCS > | text ST. Tools log it, and some pick features by it.
-                    // Other Ps values are not defined by xterm and stay silent.
-                    else if (leader == '>' && intermediates.Length == 0 && arg0 == 0)
+                    // Other Ps values, and extra parameters, are not defined by xterm and stay silent.
+                    else if (leader == '>' && intermediates.Length == 0 && argCount <= 1 && arg0 == 0)
                     {
                         OnResponse?.Invoke(XtVersionReply);
                     }

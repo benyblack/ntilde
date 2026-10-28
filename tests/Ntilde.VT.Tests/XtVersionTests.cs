@@ -45,6 +45,8 @@ public class XtVersionTests
 
     [Theory]
     [InlineData("\x1b[>1q")] // undefined Ps
+    [InlineData("\x1b[>0;1q")] // extra parameters
+    [InlineData("\x1b[>;q")]
     [InlineData("\x1b[q")] // DECLL (load LEDs), unimplemented
     [InlineData("\x1b[?q")]
     [InlineData("\x1b[> q")] // a leader and DECSCUSR's intermediate: neither sequence
