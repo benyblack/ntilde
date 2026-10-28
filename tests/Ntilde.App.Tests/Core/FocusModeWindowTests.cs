@@ -12,6 +12,7 @@ using Ntilde.Controls;
 using Ntilde.Shell;
 using Ntilde.Shell.Shortcuts;
 using Ntilde.Shell.Theming;
+using Ntilde.Tests.Infra;
 using static Ntilde.Tests.Core.WindowTestSupport;
 
 namespace Ntilde.Tests.Core;
@@ -24,7 +25,6 @@ public sealed class FocusModeWindowTests : IClassFixture<TestAppDataRoot>, IDisp
 {
     public void Dispose() => TestMainWindowFactory.DisposeCreatedWindows();
 
-    private static readonly RawInputModifiers CtrlShift = RawInputModifiers.Control | RawInputModifiers.Shift;
 
     private static TerminalSettings SettingsOf(MainWindow window) =>
         (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
@@ -60,10 +60,10 @@ public sealed class FocusModeWindowTests : IClassFixture<TestAppDataRoot>, IDisp
     {
         MainWindow window = NewShownWindow();
 
-        window.KeyPress(Key.Enter, CtrlShift, PhysicalKey.Enter, null);
+        window.PressShortcut("toggle_focus_mode", "Ctrl+Shift+Enter");
         Assert.True(window.IsFocusMode);
 
-        window.KeyPress(Key.Enter, CtrlShift, PhysicalKey.Enter, null);
+        window.PressShortcut("toggle_focus_mode", "Ctrl+Shift+Enter");
         Assert.False(window.IsFocusMode);
     }
 
@@ -185,7 +185,7 @@ public sealed class FocusModeWindowTests : IClassFixture<TestAppDataRoot>, IDisp
         Dispatcher.UIThread.RunJobs();
 
         window.EnterFocusMode();
-        window.KeyPress(Key.Z, CtrlShift, PhysicalKey.Z, null);
+        window.PressShortcut("toggle_pane_zoom", "Ctrl+Shift+Z");
 
         Assert.True(window.IsPaneZoomActiveForTab(tab));
         Assert.True(window.IsFocusMode);

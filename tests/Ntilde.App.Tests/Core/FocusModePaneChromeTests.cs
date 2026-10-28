@@ -7,6 +7,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Ntilde.Controls;
+using Ntilde.Tests.Infra;
 using static Ntilde.Tests.Core.WindowTestSupport;
 
 namespace Ntilde.Tests.Core;
@@ -224,7 +225,7 @@ public sealed class FocusModePaneChromeTests : IClassFixture<TestAppDataRoot>, I
         window.EnterFocusMode();
         var before = window.AllPanesForTest().ToList();
 
-        window.KeyPress(Key.D, RawInputModifiers.Control | RawInputModifiers.Shift, PhysicalKey.D, null);
+        window.PressShortcut("split_vertical", "Ctrl+Shift+D");
         Dispatcher.UIThread.RunJobs();
 
         var created = window.AllPanesForTest().Except(before).ToList();
