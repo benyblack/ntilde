@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -145,9 +146,14 @@ public class PtyBackspaceAtLineStartTests
 
         // The parse runs on the session's own output thread, exactly as it does in a live pane; the
         // buffer's reader/writer lock is what makes the reads below safe against it.
-        session.OnOutputReceived += text => parser.Process(text);
+        var stream = new StreamRecord();
+        session.OnOutputReceived += text =>
+        {
+            stream.Add(text);
+            parser.Process(text);
+        };
 
-        CursorContext before = await WaitForASettledPromptAsync(buffer, label);
+        CursorContext before = await WaitForASettledPromptAsync(buffer, label, session, stream);
 
         // Leg one: prove the write path works and the shell is echoing. If this times out the failure
         // names the real cause instead of surfacing later as a meaningless prompt diff.
@@ -163,9 +169,13 @@ public class PtyBackspaceAtLineStartTests
         // there is nothing to wait for except the state we are asserting, and on a fast box this costs
         // one poll interval instead of two seconds on every CI run.
         session.SendInput(FiveDeletes);
+        // The end state is the prompt and caret back *and* the probe gone from the row. PSReadLine moves
+        // the caret back before it repaints the erased cells, so on a loaded box the caret alone came back
+        // a poll or more before the erase landed and the row check below read a half-drawn line (#391:
+        // 17 of 40 runs under CPU load locally).
         CursorContext after = await WaitForAsync(
             buffer,
-            context => context == before,
+            context => context == before && !ReadCursorRowText(buffer).Contains(Probe, StringComparison.Ordinal),
             $"'{label}' did not return to its original prompt after {FiveDeletes.Length} deletes over " +
             $"{Probe.Length} typed characters. Expected '{Describe(before.TextBeforeCursor)}' at " +
             $"({before.Row},{before.Col})");
@@ -186,7 +196,8 @@ public class PtyBackspaceAtLineStartTests
     /// gating job with no <c>continue-on-error</c>, and on a cold runner still repainting at the cap
     /// the old behaviour surfaced as a prompt diff that said nothing about the real cause.
     /// </remarks>
-    private static async Task<CursorContext> WaitForASettledPromptAsync(TerminalBuffer buffer, string label)
+    private static async Task<CursorContext> WaitForASettledPromptAsync(
+        TerminalBuffer buffer, string label, RustPtySession session, StreamRecord stream)
     {
         CursorContext previous = default;
 
@@ -203,10 +214,51 @@ public class PtyBackspaceAtLineStartTests
             previous = current;
         }
 
+        // #391: this failed on windows-latest about once in fifty runs with an empty grid, and an empty
+        // grid alone cannot say whether the shell was still starting, waiting on a handshake reply, gone,
+        // or drawing into output that never reached the parser. What did arrive, and whether the shell
+        // is alive, tells those apart.
         Assert.Fail(
             $"'{label}' never settled on a prompt within {PollAttempts * PollIntervalMs / 1000}s. " +
-            $"Last read was '{Describe(previous.TextBeforeCursor)}' at ({previous.Row},{previous.Col}).");
+            $"Last read was '{Describe(previous.TextBeforeCursor)}' at ({previous.Row},{previous.Col}). " +
+            $"Shell pid {session.Pid?.ToString(CultureInfo.InvariantCulture) ?? "none"}, running: {session.IsProcessRunning}, " +
+            $"exit code: {session.ExitCode?.ToString(CultureInfo.InvariantCulture) ?? "none"}. {stream.Describe()}");
         return default;
+    }
+
+    /// <summary>What the session delivered to the parser: chunk count, length, and the start of it.</summary>
+    private sealed class StreamRecord
+    {
+        private const int Kept = 600;
+        private readonly StringBuilder _head = new();
+        private int _chunks;
+        private long _chars;
+
+        public void Add(string chunk)
+        {
+            lock (_head)
+            {
+                _chunks++;
+                _chars += chunk.Length;
+                if (_head.Length < Kept)
+                {
+                    _head.Append(chunk, 0, Math.Min(chunk.Length, Kept - _head.Length));
+                }
+            }
+        }
+
+        public string Describe()
+        {
+            lock (_head)
+            {
+                string head = _head.ToString()
+                    .Replace("\u001b", "<ESC>", StringComparison.Ordinal)
+                    .Replace("\r", "<CR>", StringComparison.Ordinal)
+                    .Replace("\n", "<LF>", StringComparison.Ordinal)
+                    .Replace("\u0007", "<BEL>", StringComparison.Ordinal);
+                return $"Output: {_chunks} chunk(s), {_chars} char(s), starting '{head}'.";
+            }
+        }
     }
 
     private static async Task<CursorContext> WaitForAsync(
