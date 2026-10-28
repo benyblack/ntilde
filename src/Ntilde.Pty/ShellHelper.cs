@@ -18,18 +18,29 @@ namespace Ntilde.Pty
         {
             if (OperatingSystem.IsWindows())
             {
-                string[] shells = { "pwsh.exe", "powershell.exe", "cmd.exe" };
-                foreach (var shell in shells)
-                {
-                    if (InPath(shell)) return shell;
-                }
-                return "cmd.exe";
+                return GetWindowsDefaultShell(InPath);
             }
 
             return GetUnixDefaultShell(
                 Environment.GetEnvironmentVariable,
                 IsLaunchableShell,
                 ReadLoginShellFromPasswd);
+        }
+
+        /// <summary>
+        /// The Windows half of <see cref="GetDefaultShell"/>: the first of PowerShell 7, Windows
+        /// PowerShell and cmd that is on the PATH. <paramref name="inPath"/> is the seam the tests
+        /// drive; production passes <see cref="InPath"/>. The first-run profile list follows the
+        /// same order (#349), so both answer "the default shell" the same way.
+        /// </summary>
+        internal static string GetWindowsDefaultShell(Func<string, bool> inPath)
+        {
+            string[] shells = { "pwsh.exe", "powershell.exe", "cmd.exe" };
+            foreach (var shell in shells)
+            {
+                if (inPath(shell)) return shell;
+            }
+            return "cmd.exe";
         }
 
         /// <summary>

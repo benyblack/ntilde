@@ -63,6 +63,51 @@ public sealed class DefaultProfileAvailabilityTests
         Assert.All(probed, c => Assert.False(string.IsNullOrWhiteSpace(c)));
     }
 
+    // --- The Windows candidates: the first-run default is the shell GetDefaultShell picks. ---
+
+    public static TheoryData<bool, bool, bool> InstalledWindowsShells()
+    {
+        // Every combination with at least one shell; nothing installed is the floor, covered below.
+        var data = new TheoryData<bool, bool, bool>();
+        for (int mask = 1; mask < 8; mask++)
+        {
+            data.Add((mask & 1) != 0, (mask & 2) != 0, (mask & 4) != 0);
+        }
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(InstalledWindowsShells))]
+    public void WindowsCandidates_DefaultTo_TheShellGetDefaultShellPicks(bool pwsh, bool powershell, bool cmd)
+    {
+        // #349: the settings default (Profiles[0]) and the default-shell substitution paths used
+        // to disagree - cmd here, PowerShell there - on any machine with PowerShell installed.
+        bool installed(string command) => command switch
+        {
+            "pwsh.exe" => pwsh,
+            "powershell.exe" => powershell,
+            "cmd.exe" => cmd,
+            _ => false,
+        };
+
+        List<TerminalProfile> profiles = TerminalSettings.GetDefaultProfiles(
+            TerminalSettings.WindowsProfileCandidates,
+            installed);
+
+        Assert.Equal(Ntilde.Pty.ShellHelper.GetWindowsDefaultShell(installed), profiles[0].Command);
+    }
+
+    [Fact]
+    public void WindowsCandidates_OfferEveryInstalledShell()
+    {
+        List<TerminalProfile> profiles = TerminalSettings.GetDefaultProfiles(
+            TerminalSettings.WindowsProfileCandidates,
+            commandExists: _ => true);
+
+        Assert.Equal(["pwsh.exe", "powershell.exe", "cmd.exe"], profiles.Select(p => p.Command));
+    }
+
     // --- The Unix candidates: the login shell leads, and must not duplicate the trio. ---
 
     [Fact]
