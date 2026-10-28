@@ -50,6 +50,10 @@ public sealed class NativePortForwardSession : IDisposable
     private const byte SocksReplyCommandNotSupported = 0x07;
     private const byte SocksReplyAddressTypeNotSupported = 0x08;
 
+    // How long, and how much, a refused SOCKS client may keep sending before its socket is closed anyway.
+    private static readonly TimeSpan RefusalLingerTimeout = TimeSpan.FromSeconds(2);
+    private const int RefusalLingerMaxBytes = 64 * 1024;
+
     private readonly NovaSshSafeHandle _sessionHandle;
     private readonly INativeSshInterop _interop;
     private readonly Action<string> _log;
@@ -832,7 +836,7 @@ public sealed class NativePortForwardSession : IDisposable
             NetworkStream stream = client.GetStream();
             if (!await NegotiateSocks5Async(stream, cancellationToken).ConfigureAwait(false))
             {
-                client.Dispose();
+                await CloseAfterRefusalAsync(client, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -840,7 +844,7 @@ public sealed class NativePortForwardSession : IDisposable
             if (request.Command != SocksCommandConnect)
             {
                 await SendSocksReplyAsync(stream, SocksReplyCommandNotSupported, cancellationToken).ConfigureAwait(false);
-                client.Dispose();
+                await CloseAfterRefusalAsync(client, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -871,7 +875,7 @@ public sealed class NativePortForwardSession : IDisposable
                 {
                     _log($"[NativePortForwardSession] Failed to open dynamic forward channel for {request.Host}:{request.Port}: {ex.Message}");
                     await SendSocksReplyAsync(stream, SocksReplyGeneralFailure, cancellationToken).ConfigureAwait(false);
-                    client.Dispose();
+                    await CloseAfterRefusalAsync(client, cancellationToken).ConfigureAwait(false);
                     return;
                 }
 
@@ -885,9 +889,9 @@ public sealed class NativePortForwardSession : IDisposable
 
             if (!published)
             {
-                await SendSocksReplyAsync(stream, SocksReplyGeneralFailure, cancellationToken).ConfigureAwait(false);
-                client.Dispose();
                 _interop.CloseChannel(_sessionHandle, channelId);
+                await SendSocksReplyAsync(stream, SocksReplyGeneralFailure, cancellationToken).ConfigureAwait(false);
+                await CloseAfterRefusalAsync(client, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -920,7 +924,7 @@ public sealed class NativePortForwardSession : IDisposable
             {
             }
 
-            client.Dispose();
+            await CloseAfterRefusalAsync(client, cancellationToken).ConfigureAwait(false);
         }
         catch (IOException ex)
         {
@@ -1195,6 +1199,49 @@ public sealed class NativePortForwardSession : IDisposable
 
         IPAddress[] addresses = Dns.GetHostAddresses(bindAddress);
         return addresses.First(address => address.AddressFamily is AddressFamily.InterNetwork or AddressFamily.InterNetworkV6);
+    }
+
+    /// <summary>
+    /// Closes a SOCKS client this session refused, without throwing away the reply it was just sent.
+    /// </summary>
+    /// <remarks>
+    /// A refusal can be decided before the whole request is read - a bad reserved byte is caught in the
+    /// 4-byte header, with the address and port still in the socket's receive buffer. Closing a socket with
+    /// unread input sends a reset instead of a FIN, and a reset can discard the reply on the client's side
+    /// before the client reads it: the client sees "connection forcibly closed" rather than the failure code.
+    /// A test that read the reply straight away lost that race now and then on windows-latest.
+    /// So this sends a FIN, reads and drops whatever the client still sends until it closes - bounded in
+    /// time and bytes, since nothing obliges a client to close - and only then closes.
+    /// </remarks>
+    private static async Task CloseAfterRefusalAsync(TcpClient client, CancellationToken cancellationToken)
+    {
+        try
+        {
+            client.Client.Shutdown(SocketShutdown.Send);
+            using var linger = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            linger.CancelAfter(RefusalLingerTimeout);
+            NetworkStream stream = client.GetStream();
+            byte[] discard = new byte[512];
+            int drained = 0;
+            while (drained < RefusalLingerMaxBytes)
+            {
+                int read = await stream.ReadAsync(discard, linger.Token).ConfigureAwait(false);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                drained += read;
+            }
+        }
+        catch
+        {
+            // Best effort: the client went away, timed out, or the session is shutting down.
+        }
+        finally
+        {
+            client.Dispose();
+        }
     }
 
     private static void TryShutdown(TcpClient? client, SocketShutdown how)
