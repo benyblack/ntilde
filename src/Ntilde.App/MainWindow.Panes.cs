@@ -611,7 +611,8 @@ namespace Ntilde
             }
         }
 
-        /// <summary>Opens a tab and returns its pane (null when none was created, or when a template rule rebuilt the window).
+        /// <summary>Opens a tab and returns its pane - for a template-rule tab, the template's active pane - or null when
+        /// none was created.
         /// <paramref name="select"/> false opens it in the background; <paramref name="leaveFocusMode"/> false is for
         /// callers that are not the user (the agent), which must never end focus mode.</summary>
         TerminalPane? AddTab(TerminalProfile? profile = null, SshDiagnosticsLevel sshDiagnostics = SshDiagnosticsLevel.None,
@@ -681,10 +682,12 @@ namespace Ntilde
                 profile.Arguments = string.Empty;
             }
 
-            // A template rule rebuilds and reselects every tab, so a background open never applies one.
-            if (select && TryApplyTemplateRuleForProfile(profile))
+            // A background open never applies a template rule. A template tab can hold several panes, and a pane
+            // starts its shell on its first layout, which a background tab never gets: an agent's background spawn
+            // starts only the pane it is handed back.
+            if (select && TryApplyTemplateRuleForProfile(profile, out TerminalPane? templatePane))
             {
-                return null;
+                return templatePane;
             }
 
             var pane = new TerminalPane(profile, sshDiagnostics);
