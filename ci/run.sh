@@ -34,8 +34,16 @@ echo "=== RESTORE ==="
 echo "=== BUILD RELEASE ==="
 "$BUILD" build -c Release
 
+# The same lanes as ci.yml's Unit Tests job. A bare `test` would run App.Tests in one process,
+# and its PlatformBoot tests must not share a process with the rest: mixing them makes later
+# headless tests time out and the testhost hang (see the PlatformBoot comment in ci.yml).
 echo "=== TEST ==="
-"$BUILD" test -c Release --no-build
+filter="Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng"
+for proj in VT Rendering Architecture Platform McpServer Mux; do
+    "$BUILD" test "$SCRIPT_DIR/../tests/Ntilde.$proj.Tests" -c Release --no-build --filter "$filter"
+done
+"$BUILD" test "$SCRIPT_DIR/../tests/Ntilde.App.Tests" -c Release --no-build --blame-hang-timeout 5m --filter "$filter&Lane!=PlatformBoot"
+"$BUILD" test "$SCRIPT_DIR/../tests/Ntilde.App.Tests" -c Release --no-build --blame-hang-timeout 5m --filter "Lane=PlatformBoot&Category!=GoldenSharedPng"
 
 echo "=== REPLAY TESTS ==="
 "$BUILD" test -c Release --filter Category=Replay

@@ -284,10 +284,10 @@ public sealed class SettingsWindowFrameTests
         Step(() => blur.SelectedItem = blur.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "Mica"), "blur:Mica");
 
         // The three background-image controls share one event carrying all three values.
-        Step(() => page.FindControl<TextBox>("BgImagePathInput")!.Text = "/pic.png", "bg:/pic.png|0.5|UniformToFill");
-        Step(() => page.FindControl<Slider>("BgImageOpacitySlider")!.Value = 0.25, "bg:/pic.png|0.25|UniformToFill");
+        Step(() => page.FindControl<TextBox>("BgImagePathInput")!.Text = "/pic.png", $"bg:/pic.png|{0.5}|UniformToFill");
+        Step(() => page.FindControl<Slider>("BgImageOpacitySlider")!.Value = 0.25, $"bg:/pic.png|{0.25}|UniformToFill");
         var stretch = page.FindControl<ComboBox>("BgImageStretchList")!;
-        Step(() => stretch.SelectedItem = stretch.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Tag == "Fill"), "bg:/pic.png|0.25|Fill");
+        Step(() => stretch.SelectedItem = stretch.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Tag == "Fill"), $"bg:/pic.png|{0.25}|Fill");
 
         var themes = page.FindControl<ComboBox>("ThemeList")!;
         Step(() => themes.SelectedItem = themes.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "GitHub Light"), "theme:GitHub Light");
