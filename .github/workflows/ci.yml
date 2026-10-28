@@ -90,7 +90,7 @@ jobs:
         # each platform is in which trigger. It is not stylistic: that job downloads
         # `dotnet-build-${{ matrix.os }}` from this one, so a platform present there and
         # absent here fails at artifact download rather than anywhere informative.
-        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || github.event_name == 'schedule' && '["windows-latest","ubuntu-latest","ubuntu-24.04-arm"]' || '["windows-latest","ubuntu-latest"]') }}
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || github.event_name == 'schedule' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || '["windows-latest","ubuntu-latest"]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -271,14 +271,17 @@ jobs:
         # shape as #325, same cost: a platform-only defect that can only be discovered
         # at the moment it blocks a release.
         #
-        # ON SCHEDULE AS WELL AS DISPATCH, and that is the difference from macOS above.
-        # Dispatch-only makes a platform *reachable*; it does not make it *checked*,
-        # because it still waits for someone to think of running it - which for arm64
-        # nobody did. The nightly cron already exists, so the same defect would now be
-        # caught within a day instead of at the next release. Still not on pull requests:
-        # a PR-blocking leg on every push is a different cost decision, and this one is
-        # already the cheap 95% of the value.
-        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || github.event_name == 'schedule' && '["windows-latest","ubuntu-latest","ubuntu-24.04-arm"]' || '["windows-latest","ubuntu-latest"]') }}
+        # ON SCHEDULE AS WELL AS DISPATCH. Dispatch-only makes a platform *reachable*; it
+        # does not make it *checked*, because it still waits for someone to think of running
+        # it - which for arm64 nobody did. The nightly cron already exists, so the same
+        # defect would now be caught within a day instead of at the next release. Still not
+        # on pull requests: a PR-blocking leg on every push is a different cost decision,
+        # and this one is already the cheap 95% of the value.
+        #
+        # macOS joined the schedule for the same reason, having cost the same way: 22
+        # focus-mode tests (#595, #607) pressed Ctrl where macOS binds Cmd, and merged green
+        # because no pull request runs the tests on macOS (#612).
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || github.event_name == 'schedule' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || '["windows-latest","ubuntu-latest"]') }}
 
     steps:
       - uses: actions/checkout@v4
