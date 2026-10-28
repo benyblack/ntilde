@@ -461,7 +461,9 @@ public class SessionToolsFormattingTests
 
         Assert.Contains("NEEDS THE USER", status, StringComparison.Ordinal);
         Assert.Contains("password", status, StringComparison.Ordinal);
-        Assert.Contains("spawn a new session", status, StringComparison.Ordinal);
+        // The user's sign-in brings this session back; a new one would have to sign in again on its own.
+        Assert.Contains("comes back", status, StringComparison.Ordinal);
+        Assert.Contains("Do not spawn a new session", status, StringComparison.Ordinal);
 
         var events = SessionTools.FormatEvents(new WaitForEventsResult
         {

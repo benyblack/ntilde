@@ -425,7 +425,7 @@ public sealed class SessionTools
             AgentHostProtocol.NeedsUserReasons.HostKey =>
                 "its server's host key is not trusted yet. Once the user connects and trusts it, new sessions get in without asking.",
             AgentHostProtocol.NeedsUserReasons.ChangedHostKey =>
-                "its server presented a host key that is NOT the one the user trusted - the server may have been reinstalled, or the connection intercepted. Only the user can check it; do not retry until they have.",
+                "its server presented a host key that is NOT the one the user trusted - the server may have been reinstalled, or the connection intercepted. Only the user can check it.",
             AgentHostProtocol.NeedsUserReasons.Password =>
                 "its server asked for a password, and none is saved for this profile. If the user saves it when they connect, new sessions get in without asking.",
             AgentHostProtocol.NeedsUserReasons.Passphrase =>
@@ -435,7 +435,9 @@ public sealed class SessionTools
             _ => $"its server asked for something only the user can give ({needsUser}).",
         };
         return $"NEEDS THE USER: this session never showed the user a sign-in dialog, and it ended because {asked} "
-            + "Ask the user to connect to this profile themselves (Enter in this session's tab does it), then close this session and spawn a new session.";
+            + "Ask the user to sign in from this session's tab: pressing Enter there connects as them, with the dialogs. "
+            + "This same session then comes back - ntilde.wait_for_events reports its status leaving exited - and its paneId keeps working. "
+            + "Do not spawn a new session for it: a new one would have to sign in again on its own.";
     }
 
     internal static string FormatEvents(WaitForEventsResult dto, long sinceSeq)

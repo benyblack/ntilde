@@ -45,9 +45,12 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
   native SSH session and the server asks for something only you can give (a host key you have not
   trusted, a password that is not saved, a key passphrase, a one-time code), the session ends
   instead of raising a host-key or password dialog that would take your keystrokes. The tab says
-  what the server asked, and Enter there connects as you, with the usual dialogs. The agent is told
-  why its session ended (`needsUser` in its session status). To let agents in on their own, connect
-  to the profile once yourself, trust its host key and save its password.
+  what the server asked, and Enter there connects as you, with the usual dialogs; the agent is told
+  why its session ended (`needsUser` in its session status) and carries on in that tab once you
+  have signed in. To let agents in on their own, connect to the profile once yourself, trust its
+  host key and save its password.
+- **A pane whose shell exited comes back for agents.** After Enter restarts or reconnects it, an
+  agent's session status starts over instead of staying `exited`.
 
 ## 0.12.0
 

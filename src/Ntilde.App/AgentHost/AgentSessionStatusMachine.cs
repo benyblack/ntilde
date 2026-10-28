@@ -152,6 +152,34 @@ namespace Ntilde.AgentHost
             });
         }
 
+        /// <summary>
+        /// The pane published a new session. After an exit - Enter on a dead pane; for #610, the user signing in to an agent's
+        /// SSH tab that stopped for them - the status starts over as a fresh session's, and the change is announced: exited is
+        /// final for a session, not for its pane. While the last session is live (a mux reattach swaps sessions under a
+        /// running shell) nothing changes.
+        /// </summary>
+        public void NotifySessionStarted()
+        {
+            RunUnderGate(now =>
+            {
+                if (!_exited) return null;
+
+                _exited = false;
+                _exitCode = null;
+                _needsUser = null;
+                // The new shell has to show its shell integration again before the status is precise.
+                _precise = false;
+                _promptSeen = false;
+                _commandInFlight = false;
+                _altScreenActive = false;
+                _hasActiveChildren = false;
+                _currentCommand = null;
+                _commandStartedAt = null;
+                _lastOutputAt = now;
+                return null;
+            });
+        }
+
         /// <param name="needsUser">Why an SSH connection an agent opened stopped for the user (#610); null for any other exit.</param>
         public void NotifyExited(int exitCode, AgentNeedsUserReason? needsUser = null)
         {

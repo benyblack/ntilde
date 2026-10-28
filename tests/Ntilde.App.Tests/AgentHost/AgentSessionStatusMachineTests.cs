@@ -229,6 +229,48 @@ public class AgentSessionStatusMachineTests
         Assert.Null(snapshot.NeedsUser);
     }
 
+    /// <summary>
+    /// #610: exited is final for a session, not for its pane. When the pane starts a new one - the user signing in to an
+    /// agent's SSH tab that stopped for them - the status starts over and says so, so the agent can carry on in that tab.
+    /// </summary>
+    [Fact]
+    public void A_new_session_after_an_exit_starts_the_status_over_and_announces_it()
+    {
+        var (machine, clock, events) = Make();
+        machine.NotifyPromptReady();
+        machine.NotifyExited(-1, AgentNeedsUserReason.Password);
+        clock.Advance(TimeSpan.FromSeconds(5));
+        events.Clear();
+
+        machine.NotifySessionStarted();
+
+        var snapshot = machine.Snapshot();
+        Assert.Equal(AgentSessionStatusKind.AwaitingInput, snapshot.Kind);
+        Assert.Equal(AgentSessionStatusConfidence.Heuristic, snapshot.Confidence); // the new shell has to show its integration again
+        Assert.Null(snapshot.ExitCode);
+        Assert.Null(snapshot.NeedsUser);
+        Assert.Equal(clock.Now, snapshot.StatusSince);
+        var restarted = Assert.Single(events);
+        Assert.Equal(AgentSessionEventType.StatusChanged, restarted.Type);
+        Assert.Equal(AgentSessionStatusKind.AwaitingInput, restarted.Status);
+    }
+
+    /// <summary>A session swapped under a live shell (a mux reattach) is the same session: nothing starts over.</summary>
+    [Fact]
+    public void A_new_session_while_the_last_one_is_live_changes_nothing()
+    {
+        var (machine, _, events) = Make();
+        machine.NotifyCommandAccepted("make");
+        machine.NotifyCommandStarted();
+        events.Clear();
+
+        machine.NotifySessionStarted();
+
+        Assert.Equal(AgentSessionStatusKind.Running, machine.Snapshot().Kind);
+        Assert.Equal("make", machine.Snapshot().CurrentCommand);
+        Assert.Empty(events);
+    }
+
     /// <summary>#610: an SSH connection an agent opened that stopped for the user says what it needed, in both places an agent reads.</summary>
     [Fact]
     public void Exit_that_needs_the_user_says_why_in_the_snapshot_and_the_exit_event()

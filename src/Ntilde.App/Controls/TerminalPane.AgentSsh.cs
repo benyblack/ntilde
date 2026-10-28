@@ -74,7 +74,7 @@ namespace Ntilde.Controls
             };
             return "\r\n[SSH session disconnected]\r\n" +
                 $"[An agent opened this connection, and the server asked {asked}. A connection an agent opens never shows a sign-in dialog.]\r\n" +
-                $"[Press Enter to connect yourself.{next}]\r\n";
+                $"[Press Enter to connect yourself; the agent can carry on in this tab once you have.{next}]\r\n";
         }
 
         /// <summary>What the agent is told its session stopped for (<see cref="AgentSessionStatusSnapshot.NeedsUser"/>).</summary>

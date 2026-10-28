@@ -518,6 +518,13 @@ public class PaneSshSessionFactoryTests
         Assert.Equal(
             Ntilde.AgentHost.AgentNeedsUserReason.HostKey,
             pane.AgentRegistrationForTesting!.StatusMachine.Snapshot().NeedsUser);
+
+        // The user signs in there: the same pane comes back for the agent, with no reason left on it.
+        pane.ReconnectByUser();
+        pane.InitializeSessionCore(profile.Command, profile.Arguments, profile, cols: 120, rows: 24);
+        var restarted = pane.AgentRegistrationForTesting!.StatusMachine.Snapshot();
+        Assert.NotEqual(Ntilde.AgentHost.AgentSessionStatusKind.Exited, restarted.Kind);
+        Assert.Null(restarted.NeedsUser);
     }
 
     /// <summary>A connection that ended on its own, with nothing asked of the user, ends as any SSH pane does.</summary>

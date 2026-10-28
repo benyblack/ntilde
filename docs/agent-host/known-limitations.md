@@ -68,20 +68,19 @@ one that changed; a password nobody saved; a key passphrase; a one-time code.
 The session exits, `get_session_status` and its exit event on
 `wait_for_events` carry `needsUser` (`hostKey`, `changedHostKey`, `password`,
 `passphrase`, `keyboardInteractive`), and the pane tells the user what was
-asked. Enter in that pane reconnects as the user, with dialogs. A password
-the user typed in another tab is not offered to the agent's connection: it is
-remembered per session.
+asked. Enter in that pane reconnects as the user, with dialogs, and the same
+session comes back for the agent: its status starts over, announced by a
+`statusChanged` event, and its paneId keeps working. That is the way through
+for a typed password or a one-time code, which a new session would have to
+ask for again. A password the user typed in another tab is not offered to the
+agent's connection: it is remembered per session.
 
 So before allowlisting a profile for agents, connect to it once yourself,
 trust its host key, and save its password. OpenSSH-backend sessions are not
 affected: ssh prompts in the terminal itself, in the pane.
 
-**Still open:**
-- A profile whose sessions persist on its host connects through that host's
-  own prompts, which can still show a dialog for an agent's spawn.
-- The status of a pane is per pane, and `exited` is final: after the user
-  reconnects it, the agent still sees `exited`. Close it and spawn a new
-  session.
+**Still open:** a profile whose sessions persist on its host connects through
+that host's own prompts, which can still show a dialog for an agent's spawn.
 
 ## Other parked follow-ups
 

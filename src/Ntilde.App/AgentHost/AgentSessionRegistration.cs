@@ -206,6 +206,9 @@ namespace Ntilde.AgentHost
                 {
                     TryApplyFlightRecording(session, maxBytes);
                 }
+
+                // A pane whose session exited is live again (#610: the user signed in to an agent's SSH tab).
+                StatusMachine.NotifySessionStarted();
             }
         }
 
