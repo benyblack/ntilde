@@ -786,7 +786,7 @@ namespace Ntilde.Pty
                 if (shellLower.EndsWith("cmd.exe"))
                 {
                     effectiveShell = shellCommand;
-                    combinedArgs = "/k chcp 65001 " + combinedArgs;
+                    combinedArgs = CmdCodePageArgs.Merge(combinedArgs);
                 }
                 else if (shellLower.Contains("powershell") || shellLower.Contains("pwsh"))
                 {
