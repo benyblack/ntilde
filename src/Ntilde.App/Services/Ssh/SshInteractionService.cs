@@ -353,12 +353,40 @@ public sealed class SshInteractionService : ISshInteractionService
         return viewModel;
     }
 
+    /// <summary>
+    /// What a prompt asked of the user, as its dialog would have said: a host key other than the one the user trusted is a
+    /// changed one, which the native layer does not know.
+    /// </summary>
+    private SshInteractionKind NeedsUserKindOf(SshInteractionRequest request)
+    {
+        return request.Kind == SshInteractionKind.UnknownHostKey
+            && _knownHostsStore.CheckHost(request.Host, request.Port, request.Algorithm, request.Fingerprint) == NativeKnownHostMatch.Mismatch
+                ? SshInteractionKind.ChangedHostKey
+                : request.Kind;
+    }
+
     /// <summary><see cref="WithoutDialogs"/>: the window's prompts, minus their dialogs.</summary>
     private sealed class WithoutDialogsHandler(SshInteractionService owner, Action<SshInteractionKind> needsUser) : ISshInteractionHandler
     {
         public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
         {
             return owner.HandleAsync(request, needsUser, cancellationToken);
+        }
+
+        /// <summary>
+        /// The shared connection this tab joined was refused a prompt by the tab that opened it, and ends: this tab's shell
+        /// stopped for the same reason (Codex review of #629). Reported on the UI thread, as a refusal of its own is, and
+        /// ahead of the shell's exit, which is posted later.
+        /// </summary>
+        public void RefusedOnSharedConnection(SshInteractionRequest request)
+        {
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                needsUser(owner.NeedsUserKindOf(request));
+                return;
+            }
+
+            Dispatcher.UIThread.Post(() => needsUser(owner.NeedsUserKindOf(request)), DispatcherPriority.Send);
         }
     }
 }

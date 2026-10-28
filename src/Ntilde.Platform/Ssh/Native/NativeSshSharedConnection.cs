@@ -156,7 +156,8 @@ internal sealed class NativeSshSharedConnection
     public void Abandon() => Close();
 
     /// <summary>A new lease, or null when the connection has already closed. Cancels a pending ControlPersist close.</summary>
-    internal Lease? TryAddLease(Action<string> warn, TimeSpan persist)
+    /// <param name="handler">The joining tab's prompt handler: told when a prompt it was not asked is refused (#610).</param>
+    internal Lease? TryAddLease(Action<string> warn, TimeSpan persist, ISshInteractionHandler? handler = null)
     {
         Lease lease;
         string[] setupWarnings;
@@ -171,7 +172,7 @@ internal sealed class NativeSshSharedConnection
             _persistTimer = null;
             // The profile as the latest tab saw it decides how long the connection lingers.
             _persist = persist;
-            lease = new Lease(this, warn);
+            lease = new Lease(this, warn, handler);
             _leases.Add(lease);
             setupWarnings = [.. _setupWarnings];
         }
@@ -207,6 +208,38 @@ internal sealed class NativeSshSharedConnection
         if (closeNow)
         {
             Close();
+        }
+    }
+
+    /// <summary>
+    /// <see cref="NativeSshPromptResponder"/>'s answer to one of this connection's prompts, before it is sent. A refusal ends
+    /// the connection, and every shell on it, but only the opener's handler was asked: each other tab's is told what was
+    /// refused (#610), before its shell can end, so it can say why.
+    /// </summary>
+    private void OnPromptAnswered(SshInteractionRequest request, SshInteractionResponse response)
+    {
+        if (!response.IsCanceled)
+        {
+            return;
+        }
+
+        ISshInteractionHandler[] joined;
+        lock (_gate)
+        {
+            joined = [.. _leases.Select(lease => lease.Handler).OfType<ISshInteractionHandler>()
+                .Where(handler => !ReferenceEquals(handler, _interactionHandler)).Distinct()];
+        }
+
+        foreach (ISshInteractionHandler handler in joined)
+        {
+            try
+            {
+                handler.RefusedOnSharedConnection(request);
+            }
+            catch (Exception ex) when (ex is not (OutOfMemoryException or AccessViolationException))
+            {
+                _log($"[NativeSshSharedConnection] target={_target} a tab's handler failed on a refused prompt: {ex.Message}");
+            }
         }
     }
 
@@ -319,7 +352,7 @@ internal sealed class NativeSshSharedConnection
                     case NativeSshEventKind.PasswordPrompt:
                     case NativeSshEventKind.PassphrasePrompt:
                     case NativeSshEventKind.KeyboardInteractivePrompt:
-                        await _promptResponder.RespondAsync(nextEvent, _interop, _handle, _interactionHandler, _pollCts.Token).ConfigureAwait(false);
+                        await _promptResponder.RespondAsync(nextEvent, _interop, _handle, _interactionHandler, _pollCts.Token, OnPromptAnswered).ConfigureAwait(false);
                         break;
                     case NativeSshEventKind.Error:
                         // Each tab's shell reports the failure in its own terminal; this is for the log.
@@ -353,13 +386,17 @@ internal sealed class NativeSshSharedConnection
         private readonly Action<string> _warn;
         private int _disposed;
 
-        internal Lease(NativeSshSharedConnection connection, Action<string> warn)
+        internal Lease(NativeSshSharedConnection connection, Action<string> warn, ISshInteractionHandler? handler)
         {
             Connection = connection;
             _warn = warn;
+            Handler = handler;
         }
 
         public NativeSshSharedConnection Connection { get; }
+
+        /// <summary>The prompt handler of the tab holding the lease (<see cref="OnPromptAnswered"/>), or null.</summary>
+        internal ISshInteractionHandler? Handler { get; }
 
         internal void Warn(string message)
         {

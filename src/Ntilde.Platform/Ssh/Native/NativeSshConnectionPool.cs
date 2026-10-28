@@ -58,7 +58,7 @@ public sealed class NativeSshConnectionPool
         lock (_gate)
         {
             if (_connections.TryGetValue(key, out NativeSshSharedConnection? running)
-                && running.TryAddLease(warn, persist) is { } lease)
+                && running.TryAddLease(warn, persist, opener.InteractionHandler) is { } lease)
             {
                 reused = true;
                 return lease;
@@ -68,7 +68,7 @@ public sealed class NativeSshConnectionPool
             var connection = new NativeSshSharedConnection(this, key, profile, options, opener);
             _connections[key] = connection;
             reused = false;
-            return connection.TryAddLease(warn, persist)
+            return connection.TryAddLease(warn, persist, opener.InteractionHandler)
                 ?? throw new InvalidOperationException("A new shared native SSH connection refused its first lease.");
         }
     }

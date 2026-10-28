@@ -46,12 +46,14 @@ internal sealed class NativeSshPromptResponder
     /// handler, the answer is a cancel. The native session waits for the answer, so its caller should
     /// stop polling until this completes.
     /// </summary>
+    /// <param name="answered">Called with the request and its answer just before the answer is submitted.</param>
     public async Task RespondAsync(
         NativeSshEvent promptEvent,
         INativeSshInterop interop,
         NovaSshSafeHandle sessionHandle,
         ISshInteractionHandler? handler,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<SshInteractionRequest, SshInteractionResponse>? answered = null)
     {
         ArgumentNullException.ThrowIfNull(promptEvent);
         ArgumentNullException.ThrowIfNull(interop);
@@ -70,6 +72,7 @@ internal sealed class NativeSshPromptResponder
             _ => throw new InvalidOperationException($"Unsupported interaction event '{promptEvent.Kind}'.")
         };
 
+        answered?.Invoke(request, response);
         byte[] payload = NativeSshInteractionJson.BuildResponsePayload(responseKind, response);
         try
         {

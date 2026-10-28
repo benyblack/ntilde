@@ -1113,6 +1113,41 @@ public sealed class SshInteractionServiceTests
         Assert.Equal([SshInteractionKind.Passphrase, SshInteractionKind.KeyboardInteractive], needed);
     }
 
+    /// <summary>
+    /// #610: a tab that joined a shared connection is not asked its prompts - the tab that opened it is - but one that is
+    /// refused ends the connection for it too. It is told what was asked, on the UI thread, with the reason its own
+    /// refusal would have given: a host key that is not the trusted one says so.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task WithoutDialogs_APromptRefusedOnASharedConnection_IsReportedAsNeedingTheUser()
+    {
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            var knownHosts = new NativeKnownHostsStore(Path.Combine(tempRoot, "native_known_hosts.json"));
+            knownHosts.TrustHost("example.internal", 22, "ssh-ed25519", "SHA256:old");
+            var needed = new List<SshInteractionKind>();
+            var service = new SshInteractionService(ownerProvider: () => new Window(), knownHostsStore: knownHosts);
+            ISshInteractionHandler joined = service.WithoutDialogs(kind =>
+            {
+                Assert.True(Dispatcher.UIThread.CheckAccess());
+                needed.Add(kind);
+            });
+
+            // The shared connection's poll thread reports it.
+            await Task.Run(() => joined.RefusedOnSharedConnection(
+                new SshInteractionRequest { Kind = SshInteractionKind.Password, Prompt = "Password:" }));
+            await Task.Run(() => joined.RefusedOnSharedConnection(HostKeyRequest("SHA256:new")));
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal([SshInteractionKind.Password, SshInteractionKind.ChangedHostKey], needed);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
     private static SshInteractionRequest HostKeyRequest(string fingerprint) => new()
     {
         Kind = SshInteractionKind.UnknownHostKey,

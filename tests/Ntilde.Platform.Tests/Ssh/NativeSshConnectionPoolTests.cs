@@ -428,6 +428,74 @@ public sealed class NativeSshConnectionPoolTests
         Assert.Throws<InvalidOperationException>(() => new NativeSshSession(profile, interop: new SharingInterop(), connectionPool: new NativeSshConnectionPool()));
     }
 
+    /// <summary>
+    /// #610: only the tab that opened a shared connection answers its prompts. One it refuses ends the connection, and
+    /// every shell on it, so each tab that joined while it was logging in is told what was refused - before the refusal
+    /// is sent, so before its shell can end - and can say why its shell ended too.
+    /// </summary>
+    [Fact]
+    public async Task APromptTheOpenerRefused_IsReportedToEveryTabThatJoined_BeforeItIsSent()
+    {
+        var interop = new SharingInterop();
+        var pool = new NativeSshConnectionPool();
+        SshProfile profile = CreateProfile();
+        var opener = new RecordingHandler(SshInteractionResponse.Cancel());
+        var joiner = new RecordingHandler(SshInteractionResponse.Cancel());
+        int refusalsSeenWhenSent = -1;
+        interop.BeforeResponse = () => refusalsSeenWhenSent = joiner.RefusedElsewhere.Count;
+
+        using NativeSshSession first = new(profile, interop: interop, interactionHandler: opener, connectionPool: pool);
+        using NativeSshSession second = new(profile, interop: interop, interactionHandler: joiner, connectionPool: pool);
+        interop.Enqueue(interop.Connections.Single(), PasswordPrompt());
+
+        await WaitUntilAsync(() => !interop.Responses.IsEmpty);
+        Assert.Equal(SshInteractionKind.Password, Assert.Single(opener.Asked));
+        Assert.Empty(joiner.Asked);
+        Assert.Equal(SshInteractionKind.Password, Assert.Single(joiner.RefusedElsewhere).Kind);
+        Assert.Equal(1, refusalsSeenWhenSent);
+        Assert.Empty(opener.RefusedElsewhere); // it refused the prompt itself
+    }
+
+    /// <summary>A prompt the opener answered is nothing the tabs that joined need to hear about.</summary>
+    [Fact]
+    public async Task APromptTheOpenerAnswered_IsNotReportedToTheTabsThatJoined()
+    {
+        var interop = new SharingInterop();
+        var pool = new NativeSshConnectionPool();
+        SshProfile profile = CreateProfile();
+        var opener = new RecordingHandler(SshInteractionResponse.FromSecret("secret"));
+        var joiner = new RecordingHandler(SshInteractionResponse.Cancel());
+
+        using NativeSshSession first = new(profile, interop: interop, interactionHandler: opener, connectionPool: pool);
+        using NativeSshSession second = new(profile, interop: interop, interactionHandler: joiner, connectionPool: pool);
+        interop.Enqueue(interop.Connections.Single(), PasswordPrompt());
+
+        await WaitUntilAsync(() => !interop.Responses.IsEmpty);
+        Assert.Single(opener.Asked);
+        Assert.Empty(joiner.RefusedElsewhere);
+    }
+
+    private static NativeSshEvent PasswordPrompt() =>
+        new(NativeSshEventKind.PasswordPrompt, """{"host":"native.example","port":22,"user":"nova","prompt":"Password:"}"""u8.ToArray());
+
+    /// <summary>Answers every prompt with one response, and records what it was asked and what was refused elsewhere.</summary>
+    private sealed class RecordingHandler(SshInteractionResponse response) : ISshInteractionHandler
+    {
+        private readonly ConcurrentQueue<SshInteractionKind> _asked = new();
+        private readonly ConcurrentQueue<SshInteractionRequest> _refusedElsewhere = new();
+
+        public IReadOnlyList<SshInteractionKind> Asked => _asked.ToArray();
+        public IReadOnlyList<SshInteractionRequest> RefusedElsewhere => _refusedElsewhere.ToArray();
+
+        public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
+        {
+            _asked.Enqueue(request.Kind);
+            return Task.FromResult(response);
+        }
+
+        public void RefusedOnSharedConnection(SshInteractionRequest request) => _refusedElsewhere.Enqueue(request);
+    }
+
     private sealed class ThrowingHandler : ISshInteractionHandler
     {
         public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken) =>
@@ -607,8 +675,14 @@ public sealed class NativeSshConnectionPoolTests
         {
         }
 
-        public void SubmitResponse(NovaSshSafeHandle sessionHandle, NativeSshResponseKind responseKind, ReadOnlySpan<byte> data) =>
+        /// <summary>Runs as a response is submitted, before it is recorded: what a test sees the moment a prompt is answered.</summary>
+        public Action? BeforeResponse { get; set; }
+
+        public void SubmitResponse(NovaSshSafeHandle sessionHandle, NativeSshResponseKind responseKind, ReadOnlySpan<byte> data)
+        {
+            BeforeResponse?.Invoke();
             Responses.Enqueue((sessionHandle.DangerousGetHandle(), responseKind));
+        }
 
         public void Close(NovaSshSafeHandle sessionHandle) => ClosedHandles.Add(sessionHandle.DangerousGetHandle());
 
