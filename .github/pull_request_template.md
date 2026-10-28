@@ -31,7 +31,9 @@ Fixes #
        cannot be merged — see CONTRIBUTING.md. -->
 
 - **Which categories did you run locally?**
-  <!-- A bare `scripts/build.sh test` applies no filter and runs everything. But
+  <!-- A bare `scripts/build.sh test` applies no filter and runs everything in one
+       process per project, which hangs App.Tests (its PlatformBoot lane must run in its
+       own process); the TEST step of `ci/run.sh` runs the lanes CI does. But
        CI's gating job EXCLUDES Replay, RenderMetrics, PtySmoke, Stress and
        GoldenSharedPng (each gets a dedicated job, some only on main), so a
        failure there may not show on this PR. If your change touches one of
@@ -39,7 +41,7 @@ Fixes #
        on this PR, on failures and on hangs; running it locally first just
        saves a CI round trip. -->
 
-  - [ ] full unfiltered run (`scripts/build.sh test`)
+  - [ ] gating unit lanes (the TEST step of `ci/run.sh` / `ci/run.ps1`)
   - [ ] `Category=Replay`
   - [ ] `Category=RenderMetrics`
   - [ ] `Category=PtySmoke`

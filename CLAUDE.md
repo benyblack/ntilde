@@ -14,6 +14,13 @@ Examples:
 
 The wrappers pass `-nodeReuse:false` and set `DOTNET_CLI_USE_MSBUILD_SERVER=0`, which is required when stdout/stderr is captured by a parent (Claude Code's Bash tool, CI runners, test harnesses).
 
+### Running the full App.Tests suite
+
+Never run `tests/Ntilde.App.Tests` unfiltered. CI runs it as two separate processes, and mixing them makes the mux/remote/window tests time out and the testhost hang (see the PlatformBoot comment in `.github/workflows/ci.yml`). `ci/run.sh` / `ci/run.ps1` run every lane; to run just App.Tests, use the same two lanes CI does:
+
+- `scripts/build.sh test tests/Ntilde.App.Tests --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot"`
+- `scripts/build.sh test tests/Ntilde.App.Tests --no-build --filter "Lane=PlatformBoot&Category!=GoldenSharedPng"`
+
 ### Why this matters
 
 A raw `dotnet build` invocation spawns long-lived daemons — the MSBuild worker node pool (24h `nodeReuse` default), the dotnet MSBuild build server, and `VBCSCompiler`. These daemons inherit the caller's stdout/stderr handles, so a parent process reading via pipes never sees EOF and hangs indefinitely. The hang typically appears stuck in `BuildCliShim` because that's the last target to emit output before silence.

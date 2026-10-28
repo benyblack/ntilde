@@ -34,8 +34,17 @@ Write-Host "=== RESTORE ==="
 Write-Host "=== BUILD RELEASE ==="
 & $build build -c Release
 
+# The same lanes as ci.yml's Unit Tests job. A bare `test` would run App.Tests in one process,
+# and its PlatformBoot tests must not share a process with the rest: mixing them makes later
+# headless tests time out and the testhost hang (see the PlatformBoot comment in ci.yml).
 Write-Host "=== TEST ==="
-& $build test -c Release --no-build
+$filter = "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng"
+$tests = Join-Path $PSScriptRoot "..\tests"
+foreach ($proj in "VT", "Rendering", "Architecture", "Platform", "McpServer", "Mux") {
+    & $build test (Join-Path $tests "Ntilde.$proj.Tests") -c Release --no-build --filter $filter
+}
+& $build test (Join-Path $tests "Ntilde.App.Tests") -c Release --no-build --filter "$filter&Lane!=PlatformBoot"
+& $build test (Join-Path $tests "Ntilde.App.Tests") -c Release --no-build --filter "Lane=PlatformBoot&Category!=GoldenSharedPng"
 
 Write-Host "=== REPLAY TESTS ==="
 & $build test -c Release --filter Category=Replay
