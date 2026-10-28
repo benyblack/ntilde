@@ -485,8 +485,20 @@ namespace Ntilde
             }
         }
 
-        private bool TryApplyTemplateRuleForProfile(TerminalProfile profile)
+        /// <summary>
+        /// Opens <paramref name="profile"/>'s template-rule tab, if it has one: the template's first tab, appended
+        /// and selected like any new tab. <paramref name="pane"/> is that tab's active pane.
+        /// </summary>
+        /// <remarks>
+        /// This used to capture the window, append the template tab and re-apply the whole session (#587), which
+        /// disposed and rebuilt every tab: each running shell in the window was killed and restarted, multiplexer
+        /// sessions were not reattached, and the panes of a zoomed tab were abandoned outright. Rebuilding is
+        /// for restoring a session, not for adding one tab. Building the tab through the restore path is what lets
+        /// a template tab hold a split.
+        /// </remarks>
+        private bool TryApplyTemplateRuleForProfile(TerminalProfile profile, out TerminalPane? pane)
         {
+            pane = null;
             var rule = FindTabTemplateRule(_settings.TabTemplateRules, profile.Id);
             if (rule == null) return false;
 
@@ -496,50 +508,91 @@ namespace Ntilde
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return false;
 
-            var current = SessionManager.CaptureSession(this, tabs);
-            var templateTab = CloneTabSession(template.Tabs[0]);
-            current.Tabs.Add(templateTab);
-            current.ActiveTabIndex = current.Tabs.Count - 1;
-            ApplySessionSnapshot(current);
+            TabItem? tabItem = SessionManager.CreateRestoredTabItem(InstantiateTemplateTab(template.Tabs[0]), _settings);
+            if (tabItem == null) return false;
+
+            tabs.Items.Add(tabItem);
+            InitializeTabsFromSessions(new[] { tabItem });
+            tabs.SelectedItem = tabItem;
+            RefreshAfterTabsFromSessions(tabs);
+            pane = ResolvePaneForTab(tabItem);
             return true;
         }
 
-        private static TabSession CloneTabSession(TabSession source)
+        /// <summary>
+        /// A copy of a template tab to open as a new tab. A template is a layout, so the copy carries no live
+        /// identity: a fresh tab id, a fresh id for every pane (the active and zoomed pane ids follow their panes),
+        /// and no multiplexer session. Opening the same template twice used to give both tabs the template's ids.
+        /// </summary>
+        internal static TabSession InstantiateTemplateTab(TabSession source)
         {
+            var paneIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             return new TabSession
             {
-                TabId = source.TabId,
+                TabId = null,
                 Title = source.Title,
                 UserTitle = source.UserTitle,
                 IsPinned = source.IsPinned,
                 IsProtected = source.IsProtected,
-                ActivePaneId = source.ActivePaneId,
-                ZoomedPaneId = source.ZoomedPaneId,
+                Root = ClonePaneNode(source.Root, paneIds),
+                ActivePaneId = MappedPaneId(source.ActivePaneId, paneIds),
+                ZoomedPaneId = MappedPaneId(source.ZoomedPaneId, paneIds),
                 BroadcastInputEnabled = source.BroadcastInputEnabled,
-                Root = ClonePaneNode(source.Root)
             };
         }
 
-        private static PaneNode? ClonePaneNode(PaneNode? source)
+        private static string? MappedPaneId(string? id, Dictionary<string, string> paneIds)
+            => id != null && paneIds.TryGetValue(id, out string? mapped) ? mapped : null;
+
+        private static PaneNode? ClonePaneNode(PaneNode? source, Dictionary<string, string> paneIds)
         {
             if (source == null) return null;
+
+            string? paneId = null;
+            if (!string.IsNullOrWhiteSpace(source.PaneId))
+            {
+                paneId = Guid.NewGuid().ToString();
+                paneIds[source.PaneId] = paneId;
+            }
 
             return new PaneNode
             {
                 Type = source.Type,
                 SplitOrientation = source.SplitOrientation,
                 ProfileId = source.ProfileId,
-                PaneId = source.PaneId,
+                SshProfileId = source.SshProfileId,
+                PaneId = paneId,
                 Command = source.Command,
                 Arguments = source.Arguments,
                 Sizes = source.Sizes.ToList(),
-                Children = source.Children.Select(ClonePaneNode).Where(c => c != null).Select(c => c!).ToList()
+                Children = source.Children.Select(c => ClonePaneNode(c, paneIds)).Where(c => c != null).Select(c => c!).ToList()
             };
         }
 
         private void InitializeRestoredTabs(TabControl tabs)
         {
-            foreach (var item in tabs.Items.Cast<TabItem>())
+            InitializeTabsFromSessions(tabs.Items.Cast<TabItem>().ToList());
+
+            if (tabs.SelectedItem is TabItem selected)
+            {
+                var selectedPane = ResolvePaneForTab(selected);
+                if (selectedPane != null)
+                {
+                    UpdateActivePane(selectedPane);
+                    FocusPaneTerminal(selectedPane, defer: true);
+                }
+            }
+
+            RefreshAfterTabsFromSessions(tabs);
+        }
+
+        /// <summary>
+        /// Wires tabs built from a <see cref="TabSession"/> (restore, a deferred startup tab, a template-rule tab)
+        /// into the window: ids and state, headers, pane events and owners, the active pane, broadcast and zoom.
+        /// </summary>
+        private void InitializeTabsFromSessions(IReadOnlyList<TabItem> items)
+        {
+            foreach (var item in items)
             {
                 GetTabId(item);
                 GetOrCreateTabState(item);
@@ -551,7 +604,7 @@ namespace Ntilde
                 }
             }
 
-            foreach (var item in tabs.Items.Cast<TabItem>())
+            foreach (var item in items)
             {
                 if (item.Content is not Control c) continue;
 
@@ -572,7 +625,7 @@ namespace Ntilde
                 }
             }
 
-            foreach (var item in tabs.Items.Cast<TabItem>())
+            foreach (var item in items)
             {
                 if (item.Tag is not TabSession saved ||
                     string.IsNullOrWhiteSpace(saved.ZoomedPaneId) ||
@@ -588,17 +641,11 @@ namespace Ntilde
                     EnterPaneZoom(item, zoomPane, publishEvent: false);
                 }
             }
+        }
 
-            if (tabs.SelectedItem is TabItem selected)
-            {
-                var selectedPane = ResolvePaneForTab(selected);
-                if (selectedPane != null)
-                {
-                    UpdateActivePane(selectedPane);
-                    FocusPaneTerminal(selectedPane, defer: true);
-                }
-            }
-
+        /// <summary>The window-wide refresh after <see cref="InitializeTabsFromSessions"/> added tabs.</summary>
+        private void RefreshAfterTabsFromSessions(TabControl tabs)
+        {
             UpdateTabVisuals();
             UpdatePaneAutomationLabels();
             UpdateBroadcastIndicator();

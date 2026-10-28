@@ -84,8 +84,9 @@ namespace Ntilde
                     // In focus mode the new tab opens in the background: an agent never moves the user's
                     // screen or keyboard into another shell.
                     bool select = ShouldAgentSpawnSelect(_isFocusMode);
+                    // A template-rule tab hands back its own pane. This used to fall back to _currentPane, because the
+                    // rule rebuilt the window and returned nothing - which told the agent the user's pane was its spawn.
                     var pane = AddTab(profile, select: select, leaveFocusMode: false);
-                    if (select) pane ??= _currentPane;
                     if (pane == null)
                     {
                         return (null, AgentHost.AgentSpawnError.SpawnFailed);
