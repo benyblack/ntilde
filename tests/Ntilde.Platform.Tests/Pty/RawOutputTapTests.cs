@@ -22,6 +22,38 @@ public sealed class RawOutputTapTests
     }
 
     [Fact]
+    public void Retention_past_its_bound_keeps_the_newest_chunks()
+    {
+        // #173 (Codex review): the raw tap kept its own unbounded copy of everything published before a subscriber.
+        var tap = new RawOutputTap(maxRetainedBytes: 4);
+        tap.Publish("ab"u8);
+        tap.Publish("cd"u8);
+        tap.Publish("ef"u8);
+        tap.Publish("0123456789"u8);
+        tap.Publish("gh"u8);
+        var seen = new List<string>();
+
+        tap.Subscribe(m => seen.Add(Ascii(m)));
+
+        // "0123456789" alone is over the bound, but was the newest when it arrived, so it was kept whole and
+        // pushed everything older out; "gh" then pushed it out in turn.
+        Assert.Equal(["gh"], seen);
+    }
+
+    [Fact]
+    public void An_oversized_newest_chunk_is_retained_whole()
+    {
+        var tap = new RawOutputTap(maxRetainedBytes: 4);
+        tap.Publish("ab"u8);
+        tap.Publish("0123456789"u8);
+        var seen = new List<string>();
+
+        tap.Subscribe(m => seen.Add(Ascii(m)));
+
+        Assert.Equal(["0123456789"], seen);
+    }
+
+    [Fact]
     public void A_second_subscriber_gets_no_replay()
     {
         var tap = new RawOutputTap();
