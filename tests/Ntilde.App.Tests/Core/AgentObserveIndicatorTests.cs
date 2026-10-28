@@ -646,6 +646,25 @@ public class AgentObserveIndicatorTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void A_read_ending_while_the_write_is_unseen_drops_the_ring_and_keeps_the_wrote_fill()
+    {
+        // #611: the ring is the read; when the read ends and the write mark stays, only the ring goes.
+        RunIsolated(window =>
+        {
+            var (indicator, dot) = LightOf(window);
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, OneWriteMark());
+
+            window.ApplyObserveIndicatorVisuals(visible: true, active: false, OneWriteMark());
+
+            Assert.True(indicator.IsVisible);
+            Assert.Same(window.FindResource(ThemeKeys.AgentWrote), dot.Fill);
+            Assert.Null(dot.Stroke);
+            Assert.Equal(0, dot.StrokeThickness);
+            Assert.DoesNotContain("reading now", Assert.IsType<string>(ToolTip.GetTip(indicator)), StringComparison.Ordinal);
+        });
+    }
+
+    [AvaloniaFact]
     public void Nothing_happening_paints_the_idle_token_with_no_ring()
     {
         RunIsolated(window =>
