@@ -36,14 +36,6 @@ namespace Ntilde
             current == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
         /// <summary>
-        /// The state a title-bar double-click moves the window to, or null to leave it: as a native caption does, nothing
-        /// happens when the window can't be resized or maximized, or is full screen (a toggle would turn full screen into
-        /// maximized). #611.
-        /// </summary>
-        internal static WindowState? TitleDoubleClickState(WindowState current, bool canResize, bool canMaximize) =>
-            canResize && canMaximize && current != WindowState.FullScreen ? ToggledMaximizeState(current) : null;
-
-        /// <summary>
         /// Puts the drawn decorations (the caption buttons) on the theme named <paramref name="key"/>. Avalonia 12.1.3
         /// rebuilds them on a theme change - the template goes null and back - and hands the new buttons to layers beside
         /// the window that nothing re-measures, so on Windows they stayed invisible until a resize. Those layers are

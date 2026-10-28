@@ -211,7 +211,7 @@ namespace Ntilde
 
             if (e.ClickCount == 2 && sameSpotOnScreen)
             {
-                if (TitleDoubleClickState(WindowState, CanResize, CanMaximize) is { } next) WindowState = next;
+                WindowState = ToggledMaximizeState(WindowState);
                 // Once: the title bar's own handler runs first, and this keeps MainRoot's from toggling it back.
                 e.Handled = true;
                 return;

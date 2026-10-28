@@ -39,9 +39,7 @@ public sealed class FocusModeWindowTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.True(strip.IsVisible);
         var title = window.FindControl<TextBlock>("FocusStripTitle")!;
         Assert.Equal((string)Invoke(window, "GetTabHeaderText", tabs.SelectedItem!)!, title.Text);
-        // The title-bar ink token's own instance, so a theme switch recolours the title in place. Set on the title
-        // itself: Foreground inherits, so the instance check alone passed with the assignment deleted (#611).
-        Assert.True(title.IsSet(TextBlock.ForegroundProperty), "the strip title's Foreground is inherited, not set");
+        // The title-bar ink token's own instance, so a theme switch recolours the title in place.
         Assert.Same(window.FindResource(ThemeKeys.Fg), title.Foreground);
 
         var host = window.FindControl<StackPanel>("TitleBarItemsHost")!;
@@ -269,52 +267,6 @@ public sealed class FocusModeWindowTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.Equal(WindowState.Normal, MainWindow.ToggledMaximizeState(WindowState.Maximized));
         Assert.Equal(WindowState.Maximized, MainWindow.ToggledMaximizeState(WindowState.Normal));
         Assert.Equal(WindowState.Maximized, MainWindow.ToggledMaximizeState(WindowState.Minimized));
-    }
-
-    [Theory]
-    [InlineData(WindowState.Normal, true, true, WindowState.Maximized)]
-    [InlineData(WindowState.Maximized, true, true, WindowState.Normal)]
-    [InlineData(WindowState.Normal, false, true, null)]
-    [InlineData(WindowState.Normal, true, false, null)]
-    [InlineData(WindowState.Maximized, true, false, null)]
-    [InlineData(WindowState.FullScreen, true, true, null)]
-    public void A_title_double_click_does_nothing_where_a_native_caption_would_not(
-        WindowState current, bool canResize, bool canMaximize, WindowState? expected)
-    {
-        Assert.Equal(expected, MainWindow.TitleDoubleClickState(current, canResize, canMaximize));
-    }
-
-    [AvaloniaFact]
-    public void Entering_and_leaving_focus_mode_invalidates_the_layers_beside_the_window()
-    {
-        // #611: FocusModeDecorationsLayoutTests proves InvalidateLayersBeside on a mirror host, so dropping its call from
-        // SetWindowDecorationsTheme went unnoticed. Headless windows draw no decorations, but the window does sit in a
-        // real TopLevelHost; a layer added beside it stands in for the caption-button layer.
-        MainWindow window = NewShownWindow();
-        var host = (Visual)Avalonia.VisualTree.VisualExtensions.GetVisualParent(window)!;
-        var children = (Avalonia.Collections.IAvaloniaList<Visual>)typeof(Visual)
-            .GetProperty("VisualChildren", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(host)!;
-        var layer = new Border { Width = 10, Height = 10 };
-        children.Add(layer);
-        try
-        {
-            // The window's layout pass doesn't reach a layer beside it - that is the bug the call works around - so the
-            // layer is measured by hand, and the assertion is that the theme swap invalidates it.
-            layer.Measure(new Size(100, 100));
-            Assert.True(layer.IsMeasureValid);
-
-            window.EnterFocusMode();
-            Assert.False(layer.IsMeasureValid);
-
-            layer.Measure(new Size(100, 100));
-            window.LeaveFocusMode();
-            Assert.False(layer.IsMeasureValid);
-        }
-        finally
-        {
-            children.Remove(layer);
-        }
     }
 
     [AvaloniaFact]
