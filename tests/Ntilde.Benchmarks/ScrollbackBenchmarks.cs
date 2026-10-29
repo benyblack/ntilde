@@ -11,7 +11,7 @@ namespace Ntilde.Benchmarks
         private string? _batch;
 
         [Params(1000, 10000, 100000)]
-        public int ScrollbackSize;
+        public int ScrollbackSize { get; set; }
 
         [GlobalSetup]
         public void Setup()

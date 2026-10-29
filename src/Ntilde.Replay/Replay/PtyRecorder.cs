@@ -272,6 +272,7 @@ namespace Ntilde.Replay
             catch { }
 
             _cts.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

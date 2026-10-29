@@ -8,7 +8,7 @@ namespace Ntilde.Benchmarks
     {
         private TerminalBuffer? _smallBuffer;
         private TerminalBuffer? _largeBuffer;
-        private int _toggle = 0;
+        private int _toggle;
 
         [GlobalSetup]
         public void Setup()

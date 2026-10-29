@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Linq;
 using Ntilde.VT;
@@ -53,7 +54,7 @@ namespace Ntilde.Replay
 
                         // Ignore Dirty bit for deterministic snapshot comparison.
                         ushort flags = (ushort)(cell.Flags & ~(ushort)TerminalCellFlags.Dirty);
-                        sb.Append(flags.ToString("X4"));
+                        sb.Append(flags.ToString("X4", CultureInfo.InvariantCulture));
                         sb.Append(':');
                         sb.Append(cell.FgIndex);
                         sb.Append('/');
@@ -70,11 +71,11 @@ namespace Ntilde.Replay
         public string ToFormattedString()
         {
             var sb = new StringBuilder();
-            sb.AppendLine($"Cursor: ({CursorCol}, {CursorRow}) Alt: {IsAltScreen}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Cursor: ({CursorCol}, {CursorRow}) Alt: {IsAltScreen}");
             sb.AppendLine("--- Screen Content ---");
             for (int i = 0; i < Lines.Length; i++)
             {
-                sb.AppendLine($"{i:D3}| {Lines[i]}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"{i:D3}| {Lines[i]}");
             }
 
             if (AttributeLines != null)
@@ -82,7 +83,7 @@ namespace Ntilde.Replay
                 sb.AppendLine("--- Cell Attributes ---");
                 for (int i = 0; i < AttributeLines.Length; i++)
                 {
-                    sb.AppendLine($"{i:D3}| {AttributeLines[i]}");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"{i:D3}| {AttributeLines[i]}");
                 }
             }
             return sb.ToString();

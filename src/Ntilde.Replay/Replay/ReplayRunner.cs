@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -90,7 +91,7 @@ namespace Ntilde.Replay
 
             using var fs = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var reader = new StreamReader(fs);
-            string? line = await reader.ReadLineAsync();
+            string? line = await ReadLineOrEndAsync(reader, ct);
             if (line == null) return result;
 
             // Detect Version
@@ -119,7 +120,7 @@ namespace Ntilde.Replay
             {
                 fs.Seek(startOffsetBytes, SeekOrigin.Begin);
                 reader.DiscardBufferedData();
-                line = await reader.ReadLineAsync();
+                line = await ReadLineOrEndAsync(reader, ct);
                 skipCurrentLine = false; // We already skipped what we needed to via Seek
             }
 
@@ -132,7 +133,7 @@ namespace Ntilde.Replay
                 lastOffset = minTimeMs;
             }
 
-            string? nextLine = await reader.ReadLineAsync();
+            string? nextLine = await ReadLineOrEndAsync(reader, ct);
             while (line != null && !ct.IsCancellationRequested)
             {
                 if (!skipCurrentLine)
@@ -167,10 +168,24 @@ namespace Ntilde.Replay
                 }
                 skipCurrentLine = false;
                 line = nextLine;
-                nextLine = await reader.ReadLineAsync();
+                nextLine = await ReadLineOrEndAsync(reader, ct);
             }
 
             return result;
+        }
+
+        // The reads honour the token, but a cancelled run still ends the way it always has: quietly, with the result so
+        // far. A cancelled read reads as the end of the file, and the loop's own cancellation check stops the run.
+        private static async Task<string?> ReadLineOrEndAsync(StreamReader reader, CancellationToken ct)
+        {
+            try
+            {
+                return await reader.ReadLineAsync(ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return null;
+            }
         }
 
         private readonly struct ProcessedLine
@@ -185,7 +200,7 @@ namespace Ntilde.Replay
             public bool EventProcessed { get; }
         }
 
-        private async Task<ProcessedLine> ProcessV2Line(
+        private static async Task<ProcessedLine> ProcessV2Line(
             string line,
             Func<byte[], Task> onDataCallback,
             Func<int, int, Task>? onResizeCallback,
@@ -288,13 +303,13 @@ namespace Ntilde.Replay
                 return;
             }
 
-            string actualSizeLabel = actualSizeOf.HasValue ? actualSizeOf.Value.ToString() : "<missing>";
+            string actualSizeLabel = actualSizeOf.HasValue ? actualSizeOf.Value.ToString(CultureInfo.InvariantCulture) : "<missing>";
             string actualLayoutLabel = string.IsNullOrEmpty(actualLayoutId) ? "<missing>" : actualLayoutId;
             throw new InvalidDataException(
                 $"cell layout mismatch: expected cells_sizeof={expectedSizeOf}, cells_layout_id={expectedLayoutId}; actual cells_sizeof={actualSizeLabel}, cells_layout_id={actualLayoutLabel}.");
         }
 
-        private async Task<ProcessedLine> ProcessV1Line(
+        private static async Task<ProcessedLine> ProcessV1Line(
             string line,
             Func<byte[], Task> onDataCallback,
             ReplayPlaybackMode playbackMode,

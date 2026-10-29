@@ -517,17 +517,17 @@ public static class VtConformanceReportTool
             _ => false,
         };
 
-    private static VtConformanceSummary BuildSummary(IReadOnlyList<VtConformanceRow> rows, int errorCount, int warningCount)
+    private static VtConformanceSummary BuildSummary(List<VtConformanceRow> rows, int errorCount, int warningCount)
     {
         return new VtConformanceSummary(
             TotalRows: rows.Count,
-            SupportedCount: rows.Count(row => row.Status.StartsWith("✅", StringComparison.Ordinal)),
-            PartialCount: rows.Count(row => row.Status.StartsWith("⚠", StringComparison.Ordinal)),
+            SupportedCount: rows.Count(row => row.Status.StartsWith('✅')),
+            PartialCount: rows.Count(row => row.Status.StartsWith('⚠')),
             ExperimentalCount: rows.Count(row => row.Status.StartsWith("🧪", StringComparison.Ordinal)),
-            NotSupportedCount: rows.Count(row => row.Status.StartsWith("❌", StringComparison.Ordinal)),
+            NotSupportedCount: rows.Count(row => row.Status.StartsWith('❌')),
             WontSupportCount: rows.Count(row => row.Status.StartsWith("🚫", StringComparison.Ordinal)),
             RowsWithLinkedEvidence: rows.Count(row => row.EvidenceLinks.Any(link => link.Exists)),
-            SupportedRowsWithLinkedEvidence: rows.Count(row => row.Status.StartsWith("✅", StringComparison.Ordinal) && row.EvidenceLinks.Any(link => link.Exists)),
+            SupportedRowsWithLinkedEvidence: rows.Count(row => row.Status.StartsWith('✅') && row.EvidenceLinks.Any(link => link.Exists)),
             ErrorCount: errorCount,
             WarningCount: warningCount);
     }
@@ -600,7 +600,7 @@ public static class VtConformanceReportTool
         return !string.IsNullOrWhiteSpace(heading);
     }
 
-    private static IReadOnlyList<string> GetEvidenceKinds(string evidenceText)
+    private static string[] GetEvidenceKinds(string evidenceText)
     {
         if (string.IsNullOrWhiteSpace(evidenceText) || evidenceText == "—")
         {
@@ -639,7 +639,7 @@ public static class VtConformanceReportTool
            || kinds.Contains("external", StringComparer.Ordinal)
            || kinds.Contains("fuzz", StringComparer.Ordinal);
 
-    private static IReadOnlyList<VtEvidenceLink> ExtractEvidenceLinks(string repoRoot, string evidenceText)
+    private static VtEvidenceLink[] ExtractEvidenceLinks(string repoRoot, string evidenceText)
     {
         if (string.IsNullOrWhiteSpace(evidenceText))
         {
@@ -705,13 +705,13 @@ public static class VtConformanceReportTool
 
     private static bool IsKnownStatus(string status)
         => IsSupportedStatus(status)
-           || status.StartsWith("⚠", StringComparison.Ordinal)
+           || status.StartsWith('⚠')
            || status.StartsWith("🧪", StringComparison.Ordinal)
-           || status.StartsWith("❌", StringComparison.Ordinal)
+           || status.StartsWith('❌')
            || IsWontSupportStatus(status);
 
     private static bool IsSupportedStatus(string status)
-        => status.StartsWith("✅", StringComparison.Ordinal);
+        => status.StartsWith('✅');
 
     private static bool IsWontSupportStatus(string status)
         => status.StartsWith("🚫", StringComparison.Ordinal);

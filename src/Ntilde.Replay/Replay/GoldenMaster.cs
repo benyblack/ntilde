@@ -37,7 +37,7 @@ namespace Ntilde.Replay
                     return;
                 }
 
-                throw new Exception($"Snapshot mismatch! Expected content from {expectedSnapPath} does not match actual buffer state.");
+                throw new InvalidDataException($"Snapshot mismatch! Expected content from {expectedSnapPath} does not match actual buffer state.");
             }
         }
 
