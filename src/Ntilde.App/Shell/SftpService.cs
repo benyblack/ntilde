@@ -459,10 +459,9 @@ namespace Ntilde.Shell
             ArgumentNullException.ThrowIfNull(sshService);
             ArgumentNullException.ThrowIfNull(profile);
 
-            var nativeConnector = new NativeJumpHostConnector();
             var resolvedProfile = sshService.GetStoredProfile(profile.Id)
                 ?? SshConnectionService.MapLegacyTerminalProfile(profile, EnsureLegacyJumpHostProfiles(profile, allProfiles));
-            return nativeConnector.CreateConnectionOptions(resolvedProfile, cols: 120, rows: 30);
+            return NativeJumpHostConnector.CreateConnectionOptions(resolvedProfile, cols: 120, rows: 30);
         }
 
         private static IReadOnlyList<TerminalProfile>? EnsureLegacyJumpHostProfiles(

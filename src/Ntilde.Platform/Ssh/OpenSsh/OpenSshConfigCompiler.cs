@@ -74,7 +74,7 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
         };
     }
 
-    private string ComputeHash(string text)
+    private static string ComputeHash(string text)
     {
         byte[] bytes = Encoding.UTF8.GetBytes(text);
         byte[] hashBytes = SHA256.HashData(bytes);
@@ -125,9 +125,9 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
         int port = profile.Port > 0 ? profile.Port : 22;
         int serverAliveInterval = profile.ServerAliveIntervalSeconds > 0 ? profile.ServerAliveIntervalSeconds : 30;
         int serverAliveCountMax = profile.ServerAliveCountMax > 0 ? profile.ServerAliveCountMax : 3;
-        options.Add("Port " + port.ToString());
-        options.Add("ServerAliveInterval " + serverAliveInterval.ToString());
-        options.Add("ServerAliveCountMax " + serverAliveCountMax.ToString());
+        options.Add("Port " + port.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        options.Add("ServerAliveInterval " + serverAliveInterval.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        options.Add("ServerAliveCountMax " + serverAliveCountMax.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         if (profile.AuthMode == SshAuthMode.IdentityFile && !string.IsNullOrWhiteSpace(profile.IdentityFilePath))
         {
@@ -172,7 +172,7 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
 
         if (profile.MuxOptions.ControlPersistSeconds > 0)
         {
-            options.Add("ControlPersist " + profile.MuxOptions.ControlPersistSeconds.ToString());
+            options.Add("ControlPersist " + profile.MuxOptions.ControlPersistSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
         string controlPath = GetResolvedControlPath(profile);
@@ -200,7 +200,7 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
         }
 
         string bind = string.IsNullOrWhiteSpace(forward.BindAddress)
-            ? forward.SourcePort.ToString()
+            ? forward.SourcePort.ToString(System.Globalization.CultureInfo.InvariantCulture)
             : $"{forward.BindAddress.Trim()}:{forward.SourcePort}";
 
         switch (forward.Kind)
@@ -213,7 +213,7 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
                 }
 
                 string keyword = forward.Kind == PortForwardKind.Local ? "LocalForward" : "RemoteForward";
-                return $"{keyword} {bind} {forward.DestinationHost.Trim()}:{forward.DestinationPort.ToString()}";
+                return $"{keyword} {bind} {forward.DestinationHost.Trim()}:{forward.DestinationPort.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
 
             case PortForwardKind.Dynamic:
                 return "DynamicForward " + bind;

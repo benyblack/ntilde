@@ -183,7 +183,7 @@ public sealed class SnapshotScheduler : IDisposable
     /// sees anything its ancestor doesn't. In practice this collapses to just RootDirectory
     /// itself, since the Settings catalog entry resolves there.
     /// </summary>
-    private IEnumerable<string> WatchedDirectories()
+    private List<string> WatchedDirectories()
     {
         var directories = new HashSet<string>(
             OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);

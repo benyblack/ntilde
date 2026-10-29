@@ -192,8 +192,9 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                 {
                     StartKind.SharedConnection => NativeMethods.nova_ssh_connect_shared(in args),
                     // 0 here is also a connection that has already ended, not only rejected args.
-                    StartKind.SharedChannel when command is null => NativeMethods.nova_ssh_open_shell(connection, in args),
-                    StartKind.SharedChannel => NativeMethods.nova_ssh_open_exec(connection, in args, commandPtr),
+                    // OpenShell/OpenExec, the only shared-channel callers, always pass the connection.
+                    StartKind.SharedChannel when command is null => NativeMethods.nova_ssh_open_shell(connection!, in args),
+                    StartKind.SharedChannel => NativeMethods.nova_ssh_open_exec(connection!, in args, commandPtr),
                     _ when command is null => NativeMethods.nova_ssh_connect(in args),
                     _ => NativeMethods.nova_ssh_exec(in args, commandPtr)
                 };
@@ -442,7 +443,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     /// One listing through <paramref name="call"/>. Null only when <paramref name="closedMeansRetry"/> and the shared
     /// connection is closed, as in <see cref="RunSftpTransferCore"/>.
     /// </summary>
-    private static IReadOnlyList<NativeRemotePathEntry>? ListRemoteDirectoryCore(
+    private static List<NativeRemotePathEntry>? ListRemoteDirectoryCore(
         string requestJson,
         RemotePathListCall call,
         bool closedMeansRetry,
@@ -967,7 +968,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         {
             throw new ArgumentException(
                 "A known-hosts store path is required for native SFTP transfers.",
-                nameof(options.KnownHostsFilePath));
+                nameof(options));
         }
     }
 
@@ -1107,7 +1108,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
             NativeSshJsonContext.Default.RemotePathListRequest);
     }
 
-    private static IReadOnlyList<NativeRemotePathEntry> DeserializeRemotePathListResponse(string responseJson)
+    private static List<NativeRemotePathEntry> DeserializeRemotePathListResponse(string responseJson)
     {
         RemotePathListResponse? response = JsonSerializer.Deserialize(
             responseJson,

@@ -2,16 +2,16 @@ using Ntilde.Platform.Ssh.Models;
 
 namespace Ntilde.Platform.Ssh.Native;
 
-public sealed class NativeJumpHostConnector
+public static class NativeJumpHostConnector
 {
-    public NativeSshConnectionOptions CreateConnectionOptions(SshProfile profile, int cols, int rows)
+    public static NativeSshConnectionOptions CreateConnectionOptions(SshProfile profile, int cols, int rows)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
         return CreateConnectionOptions(JumpHostConnectPlan.Create(profile), profile, cols, rows);
     }
 
-    public NativeSshConnectionOptions CreateConnectionOptions(JumpHostConnectPlan plan, SshProfile profile, int cols, int rows)
+    public static NativeSshConnectionOptions CreateConnectionOptions(JumpHostConnectPlan plan, SshProfile profile, int cols, int rows)
     {
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentNullException.ThrowIfNull(profile);
@@ -45,7 +45,7 @@ public sealed class NativeJumpHostConnector
         };
     }
 
-    public string DescribePath(JumpHostConnectPlan plan)
+    public static string DescribePath(JumpHostConnectPlan plan)
     {
         ArgumentNullException.ThrowIfNull(plan);
         return plan.JumpHops.Count switch

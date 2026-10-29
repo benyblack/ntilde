@@ -139,7 +139,7 @@ public sealed class JsonSshProfileStore : ISshProfileStore
             if (File.Exists(_storeFilePath))
             {
                 string directory = Path.GetDirectoryName(_storeFilePath) ?? string.Empty;
-                string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+                string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", System.Globalization.CultureInfo.InvariantCulture); // Gregorian in every locale
                 string backupPath = Path.Combine(directory, $"profiles.json.corrupt.{timestamp}.json");
 
                 File.Move(_storeFilePath, backupPath);

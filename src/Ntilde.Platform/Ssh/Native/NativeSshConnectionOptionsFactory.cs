@@ -23,8 +23,6 @@ public static class NativeSshConnectionOptionsFactory
 
     private const string ShellDetectionCommand = "sh -lc 'printf \"%s\" \"${SHELL##*/}\"' 2>/dev/null";
 
-    private static readonly NativeJumpHostConnector JumpHostConnector = new();
-
     /// <summary>The options for <paramref name="profile"/> at the default size: what an exec transport passes.</summary>
     public static NativeSshConnectionOptions Create(SshProfile profile) => Create(profile, DefaultCols, DefaultRows);
 
@@ -40,7 +38,7 @@ public static class NativeSshConnectionOptionsFactory
         ArgumentNullException.ThrowIfNull(connectPlan);
         ArgumentNullException.ThrowIfNull(profile);
 
-        NativeSshConnectionOptions baseOptions = JumpHostConnector.CreateConnectionOptions(connectPlan, profile, cols, rows);
+        NativeSshConnectionOptions baseOptions = NativeJumpHostConnector.CreateConnectionOptions(connectPlan, profile, cols, rows);
         RemoteShellKind remoteShellKind = profile.RemoteShellKind;
 
         return new NativeSshConnectionOptions

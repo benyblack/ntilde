@@ -38,7 +38,7 @@ namespace Ntilde.Platform.Execution
                 tcs.TrySetCanceled();
             });
 
-            string stdout = await process.StandardOutput.ReadToEndAsync();
+            string stdout = await process.StandardOutput.ReadToEndAsync(ct);
             await process.WaitForExitAsync(ct);
 
             return (process.ExitCode, stdout);
