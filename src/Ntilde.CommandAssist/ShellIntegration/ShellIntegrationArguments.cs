@@ -311,12 +311,12 @@ public static class ShellIntegrationArguments
 
         try
         {
-            var buffer = new StringBuilder(512);
-            uint written = NativeMethods.GetShortPathNameW(path, buffer, (uint)buffer.Capacity);
+            var buffer = new char[512];
+            uint written = NativeMethods.GetShortPathNameW(path, buffer, (uint)buffer.Length);
 
             // 0 means the API failed - most often the path no longer exists, or the volume has
             // 8.3 name generation disabled. Either way there is no short form to compare against.
-            return written == 0 || written > buffer.Capacity ? null : buffer.ToString();
+            return written == 0 || written > buffer.Length ? null : new string(buffer, 0, (int)written);
         }
         catch (EntryPointNotFoundException)
         {
@@ -333,7 +333,7 @@ public static class ShellIntegrationArguments
         [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
         public static extern uint GetShortPathNameW(
             [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] string lpszLongPath,
-            StringBuilder lpszShortPath,
+            [System.Runtime.InteropServices.Out] char[] lpszShortPath,
             uint cchBuffer);
     }
 

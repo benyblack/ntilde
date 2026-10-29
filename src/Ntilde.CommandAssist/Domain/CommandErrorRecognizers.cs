@@ -115,7 +115,7 @@ public static partial class CommandErrorRecognizers
     /// <item><description>fish: <c>fish: Unknown command: gti</c> - transcribed.</description></item>
     /// </list>
     /// </remarks>
-    private static IReadOnlyList<CommandFixSuggestion> CommandNotFound(CommandErrorSignal signal)
+    private static List<CommandFixSuggestion> CommandNotFound(CommandErrorSignal signal)
     {
         if (!IsCommandNotFound(signal))
         {
@@ -419,7 +419,7 @@ public static partial class CommandErrorRecognizers
     /// (<c>bash: ./deploy.sh: Permission denied</c>, <c>cat: /etc/shadow: Permission denied</c>)
     /// and the pattern matches the phrase rather than a whole line for exactly that reason.
     /// </summary>
-    private static IReadOnlyList<CommandFixSuggestion> PermissionDenied(CommandErrorSignal signal)
+    private static List<CommandFixSuggestion> PermissionDenied(CommandErrorSignal signal)
     {
         if (!signal.OutputContainsAny("permission denied", "access is denied", "operation not permitted"))
         {
@@ -486,7 +486,7 @@ public static partial class CommandErrorRecognizers
     /// <c>Get-Content: Cannot find path 'C:\nope\missing.txt' because it does not exist.</c> (pwsh 7),
     /// <c>The system cannot find the path specified.</c> (cmd).
     /// </summary>
-    private static IReadOnlyList<CommandFixSuggestion> PathNotFound(CommandErrorSignal signal)
+    private static List<CommandFixSuggestion> PathNotFound(CommandErrorSignal signal)
     {
         bool posixStyle = signal.OutputContains("no such file or directory");
         bool powerShellStyle = signal.OutputContains("because it does not exist");
@@ -650,7 +650,7 @@ public static partial class CommandErrorRecognizers
     /// The ambiguity is real - the argument may have been meant as a branch that does not exist yet,
     /// or as a path that is misspelt - so both readings are offered and neither is confident.
     /// </summary>
-    private static IReadOnlyList<CommandFixSuggestion> GitPathspec(CommandErrorSignal signal)
+    private static List<CommandFixSuggestion> GitPathspec(CommandErrorSignal signal)
     {
         Match match = GitPathspecFailure().Match(signal.OutputTail);
         if (!match.Success)

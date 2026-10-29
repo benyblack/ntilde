@@ -48,6 +48,9 @@ namespace Ntilde.CommandAssist.Storage;
 /// must not become an instance swap.
 /// </para>
 /// </remarks>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "Its only disposable is a SemaphoreSlim gate, which holds no handle unless AvailableWaitHandle is read " +
+                    "(nothing here reads it), and disposing it under a caller still waiting would fault that caller.")]
 public sealed class JsonlHistoryStore : IHistoryStore
 {
     /// <summary>Compact once at least this fraction of the file's lines are superseded or over cap.</summary>
@@ -267,8 +270,8 @@ public sealed class JsonlHistoryStore : IHistoryStore
         string entryId,
         int? exitCode,
         long? durationMs,
-        CancellationToken cancellationToken = default,
-        bool isInvalidCommand = false)
+        bool isInvalidCommand = false,
+        CancellationToken cancellationToken = default)
     {
         return await TryPatchAsync(
             entryId,

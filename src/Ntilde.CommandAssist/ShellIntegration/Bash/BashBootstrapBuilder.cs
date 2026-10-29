@@ -7,7 +7,7 @@ public static class BashBootstrapBuilder
 {
     public static string BuildScript()
     {
-        const string nl = "\n";
+        const char nl = '\n';
         var b = new StringBuilder();
         b.Append("#!/usr/bin/env bash").Append(nl);
         b.Append("# Ntilde command-assist bootstrap. Sourced via `bash --rcfile`.").Append(nl);
@@ -37,17 +37,17 @@ public static class BashBootstrapBuilder
         b.Append("    else").Append(nl);
         b.Append("        printf '%s000' \"$(date +%s)\"").Append(nl);
         b.Append("    fi").Append(nl);
-        b.Append("}").Append(nl);
+        b.Append('}').Append(nl);
         b.Append(nl);
         b.Append("__ntilde_url_encode_pwd() {").Append(nl);
         b.Append("    local s=\"$PWD\"").Append(nl);
         b.Append("    printf '%s' \"$s\" | LC_ALL=C awk 'BEGIN{for(i=0;i<256;i++)c[sprintf(\"%c\",i)]=i} {for(i=1;i<=length($0);i++){ch=substr($0,i,1); if(ch~/[A-Za-z0-9._~\\/-]/) printf \"%s\",ch; else printf \"%%%02X\",c[ch]}}'").Append(nl);
-        b.Append("}").Append(nl);
+        b.Append('}').Append(nl);
         b.Append(nl);
         b.Append("__ntilde_emit_prompt_ready() {").Append(nl);
         b.Append("    printf '\\033]7;file://%s%s\\a' \"${HOSTNAME:-localhost}\" \"$(__ntilde_url_encode_pwd)\"").Append(nl);
         b.Append("    printf '\\033]133;A\\a'").Append(nl);
-        b.Append("}").Append(nl);
+        b.Append('}').Append(nl);
         b.Append(nl);
         b.Append("__ntilde_emit_completion() {").Append(nl);
         b.Append("    local exit=$1").Append(nl);
@@ -65,7 +65,7 @@ public static class BashBootstrapBuilder
         // statements would fire the DEBUG trap with active=0 and be
         // captured as the user's "accepted command". __ntilde_arm (which
         // runs LAST in PROMPT_COMMAND) is responsible for clearing it.
-        b.Append("}").Append(nl);
+        b.Append('}').Append(nl);
         b.Append(nl);
         // OSC 133;B marks the END of the prompt, i.e. the cell where the
         // user's input begins. Bash prints PS1 *after* PROMPT_COMMAND has
@@ -83,7 +83,7 @@ public static class BashBootstrapBuilder
         b.Append("        *\"$__ntilde_ps1_mark\"*) ;;").Append(nl);
         b.Append("        *) PS1=\"$PS1$__ntilde_ps1_mark\" ;;").Append(nl);
         b.Append("    esac").Append(nl);
-        b.Append("}").Append(nl);
+        b.Append('}').Append(nl);
         b.Append(nl);
         b.Append("__ntilde_arm() {").Append(nl);
         // Runs LAST in PROMPT_COMMAND, which is also the only point where the
@@ -92,7 +92,7 @@ public static class BashBootstrapBuilder
         // the "arm last" invariant and the chain string itself unchanged.
         b.Append("    __ntilde_apply_ps1_mark").Append(nl);
         b.Append("    __ntilde_command_active=0").Append(nl);
-        b.Append("}").Append(nl);
+        b.Append('}').Append(nl);
         b.Append(nl);
         // $BASH_COMMAND is the first SIMPLE COMMAND of the line, not the line:
         // `true && false` sets it to `true`, so reporting it as the accepted
@@ -109,7 +109,7 @@ public static class BashBootstrapBuilder
         b.Append("    line=\"${line#*[[:space:]]}\"").Append(nl);
         b.Append("    line=\"${line#\"${line%%[![:space:]]*}\"}\"").Append(nl);
         b.Append("    printf '%s' \"$line\"").Append(nl);
-        b.Append("}").Append(nl);
+        b.Append('}').Append(nl);
         b.Append(nl);
         // Bash has no native preexec. We approximate it via the DEBUG trap,
         // which fires before every simple command -- including from inside
@@ -137,7 +137,7 @@ public static class BashBootstrapBuilder
         b.Append("    b64=$(printf '%s' \"$cmd\" | base64 | tr -d '\\n')").Append(nl);
         b.Append("    printf '\\033]133;C;%s\\a' \"$b64\"").Append(nl);
         b.Append("    __ntilde_command_start_ms=$(__ntilde_now_ms)").Append(nl);
-        b.Append("}").Append(nl);
+        b.Append('}').Append(nl);
         b.Append(nl);
         b.Append("__ntilde_precmd() {").Append(nl);
         b.Append("    local exit=$?").Append(nl);
@@ -150,7 +150,7 @@ public static class BashBootstrapBuilder
         b.Append("    __ntilde_command_active=1").Append(nl);
         b.Append("    __ntilde_emit_completion \"$exit\"").Append(nl);
         b.Append("    __ntilde_emit_prompt_ready").Append(nl);
-        b.Append("}").Append(nl);
+        b.Append('}').Append(nl);
         b.Append(nl);
         b.Append("trap '__ntilde_preexec' DEBUG").Append(nl);
         // Bracket the user's PROMPT_COMMAND with __ntilde_precmd (first: emit

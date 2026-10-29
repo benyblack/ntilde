@@ -33,8 +33,8 @@ public interface IHistoryStore
         string entryId,
         int? exitCode,
         long? durationMs,
-        CancellationToken cancellationToken = default,
-        bool isInvalidCommand = false);
+        bool isInvalidCommand = false,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Marks an entry as a command the shell could not resolve, so it is never suggested again.

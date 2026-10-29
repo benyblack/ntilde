@@ -133,15 +133,15 @@ public sealed class CommandAssistSuggestionEngine : ISuggestionEngine
     }
 
     public IReadOnlyList<AssistSuggestion> GetSuggestions(
-        IReadOnlyList<CommandHistoryEntry> historyEntries,
+        IReadOnlyList<CommandHistoryEntry> entries,
         CommandAssistQueryContext context,
         int maxResults)
     {
-        return GetSuggestions(historyEntries, Array.Empty<CommandSnippet>(), context, maxResults);
+        return GetSuggestions(entries, Array.Empty<CommandSnippet>(), context, maxResults);
     }
 
     public IReadOnlyList<AssistSuggestion> GetSuggestions(
-        IReadOnlyList<CommandHistoryEntry> historyEntries,
+        IReadOnlyList<CommandHistoryEntry> entries,
         IReadOnlyList<CommandSnippet> snippets,
         CommandAssistQueryContext context,
         int maxResults)
@@ -161,7 +161,7 @@ public sealed class CommandAssistSuggestionEngine : ISuggestionEngine
 
         if (context.IncludeHistorySuggestions)
         {
-            results.AddRange(BuildHistorySuggestions(historyEntries, context, query, now));
+            results.AddRange(BuildHistorySuggestions(entries, context, query, now));
         }
 
         if (context.IncludeSnippetSuggestions)
@@ -446,7 +446,7 @@ public sealed class CommandAssistSuggestionEngine : ISuggestionEngine
     /// "Frequent" demoted to the secondary signal it now is.
     /// </para>
     /// </remarks>
-    private static IReadOnlyList<string> BuildHistoryBadges(
+    private static List<string> BuildHistoryBadges(
         CommandHistoryEntry entry,
         CommandAssistQueryContext context,
         int frequency,
@@ -476,7 +476,7 @@ public sealed class CommandAssistSuggestionEngine : ISuggestionEngine
         return badges;
     }
 
-    private static IReadOnlyList<string> BuildSnippetBadges(CommandSnippet snippet, CommandAssistQueryContext context)
+    private static List<string> BuildSnippetBadges(CommandSnippet snippet, CommandAssistQueryContext context)
     {
         List<string> badges = new() { "Snippet" };
         if (snippet.IsPinned)

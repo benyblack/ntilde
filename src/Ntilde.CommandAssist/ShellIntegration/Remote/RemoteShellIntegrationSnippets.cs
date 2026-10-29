@@ -58,7 +58,7 @@ public static class RemoteShellIntegrationSnippets
     /// Where the user is told to put each snippet. Kept next to the content so the docs page, the
     /// Settings affordance and the snippet's own header comment cannot drift apart.
     /// </summary>
-    private static readonly IReadOnlyDictionary<RemoteShellIntegrationShell, SnippetDescriptor> Descriptors =
+    private static readonly Dictionary<RemoteShellIntegrationShell, SnippetDescriptor> Descriptors =
         new Dictionary<RemoteShellIntegrationShell, SnippetDescriptor>
         {
             [RemoteShellIntegrationShell.BashOrZsh] = new(

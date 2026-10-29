@@ -9,6 +9,9 @@ namespace Ntilde.CommandAssist.Domain;
 
 public sealed class FileSystemPathSuggestionProvider : IPathSuggestionProvider
 {
+    private static readonly string[] DirectoryBadges = ["Path", "Directory"];
+    private static readonly string[] FileBadges = ["Path", "File"];
+
     private static readonly HashSet<string> PathCommands = new(StringComparer.OrdinalIgnoreCase)
     {
         "cd",
@@ -90,7 +93,7 @@ public sealed class FileSystemPathSuggestionProvider : IPathSuggestionProvider
                 DisplayText: isDirectory ? $"{entryName}{preferredSeparator}" : entryName,
                 InsertText: queryPrefix + appendText,
                 Description: isDirectory ? "Directory" : "File",
-                Badges: isDirectory ? new[] { "Path", "Directory" } : new[] { "Path", "File" },
+                Badges: isDirectory ? DirectoryBadges : FileBadges,
                 Score: (isDirectory ? 260 : 240) - i,
                 WorkingDirectory: context.WorkingDirectory,
                 LastUsedAt: null,

@@ -242,7 +242,7 @@ public sealed class CommandKnowledgeService : ICommandDocsProvider, IRecipeProvi
         return null;
     }
 
-    private static IEnumerable<string> BuildLookupKeys(CommandHelpQuery query)
+    private static List<string> BuildLookupKeys(CommandHelpQuery query)
     {
         var keys = new List<string>(3);
 
