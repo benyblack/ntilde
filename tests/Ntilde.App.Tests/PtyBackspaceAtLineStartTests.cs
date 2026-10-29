@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Ntilde.Pty;
@@ -68,6 +70,21 @@ public class PtyBackspaceAtLineStartTests
 
     private const int PollIntervalMs = 250;
     private const int PollAttempts = 60;
+
+    /// <summary>
+    /// How long a shell gets to draw its first prompt: 60 s, where every leg after it gets 15 s.
+    /// </summary>
+    /// <remarks>
+    /// #391: Windows PowerShell missed the old 15 s about once in fifty CI runs, alive and with nothing
+    /// drawn. The stream it left behind was ConPTY's complete startup handshake and nothing else - the
+    /// same three chunks a healthy start sends before its prompt, and the last of them (<c>ESC[1;1H</c>)
+    /// only follows the cursor-position reply, so the replies had arrived. What was missing was the
+    /// shell's own first output: a cold Windows PowerShell 5.1 on a runner busy with parallel test
+    /// assemblies, not a wait on this harness. Start-up time is not what this class measures, so it
+    /// gets a budget of its own; a start slower than the old one is written to the test output, and a
+    /// failure still says whether the handshake completed.
+    /// </remarks>
+    private const int StartupPollAttempts = 240;
 
     [Fact]
     [Trait("Category", "PtySmoke")]
@@ -138,15 +155,23 @@ public class PtyBackspaceAtLineStartTests
         // OnResponse is not optional here. ConPTY opens with a cursor-position report request
         // (ESC [ 6 n) and the shell does not draw its first prompt until the terminal answers, so a
         // parser wired without it sits at a blank grid forever. Production wires exactly this, which
-        // is also why an insertion has to share the session's writer with the parse thread.
+        // is also why an insertion has to share the session's writer with the parse thread. The
+        // replies are recorded on the way, so a failure can say whether the parser answered the
+        // handshake. Recorded, not proven delivered: SendInput drops a write that races a shutdown.
+        // That ConPTY got the cursor-position reply shows in the stream itself, as the ESC[1;1H it
+        // sends only after it.
+        var stream = new StreamRecord();
         var parser = new AnsiParser(buffer)
         {
-            OnResponse = session.SendInput
+            OnResponse = reply =>
+            {
+                stream.AddReply(reply);
+                session.SendInput(reply);
+            }
         };
 
         // The parse runs on the session's own output thread, exactly as it does in a live pane; the
         // buffer's reader/writer lock is what makes the reads below safe against it.
-        var stream = new StreamRecord();
         session.OnOutputReceived += text =>
         {
             stream.Add(text);
@@ -189,7 +214,7 @@ public class PtyBackspaceAtLineStartTests
 
     /// <summary>
     /// Polls until the text ending at the cursor stops changing, so the measurement is not taken
-    /// mid-banner or mid-repaint.
+    /// mid-banner or mid-repaint. The shell gets <see cref="StartupPollAttempts"/> to get there.
     /// </summary>
     /// <remarks>
     /// Fails at the settle point rather than returning whatever it last saw. This class runs on a
@@ -200,39 +225,63 @@ public class PtyBackspaceAtLineStartTests
         TerminalBuffer buffer, string label, RustPtySession session, StreamRecord stream)
     {
         CursorContext previous = default;
+        var clock = Stopwatch.StartNew();
 
-        for (int i = 0; i < PollAttempts; i++)
+        for (int i = 0; i < StartupPollAttempts; i++)
         {
             await Task.Delay(PollIntervalMs);
             CursorContext current = ReadCursorContext(buffer);
 
             if (!string.IsNullOrWhiteSpace(current.TextBeforeCursor) && current == previous)
             {
+                // A pass, but a slow one is worth knowing about: the .trx keeps the output, so the CI
+                // artifact says how slow these starts get rather than leaving it to the next failure.
+                if (clock.Elapsed > TimeSpan.FromMilliseconds(PollAttempts * PollIntervalMs))
+                {
+                    TestContext.Current.TestOutputHelper?.WriteLine(
+                        $"#391: '{label}' took {clock.Elapsed.TotalSeconds:0.0}s to settle on its first prompt. {stream.Describe()}");
+                }
+
                 return current;
             }
 
             previous = current;
         }
 
-        // #391: this failed on windows-latest about once in fifty runs with an empty grid, and an empty
-        // grid alone cannot say whether the shell was still starting, waiting on a handshake reply, gone,
-        // or drawing into output that never reached the parser. What did arrive, and whether the shell
-        // is alive, tells those apart.
+        // #391: an empty grid alone cannot say whether the shell was still starting, waiting on a handshake
+        // reply, gone, or drawing into output that never reached the parser. What did arrive, what this
+        // harness answered, and whether the shell is alive tell those apart.
         Assert.Fail(
-            $"'{label}' never settled on a prompt within {PollAttempts * PollIntervalMs / 1000}s. " +
+            $"'{label}' never settled on a prompt within {StartupPollAttempts * PollIntervalMs / 1000}s. " +
             $"Last read was '{Describe(previous.TextBeforeCursor)}' at ({previous.Row},{previous.Col}). " +
             $"Shell pid {session.Pid?.ToString(CultureInfo.InvariantCulture) ?? "none"}, running: {session.IsProcessRunning}, " +
             $"exit code: {session.ExitCode?.ToString(CultureInfo.InvariantCulture) ?? "none"}. {stream.Describe()}");
         return default;
     }
 
-    /// <summary>What the session delivered to the parser: chunk count, length, and the start of it.</summary>
+    /// <summary>
+    /// What the session delivered to the parser - chunk count, length, and the start of it - and the
+    /// replies the parser generated for it.
+    /// </summary>
     private sealed class StreamRecord
     {
         private const int Kept = 600;
+        private const int RepliesKept = 8;
         private readonly StringBuilder _head = new();
+        private readonly List<string> _replies = [];
         private int _chunks;
         private long _chars;
+
+        public void AddReply(string reply)
+        {
+            lock (_head)
+            {
+                if (_replies.Count < RepliesKept)
+                {
+                    _replies.Add(reply);
+                }
+            }
+        }
 
         public void Add(string chunk)
         {
@@ -251,14 +300,17 @@ public class PtyBackspaceAtLineStartTests
         {
             lock (_head)
             {
-                string head = _head.ToString()
-                    .Replace("\u001b", "<ESC>", StringComparison.Ordinal)
-                    .Replace("\r", "<CR>", StringComparison.Ordinal)
-                    .Replace("\n", "<LF>", StringComparison.Ordinal)
-                    .Replace("\u0007", "<BEL>", StringComparison.Ordinal);
-                return $"Output: {_chunks} chunk(s), {_chars} char(s), starting '{head}'.";
+                string head = Escape(_head.ToString());
+                string replies = _replies.Count == 0 ? "none" : string.Join(", ", _replies.Select(Escape));
+                return $"Output: {_chunks} chunk(s), {_chars} char(s), starting '{head}'. Replies generated: {replies}.";
             }
         }
+
+        private static string Escape(string text) => text
+            .Replace("\u001b", "<ESC>", StringComparison.Ordinal)
+            .Replace("\r", "<CR>", StringComparison.Ordinal)
+            .Replace("\n", "<LF>", StringComparison.Ordinal)
+            .Replace("\u0007", "<BEL>", StringComparison.Ordinal);
     }
 
     private static async Task<CursorContext> WaitForAsync(
