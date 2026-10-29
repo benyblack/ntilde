@@ -214,6 +214,29 @@ public sealed class TerminalViewLinkActivationTests
         Assert.Equal(3, view.Osc8ScansForTest);
     }
 
+    /// <summary>
+    /// Codex's case on #632: output that overwrites part of an <c>id</c>-joined link leaves the rest of it the same anchor on
+    /// the same screen. The runs found before the write must not be reused for it: the overwritten cells no longer underline.
+    /// </summary>
+    [AvaloniaFact]
+    public void Output_over_part_of_a_hovered_link_is_seen_on_the_next_move()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\u001b]8;id=a;https://example.com\u0007abcdef\u001b]8;;\u0007");
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(new RecordingEnvironment()) };
+        view.SetBuffer(buffer);
+        view.SetMetricsForTest(CellWidth, CellHeight);
+
+        view.UpdateHoveredLink(CellCentre(0, 1));
+        Assert.Equal([new HyperlinkRun(0, 0, 5)], view.HoveredLinkRunsForTest);
+
+        parser.Process("\u001b[1;3HXXXX"); // columns 2-5 rewritten as plain text
+        view.UpdateHoveredLink(CellCentre(0, 0));
+
+        Assert.Equal([new HyperlinkRun(0, 0, 1)], view.HoveredLinkRunsForTest);
+    }
+
     /// <summary>What Render draws for the wrapped link: a 1-pixel bar under each run, on its own row.</summary>
     [AvaloniaFact]
     public void A_wrapped_Osc8_link_is_drawn_underlined_on_both_rows()

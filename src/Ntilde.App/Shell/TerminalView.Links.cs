@@ -35,12 +35,16 @@ namespace Ntilde.Shell
             _hoveredLink?.Runs ?? System.Array.Empty<Ntilde.VT.Links.HyperlinkRun>();
 
         /// <summary>
-        /// The OSC 8 anchor the hovered runs were found for, and the screen they were found on. Every pointer move asks
-        /// for the hovered link, so moving within one anchor on an unchanged screen reuses its runs instead of rescanning
-        /// every visible row under the buffer's lock (Codex review of #632). New output moves the screen, and a redrawn
-        /// link is a new anchor, so either is looked up again.
+        /// The OSC 8 anchor the hovered runs were found for, and the screen they were found on: where it starts, its size,
+        /// and the content generation. Every pointer move asks for the hovered link, so moving within one anchor on an
+        /// unchanged screen reuses its runs instead of rescanning every visible row under the buffer's lock (Codex review of
+        /// #632). Any write to the buffer is a new generation - output can rewrite part of an <c>id</c>-joined link while
+        /// the rest stays the same anchor - so the next move looks it up again.
         /// </summary>
-        private (Ntilde.VT.Links.Hyperlink Link, int DisplayStart, int Rows, int Cols)? _hoveredOsc8Screen;
+        private (Ntilde.VT.Links.Hyperlink Link, int DisplayStart, int Rows, int Cols, int Generation)? _hoveredOsc8Screen;
+
+        /// <summary>Bumped by every <see cref="InvalidateBuffer"/>, from whichever thread wrote to the buffer.</summary>
+        private int _contentGeneration;
 
         /// <summary>How many times the hovered OSC 8 link's runs were looked up on screen.</summary>
         internal int Osc8ScansForTest { get; private set; }
@@ -70,9 +74,10 @@ namespace Ntilde.Shell
                     return;
                 }
 
-                var screen = (osc8, DisplayStart: Math.Max(0, _buffer.TotalLines - _buffer.Rows - ScrollOffset), _buffer.Rows, _buffer.Cols);
+                var screen = (osc8, DisplayStart: Math.Max(0, _buffer.TotalLines - _buffer.Rows - ScrollOffset), _buffer.Rows, _buffer.Cols,
+                    Generation: Volatile.Read(ref _contentGeneration));
                 if (_hoveredLink is not null && _hoveredOsc8Screen is { } shown && ReferenceEquals(shown.Link, osc8)
-                    && (shown.DisplayStart, shown.Rows, shown.Cols) == (screen.DisplayStart, screen.Rows, screen.Cols))
+                    && (shown.DisplayStart, shown.Rows, shown.Cols, shown.Generation) == (screen.DisplayStart, screen.Rows, screen.Cols, screen.Generation))
                 {
                     return; // the same anchor on the same screen: its runs are already underlined
                 }
