@@ -5,6 +5,9 @@ using Xunit;
 namespace Ntilde.Tests.Infra
 {
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "xUnit3003:Classes which extend FactAttribute should provide a public constructor for source information",
+        Justification = "Its required fonts are a params list, which has to come last, so it cannot also take the caller's file " +
+                        "and line; the goldens still run, xUnit only loses their source link.")]
     public sealed class FontGoldenFactAttribute : FactAttribute
     {
         public FontGoldenFactAttribute(params string[] requiredFonts)

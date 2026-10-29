@@ -226,7 +226,7 @@ namespace Ntilde.Tests.ReplayTests
                         geometryCallbacks.Add((cols, rows));
                         return Task.CompletedTask;
                     },
-                    options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual });
+                    options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual }, ct: TestContext.Current.CancellationToken);
 
                 // Geometry arrives from the header before any data, and it is the
                 // post-resize geometry — never the stale 80x24.
@@ -310,7 +310,7 @@ namespace Ntilde.Tests.ReplayTests
                     ring.RecordChunk(chunk, chunk.Length);
                     if (++i % 50 == 0) ring.RecordResize(80 + (i % 5), 24);
                 }
-            });
+            }, TestContext.Current.CancellationToken);
 
             try
             {
@@ -517,7 +517,7 @@ namespace Ntilde.Tests.ReplayTests
                         actualBuffer.Resize(cols, rows);
                         return Task.CompletedTask;
                     },
-                    options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual });
+                    options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual }, ct: TestContext.Current.CancellationToken);
 
                 Assert.False(result.Truncated);
 

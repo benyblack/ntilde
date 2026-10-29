@@ -279,7 +279,7 @@ public class AgentHostServiceTests : IDisposable
         await using var writer = new StreamWriter(stream, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true };
 
         await writer.WriteLineAsync(RequestLine(AgentHostProtocol.Methods.ListSessions, id: 42));
-        var line = await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        var line = await reader.ReadLineAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         Assert.NotNull(line);
 
         var response = JsonSerializer.Deserialize(line!, AgentHostJsonContext.Default.AgentHostResponse);
@@ -315,7 +315,7 @@ public class AgentHostServiceTests : IDisposable
         {
             // Prove the connection works, so the assertion below is meaningful.
             await writer.WriteLineAsync(RequestLine(AgentHostProtocol.Methods.ListSessions));
-            Assert.NotNull(await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10)));
+            Assert.NotNull(await reader.ReadLineAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
 
             service.Stop();
 
@@ -323,7 +323,7 @@ public class AgentHostServiceTests : IDisposable
             // end-of-stream or a broken pipe/socket, never fresh data.
             try
             {
-                var line = await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10));
+                var line = await reader.ReadLineAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
                 Assert.Null(line);
             }
             catch (IOException)

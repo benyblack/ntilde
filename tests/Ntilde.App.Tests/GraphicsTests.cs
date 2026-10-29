@@ -22,7 +22,7 @@ namespace Ntilde.Tests
             string dcsData = "0;1;0q#0;2;100;0;0#0!100~";
 
             // Act
-            SKBitmap bitmap = decoder.Decode(dcsData);
+            SKBitmap? bitmap = decoder.Decode(dcsData);
 
             // Assert
             Assert.NotNull(bitmap);
@@ -69,7 +69,7 @@ namespace Ntilde.Tests
             string dcsData = "q#100;2;0;0;100#100~";
 
             // Act
-            SKBitmap bitmap = decoder.Decode(dcsData);
+            SKBitmap? bitmap = decoder.Decode(dcsData);
 
             // Assert
             Assert.NotNull(bitmap);

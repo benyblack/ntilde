@@ -1,5 +1,7 @@
 using Ntilde.Shell;
 
+namespace Ntilde.Tests;
+
 public sealed class TabPreviewTrackerTests
 {
     [Fact]

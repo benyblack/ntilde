@@ -56,7 +56,7 @@ namespace Ntilde.Tests.ReplayTests
                     options: new ReplayRunOptions
                     {
                         PlaybackMode = ReplayPlaybackMode.Virtual
-                    });
+                    }, ct: TestContext.Current.CancellationToken);
 
                 Assert.False(result.Truncated);
                 Assert.Equal(3, result.EventsProcessed);

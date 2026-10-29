@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
@@ -156,7 +157,7 @@ public sealed class SettingsPageTests
 
         var (headline, body) = BackupPage.BuildRestoreConfirmationText(row);
 
-        Assert.Contains(created.LocalDateTime.ToString("yyyy-MM-dd HH:mm"), headline);
+        Assert.Contains(created.LocalDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture), headline);
         Assert.Contains("automatic", headline, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("taken first", body, StringComparison.OrdinalIgnoreCase);
     }

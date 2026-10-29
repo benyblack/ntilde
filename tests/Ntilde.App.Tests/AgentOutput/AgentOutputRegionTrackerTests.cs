@@ -300,7 +300,7 @@ public sealed class AgentOutputRegionTrackerTests
 
         h.Tracker.SetEnabled(true);
         h.Tracker.FlushNow();
-        await Task.Delay(PastDebounceMs);
+        await Task.Delay(PastDebounceMs, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, h.UpdateCount);
     }
@@ -489,7 +489,7 @@ public sealed class AgentOutputRegionTrackerTests
         h.Tracker.NotifyInvalidate();
         h.Tracker.NotifyInvalidate();
         h.Tracker.NotifyInvalidate();
-        await Task.Delay(PastDebounceMs);
+        await Task.Delay(PastDebounceMs, TestContext.Current.CancellationToken);
 
         Assert.Equal(afterFirst, h.UpdateCount);
     }
@@ -652,7 +652,7 @@ public sealed class AgentOutputRegionTrackerTests
 
         h.Write("\x1b[?1049h"); // a full-screen program takes over the grid
         h.Tracker.NotifyInvalidate();
-        await Task.Delay(PastDebounceMs);
+        await Task.Delay(PastDebounceMs, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, h.UpdateCount);
     }
@@ -692,7 +692,7 @@ public sealed class AgentOutputRegionTrackerTests
 
         h.Write("[?1049h");
         h.Tracker.NotifyAltScreenChanged(true);
-        await Task.Delay(PastDebounceMs);
+        await Task.Delay(PastDebounceMs, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, h.UpdateCount);
     }
@@ -709,7 +709,7 @@ public sealed class AgentOutputRegionTrackerTests
         h.Write("\x1b[3J\x1b[H");
         h.Write("unrelated content");
         h.Tracker.NotifyInvalidate();
-        await Task.Delay(PastDebounceMs);
+        await Task.Delay(PastDebounceMs, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, h.UpdateCount);
     }
@@ -753,7 +753,7 @@ public sealed class AgentOutputRegionTrackerTests
         h.Output("after reset");
 
         h.Tracker.NotifyInvalidate();
-        await Task.Delay(PastDebounceMs);
+        await Task.Delay(PastDebounceMs, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, h.UpdateCount);
     }

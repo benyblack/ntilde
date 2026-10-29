@@ -121,9 +121,9 @@ public sealed class AssistContentProviderSeamTests
         // Every constructor is private, and the one factory takes an ISecretsFilter. There is no
         // path from string to RedactedText that does not run a filter.
         Assert.Empty(type.GetConstructors());
-        Assert.Empty(type.GetMethods().Where(m =>
-            m.IsStatic && m.IsPublic && !m.IsSpecialName && m.ReturnType == typeof(RedactedText)));
-        Assert.Empty(type.GetMethods().Where(m => m.Name is "op_Implicit" or "op_Explicit"));
+        Assert.DoesNotContain(type.GetMethods(), m =>
+            m.IsStatic && m.IsPublic && !m.IsSpecialName && m.ReturnType == typeof(RedactedText));
+        Assert.DoesNotContain(type.GetMethods(), m => m.Name is "op_Implicit" or "op_Explicit");
     }
 
     // ---------------------------------------------------------------------------------------
@@ -137,7 +137,7 @@ public sealed class AssistContentProviderSeamTests
         var second = new RecordingProvider("p.second", AssistCapabilities.EnrichDocs, docs: [Doc("second")]);
         var registry = new AssistContentProviderRegistry([first, second]);
 
-        IReadOnlyList<AssistContentResult> results = await registry.QueryAsync(HelpRequest());
+        IReadOnlyList<AssistContentResult> results = await registry.QueryAsync(HelpRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal(new[] { "p.first", "p.second" }, results.Select(r => r.ProviderId).ToArray());
     }
@@ -149,7 +149,7 @@ public sealed class AssistContentProviderSeamTests
         var fixer = new RecordingProvider("p.fix", AssistCapabilities.SuggestFix, fixes: [Fix("f", 0.9)]);
         var registry = new AssistContentProviderRegistry([docs, fixer]);
 
-        await registry.QueryAsync(HelpRequest());
+        await registry.QueryAsync(HelpRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal(1, docs.QueryCount);
         Assert.Equal(0, fixer.QueryCount);
@@ -166,7 +166,7 @@ public sealed class AssistContentProviderSeamTests
         var healthy = new RecordingProvider("p.ok", AssistCapabilities.EnrichDocs, docs: [Doc("still here")]);
         var registry = new AssistContentProviderRegistry([thrower, healthy]);
 
-        IReadOnlyList<AssistContentResult> results = await registry.QueryAsync(HelpRequest());
+        IReadOnlyList<AssistContentResult> results = await registry.QueryAsync(HelpRequest(), TestContext.Current.CancellationToken);
 
         AssistContentResult only = Assert.Single(results);
         Assert.Equal("p.ok", only.ProviderId);
@@ -200,7 +200,7 @@ public sealed class AssistContentProviderSeamTests
 
         var closed = new AssistContentProviderRegistry([remote]);
         Assert.False(closed.HasProviderFor(AssistCapabilities.SuggestFix));
-        Assert.Empty(await closed.QueryAsync(FixRequest()));
+        Assert.Empty(await closed.QueryAsync(FixRequest(), TestContext.Current.CancellationToken));
         Assert.Equal(0, remote.QueryCount);
 
         var opened = new AssistContentProviderRegistry(
@@ -211,7 +211,7 @@ public sealed class AssistContentProviderSeamTests
             }));
 
         Assert.True(opened.HasProviderFor(AssistCapabilities.SuggestFix));
-        Assert.Single(await opened.QueryAsync(FixRequest()));
+        Assert.Single(await opened.QueryAsync(FixRequest(), TestContext.Current.CancellationToken));
         Assert.Equal(1, remote.QueryCount);
     }
 
@@ -293,7 +293,7 @@ public sealed class AssistContentProviderSeamTests
                 IsRemote: true,
                 SelectedText: null));
 
-        await provider.QueryAsync(request);
+        await provider.QueryAsync(request, TestContext.Current.CancellationToken);
 
         CommandFailureContext seen = Assert.Single(service.Seen);
         Assert.DoesNotContain("hunter2", seen.CommandText, StringComparison.Ordinal);
@@ -309,7 +309,7 @@ public sealed class AssistContentProviderSeamTests
         var service = new RecordingErrorInsightService();
         var provider = new LocalErrorInsightProvider(service);
 
-        AssistContentResult result = await provider.QueryAsync(HelpRequest());
+        AssistContentResult result = await provider.QueryAsync(HelpRequest(), TestContext.Current.CancellationToken);
 
         Assert.True(result.IsEmpty);
         Assert.Empty(service.Seen);
@@ -321,7 +321,7 @@ public sealed class AssistContentProviderSeamTests
         var source = new FakeKnowledgeSource("CC BY-SA 4.0, tldr-pages");
         var provider = new LocalCommandKnowledgeProvider(source, source);
 
-        AssistContentResult result = await provider.QueryAsync(HelpRequest("ssh user@host", "ssh"));
+        AssistContentResult result = await provider.QueryAsync(HelpRequest("ssh user@host", "ssh"), TestContext.Current.CancellationToken);
 
         Assert.Equal(LocalCommandKnowledgeProvider.ProviderId, result.ProviderId);
         Assert.Single(result.Docs);

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -105,7 +106,7 @@ public sealed class SettingsWindowBackupSectionTests
         var (headline, body) = BackupPage.BuildRestoreConfirmationText((BackupPage.SnapshotRow)row);
 
         // Names the snapshot: its timestamp and reason.
-        Assert.Contains(written!.CreatedUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm"), headline);
+        Assert.Contains(written!.CreatedUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture), headline);
         Assert.Contains("automatic", headline, StringComparison.OrdinalIgnoreCase);
 
         // States it replaces the categories the snapshot contains, and that a pre-restore
@@ -798,9 +799,12 @@ public sealed class SettingsWindowBackupSectionTests
             {
                 try
                 {
-                    var current = dirInfo.GetAccessControl();
-                    current.RemoveAccessRule(rule);
-                    dirInfo.SetAccessControl(current);
+                    if (OperatingSystem.IsWindows()) // Made in the Windows branch above; the analyzer does not follow it into the lambda.
+                    {
+                        var current = dirInfo.GetAccessControl();
+                        current.RemoveAccessRule(rule);
+                        dirInfo.SetAccessControl(current);
+                    }
                 }
                 catch
                 {
@@ -816,7 +820,10 @@ public sealed class SettingsWindowBackupSectionTests
             {
                 try
                 {
-                    File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                    if (!OperatingSystem.IsWindows()) // Made in the non-Windows branch above; the analyzer does not follow it into the lambda.
+                    {
+                        File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                    }
                 }
                 catch
                 {

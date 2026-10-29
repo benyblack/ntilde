@@ -198,7 +198,7 @@ public sealed class SettingsScreenshotHarness
         using var frame = topLevel.CaptureRenderedFrame();
         Assert.NotNull(frame);
         string path = Path.Combine(output, fileName);
-        frame!.Save(path);
+        frame!.Save(path, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
         return path;
     }
 
@@ -214,11 +214,11 @@ public sealed class SettingsScreenshotHarness
 
         // A page that vanished or got shorter leaves baseline images this run never wrote;
         // comparing only what was written would let that pass. Scope to this case's theme.
-        var produced = new HashSet<string>(written.Select(Path.GetFileName), StringComparer.OrdinalIgnoreCase);
+        var produced = new HashSet<string>(written.Select(file => Path.GetFileName(file)), StringComparer.OrdinalIgnoreCase);
         var expected = Directory.EnumerateFiles(baseline, $"settings-{slug}-*.png")
             .Concat(Directory.EnumerateFiles(baseline, $"connections-{slug}.png"))
             .Where(f => !Path.GetFileName(f).Contains("TitleBarFull", StringComparison.Ordinal)); // written by CaptureFullTitleBar, not by Capture
-        foreach (string missing in expected.Select(Path.GetFileName).Order(StringComparer.Ordinal))
+        foreach (string missing in expected.Select(file => Path.GetFileName(file)).Order(StringComparer.Ordinal))
         {
             if (!produced.Contains(missing!))
             {

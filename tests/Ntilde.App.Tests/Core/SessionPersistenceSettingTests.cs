@@ -47,7 +47,7 @@ public sealed class SessionPersistenceSettingTests
 
     [Fact]
     public void The_designer_settings_never_persist() =>
-        Assert.Equal("Off", AppServices.BuildForDesigner().Settings.SessionPersistence);
+        Assert.Equal("Off", AppServices.BuildForDesigner().Settings!.SessionPersistence);
 
     [AvaloniaFact]
     public void A_test_window_spawns_no_daemon()

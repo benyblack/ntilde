@@ -186,7 +186,7 @@ public sealed class FocusModeNoticeTests : IClassFixture<TestAppDataRoot>, IDisp
     public void A_pane_refusing_remote_files_answers_at_once_but_its_other_notices_wait()
     {
         MainWindow window = NewWindow();
-        var pane = window.AllPanesForTest().First();
+        var pane = window.AllPanesForTest()[0];
         window.EnterFocusMode();
 
         WindowTestSupport.Invoke(window, "OnPanePersistenceNotice", pane, "Keep shells running", "a fallback", null!);

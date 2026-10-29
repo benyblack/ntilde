@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -47,7 +48,7 @@ namespace Ntilde.Tests
 
             int? code = await WaitForExitAsync(session);
 
-            Assert.True(code == 0, $"expected /c to run its command and exit, got {code?.ToString() ?? "no exit"}.\nOutput:\n{output.Text}");
+            Assert.True(code == 0, $"expected /c to run its command and exit, got {code?.ToString(CultureInfo.InvariantCulture) ?? "no exit"}.\nOutput:\n{output.Text}");
             Assert.Contains("RAN-AND-EXITED", output.Text, StringComparison.Ordinal);
         }
 
@@ -117,7 +118,7 @@ namespace Ntilde.Tests
                 {
                     Assert.Fail(
                         $"cmd.exe never produced the expected output (args '{session.ShellArguments}', " +
-                        $"exit {session.ExitCode?.ToString() ?? "none"}).\nOutput:\n{output.Text}");
+                        $"exit {session.ExitCode?.ToString(CultureInfo.InvariantCulture) ?? "none"}).\nOutput:\n{output.Text}");
                 }
 
                 await Task.Delay(50);

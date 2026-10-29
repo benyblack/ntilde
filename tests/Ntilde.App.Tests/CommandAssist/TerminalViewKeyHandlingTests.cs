@@ -492,7 +492,7 @@ public sealed class TerminalViewKeyHandlingTests
         Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Meta));
         Dispatcher.UIThread.RunJobs();
 
-        Assert.Equal("hello", await window.Clipboard.TryGetTextAsync());
+        Assert.Equal("hello", await window.Clipboard!.TryGetTextAsync());
         session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
     }
 

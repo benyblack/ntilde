@@ -45,7 +45,7 @@ public sealed class ShortcutPlatformTests
         // The Settings recorder compares a recorded chord to the default with an ordinal compare,
         // so a default not in canonical form would never read as "back to default".
         Assert.All(
-            ShortcutCatalog.GetEntries(isMacOS: true).Where(entry => entry.DefaultBinding.StartsWith("Cmd+")),
+            ShortcutCatalog.GetEntries(isMacOS: true).Where(entry => entry.DefaultBinding.StartsWith("Cmd+", StringComparison.Ordinal)),
             entry => Assert.Equal(ShortcutNormalizer.Normalize(entry.DefaultBinding), entry.DefaultBinding));
     }
 }

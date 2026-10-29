@@ -54,7 +54,7 @@ namespace Ntilde.Tests
             Thread process = session.ProcessLoopThread!;
 
             // Let the shell go idle (read parked in native pty_read).
-            await Task.Delay(500);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
 
             var sw = Stopwatch.StartNew();
             session.Dispose();

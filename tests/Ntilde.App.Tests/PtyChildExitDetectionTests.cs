@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Ntilde.Pty;
@@ -42,7 +43,7 @@ namespace Ntilde.Tests
             // missing exit: under parallel load this reported a non-zero code once, and
             // "Assert.Equal(0, code)" alone cannot tell you whether the shell died early,
             // the read loop claimed the exit first, or `exit` landed mid-startup.
-            Assert.True(code == 0, $"expected a clean 0, got {code?.ToString() ?? "no exit"}.\nPTY log:\n{log}");
+            Assert.True(code == 0, $"expected a clean 0, got {code?.ToString(CultureInfo.InvariantCulture) ?? "no exit"}.\nPTY log:\n{log}");
             Assert.False(session.IsProcessRunning, "the session must not report itself as running once its shell has gone");
         }
 
@@ -110,7 +111,7 @@ namespace Ntilde.Tests
                 await WaitForPromptAsync(session);
             } // Dispose: a normal close of a session whose shell is still alive.
 
-            await Task.Delay(200);
+            await Task.Delay(200, TestContext.Current.CancellationToken);
 
             Assert.DoesNotContain("Child status unavailable", log.ToString(), StringComparison.Ordinal);
         }

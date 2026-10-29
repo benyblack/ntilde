@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Shell;
 
@@ -40,6 +41,7 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
     };
 
     [Fact]
+    [UnsupportedOSPlatform("windows")]
     public void The_marker_folder_is_private()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "POSIX modes only; Windows has ACLs.");
@@ -60,6 +62,7 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
     /// the records' writer makes it 0700 - before the first record goes in, and only when it is not 0700 already.
     /// </summary>
     [Fact]
+    [UnsupportedOSPlatform("windows")]
     public void An_existing_0755_marker_folder_is_made_private_before_a_record_is_written()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "POSIX modes only; Windows has ACLs.");
@@ -90,6 +93,7 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
     /// evidence either way: never "answered", never "declined". Logged.
     /// </summary>
     [Fact]
+    [UnsupportedOSPlatform("windows")]
     public void A_marker_folder_that_cannot_be_made_private_gets_no_record_and_leaves_no_evidence()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "POSIX modes only; Windows has ACLs.");
@@ -126,6 +130,7 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
 
     /// <summary>A symbolic link where the folder should be is not followed: no chmod through it, and no record behind it.</summary>
     [Fact]
+    [UnsupportedOSPlatform("windows")]
     public void A_symbolic_link_in_place_of_the_marker_folder_is_not_followed()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "POSIX modes only; Windows has ACLs.");

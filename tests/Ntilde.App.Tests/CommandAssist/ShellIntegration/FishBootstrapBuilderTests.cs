@@ -87,9 +87,9 @@ public sealed class FishBootstrapBuilderTests : IDisposable
         // Mirrors the emitted script: guard, copy, redefine.
         void RunBootstrapPromptSection()
         {
-            if (!functions.ContainsKey("fish_prompt")) return;
+            if (!functions.TryGetValue("fish_prompt", out var prompt)) return;
             if (functions.ContainsKey("__ntilde_user_fish_prompt")) return; // the fix
-            functions["__ntilde_user_fish_prompt"] = functions["fish_prompt"];
+            functions["__ntilde_user_fish_prompt"] = prompt;
             functions["fish_prompt"] = "call __ntilde_user_fish_prompt; print 133;B";
         }
 

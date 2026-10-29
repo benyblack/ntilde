@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ntilde.CommandAssist.Domain;
 
 namespace Ntilde.Tests.CommandAssist;
@@ -7,7 +8,7 @@ namespace Ntilde.Tests.CommandAssist;
 /// </summary>
 public sealed class AssistRelativeTimeTests
 {
-    private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-08-06T12:00:00+00:00");
+    private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-08-06T12:00:00+00:00", CultureInfo.InvariantCulture);
 
     [Theory]
     [InlineData(0, "just now")]

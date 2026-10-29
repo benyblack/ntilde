@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using Ntilde.AgentHost;
 
@@ -32,14 +33,14 @@ public class AgentActivityJournalTests
         var journal = new AgentActivityJournal();
         for (int i = 0; i < AgentActivityJournal.Capacity + 50; i++)
         {
-            journal.Record("sendInput", null, i.ToString(), "ok");
+            journal.Record("sendInput", null, i.ToString(CultureInfo.InvariantCulture), "ok");
         }
 
         Assert.Equal(AgentActivityJournal.Capacity, journal.Count);
         var entries = journal.Snapshot();
         Assert.Equal(AgentActivityJournal.Capacity, entries.Count);
         // Newest entry is the last recorded; oldest survivor is entry #50.
-        Assert.Equal((AgentActivityJournal.Capacity + 49).ToString(), entries[0].Target);
+        Assert.Equal((AgentActivityJournal.Capacity + 49).ToString(CultureInfo.InvariantCulture), entries[0].Target);
         Assert.Equal("50", entries[^1].Target);
     }
 

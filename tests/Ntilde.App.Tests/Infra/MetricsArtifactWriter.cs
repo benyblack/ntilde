@@ -1,5 +1,6 @@
 using Ntilde.Shell;
 using System;
+using System.Globalization;
 using System.IO;
 using Ntilde.Platform;
 using Ntilde.VT;
@@ -22,7 +23,7 @@ namespace Ntilde.Tests.Infra
             }
 
             string safeScenario = MakeSafeFilePart(scenario);
-            string stamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssfff");
+            string stamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssfff", CultureInfo.InvariantCulture);
             string path = Path.Combine(root, $"{safeScenario}_{stamp}.txt");
 
             lock (_gate)

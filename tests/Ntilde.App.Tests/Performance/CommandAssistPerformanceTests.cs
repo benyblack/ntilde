@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -364,7 +365,7 @@ public sealed class CommandAssistPerformanceTests
         for (int i = 0; i < count; i++)
         {
             entries.Add(new CommandHistoryEntry(
-                Id: i.ToString(),
+                Id: i.ToString(CultureInfo.InvariantCulture),
                 CommandText: commands[i % commands.Length] + " " + i,
                 ExecutedAt: start.AddSeconds(i),
                 ShellKind: "pwsh",

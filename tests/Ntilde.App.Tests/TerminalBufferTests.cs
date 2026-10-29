@@ -474,14 +474,14 @@ namespace Ntilde.Tests
         public static FieldInfo GetPrivateField(this Type type, string name)
         {
             var field = type.GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
-            if (field == null) throw new Exception($"Field '{name}' not found on type '{type.Name}'");
+            if (field == null) throw new MissingFieldException($"Field '{name}' not found on type '{type.Name}'");
             return field;
         }
 
         public static void SetPrivateField(this object obj, string name, object value)
         {
             var field = obj.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
-            if (field == null) throw new Exception($"Field '{name}' not found on type '{obj.GetType().Name}'");
+            if (field == null) throw new MissingFieldException($"Field '{name}' not found on type '{obj.GetType().Name}'");
             field.SetValue(obj, value);
         }
     }

@@ -30,8 +30,8 @@ public class MarkdownThemeTokenTests
             var theme = MarkdownTheme.Resolve(anchor);
 
             Assert.Same(Application.Current!.FindResource(ThemeKeys.Link), theme.Accent);
-            Assert.Same(Application.Current.FindResource(ThemeKeys.DiffAdded), theme.Added);
-            Assert.Same(Application.Current.FindResource(ThemeKeys.PanelAlt), theme.CodeBackground);
+            Assert.Same(Application.Current!.FindResource(ThemeKeys.DiffAdded), theme.Added);
+            Assert.Same(Application.Current!.FindResource(ThemeKeys.PanelAlt), theme.CodeBackground);
         }
         finally
         {

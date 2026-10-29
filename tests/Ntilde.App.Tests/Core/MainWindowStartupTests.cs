@@ -339,7 +339,7 @@ public sealed class MainWindowStartupTests : IDisposable, IClassFixture<TestAppD
 
         toggleMethod!.Invoke(window, null);
 
-        TerminalCommand settingsCommand = Assert.Single(CommandRegistry.GetCommands().Where(command => command.Title == "Settings"));
+        TerminalCommand settingsCommand = Assert.Single(CommandRegistry.GetCommands(), command => command.Title == "Settings");
         Assert.Equal(ShortcutPlatform.DefaultBinding("settings", "Ctrl+,"), settingsCommand.Shortcut);
     }
 
@@ -442,6 +442,7 @@ public sealed class MainWindowStartupTests : IDisposable, IClassFixture<TestAppD
         return condition();
     }
 
+    [AvaloniaFact]
     public async Task ExecuteCommand_DefersActionUntilAfterPaletteCloses()
     {
         var window = TestMainWindowFactory.Create();

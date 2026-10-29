@@ -21,7 +21,7 @@ namespace Ntilde.Tests.ReplayTests
                     byte[] data2 = Encoding.UTF8.GetBytes("World");
 
                     recorder.RecordChunk(data1, data1.Length);
-                    await Task.Delay(10); // Ensure timestamp diff
+                    await Task.Delay(10, TestContext.Current.CancellationToken); // Ensure timestamp diff
                     recorder.RecordChunk(data2, data2.Length);
                 }
 
@@ -33,7 +33,7 @@ namespace Ntilde.Tests.ReplayTests
                 {
                     gathered.Append(Encoding.UTF8.GetString(data));
                     await Task.CompletedTask;
-                });
+                }, ct: TestContext.Current.CancellationToken);
 
                 // 3. Assert
                 Assert.Equal("Hello World", gathered.ToString());

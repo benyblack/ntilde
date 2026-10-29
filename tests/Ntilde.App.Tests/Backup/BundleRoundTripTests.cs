@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -294,7 +295,7 @@ public sealed class BundleRoundTripTests
 
         Assert.False(outcome.Success);
         Assert.Equal(BackupFailureKind.UnsupportedSchemaVersion, outcome.Failure);
-        Assert.Contains(future.ToString(), outcome.Message);
+        Assert.Contains(future.ToString(CultureInfo.InvariantCulture), outcome.Message);
     }
 
     [Fact]
@@ -379,9 +380,12 @@ public sealed class BundleRoundTripTests
             {
                 try
                 {
-                    var current = fileInfo.GetAccessControl();
-                    current.RemoveAccessRule(rule);
-                    fileInfo.SetAccessControl(current);
+                    if (OperatingSystem.IsWindows()) // Made in the Windows branch above; the analyzer does not follow it into the lambda.
+                    {
+                        var current = fileInfo.GetAccessControl();
+                        current.RemoveAccessRule(rule);
+                        fileInfo.SetAccessControl(current);
+                    }
                 }
                 catch
                 {
@@ -397,7 +401,10 @@ public sealed class BundleRoundTripTests
             {
                 try
                 {
-                    File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                    if (!OperatingSystem.IsWindows()) // Made in the non-Windows branch above; the analyzer does not follow it into the lambda.
+                    {
+                        File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                    }
                 }
                 catch
                 {

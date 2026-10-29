@@ -191,15 +191,15 @@ public sealed class ShellIntegrationArgumentsTests
 
     private static string ShortPath(string path)
     {
-        var buffer = new System.Text.StringBuilder(512);
-        uint n = GetShortPathNameW(path, buffer, (uint)buffer.Capacity);
-        return n == 0 ? path : buffer.ToString();
+        var buffer = new char[512];
+        uint n = GetShortPathNameW(path, buffer, (uint)buffer.Length);
+        return n == 0 || n > buffer.Length ? path : new string(buffer, 0, (int)n);
     }
 
     [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
     private static extern uint GetShortPathNameW(
         [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] string lpszLongPath,
-        System.Text.StringBuilder lpszShortPath,
+        [System.Runtime.InteropServices.Out] char[] lpszShortPath,
         uint cchBuffer);
 
     [Fact]

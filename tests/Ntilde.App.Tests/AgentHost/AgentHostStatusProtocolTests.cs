@@ -180,7 +180,7 @@ public class AgentHostStatusProtocolTests : IDisposable
 
         registration.StatusMachine.NotifyCommandStarted(); // → statusChanged(running)
 
-        var result = ResultOf(await wait.WaitAsync(TimeSpan.FromSeconds(10)), AgentHostJsonContext.Default.WaitForEventsResult);
+        var result = ResultOf(await wait.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken), AgentHostJsonContext.Default.WaitForEventsResult);
         var evt = Assert.Single(result.Events, e => e.Type == AgentHostProtocol.EventTypes.StatusChanged);
         Assert.Equal(AgentHostProtocol.StatusKinds.Running, evt.Status);
         Assert.Equal(registration.PaneId, evt.PaneId);

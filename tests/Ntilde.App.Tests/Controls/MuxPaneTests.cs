@@ -199,7 +199,7 @@ public sealed class MuxPaneTests : IDisposable
         // A disconnected session still reports IsProcessRunning, so the view must not be the one
         // that consumes Enter (it would send "\r" into a dead connection).
         PressEnter();
-        var again = Assert.IsType<MuxClientSession>(_pane.Session);
+        var again = Assert.IsType<MuxClientSession>(_pane!.Session);
         Assert.Equal(s.Id, again.Id);
         PumpUntil(() => again.IsAttached, "reattached");
         // IsAttached flips when DeliverSnapshot publishes the attach offset, which is just BEFORE it

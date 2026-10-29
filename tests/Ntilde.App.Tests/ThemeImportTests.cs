@@ -15,7 +15,7 @@ namespace Ntilde.Tests
     /// single WT scheme object. A failed import returns "" with no other signal, so each shape is
     /// asserted here rather than trusted to the settings UI.
     /// </summary>
-    public class ThemeImportTests : IDisposable
+    public sealed class ThemeImportTests : IDisposable
     {
         private readonly string _root;
         private readonly string _themesDirectory;

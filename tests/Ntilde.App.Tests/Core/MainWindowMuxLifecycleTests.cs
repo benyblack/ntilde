@@ -87,7 +87,7 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
     public void Window_close_detaches_and_the_session_keeps_running()
     {
         MainWindow window = CreateWindow();
-        Guid id = ((MuxClientSession)AllPanes(window).First().Session!).Id;
+        Guid id = ((MuxClientSession)AllPanes(window)[0].Session!).Id;
 
         window.Close();
 
@@ -248,7 +248,7 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
     public void Teardown_twice_is_harmless()
     {
         MainWindow window = CreateWindow();
-        Guid id = ((MuxClientSession)AllPanes(window).First().Session!).Id;
+        Guid id = ((MuxClientSession)AllPanes(window)[0].Session!).Id;
         var teardown = typeof(MainWindow).GetMethod("PerformAppTeardown", BindingFlags.NonPublic | BindingFlags.Instance)!;
 
         teardown.Invoke(window, null);
@@ -262,7 +262,7 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
     public void Close_confirmation_refreshes_the_daemons_child_process_state()
     {
         MainWindow window = CreateWindow();
-        var mux = (MuxClientSession)AllPanes(window).First().Session!;
+        var mux = (MuxClientSession)AllPanes(window)[0].Session!;
         _mux.Fake(mux.Id).HasActiveChildProcesses = true;
 
         // Off the UI thread: never Wait() a mux task on the Avalonia dispatcher.
@@ -394,7 +394,7 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
     public void A_successful_attach_writes_the_session_file_with_the_mux_id()
     {
         MainWindow window = CreateWindow();
-        Guid id = ((MuxClientSession)AllPanes(window).First().Session!).Id;
+        Guid id = ((MuxClientSession)AllPanes(window)[0].Session!).Id;
 
         // A crash right after launch must still know which daemon sessions are this window's.
         PumpUntil(() => File.Exists(AppPaths.SessionFilePath) && File.ReadAllText(AppPaths.SessionFilePath).Contains(id.ToString()),

@@ -226,7 +226,7 @@ public sealed class RemotePathAutocompleteServiceTests
         // PR #73's first run (Windows hosted runner under load). Going to 30s -
         // if the worker scheduling latency exceeds 30s, that's a real CI problem
         // worth surfacing, not test fragility worth tolerating.
-        Assert.True(interop.Started.Wait(TimeSpan.FromSeconds(30)));
+        Assert.True(interop.Started.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
         Assert.False(returnedTask.IsCompleted);
 
         interop.Release.Set();

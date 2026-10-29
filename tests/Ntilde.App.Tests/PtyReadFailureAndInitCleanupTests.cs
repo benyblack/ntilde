@@ -73,7 +73,7 @@ namespace Ntilde.Tests
             try
             {
                 // The injection fires on a 300 ms delay; wait well past it.
-                await Task.Delay(2500);
+                await Task.Delay(2500, TestContext.Current.CancellationToken);
             }
             finally
             {
@@ -103,7 +103,7 @@ namespace Ntilde.Tests
             // Dispose *inside* the 300 ms injection window: the task must observe
             // cancellation rather than inject into a dead handle, and Dispose must not
             // block waiting for it.
-            await Task.Delay(50);
+            await Task.Delay(50, TestContext.Current.CancellationToken);
 
             var sw = Stopwatch.StartNew();
             session.Dispose();
@@ -114,7 +114,7 @@ namespace Ntilde.Tests
                 $"Dispose took {sw.Elapsed.TotalSeconds:F1}s — it should not block on the init task");
 
             // No script is written on any path now, cancelled or not.
-            await Task.Delay(750);
+            await Task.Delay(750, TestContext.Current.CancellationToken);
 
             Assert.Empty(Directory.GetFiles(Path.GetTempPath(), "ntilde_init_*.ps1"));
         }

@@ -7,7 +7,7 @@ using Ntilde.VT.Storage;
 
 namespace Ntilde.Tests.Buffer
 {
-    public class ScrollbackPagesTests : IDisposable
+    public sealed class ScrollbackPagesTests : IDisposable
     {
         private TerminalPagePool _pool;
 

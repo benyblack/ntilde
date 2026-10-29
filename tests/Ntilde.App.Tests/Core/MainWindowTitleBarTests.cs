@@ -1,6 +1,7 @@
 using Ntilde.Shell.Shortcuts;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -448,7 +449,7 @@ public sealed class MainWindowTitleBarTests : IDisposable
 
         Assert.True(
             viewer is not null && viewer.Bounds.Width > 0,
-            $"The tab header ScrollViewer never measured (width {viewer?.Bounds.Width.ToString() ?? "<not found>"}). " +
+            $"The tab header ScrollViewer never measured (width {viewer?.Bounds.Width.ToString(CultureInfo.InvariantCulture) ?? "<not found>"}). " +
             "UpdateTabOverflowIndicator treats that as 'no viewport' and hides the badge without counting, " +
             "so no overflow assertion below could mean anything.");
 

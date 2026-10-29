@@ -144,7 +144,7 @@ public sealed class FocusModePaneChromeTests : IClassFixture<TestAppDataRoot>, I
     public void Focus_mode_hides_and_restores_the_status_bar_and_scrollbar()
     {
         MainWindow window = NewShownWindow();
-        var pane = window.AllPanesForTest().First();
+        var pane = window.AllPanesForTest()[0];
         MakeActable(pane);
         var statusBar = pane.FindControl<Control>("StatusBar")!;
         var scrollBar = pane.FindControl<Control>("TermScrollBar")!;
@@ -164,7 +164,7 @@ public sealed class FocusModePaneChromeTests : IClassFixture<TestAppDataRoot>, I
     public void Focus_mode_hides_the_markdown_toggle_and_brings_it_back()
     {
         MainWindow window = NewShownWindow();
-        var pane = window.AllPanesForTest().First();
+        var pane = window.AllPanesForTest()[0];
         var toggle = pane.FindControl<Control>("AgentOutputToggle")!;
 
         pane.OnMarkdownPresenceChanged(true);

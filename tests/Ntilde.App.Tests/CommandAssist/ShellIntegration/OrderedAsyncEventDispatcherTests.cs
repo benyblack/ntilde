@@ -26,7 +26,7 @@ public sealed class OrderedAsyncEventDispatcherTests
             return Task.CompletedTask;
         });
 
-        await Task.Delay(50);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
         Assert.Equal(new[] { 1 }, order);
 
         firstCanComplete.SetResult();

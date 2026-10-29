@@ -347,7 +347,7 @@ namespace Ntilde.Tests
                 if (!isWrapped)
                 {
                     string logical = currentLogical.ToString().Trim();
-                    if (logical.StartsWith("[LINE-"))
+                    if (logical.StartsWith("[LINE-", StringComparison.Ordinal))
                     {
                         Assert.Equal(expectedLines[expectedIdx], logical);
                         expectedIdx++;

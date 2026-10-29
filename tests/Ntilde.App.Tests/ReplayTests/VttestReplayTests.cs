@@ -54,7 +54,7 @@ namespace Ntilde.Tests.ReplayTests
                 string text = System.Text.Encoding.UTF8.GetString(data);
                 parser.Process(text);
                 await Task.CompletedTask;
-            });
+            }, ct: TestContext.Current.CancellationToken);
 
             var snapshot = BufferSnapshot.Capture(buffer);
 

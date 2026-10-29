@@ -143,7 +143,7 @@ public sealed class BashShellIntegrationTests : IDisposable
     {
         HarnessResult result = RunBash("cd /\nexit 0\n");
 
-        Assert.Contains(result.Events, e => e.Kind == "7" && e.Payload!.StartsWith("file://"));
+        Assert.Contains(result.Events, e => e.Kind == "7" && e.Payload!.StartsWith("file://", StringComparison.Ordinal));
     }
 
     [Fact]

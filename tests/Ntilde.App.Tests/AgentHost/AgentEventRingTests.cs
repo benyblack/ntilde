@@ -56,7 +56,7 @@ public class AgentEventRingTests
 
         var seq = Append(ring);
 
-        var result = await wait.WaitAsync(TimeSpan.FromSeconds(10));
+        var result = await wait.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         Assert.Equal(seq, Assert.Single(result.Events).Seq);
     }
 
@@ -77,7 +77,7 @@ public class AgentEventRingTests
         Append(ring);
 
         var result = await ring.WaitSinceAsync(0, TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(2));
+            .WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         Assert.Single(result.Events);
     }
 }

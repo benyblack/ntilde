@@ -296,7 +296,7 @@ public sealed class MuxTerminalSessionFactoryTests
                 return await MuxTestHost.SpawnAsync(c);
             }).GetAwaiter().GetResult();
             ScriptedTerminalSession child = mux.Fake(old);
-            Task.Run(() => mux.Mux(old).MakeParserThrowOnReplyAsync()).GetAwaiter().GetResult();
+            Task.Run(() => mux.Mux(old).MakeParserThrowOnReplyAsync(), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
             child.Emit("\x1b[c"); // DA1: the reply throws inside the daemon's parser, which faults the session
             TestWait.UntilAsync(() => mux.Mux(old).IsFaulted, "the session faulted", TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
 

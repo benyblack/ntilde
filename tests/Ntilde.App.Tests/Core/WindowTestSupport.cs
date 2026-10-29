@@ -76,7 +76,7 @@ internal static class WindowTestSupport
     }
 
     public static AgentSessionRegistration RegistrationFor(TerminalPane pane)
-        => Assert.Single(AgentSessionRegistry.Instance.GetRegistrations().Where(r => r.PaneId == pane.PaneId));
+        => Assert.Single(AgentSessionRegistry.Instance.GetRegistrations(), r => r.PaneId == pane.PaneId);
 
     /// <summary>Finds a named part of the TabControl's template (sidebar, spacer, ...).</summary>
     public static T TemplatePart<T>(MainWindow window, string name) where T : Control
