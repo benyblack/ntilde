@@ -5,6 +5,8 @@ using Ntilde.CommandAssist.Models;
 
 namespace Ntilde.CommandAssist.Application;
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+    Justification = "A collaborator the controller and tests hold an instance of; static members would have them reach past it.")]
 public sealed class CommandAssistModeRouter
 {
     private const double FixModeThreshold = 0.8;

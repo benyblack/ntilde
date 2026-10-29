@@ -28,6 +28,8 @@ namespace Ntilde.CommandAssist.Application;
 /// popup flip/side rules — is shared by both sources.
 /// </para>
 /// </remarks>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+    Justification = "A collaborator the controller and tests hold an instance of; static members would have them reach past it.")]
 public sealed class CommandAssistAnchorCalculator
 {
     private const double PanePadding = 12;

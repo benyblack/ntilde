@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- Tests only, matching the convention every other src project follows. The App is
          deliberately NOT granted: the two types it needs (CommandAssistKeyRouter,

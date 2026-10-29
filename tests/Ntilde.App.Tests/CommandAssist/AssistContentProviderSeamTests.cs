@@ -707,7 +707,7 @@ public sealed class AssistContentProviderSeamTests
         public Task<int> TryMarkInvalidCommandsByFirstTokenAsync(string firstToken, CancellationToken cancellationToken = default)
             => Task.FromResult(0);
 
-        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, CancellationToken cancellationToken = default, bool isInvalidCommand = false)
+        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, bool isInvalidCommand = false, CancellationToken cancellationToken = default)
             => Task.FromResult(false);
 
         public Task ClearAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;

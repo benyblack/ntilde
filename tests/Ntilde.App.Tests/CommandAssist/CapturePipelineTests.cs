@@ -723,7 +723,7 @@ public sealed class CapturePipelineTests
             return Task.FromResult(flagged);
         }
 
-        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, CancellationToken cancellationToken = default, bool isInvalidCommand = false)
+        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, bool isInvalidCommand = false, CancellationToken cancellationToken = default)
         {
             int index = _entries.FindIndex(x => x.Id == entryId);
             if (index < 0)
@@ -763,7 +763,7 @@ public sealed class CapturePipelineTests
         public Task<int> TryMarkInvalidCommandsByFirstTokenAsync(string firstToken, CancellationToken cancellationToken = default)
             => Task.FromException<int>(new InvalidOperationException("simulated write failure"));
 
-        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, CancellationToken cancellationToken = default, bool isInvalidCommand = false)
+        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, bool isInvalidCommand = false, CancellationToken cancellationToken = default)
             => Task.FromException<bool>(new InvalidOperationException("simulated write failure"));
     }
 }

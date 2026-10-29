@@ -144,7 +144,7 @@ public sealed class CommandErrorSignal
         };
     }
 
-    private static IReadOnlyList<string> Tokenize(string commandText)
+    private static string[] Tokenize(string commandText)
     {
         if (commandText.Length == 0)
         {

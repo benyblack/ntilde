@@ -8,7 +8,7 @@ public static class PowerShellBootstrapBuilder
 {
     public static string BuildScript()
     {
-        const string nl = "\n";
+        const char nl = '\n';
         var builder = new StringBuilder();
         builder.Append("$ErrorActionPreference = 'Stop'").Append(nl);
         builder.Append("$esc = [char]27").Append(nl);
@@ -27,17 +27,17 @@ public static class PowerShellBootstrapBuilder
         // the synthesized default prompt; it never recurses.
         builder.Append("if (-not (Get-Variable -Name 'NtildeOriginalPrompt' -Scope Script -ErrorAction SilentlyContinue)) {").Append(nl);
         builder.Append("    $script:NtildeOriginalPrompt = $null").Append(nl);
-        builder.Append("}").Append(nl);
+        builder.Append('}').Append(nl);
         builder.Append("$ntildePromptCommand = Get-Command prompt -ErrorAction SilentlyContinue").Append(nl);
         builder.Append("if ($null -eq $script:NtildeOriginalPrompt -and").Append(nl);
         builder.Append("    $ntildePromptCommand -and $ntildePromptCommand.ScriptBlock -and").Append(nl);
         builder.Append("    $ntildePromptCommand.ScriptBlock.ToString() -notlike '*__ntilde_prompt_wrapper*') {").Append(nl);
         builder.Append("    $script:NtildeOriginalPrompt = $ntildePromptCommand.ScriptBlock").Append(nl);
-        builder.Append("}").Append(nl);
+        builder.Append('}').Append(nl);
         builder.Append(nl);
         builder.Append("function Write-NtildeSequence([string]$sequence) {").Append(nl);
         builder.Append("    [Console]::Out.Write(\"$esc$sequence$bel\")").Append(nl);
-        builder.Append("}").Append(nl);
+        builder.Append('}').Append(nl);
         builder.Append(nl);
         // OSC 7 carries a file:// URI, and it has to be a well-formed one or the consumer cannot get a
         // path back out of it. The emission this replaced was
@@ -69,12 +69,12 @@ public static class PowerShellBootstrapBuilder
         builder.Append("    $ntildePath = (($ntildeSegments | ForEach-Object { [Uri]::EscapeDataString($_) -replace '%3A', ':' }) -join '/')").Append(nl);
         builder.Append("    if (-not $ntildePath.StartsWith('/')) { $ntildePath = '/' + $ntildePath }").Append(nl);
         builder.Append("    Write-NtildeSequence \"]7;file://$ntildePath\"").Append(nl);
-        builder.Append("}").Append(nl);
+        builder.Append('}').Append(nl);
         builder.Append(nl);
         builder.Append("function Write-NtildePromptReady() {").Append(nl);
         builder.Append("    Write-NtildePwd").Append(nl);
         builder.Append("    Write-NtildeSequence ']133;A'").Append(nl);
-        builder.Append("}").Append(nl);
+        builder.Append('}').Append(nl);
         builder.Append(nl);
         // Emits OSC 133;D only when the previous prompt cycle saw a real
         // accepted command, then clears tracked state so the next prompt
@@ -92,7 +92,7 @@ public static class PowerShellBootstrapBuilder
         builder.Append("    Write-NtildeSequence \"]133;D;$exitCode;$durationMs\"").Append(nl);
         builder.Append("    $script:NtildeCommandStart = $null").Append(nl);
         builder.Append("    $script:NtildeAcceptedCommandText = $null").Append(nl);
-        builder.Append("}").Append(nl);
+        builder.Append('}').Append(nl);
         builder.Append(nl);
         builder.Append("function Global:prompt {").Append(nl);
         // Sentinel the capture guard above greps for. Must stay inside the function
@@ -125,7 +125,7 @@ public static class PowerShellBootstrapBuilder
         builder.Append("        [string]::Concat('PS ', (Get-Location), '> ')").Append(nl);
         builder.Append("    }").Append(nl);
         builder.Append("    return \"$ntildePromptText$([char]27)]133;B$([char]7)\"").Append(nl);
-        builder.Append("}").Append(nl);
+        builder.Append('}').Append(nl);
         builder.Append(nl);
         // Capture the accepted command text at the shell boundary by wrapping
         // PSReadLine's Enter chord. Emits OSC 133;C;<base64> via direct console
@@ -150,7 +150,7 @@ public static class PowerShellBootstrapBuilder
         builder.Append("        }").Append(nl);
         builder.Append("        [Microsoft.PowerShell.PSConsoleReadLine]::AcceptLine()").Append(nl);
         builder.Append("    }").Append(nl);
-        builder.Append("}").Append(nl);
+        builder.Append('}').Append(nl);
         builder.Append(nl);
         builder.Append("Write-NtildePromptReady").Append(nl);
         return builder.ToString();

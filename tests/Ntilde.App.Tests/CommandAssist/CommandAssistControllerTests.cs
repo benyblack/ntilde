@@ -2316,7 +2316,7 @@ public sealed class CommandAssistControllerTests
             return Task.FromResult(flagged);
         }
 
-        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, CancellationToken cancellationToken = default, bool isInvalidCommand = false)
+        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, bool isInvalidCommand = false, CancellationToken cancellationToken = default)
         {
             int index = _entries.FindIndex(x => x.Id == entryId);
             if (index < 0)
@@ -2383,7 +2383,7 @@ public sealed class CommandAssistControllerTests
         public Task<int> TryMarkInvalidCommandsByFirstTokenAsync(string firstToken, CancellationToken cancellationToken = default)
             => Task.FromResult(0);
 
-        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, CancellationToken cancellationToken = default, bool isInvalidCommand = false)
+        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, bool isInvalidCommand = false, CancellationToken cancellationToken = default)
             => Task.FromResult(false);
 
         public Task WaitForLastSearchAsync() => _lastSearchTask;
@@ -2409,7 +2409,7 @@ public sealed class CommandAssistControllerTests
         public Task<int> TryMarkInvalidCommandsByFirstTokenAsync(string firstToken, CancellationToken cancellationToken = default)
             => Task.FromResult(0);
 
-        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, CancellationToken cancellationToken = default, bool isInvalidCommand = false)
+        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, bool isInvalidCommand = false, CancellationToken cancellationToken = default)
             => Task.FromException<bool>(new InvalidOperationException("simulated write failure"));
     }
 

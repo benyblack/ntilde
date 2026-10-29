@@ -182,7 +182,7 @@ public static class CommandAssistInsertionPlanner
         // raw bytes with no bracketed-paste wrapping on this path - and under replace it would be
         // submitted against a line we have just erased. Cheap, and it fails closed for both styles
         // rather than leaving one of them holding a sharper edge than the other.
-        if (selectedCommand.IndexOf('\n') >= 0 || selectedCommand.IndexOf('\r') >= 0)
+        if (selectedCommand.Contains('\n') || selectedCommand.Contains('\r'))
         {
             return false;
         }

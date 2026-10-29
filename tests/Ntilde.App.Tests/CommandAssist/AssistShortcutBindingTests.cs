@@ -362,7 +362,7 @@ public sealed class AssistShortcutBindingTests
         public Task<int> TryMarkInvalidCommandsByFirstTokenAsync(string firstToken, CancellationToken cancellationToken = default)
             => Task.FromResult(0);
 
-        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, CancellationToken cancellationToken = default, bool isInvalidCommand = false)
+        public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, bool isInvalidCommand = false, CancellationToken cancellationToken = default)
             => Task.FromResult(false);
     }
 }

@@ -128,19 +128,19 @@ public static class ZshBootstrapBuilder
     public static string BuildScript()
     {
         var b = new StringBuilder();
-        b.Append("#!/usr/bin/env zsh").Append(nl);
+        b.Append("#!/usr/bin/env zsh").Append('\n');
         b.Append(Header(".zshrc"));
-        b.Append("# The integration below runs after the user's .zshrc so").Append(nl);
-        b.Append("# customizations and PROMPT/PS1 stay owned by the user.").Append(nl);
+        b.Append("# The integration below runs after the user's .zshrc so").Append('\n');
+        b.Append("# customizations and PROMPT/PS1 stay owned by the user.").Append('\n');
         b.Append(RestoreUserZdotdir);
         // The global zshrc ran while ZDOTDIR still pointed at us, and macOS's /etc/zshrc
         // derives HISTFILE from it - which would keep the user's history in our directory.
-        b.Append("if [[ \"${HISTFILE-}\" == \"$__ntilde_zdotdir/.zsh_history\" ]]; then").Append(nl);
-        b.Append("    HISTFILE=\"${ZDOTDIR:-$HOME}/.zsh_history\"").Append(nl);
-        b.Append("fi").Append(nl);
+        b.Append("if [[ \"${HISTFILE-}\" == \"$__ntilde_zdotdir/.zsh_history\" ]]; then").Append('\n');
+        b.Append("    HISTFILE=\"${ZDOTDIR:-$HOME}/.zsh_history\"").Append('\n');
+        b.Append("fi").Append('\n');
         b.Append(SourceUserFile(".zshrc"));
-        b.Append(nl);
-        b.Append("typeset -g __ntilde_command_start_ms=\"\"").Append(nl);
+        b.Append('\n');
+        b.Append("typeset -g __ntilde_command_start_ms=\"\"").Append('\n');
         // Load zsh's native datetime module so $EPOCHREALTIME is available
         // for portable millisecond timing. `date +%s%N` is GNU-only and
         // leaves a literal "%N" on macOS/BSD, breaking arithmetic.
@@ -151,34 +151,34 @@ public static class ZshBootstrapBuilder
         // back to `date +%s`, and every duration is reported as a whole number
         // of seconds. (+b: is the builtin namespace, which has no
         // EPOCHREALTIME in it.)
-        b.Append("zmodload -F zsh/datetime +p:EPOCHREALTIME 2>/dev/null || true").Append(nl);
-        b.Append(nl);
-        b.Append("__ntilde_now_ms() {").Append(nl);
-        b.Append("    if (( ${+EPOCHREALTIME} )); then").Append(nl);
-        b.Append("        local sec=\"${EPOCHREALTIME%.*}\"").Append(nl);
-        b.Append("        local frac=\"${EPOCHREALTIME#*.}\"").Append(nl);
-        b.Append("        printf '%s%s' \"$sec\" \"${frac:0:3}\"").Append(nl);
-        b.Append("    else").Append(nl);
-        b.Append("        printf '%s000' \"$(date +%s)\"").Append(nl);
-        b.Append("    fi").Append(nl);
-        b.Append("}").Append(nl);
-        b.Append(nl);
-        b.Append("__ntilde_url_encode_pwd() {").Append(nl);
-        b.Append("    local s=\"$PWD\"").Append(nl);
-        b.Append("    printf '%s' \"$s\" | LC_ALL=C awk 'BEGIN{for(i=0;i<256;i++)c[sprintf(\"%c\",i)]=i} {for(i=1;i<=length($0);i++){ch=substr($0,i,1); if(ch~/[A-Za-z0-9._~\\/-]/) printf \"%s\",ch; else printf \"%%%02X\",c[ch]}}'").Append(nl);
-        b.Append("}").Append(nl);
-        b.Append(nl);
-        b.Append("__ntilde_emit_prompt_ready() {").Append(nl);
-        b.Append("    printf '\\033]7;file://%s%s\\a' \"${HOST:-localhost}\" \"$(__ntilde_url_encode_pwd)\"").Append(nl);
-        b.Append("    printf '\\033]133;A\\a'").Append(nl);
-        b.Append("}").Append(nl);
-        b.Append(nl);
+        b.Append("zmodload -F zsh/datetime +p:EPOCHREALTIME 2>/dev/null || true").Append('\n');
+        b.Append('\n');
+        b.Append("__ntilde_now_ms() {").Append('\n');
+        b.Append("    if (( ${+EPOCHREALTIME} )); then").Append('\n');
+        b.Append("        local sec=\"${EPOCHREALTIME%.*}\"").Append('\n');
+        b.Append("        local frac=\"${EPOCHREALTIME#*.}\"").Append('\n');
+        b.Append("        printf '%s%s' \"$sec\" \"${frac:0:3}\"").Append('\n');
+        b.Append("    else").Append('\n');
+        b.Append("        printf '%s000' \"$(date +%s)\"").Append('\n');
+        b.Append("    fi").Append('\n');
+        b.Append('}').Append('\n');
+        b.Append('\n');
+        b.Append("__ntilde_url_encode_pwd() {").Append('\n');
+        b.Append("    local s=\"$PWD\"").Append('\n');
+        b.Append("    printf '%s' \"$s\" | LC_ALL=C awk 'BEGIN{for(i=0;i<256;i++)c[sprintf(\"%c\",i)]=i} {for(i=1;i<=length($0);i++){ch=substr($0,i,1); if(ch~/[A-Za-z0-9._~\\/-]/) printf \"%s\",ch; else printf \"%%%02X\",c[ch]}}'").Append('\n');
+        b.Append('}').Append('\n');
+        b.Append('\n');
+        b.Append("__ntilde_emit_prompt_ready() {").Append('\n');
+        b.Append("    printf '\\033]7;file://%s%s\\a' \"${HOST:-localhost}\" \"$(__ntilde_url_encode_pwd)\"").Append('\n');
+        b.Append("    printf '\\033]133;A\\a'").Append('\n');
+        b.Append('}').Append('\n');
+        b.Append('\n');
         // OSC 133;B marks the END of the prompt -- the cell where the user's
         // input starts. precmd runs before PROMPT is expanded, so B cannot be
         // printed from a hook the way A is; it has to be the last thing in
         // PROMPT itself. %{...%} tells zsh the sequence occupies zero columns,
         // so prompt-width arithmetic and ZLE redraw stay correct.
-        b.Append("typeset -g __ntilde_prompt_mark=$'%{\\e]133;B\\a%}'").Append(nl);
+        b.Append("typeset -g __ntilde_prompt_mark=$'%{\\e]133;B\\a%}'").Append('\n');
         // Re-applied every precmd rather than once at startup because prompt
         // frameworks (powerlevel10k, starship, oh-my-zsh themes) reassign
         // PROMPT from their own precmd hooks; ours is appended to
@@ -190,21 +190,21 @@ public static class ZshBootstrapBuilder
         // it would report the input cell several columns early. Removing the
         // existing suffix (a no-op when absent, since ${var%pattern} only trims
         // a trailing match) and re-appending is idempotent AND self-correcting.
-        b.Append("__ntilde_apply_prompt_mark() {").Append(nl);
-        b.Append("    PROMPT=\"${PROMPT%$__ntilde_prompt_mark}$__ntilde_prompt_mark\"").Append(nl);
-        b.Append("}").Append(nl);
-        b.Append(nl);
+        b.Append("__ntilde_apply_prompt_mark() {").Append('\n');
+        b.Append("    PROMPT=\"${PROMPT%$__ntilde_prompt_mark}$__ntilde_prompt_mark\"").Append('\n');
+        b.Append('}').Append('\n');
+        b.Append('\n');
         // zsh has native preexec/precmd hooks via the function-array convention.
         // preexec receives the about-to-run command as $1, so unlike bash we
         // do not need a one-shot guard around the DEBUG trap.
-        b.Append("__ntilde_preexec() {").Append(nl);
-        b.Append("    local cmd=\"$1\"").Append(nl);
-        b.Append("    local b64").Append(nl);
-        b.Append("    b64=$(printf '%s' \"$cmd\" | base64 | tr -d '\\n')").Append(nl);
-        b.Append("    printf '\\033]133;C;%s\\a' \"$b64\"").Append(nl);
-        b.Append("    __ntilde_command_start_ms=$(__ntilde_now_ms)").Append(nl);
-        b.Append("}").Append(nl);
-        b.Append(nl);
+        b.Append("__ntilde_preexec() {").Append('\n');
+        b.Append("    local cmd=\"$1\"").Append('\n');
+        b.Append("    local b64").Append('\n');
+        b.Append("    b64=$(printf '%s' \"$cmd\" | base64 | tr -d '\\n')").Append('\n');
+        b.Append("    printf '\\033]133;C;%s\\a' \"$b64\"").Append('\n');
+        b.Append("    __ntilde_command_start_ms=$(__ntilde_now_ms)").Append('\n');
+        b.Append('}').Append('\n');
+        b.Append('\n');
         // Two precmd hooks at opposite ends of precmd_functions, because the
         // two jobs want opposite positions. $? inside a precmd hook is the
         // status of whatever ran immediately before it, and for an APPENDED
@@ -214,44 +214,44 @@ public static class ZshBootstrapBuilder
         // hook's, i.e. almost always 0. Snapshotting $? has to happen in a hook
         // that runs FIRST. Re-applying the prompt mark has to happen in a hook
         // that runs LAST, after any theme has finished rewriting PROMPT.
-        b.Append("typeset -g __ntilde_last_status=0").Append(nl);
-        b.Append("__ntilde_status_snapshot() {").Append(nl);
-        b.Append("    __ntilde_last_status=$?").Append(nl);
-        b.Append("}").Append(nl);
-        b.Append(nl);
-        b.Append("__ntilde_precmd() {").Append(nl);
-        b.Append("    local exit=$__ntilde_last_status").Append(nl);
-        b.Append("    if [ -n \"$__ntilde_command_start_ms\" ]; then").Append(nl);
-        b.Append("        local now_ms duration_ms").Append(nl);
-        b.Append("        now_ms=$(__ntilde_now_ms)").Append(nl);
-        b.Append("        duration_ms=$((now_ms - __ntilde_command_start_ms))").Append(nl);
-        b.Append("        printf '\\033]133;D;%s;%s\\a' \"$exit\" \"$duration_ms\"").Append(nl);
-        b.Append("        __ntilde_command_start_ms=\"\"").Append(nl);
-        b.Append("    fi").Append(nl);
-        b.Append("    __ntilde_emit_prompt_ready").Append(nl);
-        b.Append("    __ntilde_apply_prompt_mark").Append(nl);
-        b.Append("}").Append(nl);
-        b.Append(nl);
-        b.Append("typeset -ag precmd_functions preexec_functions").Append(nl);
+        b.Append("typeset -g __ntilde_last_status=0").Append('\n');
+        b.Append("__ntilde_status_snapshot() {").Append('\n');
+        b.Append("    __ntilde_last_status=$?").Append('\n');
+        b.Append('}').Append('\n');
+        b.Append('\n');
+        b.Append("__ntilde_precmd() {").Append('\n');
+        b.Append("    local exit=$__ntilde_last_status").Append('\n');
+        b.Append("    if [ -n \"$__ntilde_command_start_ms\" ]; then").Append('\n');
+        b.Append("        local now_ms duration_ms").Append('\n');
+        b.Append("        now_ms=$(__ntilde_now_ms)").Append('\n');
+        b.Append("        duration_ms=$((now_ms - __ntilde_command_start_ms))").Append('\n');
+        b.Append("        printf '\\033]133;D;%s;%s\\a' \"$exit\" \"$duration_ms\"").Append('\n');
+        b.Append("        __ntilde_command_start_ms=\"\"").Append('\n');
+        b.Append("    fi").Append('\n');
+        b.Append("    __ntilde_emit_prompt_ready").Append('\n');
+        b.Append("    __ntilde_apply_prompt_mark").Append('\n');
+        b.Append('}').Append('\n');
+        b.Append('\n');
+        b.Append("typeset -ag precmd_functions preexec_functions").Append('\n');
         // Prepended, not appended: see __ntilde_status_snapshot above.
-        b.Append("precmd_functions=(__ntilde_status_snapshot \"${precmd_functions[@]}\")").Append(nl);
-        b.Append("precmd_functions+=(__ntilde_precmd)").Append(nl);
-        b.Append("preexec_functions+=(__ntilde_preexec)").Append(nl);
-        b.Append(nl);
+        b.Append("precmd_functions=(__ntilde_status_snapshot \"${precmd_functions[@]}\")").Append('\n');
+        b.Append("precmd_functions+=(__ntilde_precmd)").Append('\n');
+        b.Append("preexec_functions+=(__ntilde_preexec)").Append('\n');
+        b.Append('\n');
         // The first prompt is expanded before any precmd runs in some zsh
         // configurations, so seed the mark here too; __ntilde_apply_prompt_mark
         // is idempotent.
-        b.Append("__ntilde_apply_prompt_mark").Append(nl);
-        b.Append("__ntilde_emit_prompt_ready").Append(nl);
-        b.Append(nl);
+        b.Append("__ntilde_apply_prompt_mark").Append('\n');
+        b.Append("__ntilde_emit_prompt_ready").Append('\n');
+        b.Append('\n');
         // A login shell still has .zlogin to read, from us; otherwise this is the last file and
         // the user's ZDOTDIR (restored above, or as their .zshrc left it) stays.
-        b.Append("if [[ -o login ]]; then").Append(nl);
+        b.Append("if [[ -o login ]]; then").Append('\n');
         b.Append("    ").Append(CaptureUserZdotdir.Replace(nl, nl + "    ").TrimEnd(' '));
         b.Append("    ").Append(PointZdotdirAtShim);
-        b.Append("else").Append(nl);
+        b.Append("else").Append('\n');
         b.Append("    ").Append(ForgetShimState);
-        b.Append("fi").Append(nl);
+        b.Append("fi").Append('\n');
         return b.ToString();
     }
 

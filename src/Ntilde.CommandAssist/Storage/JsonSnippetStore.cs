@@ -9,6 +9,9 @@ using Ntilde.CommandAssist.Models;
 
 namespace Ntilde.CommandAssist.Storage;
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "Its only disposable is a SemaphoreSlim gate, which holds no handle unless AvailableWaitHandle is read " +
+                    "(nothing here reads it), and disposing it under a caller still waiting would fault that caller.")]
 public sealed class JsonSnippetStore : ISnippetStore
 {
     private readonly string _filePath;
