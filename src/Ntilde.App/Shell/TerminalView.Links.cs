@@ -49,8 +49,10 @@ namespace Ntilde.Shell
         /// <summary>How many times the hovered OSC 8 link's runs were looked up on screen.</summary>
         internal int Osc8ScansForTest { get; private set; }
 
-        // One-row memo so we only re-run detection when the pointer moves to a new row.
+        // One-row memo so we only re-run detection when the pointer moves to a new row - or the buffer was written to since:
+        // output that rewrote a URL on the row would otherwise keep the old one previewed (Codex review of #634).
         private int _hoverScanRow = -1;
+        private int _hoverScanGeneration;
         private System.Collections.Generic.IReadOnlyList<Ntilde.VT.Links.LinkSpan> _hoverScanSpans =
             System.Array.Empty<Ntilde.VT.Links.LinkSpan>();
         private int[] _hoverScanMap = System.Array.Empty<int>();
@@ -90,12 +92,14 @@ namespace Ntilde.Shell
             // 2) Auto-detected link, if detection is enabled.
             if (_enableLinkDetection)
             {
-                if (absRow != _hoverScanRow)
+                int generation = Volatile.Read(ref _contentGeneration);
+                if (absRow != _hoverScanRow || generation != _hoverScanGeneration)
                 {
                     var (text, map) = Ntilde.VT.Links.RowTextExtractor.Extract(_buffer, absRow);
                     _hoverScanSpans = _urlDetector.Detect(text);
                     _hoverScanMap = map;
                     _hoverScanRow = absRow;
+                    _hoverScanGeneration = generation;
                 }
 
                 foreach (var span in _hoverScanSpans)

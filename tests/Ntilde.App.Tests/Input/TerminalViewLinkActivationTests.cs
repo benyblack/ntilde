@@ -362,6 +362,32 @@ public sealed class TerminalViewLinkActivationTests
     }
 
     /// <summary>
+    /// Codex review of #634: the same for a detected URL rewritten on its own row. The row's detection was kept until the
+    /// pointer changed rows, so the tip kept the old URL and every click was refused as not matching it. The rewrite is
+    /// seen: the first click brings the tip up to date, the next opens what it shows.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_detected_url_rewritten_on_its_row_is_previewed_afresh_before_it_opens()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process("see https://trusted.example/a now");
+        var env = new RecordingEnvironment();
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(env) };
+        view.SetBuffer(buffer);
+        view.SetMetricsForTest(CellWidth, CellHeight);
+        view.UpdateHoveredLink(CellCentre(0, 10));
+        Assert.Equal("https://trusted.example/a", view.HoveredLinkUriForTest);
+
+        parser.Process("\u001b[1;1Hsee https://evil.example/b now"); // the same row, rewritten under the resting pointer
+
+        Assert.False(view.TryActivateLinkAt(CellCentre(0, 10), LinkModifier));
+        Assert.Equal("https://evil.example/b", view.HoveredLinkUriForTest);
+        Assert.True(view.TryActivateLinkAt(CellCentre(0, 10), LinkModifier));
+        Assert.Equal("https://evil.example/b", Assert.Single(env.Started).FileName);
+    }
+
+    /// <summary>
     /// CodeRabbit on #634: a local path is shown in the file manager, never opened, and the tip says so. It does not check
     /// that anything is there: a hover never touches the file system, as underlining does not.
     /// </summary>
