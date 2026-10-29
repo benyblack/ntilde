@@ -362,6 +362,33 @@ public sealed class TerminalViewLinkActivationTests
     }
 
     /// <summary>
+    /// Codex review of #634: a link that appears under a pointer resting on plain text was never previewed - no tip was
+    /// shown - so the first click shows it instead of opening it, and the next opens it.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_link_that_appears_under_a_resting_pointer_is_previewed_before_it_opens()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process("plain text here");
+        var env = new RecordingEnvironment();
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(env) };
+        view.SetBuffer(buffer);
+        view.SetMetricsForTest(CellWidth, CellHeight);
+        view.UpdateHoveredLink(CellCentre(0, 1));
+        Assert.Null(view.HoveredLinkUriForTest);
+
+        parser.Process("\u001b[1;1H" + Osc8("https://evil.example/x", "plain")); // a link appears under the resting pointer
+
+        Assert.False(view.TryActivateLinkAt(CellCentre(0, 1), LinkModifier));
+        Assert.Empty(env.Started);
+        Assert.StartsWith("https://evil.example/x\n", Avalonia.Controls.ToolTip.GetTip(view) as string, StringComparison.Ordinal);
+
+        Assert.True(view.TryActivateLinkAt(CellCentre(0, 1), LinkModifier));
+        Assert.Equal("https://evil.example/x", Assert.Single(env.Started).FileName);
+    }
+
+    /// <summary>
     /// Codex review of #634: the refresh reaches a tooltip that is already open, not only the value behind it - the user has
     /// to see the new target before the click that opens it. Avalonia updates an open tooltip's content when its tip
     /// changes; this pins that, so a framework change cannot quietly leave the old target on screen.

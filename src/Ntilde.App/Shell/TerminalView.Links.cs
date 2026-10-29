@@ -264,10 +264,11 @@ namespace Ntilde.Shell
             var (row, col) = ScreenToTerminal(position);
             string? link = ResolveLinkAt(row, col);
 
-            // A click opens what the tooltip previewed, never something else (Codex review of #634): output that rewrote the link
-            // under a pointer that has not moved since leaves the tip showing the old target. That click opens nothing; the tip
-            // is brought up to date instead, so the next click opens what it now shows.
-            if (_hoveredLink is { } previewed && !string.Equals(previewed.Uri, link, StringComparison.Ordinal))
+            // A click opens what the tooltip previewed, never something else (Codex reviews of #634): output that rewrote the link
+            // under a pointer that has not moved since leaves the tip showing the old target, and a link that appeared under a
+            // pointer resting on plain text was never previewed at all. That click opens nothing; the tip is brought up to date
+            // instead, so the next click opens what it now shows.
+            if (!string.Equals(_hoveredLink?.Uri, link, StringComparison.Ordinal))
             {
                 UpdateHoveredLink(position);
                 return false;
