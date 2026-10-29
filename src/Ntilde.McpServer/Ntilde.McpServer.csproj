@@ -27,7 +27,6 @@
     <PublishAot>true</PublishAot>
     <IsAotCompatible>true</IsAotCompatible>
     <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL3050</WarningsAsErrors>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 

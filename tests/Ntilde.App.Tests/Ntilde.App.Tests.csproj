@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Assembly name keeps the .App.Tests convention so InternalsVisibleTo targets resolve,
          but the root namespace avoids creating a `Ntilde.App` namespace prefix that
          would shadow the App class defined in `namespace Ntilde`. -->

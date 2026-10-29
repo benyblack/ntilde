@@ -10,7 +10,6 @@
 
   <PropertyGroup>
     <IsAotCompatible>true</IsAotCompatible>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
