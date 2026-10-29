@@ -49,8 +49,10 @@ namespace Ntilde.Shell
         /// <summary>How many times the hovered OSC 8 link's runs were looked up on screen.</summary>
         internal int Osc8ScansForTest { get; private set; }
 
-        // One-row memo so we only re-run detection when the pointer moves to a new row.
+        // One-row memo so we only re-run detection when the pointer moves to a new row - or the buffer was written to since:
+        // output that rewrote a URL on the row would otherwise keep the old one previewed (Codex review of #634).
         private int _hoverScanRow = -1;
+        private int _hoverScanGeneration;
         private System.Collections.Generic.IReadOnlyList<Ntilde.VT.Links.LinkSpan> _hoverScanSpans =
             System.Array.Empty<Ntilde.VT.Links.LinkSpan>();
         private int[] _hoverScanMap = System.Array.Empty<int>();
@@ -90,12 +92,14 @@ namespace Ntilde.Shell
             // 2) Auto-detected link, if detection is enabled.
             if (_enableLinkDetection)
             {
-                if (absRow != _hoverScanRow)
+                int generation = Volatile.Read(ref _contentGeneration);
+                if (absRow != _hoverScanRow || generation != _hoverScanGeneration)
                 {
                     var (text, map) = Ntilde.VT.Links.RowTextExtractor.Extract(_buffer, absRow);
                     _hoverScanSpans = _urlDetector.Detect(text);
                     _hoverScanMap = map;
                     _hoverScanRow = absRow;
+                    _hoverScanGeneration = generation;
                 }
 
                 foreach (var span in _hoverScanSpans)
@@ -158,6 +162,11 @@ namespace Ntilde.Shell
         {
             _hoveredOsc8Screen = null; // an OSC 8 hover sets it again, once its runs are underlined
             if (link.SameAs(_hoveredLink)) return; // no change -> no repaint
+            if (_hoveredLink?.Uri != link.Uri)
+            {
+                Avalonia.Controls.ToolTip.SetTip(this, LinkTargetTip(link.Uri, OperatingSystem.IsMacOS(), LinkOpener.ActionText(link.Uri) ?? "open"));
+            }
+
             _hoveredLink = link;
             Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
             InvalidateVisual();
@@ -167,10 +176,74 @@ namespace Ntilde.Shell
         {
             _hoveredOsc8Screen = null;
             if (_hoveredLink == null) return;
+            Avalonia.Controls.ToolTip.SetTip(this, null);
             _hoveredLink = null;
             Cursor = Avalonia.Input.Cursor.Default;
             InvalidateVisual();
         }
+
+        /// <summary>The longest target the link tooltip shows; past it, the middle gives way to an ellipsis.</summary>
+        internal const int LinkTargetTipMaxLength = 300;
+
+        /// <summary>
+        /// What the tooltip over a hovered link says (#95 gap 5): where it leads, so a link whose text says one place and whose
+        /// target is another can be checked before it is followed, and what a click does (<paramref name="action"/>, from
+        /// <see cref="TerminalLinkOpener.ActionText"/>). The target is shown as it is, so it cannot be disguised in turn: a
+        /// character that reorders, hides or breaks text (a bidi override, a zero-width space, a line separator) is shown as a
+        /// visible escape, a control character is dropped, and a target too long to read keeps its start and its end. When that alone could hide where
+        /// it leads - a user-info part long enough to push the host out of sight, a cut, or an international host that a
+        /// look-alike letter could fake - the host it really reaches is named on a line of its own, in its ASCII form
+        /// (CodeRabbit on #634).
+        /// </summary>
+        internal static string LinkTargetTip(string uri, bool macOS, string action)
+        {
+            var shown = new System.Text.StringBuilder(uri.Length);
+            foreach (System.Text.Rune rune in uri.EnumerateRunes())
+            {
+                if (IsInvisibleFormatting(rune))
+                {
+                    if (rune.IsBmp) shown.Append(System.Globalization.CultureInfo.InvariantCulture, $"\\u{rune.Value:X4}");
+                    else shown.Append(System.Globalization.CultureInfo.InvariantCulture, $"\\U{rune.Value:X8}");
+                }
+                else if (!System.Text.Rune.IsControl(rune))
+                {
+                    shown.Append(rune.ToString());
+                }
+            }
+
+            const int Tail = 99;
+            bool cut = shown.Length > LinkTargetTipMaxLength;
+            string target = cut
+                ? string.Concat(shown.ToString(0, LinkTargetTipMaxLength - Tail - 1), "\u2026", shown.ToString(shown.Length - Tail, Tail))
+                : shown.ToString();
+            string host = HostWorthNaming(uri, cut) is { } named ? $"\nHost: {named}" : string.Empty;
+            return $"{target}{host}\n{(macOS ? "Cmd" : "Ctrl")}+click to {action}";
+        }
+
+        /// <summary>
+        /// The host <paramref name="uri"/> reaches, in its ASCII (punycode) form, when the target as shown might not make it
+        /// plain: it has a user-info part, it was <paramref name="cut"/>, or its host is an international one. Null otherwise,
+        /// and for a target with no host (a local path).
+        /// </summary>
+        private static string? HostWorthNaming(string uri, bool cut)
+        {
+            if (!Uri.TryCreate(uri, UriKind.Absolute, out Uri? parsed) || string.IsNullOrEmpty(parsed.Host)) return null;
+
+            string ascii = parsed.IdnHost;
+            return parsed.UserInfo.Length > 0 || cut || !string.Equals(ascii, parsed.Host, StringComparison.OrdinalIgnoreCase)
+                ? ascii
+                : null;
+        }
+
+        /// <summary>
+        /// Characters that change how the text around them reads without showing themselves: every format character (bidi
+        /// controls, zero-width ones, the invisible tag characters past U+FFFF) and the line and paragraph separators, which a
+        /// tooltip renders as line breaks - a forged "Host:" line otherwise (Codex review of #634).
+        /// </summary>
+        private static bool IsInvisibleFormatting(System.Text.Rune rune) =>
+            System.Text.Rune.GetUnicodeCategory(rune) is System.Globalization.UnicodeCategory.Format
+                or System.Globalization.UnicodeCategory.LineSeparator
+                or System.Globalization.UnicodeCategory.ParagraphSeparator;
 
         private static bool IsLinkActivationModifier(KeyModifiers modifiers)
         {
@@ -189,7 +262,19 @@ namespace Ntilde.Shell
             if (!IsLinkActivationModifier(modifiers) || _buffer == null) return false;
 
             var (row, col) = ScreenToTerminal(position);
-            return LinkOpener.TryOpen(ResolveLinkAt(row, col));
+            string? link = ResolveLinkAt(row, col);
+
+            // A click opens what the tooltip previewed, never something else (Codex reviews of #634): output that rewrote the link
+            // under a pointer that has not moved since leaves the tip showing the old target, and a link that appeared under a
+            // pointer resting on plain text was never previewed at all. That click opens nothing; the tip is brought up to date
+            // instead, so the next click opens what it now shows.
+            if (!string.Equals(_hoveredLink?.Uri, link, StringComparison.Ordinal))
+            {
+                UpdateHoveredLink(position);
+                return false;
+            }
+
+            return LinkOpener.TryOpen(link);
         }
 
         // Resolves the link under (absRow, col): OSC 8 first, then a detected span.

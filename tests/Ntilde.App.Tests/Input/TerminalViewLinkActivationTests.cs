@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Ntilde.Shell;
@@ -250,6 +251,260 @@ public sealed class TerminalViewLinkActivationTests
             view.HoveredLinkUnderlines(displayStart: 0, rows: 24));
         // A run on a row scrolled out of view is not drawn.
         Assert.Equal([new Rect(0, CellHeight - 1, 5 * CellWidth, 1)], view.HoveredLinkUnderlines(displayStart: 1, rows: 24));
+    }
+
+    /// <summary>
+    /// #95 gap 5: a hovered link says where it leads before it is followed - the attack these tests pin is text that looks
+    /// like one link with a target that is another - and how to follow it. Leaving it takes the tip away.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_hovered_link_shows_its_target_in_a_tooltip_until_the_pointer_leaves_it()
+    {
+        var (view, _) = CreateView(Osc8("https://evil.example/login", "https://github.com/org/repo") + " plain text");
+
+        view.UpdateHoveredLink(CellCentre(0, 3));
+        string? tip = Avalonia.Controls.ToolTip.GetTip(view) as string;
+        Assert.NotNull(tip);
+        Assert.StartsWith("https://evil.example/login", tip, StringComparison.Ordinal);
+        Assert.Contains("click to open", tip, StringComparison.Ordinal);
+
+        view.UpdateHoveredLink(CellCentre(0, 32)); // plain text: no link
+        Assert.Null(Avalonia.Controls.ToolTip.GetTip(view));
+    }
+
+    /// <summary>
+    /// The tip shows the target as it is, so it cannot be disguised in turn: a bidi override would reorder what is shown
+    /// (a "moc.elgoog" spoof), so it is shown as a visible escape; control characters are dropped; and a target too long to
+    /// read keeps its start - the scheme and host - and its end.
+    /// </summary>
+    [Fact]
+    public void The_link_tooltip_shows_the_target_as_it_is()
+    {
+        Assert.Equal("https://example.com/a\nCtrl+click to open", TerminalView.LinkTargetTip("https://example.com/a", macOS: false, "open"));
+        Assert.Equal("https://example.com/a\nCmd+click to open", TerminalView.LinkTargetTip("https://example.com/a", macOS: true, "open"));
+
+        string spoof = TerminalView.LinkTargetTip("https://example.com/\u202Egpj.exe", macOS: false, "open");
+        Assert.DoesNotContain("\u202E", spoof, StringComparison.Ordinal);
+        Assert.StartsWith("https://example.com/\\u202Egpj.exe\n", spoof, StringComparison.Ordinal);
+
+        Assert.StartsWith("https://example.com/ab\n", TerminalView.LinkTargetTip("https://example.com/a\u0007b", macOS: false, "open"), StringComparison.Ordinal);
+
+        string longTarget = "https://example.com/" + new string('x', 1000) + "/end";
+        string target = TerminalView.LinkTargetTip(longTarget, macOS: false, "open").Split('\n')[0];
+        Assert.True(target.Length <= TerminalView.LinkTargetTipMaxLength, $"{target.Length} chars");
+        Assert.StartsWith("https://example.com/xxx", target, StringComparison.Ordinal);
+        Assert.EndsWith("xxx/end", target, StringComparison.Ordinal);
+        Assert.Contains("\u2026", target, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// CodeRabbit on #634: a long user-info part could push the real host out of the shown target, so a tip reading
+    /// https://trusted.example.com... would lead to attacker.example. The host it reaches is named on a line of its own then,
+    /// and for an international host, in its ASCII form, so a look-alike letter cannot pass for another. A plain link says
+    /// nothing more than its target.
+    /// </summary>
+    [Fact]
+    public void The_link_tooltip_names_the_host_when_the_target_could_hide_it()
+    {
+        string spoofed = TerminalView.LinkTargetTip("https://trusted.example.com" + new string('a', 400) + "@attacker.example/login", macOS: false, "open");
+        Assert.StartsWith("https://trusted.example.com", spoofed, StringComparison.Ordinal);
+        Assert.Contains("\nHost: attacker.example\n", spoofed, StringComparison.Ordinal);
+
+        string lookAlike = TerminalView.LinkTargetTip("https://ex\u0430mple.com/", macOS: false, "open"); // a Cyrillic a
+        Assert.Contains("\nHost: xn--", lookAlike, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("Host:", TerminalView.LinkTargetTip("https://example.com/a", macOS: false, "open"), StringComparison.Ordinal);
+        Assert.DoesNotContain("Host:", TerminalView.LinkTargetTip("file:///C:/Users/me/report.txt", macOS: false, "open"), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Codex review of #634: a line or paragraph separator is not a control character, and a tooltip renders it as a line
+    /// break - so a target could forge a "Host:" line of its own. It is shown as an escape, as an invisible tag character
+    /// past U+FFFF is: the tip is the target and the action, nothing more.
+    /// </summary>
+    [Fact]
+    public void The_link_tooltip_cannot_be_given_lines_of_its_own()
+    {
+        string forged = TerminalView.LinkTargetTip(
+            "https://example.com/a\u2028Host: trusted.example\u2029x\U000E0041", macOS: false, "open");
+
+        Assert.Equal(2, forged.Split('\n').Length);
+        Assert.DoesNotContain("\u2028", forged, StringComparison.Ordinal);
+        Assert.DoesNotContain("\u2029", forged, StringComparison.Ordinal);
+        Assert.StartsWith("https://example.com/a\\u2028Host: trusted.example\\u2029x\\U000E0041\n", forged, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Codex review of #634: output that rewrites the link under a pointer that has not moved leaves the tip showing the old
+    /// target, and the click used to resolve the cell afresh - opening the new one. A click opens only what the tip
+    /// previewed: this one opens nothing and brings the tip up to date, and the next opens what it now shows.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_click_never_opens_a_link_other_than_the_one_its_tooltip_showed()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process(Osc8("https://trusted.example/docs", "docs"));
+        var env = new RecordingEnvironment();
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(env) };
+        view.SetBuffer(buffer);
+        view.SetMetricsForTest(CellWidth, CellHeight);
+        view.UpdateHoveredLink(CellCentre(0, 1));
+
+        parser.Process("\u001b[1;1H" + Osc8("https://evil.example/x", "docs")); // rewritten under the resting pointer
+
+        Assert.False(view.TryActivateLinkAt(CellCentre(0, 1), LinkModifier));
+        Assert.Empty(env.Started);
+        Assert.StartsWith("https://evil.example/x\n", Avalonia.Controls.ToolTip.GetTip(view) as string, StringComparison.Ordinal);
+
+        Assert.True(view.TryActivateLinkAt(CellCentre(0, 1), LinkModifier));
+        Assert.Equal("https://evil.example/x", Assert.Single(env.Started).FileName);
+    }
+
+    /// <summary>
+    /// Codex review of #634: a link that appears under a pointer resting on plain text was never previewed - no tip was
+    /// shown - so the first click shows it instead of opening it, and the next opens it.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_link_that_appears_under_a_resting_pointer_is_previewed_before_it_opens()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process("plain text here");
+        var env = new RecordingEnvironment();
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(env) };
+        view.SetBuffer(buffer);
+        view.SetMetricsForTest(CellWidth, CellHeight);
+        view.UpdateHoveredLink(CellCentre(0, 1));
+        Assert.Null(view.HoveredLinkUriForTest);
+
+        parser.Process("\u001b[1;1H" + Osc8("https://evil.example/x", "plain")); // a link appears under the resting pointer
+
+        Assert.False(view.TryActivateLinkAt(CellCentre(0, 1), LinkModifier));
+        Assert.Empty(env.Started);
+        Assert.StartsWith("https://evil.example/x\n", Avalonia.Controls.ToolTip.GetTip(view) as string, StringComparison.Ordinal);
+
+        Assert.True(view.TryActivateLinkAt(CellCentre(0, 1), LinkModifier));
+        Assert.Equal("https://evil.example/x", Assert.Single(env.Started).FileName);
+    }
+
+    /// <summary>
+    /// Codex review of #634: the refresh reaches a tooltip that is already open, not only the value behind it - the user has
+    /// to see the new target before the click that opens it. Avalonia updates an open tooltip's content when its tip
+    /// changes; this pins that, so a framework change cannot quietly leave the old target on screen.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_open_tooltip_shows_the_new_target_once_a_click_refreshes_it()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process(Osc8("https://trusted.example/docs", "docs"));
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(new RecordingEnvironment()) };
+        view.SetBuffer(buffer);
+        var window = new Avalonia.Controls.Window { Width = 800, Height = 500, Content = view };
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        view.SetMetricsForTest(CellWidth, CellHeight);
+        try
+        {
+            view.UpdateHoveredLink(CellCentre(0, 1));
+            Avalonia.Controls.ToolTip.SetIsOpen(view, true);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.StartsWith("https://trusted.example/docs\n", ShownTooltip(view), StringComparison.Ordinal);
+
+            parser.Process("\u001b[1;1H" + Osc8("https://evil.example/x", "docs"));
+            Assert.False(view.TryActivateLinkAt(CellCentre(0, 1), LinkModifier));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.True(Avalonia.Controls.ToolTip.GetIsOpen(view));
+            Assert.StartsWith("https://evil.example/x\n", ShownTooltip(view), StringComparison.Ordinal);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>What the tooltip open on <paramref name="control"/> shows: its popup's content, not the value behind it.</summary>
+    private static string? ShownTooltip(Avalonia.Controls.Control control)
+    {
+        var holder = (Avalonia.AvaloniaProperty)typeof(Avalonia.Controls.ToolTip)
+            .GetField("ToolTipProperty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+            .GetValue(null)!;
+        return (control.GetValue(holder) as Avalonia.Controls.ToolTip)?.Content as string;
+    }
+
+    /// <summary>
+    /// Codex review of #634: the same for a detected URL rewritten on its own row. The row's detection was kept until the
+    /// pointer changed rows, so the tip kept the old URL and every click was refused as not matching it. The rewrite is
+    /// seen: the first click brings the tip up to date, the next opens what it shows.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_detected_url_rewritten_on_its_row_is_previewed_afresh_before_it_opens()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process("see https://trusted.example/a now");
+        var env = new RecordingEnvironment();
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(env) };
+        view.SetBuffer(buffer);
+        view.SetMetricsForTest(CellWidth, CellHeight);
+        view.UpdateHoveredLink(CellCentre(0, 10));
+        Assert.Equal("https://trusted.example/a", view.HoveredLinkUriForTest);
+
+        parser.Process("\u001b[1;1Hsee https://evil.example/b now"); // the same row, rewritten under the resting pointer
+
+        Assert.False(view.TryActivateLinkAt(CellCentre(0, 10), LinkModifier));
+        Assert.Equal("https://evil.example/b", view.HoveredLinkUriForTest);
+        Assert.True(view.TryActivateLinkAt(CellCentre(0, 10), LinkModifier));
+        Assert.Equal("https://evil.example/b", Assert.Single(env.Started).FileName);
+    }
+
+    /// <summary>
+    /// CodeRabbit on #634: a local path is shown in the file manager, never opened, and the tip says so. It does not check
+    /// that anything is there: a hover never touches the file system, as underlining does not.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_local_file_link_says_a_click_shows_it_in_the_file_manager()
+    {
+        var (view, _) = CreateView(Osc8("file:///C:/Users/me/report.txt", "report"));
+
+        view.UpdateHoveredLink(CellCentre(0, 1));
+
+        Assert.EndsWith("+click to show it in the file manager", Avalonia.Controls.ToolTip.GetTip(view) as string, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// CodeRabbit on #634: while a program has mouse reporting on, pointer motion is its own - sent to the program, never to
+    /// the hover - so a link hovered before that kept its underline and its tooltip. Motion clears them now.
+    /// </summary>
+    [AvaloniaFact]
+    public void Mouse_reporting_takes_the_hover_and_its_tooltip_away()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process(Osc8("https://example.com/docs", "docs"));
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(new RecordingEnvironment()) };
+        view.SetBuffer(buffer);
+        var window = new Avalonia.Controls.Window { Width = 800, Height = 500, Content = view };
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        view.SetMetricsForTest(CellWidth, CellHeight);
+        try
+        {
+            window.MouseMove(CellCentre(0, 1));
+            Assert.NotNull(Avalonia.Controls.ToolTip.GetTip(view));
+
+            parser.Process("\u001b[?1003h"); // any-event tracking: motion is the program's now
+            window.MouseMove(CellCentre(0, 2));
+
+            Assert.Null(Avalonia.Controls.ToolTip.GetTip(view));
+            Assert.Empty(view.HoveredLinkRunsForTest);
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     [AvaloniaFact]

@@ -125,6 +125,19 @@ namespace Ntilde.Shell
         /// <summary>Whether a link underlines and shows the hand cursor. Syntactic only.</summary>
         public bool IsActivatable(string? link) => Classify(link).Action != LinkAction.Reject;
 
+        /// <summary>
+        /// What Ctrl+click on <paramref name="link"/> does, in words for its hover tip (#95 gap 5): "open" for a link handed to
+        /// the OS, "show it in the file manager" for a local path, which is never opened; null when it is not activatable.
+        /// Syntactic, as <see cref="IsActivatable"/> is: a hover never touches the file system (a mapped drive could stall it),
+        /// so a path with nothing there still says what a click would try.
+        /// </summary>
+        public string? ActionText(string? link) => Classify(link).Action switch
+        {
+            LinkAction.OpenExternal => "open",
+            LinkAction.RevealLocalPath => "show it in the file manager",
+            _ => null,
+        };
+
         /// <summary>Activates <paramref name="link"/>; false when nothing was launched.</summary>
         public bool TryOpen(string? link)
         {
