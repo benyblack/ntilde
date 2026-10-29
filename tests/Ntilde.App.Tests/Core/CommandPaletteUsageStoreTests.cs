@@ -92,6 +92,44 @@ public sealed class CommandPaletteUsageStoreTests
         }
     }
 
+    [Fact]
+    public void Load_KeysDifferingOnlyByCase_KeepsTheLastOne()
+    {
+        string tempRoot = CreateTempDirectory();
+        string path = Path.Combine(tempRoot, "command-palette-usage.json");
+
+        try
+        {
+            // Both keys survive the case-sensitive deserialize. Collapsing them must not throw,
+            // because the catch below Load's parse would discard the whole history.
+            File.WriteAllText(
+                path,
+                """
+                {
+                  "settings": {
+                    "CommandId": "settings",
+                    "UseCount": 3,
+                    "LastUsedAt": "2026-05-26T12:00:00+00:00"
+                  },
+                  "Settings": {
+                    "CommandId": "Settings",
+                    "UseCount": 7,
+                    "LastUsedAt": "2026-05-27T12:00:00+00:00"
+                  }
+                }
+                """);
+
+            var store = new CommandPaletteUsageStore(path);
+            IReadOnlyDictionary<string, CommandPaletteUsageEntry> snapshot = store.Load();
+
+            Assert.Equal(7, Assert.Single(snapshot).Value.UseCount);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
     private static string CreateTempDirectory()
     {
         string path = Path.Combine(Path.GetTempPath(), $"ntilde_usage_test_{Guid.NewGuid():N}");
