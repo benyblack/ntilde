@@ -282,8 +282,8 @@ public sealed class TerminalViewLinkActivationTests
         Assert.Equal("https://example.com/a\nCtrl+click to open", TerminalView.LinkTargetTip("https://example.com/a", macOS: false));
         Assert.Equal("https://example.com/a\nCmd+click to open", TerminalView.LinkTargetTip("https://example.com/a", macOS: true));
 
-        string spoof = TerminalView.LinkTargetTip("https://example.com/‮gpj.exe", macOS: false);
-        Assert.DoesNotContain("‮", spoof, StringComparison.Ordinal);
+        string spoof = TerminalView.LinkTargetTip("https://example.com/\u202Egpj.exe", macOS: false);
+        Assert.DoesNotContain("\u202E", spoof, StringComparison.Ordinal);
         Assert.StartsWith("https://example.com/\\u202Egpj.exe\n", spoof, StringComparison.Ordinal);
 
         Assert.StartsWith("https://example.com/ab\n", TerminalView.LinkTargetTip("https://example.com/a\u0007b", macOS: false), StringComparison.Ordinal);
@@ -293,7 +293,7 @@ public sealed class TerminalViewLinkActivationTests
         Assert.True(target.Length <= TerminalView.LinkTargetTipMaxLength, $"{target.Length} chars");
         Assert.StartsWith("https://example.com/xxx", target, StringComparison.Ordinal);
         Assert.EndsWith("xxx/end", target, StringComparison.Ordinal);
-        Assert.Contains("…", target, StringComparison.Ordinal);
+        Assert.Contains("\u2026", target, StringComparison.Ordinal);
     }
 
     [AvaloniaFact]
