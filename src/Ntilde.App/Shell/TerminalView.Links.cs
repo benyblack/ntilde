@@ -158,7 +158,11 @@ namespace Ntilde.Shell
         {
             _hoveredOsc8Screen = null; // an OSC 8 hover sets it again, once its runs are underlined
             if (link.SameAs(_hoveredLink)) return; // no change -> no repaint
-            if (_hoveredLink?.Uri != link.Uri) Avalonia.Controls.ToolTip.SetTip(this, LinkTargetTip(link.Uri, OperatingSystem.IsMacOS()));
+            if (_hoveredLink?.Uri != link.Uri)
+            {
+                Avalonia.Controls.ToolTip.SetTip(this, LinkTargetTip(link.Uri, OperatingSystem.IsMacOS(), LinkOpener.ActionText(link.Uri) ?? "open"));
+            }
+
             _hoveredLink = link;
             Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
             InvalidateVisual();
@@ -179,12 +183,15 @@ namespace Ntilde.Shell
 
         /// <summary>
         /// What the tooltip over a hovered link says (#95 gap 5): where it leads, so a link whose text says one place and whose
-        /// target is another can be checked before it is followed, and how to follow it. The target is shown as it is, so it
-        /// cannot be disguised in turn: a character that reorders or hides text (a bidi override, a zero-width space) is
-        /// shown as a visible escape, a control character is dropped, and a target too long to read keeps its start - the
-        /// scheme and host - and its end.
+        /// target is another can be checked before it is followed, and what a click does (<paramref name="action"/>, from
+        /// <see cref="TerminalLinkOpener.ActionText"/>). The target is shown as it is, so it cannot be disguised in turn: a
+        /// character that reorders or hides text (a bidi override, a zero-width space) is shown as a visible escape, a control
+        /// character is dropped, and a target too long to read keeps its start and its end. When that alone could hide where
+        /// it leads - a user-info part long enough to push the host out of sight, a cut, or an international host that a
+        /// look-alike letter could fake - the host it really reaches is named on a line of its own, in its ASCII form
+        /// (CodeRabbit on #634).
         /// </summary>
-        internal static string LinkTargetTip(string uri, bool macOS)
+        internal static string LinkTargetTip(string uri, bool macOS, string action)
         {
             var shown = new System.Text.StringBuilder(uri.Length);
             foreach (char c in uri)
@@ -194,10 +201,27 @@ namespace Ntilde.Shell
             }
 
             const int Tail = 99;
-            string target = shown.Length <= LinkTargetTipMaxLength
-                ? shown.ToString()
-                : string.Concat(shown.ToString(0, LinkTargetTipMaxLength - Tail - 1), "\u2026", shown.ToString(shown.Length - Tail, Tail));
-            return $"{target}\n{(macOS ? "Cmd" : "Ctrl")}+click to open";
+            bool cut = shown.Length > LinkTargetTipMaxLength;
+            string target = cut
+                ? string.Concat(shown.ToString(0, LinkTargetTipMaxLength - Tail - 1), "\u2026", shown.ToString(shown.Length - Tail, Tail))
+                : shown.ToString();
+            string host = HostWorthNaming(uri, cut) is { } named ? $"\nHost: {named}" : string.Empty;
+            return $"{target}{host}\n{(macOS ? "Cmd" : "Ctrl")}+click to {action}";
+        }
+
+        /// <summary>
+        /// The host <paramref name="uri"/> reaches, in its ASCII (punycode) form, when the target as shown might not make it
+        /// plain: it has a user-info part, it was <paramref name="cut"/>, or its host is an international one. Null otherwise,
+        /// and for a target with no host (a local path).
+        /// </summary>
+        private static string? HostWorthNaming(string uri, bool cut)
+        {
+            if (!Uri.TryCreate(uri, UriKind.Absolute, out Uri? parsed) || string.IsNullOrEmpty(parsed.Host)) return null;
+
+            string ascii = parsed.IdnHost;
+            return parsed.UserInfo.Length > 0 || cut || !string.Equals(ascii, parsed.Host, StringComparison.OrdinalIgnoreCase)
+                ? ascii
+                : null;
         }
 
         /// <summary>Characters that change how the text around them reads without showing themselves: bidi controls and zero-width ones.</summary>

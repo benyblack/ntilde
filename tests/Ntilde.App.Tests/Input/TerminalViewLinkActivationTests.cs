@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Ntilde.Shell;
@@ -279,21 +280,88 @@ public sealed class TerminalViewLinkActivationTests
     [Fact]
     public void The_link_tooltip_shows_the_target_as_it_is()
     {
-        Assert.Equal("https://example.com/a\nCtrl+click to open", TerminalView.LinkTargetTip("https://example.com/a", macOS: false));
-        Assert.Equal("https://example.com/a\nCmd+click to open", TerminalView.LinkTargetTip("https://example.com/a", macOS: true));
+        Assert.Equal("https://example.com/a\nCtrl+click to open", TerminalView.LinkTargetTip("https://example.com/a", macOS: false, "open"));
+        Assert.Equal("https://example.com/a\nCmd+click to open", TerminalView.LinkTargetTip("https://example.com/a", macOS: true, "open"));
 
-        string spoof = TerminalView.LinkTargetTip("https://example.com/\u202Egpj.exe", macOS: false);
+        string spoof = TerminalView.LinkTargetTip("https://example.com/\u202Egpj.exe", macOS: false, "open");
         Assert.DoesNotContain("\u202E", spoof, StringComparison.Ordinal);
         Assert.StartsWith("https://example.com/\\u202Egpj.exe\n", spoof, StringComparison.Ordinal);
 
-        Assert.StartsWith("https://example.com/ab\n", TerminalView.LinkTargetTip("https://example.com/a\u0007b", macOS: false), StringComparison.Ordinal);
+        Assert.StartsWith("https://example.com/ab\n", TerminalView.LinkTargetTip("https://example.com/a\u0007b", macOS: false, "open"), StringComparison.Ordinal);
 
         string longTarget = "https://example.com/" + new string('x', 1000) + "/end";
-        string target = TerminalView.LinkTargetTip(longTarget, macOS: false).Split('\n')[0];
+        string target = TerminalView.LinkTargetTip(longTarget, macOS: false, "open").Split('\n')[0];
         Assert.True(target.Length <= TerminalView.LinkTargetTipMaxLength, $"{target.Length} chars");
         Assert.StartsWith("https://example.com/xxx", target, StringComparison.Ordinal);
         Assert.EndsWith("xxx/end", target, StringComparison.Ordinal);
         Assert.Contains("\u2026", target, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// CodeRabbit on #634: a long user-info part could push the real host out of the shown target, so a tip reading
+    /// https://trusted.example.com... would lead to attacker.example. The host it reaches is named on a line of its own then,
+    /// and for an international host, in its ASCII form, so a look-alike letter cannot pass for another. A plain link says
+    /// nothing more than its target.
+    /// </summary>
+    [Fact]
+    public void The_link_tooltip_names_the_host_when_the_target_could_hide_it()
+    {
+        string spoofed = TerminalView.LinkTargetTip("https://trusted.example.com" + new string('a', 400) + "@attacker.example/login", macOS: false, "open");
+        Assert.StartsWith("https://trusted.example.com", spoofed, StringComparison.Ordinal);
+        Assert.Contains("\nHost: attacker.example\n", spoofed, StringComparison.Ordinal);
+
+        string lookAlike = TerminalView.LinkTargetTip("https://ex\u0430mple.com/", macOS: false, "open"); // a Cyrillic a
+        Assert.Contains("\nHost: xn--", lookAlike, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("Host:", TerminalView.LinkTargetTip("https://example.com/a", macOS: false, "open"), StringComparison.Ordinal);
+        Assert.DoesNotContain("Host:", TerminalView.LinkTargetTip("file:///C:/Users/me/report.txt", macOS: false, "open"), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// CodeRabbit on #634: a local path is shown in the file manager, never opened, and the tip says so. It does not check
+    /// that anything is there: a hover never touches the file system, as underlining does not.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_local_file_link_says_a_click_shows_it_in_the_file_manager()
+    {
+        var (view, _) = CreateView(Osc8("file:///C:/Users/me/report.txt", "report"));
+
+        view.UpdateHoveredLink(CellCentre(0, 1));
+
+        Assert.EndsWith("+click to show it in the file manager", Avalonia.Controls.ToolTip.GetTip(view) as string, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// CodeRabbit on #634: while a program has mouse reporting on, pointer motion is its own - sent to the program, never to
+    /// the hover - so a link hovered before that kept its underline and its tooltip. Motion clears them now.
+    /// </summary>
+    [AvaloniaFact]
+    public void Mouse_reporting_takes_the_hover_and_its_tooltip_away()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process(Osc8("https://example.com/docs", "docs"));
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(new RecordingEnvironment()) };
+        view.SetBuffer(buffer);
+        var window = new Avalonia.Controls.Window { Width = 800, Height = 500, Content = view };
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        view.SetMetricsForTest(CellWidth, CellHeight);
+        try
+        {
+            window.MouseMove(CellCentre(0, 1));
+            Assert.NotNull(Avalonia.Controls.ToolTip.GetTip(view));
+
+            parser.Process("\u001b[?1003h"); // any-event tracking: motion is the program's now
+            window.MouseMove(CellCentre(0, 2));
+
+            Assert.Null(Avalonia.Controls.ToolTip.GetTip(view));
+            Assert.Empty(view.HoveredLinkRunsForTest);
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     [AvaloniaFact]

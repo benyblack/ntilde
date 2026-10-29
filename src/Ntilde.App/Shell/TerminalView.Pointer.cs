@@ -73,6 +73,9 @@ namespace Ntilde.Shell
             // Forward motion events if mouse reporting is active
             if (_buffer != null && _buffer.IsMouseReportingActive())
             {
+                // The motion is the program's now, so the hover never updates: a link hovered before would keep its
+                // underline and its tip (CodeRabbit on #634).
+                ClearHoveredLink();
                 var point = e.GetCurrentPoint(this);
                 TerminalMouseButton button = GetPressedMouseButton(point.Properties);
                 HandleMouseMoveAt(point.Position, button, e.KeyModifiers);
