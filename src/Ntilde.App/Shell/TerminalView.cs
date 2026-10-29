@@ -339,6 +339,8 @@ namespace Ntilde.Shell
 
         public void InvalidateBuffer()
         {
+            // Any thread (the parse thread, mostly): the hover keys its cached link runs on this.
+            Interlocked.Increment(ref _contentGeneration);
             _isDirty = true;
             if (!_isUiRenderable)
             {

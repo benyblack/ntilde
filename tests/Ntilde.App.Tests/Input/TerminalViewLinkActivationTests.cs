@@ -4,6 +4,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Ntilde.Shell;
 using Ntilde.VT;
+using Ntilde.VT.Links;
 
 namespace Ntilde.Tests.Input;
 
@@ -136,7 +137,7 @@ public sealed class TerminalViewLinkActivationTests
         view.UpdateHoveredLink(CellCentre(0, hoveredCol));
 
         Assert.Equal("https://example.com/docs", view.HoveredLinkUriForTest);
-        Assert.Equal((4, 11), view.HoveredLinkColumnsForTest);
+        Assert.Equal([new HyperlinkRun(0, 4, 11)], view.HoveredLinkRunsForTest);
     }
 
     [AvaloniaFact]
@@ -146,22 +147,109 @@ public sealed class TerminalViewLinkActivationTests
         var (view, _) = CreateView(Osc8("https://example.com", "one") + Osc8("https://example.com", "two"));
 
         view.UpdateHoveredLink(CellCentre(0, 1));
-        Assert.Equal((0, 2), view.HoveredLinkColumnsForTest);
+        Assert.Equal([new HyperlinkRun(0, 0, 2)], view.HoveredLinkRunsForTest);
 
         view.UpdateHoveredLink(CellCentre(0, 4));
-        Assert.Equal((3, 5), view.HoveredLinkColumnsForTest);
+        Assert.Equal([new HyperlinkRun(0, 3, 5)], view.HoveredLinkRunsForTest);
     }
 
-    [AvaloniaFact]
-    public void An_Osc8_id_joins_runs_but_only_the_contiguous_part_underlines()
+    /// <summary>
+    /// #95 gap 3, the rest of it: the parts an <c>id</c> joins are one link, so hovering either underlines both.
+    /// The overlay used to hold one run, and only the part under the pointer underlined.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(1)]
+    [InlineData(4)]
+    public void An_Osc8_id_joins_runs_and_every_run_underlines(int hoveredCol)
     {
-        // The overlay holds one run on one row; cells of the same id elsewhere are not underlined with it.
         var (view, _) = CreateView(
             "\u001b]8;id=a;https://example.com\u0007ab\u001b]8;;\u0007--\u001b]8;id=a;https://example.com\u0007cd\u001b]8;;\u0007");
 
-        view.UpdateHoveredLink(CellCentre(0, 1));
+        view.UpdateHoveredLink(CellCentre(0, hoveredCol));
 
-        Assert.Equal((0, 1), view.HoveredLinkColumnsForTest);
+        Assert.Equal([new HyperlinkRun(0, 0, 1), new HyperlinkRun(0, 4, 5)], view.HoveredLinkRunsForTest);
+    }
+
+    /// <summary>A link too long for the rest of its row wraps; it underlines on both rows, from either.</summary>
+    [AvaloniaTheory]
+    [InlineData(0, 77)]
+    [InlineData(1, 2)]
+    public void A_wrapped_Osc8_link_underlines_on_every_row_it_covers(int hoveredRow, int hoveredCol)
+    {
+        var (view, _) = CreateView(new string(' ', 75) + Osc8("https://example.com/docs", "the-docs!!"));
+
+        view.UpdateHoveredLink(CellCentre(hoveredRow, hoveredCol));
+
+        Assert.Equal([new HyperlinkRun(0, 75, 79), new HyperlinkRun(1, 0, 4)], view.HoveredLinkRunsForTest);
+    }
+
+    /// <summary>
+    /// Every pointer move asks for the hovered link, so moving within one anchor on an unchanged screen must reuse its runs
+    /// rather than rescan every visible row under the buffer's lock each time (Codex review of #632). Another anchor, or a
+    /// screen that moved, is looked up again.
+    /// </summary>
+    [AvaloniaFact]
+    public void Moving_within_one_Osc8_link_does_not_rescan_the_screen()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process(Osc8("https://example.com/one", "first link") + " " + Osc8("https://example.com/two", "second"));
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(new RecordingEnvironment()) };
+        view.SetBuffer(buffer);
+        view.SetMetricsForTest(CellWidth, CellHeight);
+
+        view.UpdateHoveredLink(CellCentre(0, 1));
+        view.UpdateHoveredLink(CellCentre(0, 5));
+        view.UpdateHoveredLink(CellCentre(0, 9));
+        Assert.Equal(1, view.Osc8ScansForTest);
+
+        view.UpdateHoveredLink(CellCentre(0, 12));
+        Assert.Equal("https://example.com/two", view.HoveredLinkUriForTest);
+        Assert.Equal(2, view.Osc8ScansForTest);
+
+        // Output that scrolls the screen moves the link under the pointer: what is there now is looked up again.
+        parser.Process("\r\n" + string.Concat(Enumerable.Repeat("filler\r\n", 30)));
+        parser.Process(Osc8("https://example.com/one", "first link"));
+        view.UpdateHoveredLink(CellCentre(23, 1));
+        Assert.Equal(3, view.Osc8ScansForTest);
+    }
+
+    /// <summary>
+    /// Codex's case on #632: output that overwrites part of an <c>id</c>-joined link leaves the rest of it the same anchor on
+    /// the same screen. The runs found before the write must not be reused for it: the overwritten cells no longer underline.
+    /// </summary>
+    [AvaloniaFact]
+    public void Output_over_part_of_a_hovered_link_is_seen_on_the_next_move()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\u001b]8;id=a;https://example.com\u0007abcdef\u001b]8;;\u0007");
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(new RecordingEnvironment()) };
+        view.SetBuffer(buffer);
+        view.SetMetricsForTest(CellWidth, CellHeight);
+
+        view.UpdateHoveredLink(CellCentre(0, 1));
+        Assert.Equal([new HyperlinkRun(0, 0, 5)], view.HoveredLinkRunsForTest);
+
+        parser.Process("\u001b[1;3HXXXX"); // columns 2-5 rewritten as plain text
+        view.UpdateHoveredLink(CellCentre(0, 0));
+
+        Assert.Equal([new HyperlinkRun(0, 0, 1)], view.HoveredLinkRunsForTest);
+    }
+
+    /// <summary>What Render draws for the wrapped link: a 1-pixel bar under each run, on its own row.</summary>
+    [AvaloniaFact]
+    public void A_wrapped_Osc8_link_is_drawn_underlined_on_both_rows()
+    {
+        var (view, _) = CreateView(new string(' ', 75) + Osc8("https://example.com/docs", "the-docs!!"));
+
+        view.UpdateHoveredLink(CellCentre(1, 2));
+
+        Assert.Equal(
+            [new Rect(75 * CellWidth, CellHeight - 1, 5 * CellWidth, 1), new Rect(0, (2 * CellHeight) - 1, 5 * CellWidth, 1)],
+            view.HoveredLinkUnderlines(displayStart: 0, rows: 24));
+        // A run on a row scrolled out of view is not drawn.
+        Assert.Equal([new Rect(0, CellHeight - 1, 5 * CellWidth, 1)], view.HoveredLinkUnderlines(displayStart: 1, rows: 24));
     }
 
     [AvaloniaFact]
@@ -171,7 +259,7 @@ public sealed class TerminalViewLinkActivationTests
 
         view.UpdateHoveredLink(CellCentre(0, 10));
 
-        Assert.Equal((4, 22), view.HoveredLinkColumnsForTest);
+        Assert.Equal([new HyperlinkRun(0, 4, 22)], view.HoveredLinkRunsForTest);
     }
 
     /// <summary>The URL detector matches any <c>scheme://</c> in plain text, file ones included.</summary>

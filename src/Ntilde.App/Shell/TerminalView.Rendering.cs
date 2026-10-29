@@ -183,19 +183,13 @@ namespace Ntilde.Shell
                 minimumContrast: _minimumContrast
             ));
 
-            if (_hoveredLink is { } link && _metrics.CellWidth > 0 && _metrics.CellHeight > 0)
+            if (_hoveredLink != null)
             {
                 int displayStart = Math.Max(0, totalLines - buffer.Rows - ScrollOffset);
-                int visualRow = link.AbsRow - displayStart;
-                if (visualRow >= 0 && visualRow < buffer.Rows)
+                var brush = new SolidColorBrush(buffer.Theme.Foreground.ToAvaloniaColor(), _windowOpacity);
+                foreach (Rect underline in HoveredLinkUnderlines(displayStart, buffer.Rows))
                 {
-                    double x = link.StartCol * _metrics.CellWidth;
-                    double width = (link.EndCol - link.StartCol + 1) * _metrics.CellWidth;
-                    double y = (visualRow + 1) * _metrics.CellHeight - 1.0;
-                    var color = buffer.Theme.Foreground.ToAvaloniaColor();
-                    context.FillRectangle(
-                        new SolidColorBrush(color, _windowOpacity),
-                        new Rect(x, y, width, 1.0));
+                    context.FillRectangle(brush, underline);
                 }
             }
 

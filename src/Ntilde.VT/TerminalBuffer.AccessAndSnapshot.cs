@@ -156,23 +156,64 @@ namespace Ntilde.VT
             bool lockTaken = EnterReadLockIfNeeded();
             try
             {
-                if (absRow < 0 || col < 0 || col >= Cols) return null;
+                if (col < 0 || col >= Cols) return null;
 
-                if (!_isAltScreen && absRow < _scrollback.Count)
-                {
-                    // Same gap as GetGraphemeAbsolute: the hyperlink side table survives
-                    // into scrollback, but this read path returned null unconditionally, so
-                    // an OSC 8 link stopped being a link as soon as it scrolled off screen.
-                    var hyperlinks = _scrollback.GetHyperlinkMap(absRow);
-                    return hyperlinks != null && hyperlinks.TryGet(col, out Links.Hyperlink? link)
-                        ? link
-                        : null;
-                }
-
-                var row = GetRowAbsolute(absRow);
-                return row?.GetHyperlink(col);
+                return HyperlinkMapAbsolute(absRow) is { } hyperlinks && hyperlinks.TryGet(col, out Links.Hyperlink? link)
+                    ? link
+                    : null;
             }
             finally { ExitReadLockIfNeeded(Lock, lockTaken); }
+        }
+
+        /// <summary>
+        /// Every run of cells carrying <paramref name="link"/> on rows <paramref name="firstAbsRow"/> to
+        /// <paramref name="lastAbsRow"/>, in reading order: its part on the row it wrapped onto, and each run an
+        /// <c>id</c> joined to it, as well as the run itself (#95 gap 3). By identity, so a neighbouring link to the
+        /// same URI is not part of it. One read lock for the whole range, and a row with no links costs a lookup.
+        /// </summary>
+        public IReadOnlyList<Links.HyperlinkRun> FindHyperlinkRuns(Links.Hyperlink link, int firstAbsRow, int lastAbsRow)
+        {
+            ArgumentNullException.ThrowIfNull(link);
+            var runs = new List<Links.HyperlinkRun>();
+            bool lockTaken = EnterReadLockIfNeeded();
+            try
+            {
+                for (int absRow = Math.Max(0, firstAbsRow); absRow <= lastAbsRow; absRow++)
+                {
+                    if (HyperlinkMapAbsolute(absRow) is not { Count: > 0 } hyperlinks) continue;
+
+                    int start = -1;
+                    for (int col = 0; col <= Cols; col++)
+                    {
+                        bool inLink = col < Cols && hyperlinks.TryGet(col, out Links.Hyperlink? cell) && ReferenceEquals(cell, link);
+                        if (inLink && start < 0)
+                        {
+                            start = col;
+                        }
+                        else if (!inLink && start >= 0)
+                        {
+                            runs.Add(new Links.HyperlinkRun(absRow, start, col - 1));
+                            start = -1;
+                        }
+                    }
+                }
+
+                return runs;
+            }
+            finally { ExitReadLockIfNeeded(Lock, lockTaken); }
+        }
+
+        /// <summary>The hyperlink side table of an absolute row, wherever the row lives; null when it has none. Lock held.</summary>
+        private Storage.SmallMap<Links.Hyperlink>? HyperlinkMapAbsolute(int absRow)
+        {
+            if (absRow < 0) return null;
+
+            // Same gap as GetGraphemeAbsolute: the hyperlink side table survives into scrollback, but this read
+            // path returned null unconditionally, so an OSC 8 link stopped being a link as soon as it scrolled
+            // off screen.
+            return !_isAltScreen && absRow < _scrollback.Count
+                ? _scrollback.GetHyperlinkMap(absRow)
+                : GetRowAbsolute(absRow)?.GetHyperlinkMap();
         }
 
         public string GetGrapheme(int col, int viewRow)
