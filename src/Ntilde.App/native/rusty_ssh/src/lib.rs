@@ -13,7 +13,10 @@ use std::io::Cursor;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Component, Path, PathBuf};
 use std::ptr;
-use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+// Only the debug-build FFI string counter uses it; a release build would warn on an unused import.
+#[cfg(debug_assertions)]
+use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, Condvar, Mutex, OnceLock, mpsc as std_mpsc};
 use std::thread;
 use std::time::Duration;
