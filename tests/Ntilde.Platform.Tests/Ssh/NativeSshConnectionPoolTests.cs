@@ -167,7 +167,8 @@ public sealed class NativeSshConnectionPoolTests
     {
         // Before connection sharing, the second native tab of a profile with a forward failed here: its own
         // forward session could not bind the port the first tab's already held.
-        int port = FreeLoopbackPort();
+        // Port 0, and the connection is asked about its listener: a port picked free and bound later can be taken
+        // in between, and then the forward is skipped (continueOnBindFailure) and the port reads as free (#581).
         var interop = new SharingInterop();
         var pool = new NativeSshConnectionPool();
         SshProfile profile = CreateProfile();
@@ -175,18 +176,21 @@ public sealed class NativeSshConnectionPoolTests
         {
             Kind = PortForwardKind.Dynamic,
             BindAddress = "127.0.0.1",
-            SourcePort = port
+            SourcePort = 0
         });
 
         NativeSshSession first = new(profile, interop: interop, connectionPool: pool);
         NativeSshSession second = new(profile, interop: interop, connectionPool: pool);
+        NativeSshSharedConnection connection = Assert.IsType<NativeSshSharedConnection>(first.SharedConnectionForTest);
+        Assert.Same(connection, second.SharedConnectionForTest);
+        Assert.Single(connection.GetForwardListenerEndpoints());
 
         // The listener outlives the tab that opened the connection.
         first.Dispose();
-        Assert.False(CanBind(port), "the forward's listener should still be up");
+        Assert.True(connection.HasBoundForwardListener(), "the forward's listener should still be up");
 
         second.Dispose();
-        Assert.True(CanBind(port), "the forward's listener should close with the connection");
+        Assert.False(connection.HasBoundForwardListener(), "the forward's listener should close with the connection");
     }
 
     [Fact]
@@ -517,33 +521,6 @@ public sealed class NativeSshConnectionPoolTests
         };
         profile.MuxOptions.Enabled = true;
         return profile;
-    }
-
-    private static int FreeLoopbackPort()
-    {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        listener.Stop();
-        return port;
-    }
-
-    private static bool CanBind(int port)
-    {
-        var listener = new TcpListener(IPAddress.Loopback, port);
-        try
-        {
-            listener.Start();
-            return true;
-        }
-        catch (SocketException)
-        {
-            return false;
-        }
-        finally
-        {
-            listener.Stop();
-        }
     }
 
     private static async Task WaitUntilAsync(Func<bool> predicate, TimeSpan? timeout = null)
