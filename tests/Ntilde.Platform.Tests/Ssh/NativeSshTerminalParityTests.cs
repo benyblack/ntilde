@@ -9,6 +9,8 @@ namespace Ntilde.Platform.Tests.Ssh;
 
 public sealed class NativeSshTerminalParityTests
 {
+    private static readonly string[] EchoHiScreen = ["echo hi", "hi", "nova$"];
+
     [Fact]
     public async Task ResizeFailure_DoesNotThrow_AndFullscreenExitStillRestoresPrompt()
     {
@@ -36,7 +38,7 @@ public sealed class NativeSshTerminalParityTests
         interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
 
         Assert.Null(resizeException);
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
 
         string viewportText = GetViewportText(buffer);
         Assert.Contains("nova$", viewportText, StringComparison.Ordinal);
@@ -70,7 +72,7 @@ public sealed class NativeSshTerminalParityTests
         interop.Enqueue(NativeSshEvent.ExitStatus(0));
         interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
         Assert.Equal(initialScrollbackCount, buffer.Scrollback.Count);
         Assert.DoesNotContain("mc alt ui", GetScrollbackText(buffer), StringComparison.Ordinal);
     }
@@ -93,9 +95,9 @@ public sealed class NativeSshTerminalParityTests
         interop.Enqueue(NativeSshEvent.ExitStatus(0));
         interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
 
-        Assert.Equal(new[] { "echo hi", "hi", "nova$" }, GetVisibleNonEmptyLines(buffer));
+        Assert.Equal(EchoHiScreen, GetVisibleNonEmptyLines(buffer));
     }
 
     [Fact]
@@ -114,7 +116,7 @@ public sealed class NativeSshTerminalParityTests
         interop.Enqueue(NativeSshEvent.ExitStatus(0));
         interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
 
         BufferSnapshot snapshot = BufferSnapshot.Capture(buffer);
         Assert.Equal("line-02", snapshot.Lines[0]);
@@ -156,7 +158,7 @@ public sealed class NativeSshTerminalParityTests
         interop.Enqueue(NativeSshEvent.ExitStatus(0));
         interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
 
         string[] visibleLines = buffer.ViewportRows.Select(GetRowText).ToArray();
 
@@ -202,7 +204,7 @@ public sealed class NativeSshTerminalParityTests
         return string.Join("\n", lines);
     }
 
-    private static IReadOnlyList<string> GetVisibleNonEmptyLines(TerminalBuffer buffer)
+    private static string[] GetVisibleNonEmptyLines(TerminalBuffer buffer)
     {
         return buffer.ViewportRows
             .Select(GetRowText)
@@ -237,7 +239,7 @@ public sealed class NativeSshTerminalParityTests
         sb.Append("\u001b[?1049h");
         for (int row = 1; row <= 9; row++)
         {
-            sb.Append($"\u001b[{row};1Hline-{row:00}");
+            sb.Append(System.Globalization.CultureInfo.InvariantCulture, $"\u001b[{row};1Hline-{row:00}");
         }
 
         sb.Append("\u001b[10;1Hstatus: stable");

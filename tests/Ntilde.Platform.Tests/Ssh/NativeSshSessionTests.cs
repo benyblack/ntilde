@@ -9,6 +9,10 @@ namespace Ntilde.Platform.Tests.Ssh;
 
 public sealed class NativeSshSessionTests
 {
+    private static readonly string[] EuroSignOnly = ["\u20AC"];
+    private static readonly int[] ExitCode23Only = [23];
+    private static readonly string[] HelloOnly = ["hello"];
+
     [Fact]
     public async Task OutputBytesAreDecodedIncrementallyAcrossPollEvents()
     {
@@ -25,8 +29,8 @@ public sealed class NativeSshSessionTests
         session.OnOutputReceived += outputs.Add;
         session.OnExit += code => exit.TrySetResult(code);
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2)));
-        Assert.Equal(new[] { "€" }, outputs);
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(EuroSignOnly, outputs);
     }
 
     [Fact]
@@ -49,7 +53,7 @@ public sealed class NativeSshSessionTests
         // replays its code to a late subscriber, so subscribing here is race-free.
         var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         session.OnExit += code => exit.TrySetResult(code);
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
 
         var outputs = new ConcurrentQueue<string>();
         session.OnOutputReceived += outputs.Enqueue; // late subscriber → replay fires here
@@ -74,7 +78,7 @@ public sealed class NativeSshSessionTests
         using var session = new NativeSshSession(CreateProfile(), interop: interop);
         var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         session.OnExit += code => exit.TrySetResult(code);
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
 
         var outputs = new ConcurrentQueue<string>();
         session.OnOutputReceived += outputs.Enqueue;
@@ -156,9 +160,9 @@ public sealed class NativeSshSessionTests
             exit.TrySetResult(code);
         };
 
-        Assert.Equal(23, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(23, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
         await WaitUntilAsync(() => interop.CloseCallCount > 0);
-        Assert.Equal(new[] { 23 }, exits);
+        Assert.Equal(ExitCode23Only, exits);
     }
 
     [Fact]
@@ -174,7 +178,7 @@ public sealed class NativeSshSessionTests
 
         session.OnExit += code => exit.TrySetResult(code);
 
-        Assert.Equal(17, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(17, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -191,7 +195,7 @@ public sealed class NativeSshSessionTests
 
         session.OnOutputReceived += outputs.Add;
 
-        Assert.Equal(new[] { "hello" }, outputs);
+        Assert.Equal(HelloOnly, outputs);
     }
 
     [Fact]
@@ -386,7 +390,7 @@ public sealed class NativeSshSessionTests
         using var session = new NativeSshSession(profile, interop: interop);
 
         // Nothing to request until the session exists; the Connected event is what says it does.
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         Assert.Empty(interop.RemoteForwardRequests);
 
         interop.Enqueue(new NativeSshEvent(NativeSshEventKind.Connected, []));

@@ -414,7 +414,7 @@ public sealed class NativeSshDockerE2eTests
         }
     }
 
-    private static void AssertPathProgress(string remotePath, IReadOnlyList<NativeSftpTransferProgress> updates, long expectedBytes)
+    private static void AssertPathProgress(string remotePath, List<NativeSftpTransferProgress> updates, long expectedBytes)
     {
         Assert.All(updates, update => Assert.Equal(remotePath, update.CurrentPath));
         Assert.Contains(updates, update => update.BytesTotal > 0);
@@ -1131,8 +1131,8 @@ public sealed class NativeSshDockerE2eTests
 
     private static int CountChangedRows(BufferSnapshot before, BufferSnapshot after, int editingRows)
     {
-        IReadOnlyList<string> beforeLines = before.Lines.ToArray();
-        IReadOnlyList<string> afterLines = after.Lines.ToArray();
+        List<string> beforeLines = before.Lines.ToList();
+        List<string> afterLines = after.Lines.ToList();
         int rowCount = Math.Min(Math.Min(beforeLines.Count, afterLines.Count), editingRows);
         int changed = 0;
         for (int i = 0; i < rowCount; i++)
@@ -1148,8 +1148,8 @@ public sealed class NativeSshDockerE2eTests
 
     private static bool SnapshotsEqual(BufferSnapshot before, BufferSnapshot after)
     {
-        IReadOnlyList<string> beforeLines = before.Lines.ToArray();
-        IReadOnlyList<string> afterLines = after.Lines.ToArray();
+        List<string> beforeLines = before.Lines.ToList();
+        List<string> afterLines = after.Lines.ToList();
         if (before.IsAltScreen != after.IsAltScreen || beforeLines.Count != afterLines.Count)
         {
             return false;
@@ -1193,7 +1193,7 @@ public sealed class NativeSshDockerE2eTests
                     if (char.IsControl(c))
                     {
                         builder.Append("\\x");
-                        builder.Append(((int)c).ToString("X2"));
+                        builder.Append(((int)c).ToString("X2", System.Globalization.CultureInfo.InvariantCulture));
                     }
                     else
                     {

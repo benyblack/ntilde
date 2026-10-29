@@ -6,6 +6,8 @@ namespace Ntilde.Platform.Tests.Ssh;
 
 public sealed class JsonSshProfileStoreTests
 {
+    private static readonly string[] SortedTags = ["alpha", "Favorite", "zeta"];
+
     [Fact]
     public void SshProfile_DefaultsBackendKindToOpenSsh()
     {
@@ -77,7 +79,7 @@ public sealed class JsonSshProfileStoreTests
             Assert.Equal("Prod/DB", loaded.GroupPath);
             Assert.Equal("critical", loaded.Notes);
             Assert.Equal("#3399EE", loaded.AccentColor);
-            Assert.Equal(new[] { "alpha", "Favorite", "zeta" }, loaded.Tags);
+            Assert.Equal(SortedTags, loaded.Tags);
             Assert.Equal(profile.Host, loaded.Host);
             Assert.Equal(profile.User, loaded.User);
             Assert.Equal(profile.Port, loaded.Port);

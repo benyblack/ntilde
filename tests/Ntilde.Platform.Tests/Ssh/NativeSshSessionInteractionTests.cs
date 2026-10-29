@@ -30,7 +30,7 @@ public sealed class NativeSshSessionInteractionTests
         session.OnExit += code => exit.TrySetResult(code);
 
         await handler.WaitForRequestAsync();
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         Assert.Equal(1, interop.PollCallCount);
         Assert.Empty(outputs);
@@ -38,7 +38,7 @@ public sealed class NativeSshSessionInteractionTests
 
         handler.Complete(SshInteractionResponse.AcceptHostKey());
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
         Assert.Equal("""{"accept":true}""", interop.Submissions.Single().PayloadJson);
         Assert.Contains("ready", outputs.Single());
     }

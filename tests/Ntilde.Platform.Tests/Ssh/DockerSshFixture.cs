@@ -13,6 +13,9 @@ internal enum NativeSshTestKey
     PassphraseProtected = 1
 }
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+    Justification = "The tests read the container's address and accounts through the fixture they are given, " +
+                    "beside the members it resolves per container (the published ports).")]
 internal sealed class DockerSshFixture : IAsyncDisposable
 {
     // v3 turned on public-key and keyboard-interactive auth, which v2 refused outright.

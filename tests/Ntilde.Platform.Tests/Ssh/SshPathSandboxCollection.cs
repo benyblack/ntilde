@@ -5,6 +5,8 @@ namespace Ntilde.Platform.Tests.Ssh;
 /// two of them running at once would each see the other's value.
 /// </summary>
 [CollectionDefinition(nameof(SshPathSandboxCollection), DisableParallelization = true)]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix",
+    Justification = "An xUnit collection definition, named for the collection it defines.")]
 public sealed class SshPathSandboxCollection
 {
 }
