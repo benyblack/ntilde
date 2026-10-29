@@ -1,3 +1,4 @@
+using System.Net;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
 
@@ -383,6 +384,18 @@ internal sealed class NativeSshSharedConnection
             }
         }
     }
+
+    /// <summary>
+    /// Where the connection's local and dynamic forwards listen (see
+    /// <see cref="NativePortForwardSession.GetListenerEndpoints"/>): the tests give a forward port 0 and read the port it got.
+    /// </summary>
+    internal IReadOnlyList<IPEndPoint> GetForwardListenerEndpoints() => _forwards?.GetListenerEndpoints() ?? [];
+
+    /// <summary>
+    /// Whether a forward's listener still holds its port (see <see cref="NativePortForwardSession.HasBoundListener"/>): the
+    /// tests ask this rather than re-bind the port, which another socket may have taken by then.
+    /// </summary>
+    internal bool HasBoundForwardListener() => _forwards?.HasBoundListener() == true;
 
     /// <summary>One tab's hold on the connection. Disposing it releases the hold, once.</summary>
     internal sealed class Lease : IDisposable

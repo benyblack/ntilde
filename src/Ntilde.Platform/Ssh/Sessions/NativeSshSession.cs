@@ -159,6 +159,9 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         }
     }
 
+    /// <summary>The pooled connection this tab holds a lease on, if it shares one; null once disposed.</summary>
+    internal NativeSshSharedConnection? SharedConnectionForTest => _connectionLease?.Connection;
+
     public Guid Id { get; } = Guid.NewGuid();
     public string ShellCommand => "native-ssh";
     public string? ShellArguments { get; }
