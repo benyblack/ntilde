@@ -105,6 +105,13 @@ internal sealed record RemoteMuxFailure(RemoteFailureKind Kind, string Reason, R
     /// counterpart of OpenSSH's <see cref="SignInRefused"/>, whose askpass never reaches the attempt's prompts.
     /// </summary>
     public bool UserSignInFailed { get; init; }
+
+    /// <summary>
+    /// The native backend met the host key - unknown, or changed since the user trusted it - so a user's attempt shows it in
+    /// its dialog, and Enter reviews it. False for OpenSSH's own refusal of a changed key, which asks nothing: the old key has
+    /// to leave known_hosts first (Codex review of #633).
+    /// </summary>
+    public bool KeyReviewedOnEnter { get; init; }
 }
 
 /// <summary>

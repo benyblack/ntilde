@@ -398,7 +398,7 @@ internal sealed class RemoteMuxInteractionHandler
         private SshInteractionKind? _abortedPrompt;  // guarded by _gate
         private SshInteractionKind? _declinedPrompt; // guarded by _gate
         private (SshInteractionKind Kind, bool Declined)? _lastUserPrompt; // guarded by _gate; the last prompt that went to the user
-        private bool _hostKeyRejected;               // guarded by _gate; nobody to ask, and the key was not trusted
+        private SshInteractionKind? _rejectedHostKey;               // guarded by _gate; nobody to ask, and the key was not trusted
         private bool _savedPasswordOffered;          // guarded by _gate
         private byte[]? _offeredHash;                // guarded by _gate; HashOf the saved password offered
         private bool _storedPasswordAnswered;        // guarded by _gate; nobody to ask, and a stored password answered
@@ -612,9 +612,15 @@ internal sealed class RemoteMuxInteractionHandler
         /// That ends the connection at the key exchange, before anything is sent, and the next attempt meets the same key:
         /// only the user can review it. A user's own answer in the dialog is not recorded here.
         /// </summary>
-        public bool HostKeyRejected
+        public bool HostKeyRejected => RejectedHostKey is not null;
+
+        /// <summary>
+        /// The kind of host-key prompt behind <see cref="HostKeyRejected"/> - a key never seen, or one that changed since the
+        /// user trusted it - or null when none was rejected.
+        /// </summary>
+        public SshInteractionKind? RejectedHostKey
         {
-            get { lock (_gate) return _hostKeyRejected; }
+            get { lock (_gate) return _rejectedHostKey; }
         }
 
         private ISshInteractionHandler? User => Interactive ? _owner._user : null;
@@ -683,7 +689,7 @@ internal sealed class RemoteMuxInteractionHandler
                 // Nobody to ask: a known host key only. A cancel is submitted as a rejection, which ends
                 // the connection before any credential is sent.
                 if (_owner._isTrustedHostKey(request)) return SshInteractionResponse.AcceptHostKey();
-                lock (_gate) _hostKeyRejected = true;
+                lock (_gate) _rejectedHostKey = kind;
                 return SshInteractionResponse.Cancel();
             }
 

@@ -649,10 +649,10 @@ public sealed class MuxRemotePaneTests : IDisposable
         Assert.Equal(
             ChangedHostKeyLine,
             TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "Host key for evil-host has changed", RemoteNeedsUserCause.HostKeyChanged), Host));
-        // A changed key a user rejected in the native dialog (#631): Enter shows that dialog again - no known_hosts to edit.
+        // A changed key the native backend met (#631): Enter shows its dialog again - no known_hosts to edit.
         Assert.Equal(
             "[Host key for nova@fake-host is unknown or has changed \u2014 press Enter to review]",
-            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "Unknown server key", RemoteNeedsUserCause.HostKeyChanged) { UserSignInFailed = true }, Host));
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "Unknown server key", RemoteNeedsUserCause.HostKeyChanged) { KeyReviewedOnEnter = true }, Host));
         Assert.Null(TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.SshFailed, sshSaid), Host));
         Assert.Null(TerminalPane.RemoteNeedsUserLine(null, Host));
     }

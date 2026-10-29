@@ -532,7 +532,7 @@ internal sealed class RemoteMuxConnector : IDisposable
                 RemoteFailureKind.NeedsUser,
                 $"signing in to {host} needs more than the saved password (a second factor), which an automatic reconnect does not ask for ({failure.Reason})");
         }
-        else if (failure.Kind == RemoteFailureKind.SshFailed && !prompts.Interactive && prompts.HostKeyRejected)
+        else if (failure.Kind == RemoteFailureKind.SshFailed && !prompts.Interactive && prompts.RejectedHostKey is { } rejected)
         {
             // Native: the automatic attempt rejected a host key the user does not trust - never seen, or changed - and the
             // connection ended at the key exchange, before anything was sent. The next attempt meets the same key, so
@@ -541,7 +541,12 @@ internal sealed class RemoteMuxConnector : IDisposable
             failure = new RemoteMuxFailure(
                 RemoteFailureKind.NeedsUser,
                 $"the host key of {host} is not one the user trusts (unknown, or changed), and an automatic reconnect accepts no new key ({failure.Reason})",
-                RemoteNeedsUserCause.HostKey);
+                // A key that changed since the user trusted it is the warning, kept apart from one never seen (Codex review
+                // of #633); either way the user's attempt shows it, so Enter reviews it.
+                rejected == SshInteractionKind.ChangedHostKey ? RemoteNeedsUserCause.HostKeyChanged : RemoteNeedsUserCause.HostKey)
+            {
+                KeyReviewedOnEnter = true,
+            };
         }
         else if (prompts.AbortedPrompt is { } aborted)
         {
@@ -570,6 +575,7 @@ internal sealed class RemoteMuxConnector : IDisposable
             failure = failure with
             {
                 UserSignInFailed = true,
+                KeyReviewedOnEnter = asked.Kind is SshInteractionKind.UnknownHostKey or SshInteractionKind.ChangedHostKey,
                 Cause = asked.Kind switch
                 {
                     // Kept apart: a key that changed since the user trusted it is the warning, not an unknown key.

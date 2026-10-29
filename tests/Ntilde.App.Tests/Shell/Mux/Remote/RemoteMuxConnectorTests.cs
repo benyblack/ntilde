@@ -1730,7 +1730,10 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         var hostKey = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
 
-        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKey), (hostKey.Failure.Kind, hostKey.Failure.Cause));
+        // A key that changed since the user trusted it keeps that cause - the warning (Codex review of #633) - and either way
+        // Enter reviews it in the native dialog.
+        RemoteNeedsUserCause cause = kind == nameof(SshInteractionKind.ChangedHostKey) ? RemoteNeedsUserCause.HostKeyChanged : RemoteNeedsUserCause.HostKey;
+        Assert.Equal((RemoteFailureKind.NeedsUser, cause, true), (hostKey.Failure.Kind, hostKey.Failure.Cause, hostKey.Failure.KeyReviewedOnEnter));
         Assert.False(Assert.Single(answers).IsAccepted);
         Assert.Equal(0, saved.Reads);
         Assert.False(connector.Prompts.BeginAttempt(interactive: true, savedPasswordProfile: NativeProfile()).AvoidsSavedPassword);
@@ -1813,7 +1816,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         RemoteNeedsUserCause rejectedKey = kind == nameof(SshInteractionKind.ChangedHostKey) ? RemoteNeedsUserCause.HostKeyChanged : RemoteNeedsUserCause.HostKey;
         Assert.Equal(
             window
-                ? new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Unknown server key", rejectedKey) { UserSignInFailed = true }
+                ? new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Unknown server key", rejectedKey) { UserSignInFailed = true, KeyReviewedOnEnter = true }
                 : new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Unknown server key"),
             rejected.Failure);
         Assert.False(Assert.Single(answers).IsAccepted);
