@@ -18,9 +18,6 @@ public sealed class NovaSshSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
         SetHandle(value);
     }
 
-    protected override bool ReleaseHandle()
-    {
-        NativeSshInterop.NativeMethods.nova_ssh_close_raw(handle);
-        return true;
-    }
+    // Reports what the close did: 0 is OK, anything else an id the registry no longer held or a native panic.
+    protected override bool ReleaseHandle() => NativeSshInterop.NativeMethods.nova_ssh_close_raw(handle) == 0;
 }

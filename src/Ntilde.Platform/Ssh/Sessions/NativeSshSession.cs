@@ -15,7 +15,6 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
 
     private readonly INativeSshInterop _interop;
     private readonly ISshInteractionHandler? _interactionHandler;
-    private readonly NativeJumpHostConnector _jumpHostConnector = new();
     private readonly CancellationTokenSource _pollCts = new();
     private readonly Task _pollTask;
     // See RustPtySession's field of the same name for why this is Utf8ChunkDecoder rather than
@@ -117,7 +116,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
 
         JumpHostConnectPlan connectPlan = JumpHostConnectPlan.Create(profile);
         NativeSshConnectionOptions connectionOptions = NativeSshConnectionOptionsFactory.Create(connectPlan, profile, cols, rows);
-        _log($"[NativeSshSession] backend=native path={_jumpHostConnector.DescribePath(connectPlan)} target={connectionOptions.User}@{connectionOptions.Host}:{connectionOptions.Port}");
+        _log($"[NativeSshSession] backend=native path={NativeJumpHostConnector.DescribePath(connectPlan)} target={connectionOptions.User}@{connectionOptions.Host}:{connectionOptions.Port}");
         _sessionHandle = shareConnection
             ? OpenSharedShell(profile, connectionOptions, connectionPool ?? NativeSshConnectionPool.Shared)
             : _interop.Connect(connectionOptions);
@@ -397,7 +396,14 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         {
             while (!_pollCts.IsCancellationRequested)
             {
-                NativeSshEvent? nextEvent = _interop.PollEvent(_sessionHandle);
+                // Only CloseNativeHandle clears it, and that runs once this loop is cancelled or has ended.
+                NovaSshSafeHandle? handle = _sessionHandle;
+                if (handle is null)
+                {
+                    break;
+                }
+
+                NativeSshEvent? nextEvent = _interop.PollEvent(handle);
                 if (nextEvent == null)
                 {
                     await Task.Delay(PollDelay, _pollCts.Token).ConfigureAwait(false);

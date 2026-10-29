@@ -1,6 +1,8 @@
 namespace Ntilde.Platform.Ssh.Native;
 
 [Flags]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix",
+    Justification = "Mirrors the flags field of the native event it decodes.")]
 public enum NativeSshEventFlags
 {
     None = 0,

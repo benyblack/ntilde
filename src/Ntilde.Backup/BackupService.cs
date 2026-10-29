@@ -148,6 +148,8 @@ public sealed class BackupService
     }
 
     /// <summary>Reads a bundle's manifest and item counts without extracting anything.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+        Justification = "Part of the service's API: the Backup page and the export tests inspect through the service they hold.")]
     public InspectOutcome Inspect(string bundlePath) => BundleReader.Open(bundlePath);
 
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
@@ -981,7 +983,8 @@ public sealed class BackupService
 
             if (reason == SnapshotReason.Auto)
             {
-                var newest = ListSnapshots().FirstOrDefault();
+                var snapshots = ListSnapshots();
+                var newest = snapshots.Count > 0 ? snapshots[0] : null;
                 if (newest is not null && string.Equals(newest.ContentHash, hashPrefix, StringComparison.Ordinal))
                 {
                     return null;

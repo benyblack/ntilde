@@ -18,7 +18,7 @@ public sealed class PortForward
     public override string ToString()
     {
         string bind = string.IsNullOrWhiteSpace(BindAddress)
-            ? SourcePort.ToString()
+            ? SourcePort.ToString(System.Globalization.CultureInfo.InvariantCulture)
             : $"{BindAddress}:{SourcePort}";
 
         return Kind switch

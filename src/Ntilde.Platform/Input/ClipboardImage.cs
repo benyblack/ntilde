@@ -33,7 +33,7 @@ namespace Ntilde.Platform.Input
                 return string.Empty;
             }
 
-            bool hasWhitespace = path.IndexOf(' ') >= 0 || path.IndexOf('\t') >= 0;
+            bool hasWhitespace = path.Contains(' ') || path.Contains('\t');
             return hasWhitespace ? "\"" + path + "\" " : path + " ";
         }
 
@@ -54,7 +54,7 @@ namespace Ntilde.Platform.Input
             {
                 char drive = char.ToLowerInvariant(windowsPath[0]);
                 string rest = windowsPath.Substring(2).Replace('\\', '/');
-                if (!rest.StartsWith("/", StringComparison.Ordinal))
+                if (!rest.StartsWith('/'))
                 {
                     rest = "/" + rest;
                 }

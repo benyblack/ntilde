@@ -141,7 +141,7 @@ public static class SshArgBuilder
                 args.Add(FormatBindAndPort(forward.BindAddress, forward.SourcePort));
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(forward.Kind), forward.Kind, "Unknown port forward kind.");
+                throw new ArgumentOutOfRangeException(nameof(forward), forward.Kind, "Unknown port forward kind.");
         }
     }
 
@@ -198,7 +198,7 @@ public static class SshArgBuilder
     {
         if (forward.DestinationPort <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(forward.DestinationPort), "Destination port must be greater than zero.");
+            throw new ArgumentOutOfRangeException(nameof(forward), forward.DestinationPort, "Destination port must be greater than zero.");
         }
 
         if (string.IsNullOrWhiteSpace(forward.DestinationHost))

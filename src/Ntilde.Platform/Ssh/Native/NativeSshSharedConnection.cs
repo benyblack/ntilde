@@ -14,6 +14,10 @@ namespace Ntilde.Platform.Ssh.Native;
 /// ends on its own when the transport goes; the native side then ends every shell on it, and the pool forgets it so
 /// the next tab reconnects.
 /// </remarks>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "Lease-counted, not disposable: it closes itself when its last lease goes (after ControlPersist) or its " +
+                    "transport ends, and Close disposes the forwards, the persist timer and the poll token. A Dispose " +
+                    "would let one tab end a connection other tabs still hold.")]
 internal sealed class NativeSshSharedConnection
 {
     private static readonly TimeSpan PollDelay = TimeSpan.FromMilliseconds(25);

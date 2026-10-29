@@ -21,10 +21,10 @@ namespace Ntilde.Platform
     public class SessionContext
     {
         public DetectedShell DetectedShell { get; set; } = DetectedShell.Unknown;
-        public bool IsWslSession { get; set; } = false;
+        public bool IsWslSession { get; set; }
         public string? WslDistroName { get; set; }
         public bool IsEchoEnabled { get; set; } = true;
-        public bool IsAltScreen { get; set; } = false;
+        public bool IsAltScreen { get; set; }
         public ShellOverride ShellOverride { get; set; } = ShellOverride.Auto;
     }
 }

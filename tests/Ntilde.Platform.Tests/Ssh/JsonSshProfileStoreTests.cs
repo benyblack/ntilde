@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Storage;
 
@@ -397,6 +398,34 @@ public sealed class JsonSshProfileStoreTests
         }
         finally
         {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// #108: the quarantine name carries a Gregorian UTC timestamp in every locale. It was formatted in the current
+    /// culture, so under th-TH's Buddhist calendar a store quarantined in 2026 was named for 2569.
+    /// </summary>
+    [Fact]
+    public void LoadDocument_WhenJsonIsCorrupt_NamesTheQuarantineWithAGregorianTimestamp()
+    {
+        string tempRoot = CreateTempDirectory();
+        CultureInfo previous = CultureInfo.CurrentCulture;
+        try
+        {
+            string storePath = Path.Combine(tempRoot, "profiles.json");
+            File.WriteAllText(storePath, "{ \"Profiles\": [ invalid_json_here ] }");
+            string year = DateTime.UtcNow.Year.ToString(CultureInfo.InvariantCulture);
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("th-TH");
+
+            _ = new JsonSshProfileStore(storePath).GetProfiles();
+
+            string quarantined = Path.GetFileName(Assert.Single(Directory.GetFiles(tempRoot, "profiles.json.corrupt.*.json")));
+            Assert.StartsWith("profiles.json.corrupt." + year, quarantined, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
             Directory.Delete(tempRoot, recursive: true);
         }
     }
