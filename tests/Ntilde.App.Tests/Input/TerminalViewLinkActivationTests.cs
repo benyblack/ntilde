@@ -318,6 +318,50 @@ public sealed class TerminalViewLinkActivationTests
     }
 
     /// <summary>
+    /// Codex review of #634: a line or paragraph separator is not a control character, and a tooltip renders it as a line
+    /// break - so a target could forge a "Host:" line of its own. It is shown as an escape, as an invisible tag character
+    /// past U+FFFF is: the tip is the target and the action, nothing more.
+    /// </summary>
+    [Fact]
+    public void The_link_tooltip_cannot_be_given_lines_of_its_own()
+    {
+        string forged = TerminalView.LinkTargetTip(
+            "https://example.com/a\u2028Host: trusted.example\u2029x\U000E0041", macOS: false, "open");
+
+        Assert.Equal(2, forged.Split('\n').Length);
+        Assert.DoesNotContain("\u2028", forged, StringComparison.Ordinal);
+        Assert.DoesNotContain("\u2029", forged, StringComparison.Ordinal);
+        Assert.StartsWith("https://example.com/a\\u2028Host: trusted.example\\u2029x\\U000E0041\n", forged, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Codex review of #634: output that rewrites the link under a pointer that has not moved leaves the tip showing the old
+    /// target, and the click used to resolve the cell afresh - opening the new one. A click opens only what the tip
+    /// previewed: this one opens nothing and brings the tip up to date, and the next opens what it now shows.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_click_never_opens_a_link_other_than_the_one_its_tooltip_showed()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process(Osc8("https://trusted.example/docs", "docs"));
+        var env = new RecordingEnvironment();
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(env) };
+        view.SetBuffer(buffer);
+        view.SetMetricsForTest(CellWidth, CellHeight);
+        view.UpdateHoveredLink(CellCentre(0, 1));
+
+        parser.Process("\u001b[1;1H" + Osc8("https://evil.example/x", "docs")); // rewritten under the resting pointer
+
+        Assert.False(view.TryActivateLinkAt(CellCentre(0, 1), LinkModifier));
+        Assert.Empty(env.Started);
+        Assert.StartsWith("https://evil.example/x\n", Avalonia.Controls.ToolTip.GetTip(view) as string, StringComparison.Ordinal);
+
+        Assert.True(view.TryActivateLinkAt(CellCentre(0, 1), LinkModifier));
+        Assert.Equal("https://evil.example/x", Assert.Single(env.Started).FileName);
+    }
+
+    /// <summary>
     /// CodeRabbit on #634: a local path is shown in the file manager, never opened, and the tip says so. It does not check
     /// that anything is there: a hover never touches the file system, as underlining does not.
     /// </summary>

@@ -185,8 +185,8 @@ namespace Ntilde.Shell
         /// What the tooltip over a hovered link says (#95 gap 5): where it leads, so a link whose text says one place and whose
         /// target is another can be checked before it is followed, and what a click does (<paramref name="action"/>, from
         /// <see cref="TerminalLinkOpener.ActionText"/>). The target is shown as it is, so it cannot be disguised in turn: a
-        /// character that reorders or hides text (a bidi override, a zero-width space) is shown as a visible escape, a control
-        /// character is dropped, and a target too long to read keeps its start and its end. When that alone could hide where
+        /// character that reorders, hides or breaks text (a bidi override, a zero-width space, a line separator) is shown as a
+        /// visible escape, a control character is dropped, and a target too long to read keeps its start and its end. When that alone could hide where
         /// it leads - a user-info part long enough to push the host out of sight, a cut, or an international host that a
         /// look-alike letter could fake - the host it really reaches is named on a line of its own, in its ASCII form
         /// (CodeRabbit on #634).
@@ -194,10 +194,17 @@ namespace Ntilde.Shell
         internal static string LinkTargetTip(string uri, bool macOS, string action)
         {
             var shown = new System.Text.StringBuilder(uri.Length);
-            foreach (char c in uri)
+            foreach (System.Text.Rune rune in uri.EnumerateRunes())
             {
-                if (IsInvisibleFormatting(c)) shown.Append(System.Globalization.CultureInfo.InvariantCulture, $"\\u{(int)c:X4}");
-                else if (!char.IsControl(c)) shown.Append(c);
+                if (IsInvisibleFormatting(rune))
+                {
+                    if (rune.IsBmp) shown.Append(System.Globalization.CultureInfo.InvariantCulture, $"\\u{rune.Value:X4}");
+                    else shown.Append(System.Globalization.CultureInfo.InvariantCulture, $"\\U{rune.Value:X8}");
+                }
+                else if (!System.Text.Rune.IsControl(rune))
+                {
+                    shown.Append(rune.ToString());
+                }
             }
 
             const int Tail = 99;
@@ -224,9 +231,15 @@ namespace Ntilde.Shell
                 : null;
         }
 
-        /// <summary>Characters that change how the text around them reads without showing themselves: bidi controls and zero-width ones.</summary>
-        private static bool IsInvisibleFormatting(char c) =>
-            c is '\u061C' or (>= '\u200B' and <= '\u200F') or (>= '\u202A' and <= '\u202E') or (>= '\u2060' and <= '\u2069') or '\uFEFF';
+        /// <summary>
+        /// Characters that change how the text around them reads without showing themselves: every format character (bidi
+        /// controls, zero-width ones, the invisible tag characters past U+FFFF) and the line and paragraph separators, which a
+        /// tooltip renders as line breaks - a forged "Host:" line otherwise (Codex review of #634).
+        /// </summary>
+        private static bool IsInvisibleFormatting(System.Text.Rune rune) =>
+            System.Text.Rune.GetUnicodeCategory(rune) is System.Globalization.UnicodeCategory.Format
+                or System.Globalization.UnicodeCategory.LineSeparator
+                or System.Globalization.UnicodeCategory.ParagraphSeparator;
 
         private static bool IsLinkActivationModifier(KeyModifiers modifiers)
         {
@@ -245,7 +258,18 @@ namespace Ntilde.Shell
             if (!IsLinkActivationModifier(modifiers) || _buffer == null) return false;
 
             var (row, col) = ScreenToTerminal(position);
-            return LinkOpener.TryOpen(ResolveLinkAt(row, col));
+            string? link = ResolveLinkAt(row, col);
+
+            // A click opens what the tooltip previewed, never something else (Codex review of #634): output that rewrote the link
+            // under a pointer that has not moved since leaves the tip showing the old target. That click opens nothing; the tip
+            // is brought up to date instead, so the next click opens what it now shows.
+            if (_hoveredLink is { } previewed && !string.Equals(previewed.Uri, link, StringComparison.Ordinal))
+            {
+                UpdateHoveredLink(position);
+                return false;
+            }
+
+            return LinkOpener.TryOpen(link);
         }
 
         // Resolves the link under (absRow, col): OSC 8 first, then a detected span.
