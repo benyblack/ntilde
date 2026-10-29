@@ -1276,7 +1276,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
                 .GetAwaiter().GetResult();
             answers.Enqueue(answer);
             if (!answer.IsAccepted) _remote.Script = FakeRemoteScript.NativeFailure("Unknown server key");
-        });
+        }, kind == nameof(SshInteractionKind.ChangedHostKey) ? RemoteNeedsUserCause.HostKeyChanged : RemoteNeedsUserCause.HostKey);
 
         Assert.False(Assert.Single(answers).IsAccepted);
     }

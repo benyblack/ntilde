@@ -436,6 +436,84 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
     }
 
     /// <summary>
+    /// #631: a tab an agent opened (<see cref="SshSessionDescriptor.Interactive"/> false) connects with an attempt that
+    /// never asks the user. ssh refusing it then needs the user - for a user's own tab the same refusal is just an SSH
+    /// failure, since they were there to be asked.
+    /// </summary>
+    [Theory]
+    [InlineData(false, nameof(RemoteFailureKind.NeedsUser))]
+    [InlineData(true, nameof(RemoteFailureKind.SshFailed))]
+    public void A_request_without_a_user_connects_with_an_attempt_that_never_asks(bool interactive, string expected)
+    {
+        _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
+        TerminalSessionRequest request = Ssh();
+
+        PersistentSessionResult r = _factory.CreatePersistent(request with { Ssh = request.Ssh! with { Interactive = interactive } });
+
+        Assert.Equal(PersistentSessionOutcome.DaemonUnreachable, r.Outcome);
+        Assert.Null(r.Session);
+        Assert.Equal(expected, r.RemoteFailure!.Kind.ToString());
+    }
+
+    /// <summary>
+    /// #631 (Codex review of #633): an agent's request that joins a user's attempt in flight shares its outcome. A sign-in
+    /// the user did not complete is an SSH failure for the user, who was asked; for the agent's request, which could never
+    /// ask, it is a sign-in that needs the user - what its own attempt would have said.
+    /// </summary>
+    [Fact]
+    public async Task A_request_without_a_user_that_joined_a_users_refused_sign_in_needs_the_user()
+    {
+        ManualResetEventSlim hold = Own(new ManualResetEventSlim());
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _remote.OnStart = _ =>
+        {
+            started.TrySetResult();
+            hold.Wait(Patient);
+            _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
+        };
+        TerminalSessionRequest request = Ssh();
+
+        Task<PersistentSessionResult> users = Task.Run(() => _factory.CreatePersistent(request), Ct);
+        await started.Task.WaitAsync(Patient, Ct);
+        Task<PersistentSessionResult> agents = Task.Run(() => _factory.CreatePersistent(request with { Ssh = request.Ssh! with { Interactive = false } }), Ct);
+        MuxConnectionHost host = _hosts.TryGet(MuxEndpointId.ForSsh(_profile.Id))!;
+        await TestWait.UntilAsync(() => host.JoinedAttemptsForTest == 1, "the agent's request joined the user's attempt", Patient);
+        hold.Set();
+
+        Assert.Equal(RemoteFailureKind.SshFailed, (await users.WaitAsync(Patient, Ct)).RemoteFailure!.Kind);
+        PersistentSessionResult agent = await agents.WaitAsync(Patient, Ct);
+        Assert.Equal(RemoteFailureKind.NeedsUser, agent.RemoteFailure!.Kind);
+        Assert.Equal(RemoteNeedsUserCause.SignIn, agent.RemoteFailure.Cause);
+        Assert.Equal(1, _remote.StartCount); // one attempt, shared
+    }
+
+    /// <summary>
+    /// How a request without a user reads a remote failure (#631): a user's sign-in it joined and the user did not complete
+    /// needs the user - for what they did not get past - while anything else is what it was (Codex reviews of #633).
+    /// </summary>
+    [Fact]
+    public void A_request_without_a_user_reads_a_sign_in_the_user_did_not_complete_as_needing_them()
+    {
+        const string Why = "x";
+        Assert.Equal(
+            new RemoteMuxFailure(RemoteFailureKind.NeedsUser, Why) { SignInRefused = true },
+            MuxTerminalSessionFactory.ForRequestWithoutUser(new RemoteMuxFailure(RemoteFailureKind.SshFailed, Why) { SignInRefused = true }));
+        Assert.Equal(
+            new RemoteMuxFailure(RemoteFailureKind.NeedsUser, Why, RemoteNeedsUserCause.HostKeyChanged) { UserSignInFailed = true },
+            MuxTerminalSessionFactory.ForRequestWithoutUser(new RemoteMuxFailure(RemoteFailureKind.SshFailed, Why, RemoteNeedsUserCause.HostKeyChanged) { UserSignInFailed = true }));
+        Assert.Equal(
+            new RemoteMuxFailure(RemoteFailureKind.NeedsUser, Why, RemoteNeedsUserCause.HostKey) { UserSignInFailed = true },
+            MuxTerminalSessionFactory.ForRequestWithoutUser(new RemoteMuxFailure(RemoteFailureKind.SshFailed, Why, RemoteNeedsUserCause.HostKey) { UserSignInFailed = true }));
+
+        // The link failing, with nobody asked anything, is an SSH failure for it too; and what already needs the user stays so.
+        var linkFailed = new RemoteMuxFailure(RemoteFailureKind.SshFailed, Why);
+        Assert.Same(linkFailed, MuxTerminalSessionFactory.ForRequestWithoutUser(linkFailed));
+        var needsUser = new RemoteMuxFailure(RemoteFailureKind.NeedsUser, Why, RemoteNeedsUserCause.SavedPasswordRefused);
+        Assert.Same(needsUser, MuxTerminalSessionFactory.ForRequestWithoutUser(needsUser));
+        Assert.Null(MuxTerminalSessionFactory.ForRequestWithoutUser(null));
+    }
+
+    /// <summary>
     /// Task 20's ruling: an attempt that does not finish is unclassified even after an earlier one failed
     /// classified - a blackholed host must not be reported as the earlier attempt's missing binary.
     /// </summary>

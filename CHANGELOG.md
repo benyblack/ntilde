@@ -47,7 +47,8 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
   instead of raising a host-key or password dialog that would take your keystrokes. The tab says
   what the server asked, and Enter there connects as you, with the usual dialogs; the agent is told
   why its session ended (`needsUser` in its session status) and carries on in that tab once you
-  have signed in. To let agents in on their own, connect to the profile once yourself, trust its
+  have signed in. Profiles that keep their sessions running on the remote host follow the same rule
+  on either backend. To let agents in on their own, connect to the profile once yourself, trust its
   host key and save its password.
 - **A pane whose shell exited comes back for agents.** After Enter restarts or reconnects it, an
   agent's session status starts over instead of staying `exited`.

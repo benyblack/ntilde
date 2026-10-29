@@ -519,6 +519,9 @@ namespace Ntilde.Controls
                             DiagnosticsLevel: (int)_sshDiagnosticsLevel,
                             InteractionHandler: SshPromptsForNewConnection(),
                             NativeSshEnabled: _settings?.ExperimentalNativeSshEnabled ?? false)
+                        {
+                            Interactive = !OpenedByAgent,
+                        }
                         : null);
 
                 // Phase 4 spec §7.4: an SSH pane whose profile persists its remote sessions goes to that

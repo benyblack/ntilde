@@ -68,7 +68,8 @@ one that changed; a password with no saved one to send (none saved, the saved
 one refused, or a jump host's); a key passphrase; a one-time code.
 The session exits, `get_session_status` and its exit event on
 `wait_for_events` carry `needsUser` (`hostKey`, `changedHostKey`, `password`,
-`passphrase`, `keyboardInteractive`), and the pane tells the user what was
+`passphrase`, `keyboardInteractive`, or `signIn` when the connection cannot
+say which), and the pane tells the user what was
 asked. Enter in that pane reconnects as the user, with dialogs, and the same
 session comes back for the agent: its status starts over, announced by a
 `statusChanged` event, and its paneId keeps working. That is the way through
@@ -77,11 +78,18 @@ ask for again. A password the user typed in another tab is not offered to the
 agent's connection: it is remembered per session.
 
 So before allowlisting a profile for agents, connect to it once yourself,
-trust its host key, and save its password. OpenSSH-backend sessions are not
-affected: ssh prompts in the terminal itself, in the pane.
+trust its host key, and save its password. An ordinary OpenSSH-backend session
+is not affected: ssh prompts in the terminal itself, in the pane.
 
-**Still open:** a profile whose sessions persist on its host connects through
-that host's own prompts, which can still show a dialog for an agent's spawn.
+A profile that keeps its sessions running on the remote host connects through
+that host's own attempts, on either backend, and follows the same rule (#631):
+an agent's tab never raises a dialog or ssh's askpass itself. It joins the
+attempt in flight, or starts one that never asks. The attempt it joins may be
+one of the user's own tabs connecting, whose dialog the user sees as before,
+for their tab; if they do not complete it, the agent's tab gets no session
+either. A sign-in that needs the user leaves the tab without a session,
+reported as `needsUser` (`signIn` when the host cannot say with what); Enter
+there signs in as the user, and the tab comes back.
 
 ## Other parked follow-ups
 

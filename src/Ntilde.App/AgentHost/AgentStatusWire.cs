@@ -42,6 +42,7 @@ namespace Ntilde.AgentHost
             AgentNeedsUserReason.Password => AgentHostProtocol.NeedsUserReasons.Password,
             AgentNeedsUserReason.Passphrase => AgentHostProtocol.NeedsUserReasons.Passphrase,
             AgentNeedsUserReason.KeyboardInteractive => AgentHostProtocol.NeedsUserReasons.KeyboardInteractive,
+            AgentNeedsUserReason.SignIn => AgentHostProtocol.NeedsUserReasons.SignIn,
             _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null),
         };
 

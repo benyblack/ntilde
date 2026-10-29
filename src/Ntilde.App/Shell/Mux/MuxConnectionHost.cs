@@ -231,30 +231,60 @@ internal sealed class MuxConnectionHost : IDisposable
     /// interactive one (see <see cref="TryStartConnecting"/>). On a remote host that is reconnecting it is
     /// also the loop's attempt, now: the loop joins it, and its backoff starts over (Phase 4 spec §7.3).
     /// This is how Enter in a pane retries at once.
+    /// <para>
+    /// Not <paramref name="interactive"/>: a request nobody is there to answer for - a tab an agent opened (#631). It
+    /// gets its client as an automatic attempt does: it joins the attempt in flight, whatever it was started as, or
+    /// starts one that never prompts, and it leaves the reconnect loop to its own pace. A user's request that supersedes
+    /// that automatic attempt meanwhile decides for it: it waits on the user's attempt instead (Codex review of #633).
+    /// </para>
     /// </remarks>
-    public MuxClient? GetClient(TimeSpan timeout)
+    public MuxClient? GetClient(TimeSpan timeout, bool interactive = true)
     {
-        if (!TryStartConnecting(interactive: true, out Task<MuxClient>? attempt)) return CurrentClient;
-        if (Policy.IsRemote) TryReconnectNow(attempt);
-        try
+        if (!TryStartConnecting(interactive, out Task<MuxClient>? attempt)) return CurrentClient;
+        if (interactive && Policy.IsRemote) TryReconnectNow(attempt);
+        long startedAt = Environment.TickCount64;
+        while (true)
         {
-            // Not cancelled by Dispose on purpose: Dispose cancels the attempt itself, which then
-            // faults and ends this wait through the AggregateException path below.
-            if (!Task.Run(() => attempt, CancellationToken.None).Wait(timeout, CancellationToken.None))
+            TimeSpan left = timeout - TimeSpan.FromMilliseconds(Environment.TickCount64 - startedAt);
+            try
             {
-                _log?.Invoke($"[Mux] the multiplexer was not ready within {timeout.TotalSeconds:0.#} s; new panes will not persist for {FailureCooldown.TotalSeconds:0.#} s");
-                RecordFailure(attempt);
+                // Not cancelled by Dispose on purpose: Dispose cancels the attempt itself, which then
+                // faults and ends this wait through the AggregateException path below.
+                if (!Task.Run(() => attempt, CancellationToken.None).Wait(left > TimeSpan.Zero ? left : TimeSpan.Zero, CancellationToken.None))
+                {
+                    _log?.Invoke($"[Mux] the multiplexer was not ready within {timeout.TotalSeconds:0.#} s; new panes will not persist for {FailureCooldown.TotalSeconds:0.#} s");
+                    RecordFailure(attempt);
+                    return null;
+                }
+
+                return attempt.Result;
+            }
+            catch (AggregateException ex)
+            {
+                // A user's request superseded the automatic attempt this request without a user waited on: a cancellation
+                // that classifies nothing, and would leave an agent's new tab dead while the user's attempt connects. That
+                // attempt decides now, so this waits on it, in what is left of the timeout. (Only an automatic attempt is
+                // ever superseded; one cancelled by Dispose is not replaced, and fails as any other.)
+                if (!interactive && attempt.IsCanceled && ReplacementOf(attempt) is { } replacement)
+                {
+                    attempt = replacement;
+                    continue;
+                }
+
+                // Logged once by the attempt's own fault continuation. Recorded here as well so the very
+                // next call is already inside the cooldown, whichever of the two runs first.
+                RecordFailure(attempt, ex.GetBaseException());
                 return null;
             }
-
-            return attempt.Result;
         }
-        catch (AggregateException ex)
+    }
+
+    /// <summary>The attempt that has replaced <paramref name="attempt"/> as the host's, or null while it is still the host's own.</summary>
+    private Task<MuxClient>? ReplacementOf(Task<MuxClient> attempt)
+    {
+        lock (_gate)
         {
-            // Logged once by the attempt's own fault continuation. Recorded here as well so the very
-            // next call is already inside the cooldown, whichever of the two runs first.
-            RecordFailure(attempt, ex.GetBaseException());
-            return null;
+            return _connecting is { } current && !ReferenceEquals(current, attempt) ? current : null;
         }
     }
 
@@ -299,6 +329,7 @@ internal sealed class MuxConnectionHost : IDisposable
                 {
                     if (!interactive || _connectingState is not { Interactive: false } automatic)
                     {
+                        _joinedAttempts++;
                         attempt = _connecting;
                         return true;
                     }
@@ -513,6 +544,11 @@ internal sealed class MuxConnectionHost : IDisposable
 
     /// <summary>Tests: the event queue; it completes once every event queued so far has been raised (or skipped).</summary>
     internal Task EventsForTest { get { lock (_gate) return _events; } }
+
+    /// <summary>How many requests joined an attempt already in flight, rather than starting one.</summary>
+    internal int JoinedAttemptsForTest { get { lock (_gate) return _joinedAttempts; } }
+
+    private int _joinedAttempts; // guarded by _gate
 
     /// <summary>The clock of a remote host's liveness ping and reconnect loop.</summary>
     internal IMuxTimerScheduler Scheduler { get; init; } = SystemMuxTimerScheduler.Instance;

@@ -532,7 +532,7 @@ internal sealed class RemoteMuxConnector : IDisposable
                 RemoteFailureKind.NeedsUser,
                 $"signing in to {host} needs more than the saved password (a second factor), which an automatic reconnect does not ask for ({failure.Reason})");
         }
-        else if (failure.Kind == RemoteFailureKind.SshFailed && !prompts.Interactive && prompts.HostKeyRejected)
+        else if (failure.Kind == RemoteFailureKind.SshFailed && !prompts.Interactive && prompts.RejectedHostKey is { } rejected)
         {
             // Native: the automatic attempt rejected a host key the user does not trust - never seen, or changed - and the
             // connection ended at the key exchange, before anything was sent. The next attempt meets the same key, so
@@ -541,7 +541,12 @@ internal sealed class RemoteMuxConnector : IDisposable
             failure = new RemoteMuxFailure(
                 RemoteFailureKind.NeedsUser,
                 $"the host key of {host} is not one the user trusts (unknown, or changed), and an automatic reconnect accepts no new key ({failure.Reason})",
-                RemoteNeedsUserCause.HostKey);
+                // A key that changed since the user trusted it is the warning, kept apart from one never seen (Codex review
+                // of #633); either way the user's attempt shows it, so Enter reviews it.
+                rejected == SshInteractionKind.ChangedHostKey ? RemoteNeedsUserCause.HostKeyChanged : RemoteNeedsUserCause.HostKey)
+            {
+                KeyReviewedOnEnter = true,
+            };
         }
         else if (prompts.AbortedPrompt is { } aborted)
         {
@@ -558,6 +563,27 @@ internal sealed class RemoteMuxConnector : IDisposable
             // Once sign-in was over, something else did get in (the agent, the saved password): the drop is the link's,
             // and the retries go on.
             failure = new RemoteMuxFailure(RemoteFailureKind.NeedsUser, $"signing in to {host} needs a key passphrase, which an automatic reconnect does not ask for");
+        }
+
+        if (failure.Kind == RemoteFailureKind.SshFailed && !prompts.HasAuthenticated && prompts.LastUserPrompt is { } asked
+            && (asked.Declined || asked.Kind is not (SshInteractionKind.UnknownHostKey or SshInteractionKind.ChangedHostKey)))
+        {
+            // A user was asked, and sign-in never completed: they declined the prompt, or the server refused what they gave.
+            // An SSH failure for them; marked, with what they did not get past, for a request without a user that joined this
+            // attempt, which reads it as needing the user (#631, Codex review of #633). A host key they accepted was not it: an
+            // attempt that failed after one is a plain SSH failure.
+            failure = failure with
+            {
+                UserSignInFailed = true,
+                KeyReviewedOnEnter = asked.Kind is SshInteractionKind.UnknownHostKey or SshInteractionKind.ChangedHostKey,
+                Cause = asked.Kind switch
+                {
+                    // Kept apart: a key that changed since the user trusted it is the warning, not an unknown key.
+                    SshInteractionKind.ChangedHostKey => RemoteNeedsUserCause.HostKeyChanged,
+                    SshInteractionKind.UnknownHostKey => RemoteNeedsUserCause.HostKey,
+                    _ => RemoteNeedsUserCause.SignIn,
+                },
+            };
         }
 
         if (failure.Kind is RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser)

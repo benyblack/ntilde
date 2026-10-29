@@ -565,6 +565,33 @@ public sealed class MuxRemotePaneTests : IDisposable
         ShowsBanner(pane, "[Automatic reconnect can't sign in without you \u2014 press Enter]");
         Assert.DoesNotContain("Permission denied", Text(pane));
         Assert.DoesNotContain("publickey", Text(pane));
+        // The user's own tab: no agent is told anything, and the tab does not say an agent opened it.
+        Assert.Null(pane.AgentRegistrationForTesting!.StatusMachine.Snapshot().NeedsUser);
+        Assert.DoesNotContain(Unwrapped(TerminalPane.RemoteAgentOpenedLine), Unwrapped(Text(pane)), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// #631 (Codex review of #633): an agent's tab that connected, lost its link, and whose automatic reconnect gave up
+    /// because signing in needs the user, tells the agent so - as a tab that never connected does - and says an agent
+    /// opened it. The reconnect was automatic, so its own line stays.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_agent_tabs_reconnect_that_needs_the_user_tells_the_agent()
+    {
+        TerminalPane pane = ShowPane(configure: p => p.OpenedByAgent = true);
+        Attached(pane);
+        _remote.Script = NeedsPassword;
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        _clock.Advance(FirstRetry);
+
+        ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
+        ShowsWrapped(pane, TerminalPane.RemoteAgentOpenedLine);
+        ShowsBanner(pane, "[Automatic reconnect can't sign in without you \u2014 press Enter]");
+        Ntilde.AgentHost.AgentSessionStatusSnapshot status = pane.AgentRegistrationForTesting!.StatusMachine.Snapshot();
+        Assert.Equal(Ntilde.AgentHost.AgentSessionStatusKind.Exited, status.Kind);
+        Assert.Equal(Ntilde.AgentHost.AgentNeedsUserReason.SignIn, status.NeedsUser);
     }
 
     /// <summary>
@@ -622,6 +649,10 @@ public sealed class MuxRemotePaneTests : IDisposable
         Assert.Equal(
             ChangedHostKeyLine,
             TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "Host key for evil-host has changed", RemoteNeedsUserCause.HostKeyChanged), Host));
+        // A changed key the native backend met (#631): Enter shows its dialog again - no known_hosts to edit.
+        Assert.Equal(
+            "[Host key for nova@fake-host is unknown or has changed \u2014 press Enter to review]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "Unknown server key", RemoteNeedsUserCause.HostKeyChanged) { KeyReviewedOnEnter = true }, Host));
         Assert.Null(TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.SshFailed, sshSaid), Host));
         Assert.Null(TerminalPane.RemoteNeedsUserLine(null, Host));
     }
@@ -888,6 +919,63 @@ public sealed class MuxRemotePaneTests : IDisposable
         Assert.Contains(session.Id, _remote.Server.GetSessionIds());
         Assert.Equal(2, _remote.StartCount);
     }
+
+    /// <summary>
+    /// #631: a remote tab an agent opened connects with an attempt that never asks the user, so a sign-in only the user can
+    /// do is refused rather than shown in a dialog. The tab says an agent opened it, and the agent is told why it has no
+    /// session. Enter is the user's attempt, and brings the same tab back for the agent.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_remote_tab_an_agent_opened_needs_the_user_and_comes_back_when_they_sign_in()
+    {
+        _remote.Script = SshRefusedSignIn;
+        TerminalPane pane = ShowPane(configure: p => p.OpenedByAgent = true);
+
+        ShowsBanner(pane, TerminalPane.RemoteUnreachableBanner(Host));
+        ShowsWrapped(pane, TerminalPane.RemoteAgentOpenedLine);
+        Ntilde.AgentHost.AgentSessionStatusSnapshot status = pane.AgentRegistrationForTesting!.StatusMachine.Snapshot();
+        Assert.Equal(Ntilde.AgentHost.AgentSessionStatusKind.Exited, status.Kind);
+        Assert.Equal(Ntilde.AgentHost.AgentNeedsUserReason.SignIn, status.NeedsUser);
+
+        _remote.Script = null;
+        PressEnter(pane);
+
+        Attached(pane);
+        Assert.False(pane.OpenedByAgent);
+        Assert.NotEqual(Ntilde.AgentHost.AgentSessionStatusKind.Exited, pane.AgentRegistrationForTesting!.StatusMachine.Snapshot().Kind);
+    }
+
+    /// <summary>The same refusal on the user's own tab: they were there to be asked, so it is an SSH failure, and no agent is told anything.</summary>
+    [AvaloniaFact]
+    public void The_users_own_remote_tab_refused_by_ssh_says_nothing_to_agents()
+    {
+        _remote.Script = SshRefusedSignIn;
+        TerminalPane pane = ShowPane();
+
+        ShowsBanner(pane, TerminalPane.RemoteUnreachableBanner(Host));
+        Assert.DoesNotContain(Unwrapped(TerminalPane.RemoteAgentOpenedLine), Unwrapped(Text(pane)), StringComparison.Ordinal);
+        Assert.Null(pane.AgentRegistrationForTesting!.StatusMachine.Snapshot().NeedsUser);
+    }
+
+    /// <summary>
+    /// Codex review of #633: an agent's tab that got no session for a reason no sign-in fixes - the host refused the
+    /// connection - is reported exited all the same, with no reason, rather than left reading a status from before.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_agent_tab_with_no_session_for_another_reason_is_reported_exited()
+    {
+        _remote.Script = FakeRemoteScript.ConnectionRefused;
+        TerminalPane pane = ShowPane(configure: p => p.OpenedByAgent = true);
+
+        ShowsBanner(pane, TerminalPane.RemoteUnreachableBanner(Host));
+        Ntilde.AgentHost.AgentSessionStatusSnapshot status = pane.AgentRegistrationForTesting!.StatusMachine.Snapshot();
+        Assert.Equal(Ntilde.AgentHost.AgentSessionStatusKind.Exited, status.Kind);
+        Assert.Null(status.NeedsUser);
+        Assert.DoesNotContain(Unwrapped(TerminalPane.RemoteAgentOpenedLine), Unwrapped(Text(pane)), StringComparison.Ordinal);
+    }
+
+    private static FakeRemoteScript SshRefusedSignIn =>
+        new(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
 
     /// <summary>
     /// Codex4 F: a new remote tab on a native profile while native SSH is off (Settings &gt; SSH) starts nothing - no

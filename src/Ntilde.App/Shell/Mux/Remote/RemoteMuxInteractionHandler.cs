@@ -397,7 +397,8 @@ internal sealed class RemoteMuxInteractionHandler
         private bool _authenticated;                 // guarded by _gate; the native transport said sign-in is over
         private SshInteractionKind? _abortedPrompt;  // guarded by _gate
         private SshInteractionKind? _declinedPrompt; // guarded by _gate
-        private bool _hostKeyRejected;               // guarded by _gate; nobody to ask, and the key was not trusted
+        private (SshInteractionKind Kind, bool Declined)? _lastUserPrompt; // guarded by _gate; the last prompt that went to the user
+        private SshInteractionKind? _rejectedHostKey;               // guarded by _gate; nobody to ask, and the key was not trusted
         private bool _savedPasswordOffered;          // guarded by _gate
         private byte[]? _offeredHash;                // guarded by _gate; HashOf the saved password offered
         private bool _storedPasswordAnswered;        // guarded by _gate; nobody to ask, and a stored password answered
@@ -597,13 +598,29 @@ internal sealed class RemoteMuxInteractionHandler
         }
 
         /// <summary>
+        /// The last prompt of this attempt that went to the user (an interactive attempt's window handler), and whether they
+        /// declined it - cancelled, or rejected a host key - or never answered; null when none went to them. If sign-in then
+        /// never completed, a declined prompt, or an answer the server refused, is what they did not get past.
+        /// </summary>
+        public (SshInteractionKind Kind, bool Declined)? LastUserPrompt
+        {
+            get { lock (_gate) return _lastUserPrompt; }
+        }
+
+        /// <summary>
         /// With nobody to ask, this attempt rejected a host key the user does not trust - one never seen, or one that changed.
         /// That ends the connection at the key exchange, before anything is sent, and the next attempt meets the same key:
         /// only the user can review it. A user's own answer in the dialog is not recorded here.
         /// </summary>
-        public bool HostKeyRejected
+        public bool HostKeyRejected => RejectedHostKey is not null;
+
+        /// <summary>
+        /// The kind of host-key prompt behind <see cref="HostKeyRejected"/> - a key never seen, or one that changed since the
+        /// user trusted it - or null when none was rejected.
+        /// </summary>
+        public SshInteractionKind? RejectedHostKey
         {
-            get { lock (_gate) return _hostKeyRejected; }
+            get { lock (_gate) return _rejectedHostKey; }
         }
 
         private ISshInteractionHandler? User => Interactive ? _owner._user : null;
@@ -647,7 +664,9 @@ internal sealed class RemoteMuxInteractionHandler
                 SshInteractionRequest forUser = kind == SshInteractionKind.Password && request.AllowVaultPasswordReuse && (AvoidsSavedPassword || !_passwordsReplayable)
                     ? request.WithoutVaultPasswordReuse()
                     : request;
+                lock (_gate) _lastUserPrompt = (kind, Declined: true); // until it is answered
                 SshInteractionResponse response = await user.HandleAsync(forUser, cancellationToken).ConfigureAwait(false);
+                lock (_gate) _lastUserPrompt = (kind, Declined: response.IsCanceled);
                 if (IsRememberable(kind) && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
                 {
                     // Typed, unless the window's handler filled it from the vault (or a session's memory) on its own.
@@ -657,14 +676,20 @@ internal sealed class RemoteMuxInteractionHandler
                 return response;
             }
 
-            if (User is { } asked) return await asked.HandleAsync(request, cancellationToken).ConfigureAwait(false);
+            if (User is { } asked)
+            {
+                lock (_gate) _lastUserPrompt = (kind, Declined: true); // until it is answered
+                SshInteractionResponse answer = await asked.HandleAsync(request, cancellationToken).ConfigureAwait(false);
+                lock (_gate) _lastUserPrompt = (kind, Declined: answer.IsCanceled || (IsHostKeyPrompt(kind) && !answer.IsAccepted));
+                return answer;
+            }
 
             if (IsHostKeyPrompt(kind))
             {
                 // Nobody to ask: a known host key only. A cancel is submitted as a rejection, which ends
                 // the connection before any credential is sent.
                 if (_owner._isTrustedHostKey(request)) return SshInteractionResponse.AcceptHostKey();
-                lock (_gate) _hostKeyRejected = true;
+                lock (_gate) _rejectedHostKey = kind;
                 return SshInteractionResponse.Cancel();
             }
 

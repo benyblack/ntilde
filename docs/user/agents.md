@@ -93,10 +93,12 @@ the profile, or, with connection multiplexing, a connection one of your tabs alr
 the server asks for anything else (a host key you have not trusted, a password Ntilde has none saved for,
 a key passphrase, a one-time code), the session ends. Its tab says what the server asked, and
 pressing Enter there connects as you, with the usual dialogs. The agent is told why its session
-ended, and once you have signed in it carries on in that same tab.
+ended, and once you have signed in it carries on in that same tab. A profile set to keep its
+sessions running on the remote host works the same way, on either backend.
 
 So before you allowlist a profile, connect to it once yourself, trust its host key, and save its
-password. With the OpenSSH backend, ssh asks in the terminal itself, in the agent's tab.
+password. In an ordinary tab on the OpenSSH backend, ssh asks in the terminal itself, in the
+agent's tab.
 
 ### Seeing what an agent did
 

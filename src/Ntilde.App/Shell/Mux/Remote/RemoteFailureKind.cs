@@ -96,6 +96,22 @@ internal sealed record RemoteMuxFailure(RemoteFailureKind Kind, string Reason, R
     /// disconnect: there, whether sign-in was over decides.
     /// </summary>
     public bool SignInRefused { get; init; }
+
+    /// <summary>
+    /// A user's attempt asked the user during sign-in, and sign-in never completed: they cancelled, or the server refused
+    /// what they gave. An SSH failure for them, who were asked; a request without a user that joined the attempt could not
+    /// have asked, and reads it as a sign-in that needs the user (#631, Codex review of #633), for the
+    /// <see cref="RemoteMuxFailure.Cause"/> it carries: the host key, when that is what the user rejected. The native backend's
+    /// counterpart of OpenSSH's <see cref="SignInRefused"/>, whose askpass never reaches the attempt's prompts.
+    /// </summary>
+    public bool UserSignInFailed { get; init; }
+
+    /// <summary>
+    /// The native backend met the host key - unknown, or changed since the user trusted it - so a user's attempt shows it in
+    /// its dialog, and Enter reviews it. False for OpenSSH's own refusal of a changed key, which asks nothing: the old key has
+    /// to leave known_hosts first (Codex review of #633).
+    /// </summary>
+    public bool KeyReviewedOnEnter { get; init; }
 }
 
 /// <summary>

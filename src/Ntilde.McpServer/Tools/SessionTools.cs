@@ -264,7 +264,7 @@ public sealed class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.spawn_session"),
-     Description("Opens a new terminal tab in the running Ntilde app and returns its paneId (use that id with the other session tools). 'profile' is a profile NAME (case-insensitive); omit it for the default local profile. Local profiles resolve before SSH profiles on a name clash. This is an ACTING tool requiring 'Agent access (observe)' + 'Agent access (act)'; spawning an SSH profile additionally requires that profile to be allowlisted. A native-backend SSH session you spawn never shows the user a sign-in dialog: if its server asks for something only the user can give (a host key they have not trusted, a password Ntilde has no saved one for, a key passphrase, a one-time code), the session exits, and ntilde.get_session_status and ntilde.wait_for_events report needsUser. (A profile that keeps its sessions running on the remote host connects differently, and may still ask the user with a dialog.) Every call is shown in the agent activity journal.")]
+     Description("Opens a new terminal tab in the running Ntilde app and returns its paneId (use that id with the other session tools). 'profile' is a profile NAME (case-insensitive); omit it for the default local profile. Local profiles resolve before SSH profiles on a name clash. This is an ACTING tool requiring 'Agent access (observe)' + 'Agent access (act)'; spawning an SSH profile additionally requires that profile to be allowlisted. A native-backend SSH session you spawn never shows the user a sign-in dialog: if its server asks for something only the user can give (a host key they have not trusted, a password Ntilde has no saved one for, a key passphrase, a one-time code), the session exits, and ntilde.get_session_status and ntilde.wait_for_events report needsUser. Every call is shown in the agent activity journal.")]
     public static async Task<string> SpawnSession(
         AgentHostClient client,
         [Description("Profile name to open. Omit or leave empty for the default local profile.")] string? profile = null,
@@ -432,6 +432,8 @@ public sealed class SessionTools
                 "it needs the passphrase of the user's private key. A key loaded in an SSH agent would not ask.",
             AgentHostProtocol.NeedsUserReasons.KeyboardInteractive =>
                 "its server asked a question only the user can answer, such as a one-time code. Every new connection to this server will ask again.",
+            AgentHostProtocol.NeedsUserReasons.SignIn =>
+                "signing in to its server needs the user - a password Ntilde has no saved one for, a key passphrase or a one-time code. If it is the profile's own password and the user saves it when they sign in, new sessions get in without asking.",
             _ => $"its server asked for something only the user can give ({needsUser}).",
         };
         return $"NEEDS THE USER: this session never showed the user a sign-in dialog, and it ended because {asked} "
