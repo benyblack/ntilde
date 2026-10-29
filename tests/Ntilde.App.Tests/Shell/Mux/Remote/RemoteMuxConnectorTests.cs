@@ -216,9 +216,10 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     /// says nothing of the kind.
     /// </summary>
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task A_users_native_attempt_says_when_it_asked_them_and_sign_in_never_completed(bool asks)
+    [InlineData("cancels", true)]
+    [InlineData("types a password the server refuses", true)]
+    [InlineData("is not asked", false)]
+    public async Task A_users_native_attempt_says_when_it_asked_them_and_sign_in_never_completed(string user, bool marked)
     {
         var connector = Own(new RemoteMuxConnector(
             () => Profile(),
@@ -226,19 +227,49 @@ public sealed class RemoteMuxConnectorTests : IDisposable
             {
                 _remote.OnStart = _ =>
                 {
-                    if (asks) request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult(); // the user cancels
+                    if (user != "is not asked") request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult();
                     _remote.Script = FakeRemoteScript.NativeFailure("SSH authentication failed");
                 };
                 return _remote;
             },
-            new RemoteMuxInteractionHandler(new ScriptedUser(), _ => false),
+            new RemoteMuxInteractionHandler(
+                user == "cancels" ? new ScriptedUser() : new ScriptedUser(SshInteractionResponse.FromSecret("wrong")),
+                _ => false),
             "i",
             null));
 
         var failed = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
 
         Assert.Equal(RemoteFailureKind.SshFailed, failed.Failure.Kind);
-        Assert.Equal(asks, failed.Failure.UserSignInFailed);
+        Assert.Equal(marked, failed.Failure.UserSignInFailed);
+        if (marked) Assert.Equal(RemoteNeedsUserCause.SignIn, failed.Failure.Cause);
+    }
+
+    /// <summary>
+    /// Codex review of #633: a host key the user accepted was not what stopped them. An attempt that then failed SSH with
+    /// nothing more to ask - its key refused, say - is a plain SSH failure, not one that sends the user back to the key.
+    /// </summary>
+    [Fact]
+    public async Task A_users_native_attempt_that_accepted_a_host_key_and_then_failed_is_a_plain_ssh_failure()
+    {
+        var connector = Own(new RemoteMuxConnector(
+            NativeProfile,
+            (_, request) =>
+            {
+                _remote.OnStart = _ =>
+                {
+                    Assert.True(request.Prompts.HandleAsync(HostKeyPrompt(SshInteractionKind.UnknownHostKey), CancellationToken.None).GetAwaiter().GetResult().IsAccepted);
+                    _remote.Script = FakeRemoteScript.NativeFailure("SSH authentication failed");
+                };
+                return _remote;
+            },
+            new RemoteMuxInteractionHandler(new ScriptedUser(SshInteractionResponse.AcceptHostKey()), _ => false),
+            "i",
+            null));
+
+        var failed = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
+
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "SSH authentication failed"), failed.Failure);
     }
 
     [Fact]

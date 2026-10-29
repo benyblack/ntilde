@@ -397,7 +397,7 @@ internal sealed class RemoteMuxInteractionHandler
         private bool _authenticated;                 // guarded by _gate; the native transport said sign-in is over
         private SshInteractionKind? _abortedPrompt;  // guarded by _gate
         private SshInteractionKind? _declinedPrompt; // guarded by _gate
-        private SshInteractionKind? _lastAskedUser;  // guarded by _gate; the last prompt that went to the user
+        private (SshInteractionKind Kind, bool Declined)? _lastUserPrompt; // guarded by _gate; the last prompt that went to the user
         private bool _hostKeyRejected;               // guarded by _gate; nobody to ask, and the key was not trusted
         private bool _savedPasswordOffered;          // guarded by _gate
         private byte[]? _offeredHash;                // guarded by _gate; HashOf the saved password offered
@@ -598,12 +598,13 @@ internal sealed class RemoteMuxInteractionHandler
         }
 
         /// <summary>
-        /// The last prompt of this attempt that went to the user (an interactive attempt's window handler), or null when none
-        /// did: if sign-in then never completed, it is the one they did not get past.
+        /// The last prompt of this attempt that went to the user (an interactive attempt's window handler), and whether they
+        /// declined it - cancelled, or rejected a host key - or never answered; null when none went to them. If sign-in then
+        /// never completed, a declined prompt, or an answer the server refused, is what they did not get past.
         /// </summary>
-        public SshInteractionKind? LastAskedUser
+        public (SshInteractionKind Kind, bool Declined)? LastUserPrompt
         {
-            get { lock (_gate) return _lastAskedUser; }
+            get { lock (_gate) return _lastUserPrompt; }
         }
 
         /// <summary>
@@ -657,8 +658,9 @@ internal sealed class RemoteMuxInteractionHandler
                 SshInteractionRequest forUser = kind == SshInteractionKind.Password && request.AllowVaultPasswordReuse && (AvoidsSavedPassword || !_passwordsReplayable)
                     ? request.WithoutVaultPasswordReuse()
                     : request;
-                lock (_gate) _lastAskedUser = kind;
+                lock (_gate) _lastUserPrompt = (kind, Declined: true); // until it is answered
                 SshInteractionResponse response = await user.HandleAsync(forUser, cancellationToken).ConfigureAwait(false);
+                lock (_gate) _lastUserPrompt = (kind, Declined: response.IsCanceled);
                 if (IsRememberable(kind) && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
                 {
                     // Typed, unless the window's handler filled it from the vault (or a session's memory) on its own.
@@ -670,8 +672,10 @@ internal sealed class RemoteMuxInteractionHandler
 
             if (User is { } asked)
             {
-                lock (_gate) _lastAskedUser = kind;
-                return await asked.HandleAsync(request, cancellationToken).ConfigureAwait(false);
+                lock (_gate) _lastUserPrompt = (kind, Declined: true); // until it is answered
+                SshInteractionResponse answer = await asked.HandleAsync(request, cancellationToken).ConfigureAwait(false);
+                lock (_gate) _lastUserPrompt = (kind, Declined: answer.IsCanceled || (IsHostKeyPrompt(kind) && !answer.IsAccepted));
+                return answer;
             }
 
             if (IsHostKeyPrompt(kind))

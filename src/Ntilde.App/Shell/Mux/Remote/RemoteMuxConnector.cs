@@ -560,15 +560,17 @@ internal sealed class RemoteMuxConnector : IDisposable
             failure = new RemoteMuxFailure(RemoteFailureKind.NeedsUser, $"signing in to {host} needs a key passphrase, which an automatic reconnect does not ask for");
         }
 
-        if (failure.Kind == RemoteFailureKind.SshFailed && prompts.LastAskedUser is { } asked && !prompts.HasAuthenticated)
+        if (failure.Kind == RemoteFailureKind.SshFailed && !prompts.HasAuthenticated && prompts.LastUserPrompt is { } asked
+            && (asked.Declined || asked.Kind is not (SshInteractionKind.UnknownHostKey or SshInteractionKind.ChangedHostKey)))
         {
-            // A user was asked, and sign-in never completed. An SSH failure for them; marked, with what they did not get past,
-            // for a request without a user that joined this attempt, which reads it as needing the user (#631, Codex review
-            // of #633).
+            // A user was asked, and sign-in never completed: they declined the prompt, or the server refused what they gave.
+            // An SSH failure for them; marked, with what they did not get past, for a request without a user that joined this
+            // attempt, which reads it as needing the user (#631, Codex review of #633). A host key they accepted was not it: an
+            // attempt that failed after one is a plain SSH failure.
             failure = failure with
             {
                 UserSignInFailed = true,
-                Cause = asked switch
+                Cause = asked.Kind switch
                 {
                     // Kept apart: a key that changed since the user trusted it is the warning, not an unknown key.
                     SshInteractionKind.ChangedHostKey => RemoteNeedsUserCause.HostKeyChanged,
