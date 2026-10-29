@@ -165,8 +165,8 @@ namespace Ntilde.Shell
             TerminalSnapshotOptions? options = null)
         {
             ArgumentNullException.ThrowIfNull(buffer);
-            if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
-            if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
             options ??= new TerminalSnapshotOptions();
 
             // Snapshot the geometry/cursor values under the read lock, then let go:

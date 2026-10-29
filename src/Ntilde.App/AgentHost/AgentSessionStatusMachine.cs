@@ -30,7 +30,6 @@ namespace Ntilde.AgentHost
         // Signal state
         private bool _precise;            // shell integration observed
         private bool _commandInFlight;    // precise tier: between started/finished
-        private bool _promptSeen;         // precise tier: a prompt has appeared
         private bool _altScreenActive;
         private bool _hasActiveChildren;  // heuristic tier: from last sweep
         private bool _exited;
@@ -84,7 +83,6 @@ namespace Ntilde.AgentHost
             RunUnderGate(_ =>
             {
                 _precise = true;
-                _promptSeen = true;
                 _commandInFlight = false;
                 _currentCommand = null;
                 return null;
@@ -106,7 +104,6 @@ namespace Ntilde.AgentHost
             RunUnderGate(now =>
             {
                 _precise = true;
-                _promptSeen = true;
                 _commandInFlight = true;
                 _commandStartedAt = now;
                 // A new command starts a fresh silence episode: without this, a
@@ -169,7 +166,6 @@ namespace Ntilde.AgentHost
                 _needsUser = null;
                 // The new shell has to show its shell integration again before the status is precise.
                 _precise = false;
-                _promptSeen = false;
                 _commandInFlight = false;
                 _altScreenActive = false;
                 _hasActiveChildren = false;

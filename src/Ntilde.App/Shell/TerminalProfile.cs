@@ -1,5 +1,6 @@
 using Ntilde.Platform;
 using System;
+using System.Globalization;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Pty;
 
@@ -141,7 +142,7 @@ namespace Ntilde.Shell
         /// </summary>
 
 
-        private string GetJumpChain(TerminalProfile current, System.Collections.Generic.List<TerminalProfile> allProfiles, System.Collections.Generic.HashSet<Guid> visited)
+        private static string GetJumpChain(TerminalProfile current, System.Collections.Generic.List<TerminalProfile> allProfiles, System.Collections.Generic.HashSet<Guid> visited)
         {
             if (visited.Contains(current.Id)) return ""; // Break circle
             visited.Add(current.Id);
@@ -176,11 +177,11 @@ namespace Ntilde.Shell
             // Identity
             if (!UseSshAgent && !string.IsNullOrEmpty(IdentityFilePath))
             {
-                sb.Append($" -i \"{IdentityFilePath}\"");
+                sb.Append(CultureInfo.InvariantCulture, $" -i \"{IdentityFilePath}\"");
             }
             else if (!string.IsNullOrEmpty(SshKeyPath)) // Backward compat
             {
-                sb.Append($" -i \"{SshKeyPath}\"");
+                sb.Append(CultureInfo.InvariantCulture, $" -i \"{SshKeyPath}\"");
             }
 
             // Jump Host Recursion
@@ -193,7 +194,7 @@ namespace Ntilde.Shell
                     string jumpChain = GetJumpChain(jumpProfile, allProfiles, visited);
                     if (!string.IsNullOrEmpty(jumpChain))
                     {
-                        sb.Append($" -J {jumpChain}");
+                        sb.Append(CultureInfo.InvariantCulture, $" -J {jumpChain}");
                     }
                 }
             }
@@ -201,7 +202,7 @@ namespace Ntilde.Shell
             // Port
             if (SshPort != 22)
             {
-                sb.Append($" -p {SshPort}");
+                sb.Append(CultureInfo.InvariantCulture, $" -p {SshPort}");
             }
 
             // Port Forwarding
@@ -215,14 +216,14 @@ namespace Ntilde.Shell
                     {
                         case ForwardingType.Local:
                             var localRem = string.IsNullOrWhiteSpace(rule.RemoteAddress) ? $"127.0.0.1:{rule.LocalAddress}" : rule.RemoteAddress;
-                            sb.Append($" -L {rule.LocalAddress}:{localRem}");
+                            sb.Append(CultureInfo.InvariantCulture, $" -L {rule.LocalAddress}:{localRem}");
                             break;
                         case ForwardingType.Remote:
                             var remRem = string.IsNullOrWhiteSpace(rule.RemoteAddress) ? $"127.0.0.1:{rule.LocalAddress}" : rule.RemoteAddress;
-                            sb.Append($" -R {remRem}:{rule.LocalAddress}");
+                            sb.Append(CultureInfo.InvariantCulture, $" -R {remRem}:{rule.LocalAddress}");
                             break;
                         case ForwardingType.Dynamic:
-                            sb.Append($" -D {rule.LocalAddress}");
+                            sb.Append(CultureInfo.InvariantCulture, $" -D {rule.LocalAddress}");
                             break;
                     }
                 }
@@ -231,11 +232,11 @@ namespace Ntilde.Shell
             // Target
             if (!string.IsNullOrEmpty(SshUser))
             {
-                sb.Append($" {SshUser}@{SshHost}");
+                sb.Append(CultureInfo.InvariantCulture, $" {SshUser}@{SshHost}");
             }
             else
             {
-                sb.Append($" {SshHost}");
+                sb.Append(CultureInfo.InvariantCulture, $" {SshHost}");
             }
 
             return sb.ToString().Trim();

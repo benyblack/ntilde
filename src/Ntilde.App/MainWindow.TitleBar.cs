@@ -87,7 +87,7 @@ namespace Ntilde
         /// is lazy — it runs on palette-open and settings-save, never at startup (see the comment
         /// near line 2207) — so a title bar reading the registry would come up dead on a cold start.
         /// </summary>
-        private IReadOnlyDictionary<string, Action> BuildTitleBarHandlers()
+        private Dictionary<string, Action> BuildTitleBarHandlers()
         {
             return new Dictionary<string, Action>(StringComparer.OrdinalIgnoreCase)
             {

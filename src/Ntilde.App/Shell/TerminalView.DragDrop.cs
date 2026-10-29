@@ -168,7 +168,7 @@ namespace Ntilde.Shell
             }
         }
 
-        private static DetectedShell DetectShellFromCommand(string command)
+        private static DetectedShell DetectShellFromCommand(string? command)
         {
             if (string.IsNullOrWhiteSpace(command)) return DetectedShell.Unknown;
             if (command.Contains("pwsh", StringComparison.OrdinalIgnoreCase) || command.Contains("powershell", StringComparison.OrdinalIgnoreCase)) return DetectedShell.Pwsh;

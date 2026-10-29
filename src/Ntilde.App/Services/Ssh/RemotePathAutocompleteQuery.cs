@@ -29,7 +29,7 @@ public sealed class RemotePathAutocompleteQuery
             return new RemotePathAutocompleteQuery("~", string.Empty);
         }
 
-        if (normalized.EndsWith("/", StringComparison.Ordinal))
+        if (normalized.EndsWith('/'))
         {
             string directoryPath = normalized.TrimEnd('/');
             if (string.IsNullOrEmpty(directoryPath))

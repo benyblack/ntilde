@@ -749,7 +749,7 @@ namespace Ntilde
             return entry.Group is null ? entry.PageTitle : $"{entry.PageTitle} › {entry.Group}";
         }
 
-        private Control CreateResultView(SettingsSearchResult result)
+        private StackPanel CreateResultView(SettingsSearchResult result)
         {
             SettingsSearchEntry entry = result.Entry;
             var panel = new StackPanel

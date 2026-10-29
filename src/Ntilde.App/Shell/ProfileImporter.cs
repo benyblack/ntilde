@@ -9,6 +9,8 @@ namespace Ntilde.Shell
 {
     public static class ProfileImporter
     {
+        private static readonly char[] JumpHostSeparators = [',', ' '];
+
         public static List<TerminalProfile> ImportWindowsTerminalProfiles()
         {
             var profiles = new List<TerminalProfile>();
@@ -174,7 +176,7 @@ namespace Ntilde.Shell
                         {
                             // Expand ~ if present
                             string path = value;
-                            if (path.StartsWith("~"))
+                            if (path.StartsWith('~'))
                             {
                                 path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path.Substring(1).TrimStart('/', '\\'));
                             }
@@ -208,7 +210,7 @@ namespace Ntilde.Shell
                     var jumpPart = entry.Value;
 
                     // Split by comma or space
-                    var hops = jumpPart.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    var hops = jumpPart.Split(JumpHostSeparators, StringSplitOptions.RemoveEmptyEntries);
 
                     TerminalProfile lastTarget = targetProfile;
                     foreach (var hopName in hops.Reverse())

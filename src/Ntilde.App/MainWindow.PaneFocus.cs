@@ -20,7 +20,7 @@ namespace Ntilde
     {
         private readonly Dictionary<TerminalPane, TabItem> _paneOwnerTab = new();
 
-        private IEnumerable<TerminalPane> EnumeratePanes(Control? control)
+        private static IEnumerable<TerminalPane> EnumeratePanes(Control? control)
         {
             if (control == null) yield break;
 
@@ -290,7 +290,7 @@ namespace Ntilde
             }
         }
 
-        private TerminalPane? FindFirstPane(Control? control)
+        private static TerminalPane? FindFirstPane(Control? control)
         {
             if (control == null) return null;
             if (control is TerminalPane pane) return pane;

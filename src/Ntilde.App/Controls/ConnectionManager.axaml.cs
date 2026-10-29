@@ -195,8 +195,8 @@ namespace Ntilde.Controls
             var all = _viewModel.GetAllProfiles();
             var countAll = this.FindControl<TextBlock>("CountAll");
             var countFav = this.FindControl<TextBlock>("CountFav");
-            if (countAll != null) countAll.Text = all.Count.ToString();
-            if (countFav != null) countFav.Text = all.Count(p => p.Tags != null && p.Tags.Any(t => string.Equals(t, "favorite", StringComparison.OrdinalIgnoreCase))).ToString();
+            if (countAll != null) countAll.Text = all.Count.ToString(System.Globalization.CultureInfo.CurrentCulture);
+            if (countFav != null) countFav.Text = all.Count(p => p.Tags != null && p.Tags.Any(t => string.Equals(t, "favorite", StringComparison.OrdinalIgnoreCase))).ToString(System.Globalization.CultureInfo.CurrentCulture);
         }
 
         private void OnGroupClick(object? sender, RoutedEventArgs e)
@@ -379,7 +379,7 @@ namespace Ntilde.Controls
             SetText("DetailTitle", row.Name);
             SetText("DetailEndpoint", row.Endpoint);
             SetText("KvHost", string.IsNullOrWhiteSpace(row.Host) ? "—" : row.Host);
-            SetText("KvPort", row.Port.ToString());
+            SetText("KvPort", row.Port.ToString(System.Globalization.CultureInfo.InvariantCulture));
             SetText("KvUser", string.IsNullOrWhiteSpace(row.User) ? "—" : row.User);
             SetText("KvGroup", string.IsNullOrWhiteSpace(row.GroupPath) ? "Ungrouped" : row.GroupPath);
             SetText("KvAuth", DescribeAuth(row.Profile));

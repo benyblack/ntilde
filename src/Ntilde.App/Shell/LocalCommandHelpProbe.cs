@@ -176,7 +176,7 @@ public sealed class LocalCommandHelpProbe : ICommandHelpProbe
         return false;
     }
 
-    private static IReadOnlyList<string> BuildExecutableExtensions()
+    private static List<string> BuildExecutableExtensions()
     {
         if (!OperatingSystem.IsWindows())
         {

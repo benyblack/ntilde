@@ -147,7 +147,7 @@ namespace Ntilde.Shell
             return childPaneCount >= 2;
         }
 
-        private static IReadOnlyList<double> ExtractRatios(IEnumerable<GridLength> lengths)
+        private static List<double> ExtractRatios(IEnumerable<GridLength> lengths)
         {
             var weights = lengths.Select(length =>
             {

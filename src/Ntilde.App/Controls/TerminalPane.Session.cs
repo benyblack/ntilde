@@ -664,10 +664,11 @@ namespace Ntilde.Controls
         /// </summary>
         private void WireSessionStream(ITerminalSession session, bool muxPreviousLost)
         {
-            // Wire up Output
+            // Wire up Output. CreateAndWireParser, which session start runs first, sets Parser, and nothing
+            // sets it back to null.
             session.OnOutputReceived += text =>
             {
-                Parser.Process(text);
+                Parser!.Process(text);
 
                 // After Parse, not before: the flag's contract is "the grid may be behind the
                 // keyboard", so it may only be cleared once these bytes are actually painted.
@@ -685,7 +686,7 @@ namespace Ntilde.Controls
             // either way - it only invalidates a local heuristic and writes nothing to the child.
             if (!SessionAnswersDeviceQueries(Session))
             {
-                Parser.OnResponse += response =>
+                Parser!.OnResponse += response =>
                 {
                     Session?.SendInput(response);
                 };

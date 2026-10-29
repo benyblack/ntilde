@@ -94,7 +94,7 @@ public static class MarkdownRenderer
     }
 
     private static void AppendBlocks(
-        IList<Control> target,
+        Avalonia.Controls.Controls target,
         IEnumerable<Block> blocks,
         MarkdownTheme theme,
         Action<string>? onCopyText,
@@ -115,7 +115,7 @@ public static class MarkdownRenderer
                     break;
 
                 case FencedCodeBlock fenced:
-                    target.Add(BuildCodeBlock(GetLinesText(fenced), fenced.Info.ToString(), theme, onCopyText, onOpenLink, pass, depth));
+                    target.Add(BuildCodeBlock(GetLinesText(fenced), fenced.Info ?? string.Empty, theme, onCopyText, onOpenLink, pass, depth));
                     break;
 
                 case CodeBlock code:
@@ -150,7 +150,7 @@ public static class MarkdownRenderer
     }
 
     /// <summary>Renders a fence's body as markdown, one level deeper in the same pass.</summary>
-    private static Control BuildNested(
+    private static StackPanel BuildNested(
         string markdown,
         MarkdownTheme theme,
         Action<string>? onCopyText,
@@ -164,7 +164,7 @@ public static class MarkdownRenderer
         return panel;
     }
 
-    private static Control BuildHeading(HeadingBlock heading, MarkdownTheme theme)
+    private static TextBlock BuildHeading(HeadingBlock heading, MarkdownTheme theme)
     {
         double size = heading.Level switch
         {
@@ -183,11 +183,15 @@ public static class MarkdownRenderer
             Foreground = theme.Foreground,
             Margin = new Thickness(0, heading.Level <= 2 ? 10 : 8, 0, 4),
         };
-        AppendInlines(textBlock.Inlines, heading.Inline, theme, onCopyText: null, onOpenLink: null);
+        if (textBlock.Inlines is { } inlines)
+        {
+            AppendInlines(inlines, heading.Inline, theme, onCopyText: null, onOpenLink: null);
+        }
+
         return textBlock;
     }
 
-    private static Control BuildParagraph(
+    private static SelectableTextBlock BuildParagraph(
         ParagraphBlock paragraph,
         MarkdownTheme theme,
         Action<string>? onCopyText,
@@ -200,11 +204,15 @@ public static class MarkdownRenderer
             Foreground = theme.Foreground,
             Margin = new Thickness(0, 3, 0, 3),
         };
-        AppendInlines(textBlock.Inlines, paragraph.Inline, theme, onCopyText, onOpenLink);
+        if (textBlock.Inlines is { } inlines)
+        {
+            AppendInlines(inlines, paragraph.Inline, theme, onCopyText, onOpenLink);
+        }
+
         return textBlock;
     }
 
-    private static Control BuildCodeBlock(
+    private static Border BuildCodeBlock(
         string code,
         string? language,
         MarkdownTheme theme,
@@ -307,7 +315,7 @@ public static class MarkdownRenderer
         };
     }
 
-    private static Control BuildList(
+    private static StackPanel BuildList(
         ListBlock list,
         MarkdownTheme theme,
         Action<string>? onCopyText,
@@ -355,7 +363,7 @@ public static class MarkdownRenderer
         return panel;
     }
 
-    private static Control BuildQuote(
+    private static Border BuildQuote(
         QuoteBlock quote,
         MarkdownTheme theme,
         Action<string>? onCopyText,
@@ -391,7 +399,7 @@ public static class MarkdownRenderer
         };
     }
 
-    private static Control BuildTable(
+    private static Border BuildTable(
         Table table,
         MarkdownTheme theme,
         Action<string>? onCopyText,
@@ -577,7 +585,7 @@ public static class MarkdownRenderer
         MarkdownTheme theme,
         Action<string>? onOpenLink)
     {
-        AppendLinkTarget(target, link.Url, GetLiteralText(link), theme, onOpenLink);
+        AppendLinkTarget(target, link.Url ?? string.Empty, GetLiteralText(link), theme, onOpenLink);
     }
 
     private static void AppendLinkTarget(
@@ -628,7 +636,7 @@ public static class MarkdownRenderer
 
     private static int ParseOrderedStart(ListBlock list)
     {
-        if (!list.IsOrdered || !int.TryParse(list.OrderedStart.ToString(), out int start))
+        if (!list.IsOrdered || !int.TryParse(list.OrderedStart, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int start))
         {
             return 1;
         }

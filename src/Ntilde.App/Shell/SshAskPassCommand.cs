@@ -522,7 +522,7 @@ internal static class SshAskPassCommand
             Content = BuildContent();
         }
 
-        private Control BuildContent()
+        private Border BuildContent()
         {
             var cancelButton = new Button { Content = "Cancel", Width = 96 };
             cancelButton.Click += (_, _) => CloseWith(null);

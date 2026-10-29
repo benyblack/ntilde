@@ -33,7 +33,7 @@ public static class CommandPaletteOrdering
             : DateTimeOffset.MinValue;
     }
 
-    private static IReadOnlyList<TerminalCommand> OrderCommands(
+    private static List<TerminalCommand> OrderCommands(
         IEnumerable<TerminalCommand> commands,
         IReadOnlyDictionary<string, CommandPaletteUsageEntry> usage)
     {

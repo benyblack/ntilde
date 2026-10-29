@@ -480,7 +480,7 @@ namespace Ntilde
         /// The held half of <see cref="MarkLocalShellsEnded"/> (<see cref="HeldLocalMuxSessionIds"/>): every such id, or with
         /// <paramref name="only"/> just those in it - the quit's, when its stop failed, are the ones it killed by name.
         /// </summary>
-        private void MarkHeldLocalShellsEnded(IReadOnlySet<Guid>? only)
+        private void MarkHeldLocalShellsEnded(HashSet<Guid>? only)
         {
             foreach ((Guid id, _, _) in HeldLocalMuxSessionIds())
             {
@@ -738,6 +738,8 @@ namespace Ntilde
         /// this same pipeline and render the answer inline; without one, the answers surface
         /// as toasts (see <see cref="ToastUpdateCheckFeedback"/>).
         /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance",
+            Justification = "Typed to the feedback seam it falls back from: without the About window, the toasts answer.")]
         private async System.Threading.Tasks.Task CheckForUpdatesInteractiveAsync(Ntilde.Update.IUpdateCheckFeedback? feedback = null)
         {
             feedback ??= new ToastUpdateCheckFeedback(this);

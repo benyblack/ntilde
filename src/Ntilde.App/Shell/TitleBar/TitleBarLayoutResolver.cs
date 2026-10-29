@@ -109,7 +109,7 @@ public static class TitleBarLayoutResolver
     private static void PlacePinnedEntriesInOrder(
         IReadOnlyList<TitleBarCatalogEntry> entries,
         IReadOnlyList<string>? order,
-        IReadOnlyDictionary<string, TitleBarItemState> resolved,
+        Dictionary<string, TitleBarItemState> resolved,
         List<TitleBarCatalogEntry> pinned)
     {
         var byId = entries.ToDictionary(e => e.Id, StringComparer.OrdinalIgnoreCase);

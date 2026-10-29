@@ -15,6 +15,8 @@ namespace Ntilde
     /// </summary>
     public partial class MainWindow
     {
+        private static readonly string[] ReplayFilePatterns = ["*.rec", "*.cast"];
+
         private readonly DispatcherTimer _recordingToastTimer = new() { Interval = TimeSpan.FromSeconds(6) };
         private string? _recordingToastFolderPath;
         private string? _recordingToastFilePath;
@@ -38,7 +40,7 @@ namespace Ntilde
             {
                 Title = "Open Replay File",
                 AllowMultiple = false,
-                FileTypeFilter = new[] { new FilePickerFileType("Ntilde Recordings") { Patterns = new[] { "*.rec", "*.cast" } } }
+                FileTypeFilter = new[] { new FilePickerFileType("Ntilde Recordings") { Patterns = ReplayFilePatterns } }
             });
 
             if (files.Count < 1)

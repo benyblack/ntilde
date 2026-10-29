@@ -106,7 +106,7 @@ namespace Ntilde.UI.Replay
             TimeDisplay = $"{FormatTime(CurrentTimeMs)} / {FormatTime(DurationMs)}";
         }
 
-        private string FormatTime(long ms)
+        private static string FormatTime(long ms)
         {
             var t = TimeSpan.FromMilliseconds(ms);
             return $"{(int)t.TotalMinutes:D2}:{t.Seconds:D2}";

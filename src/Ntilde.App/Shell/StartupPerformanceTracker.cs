@@ -38,10 +38,7 @@ public sealed class StartupPerformanceTracker
     internal StartupPerformanceTracker(Func<long> timestampProvider, long startTimestamp, long timestampFrequency, StartupMetricsWriter? metricsWriter = null)
     {
         ArgumentNullException.ThrowIfNull(timestampProvider);
-        if (timestampFrequency <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(timestampFrequency));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timestampFrequency);
 
         _timestampProvider = timestampProvider;
         _startTimestamp = startTimestamp;

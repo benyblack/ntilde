@@ -94,9 +94,9 @@ namespace Ntilde.Shell
         }
 
         public event Action<int, int>? ScrollStateChanged;
-        private int _scrollOffset = 0;
+        private int _scrollOffset;
         private DispatcherTimer? _autoScrollTimer;
-        private int _autoScrollDirection = 0; // -1 up, 1 down
+        private int _autoScrollDirection; // -1 up, 1 down
 
         /// <summary>
         /// The viewport's distance above the live line, in rows. Setting it is an external

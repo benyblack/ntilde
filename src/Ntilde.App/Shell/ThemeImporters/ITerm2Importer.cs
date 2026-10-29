@@ -49,7 +49,7 @@ namespace Ntilde.Shell.ThemeImporters
             return themes;
         }
 
-        private TermColor ParsePlistColor(XElement dict)
+        private static TermColor ParsePlistColor(XElement dict)
         {
             float r = 0, g = 0, b = 0;
             var elements = dict.Elements();
@@ -74,7 +74,7 @@ namespace Ntilde.Shell.ThemeImporters
         // Rounded, not truncated: components exported from 8-bit values come back as 254.9999.
         private static byte ToByte(float component) => (byte)Math.Clamp((int)Math.Round(component * 255f), 0, 255);
 
-        private void MapItermKeyToTheme(string key, TermColor color, TerminalTheme theme)
+        private static void MapItermKeyToTheme(string key, TermColor color, TerminalTheme theme)
         {
             switch (key)
             {

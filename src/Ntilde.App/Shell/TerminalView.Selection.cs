@@ -23,7 +23,7 @@ namespace Ntilde.Shell
 
         // Selection state
         private readonly SelectionState _selection = new SelectionState();
-        private bool _isSelecting = false;
+        private bool _isSelecting;
 
         /// <summary>
         /// Copies selected text to clipboard.

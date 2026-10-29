@@ -142,7 +142,7 @@ public partial class AgentOutputPanel : UserControl
 
     private void OnCopyAllClick(object? sender, RoutedEventArgs e)
     {
-        string markdown = _viewModel?.MarkdownText;
+        string? markdown = _viewModel?.MarkdownText;
         if (!string.IsNullOrEmpty(markdown))
         {
             _ = CopyToClipboardAsync(markdown);

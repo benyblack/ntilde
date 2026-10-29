@@ -303,7 +303,7 @@ namespace Ntilde.Shell
             canvas.Restore();
         }
 
-        // Step 3 optimization: rely on row pictures (or DrawRowText fallback) to paint non-default backgrounds.
+        // Step 3 optimization: rely on row pictures (or the DrawRowTextFromSnapshot fallback) to paint non-default backgrounds.
         private const bool UseRowPicturesForBackgrounds = true;
 
         // Step 5: Always build SKPictures for dirty rows — skipping caching causes stale
@@ -976,24 +976,23 @@ namespace Ntilde.Shell
             using var textPaint = new SKPaint
             {
                 Color = new SKColor(0, 255, 0, alpha),
-                Typeface = SKTypeface.Default,
-                TextSize = 12f,
                 IsAntialias = true
             };
+            using var textFont = new SKFont(SKTypeface.Default, 12f);
 
             float textX = x + padding;
             float textY = y + padding + 12f;
             float lineHeight = 16f;
 
-            canvas.DrawText($"Frame: {metrics.FrameTimeMs:F2} ms", textX, textY, textPaint);
+            canvas.DrawText($"Frame: {metrics.FrameTimeMs:F2} ms", textX, textY, SKTextAlign.Left, textFont, textPaint);
             textY += lineHeight;
-            canvas.DrawText($"Dirty Cells: {metrics.DirtyCellsEstimated} | Rows: {metrics.DirtyRows}", textX, textY, textPaint);
+            canvas.DrawText($"Dirty Cells: {metrics.DirtyCellsEstimated} | Rows: {metrics.DirtyRows}", textX, textY, SKTextAlign.Left, textFont, textPaint);
             textY += lineHeight;
-            canvas.DrawText($"Draws: {metrics.DrawCallsTotal} (Cache:{metrics.RowPictureCacheHits}/{metrics.RowPictureCacheMisses})", textX, textY, textPaint);
+            canvas.DrawText($"Draws: {metrics.DrawCallsTotal} (Cache:{metrics.RowPictureCacheHits}/{metrics.RowPictureCacheMisses})", textX, textY, SKTextAlign.Left, textFont, textPaint);
             textY += lineHeight;
-            canvas.DrawText($"Atlas Builds: {metrics.AtlasAlphaGlyphs}/{metrics.AtlasColorGlyphs} | Mem: {metrics.AllocBytesThisFrame / 1024.0:F1} kb", textX, textY, textPaint);
+            canvas.DrawText($"Atlas Builds: {metrics.AtlasAlphaGlyphs}/{metrics.AtlasColorGlyphs} | Mem: {metrics.AllocBytesThisFrame / 1024.0:F1} kb", textX, textY, SKTextAlign.Left, textFont, textPaint);
             textY += lineHeight;
-            canvas.DrawText($"Backend: {metrics.Backend ?? RenderBackend.Offscreen}", textX, textY, textPaint);
+            canvas.DrawText($"Backend: {metrics.Backend ?? RenderBackend.Offscreen}", textX, textY, SKTextAlign.Left, textFont, textPaint);
         }
 
         private void FlushBatches(SKCanvas canvas)
@@ -1720,13 +1719,6 @@ namespace Ntilde.Shell
             return covered < (int)Math.Ceiling(rowCols * SpanRenderCoverageFallbackThreshold);
         }
 
-        private int DrawRowText(SKCanvas canvas, int absRow, int bufferCols, float rowTopY, float baselineY, SKFont font, SKPaint fgPaint, SKColor themeFg, SKColor themeBg, byte alpha, SKTypeface primaryTf, bool drawBackgrounds)
-        {
-            // [DEPRECATED] Only kept as legacy until end of Step 4 if needed.
-            // But we already switched all call sites to FromSnapshot.
-            return 0;
-        }
-
         private static bool IsEnvFlagEnabled(string name)
         {
             string? raw = Environment.GetEnvironmentVariable(name);
@@ -2002,7 +1994,7 @@ namespace Ntilde.Shell
             }
         }
 
-        private void LogDiagOnce(string key, string message)
+        private static void LogDiagOnce(string key, string message)
         {
             if (!GlyphDiagnosticsEnabled) return;
             if (GlyphDiagOnce.TryAdd(key, 0))
@@ -2102,7 +2094,7 @@ namespace Ntilde.Shell
         private static bool IsEmojiTypefaceFamily(SKTypeface? typeface)
         {
             string family = typeface?.FamilyName ?? string.Empty;
-            return family.IndexOf("Emoji", StringComparison.OrdinalIgnoreCase) >= 0;
+            return family.Contains("Emoji", StringComparison.OrdinalIgnoreCase);
         }
 
         private void LogBoxRunDiagnostics(string runText, int runCells, SKFont runFont, float measuredWidth)
@@ -2130,7 +2122,7 @@ namespace Ntilde.Shell
             return 0;
         }
 
-        private int GetSafeGraphemeWidth(string textElement)
+        private static int GetSafeGraphemeWidth(string textElement)
         {
             if (string.IsNullOrEmpty(textElement)) return 0;
             try
@@ -2265,7 +2257,7 @@ namespace Ntilde.Shell
                 return primaryTf;
             }
 
-            string lookupKey = codePoint.ToString();
+            string lookupKey = codePoint.ToString(CultureInfo.InvariantCulture);
             if (!_fallbackCache.TryGetValue(lookupKey, out var tfToUse))
             {
                 SKTypeface? found = null;
@@ -2306,7 +2298,7 @@ namespace Ntilde.Shell
             return tfToUse ?? primaryTf;
         }
 
-        private SKTypeface? ResolveKnownGoodBoxTypeface(int codePoint)
+        private static SKTypeface? ResolveKnownGoodBoxTypeface(int codePoint)
         {
             foreach (string family in KnownGoodBoxFonts)
             {
@@ -3022,7 +3014,7 @@ namespace Ntilde.Shell
             return new SKColor(v, v, v, fg.Alpha);
         }
 
-        private SKColor ResolveCellForeground(RenderCellSnapshot cell, SKColor themeFg, byte alpha, RenderThemeSnapshot themeSnapshot)
+        private static SKColor ResolveCellForeground(RenderCellSnapshot cell, SKColor themeFg, byte alpha, RenderThemeSnapshot themeSnapshot)
         {
             if (cell.IsDefaultForeground) return themeFg;
             if (cell.FgIndex >= 0)
@@ -3033,7 +3025,7 @@ namespace Ntilde.Shell
             return new SKColor(cell.Foreground.R, cell.Foreground.G, cell.Foreground.B, 255);
         }
 
-        private SKColor ResolveCellBackground(RenderCellSnapshot cell, SKColor themeBg, byte alpha, RenderThemeSnapshot themeSnapshot)
+        private static SKColor ResolveCellBackground(RenderCellSnapshot cell, SKColor themeBg, byte alpha, RenderThemeSnapshot themeSnapshot)
         {
             if (cell.IsDefaultBackground) return themeBg;
 
