@@ -234,32 +234,57 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <para>
     /// Not <paramref name="interactive"/>: a request nobody is there to answer for - a tab an agent opened (#631). It
     /// gets its client as an automatic attempt does: it joins the attempt in flight, whatever it was started as, or
-    /// starts one that never prompts, and it leaves the reconnect loop to its own pace.
+    /// starts one that never prompts, and it leaves the reconnect loop to its own pace. A user's request that supersedes
+    /// that automatic attempt meanwhile decides for it: it waits on the user's attempt instead (Codex review of #633).
     /// </para>
     /// </remarks>
     public MuxClient? GetClient(TimeSpan timeout, bool interactive = true)
     {
         if (!TryStartConnecting(interactive, out Task<MuxClient>? attempt)) return CurrentClient;
         if (interactive && Policy.IsRemote) TryReconnectNow(attempt);
-        try
+        long startedAt = Environment.TickCount64;
+        while (true)
         {
-            // Not cancelled by Dispose on purpose: Dispose cancels the attempt itself, which then
-            // faults and ends this wait through the AggregateException path below.
-            if (!Task.Run(() => attempt, CancellationToken.None).Wait(timeout, CancellationToken.None))
+            TimeSpan left = timeout - TimeSpan.FromMilliseconds(Environment.TickCount64 - startedAt);
+            try
             {
-                _log?.Invoke($"[Mux] the multiplexer was not ready within {timeout.TotalSeconds:0.#} s; new panes will not persist for {FailureCooldown.TotalSeconds:0.#} s");
-                RecordFailure(attempt);
+                // Not cancelled by Dispose on purpose: Dispose cancels the attempt itself, which then
+                // faults and ends this wait through the AggregateException path below.
+                if (!Task.Run(() => attempt, CancellationToken.None).Wait(left > TimeSpan.Zero ? left : TimeSpan.Zero, CancellationToken.None))
+                {
+                    _log?.Invoke($"[Mux] the multiplexer was not ready within {timeout.TotalSeconds:0.#} s; new panes will not persist for {FailureCooldown.TotalSeconds:0.#} s");
+                    RecordFailure(attempt);
+                    return null;
+                }
+
+                return attempt.Result;
+            }
+            catch (AggregateException ex)
+            {
+                // A user's request superseded the automatic attempt this request without a user waited on: a cancellation
+                // that classifies nothing, and would leave an agent's new tab dead while the user's attempt connects. That
+                // attempt decides now, so this waits on it, in what is left of the timeout. (Only an automatic attempt is
+                // ever superseded; one cancelled by Dispose is not replaced, and fails as any other.)
+                if (!interactive && attempt.IsCanceled && ReplacementOf(attempt) is { } replacement)
+                {
+                    attempt = replacement;
+                    continue;
+                }
+
+                // Logged once by the attempt's own fault continuation. Recorded here as well so the very
+                // next call is already inside the cooldown, whichever of the two runs first.
+                RecordFailure(attempt, ex.GetBaseException());
                 return null;
             }
-
-            return attempt.Result;
         }
-        catch (AggregateException ex)
+    }
+
+    /// <summary>The attempt that has replaced <paramref name="attempt"/> as the host's, or null while it is still the host's own.</summary>
+    private Task<MuxClient>? ReplacementOf(Task<MuxClient> attempt)
+    {
+        lock (_gate)
         {
-            // Logged once by the attempt's own fault continuation. Recorded here as well so the very
-            // next call is already inside the cooldown, whichever of the two runs first.
-            RecordFailure(attempt, ex.GetBaseException());
-            return null;
+            return _connecting is { } current && !ReferenceEquals(current, attempt) ? current : null;
         }
     }
 

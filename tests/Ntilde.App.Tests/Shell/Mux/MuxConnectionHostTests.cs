@@ -317,6 +317,38 @@ public sealed class MuxConnectionHostTests
         Assert.Equal(new[] { false, false }, attempts.Select(a => a.Interactive));
     }
 
+    /// <summary>
+    /// Codex review of #633: a user's request supersedes - cancels - the automatic attempt a request without a user started.
+    /// That request then waits on the user's attempt, which decides now, rather than failing with the cancellation: an
+    /// agent's new tab would otherwise stay dead while the user's connect succeeds a moment later.
+    /// </summary>
+    [Fact]
+    public async Task A_request_without_a_user_whose_attempt_a_user_superseded_gets_the_users_client()
+    {
+        using var mux = new MuxTestHost();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var host = new MuxConnectionHost(async (attempt, ct) =>
+        {
+            if (!attempt.Interactive)
+            {
+                started.TrySetResult();
+                await Task.Delay(Timeout.Infinite, ct); // never connects on its own: only the cancellation ends it
+            }
+
+            return await MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct);
+        }, "test", null, MuxHostPolicy.Remote("box"))
+        {
+            Scheduler = new Remote.FakeMuxTimerScheduler(),
+        };
+
+        Task<MuxClient?> agents = Task.Run(() => host.GetClient(TimeSpan.FromSeconds(10), interactive: false), TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        MuxClient? users = host.GetClient(TimeSpan.FromSeconds(10));
+
+        Assert.NotNull(users);
+        Assert.Same(users, await agents.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task An_automatic_attempt_joins_the_one_in_flight_and_is_null_once_connected_or_disposed()
     {
