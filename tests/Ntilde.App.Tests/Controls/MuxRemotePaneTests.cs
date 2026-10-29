@@ -565,6 +565,33 @@ public sealed class MuxRemotePaneTests : IDisposable
         ShowsBanner(pane, "[Automatic reconnect can't sign in without you \u2014 press Enter]");
         Assert.DoesNotContain("Permission denied", Text(pane));
         Assert.DoesNotContain("publickey", Text(pane));
+        // The user's own tab: no agent is told anything, and the tab does not say an agent opened it.
+        Assert.Null(pane.AgentRegistrationForTesting!.StatusMachine.Snapshot().NeedsUser);
+        Assert.DoesNotContain(Unwrapped(TerminalPane.RemoteAgentOpenedLine), Unwrapped(Text(pane)), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// #631 (Codex review of #633): an agent's tab that connected, lost its link, and whose automatic reconnect gave up
+    /// because signing in needs the user, tells the agent so - as a tab that never connected does - and says an agent
+    /// opened it. The reconnect was automatic, so its own line stays.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_agent_tabs_reconnect_that_needs_the_user_tells_the_agent()
+    {
+        TerminalPane pane = ShowPane(configure: p => p.OpenedByAgent = true);
+        Attached(pane);
+        _remote.Script = NeedsPassword;
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        _clock.Advance(FirstRetry);
+
+        ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
+        ShowsWrapped(pane, TerminalPane.RemoteAgentOpenedLine);
+        ShowsBanner(pane, "[Automatic reconnect can't sign in without you \u2014 press Enter]");
+        Ntilde.AgentHost.AgentSessionStatusSnapshot status = pane.AgentRegistrationForTesting!.StatusMachine.Snapshot();
+        Assert.Equal(Ntilde.AgentHost.AgentSessionStatusKind.Exited, status.Kind);
+        Assert.Equal(Ntilde.AgentHost.AgentNeedsUserReason.SignIn, status.NeedsUser);
     }
 
     /// <summary>

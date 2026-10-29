@@ -27,21 +27,15 @@ namespace Ntilde.Controls
             TermView.SetSession(null);
             TerminalLogger.Log($"[TerminalPane] no session from {host} for {request.ExistingMuxSessionId?.ToString() ?? "a new tab"} ({result.Detail}); kept for a retry");
             string? needsUser = RemoteNeedsUserLine(result.RemoteFailure, host);
-            bool agentNeedsUser = false;
-            if (OpenedByAgent && AgentNeedsUserFor(result.RemoteFailure) is { } reason)
-            {
-                // #631: an agent's tab never asked the user, so this is why it has no session - for the agent too. No
-                // reconnect was automatic, so the plain sign-in line says what Enter does instead.
-                _agentRegistration?.StatusMachine.NotifyExited(-1, reason);
-                agentNeedsUser = true;
-                if (reason == Ntilde.AgentHost.AgentNeedsUserReason.SignIn) needsUser = RemoteSignInNeedsYouAgentLine;
-            }
+            bool agentNeedsUser = TellTheAgentItNeedsTheUser(result.RemoteFailure, out Ntilde.AgentHost.AgentNeedsUserReason reason);
+            // No reconnect was automatic, so the plain sign-in line says what Enter does instead.
+            if (agentNeedsUser && reason == Ntilde.AgentHost.AgentNeedsUserReason.SignIn) needsUser = RemoteSignInNeedsYouAgentLine;
 
             if (request.ReattachAfterDrop && request.ExistingMuxSessionId is not null)
             {
                 _muxReattachAfterDrop = true;
                 if (_remoteHost?.Host.IsReconnecting == true) EnterRemoteReconnecting();
-                else EnterRemoteWaitingForEnter(RemoteAbandonedBanner(host), detail: needsUser);
+                else EnterRemoteWaitingForEnter(RemoteAbandonedBanner(host), detail: needsUser, agentNeedsUser: agentNeedsUser);
                 return;
             }
 
@@ -317,12 +311,15 @@ namespace Ntilde.Controls
 
                     break;
                 case RemoteHostEvent.ReconnectAbandoned:
-                    // A give-up because signing in needs the user has recorded that failure by now: the banner says why.
+                    // A give-up because signing in needs the user has recorded that failure by now: the banner says why, and
+                    // an agent's tab tells the agent (#631, Codex review of #633).
                     if (_muxReconnecting)
                     {
+                        RemoteMuxFailure? failure = (source.Host.LastFailure as RemoteMuxUnavailableException)?.Failure;
                         EnterRemoteWaitingForEnter(
                             RemoteAbandonedBanner(_remoteHostName),
-                            detail: RemoteNeedsUserLine((source.Host.LastFailure as RemoteMuxUnavailableException)?.Failure, _remoteHostName));
+                            detail: RemoteNeedsUserLine(failure, _remoteHostName),
+                            agentNeedsUser: TellTheAgentItNeedsTheUser(failure, out _));
                     }
 
                     break;
@@ -373,7 +370,8 @@ namespace Ntilde.Controls
         /// still brings this pane back too; false after a stopped daemon, whose sessions went with it.
         /// <paramref name="detail"/>, when given, is a line under the banner (<see cref="RemoteNeedsUserLine"/>).
         /// </summary>
-        private void EnterRemoteWaitingForEnter(string banner, bool reattachOnReconnect = true, string? detail = null)
+        /// <param name="agentNeedsUser">The tab is an agent's, and has told it it needs the user: <see cref="RemoteAgentOpenedLine"/> comes first.</param>
+        private void EnterRemoteWaitingForEnter(string banner, bool reattachOnReconnect = true, string? detail = null, bool agentNeedsUser = false)
         {
             if (Session is MuxClientSession mux && MuxSessionIdToRestore is null) KeepForReattach(mux.Id);
             _muxReattachAfterDrop = reattachOnReconnect;
@@ -382,7 +380,23 @@ namespace Ntilde.Controls
             TermView.SetSession(null);
             ApplyMuxSharing(null);
             WriteBanner($"\r\n\x1b[90m{SanitizeBannerValue(banner)}\x1b[0m\r\n");
+            if (agentNeedsUser) WriteBanner($"\x1b[90m{RemoteAgentOpenedLine}\x1b[0m\r\n");
             if (detail is not null) WriteBanner($"\x1b[90m{SanitizeBannerValue(detail)}\x1b[0m\r\n");
+        }
+
+        /// <summary>
+        /// #631: a persistent-remote tab an agent opened never asks the user, so a failure that needs them - on its first
+        /// connect, or a reconnect that gave up - is the reason it has no session, for the agent too. False, and nothing
+        /// told, for the user's own tab, and for a failure no sign-in fixes.
+        /// </summary>
+        private bool TellTheAgentItNeedsTheUser(RemoteMuxFailure? failure, out Ntilde.AgentHost.AgentNeedsUserReason reason)
+        {
+            reason = default;
+            if (!OpenedByAgent || AgentNeedsUserFor(failure) is not { } needed) return false;
+
+            reason = needed;
+            _agentRegistration?.StatusMachine.NotifyExited(-1, needed);
+            return true;
         }
 
         /// <summary>
