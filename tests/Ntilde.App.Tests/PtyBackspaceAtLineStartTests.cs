@@ -156,7 +156,10 @@ public class PtyBackspaceAtLineStartTests
         // (ESC [ 6 n) and the shell does not draw its first prompt until the terminal answers, so a
         // parser wired without it sits at a blank grid forever. Production wires exactly this, which
         // is also why an insertion has to share the session's writer with the parse thread. The
-        // replies are recorded on the way, so a failure can say whether the handshake was answered.
+        // replies are recorded on the way, so a failure can say whether the parser answered the
+        // handshake. Recorded, not proven delivered: SendInput drops a write that races a shutdown.
+        // That ConPTY got the cursor-position reply shows in the stream itself, as the ESC[1;1H it
+        // sends only after it.
         var stream = new StreamRecord();
         var parser = new AnsiParser(buffer)
         {
@@ -258,7 +261,7 @@ public class PtyBackspaceAtLineStartTests
 
     /// <summary>
     /// What the session delivered to the parser - chunk count, length, and the start of it - and the
-    /// replies the parser sent back.
+    /// replies the parser generated for it.
     /// </summary>
     private sealed class StreamRecord
     {
@@ -299,7 +302,7 @@ public class PtyBackspaceAtLineStartTests
             {
                 string head = Escape(_head.ToString());
                 string replies = _replies.Count == 0 ? "none" : string.Join(", ", _replies.Select(Escape));
-                return $"Output: {_chunks} chunk(s), {_chars} char(s), starting '{head}'. Replies sent: {replies}.";
+                return $"Output: {_chunks} chunk(s), {_chars} char(s), starting '{head}'. Replies generated: {replies}.";
             }
         }
 
