@@ -303,7 +303,7 @@ namespace Ntilde.Shell
             canvas.Restore();
         }
 
-        // Step 3 optimization: rely on row pictures (or DrawRowText fallback) to paint non-default backgrounds.
+        // Step 3 optimization: rely on row pictures (or the DrawRowTextFromSnapshot fallback) to paint non-default backgrounds.
         private const bool UseRowPicturesForBackgrounds = true;
 
         // Step 5: Always build SKPictures for dirty rows — skipping caching causes stale
@@ -1717,13 +1717,6 @@ namespace Ntilde.Shell
             }
 
             return covered < (int)Math.Ceiling(rowCols * SpanRenderCoverageFallbackThreshold);
-        }
-
-        private static int DrawRowText(SKCanvas canvas, int absRow, int bufferCols, float rowTopY, float baselineY, SKFont font, SKPaint fgPaint, SKColor themeFg, SKColor themeBg, byte alpha, SKTypeface primaryTf, bool drawBackgrounds)
-        {
-            // [DEPRECATED] Only kept as legacy until end of Step 4 if needed.
-            // But we already switched all call sites to FromSnapshot.
-            return 0;
         }
 
         private static bool IsEnvFlagEnabled(string name)

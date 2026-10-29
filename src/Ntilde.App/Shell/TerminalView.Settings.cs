@@ -35,7 +35,6 @@ namespace Ntilde.Shell
                     _rowCache.RequestClear();
                 }
                 _windowOpacity = settings.WindowOpacity;
-                _hasBackgroundImage = !string.IsNullOrEmpty(settings.BackgroundImagePath) && System.IO.File.Exists(settings.BackgroundImagePath);
                 _cursorBlinkEnabled = settings.CursorBlink;
                 _preferredCursorStyle = ParseCursorStyle(settings.CursorStyle);
                 _bellAudioEnabled = settings.BellAudioEnabled;

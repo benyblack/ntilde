@@ -168,7 +168,6 @@ namespace Ntilde.Shell
         }
         private CellMetrics _metrics;
         private double _windowOpacity = 1.0;
-        private bool _hasBackgroundImage;
         private bool _enableLigatures;
         private bool _enableComplexShaping = true;
         private double _minimumContrast = 1.0;
