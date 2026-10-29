@@ -10,6 +10,8 @@ namespace Ntilde.Platform.Tests.Ssh.Exec;
 /// the native layer as <see cref="Ntilde.Platform.Ssh.Exec.NativeSshExecTransport"/> sees it, with no
 /// network and no native library.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "A test fake whose only disposable is a SemaphoreSlim count; nothing reads its wait handle.")]
 internal sealed class ScriptedNativeSshInterop : INativeSshInterop
 {
     private readonly ConcurrentQueue<NativeSshEvent> _events = new();

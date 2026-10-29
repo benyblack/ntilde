@@ -672,10 +672,10 @@ public sealed class NativePortForwardSessionTests
         await WaitUntilAsync(() => interop.OpenedChannelIds.Count == 1);
 
         byte[] payload = Encoding.ASCII.GetBytes("bytes-that-must-survive-backpressure");
-        await client.GetStream().WriteAsync(payload);
-        await client.GetStream().FlushAsync();
+        await client.GetStream().WriteAsync(payload, TestContext.Current.CancellationToken);
+        await client.GetStream().FlushAsync(TestContext.Current.CancellationToken);
 
-        await WaitUntilAsync(() => interop.WrittenBytes.Count >= payload.Length);
+        await WaitUntilAsync(() => interop.WrittenBytes.Length >= payload.Length);
 
         Assert.Equal(payload, interop.WrittenBytes.Take(payload.Length).ToArray());
         // Refused attempts must not have been counted as delivered.
@@ -699,7 +699,7 @@ public sealed class NativePortForwardSessionTests
         // Not at construction: the request blocks its thread until the worker answers, and the
         // worker only answers once connect and auth are done. Requesting from the constructor
         // parked one thread-pool worker per rule for the whole handshake (Codex review on #333).
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         Assert.Empty(interop.RemoteForwardRequests);
 
         session.NotifySessionEstablished();
@@ -709,7 +709,7 @@ public sealed class NativePortForwardSessionTests
         // Idempotent: the Connected event should only ever fire once, but a second notification
         // must not re-request the listener either way.
         session.NotifySessionEstablished();
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         Assert.Single(interop.RemoteForwardRequests);
     }
 
@@ -767,7 +767,7 @@ public sealed class NativePortForwardSessionTests
 
             // And an incoming connection on the port lands at the FIRST rule's destination.
             session.HandleEvent(NativeSshEvent.ForwardChannelIncoming(83, IncomingPayload(19005)));
-            using TcpClient accepted = await firstDestination.AcceptTcpClientAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            using TcpClient accepted = await firstDestination.AcceptTcpClientAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
             Assert.NotNull(accepted);
         }
         finally
@@ -798,15 +798,15 @@ public sealed class NativePortForwardSessionTests
             session.HandleEvent(NativeSshEvent.ForwardChannelIncoming(77, IncomingPayload(19001)));
             session.HandleEvent(NativeSshEvent.ForwardChannelData(77, payload));
 
-            using TcpClient accepted = await destination.AcceptTcpClientAsync();
+            using TcpClient accepted = await destination.AcceptTcpClientAsync(TestContext.Current.CancellationToken);
             NetworkStream stream = accepted.GetStream();
             byte[] received = await ReadExactlyAsync(stream, payload.Length, TimeSpan.FromSeconds(10));
             Assert.Equal(payload, received);
 
             // And the reply direction rides the same channel toward the remote.
             byte[] reply = Encoding.ASCII.GetBytes("remote-forwarded-reply");
-            await stream.WriteAsync(reply);
-            await stream.FlushAsync();
+            await stream.WriteAsync(reply, TestContext.Current.CancellationToken);
+            await stream.FlushAsync(TestContext.Current.CancellationToken);
             await WaitUntilAsync(() => interop.ChannelWrites(77).Length == reply.Length);
             Assert.Equal(reply, interop.ChannelWrites(77));
         }
@@ -874,7 +874,7 @@ public sealed class NativePortForwardSessionTests
 
             // The connection must land at the SECOND rule's destination — a port-only pick would
             // have dialled the first.
-            using TcpClient accepted = await secondDestination.AcceptTcpClientAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            using TcpClient accepted = await secondDestination.AcceptTcpClientAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
             Assert.NotNull(accepted);
         }
         finally
@@ -903,7 +903,7 @@ public sealed class NativePortForwardSessionTests
 
             session.HandleEvent(NativeSshEvent.ForwardChannelIncoming(81, IncomingPayload(19011, "127.0.0.1")));
 
-            using TcpClient accepted = await destination.AcceptTcpClientAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            using TcpClient accepted = await destination.AcceptTcpClientAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
             Assert.NotNull(accepted);
         }
         finally
@@ -968,7 +968,7 @@ public sealed class NativePortForwardSessionTests
             _pendingRefusals = refusalsPerWrite;
         }
 
-        public IReadOnlyList<byte> WrittenBytes
+        public byte[] WrittenBytes
         {
             get { lock (_writeLock) { return _written.ToArray(); } }
         }
@@ -1242,26 +1242,26 @@ public sealed class NativePortForwardSessionTests
         private readonly List<(string BindAddress, int Port)> _remoteForwardRequests = [];
         private readonly Dictionary<int, List<byte>> _channelWrites = [];
 
-        public IReadOnlyList<NativePortForwardOpenOptions> OpenRequests
+        public List<NativePortForwardOpenOptions> OpenRequests
         {
-            get { lock (_collectionsLock) { return _openRequests.ToArray(); } }
+            get { lock (_collectionsLock) { return _openRequests.ToList(); } }
         }
 
         /// <summary>Ids handed out by <see cref="OpenDirectTcpIp"/>, so tests can address a channel
         /// without assuming the counter's starting value.</summary>
-        public IReadOnlyList<int> OpenedChannelIds
+        public List<int> OpenedChannelIds
         {
-            get { lock (_collectionsLock) { return _openedChannelIds.ToArray(); } }
+            get { lock (_collectionsLock) { return _openedChannelIds.ToList(); } }
         }
 
-        public IReadOnlyList<int> ClosedChannelIds
+        public List<int> ClosedChannelIds
         {
-            get { lock (_collectionsLock) { return _closedChannelIds.ToArray(); } }
+            get { lock (_collectionsLock) { return _closedChannelIds.ToList(); } }
         }
 
-        public IReadOnlyList<(string BindAddress, int Port)> RemoteForwardRequests
+        public List<(string BindAddress, int Port)> RemoteForwardRequests
         {
-            get { lock (_collectionsLock) { return _remoteForwardRequests.ToArray(); } }
+            get { lock (_collectionsLock) { return _remoteForwardRequests.ToList(); } }
         }
 
         /// <summary>Everything written toward the remote on one channel, in order.</summary>

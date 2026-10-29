@@ -31,7 +31,7 @@ namespace Ntilde.Platform.Tests.Replay
         [Fact]
         public async Task BuildAsync_ShouldExtractTimeAndOffsets()
         {
-            var index = await ReplayIndex.BuildAsync(_testFile);
+            var index = await ReplayIndex.BuildAsync(_testFile, TestContext.Current.CancellationToken);
 
             Assert.Equal(3, index.Entries.Count);
             Assert.Equal(100, index.Entries[0].TimeMs);
@@ -48,7 +48,7 @@ namespace Ntilde.Platform.Tests.Replay
             fs.Seek(index.Entries[1].ByteOffset, SeekOrigin.Begin);
 
             using var reader = new StreamReader(fs);
-            string line2 = await reader.ReadLineAsync();
+            string? line2 = await reader.ReadLineAsync(TestContext.Current.CancellationToken);
 
             Assert.Contains("\"t\":200", line2);
         }
@@ -56,7 +56,7 @@ namespace Ntilde.Platform.Tests.Replay
         [Fact]
         public async Task GetClosestOffset_ShouldReturnBinarySearchResult()
         {
-            var index = await ReplayIndex.BuildAsync(_testFile);
+            var index = await ReplayIndex.BuildAsync(_testFile, TestContext.Current.CancellationToken);
 
             long exactMatch = index.GetClosestOffset(200);
             Assert.Equal(index.Entries[1].ByteOffset, exactMatch);
@@ -74,7 +74,7 @@ namespace Ntilde.Platform.Tests.Replay
         [Fact]
         public async Task ReplayRunner_Seek_ShouldStartFromOffset()
         {
-            var index = await ReplayIndex.BuildAsync(_testFile);
+            var index = await ReplayIndex.BuildAsync(_testFile, TestContext.Current.CancellationToken);
             long seekOffsetBytes = index.GetClosestOffset(200);
 
             var runner = new ReplayRunner(_testFile);
@@ -93,7 +93,8 @@ namespace Ntilde.Platform.Tests.Replay
                     return Task.CompletedTask;
                 },
                 startOffsetBytes: seekOffsetBytes,
-                minTimeMs: 0
+                minTimeMs: 0,
+                ct: TestContext.Current.CancellationToken
             );
 
             // Excludes t:100 since we sought to t:200
@@ -107,6 +108,7 @@ namespace Ntilde.Platform.Tests.Replay
             {
                 File.Delete(_testFile);
             }
+            GC.SuppressFinalize(this);
         }
     }
 }

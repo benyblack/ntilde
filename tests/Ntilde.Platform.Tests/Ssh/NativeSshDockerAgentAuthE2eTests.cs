@@ -96,11 +96,14 @@ public sealed class NativeSshDockerAgentAuthE2eTests
         }
     }
 
+    // libc reads both as UTF-8 C strings. CA2101 wants CharSet.Unicode, but neither is UTF-16, and it does not count LPUTF8Str.
+#pragma warning disable CA2101
     [DllImport("libc", SetLastError = true)]
-    private static extern int setenv(string name, string value, int overwrite);
+    private static extern int setenv([MarshalAs(UnmanagedType.LPUTF8Str)] string name, [MarshalAs(UnmanagedType.LPUTF8Str)] string value, int overwrite);
 
     [DllImport("libc", SetLastError = true)]
-    private static extern int unsetenv(string name);
+    private static extern int unsetenv([MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+#pragma warning restore CA2101
 
     private static void SetNativeEnvironmentVariable(string name, string value)
     {

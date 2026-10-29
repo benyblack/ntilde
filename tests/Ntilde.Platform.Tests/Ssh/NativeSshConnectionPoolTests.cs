@@ -122,7 +122,7 @@ public sealed class NativeSshConnectionPoolTests
 
         NativeSshSession second = new(profile, interop: interop, connectionPool: pool);
         Assert.Equal(1, interop.SharedConnectCount);
-        Assert.Empty(interop.ClosedHandles.Where(handle => handle == interop.Connections.Single()));
+        Assert.DoesNotContain(interop.Connections.Single(), interop.ClosedHandles);
 
         second.Dispose();
         await WaitUntilAsync(() => interop.ClosedHandles.Contains(interop.Connections.Single()), TimeSpan.FromSeconds(5));
@@ -485,7 +485,7 @@ public sealed class NativeSshConnectionPoolTests
         private readonly ConcurrentQueue<SshInteractionRequest> _refusedElsewhere = new();
 
         public IReadOnlyList<SshInteractionKind> Asked => _asked.ToArray();
-        public IReadOnlyList<SshInteractionRequest> RefusedElsewhere => _refusedElsewhere.ToArray();
+        public List<SshInteractionRequest> RefusedElsewhere => _refusedElsewhere.ToList();
 
         public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
         {
@@ -576,7 +576,7 @@ public sealed class NativeSshConnectionPoolTests
         public int SharedConnectCount => Connections.Count;
 
         // Read by the poll loops while a test opens more; a snapshot keeps both sides safe.
-        public IReadOnlyList<nint> Connections => _connections.ToArray();
+        public List<nint> Connections => _connections.ToList();
         public List<(nint Connection, nint Handle)> OpenedShells { get; } = [];
         public HashSet<nint> DeadConnections { get; } = [];
         public ConcurrentBag<nint> ClosedHandles { get; } = [];
@@ -587,7 +587,7 @@ public sealed class NativeSshConnectionPoolTests
         public int PlainExecCount { get; private set; }
         public List<(nint Connection, nint Handle, string Command)> OpenedExecs { get; } = [];
         public ConcurrentQueue<nint> SharedSftpLog { get; } = new();
-        public IReadOnlyList<nint> SharedSftpCalls => SharedSftpLog.ToArray();
+        public List<nint> SharedSftpCalls => SharedSftpLog.ToList();
 
         public NovaSshSafeHandle Exec(NativeSshConnectionOptions options, string command)
         {

@@ -122,7 +122,7 @@ public sealed class NativeSshDockerAuthE2eTests
         // for the password once — PAM's `Password: ` question, turned into a Password request — and
         // never show the raw challenge. PAM's trailing zero-question round is answered inside Rust.
         SshInteractionRequest passwordRequest = Assert.Single(
-            handler.RequestSnapshot().Where(request => request.Kind == SshInteractionKind.Password));
+            handler.RequestSnapshot(), request => request.Kind == SshInteractionKind.Password);
         Assert.False(passwordRequest.FollowsRefusal);
         Assert.DoesNotContain(handler.RequestSnapshot(), request => request.Kind == SshInteractionKind.KeyboardInteractive);
     }
@@ -205,7 +205,7 @@ public sealed class NativeSshDockerAuthE2eTests
         await WaitUntilAsync(() => SnapshotContains(buffer, "nova$"), PromptTimeout, "shell prompt");
 
         SshInteractionRequest hostKeyRequest = Assert.Single(
-            handler.RequestSnapshot().Where(request => request.Kind == SshInteractionKind.UnknownHostKey));
+            handler.RequestSnapshot(), request => request.Kind == SshInteractionKind.UnknownHostKey);
 
         // Unit tests can pin the trust-store logic but not the derivation: this compares what the
         // backend reported against what ssh-keygen says the server's key is.

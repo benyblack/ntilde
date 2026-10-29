@@ -62,7 +62,7 @@ public sealed class SshInteractionRequestTests
         {
             object? value = property.GetValue(full);
             Assert.False(Equals(value, property.GetValue(blank)), $"Full() leaves {property.Name} at its default");
-            if (value is System.Collections.ICollection collection) Assert.NotEqual(0, collection.Count);
+            if (value is System.Collections.ICollection collection) Assert.NotEmpty(collection);
         }
     }
 }
