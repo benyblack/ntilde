@@ -15,9 +15,9 @@ public sealed class BackgroundWorkTests
             started.SetResult();
             release.Task.GetAwaiter().GetResult();
             return 42;
-        });
+        }, TestContext.Current.CancellationToken);
 
-        await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         Assert.False(task.IsCompleted);
 
         release.SetResult();

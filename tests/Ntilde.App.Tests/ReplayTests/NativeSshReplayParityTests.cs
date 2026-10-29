@@ -45,7 +45,7 @@ public sealed class NativeSshReplayParityTests
             {
                 buffer.Resize(cols, rows);
                 await Task.CompletedTask;
-            });
+            }, ct: TestContext.Current.CancellationToken);
 
         BufferSnapshot snapshot = BufferSnapshot.Capture(buffer);
         AssertScenarioShape(recFileName, snapshot);

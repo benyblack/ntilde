@@ -934,9 +934,12 @@ public sealed class BackupImportTests
             {
                 try
                 {
-                    var current = dirInfo.GetAccessControl();
-                    current.RemoveAccessRule(rule);
-                    dirInfo.SetAccessControl(current);
+                    if (OperatingSystem.IsWindows()) // Made in the Windows branch above; the analyzer does not follow it into the lambda.
+                    {
+                        var current = dirInfo.GetAccessControl();
+                        current.RemoveAccessRule(rule);
+                        dirInfo.SetAccessControl(current);
+                    }
                 }
                 catch
                 {
@@ -952,7 +955,10 @@ public sealed class BackupImportTests
             {
                 try
                 {
-                    File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                    if (!OperatingSystem.IsWindows()) // Made in the non-Windows branch above; the analyzer does not follow it into the lambda.
+                    {
+                        File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                    }
                 }
                 catch
                 {

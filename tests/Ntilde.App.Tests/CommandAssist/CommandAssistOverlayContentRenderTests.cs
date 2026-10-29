@@ -383,7 +383,7 @@ public sealed class CommandAssistOverlayContentRenderTests
         target.Render(view);
 
         using var stream = new MemoryStream();
-        target.Save(stream);
+        target.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
         stream.Position = 0;
 
         return SKBitmap.Decode(stream)

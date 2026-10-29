@@ -171,7 +171,7 @@ public class ThemeServiceTests
         ThemeService.Apply(TestThemes.Nord, 1.0);
         foreach (var (fluentKey, tokenKey) in FluentControlOverrides.Map)
         {
-            Assert.Same(Application.Current!.FindResource(tokenKey), Application.Current.FindResource(fluentKey));
+            Assert.Same(Application.Current!.FindResource(tokenKey), Application.Current!.FindResource(fluentKey));
         }
     }
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ntilde.CommandAssist.Application;
 using Ntilde.CommandAssist.Domain;
 using Ntilde.CommandAssist.Models;
@@ -955,7 +956,7 @@ public sealed class CommandAssistGridTruthTests
 
         public void Seed(params string[] commandTexts)
         {
-            DateTimeOffset at = DateTimeOffset.Parse("2026-03-01T10:00:00+00:00");
+            DateTimeOffset at = DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture);
             foreach (string commandText in commandTexts)
             {
                 _entries.Add(new CommandHistoryEntry(

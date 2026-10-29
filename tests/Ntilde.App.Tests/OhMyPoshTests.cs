@@ -93,7 +93,7 @@ namespace Ntilde.Tests
             // Assert: Right content should be at the far right (col 45)
             // If it stuck, it would be at col ~8 (after existing gap of 2)
 
-            int rightIndex = grownText.IndexOf("Right");
+            int rightIndex = grownText.IndexOf("Right", StringComparison.Ordinal);
             Assert.True(rightIndex > 30, $"Right prompt did not move back! Found at index {rightIndex}, expected > 30");
         }
     }

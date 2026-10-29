@@ -24,7 +24,7 @@ namespace Ntilde.Tests.Core;
 /// long poll names no pane, and a read landing on a pane that carries no agent
 /// segment of its own would otherwise be invisible everywhere.
 /// </summary>
-public class AgentObserveIndicatorTests : IDisposable
+public sealed class AgentObserveIndicatorTests : IDisposable
 {
     /// <summary>
     /// Disposes the panes of every window this class asked for, and with them the real shells
@@ -226,8 +226,8 @@ public class AgentObserveIndicatorTests : IDisposable
             var tabs = window.FindControl<TabControl>("Tabs")!;
             var firstTab = tabs.Items.Cast<TabItem>().First();
             var registration = Assert.Single(
-                AgentSessionRegistry.Instance.GetRegistrations()
-                    .Where(r => r.TabId == window.GetPersistentTabId(firstTab)));
+                AgentSessionRegistry.Instance.GetRegistrations(),
+                r => r.TabId == window.GetPersistentTabId(firstTab));
 
             // Selected tab: the pane's segment is on screen, so it is marked.
             Assert.Equal(tabs.SelectedItem, firstTab);
@@ -789,8 +789,8 @@ public class AgentObserveIndicatorTests : IDisposable
             // Tab B is the window's own one-pane tab; tab A (selected) is a split tab.
             var tabB = tabs.Items.Cast<TabItem>().First();
             var registrationOfB = Assert.Single(
-                AgentSessionRegistry.Instance.GetRegistrations()
-                    .Where(r => r.TabId == window.GetPersistentTabId(tabB)));
+                AgentSessionRegistry.Instance.GetRegistrations(),
+                r => r.TabId == window.GetPersistentTabId(tabB));
             var tabA = AddSplitTab(window, out _, out _);
             tabs.SelectedItem = tabA;
 

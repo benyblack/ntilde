@@ -34,7 +34,7 @@ public sealed class ScrollAndWrapReplayTests
             {
                 parser.Process(Encoding.UTF8.GetString(data));
                 await Task.CompletedTask;
-            });
+            }, ct: TestContext.Current.CancellationToken);
 
             BufferSnapshot snapshot = BufferSnapshot.Capture(buffer);
 

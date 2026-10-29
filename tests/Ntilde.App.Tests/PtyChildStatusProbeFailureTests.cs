@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Ntilde.Pty;
@@ -116,7 +117,7 @@ namespace Ntilde.Tests
             // interop failure is a status we could not learn, not a session failure.
             Assert.True(
                 code == 0,
-                $"expected a reported exit of 0, got {code?.ToString() ?? "no exit"}.\nPTY log:\n{logText}");
+                $"expected a reported exit of 0, got {code?.ToString(CultureInfo.InvariantCulture) ?? "no exit"}.\nPTY log:\n{logText}");
 
             // Logged, because "we asked and the native layer could not be called" is the one
             // piece of information that distinguishes this from an ordinary unknown status.
@@ -143,10 +144,10 @@ namespace Ntilde.Tests
                     throw new ObjectDisposedException(nameof(RustPtySession.PtySafeHandle));
                 }))
             {
-                await Task.Delay(TimeSpan.FromSeconds(1));
+                await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
             }
 
-            await Task.Delay(200);
+            await Task.Delay(200, TestContext.Current.CancellationToken);
 
             Assert.DoesNotContain("Child status probe failed", log.ToString(), StringComparison.Ordinal);
         }

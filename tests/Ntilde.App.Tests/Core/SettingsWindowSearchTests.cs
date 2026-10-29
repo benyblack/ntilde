@@ -668,7 +668,7 @@ public sealed class SettingsWindowSearchTests
 
             var focused = window.FocusManager!.GetFocusedElement() as Control;
             Assert.Same(window.NavItem(SettingsPage.Backup), focused);
-            Assert.False(focused!.Classes.Contains(":focus-visible"));
+            Assert.DoesNotContain(":focus-visible", focused!.Classes);
         }
         finally
         {
@@ -905,7 +905,7 @@ public sealed class SettingsWindowSearchTests
         using var root = SettingsTestRoot.Empty();
         var window = new Ntilde.SettingsWindow();
 
-        Assert.Equal(rowId, window.SearchIndex.Search(query).FirstOrDefault()?.Entry.RowId);
+        Assert.Equal(rowId, window.SearchIndex.Search(query) is [var top, ..] ? top.Entry.RowId : null);
     }
 
     /// <summary>A page whose settings are actions, or lists rather than rows, is found by what it does.</summary>

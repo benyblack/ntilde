@@ -8,6 +8,8 @@ namespace Ntilde.Tests.CommandAssist.ShellIntegration.Integration;
 /// prompt-ready cannot be scheduled in time, causing cascading hangs.
 /// </summary>
 [CollectionDefinition(nameof(ShellIntegrationCollection), DisableParallelization = true)]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix",
+    Justification = "An xUnit collection definition, named for the collection it defines.")]
 public sealed class ShellIntegrationCollection
 {
 }

@@ -967,7 +967,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
 
         Assert.False(host.IsReconnecting);
         Assert.Equal(0, _clock.PendingCount);
-        while (started.Wait(0)) { }   // the attempts so far
+        while (started.Wait(0, TestContext.Current.CancellationToken)) { }   // the attempts so far
         _clock.Advance(MuxReconnectLoop.Budget);
         Assert.Equal(0, _clock.PendingCount);   // nothing armed after the give-up
         Assert.False(await started.WaitAsync(TimeSpan.FromMilliseconds(200), CancellationToken.None), "no attempt started after the give-up");
@@ -1215,7 +1215,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (failure.Kind, failure.Cause));
         Assert.Equal(1, Volatile.Read(ref automaticAttempts));
-        Assert.True(started.Wait(0));   // that one attempt
+        Assert.True(started.Wait(0, TestContext.Current.CancellationToken));   // that one attempt
         _clock.Advance(MuxReconnectLoop.Budget);
         Assert.Equal(0, _clock.PendingCount);   // nothing armed after the give-up
         Assert.False(await started.WaitAsync(TimeSpan.FromMilliseconds(200), CancellationToken.None), "no attempt started after the give-up");
@@ -1489,7 +1489,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         var waited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _remote.OnStart = ct =>
         {
-            disposed.Wait(Patient);   // ssh slow to get going: the host's Dispose returns first
+            disposed.Wait(Patient, CancellationToken.None);   // ssh slow to get going: the host's Dispose returns first
             try
             {
                 ct.WaitHandle.WaitOne();
@@ -1688,7 +1688,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         MuxConnectionHost host = Create((_, request) =>
         {
             if (!request.Interactive) return new PasswordPromptTransport(request.Prompts, abortedChannelEnding, abortedChannelEnds);
-            _remote.OnStart = _ => userAnswered.Wait();   // the user, at a prompt
+            _remote.OnStart = _ => userAnswered.Wait(CancellationToken.None);   // the user, at a prompt
             return _remote;
         });
         var events = new HostEvents(host);

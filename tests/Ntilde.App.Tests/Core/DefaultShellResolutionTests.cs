@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Ntilde.Pty;
 using Xunit;
 
@@ -244,6 +245,7 @@ public sealed class DefaultShellResolutionTests
     // apply to this process (owner-only exec on a file we do not own) still ends in EACCES.
     // The seam tests pin the tiers without needing a mis-permissioned file.
     [Fact]
+    [UnsupportedOSPlatform("windows")]
     public void IsLaunchableShell_ProbeDenies_IsRejected()
     {
         if (OperatingSystem.IsWindows())

@@ -19,6 +19,8 @@ namespace Ntilde.Tests
     /// from each other, which is the only way they can be meaningful.
     /// </summary>
     [CollectionDefinition(Name)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix",
+        Justification = "An xUnit collection definition, named for the collection it defines.")]
     public sealed class PtyRealShellCollection
     {
         public const string Name = "PTY real shell";

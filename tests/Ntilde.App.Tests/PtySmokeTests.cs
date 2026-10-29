@@ -22,10 +22,10 @@ namespace Ntilde.Tests
             using var session = new RustPtySession(shell, 80, 24);
 
             // Basic lifecycle and native interop sanity checks.
-            await Task.Delay(250);
+            await Task.Delay(250, TestContext.Current.CancellationToken);
             session.Resize(100, 30);
             session.SendInput("\r");
-            await Task.Delay(150);
+            await Task.Delay(150, TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -41,7 +41,7 @@ namespace Ntilde.Tests
             using var session = new RustPtySession(shell, 80, 24);
 
             // Let the shell start and emit its prompt/banner *before* subscribing.
-            await Task.Delay(1500);
+            await Task.Delay(1500, TestContext.Current.CancellationToken);
 
             var sb = new StringBuilder();
             session.OnOutputReceived += t =>
@@ -57,7 +57,7 @@ namespace Ntilde.Tests
             {
                 lock (sb) { len = sb.Length; }
                 if (len > 0) break;
-                await Task.Delay(100);
+                await Task.Delay(100, TestContext.Current.CancellationToken);
             }
 
             Assert.True(len > 0, "late subscriber received no startup output — early output was dropped");
@@ -87,13 +87,13 @@ namespace Ntilde.Tests
                     Guid.NewGuid(), new TerminalBuffer(80, 24), "t", "P", "local", isActive: true);
                 registration.SetLifecycle(session);
 
-                await Task.Delay(300); // let the shell come up
+                await Task.Delay(300, TestContext.Current.CancellationToken); // let the shell come up
                 session.StartRecording(recPath);
 
                 const string payload = "echo ntilde-a3-marker\r";
                 Assert.True(registration.TrySendInput(payload));
 
-                await Task.Delay(400);
+                await Task.Delay(400, TestContext.Current.CancellationToken);
                 session.StopRecording();
 
                 string[] lines = File.ReadAllLines(recPath);
@@ -140,7 +140,7 @@ namespace Ntilde.Tests
                 bool exported = false;
                 for (int i = 0; i < 120; i++)
                 {
-                    await Task.Delay(250);
+                    await Task.Delay(250, TestContext.Current.CancellationToken);
                     exported = session.TryExportFlightRecording(tempFile, out info);
                     Assert.True(exported);
                     if (info.EventCount > 0) break;
@@ -205,9 +205,9 @@ namespace Ntilde.Tests
             Assert.Contains(' ', shell);
 
             using var session = new RustPtySession(shell, 80, 24);
-            await Task.Delay(250);
+            await Task.Delay(250, TestContext.Current.CancellationToken);
             session.SendInput("\r");
-            await Task.Delay(150);
+            await Task.Delay(150, TestContext.Current.CancellationToken);
         }
     }
 }

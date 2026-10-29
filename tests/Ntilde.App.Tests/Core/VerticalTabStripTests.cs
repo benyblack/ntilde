@@ -566,7 +566,7 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
         Assert.NotNull(method);
         // Reflection Invoke fills no optional parameters - the anchor override must be
         // passed explicitly (null = title-bar anchor chain, the pre-pill behavior).
-        method!.Invoke(window, new object[] { false, null });
+        method!.Invoke(window, new object?[] { false, null });
     }
 
     // Regression coverage for the perf fix: recomputing the preview line on every batched
@@ -684,6 +684,8 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
     /// <summary>Raises left-button press/move/release routed events through one real
     /// pointer, mirroring how the platform input manager would deliver them (window-space
     /// rootVisualPosition; the event args translate on demand via GetPosition).</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+        Justification = "One pointer for one test, dropped with the test's window.")]
     private sealed class PointerDriver
     {
         private readonly Avalonia.Input.Pointer _pointer = new(Avalonia.Input.Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);

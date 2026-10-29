@@ -338,7 +338,7 @@ public sealed class CommandAssistPassiveBubbleTests
         grid.SetLine("git ");
         controller.NotifyInputActivity();
         delay.ReleaseAll();
-        await Task.Delay(50);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
 
         Assert.False(controller.ViewModel.IsVisible);
         Assert.Empty(controller.Suggestions);
@@ -512,7 +512,7 @@ public sealed class CommandAssistPassiveBubbleTests
         grid.SetLine("git");
         controller.NotifyInputActivity();
         delay.ReleaseAll();
-        await Task.Delay(50);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
 
         Assert.False(controller.ViewModel.IsVisible);
         Assert.Empty(controller.Suggestions);
@@ -813,7 +813,7 @@ public sealed class CommandAssistPassiveBubbleTests
         grid.SetLine("git");
         controller.NotifyInputActivity();
         delay.ReleaseAll();
-        await Task.Delay(50);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
 
         Assert.False(controller.ViewModel.IsVisible);
     }
@@ -967,7 +967,7 @@ public sealed class CommandAssistPassiveBubbleTests
         // There is nothing to wait on when the guard holds - no pass, so no HasPassInFlight to watch
         // fall - which means a broken one has to be given time to get somewhere before this can say
         // it did not.
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         Assert.False(controller.HasSuggestionPassInFlight);
         Assert.Equal(passesBeforeDisposal, delay.RequestCount);

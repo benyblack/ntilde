@@ -84,7 +84,7 @@ namespace Ntilde.Tests.Regressions
             {
                 parser.Process(System.Text.Encoding.UTF8.GetString(data));
                 await Task.CompletedTask;
-            });
+            }, ct: TestContext.Current.CancellationToken);
 
             Assert.Contains("Midnight Commander", BufferSnapshot.Capture(buffer).Lines[11]);
 
@@ -98,7 +98,7 @@ namespace Ntilde.Tests.Regressions
             {
                 parser.Process(System.Text.Encoding.UTF8.GetString(data));
                 await Task.CompletedTask;
-            });
+            }, ct: TestContext.Current.CancellationToken);
 
             // 7. Verify New State
             var snapshot = BufferSnapshot.Capture(buffer);
@@ -126,7 +126,7 @@ namespace Ntilde.Tests.Regressions
             {
                 parser.Process(System.Text.Encoding.UTF8.GetString(data));
                 await Task.CompletedTask;
-            });
+            }, ct: TestContext.Current.CancellationToken);
 
             var snapshot = BufferSnapshot.Capture(buffer);
 
@@ -156,7 +156,7 @@ namespace Ntilde.Tests.Regressions
             {
                 parser.Process(System.Text.Encoding.UTF8.GetString(data));
                 await Task.CompletedTask;
-            });
+            }, ct: TestContext.Current.CancellationToken);
 
             var snapshot = BufferSnapshot.Capture(buffer);
 
@@ -369,7 +369,7 @@ namespace Ntilde.Tests.Regressions
             // Note: The snapshot string might contain the wide char.
             Assert.Contains("\uff5c", newSnapshot.Lines[0]);
             if (newSnapshot.Lines[0].Length > 10)
-                throw new Exception($"MERGED! Length: {newSnapshot.Lines[0].Length}");
+                throw new InvalidOperationException($"MERGED! Length: {newSnapshot.Lines[0].Length}");
         }
 
         [Fact]

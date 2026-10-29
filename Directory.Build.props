@@ -65,7 +65,10 @@
     <!-- Tests are allowed extra leeway: xUnit1031 (async-over-sync in fixtures)
          is intentional, CA1707 (underscores in member names) matches our test
          naming convention, CA2007 (ConfigureAwait) is irrelevant in test
-         contexts. -->
-    <NoWarn>$(NoWarn);xUnit1031;CA1707;CA2007</NoWarn>
+         contexts. CA1822, CA1859 and CA1861 (static members, concrete types,
+         constant array arguments) are performance rules: they pay off in
+         shipped code, and in tests they would only move expected values away
+         from the assertions that read them (#108). -->
+    <NoWarn>$(NoWarn);xUnit1031;CA1707;CA2007;CA1822;CA1859;CA1861</NoWarn>
   </PropertyGroup>
 </Project>

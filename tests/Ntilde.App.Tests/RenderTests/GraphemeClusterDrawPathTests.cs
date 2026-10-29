@@ -86,7 +86,7 @@ namespace Ntilde.Tests.RenderTests
             int actual = AtlasEntriesFor(sequence, enableComplexShaping: false);
 
             Assert.Equal(2, baseline); // 'A' and the space beside it - sanity on the measurement itself.
-            Assert.Equal(baseline, actual);
+            Assert.True(baseline == actual, $"{description}: {actual} atlas entries, expected {baseline}");
         }
 
         [AvaloniaFact]

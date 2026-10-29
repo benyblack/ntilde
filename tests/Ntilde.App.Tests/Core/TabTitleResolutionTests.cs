@@ -86,7 +86,7 @@ public sealed class TabTitleResolutionTests
 
         var vertical = ResolveLabels(tab, maxLength: 44, includeMarkers: false)[tab[0]];
         // Plain TruncateTabLabel shape: 43 chars + ellipsis, no marker room reserved.
-        Assert.Equal(longTitle.Substring(0, 43) + "…", vertical);
+        Assert.Equal(string.Concat(longTitle.AsSpan(0, 43), "\u2026"), vertical);
         Assert.DoesNotContain("🔔", vertical);
 
         var horizontal = ResolveLabels(tab, maxLength: 44, includeMarkers: true)[tab[0]];

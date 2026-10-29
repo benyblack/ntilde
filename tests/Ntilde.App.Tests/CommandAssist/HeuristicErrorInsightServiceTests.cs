@@ -159,7 +159,7 @@ public sealed class HeuristicErrorInsightServiceTests
         };
 
         var service = new HeuristicErrorInsightService(table);
-        IReadOnlyList<CommandFixSuggestion> result = await service.AnalyzeAsync(Context("gti status", 1, "bash", "x"));
+        IReadOnlyList<CommandFixSuggestion> result = await service.AnalyzeAsync(Context("gti status", 1, "bash", "x"), TestContext.Current.CancellationToken);
 
         CommandFixSuggestion suggestion = Assert.Single(result);
         Assert.Equal(0.9, suggestion.Confidence);

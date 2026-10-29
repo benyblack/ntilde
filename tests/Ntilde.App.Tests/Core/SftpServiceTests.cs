@@ -100,7 +100,7 @@ public sealed class SftpServiceTests
             allProfiles: null,
             interop: interop,
             passwordResolver: static _ => "vault-pass",
-            knownHostsFilePath: @"C:\ssh\native_known_hosts.json");
+            knownHostsFilePath: @"C:\ssh\native_known_hosts.json", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(interop.ConnectionOptions);
         Assert.NotNull(interop.TransferOptions);
@@ -149,7 +149,7 @@ public sealed class SftpServiceTests
             allProfiles: null,
             interop: interop,
             passwordResolver: static _ => "stale-vault-password",
-            knownHostsFilePath: @"C:\ssh\native_known_hosts.json");
+            knownHostsFilePath: @"C:\ssh\native_known_hosts.json", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(interop.ConnectionOptions);
         Assert.Equal(@"C:\keys\id_ed25519", interop.ConnectionOptions!.IdentityFilePath);
@@ -204,7 +204,7 @@ public sealed class SftpServiceTests
             interop: interop,
             passwordResolver: static _ => "target-vault-secret",
             sessionRegistry: registry,
-            knownHostsFilePath: @"C:\ssh\native_known_hosts.json");
+            knownHostsFilePath: @"C:\ssh\native_known_hosts.json", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(interop.ConnectionOptions);
         Assert.Equal("target-vault-secret", interop.ConnectionOptions!.Password);
@@ -249,7 +249,7 @@ public sealed class SftpServiceTests
             interop: interop,
             passwordResolver: static _ => "stale-vault-secret",
             sessionRegistry: registry,
-            knownHostsFilePath: @"C:\ssh\native_known_hosts.json");
+            knownHostsFilePath: @"C:\ssh\native_known_hosts.json", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("typed-target-secret", interop.ConnectionOptions!.Password);
         Assert.Empty(interop.ConnectionOptions.JumpHopPasswords);
@@ -299,7 +299,7 @@ public sealed class SftpServiceTests
             interop: interop,
             passwordResolver: static _ => "stale-vault-secret",
             sessionRegistry: registry,
-            knownHostsFilePath: @"C:\ssh\native_known_hosts.json");
+            knownHostsFilePath: @"C:\ssh\native_known_hosts.json", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("typed-for-the-host", interop.ConnectionOptions!.Password);
     }
@@ -1040,7 +1040,7 @@ public sealed class SftpServiceTests
             new SshConnectionService(new InMemorySshProfileStore()),
             interop: interop,
             passwordResolver: static _ => "vault",
-            sessionRegistry: registry));
+            sessionRegistry: registry, cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Equal("old", interop.OfferedPassword);
         bool held = registry.TryGetRuntimePassword(scope, "prod.internal", 2200, "ops", out string? kept);

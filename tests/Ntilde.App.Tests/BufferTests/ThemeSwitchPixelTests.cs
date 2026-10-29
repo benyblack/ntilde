@@ -75,7 +75,7 @@ namespace Ntilde.Tests.BufferTests
             target.Render(rendered);
 
             using var stream = new MemoryStream();
-            target.Save(stream);
+            target.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
             stream.Position = 0;
             using SKBitmap bitmap = SKBitmap.Decode(stream)
                 ?? throw new InvalidOperationException("headless raster decode failed");

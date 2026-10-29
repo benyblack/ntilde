@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq;
 using Ntilde.CommandAssist.Domain;
 using Ntilde.CommandAssist.Models;
@@ -70,7 +71,7 @@ public sealed class CommandAssistSuggestionEngineTests
     [Fact]
     public void GetSuggestions_WithAnEmptyQuery_RanksTheMostRecentCommandAboveTheMostFrequentOne()
     {
-        DateTimeOffset now = DateTimeOffset.Parse("2026-08-06T12:00:00+00:00");
+        DateTimeOffset now = DateTimeOffset.Parse("2026-08-06T12:00:00+00:00", CultureInfo.InvariantCulture);
         var engine = new CommandAssistSuggestionEngine(clock: () => now);
         var context = new CommandAssistQueryContext(
             Input: string.Empty,
@@ -104,7 +105,7 @@ public sealed class CommandAssistSuggestionEngineTests
     [Fact]
     public void GetSuggestions_WithAnEmptyQuery_UsesFrequencyOnlyToBreakARecencyTie()
     {
-        DateTimeOffset now = DateTimeOffset.Parse("2026-08-06T12:00:00+00:00");
+        DateTimeOffset now = DateTimeOffset.Parse("2026-08-06T12:00:00+00:00", CultureInfo.InvariantCulture);
         DateTimeOffset sameMoment = now.AddMinutes(-5);
         var engine = new CommandAssistSuggestionEngine(clock: () => now);
         var context = new CommandAssistQueryContext(
@@ -139,7 +140,7 @@ public sealed class CommandAssistSuggestionEngineTests
     [Fact]
     public void GetSuggestions_WithAnEmptyQuery_TreatsSameDirectoryAsARecencyBonusNotABand()
     {
-        DateTimeOffset now = DateTimeOffset.Parse("2026-08-06T12:00:00+00:00");
+        DateTimeOffset now = DateTimeOffset.Parse("2026-08-06T12:00:00+00:00", CultureInfo.InvariantCulture);
         var engine = new CommandAssistSuggestionEngine(clock: () => now);
         var context = new CommandAssistQueryContext(
             Input: string.Empty,
@@ -174,7 +175,7 @@ public sealed class CommandAssistSuggestionEngineTests
     [Fact]
     public void GetSuggestions_BadgesTheRowWithWhatPutItThere()
     {
-        DateTimeOffset now = DateTimeOffset.Parse("2026-08-06T12:00:00+00:00");
+        DateTimeOffset now = DateTimeOffset.Parse("2026-08-06T12:00:00+00:00", CultureInfo.InvariantCulture);
         var engine = new CommandAssistSuggestionEngine(clock: () => now);
         var context = new CommandAssistQueryContext(
             Input: string.Empty,
@@ -294,7 +295,7 @@ public sealed class CommandAssistSuggestionEngineTests
 
         var history = new[]
         {
-            CreateEntry("git status", executedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00"))
+            CreateEntry("git status", executedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture))
         };
 
         var snippets = new[]
@@ -321,8 +322,8 @@ public sealed class CommandAssistSuggestionEngineTests
 
         var history = new[]
         {
-            CreateEntry("dotnet test", executedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00"), exitCode: 1),
-            CreateEntry("dotnet tool list", executedAt: DateTimeOffset.Parse("2026-03-01T09:59:00+00:00"), exitCode: 0)
+            CreateEntry("dotnet test", executedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture), exitCode: 1),
+            CreateEntry("dotnet tool list", executedAt: DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture), exitCode: 0)
         };
 
         IReadOnlyList<AssistSuggestion> results = engine.GetSuggestions(history, Array.Empty<CommandSnippet>(), context, maxResults: 5);
@@ -343,8 +344,8 @@ public sealed class CommandAssistSuggestionEngineTests
 
         var history = new[]
         {
-            CreateEntry("cargo test", profileId: "profile-b", executedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("cargo tree", profileId: "profile-a", executedAt: DateTimeOffset.Parse("2026-03-01T09:59:00+00:00"))
+            CreateEntry("cargo test", profileId: "profile-b", executedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("cargo tree", profileId: "profile-a", executedAt: DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture))
         };
 
         IReadOnlyList<AssistSuggestion> results = engine.GetSuggestions(history, Array.Empty<CommandSnippet>(), context, maxResults: 5);
@@ -438,7 +439,7 @@ public sealed class CommandAssistSuggestionEngineTests
             ProfileId: "profile-1");
 
         var history = Enumerable.Range(0, 20)
-            .Select(i => CreateEntry("cd C:\\repo", executedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00").AddMinutes(i)))
+            .Select(i => CreateEntry("cd C:\\repo", executedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture).AddMinutes(i)))
             .ToArray();
 
         IReadOnlyList<AssistSuggestion> results = engine.GetSuggestions(
@@ -557,9 +558,9 @@ public sealed class CommandAssistSuggestionEngineTests
         // The local entry is the most recent, so pure recency (the pre-Phase-3a rule) puts it first.
         var history = new[]
         {
-            CreateEntry("dotnet build", executedAt: DateTimeOffset.Parse("2026-03-01T12:00:00+00:00")),
-            CreateRemoteEntry("systemctl status ntilde", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T11:00:00+00:00")),
-            CreateRemoteEntry("journalctl -u ntilde", "other.example", DateTimeOffset.Parse("2026-03-01T11:30:00+00:00"))
+            CreateEntry("dotnet build", executedAt: DateTimeOffset.Parse("2026-03-01T12:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateRemoteEntry("systemctl status ntilde", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T11:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateRemoteEntry("journalctl -u ntilde", "other.example", DateTimeOffset.Parse("2026-03-01T11:30:00+00:00", CultureInfo.InvariantCulture))
         };
 
         IReadOnlyList<AssistSuggestion> results = engine.GetSuggestions(history, context, maxResults: 10);
@@ -585,8 +586,8 @@ public sealed class CommandAssistSuggestionEngineTests
 
         var history = new[]
         {
-            CreateRemoteEntry("apt install ripgrep", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T12:00:00+00:00")),
-            CreateEntry("dotnet build", executedAt: DateTimeOffset.Parse("2026-03-01T11:00:00+00:00"))
+            CreateRemoteEntry("apt install ripgrep", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T12:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("dotnet build", executedAt: DateTimeOffset.Parse("2026-03-01T11:00:00+00:00", CultureInfo.InvariantCulture))
         };
 
         IReadOnlyList<AssistSuggestion> results = engine.GetSuggestions(history, context, maxResults: 10);
@@ -614,8 +615,8 @@ public sealed class CommandAssistSuggestionEngineTests
 
         var history = new[]
         {
-            CreateRemoteEntry("uptime", "other.example", DateTimeOffset.Parse("2026-03-01T12:00:00+00:00")),
-            CreateRemoteEntry("df -h", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T09:00:00+00:00"))
+            CreateRemoteEntry("uptime", "other.example", DateTimeOffset.Parse("2026-03-01T12:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateRemoteEntry("df -h", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T09:00:00+00:00", CultureInfo.InvariantCulture))
         };
 
         IReadOnlyList<AssistSuggestion> results = engine.GetSuggestions(history, context, maxResults: 10);
@@ -644,8 +645,8 @@ public sealed class CommandAssistSuggestionEngineTests
 
         var history = new[]
         {
-            CreateEntry("dotnet build", executedAt: DateTimeOffset.Parse("2026-03-01T12:00:00+00:00")),
-            CreateRemoteEntry("df -h", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T11:00:00+00:00"))
+            CreateEntry("dotnet build", executedAt: DateTimeOffset.Parse("2026-03-01T12:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateRemoteEntry("df -h", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T11:00:00+00:00", CultureInfo.InvariantCulture))
         };
 
         IReadOnlyList<AssistSuggestion> results = engine.GetSuggestions(history, context, maxResults: 10);
@@ -671,8 +672,8 @@ public sealed class CommandAssistSuggestionEngineTests
 
         var history = new[]
         {
-            CreateRemoteEntry("systemctl start ntilde", "other.example", DateTimeOffset.Parse("2026-03-01T12:00:00+00:00")),
-            CreateRemoteEntry("systemctl status ntilde", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T09:00:00+00:00"))
+            CreateRemoteEntry("systemctl start ntilde", "other.example", DateTimeOffset.Parse("2026-03-01T12:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateRemoteEntry("systemctl status ntilde", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T09:00:00+00:00", CultureInfo.InvariantCulture))
         };
 
         IReadOnlyList<AssistSuggestion> results = engine.GetSuggestions(history, context, maxResults: 10);
@@ -700,10 +701,10 @@ public sealed class CommandAssistSuggestionEngineTests
         var history = new[]
         {
             // Prefix match (120) locally...
-            CreateEntry("git status", executedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00")),
+            CreateEntry("git status", executedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00", CultureInfo.InvariantCulture)),
 
             // ...against a mere subsequence match (12) plus the host boost (30) on this host.
-            CreateRemoteEntry("grep -r it standalone", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T12:00:00+00:00"))
+            CreateRemoteEntry("grep -r it standalone", "ubuntu.example", DateTimeOffset.Parse("2026-03-01T12:00:00+00:00", CultureInfo.InvariantCulture))
         };
 
         IReadOnlyList<AssistSuggestion> results = engine.GetSuggestions(history, context, maxResults: 10);
@@ -728,7 +729,7 @@ public sealed class CommandAssistSuggestionEngineTests
 
         var history = new[]
         {
-            CreateEntry("dotnet build", executedAt: DateTimeOffset.Parse("2026-03-01T12:00:00+00:00"))
+            CreateEntry("dotnet build", executedAt: DateTimeOffset.Parse("2026-03-01T12:00:00+00:00", CultureInfo.InvariantCulture))
         };
 
         var snippets = new[]
@@ -774,9 +775,9 @@ public sealed class CommandAssistSuggestionEngineTests
         List<CommandHistoryEntry> history = Enumerable.Range(0, 50)
             .Select(i => CreateEntry(
                 $"dotnet build --project p{i}",
-                executedAt: DateTimeOffset.Parse("2026-03-01T12:00:00+00:00").AddMinutes(i)))
+                executedAt: DateTimeOffset.Parse("2026-03-01T12:00:00+00:00", CultureInfo.InvariantCulture).AddMinutes(i)))
             .ToList();
-        history.Add(CreateRemoteEntry("apt update", "other.example", DateTimeOffset.Parse("2026-03-01T13:00:00+00:00")));
+        history.Add(CreateRemoteEntry("apt update", "other.example", DateTimeOffset.Parse("2026-03-01T13:00:00+00:00", CultureInfo.InvariantCulture)));
 
         var snippets = new[]
         {
@@ -842,7 +843,7 @@ public sealed class CommandAssistSuggestionEngineTests
         return new CommandHistoryEntry(
             Id: Guid.NewGuid().ToString("N"),
             CommandText: commandText,
-            ExecutedAt: executedAt ?? DateTimeOffset.Parse("2026-03-01T10:00:00+00:00"),
+            ExecutedAt: executedAt ?? DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture),
             ShellKind: "pwsh",
             WorkingDirectory: workingDirectory,
             ProfileId: profileId,
@@ -866,8 +867,8 @@ public sealed class CommandAssistSuggestionEngineTests
             ShellKind: "pwsh",
             WorkingDirectory: @"C:\repo",
             IsPinned: isPinned,
-            CreatedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00"),
-            LastUsedAt: DateTimeOffset.Parse("2026-03-01T09:30:00+00:00"));
+            CreatedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00", CultureInfo.InvariantCulture),
+            LastUsedAt: DateTimeOffset.Parse("2026-03-01T09:30:00+00:00", CultureInfo.InvariantCulture));
     }
 
     private sealed class FakePathSuggestionProvider : IPathSuggestionProvider

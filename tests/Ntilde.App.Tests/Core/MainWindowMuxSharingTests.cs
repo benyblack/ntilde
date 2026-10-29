@@ -267,7 +267,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         MainWindow window = CreateWindow();
         TerminalPane own = AllPanes(window).Single();
         Guid id = Task.Run(async () => await MuxTestHost.SpawnAsync(await _mux.ConnectClientAsync())).GetAwaiter().GetResult();
-        int sessionsBefore = _mux.Server.GetSessionIds().Count();
+        int sessionsBefore = _mux.Server.GetSessionIds().Count;
         window.PickMuxSession = items =>
         {
             MuxSessionPickerRow? row = MuxPickerChoice.Find(items, id);
@@ -286,7 +286,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         Assert.Equal(TerminalPane.MuxShareEndedNoticeTitle, Toast(window).Title);
         PumpUntil(() => AllPanes(window).Count == 1, "the ended share's tab closed");
         Assert.Same(own, AllPanes(window).Single());
-        Assert.Equal(sessionsBefore - 1, _mux.Server.GetSessionIds().Count()); // no fresh shell was spawned for it
+        Assert.Equal(sessionsBefore - 1, _mux.Server.GetSessionIds().Count); // no fresh shell was spawned for it
     }
 
     private static (Window Dialog, ListBox List, Button Attach, Button Cancel) PickerDialog(MainWindow window)
@@ -321,7 +321,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
             [new MuxPickerHostListing(MuxEndpointId.Local, "this computer", listed, null)],
             new HashSet<(MuxEndpointId, Guid)> { (MuxEndpointId.Local, own) });
         Assert.Equal(2, expected.Count);
-        Assert.Equal(expected.Select(r => r.Display).ToList(), Lines(list));
+        Assert.Equal(expected.Select(r => (string?)r.Display).ToList(), Lines(list));
 
         list.SelectedIndex = expected.ToList().FindIndex(r => r is MuxSessionPickerRow row && row.SessionId == id);
         attach.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
@@ -826,7 +826,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         ListBox list = Assert.Single(descendants.OfType<ListBox>());
         Button attach = descendants.OfType<Button>().Single(b => b.Content as string == "Attach");
 
-        Assert.Equal(rows.Select(r => r.Display).ToList(), Lines(list));
+        Assert.Equal(rows.Select(r => (string?)r.Display).ToList(), Lines(list));
         Assert.Equal([false, true, true], list.ItemsSource!.Cast<ListBoxItem>().Select(i => i.IsEnabled).ToArray());
         Assert.Equal(1, list.SelectedIndex);
 

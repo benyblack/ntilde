@@ -49,7 +49,7 @@ namespace Ntilde.Tests.Core
             Assert.False(invalidated);
 
             // 3. Wait for timeout > 200ms
-            await Task.Delay(250);
+            await Task.Delay(250, TestContext.Current.CancellationToken);
 
             // 4. Trigger Invalidate again (simulating next frame/parser cycle)
             // The logic checks timeout INSIDE Invalidate()
@@ -71,7 +71,7 @@ namespace Ntilde.Tests.Core
             buffer.Invalidate();
             Assert.False(invalidated);
 
-            await Task.Delay(250);
+            await Task.Delay(250, TestContext.Current.CancellationToken);
             buffer.FlushSynchronizedOutputTimeout();
 
             Assert.True(invalidated, "Timeout flush should invalidate even without subsequent writes");

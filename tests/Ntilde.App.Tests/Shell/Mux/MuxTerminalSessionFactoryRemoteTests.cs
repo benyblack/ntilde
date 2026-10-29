@@ -468,7 +468,7 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
         _remote.OnStart = _ =>
         {
             started.TrySetResult();
-            hold.Wait(Patient);
+            hold.Wait(Patient, CancellationToken.None);
             _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
         };
         TerminalSessionRequest request = Ssh();

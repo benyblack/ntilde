@@ -4,6 +4,7 @@ using Ntilde.CommandAssist.Models;
 using Ntilde.CommandAssist.Providers;
 using Ntilde.CommandAssist.ShellIntegration.Contracts;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace Ntilde.Tests.CommandAssist;
 
@@ -66,7 +67,7 @@ public sealed class CommandAssistControllerTests
             Badges: ["Worked"],
             Score: 10,
             WorkingDirectory: @"C:\repo",
-            LastUsedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00"),
+            LastUsedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture),
             ExitCode: 0);
 
         IReadOnlyList<AssistSuggestion> results = builder.BuildCombined([existing], Array.Empty<CommandHelpItem>(), Array.Empty<CommandHelpItem>(), Array.Empty<CommandFixSuggestion>());
@@ -342,8 +343,8 @@ public sealed class CommandAssistControllerTests
     {
         var store = new InMemoryHistoryStore();
         store.Seed(
-            CreateEntry("gti log --oneline", DateTimeOffset.Parse("2026-02-01T10:00:00+00:00")),
-            CreateEntry("git status", DateTimeOffset.Parse("2026-02-01T10:01:00+00:00")));
+            CreateEntry("gti log --oneline", DateTimeOffset.Parse("2026-02-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git status", DateTimeOffset.Parse("2026-02-01T10:01:00+00:00", CultureInfo.InvariantCulture)));
 
         var controller = CreateController(
             historyStore: store,
@@ -379,7 +380,7 @@ public sealed class CommandAssistControllerTests
     public async Task HandleCommandFailureAsync_WhenTheUnresolvedNameIsNotTheCommand_DoesNotSweepByFirstToken()
     {
         var store = new InMemoryHistoryStore();
-        store.Seed(CreateEntry("npm run test", DateTimeOffset.Parse("2026-02-01T10:00:00+00:00")));
+        store.Seed(CreateEntry("npm run test", DateTimeOffset.Parse("2026-02-01T10:00:00+00:00", CultureInfo.InvariantCulture)));
 
         var controller = CreateController(
             historyStore: store,
@@ -593,8 +594,8 @@ public sealed class CommandAssistControllerTests
             ShellKind: "pwsh",
             WorkingDirectory: @"C:\repo",
             IsPinned: true,
-            CreatedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00"),
-            LastUsedAt: DateTimeOffset.Parse("2026-03-01T09:30:00+00:00")));
+            CreatedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00", CultureInfo.InvariantCulture),
+            LastUsedAt: DateTimeOffset.Parse("2026-03-01T09:30:00+00:00", CultureInfo.InvariantCulture)));
 
         var grid = new FakeGrid();
         var controller = CreateController(
@@ -794,7 +795,7 @@ public sealed class CommandAssistControllerTests
     public async Task HandleEnterAsync_AfterHistorySearch_LeavesTheSessionInPassiveSuggestScope()
     {
         var historyStore = new InMemoryHistoryStore();
-        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")));
+        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)));
         var snippetStore = new InMemorySnippetStore();
         snippetStore.Seed(new CommandSnippet(
             Id: "snippet-1",
@@ -804,8 +805,8 @@ public sealed class CommandAssistControllerTests
             ShellKind: "pwsh",
             WorkingDirectory: @"C:\repo",
             IsPinned: true,
-            CreatedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00"),
-            LastUsedAt: DateTimeOffset.Parse("2026-03-01T09:30:00+00:00")));
+            CreatedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00", CultureInfo.InvariantCulture),
+            LastUsedAt: DateTimeOffset.Parse("2026-03-01T09:30:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(
             historyStore,
@@ -919,8 +920,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)));
 
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
@@ -951,8 +952,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)));
         var controller = CreateController(historyStore);
 
         controller.OpenHistorySearch();
@@ -974,7 +975,7 @@ public sealed class CommandAssistControllerTests
     public async Task WhileTypingWithOnlyABubbleUp_EnterIsNotArmed()
     {
         var historyStore = new InMemoryHistoryStore();
-        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")));
+        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
         controller.ToggleAssist();
@@ -1013,8 +1014,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
 
@@ -1055,9 +1056,9 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")),
-            CreateEntry("npm run build", DateTimeOffset.Parse("2026-03-01T09:58:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("npm run build", DateTimeOffset.Parse("2026-03-01T09:58:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
 
@@ -1086,8 +1087,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
 
@@ -1117,8 +1118,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("npm run build", DateTimeOffset.Parse("2026-03-01T09:58:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("npm run build", DateTimeOffset.Parse("2026-03-01T09:58:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
 
@@ -1151,9 +1152,9 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")),
-            CreateEntry("npm run build", DateTimeOffset.Parse("2026-03-01T09:57:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("npm run build", DateTimeOffset.Parse("2026-03-01T09:57:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
 
@@ -1181,8 +1182,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("npm run build", DateTimeOffset.Parse("2026-03-01T09:58:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("npm run build", DateTimeOffset.Parse("2026-03-01T09:58:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
 
@@ -1208,7 +1209,7 @@ public sealed class CommandAssistControllerTests
     public async Task TypingInHistorySearch_WithNoMatches_KeepsThePopupOpenAndSaysSo()
     {
         var historyStore = new InMemoryHistoryStore();
-        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")));
+        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
 
@@ -1238,8 +1239,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("npm run build", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")));
+            CreateEntry("npm run build", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
 
@@ -1261,7 +1262,7 @@ public sealed class CommandAssistControllerTests
     public async Task Escape_DisarmsEnter()
     {
         var historyStore = new InMemoryHistoryStore();
-        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")));
+        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)));
         var controller = CreateController(historyStore);
 
         controller.OpenHistorySearch();
@@ -1283,8 +1284,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
         controller.ToggleAssist();
@@ -1329,8 +1330,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)));
         bool isOverlayRendered = true;
         var controller = CreateController(historyStore, renderedSurfaceProbe: () => isOverlayRendered);
 
@@ -1450,8 +1451,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)));
         var controller = CreateController(historyStore);
 
         controller.OpenHistorySearch();
@@ -1479,8 +1480,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)));
         var controller = CreateController(historyStore);
 
         controller.OpenHistorySearch();
@@ -1529,7 +1530,7 @@ public sealed class CommandAssistControllerTests
     public async Task Typing_DoesNotMarkTheSurfaceAsUserRequested()
     {
         var historyStore = new InMemoryHistoryStore();
-        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")));
+        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)));
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
 
@@ -1557,8 +1558,8 @@ public sealed class CommandAssistControllerTests
     {
         var historyStore = new InMemoryHistoryStore();
         historyStore.Seed(
-            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")),
-            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00")));
+            CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)),
+            CreateEntry("git stash", DateTimeOffset.Parse("2026-03-01T09:59:00+00:00", CultureInfo.InvariantCulture)));
 
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, grid: grid);
@@ -1598,7 +1599,7 @@ public sealed class CommandAssistControllerTests
 
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandAccepted,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00", CultureInfo.InvariantCulture),
             CommandText: "gh auth login --password hunter2",
             WorkingDirectory: @"C:\repo",
             ExitCode: null,
@@ -1618,7 +1619,7 @@ public sealed class CommandAssistControllerTests
         controller.SetShellIntegrationEnabled(true);
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandAccepted,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T11:59:59+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T11:59:59+00:00", CultureInfo.InvariantCulture),
             CommandText: "git status",
             WorkingDirectory: @"C:\repo",
             ExitCode: null,
@@ -1638,7 +1639,7 @@ public sealed class CommandAssistControllerTests
         controller.SetShellIntegrationEnabled(true);
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.PromptReady,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T11:59:59+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T11:59:59+00:00", CultureInfo.InvariantCulture),
             CommandText: null,
             WorkingDirectory: @"C:\repo",
             ExitCode: null,
@@ -1659,14 +1660,14 @@ public sealed class CommandAssistControllerTests
 
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandAccepted,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00", CultureInfo.InvariantCulture),
             CommandText: "git status",
             WorkingDirectory: @"C:\repo",
             ExitCode: null,
             Duration: null));
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandFinished,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:03+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:03+00:00", CultureInfo.InvariantCulture),
             CommandText: null,
             WorkingDirectory: @"C:\repo",
             ExitCode: 7,
@@ -1686,14 +1687,14 @@ public sealed class CommandAssistControllerTests
 
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandAccepted,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00", CultureInfo.InvariantCulture),
             CommandText: "foreach ($i in 1..3)\r\n    Write-Output $i\r\n}",
             WorkingDirectory: @"C:\repo",
             ExitCode: null,
             Duration: null));
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandFinished,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:03+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:03+00:00", CultureInfo.InvariantCulture),
             CommandText: null,
             WorkingDirectory: @"C:\repo",
             ExitCode: 0,
@@ -1714,7 +1715,7 @@ public sealed class CommandAssistControllerTests
 
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandFinished,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:03+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:03+00:00", CultureInfo.InvariantCulture),
             CommandText: null,
             WorkingDirectory: @"C:\repo",
             ExitCode: 1,
@@ -1733,14 +1734,14 @@ public sealed class CommandAssistControllerTests
         await controller.HandleEnterAsync("git status");
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandAccepted,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00", CultureInfo.InvariantCulture),
             CommandText: "git status",
             WorkingDirectory: @"C:\repo",
             ExitCode: null,
             Duration: null));
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandFinished,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:01+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:01+00:00", CultureInfo.InvariantCulture),
             CommandText: null,
             WorkingDirectory: @"C:\repo",
             ExitCode: 0,
@@ -1769,14 +1770,14 @@ public sealed class CommandAssistControllerTests
 
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandAccepted,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00", CultureInfo.InvariantCulture),
             CommandText: "git status",
             WorkingDirectory: "/repo",
             ExitCode: null,
             Duration: null));
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandFinished,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:01+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:01+00:00", CultureInfo.InvariantCulture),
             CommandText: null,
             WorkingDirectory: "/repo",
             ExitCode: 0,
@@ -1806,7 +1807,7 @@ public sealed class CommandAssistControllerTests
 
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandAccepted,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T12:00:00+00:00", CultureInfo.InvariantCulture),
             CommandText: "ls -la",
             WorkingDirectory: "/repo",
             ExitCode: null,
@@ -1825,7 +1826,7 @@ public sealed class CommandAssistControllerTests
         controller.SetShellIntegrationEnabled(true);
         await controller.HandleShellIntegrationEventAsync(new ShellIntegrationEvent(
             Type: ShellIntegrationEventType.CommandAccepted,
-            Timestamp: DateTimeOffset.Parse("2026-03-09T11:59:59+00:00"),
+            Timestamp: DateTimeOffset.Parse("2026-03-09T11:59:59+00:00", CultureInfo.InvariantCulture),
             CommandText: "git status",
             WorkingDirectory: @"C:\repo-a",
             ExitCode: null,
@@ -1850,7 +1851,7 @@ public sealed class CommandAssistControllerTests
     public async Task Typing_WhenPinnedSnippetMatches_ShowsSnippetAsTopSuggestion()
     {
         var historyStore = new InMemoryHistoryStore();
-        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")));
+        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)));
         var snippetStore = new InMemorySnippetStore();
         snippetStore.Seed(new CommandSnippet(
             Id: "snippet-1",
@@ -1860,8 +1861,8 @@ public sealed class CommandAssistControllerTests
             ShellKind: "pwsh",
             WorkingDirectory: @"C:\repo",
             IsPinned: true,
-            CreatedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00"),
-            LastUsedAt: DateTimeOffset.Parse("2026-03-01T09:30:00+00:00")));
+            CreatedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00", CultureInfo.InvariantCulture),
+            LastUsedAt: DateTimeOffset.Parse("2026-03-01T09:30:00+00:00", CultureInfo.InvariantCulture)));
 
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, snippetStore, new CommandAssistSuggestionEngine(), grid: grid);
@@ -1883,7 +1884,7 @@ public sealed class CommandAssistControllerTests
     public async Task TogglePinSelectionAsync_WhenHistorySuggestionSelected_CreatesPinnedSnippet()
     {
         var historyStore = new InMemoryHistoryStore();
-        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")));
+        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)));
         var snippetStore = new InMemorySnippetStore();
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, snippetStore, new CommandAssistSuggestionEngine(), grid: grid);
@@ -1900,7 +1901,7 @@ public sealed class CommandAssistControllerTests
         Assert.Equal(AssistSuggestionType.History, controller.Suggestions[0].Type);
 
         bool toggled = await controller.TogglePinSelectionAsync();
-        IReadOnlyList<CommandSnippet> snippets = await snippetStore.GetAllAsync();
+        IReadOnlyList<CommandSnippet> snippets = await snippetStore.GetAllAsync(TestContext.Current.CancellationToken);
 
         Assert.True(toggled);
         Assert.Single(snippets);
@@ -1926,7 +1927,7 @@ public sealed class CommandAssistControllerTests
     public async Task TogglePinSelectionAsync_WhenPinnedSnippetSelected_UnpinsSnippet()
     {
         var historyStore = new InMemoryHistoryStore();
-        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00")));
+        historyStore.Seed(CreateEntry("git status", DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture)));
         var snippetStore = new InMemorySnippetStore();
         snippetStore.Seed(new CommandSnippet(
             Id: "snippet-1",
@@ -1936,8 +1937,8 @@ public sealed class CommandAssistControllerTests
             ShellKind: "pwsh",
             WorkingDirectory: @"C:\repo",
             IsPinned: true,
-            CreatedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00"),
-            LastUsedAt: DateTimeOffset.Parse("2026-03-01T09:30:00+00:00")));
+            CreatedAt: DateTimeOffset.Parse("2026-03-01T09:00:00+00:00", CultureInfo.InvariantCulture),
+            LastUsedAt: DateTimeOffset.Parse("2026-03-01T09:30:00+00:00", CultureInfo.InvariantCulture)));
 
         var grid = new FakeGrid();
         var controller = CreateController(historyStore, snippetStore, new CommandAssistSuggestionEngine(), grid: grid);
@@ -1950,7 +1951,7 @@ public sealed class CommandAssistControllerTests
                                           controller.Suggestions.Count > 0);
 
         bool toggled = await controller.TogglePinSelectionAsync();
-        IReadOnlyList<CommandSnippet> snippets = await snippetStore.GetAllAsync();
+        IReadOnlyList<CommandSnippet> snippets = await snippetStore.GetAllAsync(TestContext.Current.CancellationToken);
 
         Assert.True(toggled);
         Assert.Single(snippets);

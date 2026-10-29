@@ -1,6 +1,8 @@
 using System;
 using Ntilde.Shell;
 
+namespace Ntilde.Tests;
+
 public sealed class TabStatusTrackerTests
 {
     private static readonly DateTime T0 = new(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);

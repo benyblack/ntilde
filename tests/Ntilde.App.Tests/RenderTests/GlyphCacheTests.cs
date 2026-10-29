@@ -8,7 +8,7 @@ using Ntilde.Rendering;
 
 namespace Ntilde.Tests.Rendering
 {
-    public class GlyphCacheTests : IDisposable
+    public sealed class GlyphCacheTests : IDisposable
     {
         private readonly GlyphCache _cache;
         private readonly SKTypeface _typeface;

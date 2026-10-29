@@ -91,7 +91,7 @@ internal static class PosixShell
 
         if (OperatingSystem.IsWindows())
         {
-            foreach (string root in new[] { Environment.GetEnvironmentVariable("ProgramFiles"), Environment.GetEnvironmentVariable("ProgramFiles(x86)") })
+            foreach (string? root in new[] { Environment.GetEnvironmentVariable("ProgramFiles"), Environment.GetEnvironmentVariable("ProgramFiles(x86)") })
             {
                 if (string.IsNullOrEmpty(root)) continue;
                 string git = Path.Combine(root, "Git", "usr", "bin", "sh.exe");

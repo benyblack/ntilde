@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ntilde.CommandAssist.Models;
 using Ntilde.CommandAssist.Storage;
 
@@ -26,13 +27,13 @@ public sealed class JsonSnippetStoreTests : IDisposable
             ShellKind: "pwsh",
             WorkingDirectory: @"C:\repo",
             IsPinned: true,
-            CreatedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00"),
-            LastUsedAt: DateTimeOffset.Parse("2026-03-01T10:01:00+00:00"));
+            CreatedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture),
+            LastUsedAt: DateTimeOffset.Parse("2026-03-01T10:01:00+00:00", CultureInfo.InvariantCulture));
 
-        await store.UpsertAsync(snippet);
+        await store.UpsertAsync(snippet, TestContext.Current.CancellationToken);
 
         var reloaded = new JsonSnippetStore(filePath);
-        IReadOnlyList<CommandSnippet> snippets = await reloaded.GetAllAsync();
+        IReadOnlyList<CommandSnippet> snippets = await reloaded.GetAllAsync(TestContext.Current.CancellationToken);
 
         Assert.Single(snippets);
         Assert.True(snippets[0].IsPinned);
@@ -52,13 +53,13 @@ public sealed class JsonSnippetStoreTests : IDisposable
             ShellKind: "pwsh",
             WorkingDirectory: null,
             IsPinned: false,
-            CreatedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00"),
+            CreatedAt: DateTimeOffset.Parse("2026-03-01T10:00:00+00:00", CultureInfo.InvariantCulture),
             LastUsedAt: null);
 
-        await store.UpsertAsync(snippet);
-        await store.RemoveAsync(snippet.Id);
+        await store.UpsertAsync(snippet, TestContext.Current.CancellationToken);
+        await store.RemoveAsync(snippet.Id, TestContext.Current.CancellationToken);
 
-        IReadOnlyList<CommandSnippet> snippets = await store.GetAllAsync();
+        IReadOnlyList<CommandSnippet> snippets = await store.GetAllAsync(TestContext.Current.CancellationToken);
 
         Assert.Empty(snippets);
     }

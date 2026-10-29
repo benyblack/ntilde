@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ntilde.CommandAssist.Application;
 using Ntilde.CommandAssist.Domain;
 using Ntilde.CommandAssist.Models;
@@ -11,7 +12,7 @@ namespace Ntilde.Tests.CommandAssist;
 /// </summary>
 public sealed class CapturePipelineTests
 {
-    private static readonly DateTimeOffset EventTime = DateTimeOffset.Parse("2026-03-09T12:00:00+00:00");
+    private static readonly DateTimeOffset EventTime = DateTimeOffset.Parse("2026-03-09T12:00:00+00:00", CultureInfo.InvariantCulture);
 
     [Fact]
     public async Task CaptureSubmissionAsync_PersistsARedactedHeuristicEntry()

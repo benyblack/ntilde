@@ -86,7 +86,7 @@ public sealed class RemoteBashSnippetIntegrationTests : IDisposable
         Assert.Contains(result.Events, e => e.Kind == "B");
         Assert.Contains(CapturedCommands(result), t => t == "echo hello");
         Assert.Contains(result.Events, e => e.Kind == "D" && e.DecodedFinish.exitCode == 0);
-        Assert.Contains(result.Events, e => e.Kind == "7" && e.Payload!.StartsWith("file://"));
+        Assert.Contains(result.Events, e => e.Kind == "7" && e.Payload!.StartsWith("file://", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -19,7 +19,7 @@ namespace Ntilde.Tests.Paths
             var mapper = new WslPathMapper(runnerMock.Object, distroName: null);
 
             // Using unnormalized path (lower-case drive letter, trailing slashes)
-            string result = await mapper.MapAsync("c:\\Test Folder\\file.txt\\\\");
+            string result = await mapper.MapAsync("c:\\Test Folder\\file.txt\\\\", TestContext.Current.CancellationToken);
 
             Assert.Equal("/mnt/c/Test Folder/file.txt", result);
             runnerMock.Verify(r => r.RunProcessAsync("wsl.exe", "wslpath -a -u \"C:\\Test Folder\\file.txt\"", It.IsAny<CancellationToken>()), Times.Once);
@@ -34,7 +34,7 @@ namespace Ntilde.Tests.Paths
 
             var mapper = new WslPathMapper(runnerMock.Object, "Ubuntu");
 
-            string result = await mapper.MapAsync("C:\\file.txt");
+            string result = await mapper.MapAsync("C:\\file.txt", TestContext.Current.CancellationToken);
 
             Assert.Equal("/mnt/c/file.txt", result);
             runnerMock.Verify(r => r.RunProcessAsync("wsl.exe", "-d Ubuntu wslpath -a -u \"C:\\file.txt\"", It.IsAny<CancellationToken>()), Times.Once);
@@ -50,9 +50,9 @@ namespace Ntilde.Tests.Paths
             var mapper1 = new WslPathMapper(runnerMock.Object, "Debian");
             var mapper2 = new WslPathMapper(runnerMock.Object, "Debian");
 
-            string result1 = await mapper1.MapAsync("d:\\cached.txt\\");
-            string result2 = await mapper1.MapAsync("D:\\cached.txt");
-            string result3 = await mapper2.MapAsync("D:\\cached.txt\\");
+            string result1 = await mapper1.MapAsync("d:\\cached.txt\\", TestContext.Current.CancellationToken);
+            string result2 = await mapper1.MapAsync("D:\\cached.txt", TestContext.Current.CancellationToken);
+            string result3 = await mapper2.MapAsync("D:\\cached.txt\\", TestContext.Current.CancellationToken);
 
             Assert.Equal("/mnt/d/cached.txt", result1);
             Assert.Equal("/mnt/d/cached.txt", result2);
@@ -72,7 +72,7 @@ namespace Ntilde.Tests.Paths
             var mapper = new WslPathMapper(runnerMock.Object, null);
 
             string hostPath = "C:\\nonexistent";
-            string result = await mapper.MapAsync(hostPath);
+            string result = await mapper.MapAsync(hostPath, TestContext.Current.CancellationToken);
 
             Assert.Equal(hostPath, result); // Expected fallback
         }

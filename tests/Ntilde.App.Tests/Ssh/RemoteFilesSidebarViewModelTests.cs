@@ -106,12 +106,12 @@ public sealed class RemoteFilesSidebarViewModelTests
         await viewModel.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), "/srv", CancellationToken.None);
         viewModel.SelectedEntry = Assert.Single(viewModel.Entries);
 
-        await viewModel.NavigateIntoSelectedDirectoryAsync();
+        await viewModel.NavigateIntoSelectedDirectoryAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("/srv/logs", viewModel.CurrentPath);
         Assert.True(viewModel.CanNavigateBack);
 
-        await viewModel.NavigateBackAsync();
+        await viewModel.NavigateBackAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("/srv", viewModel.CurrentPath);
         Assert.False(viewModel.CanNavigateBack);
@@ -133,14 +133,14 @@ public sealed class RemoteFilesSidebarViewModelTests
         var viewModel = new RemoteFilesSidebarViewModel(service);
         await viewModel.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), "/srv", CancellationToken.None);
         viewModel.SelectedEntry = Assert.Single(viewModel.Entries);
-        await viewModel.NavigateIntoSelectedDirectoryAsync();
+        await viewModel.NavigateIntoSelectedDirectoryAsync(TestContext.Current.CancellationToken);
 
-        await viewModel.NavigateBackAsync();
+        await viewModel.NavigateBackAsync(TestContext.Current.CancellationToken);
 
         Assert.True(viewModel.CanNavigateBack);
         Assert.Equal("permission denied", viewModel.ErrorMessage);
 
-        await viewModel.NavigateBackAsync();
+        await viewModel.NavigateBackAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("/srv", viewModel.CurrentPath);
         Assert.False(viewModel.CanNavigateBack);
@@ -158,7 +158,7 @@ public sealed class RemoteFilesSidebarViewModelTests
         var viewModel = new RemoteFilesSidebarViewModel(service);
         await viewModel.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), "/srv/api", CancellationToken.None);
 
-        await viewModel.NavigateUpAsync();
+        await viewModel.NavigateUpAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("/srv", viewModel.CurrentPath);
         Assert.Equal(new[] { "/srv/api", "/srv" }, service.RequestedPaths);
@@ -228,11 +228,11 @@ public sealed class RemoteFilesSidebarViewModelTests
         await viewModel.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), "/srv", CancellationToken.None);
         viewModel.SelectedEntry = Assert.Single(viewModel.Entries);
 
-        Task navigateIntoTask = viewModel.NavigateIntoSelectedDirectoryAsync();
+        Task navigateIntoTask = viewModel.NavigateIntoSelectedDirectoryAsync(TestContext.Current.CancellationToken);
         await service.WaitForRequestAsync("/srv/logs");
 
         viewModel.SetJumpToCurrentDirectoryCandidate("/srv/api");
-        Task jumpTask = viewModel.JumpToCurrentDirectoryAsync();
+        Task jumpTask = viewModel.JumpToCurrentDirectoryAsync(TestContext.Current.CancellationToken);
         await service.WaitForRequestAsync("/srv/api");
 
         service.CompletePending("/srv/api", RemoteSidebarListingResult.Success("/srv/api", Array.Empty<RemoteSidebarEntry>()));

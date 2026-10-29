@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text;
 using Ntilde.Pty;
 
@@ -27,7 +28,7 @@ namespace Ntilde.Tests
             _previous = PtyLogger.Sink;
             PtyLogger.Sink = (level, message) =>
             {
-                lock (_log) { _log.AppendLine($"[{level}] {message}"); }
+                lock (_log) { _log.AppendLine(CultureInfo.InvariantCulture, $"[{level}] {message}"); }
                 _previous?.Invoke(level, message);
             };
         }

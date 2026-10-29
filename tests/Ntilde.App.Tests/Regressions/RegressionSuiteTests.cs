@@ -41,7 +41,7 @@ namespace Ntilde.Tests.Regressions
             {
                 parser.Process(System.Text.Encoding.UTF8.GetString(data));
                 await Task.CompletedTask;
-            });
+            }, ct: TestContext.Current.CancellationToken);
 
             // Verify time is at col 70 (approx, depending on how GetLineText handles spaces)
             var snapshot = BufferSnapshot.Capture(buffer);

@@ -1,4 +1,5 @@
 using Ntilde.Shell;
+using System.Globalization;
 using System.Text;
 using Ntilde.Platform;
 using Ntilde.VT;
@@ -213,7 +214,7 @@ internal static class ShellHarness
         };
         parser.OnCommandFinishedDetailed = (exit, dur) =>
         {
-            string payload = $"{exit?.ToString() ?? string.Empty};{dur?.ToString() ?? string.Empty}";
+            string payload = $"{exit?.ToString(CultureInfo.InvariantCulture) ?? string.Empty};{dur?.ToString(CultureInfo.InvariantCulture) ?? string.Empty}";
             lock (sync) events.Add(new OscEvent("D", payload));
         };
         parser.OnWorkingDirectoryChanged = cwd =>
@@ -364,7 +365,7 @@ internal static class ShellHarness
                 else if (c == '\n') dump.Append("\\n");
                 else if (c == '\r') dump.Append("\\r");
                 else if (c == '\t') dump.Append("\\t");
-                else dump.Append("\\x").Append(((int)c).ToString("X2"));
+                else dump.Append("\\x").Append(((int)c).ToString("X2", CultureInfo.InvariantCulture));
             }
             throw new TimeoutException(
                 $"Shell {shellPath} did not exit within {timeoutSpan.TotalSeconds:F1}s. " +

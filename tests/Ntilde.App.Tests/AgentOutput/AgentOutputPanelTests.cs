@@ -37,9 +37,9 @@ public sealed class AgentOutputPanelTests
     {
         var panel = CreatePanel(out _);
 
-        Assert.True(panel.FindControl<StackPanel>("EmptyState").IsVisible);
-        Assert.False(panel.FindControl<ScrollViewer>("ContentScroll").IsVisible);
-        Assert.False(panel.FindControl<Button>("BtnCopyAll").IsEnabled);
+        Assert.True(panel.FindControl<StackPanel>("EmptyState")!.IsVisible);
+        Assert.False(panel.FindControl<ScrollViewer>("ContentScroll")!.IsVisible);
+        Assert.False(panel.FindControl<Button>("BtnCopyAll")!.IsEnabled);
     }
 
     [AvaloniaFact]
@@ -49,17 +49,17 @@ public sealed class AgentOutputPanelTests
 
         viewModel.SetUpdate("# Heading\n\nparagraph", isStreaming: true);
 
-        Assert.False(panel.FindControl<StackPanel>("EmptyState").IsVisible);
-        Assert.True(panel.FindControl<ScrollViewer>("ContentScroll").IsVisible);
-        Assert.True(panel.FindControl<Button>("BtnCopyAll").IsEnabled);
-        Assert.NotEmpty(panel.FindControl<StackPanel>("MarkdownHost").Children);
+        Assert.False(panel.FindControl<StackPanel>("EmptyState")!.IsVisible);
+        Assert.True(panel.FindControl<ScrollViewer>("ContentScroll")!.IsVisible);
+        Assert.True(panel.FindControl<Button>("BtnCopyAll")!.IsEnabled);
+        Assert.NotEmpty(panel.FindControl<StackPanel>("MarkdownHost")!.Children);
     }
 
     [AvaloniaFact]
     public void StreamingStatus_ShowsInTheHeader_AndClearsWhenFinished()
     {
         var panel = CreatePanel(out var viewModel);
-        var status = panel.FindControl<TextBlock>("StatusText");
+        var status = panel.FindControl<TextBlock>("StatusText")!;
 
         viewModel.SetUpdate("content", isStreaming: true);
         Assert.True(status.IsVisible);
@@ -77,8 +77,8 @@ public sealed class AgentOutputPanelTests
 
         viewModel.SetUpdate(string.Empty, isStreaming: false);
 
-        Assert.True(panel.FindControl<StackPanel>("EmptyState").IsVisible);
-        Assert.Empty(panel.FindControl<StackPanel>("MarkdownHost").Children);
+        Assert.True(panel.FindControl<StackPanel>("EmptyState")!.IsVisible);
+        Assert.Empty(panel.FindControl<StackPanel>("MarkdownHost")!.Children);
     }
 
     [AvaloniaFact]
@@ -86,7 +86,7 @@ public sealed class AgentOutputPanelTests
     {
         var panel = CreatePanel(out var viewModel);
         viewModel.SetUpdate("# stable", isStreaming: false);
-        var host = panel.FindControl<StackPanel>("MarkdownHost");
+        var host = panel.FindControl<StackPanel>("MarkdownHost")!;
         Control first = host.Children[0];
 
         // Same text, same hash: the tracker's dedupe contract means the host must not churn -
@@ -131,7 +131,7 @@ public sealed class AgentOutputPanelTests
 
         panel.SetViewModel(viewModel);
 
-        Assert.False(panel.FindControl<ToggleButton>("BtnRenderFences").IsChecked);
+        Assert.False(panel.FindControl<ToggleButton>("BtnRenderFences")!.IsChecked);
     }
 
     // ---------------------------------------------------------------- fence rendering switch
@@ -143,7 +143,7 @@ public sealed class AgentOutputPanelTests
 
         viewModel.SetUpdate("# Just a heading\n\nno fences here\n", isStreaming: false);
 
-        Assert.False(panel.FindControl<ToggleButton>("BtnRenderFences").IsVisible);
+        Assert.False(panel.FindControl<ToggleButton>("BtnRenderFences")!.IsVisible);
     }
 
     [AvaloniaFact]
@@ -153,7 +153,7 @@ public sealed class AgentOutputPanelTests
 
         viewModel.SetUpdate("```markdown\n# Nested\n```\n", isStreaming: false);
 
-        Assert.True(panel.FindControl<ToggleButton>("BtnRenderFences").IsVisible);
+        Assert.True(panel.FindControl<ToggleButton>("BtnRenderFences")!.IsVisible);
     }
 
     [AvaloniaFact]
@@ -162,7 +162,7 @@ public sealed class AgentOutputPanelTests
         var panel = CreatePanel(out var viewModel);
         viewModel.SetUpdate("```markdown\n# First\n```\n", isStreaming: false);
 
-        ToggleButton toggle = panel.FindControl<ToggleButton>("BtnRenderFences");
+        ToggleButton toggle = panel.FindControl<ToggleButton>("BtnRenderFences")!;
         toggle.IsChecked = false;
         toggle.RaiseEvent(new RoutedEventArgs(ToggleButton.ClickEvent));
 
@@ -173,7 +173,7 @@ public sealed class AgentOutputPanelTests
         Assert.False(viewModel.RenderFencedMarkdown);
         Assert.Contains(
             "# Second",
-            panel.FindControl<StackPanel>("MarkdownHost").Children
+            panel.FindControl<StackPanel>("MarkdownHost")!.Children
                 .OfType<Control>()
                 .SelectMany(TextOf),
             StringComparer.Ordinal);

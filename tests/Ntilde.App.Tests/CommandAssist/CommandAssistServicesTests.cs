@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ntilde.CommandAssist.Domain;
 using Ntilde.CommandAssist.Models;
 using Ntilde.Shell;
@@ -46,12 +47,12 @@ public sealed class CommandAssistServicesTests : IDisposable
     {
         CommandAssistServices services = CreateServices(maxHistoryEntries: 50);
         IHistoryStore captured = services.HistoryStore;
-        await captured.AppendAsync(CreateEntry("git status", "2026-03-01T10:00:00+00:00"));
-        await captured.AppendAsync(CreateEntry("dotnet test", "2026-03-01T10:01:00+00:00"));
+        await captured.AppendAsync(CreateEntry("git status", "2026-03-01T10:00:00+00:00"), TestContext.Current.CancellationToken);
+        await captured.AppendAsync(CreateEntry("dotnet test", "2026-03-01T10:01:00+00:00"), TestContext.Current.CancellationToken);
 
         services.ApplyHistoryRetentionLimit(1);
 
-        CommandHistoryEntry kept = Assert.Single(await captured.GetRecentAsync(10));
+        CommandHistoryEntry kept = Assert.Single(await captured.GetRecentAsync(10, TestContext.Current.CancellationToken));
         Assert.Equal("dotnet test", kept.CommandText);
     }
 
@@ -64,10 +65,10 @@ public sealed class CommandAssistServicesTests : IDisposable
         services.ApplyHistoryRetentionLimit(1);
 
         IHistoryStore store = services.HistoryStore;
-        await store.AppendAsync(CreateEntry("git status", "2026-03-01T10:00:00+00:00"));
-        await store.AppendAsync(CreateEntry("dotnet test", "2026-03-01T10:01:00+00:00"));
+        await store.AppendAsync(CreateEntry("git status", "2026-03-01T10:00:00+00:00"), TestContext.Current.CancellationToken);
+        await store.AppendAsync(CreateEntry("dotnet test", "2026-03-01T10:01:00+00:00"), TestContext.Current.CancellationToken);
 
-        CommandHistoryEntry kept = Assert.Single(await store.GetRecentAsync(10));
+        CommandHistoryEntry kept = Assert.Single(await store.GetRecentAsync(10, TestContext.Current.CancellationToken));
         Assert.Equal("dotnet test", kept.CommandText);
     }
 
@@ -94,7 +95,7 @@ public sealed class CommandAssistServicesTests : IDisposable
         return new CommandHistoryEntry(
             Id: Guid.NewGuid().ToString("N"),
             CommandText: commandText,
-            ExecutedAt: DateTimeOffset.Parse(executedAt),
+            ExecutedAt: DateTimeOffset.Parse(executedAt, CultureInfo.InvariantCulture),
             ShellKind: "pwsh",
             WorkingDirectory: @"C:\repo",
             ProfileId: "profile-1",

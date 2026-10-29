@@ -2,6 +2,7 @@ using Ntilde.Shell;
 using Ntilde.Platform;
 using Ntilde.VT;
 using Ntilde.Replay;
+using System.Globalization;
 using System.Text;
 using System.IO;
 using System.Linq;
@@ -57,7 +58,7 @@ namespace Ntilde.Tests.ReplayTests
                         lastMarker = name;
                         await Task.CompletedTask;
                     }
-                );
+                , ct: TestContext.Current.CancellationToken);
 
                 // 3. Assert
                 Assert.Equal("HelloWorld", gathered.ToString());
@@ -105,7 +106,7 @@ namespace Ntilde.Tests.ReplayTests
                         gatheredInput.Append(input);
                         await Task.CompletedTask;
                     }
-                );
+                , ct: TestContext.Current.CancellationToken);
 
                 // 3. Assert
                 Assert.Contains("Prompt> ", gatheredData.ToString());
@@ -171,7 +172,7 @@ namespace Ntilde.Tests.ReplayTests
                         restoredSnapshot = s;
                         await Task.CompletedTask;
                     }
-                );
+                , ct: TestContext.Current.CancellationToken);
 
                 // 4. Assert
                 Assert.NotNull(restoredSnapshot);
@@ -262,7 +263,7 @@ namespace Ntilde.Tests.ReplayTests
                         replayBuffer.ApplySnapshot(snapshot);
                         Assert.True(replayBuffer.IsPendingWrap); // restored
                         return Task.CompletedTask;
-                    });
+                    }, ct: TestContext.Current.CancellationToken);
 
                 liveParser.Process("X"); // what really happens live
 
@@ -295,7 +296,7 @@ namespace Ntilde.Tests.ReplayTests
                 {
                     gathered.Append(Encoding.UTF8.GetString(data));
                     await Task.CompletedTask;
-                });
+                }, ct: TestContext.Current.CancellationToken);
 
                 Assert.Equal("Hello World", gathered.ToString());
             }
@@ -322,7 +323,7 @@ namespace Ntilde.Tests.ReplayTests
                     {
                         _ = data;
                         await Task.CompletedTask;
-                    }));
+                    }, ct: TestContext.Current.CancellationToken));
             }
             finally
             {
@@ -348,7 +349,7 @@ namespace Ntilde.Tests.ReplayTests
                 {
                     gathered.Append(Encoding.UTF8.GetString(data));
                     await Task.CompletedTask;
-                });
+                }, ct: TestContext.Current.CancellationToken);
 
                 Assert.Equal("Alias", gathered.ToString());
             }
@@ -377,7 +378,7 @@ namespace Ntilde.Tests.ReplayTests
                     {
                         sawSnapshot = true;
                         return Task.CompletedTask;
-                    });
+                    }, ct: TestContext.Current.CancellationToken);
 
                 Assert.True(sawSnapshot);
             }
@@ -401,12 +402,12 @@ namespace Ntilde.Tests.ReplayTests
                 var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
                     runner.RunAsync(
                         onDataCallback: _ => Task.CompletedTask,
-                        onSnapshotCallback: _ => Task.CompletedTask));
+                        onSnapshotCallback: _ => Task.CompletedTask, ct: TestContext.Current.CancellationToken));
 
                 Assert.Contains("cell layout mismatch", ex.Message);
                 Assert.Contains("cells_sizeof", ex.Message);
                 Assert.Contains("123", ex.Message);
-                Assert.Contains(Unsafe.SizeOf<TerminalCell>().ToString(), ex.Message);
+                Assert.Contains(Unsafe.SizeOf<TerminalCell>().ToString(CultureInfo.InvariantCulture), ex.Message);
             }
             finally
             {
@@ -428,7 +429,7 @@ namespace Ntilde.Tests.ReplayTests
                 var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
                     runner.RunAsync(
                         onDataCallback: _ => Task.CompletedTask,
-                        onSnapshotCallback: _ => Task.CompletedTask));
+                        onSnapshotCallback: _ => Task.CompletedTask, ct: TestContext.Current.CancellationToken));
 
                 Assert.Contains("cell layout mismatch", ex.Message);
                 Assert.Contains("cells_layout_id", ex.Message);
@@ -527,7 +528,7 @@ namespace Ntilde.Tests.ReplayTests
                 await runner.RunWithResultAsync(
                     onDataCallback: data => { gathered.Append(Encoding.UTF8.GetString(data)); return Task.CompletedTask; },
                     onResizeCallback: (c, r) => { cols = c; rows = r; return Task.CompletedTask; },
-                    options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual });
+                    options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual }, ct: TestContext.Current.CancellationToken);
 
                 Assert.Equal(40, cols);
                 Assert.Equal(5, rows);

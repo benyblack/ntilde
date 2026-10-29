@@ -4,6 +4,7 @@ using Ntilde.VT;
 using Ntilde.Rendering;
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using Ntilde.Tests.Infra;
 using Xunit;
@@ -40,7 +41,7 @@ namespace Ntilde.Tests.Performance
             for (int i = 0; i < 50000; i++)
             {
                 sb.Append("\x1b[31mColor\x1b[0m ");
-                sb.Append($"Line {i} Text ");
+                sb.Append(CultureInfo.InvariantCulture, $"Line {i} Text ");
                 if (i % 10 == 0) sb.Append("\r\n");
             }
             string data = sb.ToString();

@@ -19,7 +19,7 @@ namespace Ntilde.Tests.Core;
 /// AgentAttentionRegistrationTests; this file covers the wiring — that the
 /// window actually pushes, and that a pane registered later is seeded.
 /// </summary>
-public class AgentWindowVisibilityTests : IDisposable
+public sealed class AgentWindowVisibilityTests : IDisposable
 {
     /// <summary>
     /// Disposes the panes of every window this class asked for, and with them the real shells

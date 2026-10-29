@@ -803,6 +803,8 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
 /// <c>NTILDE_APPDATA_ROOT</c> at their temporary directory, for the whole process, while they run.
 /// </summary>
 [CollectionDefinition(nameof(RemoteMuxDockerE2eCollection), DisableParallelization = true)]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix",
+    Justification = "An xUnit collection definition, named for the collection it defines.")]
 public sealed class RemoteMuxDockerE2eCollection
 {
 }
