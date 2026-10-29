@@ -9,12 +9,12 @@ namespace Ntilde.Shell
 {
     public struct CellMetrics
     {
-        public float CellWidth;
-        public float CellHeight;
-        public float Baseline;
-        public float Ascent;
-        public float Descent;
-        public float Leading;
+        public float CellWidth { get; set; }
+        public float CellHeight { get; set; }
+        public float Baseline { get; set; }
+        public float Ascent { get; set; }
+        public float Descent { get; set; }
+        public float Leading { get; set; }
     }
 
     public readonly record struct CommandAssistPromptHint(
@@ -42,6 +42,10 @@ namespace Ntilde.Shell
         int VisibleRows,
         float CellHeight);
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+        Justification = "A control is not disposed, and the draw operations the render thread may still run after the view " +
+                        "is gone share both caches. A font change clears them; the images of a dropped view " +
+                        "are freed by their finalizers.")]
     public partial class TerminalView : Control
     {
         private readonly RowImageCache _rowCache = new();
@@ -127,7 +131,7 @@ namespace Ntilde.Shell
         private CursorStyle _preferredCursorStyle = CursorStyle.Underline;
         private int _lastCursorRow = -1;
         private int _lastCursorCol = -1;
-        private long _lastHudUpdateTicks = 0;
+        private long _lastHudUpdateTicks;
         private readonly DispatcherTimer _metricsTimer;
 
         public void TriggerBell()
@@ -164,8 +168,8 @@ namespace Ntilde.Shell
         }
         private CellMetrics _metrics;
         private double _windowOpacity = 1.0;
-        private bool _hasBackgroundImage = false;
-        private bool _enableLigatures = false;
+        private bool _hasBackgroundImage;
+        private bool _enableLigatures;
         private bool _enableComplexShaping = true;
         private double _minimumContrast = 1.0;
         private TerminalTheme? _appliedTheme; // a copy of the theme ApplySettings last gave the buffer
@@ -281,7 +285,7 @@ namespace Ntilde.Shell
             InvalidateVisual();
         }
 
-        private bool _justSwitchedFromAltScreen = false;
+        private bool _justSwitchedFromAltScreen;
 
         private void OnScreenSwitched(bool isAltScreen)
         {

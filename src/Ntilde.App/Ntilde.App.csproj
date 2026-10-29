@@ -20,8 +20,7 @@
          were invisible in every released build for as long as the warning sat in the release
          log unread.
 
-         Not merely `TreatWarningsAsErrors`: that is deliberately off repo-wide (see
-         Directory.Build.props) and this is a targeted exception, not a reversal of it.
+         Not merely `TreatWarningsAsErrors`, which this project keeps away from ILC (below).
          `$(WarningsAsErrors)` is the property ILC's own targets forward as
          its `warnaserr` switch (Microsoft.NETCore.Native.targets), so this covers BOTH halves
          of the signal: the Roslyn analyzers, which see annotated calls in C#, and ILC's
@@ -33,6 +32,12 @@
          the call site with [UnconditionalSuppressMessage] and a justification, so the
          decision is reviewable where it is made. CompiledBindingTests pins this property. -->
     <WarningsAsErrors>IL2026;IL3050</WarningsAsErrors>
+    <!-- #108: any C# warning fails the build. ILC's own switch defaults to TreatWarningsAsErrors
+         (IlcTreatWarningsAsErrors, Microsoft.NETCore.Native.targets), and turning on every warning of the
+         whole-program pass would be a separate decision: it stays off, so a publish still fails only on
+         the two above. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IlcTreatWarningsAsErrors>false</IlcTreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

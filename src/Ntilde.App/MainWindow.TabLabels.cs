@@ -21,7 +21,7 @@ namespace Ntilde
         {
             if (string.IsNullOrEmpty(value) || value.Length <= maxLength) return value;
             if (maxLength < 5) return value.Substring(0, maxLength);
-            return value.Substring(0, maxLength - 1) + "\u2026";
+            return string.Concat(value.AsSpan(0, maxLength - 1), "\u2026");
         }
 
         internal static string TruncateTabLabelWithSuffix(string value, int maxLength, string suffix)
@@ -42,7 +42,7 @@ namespace Ntilde
             {
                 prefix = available < 5
                     ? prefix.Substring(0, available)
-                    : prefix.Substring(0, available - 1) + "\u2026";
+                    : string.Concat(prefix.AsSpan(0, available - 1), "\u2026");
             }
 
             return prefix + suffix;
@@ -108,7 +108,7 @@ namespace Ntilde
 
                 if (activeCount > 0 || startingCount > 0)
                 {
-                    string badge = activeCount.ToString();
+                    string badge = activeCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
                     if (startingCount > 0) badge += $" ({startingCount})";
                     label = $"{label} \U0001F501 {badge}";
                 }
@@ -212,7 +212,7 @@ namespace Ntilde
                 tabs,
                 t => BuildBaseTabLabel(t),
                 t => GetAttentionMarkerSuffix(GetOrCreateTabState(t)),
-                t => "~" + GetTabId(t).ToString("N").Substring(0, 4),
+                t => string.Concat("~", GetTabId(t).ToString("N").AsSpan(0, 4)),
                 maxLength,
                 includeMarkers);
 
@@ -229,6 +229,7 @@ namespace Ntilde
             Func<TTab, string> collisionHintOf,
             int maxLength,
             bool includeMarkers)
+            where TTab : notnull
         {
             var baseLabels = tabs.ToDictionary(t => t, baseLabelOf);
             var markers = includeMarkers

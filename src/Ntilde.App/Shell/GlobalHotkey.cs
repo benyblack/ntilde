@@ -227,6 +227,7 @@ namespace Ntilde.Shell
 
             Unregister();
             RemoveHook();
+            GC.SuppressFinalize(this);
         }
     }
 }

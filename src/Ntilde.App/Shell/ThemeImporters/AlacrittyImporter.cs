@@ -27,7 +27,7 @@ namespace Ntilde.Shell.ThemeImporters
                     string line = StripComment(raw).Trim();
                     if (line.Length == 0) continue;
 
-                    if (line.StartsWith("[", StringComparison.Ordinal) && line.EndsWith("]", StringComparison.Ordinal))
+                    if (line.StartsWith('[') && line.EndsWith(']'))
                     {
                         section = line.Substring(1, line.Length - 2).Trim().ToLowerInvariant();
                         continue;
@@ -36,7 +36,7 @@ namespace Ntilde.Shell.ThemeImporters
                     if (!TrySplitPair(line, out string key, out string value)) continue;
 
                     // An inline table (`matches = { background = "#..." }`) is the same keys one level down.
-                    if (value.StartsWith("{", StringComparison.Ordinal) && value.EndsWith("}", StringComparison.Ordinal))
+                    if (value.StartsWith('{') && value.EndsWith('}'))
                     {
                         foreach (var part in value.Substring(1, value.Length - 2).Split(','))
                         {
@@ -161,9 +161,9 @@ namespace Ntilde.Shell.ThemeImporters
             string normalized = value.Trim();
             if (normalized.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
-                normalized = "#" + normalized.Substring(2);
+                normalized = string.Concat("#", normalized.AsSpan(2));
             }
-            else if (!normalized.StartsWith("#", StringComparison.Ordinal) &&
+            else if (!normalized.StartsWith('#') &&
                 normalized.Length == 6)
             {
                 normalized = "#" + normalized;

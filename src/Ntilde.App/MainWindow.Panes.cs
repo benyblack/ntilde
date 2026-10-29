@@ -111,7 +111,7 @@ namespace Ntilde
             }
         }
 
-        private TerminalPane? FindPaneById(Control? control, Guid paneId)
+        private static TerminalPane? FindPaneById(Control? control, Guid paneId)
         {
             return EnumeratePanes(control).FirstOrDefault(p => p.PaneId == paneId);
         }
@@ -294,7 +294,7 @@ namespace Ntilde
         /// hazards behind a second, harder-to-audit code path. See the scope note in
         /// docs/vt_coverage_matrix.md for the matching matrix entry.
         /// </remarks>
-        private bool TryMapBroadcastKey(KeyEventArgs e, TerminalBuffer? buffer, out string? sequence)
+        private static bool TryMapBroadcastKey(KeyEventArgs e, TerminalBuffer? buffer, out string? sequence)
         {
             sequence = null;
             bool isAlt = (e.KeyModifiers & KeyModifiers.Alt) != 0;
@@ -367,9 +367,8 @@ namespace Ntilde
             if (!TryGetSelectedTab(out var tabItem)) return;
 
             bool enabled;
-            if (_broadcastEnabledTabs.Contains(tabItem))
+            if (_broadcastEnabledTabs.Remove(tabItem))
             {
-                _broadcastEnabledTabs.Remove(tabItem);
                 enabled = false;
             }
             else
@@ -417,7 +416,7 @@ namespace Ntilde
             return paneChildren >= 2;
         }
 
-        private Grid? FindNearestSplitGrid(Control start)
+        private static Grid? FindNearestSplitGrid(Control start)
         {
             Control? current = start;
             while (current != null)
@@ -460,7 +459,7 @@ namespace Ntilde
             }
         }
 
-        private void EqualizeSplitGrid(Grid splitGrid)
+        private static void EqualizeSplitGrid(Grid splitGrid)
         {
             if (!IsSplitGrid(splitGrid)) return;
 

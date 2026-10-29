@@ -21,8 +21,8 @@ namespace Ntilde.Shell
         // (#432): recording a grid at the moment it was *computed* meant a dispatch cancelled
         // before the throttle ran still counted as sent, and the buffer was then described as
         // being on a grid it had never been given.
-        private int _lastDispatchedCols = 0;
-        private int _lastDispatchedRows = 0;
+        private int _lastDispatchedCols;
+        private int _lastDispatchedRows;
 
         // Deferred mode (Phase 2 spec §8): the grid last *requested* via OnResize. The buffer is resized
         // by the session (in stream order), so "did the grid change" compares against the request, and
@@ -67,8 +67,8 @@ namespace Ntilde.Shell
         // Throttle resize: limit how often we send resize to PTY (interval-based, not debounce)
         private DateTime _lastPtyResizeTime = DateTime.MinValue;
         private DispatcherTimer? _resizeThrottleTimer;
-        private int _pendingCols = 0;
-        private int _pendingRows = 0;
+        private int _pendingCols;
+        private int _pendingRows;
         private DateTime _pendingResizeStartedAt = DateTime.MinValue;
 
         /// <summary>

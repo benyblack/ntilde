@@ -355,7 +355,7 @@ namespace Ntilde.Shell
                 IReadOnlyList<TerminalProfile> storeProfiles = sshService.GetConnectionProfiles();
                 TerminalProfile? profile = ResolveProfileForJob(job, settings.Profiles, storeProfiles);
 
-                if (profile == null) throw new Exception("Profile not found");
+                if (profile == null) throw new InvalidOperationException("Profile not found");
 
                 switch (SelectExecutionBackend(profile, job))
                 {
@@ -559,7 +559,7 @@ namespace Ntilde.Shell
             ProcessStartInfo startInfo = CreateScpStartInfo(scpExe, args, profile);
 
             using var process = Process.Start(startInfo);
-            if (process == null) throw new Exception("Failed to start scp process");
+            if (process == null) throw new InvalidOperationException("Failed to start scp process");
             using CancellationTokenRegistration cancellationRegistration = cancellationToken.Register(() =>
             {
                 try
@@ -574,10 +574,12 @@ namespace Ntilde.Shell
                 }
             });
 
+            // No token for these two: cancelling kills scp (the registration above), which ends both, so the
+            // method returns only once scp is gone, and with its own cancellation below.
             string error = startInfo.RedirectStandardError
-                ? await process.StandardError.ReadToEndAsync()
+                ? await process.StandardError.ReadToEndAsync(CancellationToken.None)
                 : string.Empty;
-            await process.WaitForExitAsync();
+            await process.WaitForExitAsync(CancellationToken.None);
 
             if (cancellationToken.IsCancellationRequested)
             {
@@ -586,7 +588,7 @@ namespace Ntilde.Shell
 
             if (process.ExitCode != 0)
             {
-                throw new Exception(string.IsNullOrWhiteSpace(error)
+                throw new IOException(string.IsNullOrWhiteSpace(error)
                     ? $"scp exited with code {process.ExitCode}."
                     : error);
             }
@@ -644,8 +646,8 @@ namespace Ntilde.Shell
             ActiveSshSessionRegistry? sessionRegistry = null,
             string? knownHostsFilePath = null,
             Action<NativeSftpTransferProgress>? progress = null,
-            CancellationToken cancellationToken = default,
-            NativeSshConnectionPool? connectionPool = null)
+            NativeSshConnectionPool? connectionPool = null,
+            CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(job);
             ArgumentNullException.ThrowIfNull(profile);
@@ -809,7 +811,7 @@ namespace Ntilde.Shell
 
                 if (profile.SshPort != 22)
                 {
-                    args.Append($" -P {profile.SshPort}");
+                    args.Append(System.Globalization.CultureInfo.InvariantCulture, $" -P {profile.SshPort}");
                 }
 
                 if (profile.JumpHostProfileId.HasValue)
@@ -821,7 +823,7 @@ namespace Ntilde.Shell
                         if (parts.Length > 1)
                         {
                             string jumpChain = parts[1].Trim().Split(" ")[0];
-                            args.Append($" -J {jumpChain}");
+                            args.Append(System.Globalization.CultureInfo.InvariantCulture, $" -J {jumpChain}");
                         }
                     }
                 }

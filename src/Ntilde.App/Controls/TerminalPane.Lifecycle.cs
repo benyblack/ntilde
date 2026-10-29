@@ -200,6 +200,7 @@ namespace Ntilde.Controls
             // splits the two phases instead, so the (potentially blocking) session
             // teardown runs off the UI thread while the UI-affine detach stays on it.
             DetachFromUiThread()?.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>

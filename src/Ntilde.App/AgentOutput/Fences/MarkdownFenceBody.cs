@@ -34,7 +34,7 @@ internal sealed class MarkdownFenceBody : IFenceBody
     }
 
     /// <summary>The unhandled path's body, reproduced for the switch's source position.</summary>
-    private static Control BuildSource(string code, MarkdownTheme theme)
+    private static SelectableTextBlock BuildSource(string code, MarkdownTheme theme)
     {
         var text = new SelectableTextBlock
         {

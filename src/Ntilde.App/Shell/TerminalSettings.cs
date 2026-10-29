@@ -39,7 +39,7 @@ namespace Ntilde.Shell
         /// </summary>
         public double VerticalTabStripWidth { get; set; } = 220;
 
-        public bool EnableLigatures { get; set; } = false;
+        public bool EnableLigatures { get; set; }
         public bool EnableComplexShaping { get; set; } = true;
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace Ntilde.Shell
         public string GlobalHotkey { get; set; } = "Alt+OemTilde";
         // Disabled by default as of 0.3: the Command Assist feature isn't production-ready
         // yet. This master flag gates the whole feature; users can opt in via Settings.
-        public bool CommandAssistEnabled { get; set; } = false;
+        public bool CommandAssistEnabled { get; set; }
 
         // Gates command capture and history-sourced suggestions only. It is not a second master
         // switch: with this off the bubble, popup, path suggestions, Help and Fix all still work
@@ -170,28 +170,28 @@ namespace Ntilde.Shell
         // Off by default: when false, no local IPC endpoint exists at all and AI
         // agents cannot read any terminal session. Observe-only in v1 — there is
         // no acting capability behind this flag.
-        public bool AgentAccessObserveEnabled { get; set; } = false;
+        public bool AgentAccessObserveEnabled { get; set; }
         // A4 sub-gate on top of the observe toggle: allows agents to export a
         // session's recent output as a replay file (ntilde.export_replay).
         // Exports contain output and resize events only — never typed input
         // (privacy decision in docs/plans/2026-07-07-agent-host-a4-replay-design.md).
         // Off by default; both toggles must be on for an export to succeed.
-        public bool AgentReplayExportEnabled { get; set; } = false;
+        public bool AgentReplayExportEnabled { get; set; }
         // A3 act surface: separate default-off opt-in letting agents type into,
         // spawn, and close sessions (ntilde.send_input / spawn_session /
         // close_session). On top of observe; SSH sessions additionally require
         // per-profile allowlisting. Every acting call is shown in the agent
         // activity journal. Off by default.
-        public bool AgentAccessActEnabled { get; set; } = false;
+        public bool AgentAccessActEnabled { get; set; }
         // In-app toast when a command that ran ≥30s finishes in an unfocused
         // pane (A2 PR4, absorbs ROADMAP §5.2). Off by default.
-        public bool LongCommandNotificationsEnabled { get; set; } = false;
+        public bool LongCommandNotificationsEnabled { get; set; }
         // In-app toast for an explicit OSC 9 desktop-notification sequence (#271),
         // e.g. Claude Code's completion pings. Same focus policy as the long-command
         // toast (suppressed when the pane is focused); the difference is that the
         // program asked for the notification rather than the terminal inferring it.
         // Off by default, matching LongCommandNotificationsEnabled.
-        public bool Osc9NotificationsEnabled { get; set; } = false;
+        public bool Osc9NotificationsEnabled { get; set; }
         // Per-tab progress + Windows taskbar progress from OSC 9;4 sequences (#271),
         // e.g. Claude Code's terminalProgressBarEnabled. Purely ambient chrome —
         // default on so tooling that reports progress just works; this exists as the

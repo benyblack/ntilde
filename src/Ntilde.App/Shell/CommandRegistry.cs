@@ -47,9 +47,8 @@ namespace Ntilde.Shell
         {
             if (string.IsNullOrWhiteSpace(query)) return _commands.ToList();
 
-            var q = query.ToLowerInvariant();
             return _commands
-                .Where(c => c.Title.ToLowerInvariant().Contains(q) || c.Category.ToLowerInvariant().Contains(q))
+                .Where(c => c.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || c.Category.Contains(query, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(c => c.Category)
                 .ThenBy(c => c.Title)
                 .ToList();

@@ -50,6 +50,8 @@ namespace Ntilde
             };
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+            Justification = "The window's tab title: tests read it through the window, as its callers do.")]
         internal string GetTabHeaderText(TabItem tab)
         {
             if (FindTabHeaderTextBlock(tab.Header) is TextBlock tb)
@@ -536,7 +538,7 @@ namespace Ntilde
             // (the exporter's own TrimEnd may no longer be meaningful once NULs become spaces).
             for (int i = 0; i < rows.Length; i++)
             {
-                if (rows[i].IndexOf('\0') >= 0)
+                if (rows[i].Contains('\0'))
                 {
                     rows[i] = rows[i].Replace('\0', ' ').TrimEnd();
                 }

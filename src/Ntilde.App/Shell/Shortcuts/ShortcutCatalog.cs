@@ -91,7 +91,7 @@ public static class ShortcutCatalog
 
     public static IReadOnlyList<ShortcutCatalogEntry> GetEntries(bool isMacOS) => isMacOS ? MacOSEntries : OtherEntries;
 
-    private static IReadOnlyList<ShortcutCatalogEntry> AdaptTo(bool isMacOS)
+    private static ShortcutCatalogEntry[] AdaptTo(bool isMacOS)
     {
         return Entries
             .Select(entry => entry with { DefaultBinding = ShortcutPlatform.DefaultBinding(entry.CommandId, entry.DefaultBinding, isMacOS) })

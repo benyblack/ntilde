@@ -331,7 +331,7 @@ public partial class RemotePathTextBox : UserControl
 
     private static string EnsureTrailingSlash(string path)
     {
-        return path.EndsWith("/", StringComparison.Ordinal) ? path : $"{path}/";
+        return path.EndsWith('/') ? path : $"{path}/";
     }
 
     private void UpdatePopupWidth()

@@ -57,12 +57,12 @@ internal sealed class DiffFenceBody : IFenceBody
             return theme.Hunk;
         }
 
-        if (line.StartsWith("+", StringComparison.Ordinal))
+        if (line.StartsWith('+'))
         {
             return theme.Added;
         }
 
-        if (line.StartsWith("-", StringComparison.Ordinal))
+        if (line.StartsWith('-'))
         {
             return theme.Removed;
         }

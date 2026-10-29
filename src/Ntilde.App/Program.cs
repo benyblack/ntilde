@@ -283,7 +283,7 @@ class Program
     // in debug.log. Reports git SHA (stamped at compile via the StampGitInfo MSBuild target),
     // the binary path, and its on-disk build time. This is the line that would have
     // immediately flagged the "net10.0 - Copy" stale-binary crash incident.
-    private static string DescribeBuild()
+    internal static string DescribeBuild()
     {
         var asm = System.Reflection.Assembly.GetExecutingAssembly();
 
@@ -297,15 +297,15 @@ class Program
             }
         }
 
-        // Environment.ProcessPath is correct under both normal and single-file/AOT hosting,
-        // whereas Assembly.Location is empty for single-file/AOT.
-        string path = Environment.ProcessPath ?? asm.Location;
+        // Environment.ProcessPath is correct under both normal and single-file/AOT hosting;
+        // Assembly.Location is always empty under single-file/AOT (IL3000), so it is no fallback.
+        string path = Environment.ProcessPath ?? string.Empty;
         string builtAt = "?";
         try
         {
             if (!string.IsNullOrEmpty(path) && System.IO.File.Exists(path))
             {
-                builtAt = System.IO.File.GetLastWriteTime(path).ToString("yyyy-MM-dd HH:mm:ss");
+                builtAt = System.IO.File.GetLastWriteTime(path).ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
             }
         }
         catch

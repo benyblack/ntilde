@@ -59,6 +59,8 @@ namespace Ntilde
             return result;
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+            Justification = "The window's own dialog factory: its dialogs are built through the window, tests included.")]
         private Window CreateThemedDialogWindow(string title, double width, double height, bool canResize)
         {
             var dialog = new Window

@@ -15,6 +15,9 @@ using System.Threading.Tasks;
 
 namespace Ntilde.UI.Replay
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+        Justification = "The playback token source is cancelled, not disposed: the playback loop may still read its token " +
+                        "after playback stops, and a source with no timer or wait handle holds nothing to free.")]
     public partial class ReplayWindow : Window
     {
         private ReplayViewModel? _viewModel;
@@ -23,7 +26,7 @@ namespace Ntilde.UI.Replay
         private TerminalBuffer? _buffer;
         private AnsiParser? _parser;
         private string? _filePath;
-        private bool _isUserScrubbing = false;
+        private bool _isUserScrubbing;
 
         public ReplayWindow()
         {

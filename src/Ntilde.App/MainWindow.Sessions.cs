@@ -109,7 +109,7 @@ namespace Ntilde
             return true;
         }
 
-        private TabItem CreateStartupPlaceholderTab(TabSession tabSession)
+        private static TabItem CreateStartupPlaceholderTab(TabSession tabSession)
         {
             return new TabItem
             {
@@ -416,7 +416,7 @@ namespace Ntilde
 
         internal static bool UpsertTabTemplateRule(List<TabTemplateRule> rules, Guid profileId, string templateName)
         {
-            if (rules == null) throw new ArgumentNullException(nameof(rules));
+            ArgumentNullException.ThrowIfNull(rules);
             if (string.IsNullOrWhiteSpace(templateName)) return false;
 
             var existing = rules.FirstOrDefault(r => r.ProfileId == profileId);
@@ -438,7 +438,7 @@ namespace Ntilde
 
         internal static bool RemoveTabTemplateRule(List<TabTemplateRule> rules, Guid profileId)
         {
-            if (rules == null) throw new ArgumentNullException(nameof(rules));
+            ArgumentNullException.ThrowIfNull(rules);
             int before = rules.Count;
             rules.RemoveAll(r => r.ProfileId == profileId);
             return rules.Count != before;

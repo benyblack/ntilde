@@ -32,7 +32,7 @@ namespace Ntilde.Shell
                 {
                     _minimumContrast = minimumContrast;
                     // Cached row pictures hold their colors baked in.
-                    _rowCache?.RequestClear();
+                    _rowCache.RequestClear();
                 }
                 _windowOpacity = settings.WindowOpacity;
                 _hasBackgroundImage = !string.IsNullOrEmpty(settings.BackgroundImagePath) && System.IO.File.Exists(settings.BackgroundImagePath);

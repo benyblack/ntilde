@@ -388,7 +388,7 @@ namespace Ntilde.Controls
             }
         }
 
-        private bool CheckIfPortIsListening(ForwardingRule rule)
+        private static bool CheckIfPortIsListening(ForwardingRule rule)
         {
             try
             {

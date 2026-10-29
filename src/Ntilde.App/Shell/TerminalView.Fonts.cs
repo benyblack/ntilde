@@ -46,7 +46,7 @@ namespace Ntilde.Shell
         };
 
         private static readonly List<SKTypeface> FallbackChain = new();
-        private static bool _fallbackChainInitialized = false;
+        private static bool _fallbackChainInitialized;
 
         private static void EnsureFallbackChain()
         {

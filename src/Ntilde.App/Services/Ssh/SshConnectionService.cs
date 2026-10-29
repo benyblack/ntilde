@@ -573,7 +573,7 @@ public sealed class SshConnectionService
     private static ForwardingRule ConvertToLegacyForward(PortForward forward)
     {
         string local = string.IsNullOrWhiteSpace(forward.BindAddress)
-            ? forward.SourcePort.ToString()
+            ? forward.SourcePort.ToString(System.Globalization.CultureInfo.InvariantCulture)
             : $"{forward.BindAddress}:{forward.SourcePort}";
 
         return forward.Kind switch

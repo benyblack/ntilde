@@ -31,7 +31,7 @@ namespace Ntilde.Shell
             }
         }
 
-        private bool _isLoaded = false;
+        private bool _isLoaded;
 
         public void ReloadThemes()
         {
@@ -194,7 +194,7 @@ namespace Ntilde.Shell
         private static string ThemeFileName(string themeName) =>
             new string(themeName.Replace(" ", "").Select(c => UnsafeFileNameChars.Contains(c) ? '_' : c).ToArray()) + ".json";
 
-        private void ExtractBuiltInThemes()
+        private static void ExtractBuiltInThemes()
         {
             // Built-in themes are now provided as JSON files in the themes directory.
         }

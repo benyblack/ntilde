@@ -51,7 +51,7 @@ namespace Ntilde.Shell.ThemeImporters
             node["name"]?.GetValueKind() == JsonValueKind.String
             && (node.ContainsKey("background") || node.ContainsKey("foreground"));
 
-        private TerminalTheme? MapToTerminalTheme(JsonNode node)
+        private static TerminalTheme? MapToTerminalTheme(JsonNode node)
         {
             try
             {
@@ -91,7 +91,7 @@ namespace Ntilde.Shell.ThemeImporters
         private static TermColor? ParseOptionalColor(string? hex)
             => !string.IsNullOrEmpty(hex) && Color.TryParse(hex, out var color) ? TermColorHelper.FromAvaloniaColor(color) : null;
 
-        private TermColor ParseColor(string? hex, TermColor fallback)
+        private static TermColor ParseColor(string? hex, TermColor fallback)
         {
             if (string.IsNullOrEmpty(hex)) return fallback;
             try

@@ -105,7 +105,7 @@ namespace Ntilde.Controls
         public event Action<TerminalPane, TerminalProgressReport?>? ProgressReported;
 
         private TerminalSettings? _settings;
-        private bool _isUpdatingScroll = false;
+        private bool _isUpdatingScroll;
         private bool _disposed;
 
         /// <summary>
@@ -269,7 +269,7 @@ namespace Ntilde.Controls
         public bool HasActiveChildProcesses => Session?.HasActiveChildProcesses ?? false;
         public bool HasUserInteraction => _hasUserInteraction;
 
-        private bool _isActivePane = false;
+        private bool _isActivePane;
         public bool IsActivePane
         {
             get => _isActivePane;
