@@ -252,6 +252,50 @@ public sealed class TerminalViewLinkActivationTests
         Assert.Equal([new Rect(0, CellHeight - 1, 5 * CellWidth, 1)], view.HoveredLinkUnderlines(displayStart: 1, rows: 24));
     }
 
+    /// <summary>
+    /// #95 gap 5: a hovered link says where it leads before it is followed - the attack these tests pin is text that looks
+    /// like one link with a target that is another - and how to follow it. Leaving it takes the tip away.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_hovered_link_shows_its_target_in_a_tooltip_until_the_pointer_leaves_it()
+    {
+        var (view, _) = CreateView(Osc8("https://evil.example/login", "https://github.com/org/repo") + " plain text");
+
+        view.UpdateHoveredLink(CellCentre(0, 3));
+        string? tip = Avalonia.Controls.ToolTip.GetTip(view) as string;
+        Assert.NotNull(tip);
+        Assert.StartsWith("https://evil.example/login", tip, StringComparison.Ordinal);
+        Assert.Contains("click to open", tip, StringComparison.Ordinal);
+
+        view.UpdateHoveredLink(CellCentre(0, 32)); // plain text: no link
+        Assert.Null(Avalonia.Controls.ToolTip.GetTip(view));
+    }
+
+    /// <summary>
+    /// The tip shows the target as it is, so it cannot be disguised in turn: a bidi override would reorder what is shown
+    /// (a "moc.elgoog" spoof), so it is shown as a visible escape; control characters are dropped; and a target too long to
+    /// read keeps its start - the scheme and host - and its end.
+    /// </summary>
+    [Fact]
+    public void The_link_tooltip_shows_the_target_as_it_is()
+    {
+        Assert.Equal("https://example.com/a\nCtrl+click to open", TerminalView.LinkTargetTip("https://example.com/a", macOS: false));
+        Assert.Equal("https://example.com/a\nCmd+click to open", TerminalView.LinkTargetTip("https://example.com/a", macOS: true));
+
+        string spoof = TerminalView.LinkTargetTip("https://example.com/‮gpj.exe", macOS: false);
+        Assert.DoesNotContain("‮", spoof, StringComparison.Ordinal);
+        Assert.StartsWith("https://example.com/\\u202Egpj.exe\n", spoof, StringComparison.Ordinal);
+
+        Assert.StartsWith("https://example.com/ab\n", TerminalView.LinkTargetTip("https://example.com/a\u0007b", macOS: false), StringComparison.Ordinal);
+
+        string longTarget = "https://example.com/" + new string('x', 1000) + "/end";
+        string target = TerminalView.LinkTargetTip(longTarget, macOS: false).Split('\n')[0];
+        Assert.True(target.Length <= TerminalView.LinkTargetTipMaxLength, $"{target.Length} chars");
+        Assert.StartsWith("https://example.com/xxx", target, StringComparison.Ordinal);
+        Assert.EndsWith("xxx/end", target, StringComparison.Ordinal);
+        Assert.Contains("…", target, StringComparison.Ordinal);
+    }
+
     [AvaloniaFact]
     public void A_detected_url_still_underlines_its_own_span()
     {

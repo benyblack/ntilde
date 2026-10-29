@@ -158,6 +158,7 @@ namespace Ntilde.Shell
         {
             _hoveredOsc8Screen = null; // an OSC 8 hover sets it again, once its runs are underlined
             if (link.SameAs(_hoveredLink)) return; // no change -> no repaint
+            if (_hoveredLink?.Uri != link.Uri) Avalonia.Controls.ToolTip.SetTip(this, LinkTargetTip(link.Uri, OperatingSystem.IsMacOS()));
             _hoveredLink = link;
             Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
             InvalidateVisual();
@@ -167,10 +168,41 @@ namespace Ntilde.Shell
         {
             _hoveredOsc8Screen = null;
             if (_hoveredLink == null) return;
+            Avalonia.Controls.ToolTip.SetTip(this, null);
             _hoveredLink = null;
             Cursor = Avalonia.Input.Cursor.Default;
             InvalidateVisual();
         }
+
+        /// <summary>The longest target the link tooltip shows; past it, the middle gives way to an ellipsis.</summary>
+        internal const int LinkTargetTipMaxLength = 300;
+
+        /// <summary>
+        /// What the tooltip over a hovered link says (#95 gap 5): where it leads, so a link whose text says one place and whose
+        /// target is another can be checked before it is followed, and how to follow it. The target is shown as it is, so it
+        /// cannot be disguised in turn: a character that reorders or hides text (a bidi override, a zero-width space) is
+        /// shown as a visible escape, a control character is dropped, and a target too long to read keeps its start - the
+        /// scheme and host - and its end.
+        /// </summary>
+        internal static string LinkTargetTip(string uri, bool macOS)
+        {
+            var shown = new System.Text.StringBuilder(uri.Length);
+            foreach (char c in uri)
+            {
+                if (IsInvisibleFormatting(c)) shown.Append(System.Globalization.CultureInfo.InvariantCulture, $"\\u{(int)c:X4}");
+                else if (!char.IsControl(c)) shown.Append(c);
+            }
+
+            const int Tail = 99;
+            string target = shown.Length <= LinkTargetTipMaxLength
+                ? shown.ToString()
+                : string.Concat(shown.ToString(0, LinkTargetTipMaxLength - Tail - 1), "\u2026", shown.ToString(shown.Length - Tail, Tail));
+            return $"{target}\n{(macOS ? "Cmd" : "Ctrl")}+click to open";
+        }
+
+        /// <summary>Characters that change how the text around them reads without showing themselves: bidi controls and zero-width ones.</summary>
+        private static bool IsInvisibleFormatting(char c) =>
+            c is '\u061C' or (>= '\u200B' and <= '\u200F') or (>= '\u202A' and <= '\u202E') or (>= '\u2060' and <= '\u2069') or '\uFEFF';
 
         private static bool IsLinkActivationModifier(KeyModifiers modifiers)
         {
