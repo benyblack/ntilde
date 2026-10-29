@@ -9,7 +9,7 @@ namespace Ntilde.VT
         public int CellY { get; set; }
         public int CellWidth { get; }
         public int CellHeight { get; }
-        public int ZIndex { get; set; } = 0;
+        public int ZIndex { get; set; }
 
         public object ImageHandle { get; }
 

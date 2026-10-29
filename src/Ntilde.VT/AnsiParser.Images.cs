@@ -168,7 +168,7 @@ namespace Ntilde.VT
             }
 
             string header = osc.Substring(0, colon);
-            if (!header.StartsWith("1337;File="))
+            if (!header.StartsWith("1337;File=", StringComparison.Ordinal))
             {
                 return;
             }
@@ -185,7 +185,7 @@ namespace Ntilde.VT
             {
                 var kv = arg.Split('=');
                 if (kv.Length != 2) continue;
-                string key = kv[0].ToLower();
+                string key = kv[0].ToLowerInvariant();
                 string val = kv[1];
 
                 if (key == "width") width = ParseDimension(val, isHeight: false);
@@ -317,18 +317,20 @@ namespace Ntilde.VT
         {
             if (string.IsNullOrEmpty(val)) return 0;
 
-            if (val.EndsWith("px"))
+            // Protocol values are ASCII decimals, so they parse the same in every locale: in the current culture, de-DE
+            // read "25.5px" as 255 pixels (its group separator is the dot).
+            if (val.EndsWith("px", StringComparison.Ordinal))
             {
-                if (double.TryParse(val.Substring(0, val.Length - 2), out double px))
+                if (double.TryParse(val.AsSpan(0, val.Length - 2), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double px))
                 {
                     // Convert pixels to cells based on current metrics
                     float metric = isHeight ? CellHeight : CellWidth;
                     return (int)Math.Max(1, Math.Ceiling(px / (metric > 0 ? metric : 10f)));
                 }
             }
-            if (val.EndsWith("%"))
+            if (val.EndsWith('%'))
             {
-                if (double.TryParse(val.Substring(0, val.Length - 1), out double pct))
+                if (double.TryParse(val.AsSpan(0, val.Length - 1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double pct))
                 {
                     // % of terminal width/height in cells
                     int total = isHeight ? _buffer.Rows : _buffer.Cols;

@@ -9,6 +9,10 @@ using System.Runtime.CompilerServices;
 
 namespace Ntilde.VT
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+        Justification = "The lock lives exactly as long as the buffer, and the parser, renderers and mux take it from their own " +
+                        "threads without owning the buffer's lifetime: disposing it would turn a late reader into an " +
+                        "ObjectDisposedException. A ReaderWriterLockSlim holds only finalizable wait events, made on contention.")]
     public partial class TerminalBuffer
     {
         private readonly SavedCursorStates _savedCursors = new();
@@ -21,7 +25,7 @@ namespace Ntilde.VT
         // Alternate screen buffer support (for vim, htop, less, etc.)
         private TerminalRow[] _mainScreen;
         private TerminalRow[] _altScreen;
-        private bool _isAltScreen = false;
+        private bool _isAltScreen;
         public bool IsAltScreenActive => _isAltScreen;
 
         // Scrollback buffer - historical lines that scrolled off the top
@@ -114,7 +118,7 @@ namespace Ntilde.VT
         public int TotalLines => _isAltScreen ? Rows : (_scrollback.Count + Rows);
 
         // Terminal mode state
-        public readonly ModeState Modes = new();
+        public ModeState Modes { get; } = new();
 
         public bool IsCursorVisible
         {
@@ -123,14 +127,14 @@ namespace Ntilde.VT
         }
 
         // Scrolling region support (for vim splits, tmux)
-        public int ScrollTop { get; set; } = 0;
+        public int ScrollTop { get; set; }
         public int ScrollBottom { get; set; }
 
         public event Action? OnInvalidate;
         public event Action<bool>? OnScreenSwitched; // true for alt screen, false for main screen
 
         // Thread safety
-        public readonly System.Threading.ReaderWriterLockSlim Lock = new System.Threading.ReaderWriterLockSlim(System.Threading.LockRecursionPolicy.NoRecursion);
+        public System.Threading.ReaderWriterLockSlim Lock { get; } = new System.Threading.ReaderWriterLockSlim(System.Threading.LockRecursionPolicy.NoRecursion);
 
         // ── Reflow-tracked shell-integration marks ───────────────────────────────
         //

@@ -31,7 +31,7 @@ namespace Ntilde.VT
         {
             TerminalLogger.Debug($"[ANSI_PARSER] HandleApc: {content.Substring(0, Math.Min(content.Length, 20))}...");
             // Kitty protocol uses 'G' as command identifier in APC
-            if (content.StartsWith("G"))
+            if (content.StartsWith('G'))
             {
                 HandleKittyGraphics(content.Substring(1), isTunneled: false);
             }
@@ -42,7 +42,7 @@ namespace Ntilde.VT
             TerminalLogger.Debug($"[ANSI_PARSER] HandleKittyGraphics: {content.Substring(0, Math.Min(content.Length, 40))}...");
 
             // The Kitty protocol control string starts with 'G'.
-            if (content.StartsWith("G")) content = content.Substring(1);
+            if (content.StartsWith('G')) content = content.Substring(1);
 
             // Format: params ; payload
             var parts = content.Split(';', 2);
@@ -224,7 +224,7 @@ namespace Ntilde.VT
             int format = 0;
             if (_kittyPendingParams.TryGetValue("f", out var fVal))
             {
-                int.TryParse(fVal, out format);
+                _ = int.TryParse(fVal, out format); // a malformed f= reads as 0, the container-decoder default
             }
 
             bool isRaw = format == 24 || format == 32;
@@ -300,7 +300,7 @@ namespace Ntilde.VT
             if (string.IsNullOrEmpty(combinedPayload)) return null;
 
             // Handle optional 'G' prefix
-            if (combinedPayload.StartsWith("G")) combinedPayload = combinedPayload.Substring(1);
+            if (combinedPayload.StartsWith('G')) combinedPayload = combinedPayload.Substring(1);
 
             TerminalLogger.Debug($"[ANSI_PARSER] Kitty payload preview: {combinedPayload.Substring(0, Math.Min(combinedPayload.Length, 20))}...");
             byte[] data = Convert.FromBase64String(combinedPayload);
@@ -427,13 +427,13 @@ namespace Ntilde.VT
 
             if (width == 0 && _kittyPendingParams.TryGetValue("w", out var wVal))
             {
-                string wSfx = wVal.EndsWith("px") || wVal.EndsWith("%") ? wVal : wVal + "px";
+                string wSfx = wVal.EndsWith("px", StringComparison.Ordinal) || wVal.EndsWith('%') ? wVal : wVal + "px";
                 width = ParseDimension(wSfx, isHeight: false);
             }
 
             if (height == 0 && _kittyPendingParams.TryGetValue("h", out var hVal))
             {
-                string hSfx = hVal.EndsWith("px") || hVal.EndsWith("%") ? hVal : hVal + "px";
+                string hSfx = hVal.EndsWith("px", StringComparison.Ordinal) || hVal.EndsWith('%') ? hVal : hVal + "px";
                 height = ParseDimension(hSfx, isHeight: true);
             }
 

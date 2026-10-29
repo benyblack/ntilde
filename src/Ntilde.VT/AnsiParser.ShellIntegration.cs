@@ -256,7 +256,7 @@ namespace Ntilde.VT
                 return null;
             }
 
-            string decoded = Uri.UnescapeDataString(attribute.Substring(CmdlineUrlAttribute.Length));
+            string decoded = Uri.UnescapeDataString(attribute.AsSpan(CmdlineUrlAttribute.Length));
             return !string.IsNullOrWhiteSpace(decoded) && IsPlausibleCommandText(decoded) ? decoded : null;
         }
 

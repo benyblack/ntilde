@@ -9,7 +9,7 @@ namespace Ntilde.VT
         private State _state = State.Normal;
 
         // Flag to swallow a single newline after an inline image (common in scripts)
-        private bool _swallowNextNewline = false;
+        private bool _swallowNextNewline;
 
         // DEC G0..G3 charset designation + GL shift state.
         // mc/ncurses draw box characters via terminfo `smacs`/`rmacs` (SO/SI) and `ESC ( 0`
@@ -21,7 +21,7 @@ namespace Ntilde.VT
 
         // Zero-alloc buffers
         private char[] _paramBuffer = new char[256];
-        private int _paramLen = 0;
+        private int _paramLen;
 
         // Set when a CSI's parameter/intermediate run overflows MaxCsiParamChars. What fell off
         // the end may have been an INTERMEDIATE byte, and an intermediate is part of the
@@ -50,7 +50,7 @@ namespace Ntilde.VT
 
         // ConPTY Sync Fix: Track vertical offset caused by inline images that ConPTY doesn't see.
         // This effectively "scrolls" the PTY's logical cursor to match our visual cursor.
-        private int _verticalOffset = 0;
+        private int _verticalOffset;
 
         private List<char> _oscStringBuffer = new List<char>(); // OSC strings can be long (titles, etc) - Keep List for now or limit
         private List<char> _apcStringBuffer = new List<char>();

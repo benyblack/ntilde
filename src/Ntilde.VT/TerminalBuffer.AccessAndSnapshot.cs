@@ -931,6 +931,8 @@ namespace Ntilde.VT
             return matches;
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+            Justification = "Part of the buffer's API: the reflow engine and the width tests ask the buffer that lays the text out. It delegates to UnicodeWidth today.")]
         public int GetGraphemeWidth(ReadOnlySpan<char> textElement)
         {
             return UnicodeWidth.GetGraphemeWidth(textElement);

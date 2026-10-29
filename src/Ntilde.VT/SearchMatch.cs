@@ -1,10 +1,10 @@
 namespace Ntilde.VT
 {
-    public struct SearchMatch
+    public readonly struct SearchMatch
     {
-        public int AbsRow;
-        public int StartCol;
-        public int EndCol;
+        public int AbsRow { get; }
+        public int StartCol { get; }
+        public int EndCol { get; }
 
         public SearchMatch(int row, int start, int end)
         {

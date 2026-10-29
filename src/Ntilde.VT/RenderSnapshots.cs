@@ -86,6 +86,8 @@ namespace Ntilde.VT
             }
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1000:Do not declare static members on generic types",
+            Justification = "Mirrors ImmutableArray<T>.Empty: the empty value belongs on the type it is the empty value of.")]
         public static PooledArray<T> Empty => new();
     }
 

@@ -9,10 +9,10 @@ namespace Ntilde.VT
     /// </summary>
     public readonly struct TermColor : IEquatable<TermColor>
     {
-        public readonly byte R;
-        public readonly byte G;
-        public readonly byte B;
-        public readonly byte A;
+        public byte R { get; }
+        public byte G { get; }
+        public byte B { get; }
+        public byte A { get; }
 
         public TermColor(byte r, byte g, byte b, byte a = 255)
         {
