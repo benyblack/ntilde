@@ -3,18 +3,18 @@ using System.Collections.Generic;
 
 namespace Ntilde.ExternalSuites.Vttest
 {
-    public abstract record Step;
-    public record SendBytes(byte[] Bytes) : Step;
-    public record WaitForQuiet(int QuietMs, int MaxWaitMs) : Step;
+    public abstract record VttestStep;
+    public record SendBytes(byte[] Bytes) : VttestStep;
+    public record WaitForQuiet(int QuietMs, int MaxWaitMs) : VttestStep;
 
     public static class VttestPlan
     {
         private static readonly byte[] Enter = new byte[] { (byte)'\r' };
         private static readonly byte[] Q = new byte[] { (byte)'q' };
 
-        private static Step Sel(char n) => new SendBytes(new byte[] { (byte)n, (byte)'\r' });
+        private static SendBytes Sel(char n) => new SendBytes(new byte[] { (byte)n, (byte)'\r' });
 
-        public static IEnumerable<Step> GetCursorScenario() => new List<Step>
+        public static IEnumerable<VttestStep> GetCursorScenario() => new List<VttestStep>
         {
             new WaitForQuiet(300, 5000),
             Sel('1'),
@@ -31,7 +31,7 @@ namespace Ntilde.ExternalSuites.Vttest
             new WaitForQuiet(300, 5000),
         };
 
-        public static IEnumerable<Step> GetSgrScenario() => new List<Step>
+        public static IEnumerable<VttestStep> GetSgrScenario() => new List<VttestStep>
         {
             new WaitForQuiet(300, 5000),
             Sel('3'),
@@ -47,7 +47,7 @@ namespace Ntilde.ExternalSuites.Vttest
             new WaitForQuiet(300, 5000),
         };
 
-        public static IEnumerable<Step> GetScrollScenario() => new List<Step>
+        public static IEnumerable<VttestStep> GetScrollScenario() => new List<VttestStep>
         {
             new WaitForQuiet(300, 5000),
             Sel('2'),

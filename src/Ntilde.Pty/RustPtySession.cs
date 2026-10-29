@@ -373,6 +373,9 @@ namespace Ntilde.Pty
             // The Rust side decodes with CStr::to_string_lossy() (UTF-8); the DllImport
             // default is ANSI (active codepage) on Windows, which silently mangled any
             // non-ASCII cmd/cwd/args/env into U+FFFD replacement bytes (#152).
+            // CA2101 wants CharSet.Unicode, but none of these strings is UTF-16: each carries an explicit LPUTF8Str,
+            // which the analyzer does not count as specified marshalling.
+#pragma warning disable CA2101
             [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
             public static extern PtySafeHandle pty_create(
                 [MarshalAs(UnmanagedType.LPUTF8Str)] string cmd, ushort cols, ushort rows);
@@ -391,6 +394,7 @@ namespace Ntilde.Pty
                 [MarshalAs(UnmanagedType.LPUTF8Str)] string? cwd,
                 ushort cols, ushort rows,
                 [MarshalAs(UnmanagedType.LPUTF8Str)] string envs);
+#pragma warning restore CA2101
 
             [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
             public static extern int pty_read(PtySafeHandle state, byte[] buffer, int len);
@@ -688,7 +692,7 @@ namespace Ntilde.Pty
         /// </remarks>
         internal static string? RejectEmbeddedNuls(string? value, string parameterName)
         {
-            if (value != null && value.IndexOf('\0') >= 0)
+            if (value != null && value.Contains('\0'))
             {
                 throw new ArgumentException(
                     $"Cannot start a terminal session: {parameterName} contains an embedded NUL character, " +
@@ -783,7 +787,7 @@ namespace Ntilde.Pty
 
             if (OperatingSystem.IsWindows())
             {
-                if (shellLower.EndsWith("cmd.exe"))
+                if (shellLower.EndsWith("cmd.exe", StringComparison.Ordinal))
                 {
                     effectiveShell = shellCommand;
                     combinedArgs = CmdCodePageArgs.Merge(combinedArgs);
@@ -1411,6 +1415,8 @@ namespace Ntilde.Pty
                 _onOutputReceived = null;
                 _pendingOutputReplay = null;
             }
+
+            GC.SuppressFinalize(this);
         }
 
         /// Observes the injection task's outcome and removes its script if the shell

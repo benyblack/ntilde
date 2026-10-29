@@ -143,7 +143,13 @@ namespace Ntilde.Pty
         {
             if (!File.Exists(path)) return false;
             if (OperatingSystem.IsWindows()) return true;
+            return IsExecutableOnUnix(path, execProbe);
+        }
 
+        // Its own method so the platform analyzer sees the Windows guard: it does not carry one into a catch block.
+        [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+        private static bool IsExecutableOnUnix(string path, Func<string, bool> execProbe)
+        {
             try
             {
                 return execProbe(path);
@@ -168,8 +174,12 @@ namespace Ntilde.Pty
 
         private const int X_OK = 1;
 
+        // CA2101 wants CharSet.Unicode, but the path is not UTF-16: it carries an explicit LPUTF8Str, which the
+        // analyzer does not count as specified marshalling.
+#pragma warning disable CA2101
         [DllImport("libc")]
         private static extern int access([MarshalAs(UnmanagedType.LPUTF8Str)] string pathname, int mode);
+#pragma warning restore CA2101
 
         private static string? ReadLoginShellFromPasswd()
         {

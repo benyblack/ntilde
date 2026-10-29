@@ -96,7 +96,7 @@ namespace Ntilde.Rendering
         private readonly List<SKImage> _disposalQueue = new();
         private readonly GlyphAtlas _atlas;
         private readonly Dictionary<GlyphKey, CacheEntry> _entries = new();
-        private long _usageCounter = 0;
+        private long _usageCounter;
 
         // The exact colour is NOT part of the key for Alpha8, as it is tinted during DrawAtlas. Its
         // luminance class is: see LuminanceClassOf.
@@ -122,7 +122,7 @@ namespace Ntilde.Rendering
         private readonly record struct LuminanceClass(SKColor Representative, byte[] Probe);
 
         public int EntryCount => _entries.Count;
-        public long AtlasByteSize => GlyphAtlas.AtlasSize * GlyphAtlas.AtlasSize * 4 * 2; // 2 surfaces, RGBA8888
+        public static long AtlasByteSize => GlyphAtlas.AtlasSize * GlyphAtlas.AtlasSize * 4 * 2; // 2 surfaces, RGBA8888
 
         public GlyphCache()
         {
@@ -604,6 +604,8 @@ namespace Ntilde.Rendering
                 _probeSurface = null;
                 _probeFont = null;
             }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

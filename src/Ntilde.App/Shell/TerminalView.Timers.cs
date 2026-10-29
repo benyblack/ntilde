@@ -114,7 +114,7 @@ namespace Ntilde.Shell
         {
             if (_buffer == null) return;
 
-            var m = _buffer.GetMemoryMetrics(_glyphCache.EntryCount, _glyphCache.AtlasByteSize);
+            var m = _buffer.GetMemoryMetrics(_glyphCache.EntryCount, GlyphCache.AtlasByteSize);
 
             // Format for easy log parsing/grep
             TerminalLogger.Debug(

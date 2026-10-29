@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -33,8 +34,16 @@ namespace Ntilde.ExternalSuites.Vttest
         {
             const string LibName = "rusty_pty";
 
+            // rusty_pty reads every string as UTF-8; the DllImport default is the ANSI code page on Windows (#152).
+            // CA2101 wants CharSet.Unicode, but none of these strings is UTF-16, and it does not count LPUTF8Str.
+#pragma warning disable CA2101
             [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
-            public static extern IntPtr pty_spawn(string cmd, string? args, string? cwd, ushort cols, ushort rows);
+            public static extern IntPtr pty_spawn(
+                [MarshalAs(UnmanagedType.LPUTF8Str)] string cmd,
+                [MarshalAs(UnmanagedType.LPUTF8Str)] string? args,
+                [MarshalAs(UnmanagedType.LPUTF8Str)] string? cwd,
+                ushort cols, ushort rows);
+#pragma warning restore CA2101
 
             [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
             public static extern int pty_read(IntPtr state, byte[] buffer, int len);
@@ -109,7 +118,7 @@ namespace Ntilde.ExternalSuites.Vttest
         {
             if (_ptyState == IntPtr.Zero) return;
             byte[] bytes = Encoding.UTF8.GetBytes(input);
-            Native.pty_write(_ptyState, bytes, bytes.Length);
+            Write(bytes);
         }
 
         // External harness method (byte-exact)
@@ -117,7 +126,16 @@ namespace Ntilde.ExternalSuites.Vttest
         {
             if (_ptyState == IntPtr.Zero || bytes.IsEmpty) return;
             byte[] tmp = bytes.ToArray();
-            Native.pty_write(_ptyState, tmp, tmp.Length);
+            Write(tmp);
+        }
+
+        // pty_write is a write_all: the full length, or -1 (#168). Keys that never reached vttest would leave a capture of
+        // a run that did not happen, so a failed write fails the capture.
+        private void Write(byte[] bytes)
+        {
+            int written = Native.pty_write(_ptyState, bytes, bytes.Length);
+            if (written != bytes.Length)
+                throw new IOException($"pty_write returned {written} (expected {bytes.Length}); vttest did not get the input.");
         }
 
         public void Resize(int cols, int rows) { }
@@ -131,8 +149,6 @@ namespace Ntilde.ExternalSuites.Vttest
             info = default;
             return false;
         }
-        public void AttachBuffer(TerminalBuffer buffer) { }
-        public void TakeSnapshot() { }
 
         public async ValueTask DisposeAsync()
         {

@@ -33,11 +33,11 @@ namespace Ntilde.Rendering
         }
 
         private readonly Dictionary<int, SixelColor> _palette = new();
-        private int _currentColorIdx = 0;
-        private int _cursorX = 0;
-        private int _cursorY = 0;
-        private int _maxWidth = 0;
-        private int _maxHeight = 0;
+        private int _currentColorIdx;
+        private int _cursorX;
+        private int _cursorY;
+        private int _maxWidth;
+        private int _maxHeight;
 
         // The painted pixels, one array per 6-pixel band: six rows of equal width, allocated when
         // the band is first painted and widened (never past MaxPixelDimension) as runs reach

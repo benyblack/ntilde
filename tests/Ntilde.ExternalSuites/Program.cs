@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Ntilde.ExternalSuites.NativeSsh;
@@ -7,7 +8,7 @@ using Ntilde.ExternalSuites.Vttest;
 
 namespace Ntilde.ExternalSuites
 {
-    class Program
+    static class Program
     {
         static async Task<int> Main(string[] args)
         {
@@ -25,9 +26,9 @@ namespace Ntilde.ExternalSuites
                     case "--suite": suite = args[++i]; break;
                     case "--scenario": scenario = args[++i]; break;
                     case "--out": outputPath = args[++i]; break;
-                    case "--cols": cols = ushort.Parse(args[++i]); break;
-                    case "--rows": rows = ushort.Parse(args[++i]); break;
-                    case "--timeout": timeoutMs = int.Parse(args[++i]); break;
+                    case "--cols": cols = ushort.Parse(args[++i], CultureInfo.InvariantCulture); break;
+                    case "--rows": rows = ushort.Parse(args[++i], CultureInfo.InvariantCulture); break;
+                    case "--timeout": timeoutMs = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
                 }
             }
 
@@ -68,7 +69,7 @@ namespace Ntilde.ExternalSuites
 
             Console.WriteLine($"[VttestAdapter] Scenario: {scenario}, Size: {cols}x{rows}, Out: {outputPath}");
 
-            IEnumerable<Step> steps = scenario switch
+            IEnumerable<VttestStep> steps = scenario switch
             {
                 "cursor" => VttestPlan.GetCursorScenario(),
                 "sgr" => VttestPlan.GetSgrScenario(),
