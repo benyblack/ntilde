@@ -32,11 +32,10 @@
          the call site with [UnconditionalSuppressMessage] and a justification, so the
          decision is reviewable where it is made. CompiledBindingTests pins this property. -->
     <WarningsAsErrors>IL2026;IL3050</WarningsAsErrors>
-    <!-- #108: any C# warning fails the build. ILC's own switch defaults to TreatWarningsAsErrors
-         (IlcTreatWarningsAsErrors, Microsoft.NETCore.Native.targets), and turning on every warning of the
+    <!-- TreatWarningsAsErrors is on repo-wide (#108), and ILC's own switch defaults to it
+         (IlcTreatWarningsAsErrors, Microsoft.NETCore.Native.targets). Turning on every warning of the
          whole-program pass would be a separate decision: it stays off, so a publish still fails only on
          the two above. -->
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <IlcTreatWarningsAsErrors>false</IlcTreatWarningsAsErrors>
   </PropertyGroup>
 

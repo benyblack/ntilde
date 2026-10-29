@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- CA1861 (constant array arguments) is noise in assertions over literal byte sequences. -->
     <NoWarn>$(NoWarn);CA1861</NoWarn>
   </PropertyGroup>

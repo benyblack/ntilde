@@ -8,7 +8,6 @@
     <RootNamespace>Ntilde.MuxDaemon</RootNamespace>
     <PublishAot>true</PublishAot>
     <IsAotCompatible>true</IsAotCompatible>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL3050</WarningsAsErrors>
     <StripSymbols>true</StripSymbols>
     <InvariantGlobalization>true</InvariantGlobalization>

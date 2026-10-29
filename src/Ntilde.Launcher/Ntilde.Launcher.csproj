@@ -9,7 +9,6 @@
     <OutputType>Exe</OutputType>
     <PublishAot>true</PublishAot>
     <IsAotCompatible>true</IsAotCompatible>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL3050</WarningsAsErrors>
     <!-- The console control handler is an [UnmanagedCallersOnly] function pointer: no delegate marshalling. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
