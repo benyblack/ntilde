@@ -49,6 +49,9 @@ namespace Ntilde.AgentHost
 
         /// <summary>A keyboard-interactive question, such as a one-time code.</summary>
         KeyboardInteractive,
+
+        /// <summary>Signing in needs the user, and the connection cannot say with what (<c>AgentHostProtocol.NeedsUserReasons.SignIn</c>).</summary>
+        SignIn,
     }
 
     public enum AgentSessionEventType

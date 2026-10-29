@@ -282,6 +282,41 @@ public sealed class MuxConnectionHostTests
         Assert.Equal(new[] { true, false, true }, attempts.Select(a => a.Interactive));
     }
 
+    /// <summary>
+    /// #631: a request nobody is there to answer for - a tab an agent opened - gets its client the way an automatic attempt
+    /// does. It joins the attempt in flight rather than superseding it with one that asks, and one it starts never prompts.
+    /// </summary>
+    [Fact]
+    public async Task A_request_without_a_user_joins_an_automatic_attempt_and_never_starts_one_that_prompts()
+    {
+        using var mux = new MuxTestHost();
+        var attempts = new System.Collections.Concurrent.ConcurrentQueue<MuxConnectAttempt>();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var host = new MuxConnectionHost(async (attempt, ct) =>
+        {
+            attempts.Enqueue(attempt);
+            await release.Task.WaitAsync(ct);
+            return await MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct);
+        }, "test", null, MuxHostPolicy.Remote("box"))
+        {
+            Scheduler = new Remote.FakeMuxTimerScheduler(),
+        };
+
+        Task<MuxClient> automatic = host.TryStartAutomaticAttempt()!;
+        Task<MuxClient?> agents = Task.Run(() => host.GetClient(TimeSpan.FromSeconds(10), interactive: false), TestContext.Current.CancellationToken);
+        await Task.Delay(300, TestContext.Current.CancellationToken); // its request is in, waiting on the attempt in flight
+        release.SetResult();
+
+        MuxClient? client = await agents.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Same(await automatic.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken), client);
+        Assert.Equal(new[] { false }, attempts.Select(a => a.Interactive));
+        client!.Dispose();
+
+        // With nothing in flight, the attempt it starts is an automatic one too.
+        Assert.NotNull(host.GetClient(TimeSpan.FromSeconds(10), interactive: false));
+        Assert.Equal(new[] { false, false }, attempts.Select(a => a.Interactive));
+    }
+
     [Fact]
     public async Task An_automatic_attempt_joins_the_one_in_flight_and_is_null_once_connected_or_disposed()
     {

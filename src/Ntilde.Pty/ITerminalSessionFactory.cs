@@ -87,7 +87,16 @@ namespace Ntilde.Pty
         Guid ProfileId,
         int DiagnosticsLevel,
         object? InteractionHandler,
-        bool NativeSshEnabled);
+        bool NativeSshEnabled)
+    {
+        /// <summary>
+        /// Whether a user is there to answer the connection's sign-in prompts. False for a tab an agent opened (#610,
+        /// #631): a persistent-remote connection then neither starts nor supersedes an attempt that asks the user - it
+        /// joins the one in flight, or starts one that never prompts. A plain connection carries the same rule in its
+        /// <see cref="InteractionHandler"/>.
+        /// </summary>
+        public bool Interactive { get; init; } = true;
+    }
 
     /// <summary>
     /// Opens terminal sessions. One method, because the whole point is that the caller expresses

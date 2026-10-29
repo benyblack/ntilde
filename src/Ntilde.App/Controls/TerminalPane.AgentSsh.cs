@@ -9,8 +9,9 @@ namespace Ntilde.Controls
     /// only the user can give ends the connection instead, and the pane and the agent are both told what it was.
     /// </summary>
     /// <remarks>
-    /// This covers plain SSH. A profile whose sessions persist on its host connects through that host's own prompts
-    /// (<c>RemoteMuxInteractionHandler</c>), which this does not reach.
+    /// A profile whose sessions persist on its host connects through that host's own attempts instead: the request says
+    /// it is not <see cref="Ntilde.Pty.SshSessionDescriptor.Interactive"/>, so the attempt never asks the user, and a
+    /// sign-in that needs them is reported the same way (#631).
     /// </remarks>
     public partial class TerminalPane
     {
@@ -76,6 +77,24 @@ namespace Ntilde.Controls
                 $"[An agent opened this connection, and the server asked {asked}. A connection an agent opens never shows a sign-in dialog.]\r\n" +
                 $"[Press Enter to connect yourself; the agent can carry on in this tab once you have.{next}]\r\n";
         }
+
+        /// <summary>
+        /// What the agent is told a persistent-remote tab it opened has no session for (#631): the host's failure, when it is
+        /// one that needs the user to sign in or to check a host key. Null for any other failure, and for the native backend
+        /// switched off, which no sign-in fixes.
+        /// </summary>
+        private static AgentNeedsUserReason? AgentNeedsUserFor(Ntilde.Shell.Mux.Remote.RemoteMuxFailure? failure) => failure switch
+        {
+            { Kind: Ntilde.Shell.Mux.Remote.RemoteFailureKind.NeedsUser, Cause: var cause } => cause switch
+            {
+                Ntilde.Shell.Mux.Remote.RemoteNeedsUserCause.SignIn => AgentNeedsUserReason.SignIn,
+                Ntilde.Shell.Mux.Remote.RemoteNeedsUserCause.SavedPasswordRefused => AgentNeedsUserReason.Password,
+                Ntilde.Shell.Mux.Remote.RemoteNeedsUserCause.HostKey => AgentNeedsUserReason.HostKey,
+                Ntilde.Shell.Mux.Remote.RemoteNeedsUserCause.HostKeyChanged => AgentNeedsUserReason.ChangedHostKey,
+                _ => null,
+            },
+            _ => null,
+        };
 
         /// <summary>What the agent is told its session stopped for (<see cref="AgentSessionStatusSnapshot.NeedsUser"/>).</summary>
         private AgentNeedsUserReason? AgentNeedsUser() => _sshNeedsUser switch

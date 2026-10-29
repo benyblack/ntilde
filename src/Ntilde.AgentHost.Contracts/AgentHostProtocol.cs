@@ -167,6 +167,12 @@ public static class AgentHostProtocol
 
         /// <summary>A keyboard-interactive question, such as a one-time code.</summary>
         public const string KeyboardInteractive = "keyboardInteractive";
+
+        /// <summary>
+        /// Signing in needs the user, and the connection cannot say with what - a password, a passphrase or a code. A
+        /// persistent-remote tab reports this (#631): its host's sign-in classifies only that it needed someone.
+        /// </summary>
+        public const string SignIn = "signIn";
     }
 
     /// <summary>Wire values for status confidence: how the status was derived.</summary>

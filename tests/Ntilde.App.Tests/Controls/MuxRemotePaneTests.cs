@@ -890,6 +890,46 @@ public sealed class MuxRemotePaneTests : IDisposable
     }
 
     /// <summary>
+    /// #631: a remote tab an agent opened connects with an attempt that never asks the user, so a sign-in only the user can
+    /// do is refused rather than shown in a dialog. The tab says an agent opened it, and the agent is told why it has no
+    /// session. Enter is the user's attempt, and brings the same tab back for the agent.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_remote_tab_an_agent_opened_needs_the_user_and_comes_back_when_they_sign_in()
+    {
+        _remote.Script = SshRefusedSignIn;
+        TerminalPane pane = ShowPane(configure: p => p.OpenedByAgent = true);
+
+        ShowsBanner(pane, TerminalPane.RemoteUnreachableBanner(Host));
+        ShowsWrapped(pane, TerminalPane.RemoteAgentOpenedLine);
+        Ntilde.AgentHost.AgentSessionStatusSnapshot status = pane.AgentRegistrationForTesting!.StatusMachine.Snapshot();
+        Assert.Equal(Ntilde.AgentHost.AgentSessionStatusKind.Exited, status.Kind);
+        Assert.Equal(Ntilde.AgentHost.AgentNeedsUserReason.SignIn, status.NeedsUser);
+
+        _remote.Script = null;
+        PressEnter(pane);
+
+        Attached(pane);
+        Assert.False(pane.OpenedByAgent);
+        Assert.NotEqual(Ntilde.AgentHost.AgentSessionStatusKind.Exited, pane.AgentRegistrationForTesting!.StatusMachine.Snapshot().Kind);
+    }
+
+    /// <summary>The same refusal on the user's own tab: they were there to be asked, so it is an SSH failure, and no agent is told anything.</summary>
+    [AvaloniaFact]
+    public void The_users_own_remote_tab_refused_by_ssh_says_nothing_to_agents()
+    {
+        _remote.Script = SshRefusedSignIn;
+        TerminalPane pane = ShowPane();
+
+        ShowsBanner(pane, TerminalPane.RemoteUnreachableBanner(Host));
+        Assert.DoesNotContain(Unwrapped(TerminalPane.RemoteAgentOpenedLine), Unwrapped(Text(pane)), StringComparison.Ordinal);
+        Assert.Null(pane.AgentRegistrationForTesting!.StatusMachine.Snapshot().NeedsUser);
+    }
+
+    private static FakeRemoteScript SshRefusedSignIn =>
+        new(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
+
+    /// <summary>
     /// Codex4 F: a new remote tab on a native profile while native SSH is off (Settings &gt; SSH) starts nothing - no
     /// native connection, and no plain SSH stand-in, which would be refused as well - and says why under the retry
     /// banner. Once the switch is on again, Enter connects.

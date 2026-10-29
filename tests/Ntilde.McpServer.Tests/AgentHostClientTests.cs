@@ -485,6 +485,32 @@ public class SessionToolsFormattingTests
         Assert.Contains("exit -1, needs the user: hostKey", events, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// #631: a persistent-remote tab reports only that signing in needed the user, not which answer: the remote host's
+    /// own sign-in does not say whether it was a password, a passphrase or a code.
+    /// </summary>
+    [Fact]
+    public void FormatStatus_explains_a_sign_in_that_needs_the_user()
+    {
+        var text = SessionTools.FormatStatus(new SessionStatusDto
+        {
+            PaneId = Guid.NewGuid(),
+            Status = AgentHostProtocol.StatusKinds.Exited,
+            Confidence = AgentHostProtocol.StatusConfidences.Heuristic,
+            ExitCode = -1,
+            NeedsUser = AgentHostProtocol.NeedsUserReasons.SignIn,
+            StatusSinceMs = 1_800_000_000_000,
+            LastOutputAtMs = 1_800_000_000_000,
+            IsStalled = false,
+            StallThresholdSeconds = 30,
+            IdleThresholdSeconds = 60,
+        });
+
+        Assert.Contains("NEEDS THE USER", text, StringComparison.Ordinal);
+        Assert.Contains("signing in to its server needs the user", text, StringComparison.Ordinal);
+        Assert.Contains("comes back", text, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void FormatEvents_teaches_the_cursor_and_reports_eviction_gaps()
     {

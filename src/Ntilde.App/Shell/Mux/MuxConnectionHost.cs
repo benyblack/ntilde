@@ -231,11 +231,16 @@ internal sealed class MuxConnectionHost : IDisposable
     /// interactive one (see <see cref="TryStartConnecting"/>). On a remote host that is reconnecting it is
     /// also the loop's attempt, now: the loop joins it, and its backoff starts over (Phase 4 spec §7.3).
     /// This is how Enter in a pane retries at once.
+    /// <para>
+    /// Not <paramref name="interactive"/>: a request nobody is there to answer for - a tab an agent opened (#631). It
+    /// gets its client as an automatic attempt does: it joins the attempt in flight, whatever it was started as, or
+    /// starts one that never prompts, and it leaves the reconnect loop to its own pace.
+    /// </para>
     /// </remarks>
-    public MuxClient? GetClient(TimeSpan timeout)
+    public MuxClient? GetClient(TimeSpan timeout, bool interactive = true)
     {
-        if (!TryStartConnecting(interactive: true, out Task<MuxClient>? attempt)) return CurrentClient;
-        if (Policy.IsRemote) TryReconnectNow(attempt);
+        if (!TryStartConnecting(interactive, out Task<MuxClient>? attempt)) return CurrentClient;
+        if (interactive && Policy.IsRemote) TryReconnectNow(attempt);
         try
         {
             // Not cancelled by Dispose on purpose: Dispose cancels the attempt itself, which then

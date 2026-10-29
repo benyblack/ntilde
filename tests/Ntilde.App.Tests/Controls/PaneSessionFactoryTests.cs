@@ -482,12 +482,14 @@ public class PaneSshSessionFactoryTests
 
         Assert.NotNull(prompts.WithoutDialogsHandler);
         Assert.Same(prompts.WithoutDialogsHandler, factory.LastRequest!.Ssh!.InteractionHandler);
+        Assert.False(factory.LastRequest.Ssh.Interactive); // #631: a persistent-remote connection never asks either
 
         pane.ReconnectByUser();
         Assert.False(pane.OpenedByAgent);
         pane.InitializeSessionCore(profile.Command, profile.Arguments, profile, cols: 80, rows: 24);
 
         Assert.Same(prompts, factory.LastRequest!.Ssh!.InteractionHandler);
+        Assert.True(factory.LastRequest.Ssh.Interactive);
     }
 
     /// <summary>

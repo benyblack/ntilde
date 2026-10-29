@@ -436,6 +436,26 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
     }
 
     /// <summary>
+    /// #631: a tab an agent opened (<see cref="SshSessionDescriptor.Interactive"/> false) connects with an attempt that
+    /// never asks the user. ssh refusing it then needs the user - for a user's own tab the same refusal is just an SSH
+    /// failure, since they were there to be asked.
+    /// </summary>
+    [Theory]
+    [InlineData(false, nameof(RemoteFailureKind.NeedsUser))]
+    [InlineData(true, nameof(RemoteFailureKind.SshFailed))]
+    public void A_request_without_a_user_connects_with_an_attempt_that_never_asks(bool interactive, string expected)
+    {
+        _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
+        TerminalSessionRequest request = Ssh();
+
+        PersistentSessionResult r = _factory.CreatePersistent(request with { Ssh = request.Ssh! with { Interactive = interactive } });
+
+        Assert.Equal(PersistentSessionOutcome.DaemonUnreachable, r.Outcome);
+        Assert.Null(r.Session);
+        Assert.Equal(expected, r.RemoteFailure!.Kind.ToString());
+    }
+
+    /// <summary>
     /// Task 20's ruling: an attempt that does not finish is unclassified even after an earlier one failed
     /// classified - a blackholed host must not be reported as the earlier attempt's missing binary.
     /// </summary>

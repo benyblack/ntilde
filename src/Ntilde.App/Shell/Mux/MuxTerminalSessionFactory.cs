@@ -208,7 +208,8 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     private PersistentSessionResult CreateOn(Target target, TerminalSessionRequest request)
     {
         MuxConnectionHost host = target.Host;
-        MuxClient? client = host.GetClient(target.ConnectTimeout);
+        // A tab an agent opened never asks the user (#631): its sign-in either needs no one or fails as needing the user.
+        MuxClient? client = host.GetClient(target.ConnectTimeout, interactive: request.Ssh?.Interactive ?? true);
         if (client is null)
         {
             if (target.Remote is not null)
