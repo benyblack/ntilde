@@ -543,6 +543,9 @@ namespace Ntilde.Controls
             null or { Kind: not RemoteFailureKind.NeedsUser } => null,
             { Cause: RemoteNeedsUserCause.SavedPasswordRefused } => RemoteSavedPasswordRefusedLine,
             { Cause: RemoteNeedsUserCause.HostKey } => RemoteHostKeyLine(host),
+            // A user rejected it in the native dialog (#631): Enter shows that dialog again, which says the key changed - no
+            // known_hosts to edit first, as OpenSSH's refusal needs.
+            { Cause: RemoteNeedsUserCause.HostKeyChanged, UserSignInFailed: true } => RemoteHostKeyLine(host),
             { Cause: RemoteNeedsUserCause.HostKeyChanged } => RemoteHostKeyChangedLine(host),
             { Cause: RemoteNeedsUserCause.NativeSshDisabled, Reason: { Length: > 0 } reason } => $"[{reason}]",
             _ => RemoteSignInNeedsYouLine,

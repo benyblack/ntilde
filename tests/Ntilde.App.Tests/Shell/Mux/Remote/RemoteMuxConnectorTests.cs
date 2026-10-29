@@ -1777,10 +1777,12 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         var rejected = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
 
-        // Asked in the dialog, it also says the user was asked and did not get in - about the host key (Codex review of #633).
+        // Asked in the dialog, it also says the user was asked and did not get in - about the host key, and whether it was
+        // one that changed since they trusted it (Codex reviews of #633).
+        RemoteNeedsUserCause rejectedKey = kind == nameof(SshInteractionKind.ChangedHostKey) ? RemoteNeedsUserCause.HostKeyChanged : RemoteNeedsUserCause.HostKey;
         Assert.Equal(
             window
-                ? new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Unknown server key", RemoteNeedsUserCause.HostKey) { UserSignInFailed = true }
+                ? new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Unknown server key", rejectedKey) { UserSignInFailed = true }
                 : new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Unknown server key"),
             rejected.Failure);
         Assert.False(Assert.Single(answers).IsAccepted);

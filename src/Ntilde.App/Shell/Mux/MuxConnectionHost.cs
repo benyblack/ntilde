@@ -329,6 +329,7 @@ internal sealed class MuxConnectionHost : IDisposable
                 {
                     if (!interactive || _connectingState is not { Interactive: false } automatic)
                     {
+                        _joinedAttempts++;
                         attempt = _connecting;
                         return true;
                     }
@@ -543,6 +544,11 @@ internal sealed class MuxConnectionHost : IDisposable
 
     /// <summary>Tests: the event queue; it completes once every event queued so far has been raised (or skipped).</summary>
     internal Task EventsForTest { get { lock (_gate) return _events; } }
+
+    /// <summary>How many requests joined an attempt already in flight, rather than starting one.</summary>
+    internal int JoinedAttemptsForTest { get { lock (_gate) return _joinedAttempts; } }
+
+    private int _joinedAttempts; // guarded by _gate
 
     /// <summary>The clock of a remote host's liveness ping and reconnect loop.</summary>
     internal IMuxTimerScheduler Scheduler { get; init; } = SystemMuxTimerScheduler.Instance;

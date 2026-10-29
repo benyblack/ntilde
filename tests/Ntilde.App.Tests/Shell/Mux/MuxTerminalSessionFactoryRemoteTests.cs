@@ -476,7 +476,8 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
         Task<PersistentSessionResult> users = Task.Run(() => _factory.CreatePersistent(request), Ct);
         await started.Task.WaitAsync(Patient, Ct);
         Task<PersistentSessionResult> agents = Task.Run(() => _factory.CreatePersistent(request with { Ssh = request.Ssh! with { Interactive = false } }), Ct);
-        await Task.Delay(300, Ct); // its request is in, joined to the user's attempt
+        MuxConnectionHost host = _hosts.TryGet(MuxEndpointId.ForSsh(_profile.Id))!;
+        await TestWait.UntilAsync(() => host.JoinedAttemptsForTest == 1, "the agent's request joined the user's attempt", Patient);
         hold.Set();
 
         Assert.Equal(RemoteFailureKind.SshFailed, (await users.WaitAsync(Patient, Ct)).RemoteFailure!.Kind);
@@ -484,6 +485,32 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
         Assert.Equal(RemoteFailureKind.NeedsUser, agent.RemoteFailure!.Kind);
         Assert.Equal(RemoteNeedsUserCause.SignIn, agent.RemoteFailure.Cause);
         Assert.Equal(1, _remote.StartCount); // one attempt, shared
+    }
+
+    /// <summary>
+    /// How a request without a user reads a remote failure (#631): a user's sign-in it joined and the user did not complete
+    /// needs the user - for what they did not get past - while anything else is what it was (Codex reviews of #633).
+    /// </summary>
+    [Fact]
+    public void A_request_without_a_user_reads_a_sign_in_the_user_did_not_complete_as_needing_them()
+    {
+        const string Why = "x";
+        Assert.Equal(
+            new RemoteMuxFailure(RemoteFailureKind.NeedsUser, Why) { SignInRefused = true },
+            MuxTerminalSessionFactory.ForRequestWithoutUser(new RemoteMuxFailure(RemoteFailureKind.SshFailed, Why) { SignInRefused = true }));
+        Assert.Equal(
+            new RemoteMuxFailure(RemoteFailureKind.NeedsUser, Why, RemoteNeedsUserCause.HostKeyChanged) { UserSignInFailed = true },
+            MuxTerminalSessionFactory.ForRequestWithoutUser(new RemoteMuxFailure(RemoteFailureKind.SshFailed, Why, RemoteNeedsUserCause.HostKeyChanged) { UserSignInFailed = true }));
+        Assert.Equal(
+            new RemoteMuxFailure(RemoteFailureKind.NeedsUser, Why, RemoteNeedsUserCause.HostKey) { UserSignInFailed = true },
+            MuxTerminalSessionFactory.ForRequestWithoutUser(new RemoteMuxFailure(RemoteFailureKind.SshFailed, Why, RemoteNeedsUserCause.HostKey) { UserSignInFailed = true }));
+
+        // The link failing, with nobody asked anything, is an SSH failure for it too; and what already needs the user stays so.
+        var linkFailed = new RemoteMuxFailure(RemoteFailureKind.SshFailed, Why);
+        Assert.Same(linkFailed, MuxTerminalSessionFactory.ForRequestWithoutUser(linkFailed));
+        var needsUser = new RemoteMuxFailure(RemoteFailureKind.NeedsUser, Why, RemoteNeedsUserCause.SavedPasswordRefused);
+        Assert.Same(needsUser, MuxTerminalSessionFactory.ForRequestWithoutUser(needsUser));
+        Assert.Null(MuxTerminalSessionFactory.ForRequestWithoutUser(null));
     }
 
     /// <summary>

@@ -568,7 +568,13 @@ internal sealed class RemoteMuxConnector : IDisposable
             failure = failure with
             {
                 UserSignInFailed = true,
-                Cause = asked is SshInteractionKind.UnknownHostKey or SshInteractionKind.ChangedHostKey ? RemoteNeedsUserCause.HostKey : RemoteNeedsUserCause.SignIn,
+                Cause = asked switch
+                {
+                    // Kept apart: a key that changed since the user trusted it is the warning, not an unknown key.
+                    SshInteractionKind.ChangedHostKey => RemoteNeedsUserCause.HostKeyChanged,
+                    SshInteractionKind.UnknownHostKey => RemoteNeedsUserCause.HostKey,
+                    _ => RemoteNeedsUserCause.SignIn,
+                },
             };
         }
 

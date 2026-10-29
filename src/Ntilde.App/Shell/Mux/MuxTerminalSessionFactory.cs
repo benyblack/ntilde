@@ -154,6 +154,17 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
         return CreateOn(TargetFor(Hosts.Local, MuxEndpointId.Local), request);
     }
 
+    /// <summary>
+    /// A remote failure as a request without a user (an agent's tab, #631) reads it. A user's attempt it joined, whose
+    /// sign-in the user did not complete, is an SSH failure for them, who were asked; this request could never ask, so for
+    /// it the sign-in needs the user - what its own automatic attempt would have said - for the cause the user did not get
+    /// past (a host key, changed or not, or the sign-in). Any other failure is the same for both (Codex review of #633).
+    /// </summary>
+    internal static RemoteMuxFailure? ForRequestWithoutUser(RemoteMuxFailure? failure) =>
+        failure is { Kind: RemoteFailureKind.SshFailed } && (failure.SignInRefused || failure.UserSignInFailed)
+            ? failure with { Kind = RemoteFailureKind.NeedsUser, Cause = failure.UserSignInFailed ? failure.Cause : RemoteNeedsUserCause.SignIn }
+            : failure;
+
     /// <summary>The profile, when it persists its remote sessions; null when it is gone or does not.</summary>
     private SshProfile? PersistedProfile(Guid profileId) =>
         _resolveProfile(profileId) is { MuxOptions.PersistRemoteSessions: true } profile ? profile : null;
@@ -217,13 +228,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
             {
                 // The connect's classified failure (spec §7.1): its kind decides what the notice offers.
                 RemoteMuxFailure? failure = (host.LastFailure as RemoteMuxUnavailableException)?.Failure;
-                if (!interactive && failure is { Kind: RemoteFailureKind.SshFailed } && (failure.SignInRefused || failure.UserSignInFailed))
-                {
-                    // It joined a user's attempt, whose sign-in the user did not complete: an SSH failure for them, who were
-                    // asked. This request could never ask, so for it the sign-in needs the user - what its own automatic
-                    // attempt would have said (Codex review of #633).
-                    failure = failure with { Kind = RemoteFailureKind.NeedsUser, Cause = failure.UserSignInFailed ? failure.Cause : RemoteNeedsUserCause.SignIn };
-                }
+                if (!interactive) failure = ForRequestWithoutUser(failure);
                 string why = failure?.Reason ?? "ntilde-mux could not be reached";
 
                 // Controller ruling, a deviation from spec §7.5: plain SSH only when SSH itself worked
