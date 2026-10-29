@@ -6,7 +6,7 @@ namespace Ntilde.Pty
 {
     public class NtildeSession
     {
-        public int ActiveTabIndex { get; set; } = 0;
+        public int ActiveTabIndex { get; set; }
         public List<TabSession> Tabs { get; set; } = new();
 
         /// <summary>

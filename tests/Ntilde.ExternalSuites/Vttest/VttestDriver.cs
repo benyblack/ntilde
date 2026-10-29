@@ -25,7 +25,7 @@ namespace Ntilde.ExternalSuites.Vttest
             _lastActivity = DateTime.UtcNow;
         }
 
-        public async Task ExecuteStepsAsync(IEnumerable<Step> steps)
+        public async Task ExecuteStepsAsync(IEnumerable<VttestStep> steps)
         {
             foreach (var step in steps)
             {

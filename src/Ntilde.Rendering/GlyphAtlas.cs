@@ -10,26 +10,19 @@ namespace Ntilde.Rendering
         Color   // For color emojis (RGBA)
     }
 
-    public struct AtlasGlyph
-    {
-        public SKImage Image;
-        public SKRect Rect;
-        public AtlasType Type;
-    }
-
     public class GlyphAtlas : IDisposable
     {
         public const int AtlasSize = 1024;
         private readonly SKSurface _alphaSurface;
         private readonly SKSurface _colorSurface;
 
-        private int _alphaShelfY = 0;
-        private int _alphaNextX = 0;
-        private int _alphaMaxShelfHeight = 0;
+        private int _alphaShelfY;
+        private int _alphaNextX;
+        private int _alphaMaxShelfHeight;
 
-        private int _colorShelfY = 0;
-        private int _colorNextX = 0;
-        private int _colorMaxShelfHeight = 0;
+        private int _colorShelfY;
+        private int _colorNextX;
+        private int _colorMaxShelfHeight;
 
         public GlyphAtlas()
         {
@@ -53,7 +46,7 @@ namespace Ntilde.Rendering
                 return PackOnSurface(ref _colorNextX, ref _colorShelfY, ref _colorMaxShelfHeight, width, height);
         }
 
-        private SKRect? PackOnSurface(ref int nextX, ref int shelfY, ref int maxShelfHeight, int w, int h)
+        private static SKRect? PackOnSurface(ref int nextX, ref int shelfY, ref int maxShelfHeight, int w, int h)
         {
             // Add 1px padding to avoid bleeding
             int pw = w + 1;
@@ -119,6 +112,7 @@ namespace Ntilde.Rendering
         {
             _alphaSurface.Dispose();
             _colorSurface.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }
