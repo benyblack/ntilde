@@ -183,6 +183,37 @@ public sealed class TerminalViewLinkActivationTests
         Assert.Equal([new HyperlinkRun(0, 75, 79), new HyperlinkRun(1, 0, 4)], view.HoveredLinkRunsForTest);
     }
 
+    /// <summary>
+    /// Every pointer move asks for the hovered link, so moving within one anchor on an unchanged screen must reuse its runs
+    /// rather than rescan every visible row under the buffer's lock each time (Codex review of #632). Another anchor, or a
+    /// screen that moved, is looked up again.
+    /// </summary>
+    [AvaloniaFact]
+    public void Moving_within_one_Osc8_link_does_not_rescan_the_screen()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process(Osc8("https://example.com/one", "first link") + " " + Osc8("https://example.com/two", "second"));
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(new RecordingEnvironment()) };
+        view.SetBuffer(buffer);
+        view.SetMetricsForTest(CellWidth, CellHeight);
+
+        view.UpdateHoveredLink(CellCentre(0, 1));
+        view.UpdateHoveredLink(CellCentre(0, 5));
+        view.UpdateHoveredLink(CellCentre(0, 9));
+        Assert.Equal(1, view.Osc8ScansForTest);
+
+        view.UpdateHoveredLink(CellCentre(0, 12));
+        Assert.Equal("https://example.com/two", view.HoveredLinkUriForTest);
+        Assert.Equal(2, view.Osc8ScansForTest);
+
+        // Output that scrolls the screen moves the link under the pointer: what is there now is looked up again.
+        parser.Process("\r\n" + string.Concat(Enumerable.Repeat("filler\r\n", 30)));
+        parser.Process(Osc8("https://example.com/one", "first link"));
+        view.UpdateHoveredLink(CellCentre(23, 1));
+        Assert.Equal(3, view.Osc8ScansForTest);
+    }
+
     /// <summary>What Render draws for the wrapped link: a 1-pixel bar under each run, on its own row.</summary>
     [AvaloniaFact]
     public void A_wrapped_Osc8_link_is_drawn_underlined_on_both_rows()

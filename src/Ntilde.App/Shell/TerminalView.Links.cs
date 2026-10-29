@@ -34,6 +34,17 @@ namespace Ntilde.Shell
         internal IReadOnlyList<Ntilde.VT.Links.HyperlinkRun> HoveredLinkRunsForTest =>
             _hoveredLink?.Runs ?? System.Array.Empty<Ntilde.VT.Links.HyperlinkRun>();
 
+        /// <summary>
+        /// The OSC 8 anchor the hovered runs were found for, and the screen they were found on. Every pointer move asks
+        /// for the hovered link, so moving within one anchor on an unchanged screen reuses its runs instead of rescanning
+        /// every visible row under the buffer's lock (Codex review of #632). New output moves the screen, and a redrawn
+        /// link is a new anchor, so either is looked up again.
+        /// </summary>
+        private (Ntilde.VT.Links.Hyperlink Link, int DisplayStart, int Rows, int Cols)? _hoveredOsc8Screen;
+
+        /// <summary>How many times the hovered OSC 8 link's runs were looked up on screen.</summary>
+        internal int Osc8ScansForTest { get; private set; }
+
         // One-row memo so we only re-run detection when the pointer moves to a new row.
         private int _hoverScanRow = -1;
         private System.Collections.Generic.IReadOnlyList<Ntilde.VT.Links.LinkSpan> _hoverScanSpans =
@@ -53,10 +64,21 @@ namespace Ntilde.Shell
                 // Only show as clickable if it would actually open (the click asks the same
                 // LinkOpener), so non-openable targets (ftp://, a remote or UNC file: link) don't
                 // underline or show the hand cursor.
-                if (LinkOpener.IsActivatable(osc8.Uri))
-                    SetHoveredLink(new HoveredLink(Osc8RunsOnScreen(osc8, absRow), osc8.Uri));
-                else
+                if (!LinkOpener.IsActivatable(osc8.Uri))
+                {
                     ClearHoveredLink();
+                    return;
+                }
+
+                var screen = (osc8, DisplayStart: Math.Max(0, _buffer.TotalLines - _buffer.Rows - ScrollOffset), _buffer.Rows, _buffer.Cols);
+                if (_hoveredLink is not null && _hoveredOsc8Screen is { } shown && ReferenceEquals(shown.Link, osc8)
+                    && (shown.DisplayStart, shown.Rows, shown.Cols) == (screen.DisplayStart, screen.Rows, screen.Cols))
+                {
+                    return; // the same anchor on the same screen: its runs are already underlined
+                }
+
+                SetHoveredLink(new HoveredLink(Osc8RunsOnScreen(osc8, absRow, screen.DisplayStart), osc8.Uri));
+                _hoveredOsc8Screen = screen;
                 return;
             }
 
@@ -97,10 +119,10 @@ namespace Ntilde.Shell
         /// <c>id</c> joins, plain. Same anchor means the same identity instance, not an equal URI: two adjacent links
         /// to one target are still two links. Runs on rows out of view are not drawn, so not looked for.
         /// </summary>
-        private IReadOnlyList<Ntilde.VT.Links.HyperlinkRun> Osc8RunsOnScreen(Ntilde.VT.Links.Hyperlink link, int hoveredAbsRow)
+        private IReadOnlyList<Ntilde.VT.Links.HyperlinkRun> Osc8RunsOnScreen(Ntilde.VT.Links.Hyperlink link, int hoveredAbsRow, int displayStart)
         {
-            int displayStart = Math.Max(0, _buffer!.TotalLines - _buffer.Rows - ScrollOffset);
-            return _buffer.FindHyperlinkRuns(
+            Osc8ScansForTest++;
+            return _buffer!.FindHyperlinkRuns(
                 link,
                 Math.Min(displayStart, hoveredAbsRow),
                 Math.Max(displayStart + _buffer.Rows - 1, hoveredAbsRow));
@@ -129,6 +151,7 @@ namespace Ntilde.Shell
 
         private void SetHoveredLink(HoveredLink link)
         {
+            _hoveredOsc8Screen = null; // an OSC 8 hover sets it again, once its runs are underlined
             if (link.SameAs(_hoveredLink)) return; // no change -> no repaint
             _hoveredLink = link;
             Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
@@ -137,6 +160,7 @@ namespace Ntilde.Shell
 
         private void ClearHoveredLink()
         {
+            _hoveredOsc8Screen = null;
             if (_hoveredLink == null) return;
             _hoveredLink = null;
             Cursor = Avalonia.Input.Cursor.Default;
