@@ -287,4 +287,55 @@ public class Osc8HyperlinkIdentityTests
 
         Assert.Equal(Uri, buffer.GetHyperlinkAbsolute(0, buffer.Scrollback.Count));
     }
+
+    // #95 gap 3: hovering underlines every cell of the anchor, so the hover needs all of its runs at once - on the
+    // row it wrapped onto, and wherever an id joined it - not only the run under the pointer.
+
+    [Fact]
+    public void FindHyperlinkRuns_FollowsALinkOntoTheRowItWrappedTo()
+    {
+        var buffer = new TerminalBuffer(10, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process("1234567" + Open("", Uri) + "abcdefgh" + Close());
+        int row = buffer.Scrollback.Count;
+        Hyperlink link = buffer.GetHyperlinkIdentityAbsolute(7, row)!;
+
+        IReadOnlyList<HyperlinkRun> runs = buffer.FindHyperlinkRuns(link, row, row + buffer.Rows - 1);
+
+        Assert.Equal([new HyperlinkRun(row, 7, 9), new HyperlinkRun(row + 1, 0, 4)], runs);
+    }
+
+    [Fact]
+    public void FindHyperlinkRuns_ReturnsEveryRunAnIdJoins_AndNothingOfAnotherLink()
+    {
+        var (buffer, parser) = NewTerminal();
+        parser.Process(Open("id=xyz", Uri) + "AA" + Close() + " ");
+        parser.Process(Open("id=other", Uri) + "CC" + Close() + " ");
+        parser.Process(Open("id=xyz", Uri) + "BBB" + Close() + "\r\n");
+        parser.Process(Open("id=xyz", Uri) + "D" + Close());
+        int row = buffer.Scrollback.Count;
+
+        IReadOnlyList<HyperlinkRun> runs = buffer.FindHyperlinkRuns(LinkAt(buffer, 0)!, row, row + buffer.Rows - 1);
+
+        Assert.Equal([new HyperlinkRun(row, 0, 1), new HyperlinkRun(row, 6, 8), new HyperlinkRun(row + 1, 0, 0)], runs);
+    }
+
+    [Fact]
+    public void FindHyperlinkRuns_LooksOnlyAtTheRowsAskedFor_ScrollbackIncluded()
+    {
+        var (buffer, parser) = NewTerminal();
+        parser.Process(Open("id=xyz", Uri) + "A" + Close() + "\r\n");
+        for (int i = 0; i < 12; i++)
+        {
+            parser.Process($"filler {i}\r\n");
+        }
+
+        parser.Process(Open("id=xyz", Uri) + "B" + Close());
+        int cursorRow = buffer.Scrollback.Count + buffer.CursorRow;
+        Hyperlink link = buffer.GetHyperlinkIdentityAbsolute(0, cursorRow)!;
+
+        Assert.Equal([new HyperlinkRun(0, 0, 0), new HyperlinkRun(cursorRow, 0, 0)], buffer.FindHyperlinkRuns(link, 0, cursorRow));
+        Assert.Equal([new HyperlinkRun(cursorRow, 0, 0)], buffer.FindHyperlinkRuns(link, 1, cursorRow));
+        Assert.Empty(buffer.FindHyperlinkRuns(link, 1, cursorRow - 1));
+    }
 }

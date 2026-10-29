@@ -18,14 +18,21 @@ namespace Ntilde.Shell
         internal TerminalLinkOpener LinkOpener { get; set; } = TerminalLinkOpener.Default;
 
         // Hovered link overlay state (transient UI state, never written to the buffer).
-        private (int AbsRow, int StartCol, int EndCol, string Uri)? _hoveredLink;
+        private HoveredLink? _hoveredLink;
+
+        /// <summary>The link under the pointer: every run of cells it covers, each underlined, and where it leads.</summary>
+        private sealed record HoveredLink(IReadOnlyList<Ntilde.VT.Links.HyperlinkRun> Runs, string Uri)
+        {
+            public bool SameAs(HoveredLink? other) =>
+                other is not null && other.Uri == Uri && other.Runs.SequenceEqual(Runs);
+        }
 
         /// <summary>The link currently underlined under the pointer, if any.</summary>
         internal string? HoveredLinkUriForTest => _hoveredLink?.Uri;
 
-        /// <summary>The underlined columns of the hovered link, if any.</summary>
-        internal (int StartCol, int EndCol)? HoveredLinkColumnsForTest =>
-            _hoveredLink is { } link ? (link.StartCol, link.EndCol) : null;
+        /// <summary>The underlined runs of the hovered link, in reading order; empty when there is none.</summary>
+        internal IReadOnlyList<Ntilde.VT.Links.HyperlinkRun> HoveredLinkRunsForTest =>
+            _hoveredLink?.Runs ?? System.Array.Empty<Ntilde.VT.Links.HyperlinkRun>();
 
         // One-row memo so we only re-run detection when the pointer moves to a new row.
         private int _hoverScanRow = -1;
@@ -47,10 +54,7 @@ namespace Ntilde.Shell
                 // LinkOpener), so non-openable targets (ftp://, a remote or UNC file: link) don't
                 // underline or show the hand cursor.
                 if (LinkOpener.IsActivatable(osc8.Uri))
-                {
-                    var (startCol, endCol) = Osc8RunAround(osc8, col, absRow);
-                    SetHoveredLink((absRow, startCol, endCol, osc8.Uri));
-                }
+                    SetHoveredLink(new HoveredLink(Osc8RunsOnScreen(osc8, absRow), osc8.Uri));
                 else
                     ClearHoveredLink();
                 return;
@@ -74,7 +78,7 @@ namespace Ntilde.Shell
                     {
                         // Mirror the click: don't underline links that can't open.
                         if (LinkOpener.IsActivatable(span.Uri))
-                            SetHoveredLink((absRow, startCol, endCol, span.Uri));
+                            SetHoveredLink(new HoveredLink([new Ntilde.VT.Links.HyperlinkRun(absRow, startCol, endCol)], span.Uri));
                         else
                             ClearHoveredLink();
                         return;
@@ -86,33 +90,46 @@ namespace Ntilde.Shell
         }
 
         /// <summary>
-        /// The columns of the run of cells around <paramref name="col"/> that belong to the same OSC 8 anchor,
-        /// so the whole link underlines rather than the one cell under the pointer (#95 gap 3). It used to be
-        /// one cell, while a URL the terminal merely guessed at by regex got its full span - the program's
-        /// explicit link got the worse treatment. Same anchor means the same identity instance, not an equal
-        /// URI: two adjacent links to one target are still two links. A link wrapped onto the next row
-        /// underlines on the hovered row only.
+        /// Every run of cells of the OSC 8 anchor <paramref name="link"/> on screen, so the whole link underlines
+        /// rather than the one cell under the pointer (#95 gap 3). It used to be one cell, while a URL the terminal
+        /// merely guessed at by regex got its full span - the program's explicit link got the worse treatment. Then
+        /// it was the run on the hovered row, which left the part a long link wrapped onto, and the parts an
+        /// <c>id</c> joins, plain. Same anchor means the same identity instance, not an equal URI: two adjacent links
+        /// to one target are still two links. Runs on rows out of view are not drawn, so not looked for.
         /// </summary>
-        private (int StartCol, int EndCol) Osc8RunAround(Ntilde.VT.Links.Hyperlink link, int col, int absRow)
+        private IReadOnlyList<Ntilde.VT.Links.HyperlinkRun> Osc8RunsOnScreen(Ntilde.VT.Links.Hyperlink link, int hoveredAbsRow)
         {
-            int start = col;
-            while (start > 0 && ReferenceEquals(_buffer!.GetHyperlinkIdentityAbsolute(start - 1, absRow), link))
-            {
-                start--;
-            }
-
-            int end = col;
-            while (end < _buffer!.Cols - 1 && ReferenceEquals(_buffer.GetHyperlinkIdentityAbsolute(end + 1, absRow), link))
-            {
-                end++;
-            }
-
-            return (start, end);
+            int displayStart = Math.Max(0, _buffer!.TotalLines - _buffer.Rows - ScrollOffset);
+            return _buffer.FindHyperlinkRuns(
+                link,
+                Math.Min(displayStart, hoveredAbsRow),
+                Math.Max(displayStart + _buffer.Rows - 1, hoveredAbsRow));
         }
 
-        private void SetHoveredLink((int AbsRow, int StartCol, int EndCol, string Uri) link)
+        /// <summary>
+        /// What Render draws for the hovered link: a 1-pixel bar under each of its runs that is on one of the
+        /// <paramref name="rows"/> rows from <paramref name="displayStart"/>.
+        /// </summary>
+        internal IEnumerable<Avalonia.Rect> HoveredLinkUnderlines(int displayStart, int rows)
         {
-            if (_hoveredLink.Equals(link)) return; // no change -> no repaint
+            if (_hoveredLink is not { } link || _metrics.CellWidth <= 0 || _metrics.CellHeight <= 0) yield break;
+
+            foreach (Ntilde.VT.Links.HyperlinkRun run in link.Runs)
+            {
+                int visualRow = run.AbsRow - displayStart;
+                if (visualRow < 0 || visualRow >= rows) continue;
+
+                yield return new Avalonia.Rect(
+                    run.StartCol * _metrics.CellWidth,
+                    (visualRow + 1) * _metrics.CellHeight - 1.0,
+                    (run.EndCol - run.StartCol + 1) * _metrics.CellWidth,
+                    1.0);
+            }
+        }
+
+        private void SetHoveredLink(HoveredLink link)
+        {
+            if (link.SameAs(_hoveredLink)) return; // no change -> no repaint
             _hoveredLink = link;
             Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
             InvalidateVisual();
