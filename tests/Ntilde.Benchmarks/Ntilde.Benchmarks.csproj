@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Benchmark names follow the test naming convention (Throughput_AnsiHeavy), which CA1707 rejects; the
+         test projects waive it in Directory.Build.props for the same reason. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

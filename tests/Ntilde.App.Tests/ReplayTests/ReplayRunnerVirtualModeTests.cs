@@ -70,5 +70,46 @@ namespace Ntilde.Tests.ReplayTests
                 if (File.Exists(tempFile)) File.Delete(tempFile);
             }
         }
+
+        /// <summary>
+        /// Cancelling a run stops it quietly with what it replayed so far, as it always has, now that the reads honour the
+        /// token: the read cancelled at the end of the buffered file reads as the end of it instead of throwing.
+        /// </summary>
+        [Fact]
+        public async Task ReplayRunner_CancelledMidRun_ReturnsWhatItReplayed()
+        {
+            string tempFile = Path.GetTempFileName();
+            try
+            {
+                using (var recorder = new PtyRecorder(tempFile, 80, 24, "pwsh.exe"))
+                {
+                    byte[] first = Encoding.UTF8.GetBytes("first");
+                    recorder.RecordChunk(first, first.Length);
+                    byte[] second = Encoding.UTF8.GetBytes("second");
+                    recorder.RecordChunk(second, second.Length);
+                }
+
+                using var cts = new CancellationTokenSource();
+                var replayed = new List<string>();
+                var runner = new ReplayRunner(tempFile);
+                ReplayRunResult result = await runner.RunWithResultAsync(
+                    onDataCallback: data =>
+                    {
+                        replayed.Add(Encoding.UTF8.GetString(data));
+                        cts.Cancel();
+                        return Task.CompletedTask;
+                    },
+                    options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual },
+                    ct: cts.Token);
+
+                Assert.Equal(new[] { "first" }, replayed);
+                Assert.Equal(1, result.EventsProcessed);
+                Assert.False(result.Truncated);
+            }
+            finally
+            {
+                if (File.Exists(tempFile)) File.Delete(tempFile);
+            }
+        }
     }
 }

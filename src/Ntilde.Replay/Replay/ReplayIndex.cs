@@ -85,7 +85,7 @@ namespace Ntilde.Replay
             var lineBytes = new List<byte>(4096);
 
             int bytesRead;
-            while ((bytesRead = await fs.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+            while ((bytesRead = await fs.ReadAsync(buffer.AsMemory(), ct)) > 0)
             {
                 for (int i = 0; i < bytesRead; i++)
                 {
