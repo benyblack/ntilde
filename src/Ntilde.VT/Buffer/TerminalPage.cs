@@ -44,8 +44,8 @@ namespace Ntilde.VT.Storage
 
         public TerminalPage(int rowsInPage, int cols)
         {
-            if (rowsInPage <= 0) throw new ArgumentOutOfRangeException(nameof(rowsInPage));
-            if (cols <= 0) throw new ArgumentOutOfRangeException(nameof(cols));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(rowsInPage);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(cols);
 
             RowsInPage = rowsInPage;
             Cols = cols;

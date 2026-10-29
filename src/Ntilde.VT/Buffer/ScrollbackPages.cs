@@ -111,7 +111,7 @@ namespace Ntilde.VT.Storage
             long maxScrollbackBytes = 128L * 1024 * 1024,
             int rowsPerPage = TerminalPageConstants.DefaultRowsPerPage)
         {
-            if (cols <= 0) throw new ArgumentOutOfRangeException(nameof(cols));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(cols);
             _cols = cols;
             _pool = pool ?? throw new ArgumentNullException(nameof(pool));
             _rowsPerPage = rowsPerPage;

@@ -24,6 +24,8 @@ namespace Ntilde.VT
         public string Details { get; init; } = string.Empty;
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix",
+        Justification = "A stream of pane audit events, not a System.IO.Stream.")]
     public static class PaneEventStream
     {
         private const int MaxEvents = 4096;

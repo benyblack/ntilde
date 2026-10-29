@@ -4,14 +4,14 @@ namespace Ntilde.VT
 {
     public class TerminalRow
     {
-        private static long _nextId = 0;
+        private static long _nextId;
         public readonly long Id;
 
         public TerminalCell[] Cells;
         // If true, this line ends because it wrapped automatically.
         // If false, it ends because of an explicit newline (or end of buffer).
-        public bool IsWrapped { get; set; } = false;
-        public uint Revision { get; set; } = 0;
+        public bool IsWrapped { get; set; }
+        public uint Revision { get; set; }
         public void TouchRevision() => Revision++;
 
         // M2.2: Side-table for extended graphemes (strings)

@@ -3,6 +3,8 @@
 namespace Ntilde.VT
 {
     [System.Flags]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix",
+        Justification = "A [Flags] enum named for what it is, and an established name across VT, Replay, Rendering and App.")]
     public enum TerminalCellFlags : ushort
     {
         None = 0,
