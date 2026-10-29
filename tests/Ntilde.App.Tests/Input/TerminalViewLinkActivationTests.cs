@@ -362,6 +362,52 @@ public sealed class TerminalViewLinkActivationTests
     }
 
     /// <summary>
+    /// Codex review of #634: the refresh reaches a tooltip that is already open, not only the value behind it - the user has
+    /// to see the new target before the click that opens it. Avalonia updates an open tooltip's content when its tip
+    /// changes; this pins that, so a framework change cannot quietly leave the old target on screen.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_open_tooltip_shows_the_new_target_once_a_click_refreshes_it()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer);
+        parser.Process(Osc8("https://trusted.example/docs", "docs"));
+        var view = new TerminalView { LinkOpener = new TerminalLinkOpener(new RecordingEnvironment()) };
+        view.SetBuffer(buffer);
+        var window = new Avalonia.Controls.Window { Width = 800, Height = 500, Content = view };
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        view.SetMetricsForTest(CellWidth, CellHeight);
+        try
+        {
+            view.UpdateHoveredLink(CellCentre(0, 1));
+            Avalonia.Controls.ToolTip.SetIsOpen(view, true);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.StartsWith("https://trusted.example/docs\n", ShownTooltip(view), StringComparison.Ordinal);
+
+            parser.Process("\u001b[1;1H" + Osc8("https://evil.example/x", "docs"));
+            Assert.False(view.TryActivateLinkAt(CellCentre(0, 1), LinkModifier));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.True(Avalonia.Controls.ToolTip.GetIsOpen(view));
+            Assert.StartsWith("https://evil.example/x\n", ShownTooltip(view), StringComparison.Ordinal);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>What the tooltip open on <paramref name="control"/> shows: its popup's content, not the value behind it.</summary>
+    private static string? ShownTooltip(Avalonia.Controls.Control control)
+    {
+        var holder = (Avalonia.AvaloniaProperty)typeof(Avalonia.Controls.ToolTip)
+            .GetField("ToolTipProperty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+            .GetValue(null)!;
+        return (control.GetValue(holder) as Avalonia.Controls.ToolTip)?.Content as string;
+    }
+
+    /// <summary>
     /// Codex review of #634: the same for a detected URL rewritten on its own row. The row's detection was kept until the
     /// pointer changed rows, so the tip kept the old URL and every click was refused as not matching it. The rewrite is
     /// seen: the first click brings the tip up to date, the next opens what it shows.
