@@ -80,7 +80,9 @@ public sealed class WindowsConsoleSurfaceTests
                 while (Environment.TickCount64 < deadline)
                 {
                     Thread.Sleep(50);
-                    if (GetConsoleMode(input, out now) && WindowsConsoleSurface.IsRawInputMode(now)) break;
+                    // Wait for the count too: the poll counts a reassert after it sets the mode, so raw mode
+                    // seen alone can land between the two and read the count as 0.
+                    if (GetConsoleMode(input, out now) && WindowsConsoleSurface.IsRawInputMode(now) && surface.RawModeReasserts >= 1) break;
                 }
 
                 Assert.True(WindowsConsoleSurface.IsRawInputMode(now), $"still 0x{now:X4} after 3 s");

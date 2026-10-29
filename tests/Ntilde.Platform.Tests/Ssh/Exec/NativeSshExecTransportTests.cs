@@ -818,9 +818,9 @@ public sealed class NativeSshExecTransportTests
     {
         private readonly List<SshInteractionRequest> _requests = [];
 
-        public IReadOnlyList<SshInteractionRequest> Requests
+        public List<SshInteractionRequest> Requests
         {
-            get { lock (_requests) return _requests.ToArray(); }
+            get { lock (_requests) return _requests.ToList(); }
         }
 
         public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)

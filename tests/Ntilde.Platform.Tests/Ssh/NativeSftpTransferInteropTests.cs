@@ -221,7 +221,7 @@ public sealed class NativeSftpTransferInteropTests
     public void RunSftpTransfer_RejectsJumpHopPasswordsThatDoNotPairWithTheHops()
     {
         // Pairing is by index; a short list would shift every later password onto the wrong server.
-        INativeSshInterop interop = new NativeSshInterop();
+        var interop = new NativeSshInterop();
         NativeSshConnectionOptions connectionOptions = new()
         {
             Host = "example.com",
@@ -267,7 +267,7 @@ public sealed class NativeSftpTransferInteropTests
     [Fact]
     public void RunSftpTransfer_RequiresKnownHostsStorePath()
     {
-        INativeSshInterop interop = new NativeSshInterop();
+        var interop = new NativeSshInterop();
         NativeSshConnectionOptions connectionOptions = new()
         {
             Host = "example.com",
@@ -295,7 +295,7 @@ public sealed class NativeSftpTransferInteropTests
     [Fact]
     public void RunSftpTransfer_ReturnsClearErrorForUnsupportedModes()
     {
-        INativeSshInterop interop = new NativeSshInterop();
+        var interop = new NativeSshInterop();
         NativeSshConnectionOptions connectionOptions = new()
         {
             Host = "example.com",

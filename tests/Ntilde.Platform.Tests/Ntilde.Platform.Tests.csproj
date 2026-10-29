@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <NativeProjectDir>$(MSBuildProjectDirectory)\..\..\src\Ntilde.App\native\</NativeProjectDir>
     <RustSshNativeProjectDir>$(NativeProjectDir)rusty_ssh\</RustSshNativeProjectDir>
     <RustSshNativeOutput Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))">$(RustSshNativeProjectDir)target\release\rusty_ssh.dll</RustSshNativeOutput>

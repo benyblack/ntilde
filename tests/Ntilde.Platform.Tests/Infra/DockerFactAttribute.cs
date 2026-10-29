@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace Ntilde.Platform.Tests.Infra;
@@ -5,7 +6,8 @@ namespace Ntilde.Platform.Tests.Infra;
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public sealed class DockerFactAttribute : FactAttribute
 {
-    public DockerFactAttribute()
+    public DockerFactAttribute([CallerFilePath] string? sourceFilePath = null, [CallerLineNumber] int sourceLineNumber = -1)
+        : base(sourceFilePath, sourceLineNumber)
     {
         if (!IsEnabled())
         {
