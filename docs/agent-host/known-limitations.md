@@ -83,10 +83,13 @@ is not affected: ssh prompts in the terminal itself, in the pane.
 
 A profile that keeps its sessions running on the remote host connects through
 that host's own attempts, on either backend, and follows the same rule (#631):
-an agent's tab joins the attempt in flight, or starts one that never asks, so
-neither a dialog nor ssh's askpass appears. A sign-in that needs the user leaves
-the tab without a session, reported as `needsUser` (`signIn` when the host
-cannot say with what); Enter there signs in as the user, and the tab comes back.
+an agent's tab never raises a dialog or ssh's askpass itself. It joins the
+attempt in flight, or starts one that never asks. The attempt it joins may be
+one of the user's own tabs connecting, whose dialog the user sees as before,
+for their tab; if they do not complete it, the agent's tab gets no session
+either. A sign-in that needs the user leaves the tab without a session,
+reported as `needsUser` (`signIn` when the host cannot say with what); Enter
+there signs in as the user, and the tab comes back.
 
 ## Other parked follow-ups
 

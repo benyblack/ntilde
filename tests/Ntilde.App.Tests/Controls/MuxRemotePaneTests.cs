@@ -953,6 +953,23 @@ public sealed class MuxRemotePaneTests : IDisposable
         Assert.Null(pane.AgentRegistrationForTesting!.StatusMachine.Snapshot().NeedsUser);
     }
 
+    /// <summary>
+    /// Codex review of #633: an agent's tab that got no session for a reason no sign-in fixes - the host refused the
+    /// connection - is reported exited all the same, with no reason, rather than left reading a status from before.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_agent_tab_with_no_session_for_another_reason_is_reported_exited()
+    {
+        _remote.Script = FakeRemoteScript.ConnectionRefused;
+        TerminalPane pane = ShowPane(configure: p => p.OpenedByAgent = true);
+
+        ShowsBanner(pane, TerminalPane.RemoteUnreachableBanner(Host));
+        Ntilde.AgentHost.AgentSessionStatusSnapshot status = pane.AgentRegistrationForTesting!.StatusMachine.Snapshot();
+        Assert.Equal(Ntilde.AgentHost.AgentSessionStatusKind.Exited, status.Kind);
+        Assert.Null(status.NeedsUser);
+        Assert.DoesNotContain(Unwrapped(TerminalPane.RemoteAgentOpenedLine), Unwrapped(Text(pane)), StringComparison.Ordinal);
+    }
+
     private static FakeRemoteScript SshRefusedSignIn =>
         new(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
 

@@ -397,6 +397,7 @@ internal sealed class RemoteMuxInteractionHandler
         private bool _authenticated;                 // guarded by _gate; the native transport said sign-in is over
         private SshInteractionKind? _abortedPrompt;  // guarded by _gate
         private SshInteractionKind? _declinedPrompt; // guarded by _gate
+        private SshInteractionKind? _lastAskedUser;  // guarded by _gate; the last prompt that went to the user
         private bool _hostKeyRejected;               // guarded by _gate; nobody to ask, and the key was not trusted
         private bool _savedPasswordOffered;          // guarded by _gate
         private byte[]? _offeredHash;                // guarded by _gate; HashOf the saved password offered
@@ -597,6 +598,15 @@ internal sealed class RemoteMuxInteractionHandler
         }
 
         /// <summary>
+        /// The last prompt of this attempt that went to the user (an interactive attempt's window handler), or null when none
+        /// did: if sign-in then never completed, it is the one they did not get past.
+        /// </summary>
+        public SshInteractionKind? LastAskedUser
+        {
+            get { lock (_gate) return _lastAskedUser; }
+        }
+
+        /// <summary>
         /// With nobody to ask, this attempt rejected a host key the user does not trust - one never seen, or one that changed.
         /// That ends the connection at the key exchange, before anything is sent, and the next attempt meets the same key:
         /// only the user can review it. A user's own answer in the dialog is not recorded here.
@@ -647,6 +657,7 @@ internal sealed class RemoteMuxInteractionHandler
                 SshInteractionRequest forUser = kind == SshInteractionKind.Password && request.AllowVaultPasswordReuse && (AvoidsSavedPassword || !_passwordsReplayable)
                     ? request.WithoutVaultPasswordReuse()
                     : request;
+                lock (_gate) _lastAskedUser = kind;
                 SshInteractionResponse response = await user.HandleAsync(forUser, cancellationToken).ConfigureAwait(false);
                 if (IsRememberable(kind) && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
                 {
@@ -657,7 +668,11 @@ internal sealed class RemoteMuxInteractionHandler
                 return response;
             }
 
-            if (User is { } asked) return await asked.HandleAsync(request, cancellationToken).ConfigureAwait(false);
+            if (User is { } asked)
+            {
+                lock (_gate) _lastAskedUser = kind;
+                return await asked.HandleAsync(request, cancellationToken).ConfigureAwait(false);
+            }
 
             if (IsHostKeyPrompt(kind))
             {

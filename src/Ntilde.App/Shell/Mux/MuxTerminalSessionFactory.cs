@@ -209,13 +209,21 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     {
         MuxConnectionHost host = target.Host;
         // A tab an agent opened never asks the user (#631): its sign-in either needs no one or fails as needing the user.
-        MuxClient? client = host.GetClient(target.ConnectTimeout, interactive: request.Ssh?.Interactive ?? true);
+        bool interactive = request.Ssh?.Interactive ?? true;
+        MuxClient? client = host.GetClient(target.ConnectTimeout, interactive);
         if (client is null)
         {
             if (target.Remote is not null)
             {
                 // The connect's classified failure (spec §7.1): its kind decides what the notice offers.
                 RemoteMuxFailure? failure = (host.LastFailure as RemoteMuxUnavailableException)?.Failure;
+                if (!interactive && failure is { Kind: RemoteFailureKind.SshFailed } && (failure.SignInRefused || failure.UserSignInFailed))
+                {
+                    // It joined a user's attempt, whose sign-in the user did not complete: an SSH failure for them, who were
+                    // asked. This request could never ask, so for it the sign-in needs the user - what its own automatic
+                    // attempt would have said (Codex review of #633).
+                    failure = failure with { Kind = RemoteFailureKind.NeedsUser, Cause = failure.UserSignInFailed ? failure.Cause : RemoteNeedsUserCause.SignIn };
+                }
                 string why = failure?.Reason ?? "ntilde-mux could not be reached";
 
                 // Controller ruling, a deviation from spec §7.5: plain SSH only when SSH itself worked

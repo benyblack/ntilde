@@ -209,6 +209,38 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "nova@fake-host: Permission denied (publickey,password).") { SignInRefused = true }, user.Failure);
     }
 
+    /// <summary>
+    /// #631 (Codex review of #633): a user's native attempt whose sign-in the user did not complete - they cancelled, or the
+    /// server refused what they typed - is an SSH failure for them, and says so: a request without a user that joined it
+    /// could never have asked, and reads it as a sign-in that needs the user. An attempt that failed without asking anyone
+    /// says nothing of the kind.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_users_native_attempt_says_when_it_asked_them_and_sign_in_never_completed(bool asks)
+    {
+        var connector = Own(new RemoteMuxConnector(
+            () => Profile(),
+            (_, request) =>
+            {
+                _remote.OnStart = _ =>
+                {
+                    if (asks) request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult(); // the user cancels
+                    _remote.Script = FakeRemoteScript.NativeFailure("SSH authentication failed");
+                };
+                return _remote;
+            },
+            new RemoteMuxInteractionHandler(new ScriptedUser(), _ => false),
+            "i",
+            null));
+
+        var failed = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
+
+        Assert.Equal(RemoteFailureKind.SshFailed, failed.Failure.Kind);
+        Assert.Equal(asks, failed.Failure.UserSignInFailed);
+    }
+
     [Fact]
     public async Task A_native_transport_failure_is_SshFailed_with_the_native_message()
     {
@@ -1745,7 +1777,12 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         var rejected = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
 
-        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Unknown server key"), rejected.Failure);
+        // Asked in the dialog, it also says the user was asked and did not get in - about the host key (Codex review of #633).
+        Assert.Equal(
+            window
+                ? new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Unknown server key", RemoteNeedsUserCause.HostKey) { UserSignInFailed = true }
+                : new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Unknown server key"),
+            rejected.Failure);
         Assert.False(Assert.Single(answers).IsAccepted);
     }
 

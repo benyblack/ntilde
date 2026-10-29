@@ -32,9 +32,9 @@ are gated by explicit, default-off user opt-ins:
   (act)" opt-in on top of observe; SSH sessions additionally require a per-profile allowlist. Every
   acting call — allowed or denied — is recorded in an in-app activity journal. See the threat model
   at [`docs/agent-host/2026-07-12-acting-threat-model.md`](../../docs/agent-host/2026-07-12-acting-threat-model.md).
-  A native SSH session the agent spawns, or any session of a profile that keeps its sessions running
-  on the remote host, never shows the user a sign-in dialog: when its server asks for something only
-  the user can give, it exits, and `get_session_status` / `wait_for_events` say what in `needsUser`
+  An SSH session the agent spawns - on the native backend, or of a profile that keeps its sessions
+  running on the remote host - never shows the user a sign-in dialog of its own: when its server asks
+  for something only the user can give, it exits, and `get_session_status` / `wait_for_events` say what in `needsUser`
   (`hostKey`, `changedHostKey`, `password`, `passphrase`, `keyboardInteractive`, or `signIn` when
   the connection cannot say which).
 - **Windowless sessions.** `list_sessions` also lists multiplexer sessions that no pane of this

@@ -456,6 +456,37 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
     }
 
     /// <summary>
+    /// #631 (Codex review of #633): an agent's request that joins a user's attempt in flight shares its outcome. A sign-in
+    /// the user did not complete is an SSH failure for the user, who was asked; for the agent's request, which could never
+    /// ask, it is a sign-in that needs the user - what its own attempt would have said.
+    /// </summary>
+    [Fact]
+    public async Task A_request_without_a_user_that_joined_a_users_refused_sign_in_needs_the_user()
+    {
+        ManualResetEventSlim hold = Own(new ManualResetEventSlim());
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _remote.OnStart = _ =>
+        {
+            started.TrySetResult();
+            hold.Wait(Patient);
+            _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
+        };
+        TerminalSessionRequest request = Ssh();
+
+        Task<PersistentSessionResult> users = Task.Run(() => _factory.CreatePersistent(request), Ct);
+        await started.Task.WaitAsync(Patient, Ct);
+        Task<PersistentSessionResult> agents = Task.Run(() => _factory.CreatePersistent(request with { Ssh = request.Ssh! with { Interactive = false } }), Ct);
+        await Task.Delay(300, Ct); // its request is in, joined to the user's attempt
+        hold.Set();
+
+        Assert.Equal(RemoteFailureKind.SshFailed, (await users.WaitAsync(Patient, Ct)).RemoteFailure!.Kind);
+        PersistentSessionResult agent = await agents.WaitAsync(Patient, Ct);
+        Assert.Equal(RemoteFailureKind.NeedsUser, agent.RemoteFailure!.Kind);
+        Assert.Equal(RemoteNeedsUserCause.SignIn, agent.RemoteFailure.Cause);
+        Assert.Equal(1, _remote.StartCount); // one attempt, shared
+    }
+
+    /// <summary>
     /// Task 20's ruling: an attempt that does not finish is unclassified even after an earlier one failed
     /// classified - a blackholed host must not be reported as the earlier attempt's missing binary.
     /// </summary>

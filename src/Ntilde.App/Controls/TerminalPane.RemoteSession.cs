@@ -385,17 +385,21 @@ namespace Ntilde.Controls
         }
 
         /// <summary>
-        /// #631: a persistent-remote tab an agent opened never asks the user, so a failure that needs them - on its first
-        /// connect, or a reconnect that gave up - is the reason it has no session, for the agent too. False, and nothing
-        /// told, for the user's own tab, and for a failure no sign-in fixes.
+        /// #631: a persistent-remote tab an agent opened has no session - on its first connect, or after a reconnect that gave
+        /// up - and the agent is told so, with why when it is a failure that needs the user (true then): the tab never asks
+        /// them. Any other failure is reported as an exit with no reason, rather than leaving the agent a status from before
+        /// (Codex review of #633). Nothing is told for the user's own tab.
         /// </summary>
         private bool TellTheAgentItNeedsTheUser(RemoteMuxFailure? failure, out Ntilde.AgentHost.AgentNeedsUserReason reason)
         {
             reason = default;
-            if (!OpenedByAgent || AgentNeedsUserFor(failure) is not { } needed) return false;
+            if (!OpenedByAgent) return false;
 
-            reason = needed;
+            Ntilde.AgentHost.AgentNeedsUserReason? needed = AgentNeedsUserFor(failure);
             _agentRegistration?.StatusMachine.NotifyExited(-1, needed);
+            if (needed is not { } why) return false;
+
+            reason = why;
             return true;
         }
 
