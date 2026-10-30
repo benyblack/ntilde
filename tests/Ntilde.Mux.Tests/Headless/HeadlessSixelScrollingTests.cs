@@ -8,6 +8,35 @@ public sealed class HeadlessSixelScrollingTests
 {
     private const string Image = "\x1bPq!30~-~\x1b\\";
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Presentation_updates_can_opt_out_of_SIXEL_notifications(int version)
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync(new MuxClientOptions { MinProtocolVersion = version, MaxProtocolVersion = version });
+        using var ownerClient = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        var presentation = MuxTestHost.DefaultPresentation with { SupportsSixelScrolling = true };
+        var pane = await MuxTestHost.AttachPaneAsync(client, id, presentation);
+        var owner = await MuxTestHost.AttachPaneAsync(ownerClient, id, presentation);
+        int updates = 0;
+        pane.Session.SixelCellSizeChanged += (_, _) => Interlocked.Increment(ref updates);
+        await host.SettleAsync(id, client, ownerClient);
+        pane.Session.UpdatePresentation(presentation with { SupportsSixelScrolling = false });
+        await host.SettleAsync(id, client, ownerClient);
+        int before = Volatile.Read(ref updates);
+
+        owner.Session.UpdatePresentation(presentation with { CellHeightPx = 6 });
+        await TestWait.UntilAsync(() => owner.Parser.SixelCellHeightPx == 6, "the opted-in peer received the changed metrics");
+        host.Fake(id).Emit(Image);
+        await host.SettleAsync(id, client, ownerClient);
+
+        Assert.Equal(before, Volatile.Read(ref updates));
+        Assert.True(client.IsConnected);
+        host.AssertPaneMatchesMux(id, owner, "the remaining opted-in peer stays synchronized");
+    }
+
     [Fact]
     public async Task Reattaching_without_SIXEL_support_removes_the_previous_subscription()
     {
@@ -60,6 +89,7 @@ public sealed class HeadlessSixelScrollingTests
 
         Assert.True(client.IsConnected);
         Assert.False(broken.Session.IsAttached);
+        await TestWait.UntilAsync(() => host.Mux(brokenId).AttachedClients == 0, "the daemon released the failed subscription");
         Assert.DoesNotContain(broken.Events, e => e.StartsWith("out:", StringComparison.Ordinal));
         Assert.Contains("out:still live", healthy.Events);
         host.AssertPaneMatchesMux(healthyId, healthy, "sibling survived metric callback failure");

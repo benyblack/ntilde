@@ -1089,7 +1089,8 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         if (!_subscribers.Contains(sink) || _readOnlySinks.Contains(sink)) return;
         _kittyBySink[sink] = presentation;
-        if (presentation.SupportsSixelScrolling && _sixelLayoutSinks.Add(sink)) _sixelCellSizePending = true;
+        if (!presentation.SupportsSixelScrolling) _sixelLayoutSinks.Remove(sink);
+        else if (_sixelLayoutSinks.Add(sink)) _sixelCellSizePending = true;
         if (presentation.KittyKeyboardSupportedFlags.HasValue && _keyboardCapabilitySinks.Add(sink))
             _keyboardCapabilitiesPending = true; // The first opt-in resize also needs the current ceiling.
     }

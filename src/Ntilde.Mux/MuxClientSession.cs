@@ -70,6 +70,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
             _client.SafeLog($"[MuxClient] SIXEL metric delivery for session {Id} failed: {ex}");
             try { DeliverFaulted("SIXEL metric delivery failed."); }
             catch (Exception fault) { _client.SafeLog($"[MuxClient] a Faulted handler of session {Id} threw: {fault}"); }
+            finally { Detach(userDetached: false); }
         }
     }
 
