@@ -586,13 +586,16 @@ namespace Ntilde.VT
                             // routinely include trailing spaces, and those columns carry no
                             // signal in the cell itself - trimming them here dropped their
                             // links for good, since everything past validLen never enters the
-                            // logical stream. HasExtendedText is checked for the same reason.
+                            // logical stream. HasExtendedText is checked for the same reason, and so is a styled or
+                            // colored underline (#270): drawn on blanks too, an editor squiggle on trailing whitespace.
                             bool rowHasLinks = physRow.GetHyperlinkMap() is { Count: > 0 };
+                            bool rowHasUnderlines = physRow.GetUnderlineMap() is { Count: > 0 };
                             for (int scan = 0; scan < physRow.Cells.Length; scan++)
                             {
                                 var cell = physRow.Cells[scan];
                                 if ((cell.Character != ' ' && cell.Character != '\0') || !cell.IsDefaultBackground || cell.HasExtendedText
-                                    || (rowHasLinks && physRow.GetHyperlink(scan) != null))
+                                    || (rowHasLinks && physRow.GetHyperlink(scan) != null)
+                                    || (rowHasUnderlines && cell.IsUnderline && physRow.GetUnderline(scan) != null))
                                 {
                                     lastContentIdx = scan;
                                 }

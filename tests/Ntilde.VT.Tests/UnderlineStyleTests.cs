@@ -287,6 +287,23 @@ public class UnderlineStyleTests
     }
 
     [Fact]
+    public void StyledUnderlineOnTrailingBlanks_SurvivesAReflowingResize()
+    {
+        // Codex review of PR #648: reflow trims a finished row's trailing blanks, and blanks under an
+        // undercurl (an editor's trailing-whitespace squiggle) read as blank. They are drawn, so they are kept.
+        var (buffer, parser) = NewTerminal(cols: 12, rows: 5);
+
+        parser.Process("AB\x1b[4:3m   \x1b[0m\r\nnext");
+        buffer.Resize(10, 5);
+
+        int absRow = buffer.Scrollback.Count;
+        for (int col = 2; col <= 4; col++)
+        {
+            Assert.Equal(UnderlineStyle.Curly, buffer.GetUnderlineAbsolute(col, absRow)?.Style);
+        }
+    }
+
+    [Fact]
     public void StyleSurvivesHeightShrinkAndGrow_UnderTheAltScreen()
     {
         // With an alt-screen application up, a height change reshapes the detached main screen: shrinking
