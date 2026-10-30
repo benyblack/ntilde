@@ -7,6 +7,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFi
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkoutRevision, resolveNpmCli } from './terminfo/runtime.mjs';
+import { validateCollectorReceipt } from './terminfo/collector.mjs';
 
 const cliVersion = '4.0.0';
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -58,14 +59,6 @@ function prepareCollector(tool, pkgManifest, env) {
     if (json(pkgManifest).version !== cliVersion) fail(`Expected terminfo.dev ${cliVersion}; remove artifacts/terminfo/tool and retry.`);
 }
 
-function validateReceipt(bundle, receipt) {
-    if (receipt.schemaVersion !== 1 || !/^[a-f0-9]{12}$/.test(receipt.probeHash)
-        || !/^[a-f0-9]{40}$/.test(receipt.collectorRevision)
-        || !/^[a-f0-9]{64}$/.test(receipt.manifestSha256)
-        || sha256(bundle) !== receipt.bundleSha256) {
-        fail('Collector bundle receipt is invalid or its SHA256 does not match.');
-    }
-}
 
 function main() {
     const args = process.argv.slice(2);
@@ -94,8 +87,9 @@ See docs/qa/QA_TERMINFO.md.`);
 
     const bundle = join(pkg, 'dist', 'terminfo.bundle.mjs');
     const receiptPath = join(pkg, 'dist', 'terminfo.bundle.receipt.json');
-    const receipt = json(receiptPath);
-    validateReceipt(bundle, receipt);
+    const receiptBytes = readFileSync(receiptPath);
+    const receipt = JSON.parse(receiptBytes);
+    validateCollectorReceipt(readFileSync(bundle), receipt);
     // The upstream launcher prefers Bun if installed. Execute the checked bundle
     // with this explicit Node instead so the recorded runtime is the one used.
     const inheritedHints = Object.fromEntries(['TERM_PROGRAM', 'TERM_PROGRAM_VERSION', '__CFBundleIdentifier', 'TERM', 'COLORTERM']
@@ -113,7 +107,7 @@ See docs/qa/QA_TERMINFO.md.`);
         rawCommand: ['node', 'terminfo.bundle.mjs', 'test', '--output', 'raw.json'],
     };
     writeJson(join(directory, 'context.json'), context);
-    copyFileSync(receiptPath, join(directory, 'suite-receipt.json'));
+    writeFileSync(join(directory, 'suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
     copyFileSync(join(tool, 'package-lock.json'), join(directory, 'package-lock.json'));
     console.log(`Recording terminfo.dev ${cliVersion} observations in ${directory}`);
     const detected = JSON.parse(run([bundle, 'detect', '--json'], env, true));

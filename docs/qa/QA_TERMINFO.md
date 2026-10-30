@@ -34,8 +34,10 @@ cache manually. On Windows, prepare that cache first in PowerShell:
 npm install --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --save-exact terminfo.dev@4.0.0
 ```
 
-The runner checks the package version and bundled suite receipt/digest, then
-executes the bundle with the same Node runtime as the runner. It removes the
+Both runners check the package version and the full pinned suite receipt
+(schema, probe hash, collector revision, manifest and bundle digests) before
+retaining evidence. They retain the exact bytes they validated. The inline
+runner then executes the bundle with the same Node runtime as the runner. It removes the
 inherited `__CFBundleIdentifier` and sets the collector's version hint to the
 explicit argument, recording the original hints separately. This affects only
 the child collector; the raw run retains upstream's `identity: unverified`.

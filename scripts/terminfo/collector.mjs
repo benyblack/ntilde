@@ -5,6 +5,21 @@ import { pathToFileURL } from 'node:url';
 
 export const upstreamBundleSha256 = 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6';
 export const adapterId = 'ntilde-owned-macos-v1';
+export const upstreamReceipt = Object.freeze({
+    schemaVersion: 1,
+    probeHash: '16a690f34c0e',
+    collectorRevision: 'cf7d8759c7e637aa8dba1e429f3dddd1c0124158',
+    manifestSha256: 'f3e3273478446ac50c942b7b4a7dc95a5da2252a8c23b2bada0acf329588f1d3',
+    bundleSha256: upstreamBundleSha256,
+});
+
+export function validateCollectorReceipt(source, receipt) {
+    const digest = createHash('sha256').update(source).digest('hex');
+    if (digest !== upstreamBundleSha256
+        || Object.entries(upstreamReceipt).some(([key, value]) => receipt?.[key] !== value)) {
+        throw new Error('Collector receipt does not match the pinned suite and bundle digest.');
+    }
+}
 
 export function adaptCollector(source, ownerModulePath) {
     const digest = createHash('sha256').update(source).digest('hex');

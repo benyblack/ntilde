@@ -3,13 +3,33 @@ import { test } from 'node:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { adaptCollector } from './collector.mjs';
+import { adaptCollector, upstreamReceipt, validateCollectorReceipt } from './collector.mjs';
 
 test('refuses a different collector version or modified original', () => {
     assert.throws(() => adaptCollector('program.parse();', '/test/owner.mjs'), /Unsupported collector bundle/);
 });
 
 const bundle = fileURLToPath(new URL('../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs', import.meta.url));
+
+test('validates the pinned receipt against the actual bundle', { skip: !existsSync(bundle) }, () => {
+    const source = readFileSync(bundle);
+    assert.doesNotThrow(() => validateCollectorReceipt(source, upstreamReceipt));
+    assert.throws(() => validateCollectorReceipt(Buffer.concat([source, Buffer.from('\n')]), upstreamReceipt), /Collector receipt/);
+    assert.throws(() => validateCollectorReceipt(source, null), /Collector receipt/);
+});
+
+for (const [field, value] of [
+    ['schemaVersion', 2],
+    ['probeHash', 'a'.repeat(12)],
+    ['collectorRevision', 'b'.repeat(40)],
+    ['manifestSha256', 'c'.repeat(64)],
+    ['bundleSha256', 'd'.repeat(64)],
+]) {
+    test(`rejects a stale or modified receipt ${field} with the original bundle intact`, { skip: !existsSync(bundle) }, () => {
+        assert.throws(() => validateCollectorReceipt(readFileSync(bundle), { ...upstreamReceipt, [field]: value }), /Collector receipt/);
+    });
+}
+
 // The package is optional tooling, not a source dependency. The live smoke run
 // also exercises this seam against the installed, digest-checked bundle.
 test('retains upstream gates and grading in the pinned bundle', { skip: !existsSync(bundle) }, () => {

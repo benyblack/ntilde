@@ -1,13 +1,46 @@
 // Lifecycle checks. A real app is used only when explicitly selected by the caller.
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { spawn, spawnSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { upstreamReceipt } from './collector.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const prepared = process.platform === 'darwin' && existsSync(resolve(repo, 'artifacts/terminfo/tool/package-lock.json'));
+
+for (const [field, value] of [
+    ['schemaVersion', 2],
+    ['probeHash', 'a'.repeat(12)],
+    ['collectorRevision', 'b'.repeat(40)],
+    ['manifestSha256', 'c'.repeat(64)],
+    ['bundleSha256', 'd'.repeat(64)],
+]) {
+    test(`owned runner rejects a modified receipt ${field} before creating evidence or launching an app`, { skip: !prepared }, () => {
+        // Clone the small runner fixture so tests never mutate the real tool cache.
+        const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
+        try {
+            for (const file of ['terminfo-owned.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs']) {
+                const target = join(root, 'scripts', file);
+                mkdirSync(dirname(target), { recursive: true });
+                copyFileSync(join(repo, 'scripts', file), target);
+            }
+            const pkg = join(root, 'artifacts/terminfo/tool/node_modules/terminfo.dev');
+            mkdirSync(join(pkg, 'dist'), { recursive: true });
+            writeFileSync(join(pkg, 'package.json'), JSON.stringify({ version: '4.0.0' }));
+            copyFileSync(join(repo, 'artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs'), join(pkg, 'dist/terminfo.bundle.mjs'));
+            writeFileSync(join(pkg, 'dist/terminfo.bundle.receipt.json'), JSON.stringify({ ...upstreamReceipt, [field]: value }));
+            const result = spawnSync(process.execPath, [join(root, 'scripts/terminfo-owned.mjs'),
+                '--executable', '/usr/bin/true', '--app-version', '0.0.0'], { encoding: 'utf8', timeout: 5000 });
+            assert.equal(result.status, 1, result.stdout + result.stderr);
+            assert.match(result.stderr, /Collector receipt/);
+            assert.ok(!result.stdout.includes('Collecting in disposable'));
+            assert.deepEqual(readdirSync(join(root, 'artifacts/terminfo')).filter(name => name.startsWith('owned-')), []);
+        } finally { rmSync(root, { recursive: true, force: true }); }
+    });
+}
 
 function launch(executable, interrupt) {
     return new Promise((resolve, reject) => {

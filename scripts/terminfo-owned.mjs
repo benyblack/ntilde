@@ -6,7 +6,7 @@ import { chmodSync, closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync,
 import { createServer } from 'node:net';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adapterId, adaptCollector, upstreamBundleSha256 } from './terminfo/collector.mjs';
+import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
 import { assertProcessOwnership, processRecord } from './terminfo/ownership.mjs';
 import { createPrivateScratch } from './terminfo/runtime.mjs';
 
@@ -31,7 +31,10 @@ function prepareCollector() {
     if (!existsSync(original)) throw new Error('Prepare the pinned collector first; see docs/qa/QA_TERMINFO.md.');
     if (JSON.parse(readFileSync(join(pkg, 'package.json'))).version !== '4.0.0') throw new Error('Expected terminfo.dev 4.0.0.');
     const ownerModule = join(repo, 'scripts', 'terminfo', 'ownership.mjs');
-    const adapted = adaptCollector(readFileSync(original, 'utf8'), ownerModule);
+    const source = readFileSync(original, 'utf8');
+    const receiptBytes = readFileSync(join(pkg, 'dist', 'terminfo.bundle.receipt.json'));
+    validateCollectorReceipt(source, JSON.parse(receiptBytes));
+    const adapted = adaptCollector(source, ownerModule);
     const adapterBundleSha256 = hash(adapted);
     // Keep external package resolution beside the original bundle. A derived
     // file is content-addressed; the downloaded original is never overwritten.
@@ -39,13 +42,15 @@ function prepareCollector() {
     if (!existsSync(bundle)) writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
     if (hash(readFileSync(bundle)) !== adapterBundleSha256) throw new Error('Derived adapter bundle digest mismatch.');
 
-    return { tool, pkg, ownerModule, bundle, adapterBundleSha256 };
+    return { tool, ownerModule, bundle, adapterBundleSha256, receiptBytes };
 }
 
 function collectionSummary(output, appVersion) {
     const rawPath = join(output, 'raw.json');
     const raw = JSON.parse(readFileSync(rawPath));
-    if (raw.target?.id !== 'ntilde' || raw.target?.version !== appVersion || raw.collectorAdapter?.id !== adapterId) throw new Error('Unexpected collected identity.');
+    if (raw.schemaVersion !== 2 || raw.target?.id !== 'ntilde' || raw.target?.version !== appVersion
+        || raw.collectorAdapter?.id !== adapterId || raw.probeHash !== upstreamReceipt.probeHash
+        || raw.sourceRevision !== upstreamReceipt.collectorRevision) throw new Error('Unexpected collected identity or suite.');
     const counts = {};
     const reasons = {};
     for (const observation of raw.observations) {
@@ -70,7 +75,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         return;
     }
     const executable = validateInvocation(args);
-    const { tool, pkg, ownerModule, bundle, adapterBundleSha256 } = prepareCollector();
+    const { tool, ownerModule, bundle, adapterBundleSha256, receiptBytes } = prepareCollector();
 
     const output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
     // Keep the socket short and the fixture below a validated private parent.
@@ -98,7 +103,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         };
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
-        copyFileSync(join(pkg, 'dist', 'terminfo.bundle.receipt.json'), join(output, 'upstream-suite-receipt.json'));
+        writeFileSync(join(output, 'upstream-suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
         copyFileSync(join(tool, 'package-lock.json'), join(output, 'package-lock.json'));
 
         let app;
