@@ -27,6 +27,31 @@ public class SkiaImageDecoderTests
     }
 
     [Fact]
+    public void Source_eviction_preserves_materialized_bitmaps_and_gates_undecoded_handle_disposal()
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+        var buffer = new TerminalBuffer(10, 6) { SixelSources = new SixelSourceBudget(1024, 1) };
+        var parser = new AnsiParser(buffer) { RetainSixelSources = true, ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true } };
+        parser.Process("\x1bPq#1;2;100;0;0#1!30~\x1b\\");
+        var materialized = Assert.IsType<DeferredSixelImage>(Assert.Single(buffer.Images).ImageHandle);
+        var pixels = Assert.IsType<SKBitmap>(materialized.GetBitmap());
+        parser.Process("\x1b[1;1H\x1bPq~\x1b\\");
+        Assert.Equal(2, buffer.Images.Count);
+        Assert.Same(pixels, materialized.GetBitmap());
+        Assert.Equal(SKColors.Red, pixels.GetPixel(0, 0));
+        int session = buffer.BeginSnapshotSession();
+        parser.Process("\x1b[1;1H\x1bPq!2~\x1b\\");
+        Assert.Equal(2, buffer.Images.Count); // materialized frame plus newest undecoded frame
+        var retired = new List<object>();
+        Assert.False(buffer.DrainRetiredImageHandles(retired, long.MinValue));
+        buffer.EndSnapshotSession(session);
+        Assert.True(buffer.DrainRetiredImageHandles(retired, long.MinValue));
+        Assert.Single(retired);
+        foreach (var handle in retired) ((IDisposable)handle).Dispose();
+        foreach (var image in buffer.Images) ((IDisposable)image.ImageHandle).Dispose();
+    }
+
+    [Fact]
     public void Unseen_inline_images_share_an_aggregate_source_budget_with_snapshot_metadata()
     {
         var budget = new SixelSourceBudget(1024, 4);
@@ -39,13 +64,17 @@ public class SkiaImageDecoderTests
         string data = "q" + string.Concat(Enumerable.Repeat("#1;2;100;0;0", 20)) + "#1~";
         parser.Process("\x1bP" + data + "\x1b\\");
         var first = Assert.IsType<DeferredSixelImage>(Assert.Single(buffer.Images).ImageHandle);
-        for (int i = 0; i < 500; i++) parser.Process("\x1bP" + data + "\x1b\\");
+        for (int i = 0; i < 500; i++) parser.Process("\x1b[1;1H\x1bP" + data + "\x1b\\");
         Assert.InRange(budget.RetainedChars, 1, 1024);
         Assert.InRange(budget.Count, 1, 4);
-        Assert.Null(buffer.Images[0].SixelSource?.Data);
+        Assert.InRange(buffer.Images.Count, 1, 4);
+        Assert.DoesNotContain(buffer.Images, image => ReferenceEquals(image.ImageHandle, first));
         Assert.Null(first.GetBitmap());
         Assert.All(buffer.Images, image => Assert.False(Assert.IsType<DeferredSixelImage>(image.ImageHandle).IsDecoded));
         Assert.InRange(buffer.ExportState(int.MaxValue).Sixels!.Sum(image => image.Source.Length), 1, 1024);
+        var retired = new List<object>();
+        buffer.DrainRetiredImageHandles(retired, long.MinValue);
+        foreach (var handle in retired) ((IDisposable)handle).Dispose();
         foreach (var image in buffer.Images) ((IDisposable)image.ImageHandle).Dispose();
         Assert.Equal(0, budget.RetainedChars);
     }

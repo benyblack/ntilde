@@ -5,6 +5,23 @@ namespace Ntilde.VT.Tests;
 public sealed class SixelSourceStateTests
 {
     [Fact]
+    public void Repeated_fixed_cursor_images_keep_headless_placements_bounded_and_latest_restorable()
+    {
+        var buffer = new TerminalBuffer(10, 6) { SixelSources = new SixelSourceBudget(1024, 4) };
+        var parser = new AnsiParser(buffer) { RetainSixelSources = true };
+        for (int i = 0; i < 1000; i++) parser.Process($"\x1b[1;1H\x1bPq!{i % 9 + 1}~\x1b\\");
+        Assert.Equal(6, buffer.TotalLines); // no scrolling to hide a placement leak
+        Assert.InRange(buffer.Images.Count, 1, 4);
+        Assert.Equal("q!1~", buffer.Images[^1].SixelSource?.Data);
+        var restored = new TerminalBuffer(10, 6);
+        restored.ImportState(buffer.ExportState(0));
+        Assert.Equal(buffer.Images.Count, restored.Images.Count);
+        Assert.Equal("q!1~", restored.Images[^1].SixelSource?.Data);
+        var retired = new List<object>();
+        Assert.False(buffer.DrainRetiredImageHandles(retired, long.MinValue)); // headless sources release immediately
+    }
+
+    [Fact]
     public void Source_budget_evicts_oldest_and_releases_disposed_tokens_without_retaining_oversized_input()
     {
         var budget = new SixelSourceBudget(7, 2);
@@ -90,6 +107,9 @@ public sealed class SixelSourceStateTests
         Assert.Equal(SixelSourceBudget.DefaultMaxSources - 1, buffer.Images.Count);
         Assert.InRange(buffer.SixelSources.RetainedChars, 1, SixelSourceBudget.DefaultMaxChars);
         Assert.All(buffer.Images, image => Assert.Equal("q~", image.SixelSource?.Data));
+        var smaller = new TerminalBuffer(10, 3) { SixelSources = new SixelSourceBudget(100, 4) };
+        TerminalStateTransfer.Restore(smaller, new AnsiParser(smaller), snapshot);
+        Assert.Equal(4, smaller.Images.Count);
     }
 
     [Theory]

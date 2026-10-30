@@ -10,6 +10,8 @@ public sealed class SixelSourceBudget
     private readonly int _maxChars;
     private readonly int _maxSources;
     private int _retainedChars;
+    private long _evictionVersion;
+    internal long EvictionVersion => Volatile.Read(ref _evictionVersion);
 
     public SixelSourceBudget(int maxChars = DefaultMaxChars, int maxSources = DefaultMaxSources)
     {
@@ -47,6 +49,7 @@ public sealed class SixelSourceBudget
             source.Data = null;
             _sources.Remove(node);
             source.Node = null;
+            Interlocked.Increment(ref _evictionVersion);
         }
     }
 }

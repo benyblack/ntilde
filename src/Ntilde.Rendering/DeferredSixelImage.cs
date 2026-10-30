@@ -7,14 +7,15 @@ namespace Ntilde.Rendering;
 /// Retains bounded SIXEL source for a pane that may never be drawn. The first render materializes
 /// its bitmap. The terminal buffer's snapshot-session gate owns this handle and its disposal.
 /// </summary>
-public sealed class DeferredSixelImage(SixelSource source, int maxPixelDimension) : IDisposable
+public sealed class DeferredSixelImage(SixelSource source, int maxPixelDimension) : IDisposable, IDeferredSixelImage
 {
     private readonly object _gate = new();
     private bool _decodeAttempted;
     private SKBitmap? _bitmap;
     private bool _disposed;
 
-    internal bool IsDecoded { get { lock (_gate) return _bitmap is not null; } }
+    public bool IsMaterialized { get { lock (_gate) return _bitmap is not null; } }
+    internal bool IsDecoded => IsMaterialized;
 
     /// <summary>Decodes once on demand; a disposed or undecodable handle returns null.</summary>
     /// <remarks>The renderer holds the owning buffer's snapshot session while using the returned bitmap.</remarks>

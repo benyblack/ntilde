@@ -1,5 +1,11 @@
 namespace Ntilde.VT
 {
+    /// <summary>Lets buffer retention retire an expired source without discarding materialized pixels.</summary>
+    public interface IDeferredSixelImage
+    {
+        bool IsMaterialized { get; }
+    }
+
     public interface IImageDecoder
     {
         object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight);

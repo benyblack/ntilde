@@ -154,7 +154,8 @@ at page origin; reset restores inline scrolling. Shared clients use the daemon's
 size rather than their own font/DIP metrics. That size is supplied at spawn before startup output,
 then updated in stream order. GUI panes retain bounded SIXEL source and decode at most one new image
 per live frame, requesting further frames until complete. Each pane/session retains at most 256 sources
-and 2 Mi UTF-16 characters (about 4 MiB), evicting oldest sources and refusing oversized ones. Attach
+and 2 Mi UTF-16 characters (about 4 MiB), evicting oldest sources and refusing oversized ones.
+Expired undecoded placements are retired through the snapshot-session gate; materialized bitmaps remain intact. Attach
 snapshots carry retained source, placement and irreversible clipping for both screens; clients restore
 images without replaying placement or cursor movement. The daemon retains no bitmap resources;
 other image protocols remain disabled for persistent sessions. Page-origin frames retire older,

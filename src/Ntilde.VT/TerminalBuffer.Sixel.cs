@@ -3,6 +3,7 @@ namespace Ntilde.VT;
 public partial class TerminalBuffer
 {
     private TerminalImage? _placingSixel;
+    private long _lastSixelSourceEviction;
     public SixelSourceBudget SixelSources { get; init; } = new();
 
     /// <summary>Applies SIXEL geometry even on headless hosts. Never writes placeholder text or wraps an image horizontally.</summary>
@@ -11,6 +12,11 @@ public partial class TerminalBuffer
         bool lockTaken = EnterWriteLockIfNeeded();
         try
         {
+            if (source is not null)
+            {
+                PruneExpiredSixelSources();
+                if (source.Data is null && CanDiscardSixelHandle(handle)) handle = null;
+            }
             bool display = Modes.IsSixelDisplayMode;
             int row = display ? 0 : _cursorRow;
             int col = display ? 0 : _cursorCol;
@@ -32,6 +38,23 @@ public partial class TerminalBuffer
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();
+    }
+
+    private static bool CanDiscardSixelHandle(object? handle) =>
+        handle is SixelSource || handle is IDeferredSixelImage { IsMaterialized: false };
+
+    private void PruneExpiredSixelSources()
+    {
+        long version = SixelSources.EvictionVersion;
+        if (version == _lastSixelSourceEviction) return;
+        _lastSixelSourceEviction = version;
+        for (int i = _images.Count - 1; i >= 0; i--)
+        {
+            var image = _images[i];
+            if (image.SixelSource is not { Data: null } || !CanDiscardSixelHandle(image.ImageHandle)) continue;
+            RetireImage(image, disposeImmediately: true);
+            _images.RemoveAt(i);
+        }
     }
 
     private void PlaceScrollingSixelImage(TerminalImage? image, int row, int heightCells)

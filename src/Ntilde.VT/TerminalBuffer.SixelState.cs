@@ -83,6 +83,7 @@ public partial class TerminalBuffer
                 ClipRightColumns = right,
             });
         }
+        PruneExpiredSixelSources();
     }
 
     internal void DecodeTransferredSixels(IImageDecoder? decoder)
