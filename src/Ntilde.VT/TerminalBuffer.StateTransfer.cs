@@ -85,6 +85,7 @@ namespace Ntilde.VT
                 snapshot.CurrentHyperlinkId = links.IndexOf(_currentHyperlink);
                 snapshot.Hyperlinks = links.Entries;
                 snapshot.Underlines = underlines.Entries;
+                ExportSixelState(snapshot);
                 return snapshot;
             }
             finally
@@ -102,12 +103,9 @@ namespace Ntilde.VT
         /// </summary>
         /// <remarks>
         /// <para>
-        /// "Wholesale" is literal, which is why inline images and the tracked OSC 133 marks are
-        /// <em>cleared</em> rather than left alone. Both are state the snapshot deliberately does
-        /// not carry (see <see cref="TerminalStateSnapshot"/>), and both are anchored to rows this
-        /// call is about to replace: a retained image would float over a screen it was never
-        /// drawn on, and a retained command mark would point Command Assist at a row belonging to
-        /// the previous session.
+        /// Old image handles and tracked OSC 133 marks are cleared rather than left anchored to
+        /// rows this call replaces. Bounded SIXEL source/placement state is then restored from the
+        /// snapshot; decoder-owned bitmap handles and process-local command marks are never carried.
         /// </para>
         /// <para>
         /// Malformed payloads are refused before the write lock is taken, per
@@ -208,17 +206,15 @@ namespace Ntilde.VT
                 _lastCharRow = snapshot.Grapheme.LastCharRow;
                 _isAfterZwj = snapshot.Grapheme.IsAfterZwj;
 
-                // Excluded from the payload, and therefore cleared rather than kept. Inline images
-                // are decoder-owned handles anchored to absolute rows this import just replaced,
-                // so keeping them would leave pixels floating over a screen they were never drawn
-                // on. Retired through the same queue ClearImages uses, not disposed here: a render
-                // pass may still be holding these handles.
+                // Replace old decoder handles through the snapshot-session retirement gate.
+                // Retained SIXEL sources are restored at their transferred positions below.
                 foreach (TerminalImage image in _images)
                 {
                     RetireImage(image);
                 }
 
                 _images.Clear();
+                ImportSixelState(snapshot);
 
                 // Derived, never carried: the packed style cache is rebuilt from the SGR fields
                 // above on the next write, and the render-diff cache stays cold so the first
@@ -827,6 +823,7 @@ namespace Ntilde.VT
         {
             ValidateVersionAndCellLayout(snapshot);
             ValidateRequiredStructure(snapshot);
+            ValidateSixelState(snapshot);
 
             // Ordered after the structure pass on purpose: the three CellsBase64 reads below
             // dereference Main/Alt/Scrollback, which the pass has just proven present.

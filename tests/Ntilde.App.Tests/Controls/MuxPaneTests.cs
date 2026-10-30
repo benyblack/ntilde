@@ -189,6 +189,27 @@ public sealed class MuxPaneTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void Reattaching_a_GUI_pane_restores_the_retained_image_without_new_image_output()
+    {
+        MuxClientSession first = StartHostedPane();
+        _mux.Fake(first.Id).Emit("before\r\n\x1b[?80h\x1bPq#1;2;100;0;0#1!30~\x1b\\");
+        Settle(first.Id);
+        var oldImage = Assert.Single(_pane!.Buffer!.Images);
+        Assert.IsType<Ntilde.Rendering.DeferredSixelImage>(oldImage.ImageHandle);
+        _host.CurrentClient!.Dispose();
+        PumpUntil(() => BufferText(_pane.Buffer!).Contains("[Multiplexer disconnected]"), "the disconnect banner appeared");
+        PressEnter();
+        var again = Assert.IsType<MuxClientSession>(_pane.Session);
+        Assert.Equal(first.Id, again.Id);
+        PumpUntil(() => again.IsAttached && !BufferText(_pane.Buffer!).Contains("[Multiplexer disconnected]"), "the reattach snapshot replaced the pane");
+        SettleAndAssertEqual(first.Id, "the GUI restored source and placement before any later image output");
+        var restored = Assert.Single(_pane.Buffer!.Images);
+        Assert.IsType<Ntilde.Rendering.DeferredSixelImage>(restored.ImageHandle);
+        Assert.NotSame(oldImage.ImageHandle, restored.ImageHandle);
+        Assert.Equal("q#1;2;100;0;0#1!30~", restored.SixelSource?.Data);
+    }
+
+    [AvaloniaFact]
     public void Enter_after_a_disconnect_reattaches_the_same_session_and_replaces_the_banner()
     {
         MuxClientSession s = StartHostedPane();

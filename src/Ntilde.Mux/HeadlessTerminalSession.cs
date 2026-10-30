@@ -142,6 +142,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         _parser = new AnsiParser(_buffer, options.ForceConPtyFiltering)
         {
             ImageDecoder = null,
+            RetainSixelSources = true,
             AllowNonSixelImages = false,
             CellWidth = cellWidth,
             CellHeight = cellHeight,
@@ -478,14 +479,15 @@ public sealed class HeadlessTerminalSession : IDisposable
     private Task<T> InvokeAsync<T>(BlockingCollection<WorkItem> queue, Func<T> func)
     {
         var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Action onDropped = () => tcs.TrySetException(new ObjectDisposedException(nameof(HeadlessTerminalSession)));
         var item = WorkItem.ForAction(
             () =>
             {
                 try { tcs.TrySetResult(func()); }
                 catch (Exception ex) { tcs.TrySetException(ex); }
             },
-            onDropped: () => tcs.TrySetException(new ObjectDisposedException(nameof(HeadlessTerminalSession))));
-        if (!TryEnqueue(queue, item)) item.OnDropped!();
+            onDropped: onDropped);
+        if (!TryEnqueue(queue, item)) onDropped();
         return tcs.Task;
     }
 

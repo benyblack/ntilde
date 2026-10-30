@@ -25,6 +25,7 @@ namespace Ntilde.Rendering
 
         /// <summary>Retain SIXEL source and allocate its bitmap only when a renderer first needs it.</summary>
         public bool DeferSixelDecoding { get; init; }
+        public SixelSourceBudget SixelSources { get; init; } = new();
 
         public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight)
         {
@@ -86,7 +87,9 @@ namespace Ntilde.Rendering
             if (DeferSixelDecoding)
             {
                 (pixelWidth, pixelHeight) = SixelGeometry.Measure(sixelData, MaxPixelDimension);
-                return pixelWidth > 0 && pixelHeight > 0 ? new DeferredSixelImage(sixelData, MaxPixelDimension) : null;
+                if (pixelWidth <= 0 || pixelHeight <= 0) return null;
+                var source = SixelSources.Retain(sixelData);
+                return source.Data is null ? null : new DeferredSixelImage(source, MaxPixelDimension);
             }
 
             SKBitmap? bitmap = new SixelDecoder { MaxPixelDimension = MaxPixelDimension }.Decode(sixelData);
@@ -98,6 +101,15 @@ namespace Ntilde.Rendering
             pixelWidth = bitmap.Width;
             pixelHeight = bitmap.Height;
             return bitmap;
+        }
+
+        public object? DecodeSixel(SixelSource source, out int pixelWidth, out int pixelHeight)
+        {
+            pixelWidth = pixelHeight = 0;
+            if (source.Data is not { } data) return null;
+            if (!DeferSixelDecoding) return DecodeSixel(data, out pixelWidth, out pixelHeight);
+            (pixelWidth, pixelHeight) = SixelGeometry.Measure(data, MaxPixelDimension);
+            return pixelWidth > 0 && pixelHeight > 0 ? new DeferredSixelImage(source, MaxPixelDimension) : null;
         }
 
         public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)

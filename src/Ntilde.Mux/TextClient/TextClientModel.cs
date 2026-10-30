@@ -17,6 +17,7 @@ public sealed class TextClientModel : IDisposable
         Parser = new AnsiParser(Buffer, session.ForceConPtyFiltering)
         {
             ImageDecoder = null,
+            RetainSixelSources = true,
             AllowNonSixelImages = false,
             AllowNativeKittyGraphics = false,
         };

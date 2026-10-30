@@ -27,10 +27,49 @@ public class SkiaImageDecoderTests
     }
 
     [Fact]
+    public void Unseen_inline_images_share_an_aggregate_source_budget_with_snapshot_metadata()
+    {
+        var budget = new SixelSourceBudget(1024, 4);
+        var buffer = new TerminalBuffer(10, 6) { SixelSources = budget };
+        var parser = new AnsiParser(buffer)
+        {
+            RetainSixelSources = true,
+            ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true },
+        };
+        string data = "q" + string.Concat(Enumerable.Repeat("#1;2;100;0;0", 20)) + "#1~";
+        parser.Process("\x1bP" + data + "\x1b\\");
+        var first = Assert.IsType<DeferredSixelImage>(Assert.Single(buffer.Images).ImageHandle);
+        for (int i = 0; i < 500; i++) parser.Process("\x1bP" + data + "\x1b\\");
+        Assert.InRange(budget.RetainedChars, 1, 1024);
+        Assert.InRange(budget.Count, 1, 4);
+        Assert.Null(buffer.Images[0].SixelSource?.Data);
+        Assert.Null(first.GetBitmap());
+        Assert.All(buffer.Images, image => Assert.False(Assert.IsType<DeferredSixelImage>(image.ImageHandle).IsDecoded));
+        Assert.InRange(buffer.ExportState(int.MaxValue).Sixels!.Sum(image => image.Source.Length), 1, 1024);
+        foreach (var image in buffer.Images) ((IDisposable)image.ImageHandle).Dispose();
+        Assert.Equal(0, budget.RetainedChars);
+    }
+
+    [Fact]
+    public void Direct_deferred_decoder_calls_share_one_budget_and_oversized_images_are_not_retained()
+    {
+        var budget = new SixelSourceBudget(40, 2);
+        var decoder = new SkiaImageDecoder { DeferSixelDecoding = true, SixelSources = budget };
+        var first = Assert.IsType<DeferredSixelImage>(decoder.DecodeSixel("q!1~", out _, out _));
+        decoder.DecodeSixel("q!2~", out _, out _);
+        decoder.DecodeSixel("q!3~", out _, out _);
+        Assert.Null(first.GetBitmap());
+        Assert.Equal(2, budget.Count);
+        Assert.Null(decoder.DecodeSixel("q" + new string('?', 100), out _, out _));
+        Assert.Equal(2, budget.Count);
+    }
+
+    [Fact]
     public void Frame_decode_budget_defers_remaining_images_and_reuses_materialized_pixels()
     {
-        using var first = new DeferredSixelImage("q#1;2;100;0;0#1~", 2000);
-        using var second = new DeferredSixelImage("q#1;2;0;0;100#1~", 2000);
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+        using var first = new DeferredSixelImage(new Ntilde.VT.SixelSourceBudget().Retain("q#1;2;100;0;0#1~"), 2000);
+        using var second = new DeferredSixelImage(new Ntilde.VT.SixelSourceBudget().Retain("q#1;2;0;0;100#1~"), 2000);
         int budget = 1;
         var red = Assert.IsType<SkiaSharp.SKBitmap>(first.GetBitmap(ref budget, out bool firstPending));
         Assert.False(firstPending);
@@ -87,7 +126,7 @@ public class SkiaImageDecoderTests
     public async Task Concurrent_deferred_readers_share_one_bitmap()
     {
         Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
-        using var handle = new DeferredSixelImage("q~", 2000);
+        using var handle = new DeferredSixelImage(new Ntilde.VT.SixelSourceBudget().Retain("q~"), 2000);
         SKBitmap?[] results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(handle.GetBitmap)));
         Assert.NotNull(results[0]);
         Assert.All(results, bitmap => Assert.Same(results[0], bitmap));

@@ -7,10 +7,10 @@ namespace Ntilde.Rendering;
 /// Retains bounded SIXEL source for a pane that may never be drawn. The first render materializes
 /// its bitmap. The terminal buffer's snapshot-session gate owns this handle and its disposal.
 /// </summary>
-public sealed class DeferredSixelImage(string source, int maxPixelDimension) : IDisposable
+public sealed class DeferredSixelImage(SixelSource source, int maxPixelDimension) : IDisposable
 {
     private readonly object _gate = new();
-    private string? _source = source;
+    private bool _decodeAttempted;
     private SKBitmap? _bitmap;
     private bool _disposed;
 
@@ -31,10 +31,10 @@ public sealed class DeferredSixelImage(string source, int maxPixelDimension) : I
         {
             pending = false;
             if (_disposed) return null;
-            if (_source is not { } data) return _bitmap;
+            if (_decodeAttempted || source.Data is not { } data) return _bitmap;
             if (remainingDecodes <= 0) { pending = true; return null; }
             remainingDecodes--;
-            _source = null;
+            _decodeAttempted = true;
             try { _bitmap = new SixelDecoder { MaxPixelDimension = maxPixelDimension }.Decode(data); }
             catch (Exception ex) { TerminalLogger.Debug($"[SIXEL] Deferred decode failed: {ex.Message}"); }
             return _bitmap;
@@ -47,7 +47,7 @@ public sealed class DeferredSixelImage(string source, int maxPixelDimension) : I
         {
             if (_disposed) return;
             _disposed = true;
-            _source = null;
+            source.Dispose();
             _bitmap?.Dispose();
             _bitmap = null;
         }

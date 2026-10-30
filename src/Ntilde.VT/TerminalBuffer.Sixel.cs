@@ -3,9 +3,10 @@ namespace Ntilde.VT;
 public partial class TerminalBuffer
 {
     private TerminalImage? _placingSixel;
+    public SixelSourceBudget SixelSources { get; init; } = new();
 
     /// <summary>Applies SIXEL geometry even on headless hosts. Never writes placeholder text or wraps an image horizontally.</summary>
-    internal void PlaceSixelImage(object? handle, int widthCells, int heightCells)
+    internal void PlaceSixelImage(object? handle, int widthCells, int heightCells, SixelSource? source = null)
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         try
@@ -17,6 +18,7 @@ public partial class TerminalBuffer
             TerminalImage? image = handle is null ? null : new TerminalImage(handle, col, absoluteRow, widthCells, heightCells)
             {
                 IsSixelImage = true,
+                SixelSource = source,
                 ClipRightColumns = Math.Max(0, col + widthCells - Cols),
                 IsAltScreenImage = _isAltScreen,
             };

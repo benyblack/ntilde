@@ -291,7 +291,10 @@ invariant changes.
   Initial spawn metrics are validated before starting a child and forwarded through both local and
   remote factories; absent legacy metrics retain 10x20 defaults. Initial cell metrics travel in the
   attach snapshot. GUI panes retain bounded SIXEL source and materialize at most one fresh bitmap per
-  live frame; the daemon remains free of Skia, and other
+  live frame. One shared per-pane/session source budget caps retention at 256 sources and 2 Mi UTF-16
+  characters (about 4 MiB); oldest and oversized sources are omitted once this budget is reached. Attach
+  snapshots restore retained source/placement/clipping for both screens without replaying cursor motion.
+  The daemon remains free of Skia, and other
   image protocols remain disabled there with truthful capability replies. Pending resizes coalesce per sender; observers
   follow the authoritative geometry without changing it. Legacy peers receive no new notification.
 - **The text client never relays raw output.** It renders every frame from its own

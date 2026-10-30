@@ -8,6 +8,31 @@ public sealed class HeadlessSixelScrollingTests
 {
     private const string Image = "\x1bPq!30~-~\x1b\\";
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Attach_and_reattach_restore_SIXEL_sources_emitted_before_any_pane_subscribed(int version)
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync(new MuxClientOptions { MinProtocolVersion = version, MaxProtocolVersion = version });
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        host.Fake(id).Emit("\x1b[?80h\x1bPq#1;2;100;0;0#1!30~\x1b\\");
+        await host.Mux(id).FlushAsync();
+        var presentation = MuxTestHost.DefaultPresentation with { SupportsSixelScrolling = true };
+        var first = await MuxTestHost.AttachPaneAsync(client, id, presentation);
+        Assert.Single(first.LastSnapshot!.Sixels!);
+        var image = Assert.Single(first.Buffer.Images);
+        Assert.Equal("q#1;2;100;0;0#1!30~", image.SixelSource?.Data);
+        first.Session.Detach(userDetached: false);
+        await client.PingAsync(TestContext.Current.CancellationToken);
+        var again = await MuxTestHost.AttachPaneAsync(client, id, presentation);
+        Assert.Single(again.Buffer.Images);
+        host.AssertPaneMatchesMux(id, again, "restored images match before new output");
+        host.Fake(id).Emit("tail");
+        await host.SettleAsync(id, client);
+        host.AssertPaneMatchesMux(id, again, "subsequent output has no duplicate image placement");
+    }
+
     [Fact]
     public async Task Queued_output_records_the_metrics_applied_by_the_authoritative_parse_thread()
     {

@@ -153,7 +153,10 @@ scrolling semantics. DECSDM follows xterm polarity: `?80h` disables SIXEL-driven
 at page origin; reset restores inline scrolling. Shared clients use the daemon's ordered pixel cell
 size rather than their own font/DIP metrics. That size is supplied at spawn before startup output,
 then updated in stream order. GUI panes retain bounded SIXEL source and decode at most one new image
-per live frame, requesting further frames until complete, while the daemon only measures;
+per live frame, requesting further frames until complete. Each pane/session retains at most 256 sources
+and 2 Mi UTF-16 characters (about 4 MiB), evicting oldest sources and refusing oversized ones. Attach
+snapshots carry retained source, placement and irreversible clipping for both screens; clients restore
+images without replaying placement or cursor movement. The daemon retains no bitmap resources;
 other image protocols remain disabled for persistent sessions. Page-origin frames retire older,
 fully covered SIXELs through the existing snapshot-session disposal gate. Recording headers, ordered cell-size events and replay snapshots preserve SIXEL metrics; raw PTY writers receive only primitive values from the parser host. Flight exports retain the metric pair at the start of their bounded window. Parser snapshots preserve
 that override; legacy raw-only
@@ -937,7 +940,7 @@ These are tracked in follow-up plans under `docs/plans/`:
 - **Buffer-snapshot recording.** Phase 5 removed `ITerminalSession.AttachBuffer` / `TakeSnapshot`. The byte-stream is still recorded; buffer snapshots at recording start/stop are gone. Re-introducing them as an orchestration helper (likely in `Replay` or `Platform`) is a small follow-up.
 - **`MainWindow.axaml.cs` is 8,755 LOC, `TerminalPane.axaml.cs` 5,029 LOC, `SettingsWindow.axaml.cs` 3,312 LOC** (measured 2026-09-03; each has grown 60-95% since this item was written, so the trend is the finding as much as the number). These code-behinds contain business logic that should live in services and view-models.
 - **`TerminalBuffer` is split across 10 partial files (~5K LOC).** Several of the partials (`WritePath`, `ReflowEngine`, `ThreadingAndInvalidation`, `TabStops`) want to be collaborators rather than partials.
-- **Mux snapshot capture holds the buffer read lock (~27 ms at 10k rows);** the mux parser has no image decoder, so Phase 2 turns inline images off in mux-backed panes (no image decoder, no native kitty graphics) rather than show images a reattach would lose.
+- **Mux snapshot capture holds the buffer read lock (~27 ms at 10k rows).** The daemon retains bounded SIXEL source and placement without a bitmap decoder; attach snapshots restore these sources in GUI panes for deferred decoding. Other image transports remain disabled in persistent sessions.
 
 The 2026-05-28 architecture review (`docs/plans/2026-05-28-architecture-module-boundaries-review.md`) catalogs all of the above and ranks them by leverage.
 

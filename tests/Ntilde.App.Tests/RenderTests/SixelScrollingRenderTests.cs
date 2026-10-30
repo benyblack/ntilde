@@ -19,6 +19,32 @@ public sealed class SixelScrollingRenderTests
     }
 
     [Fact]
+    public void Restored_snapshot_sources_render_the_same_partial_page_origin_overlay()
+    {
+        Assert.SkipUnless(HasSkia(), "SkiaSharp native library not available on this platform.");
+        var headless = new TerminalBuffer(10, 6);
+        var parser = new AnsiParser(headless) { RetainSixelSources = true, SixelCellSizeOverride = new SixelCellSize(10, 20) };
+        parser.Process("\x1b[?80h\x1b[3;5H\x1bPq#1;2;100;0;0#1!30~\x1b\\\x1bPq#1;2;0;0;100#1!10~\x1b\\");
+        var snapshot = headless.ExportState(0);
+        snapshot.Parser = parser.ExportState();
+        var restored = new TerminalBuffer(20, 3);
+        var restoredParser = new AnsiParser(restored)
+        {
+            RetainSixelSources = true,
+            ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true },
+        };
+        TerminalStateTransfer.Restore(restored, restoredParser, TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(snapshot)));
+        Assert.Equal((headless.CursorCol, headless.CursorRow), (restored.CursorCol, restored.CursorRow));
+        Assert.Equal(2, restored.Images.Count);
+        Assert.All(restored.Images, image => Assert.IsType<DeferredSixelImage>(image.ImageHandle));
+        var metrics = new CellMetrics { CellWidth = 10, CellHeight = 20, Baseline = 15, Ascent = 15, Descent = 5 };
+        using var pixels = SKBitmap.Decode(SnapshotService.CapturePng(restored, metrics, 100, 120, new SnapshotCaptureOptions { HideCursor = true }));
+        Assert.Equal(SKColors.Blue, pixels.GetPixel(5, 3));
+        Assert.Equal(SKColors.Red, pixels.GetPixel(25, 3));
+        foreach (var image in restored.Images) ((IDisposable)image.ImageHandle).Dispose();
+    }
+
+    [Fact]
     public void Deferred_page_origin_replacement_preserves_uncovered_pixels_when_first_rendered()
     {
         Assert.SkipUnless(HasSkia(), "SkiaSharp native library not available on this platform.");

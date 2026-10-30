@@ -33,7 +33,7 @@ namespace Ntilde.VT
 
         // DECSIXEL is "DCS Ps ; Ps ; Ps q <data> ST": only digits and ';' may precede
         // the 'q' final byte. Anything else is a different DCS function.
-        private static bool IsSixel(string dcs)
+        internal static bool IsSixel(string dcs)
         {
             for (int i = 0; i < dcs.Length; i++)
             {
@@ -110,15 +110,22 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>Retain bounded source/placement state for persistent-session attach snapshots.</summary>
+        public bool RetainSixelSources { get; set; }
+
         private void HandleSixel(string dcs)
         {
             var (pixelWidth, pixelHeight) = SixelGeometry.Measure(dcs);
+            SixelSource? source = RetainSixelSources && pixelWidth > 0 && pixelHeight > 0 ? _buffer.SixelSources.Retain(dcs) : null;
             object? handle = null;
             try
             {
                 if (ImageDecoder is not null)
                 {
-                    handle = ImageDecoder.DecodeSixel(dcs, out int decodedWidth, out int decodedHeight);
+                    int decodedWidth, decodedHeight;
+                    handle = source is null
+                        ? ImageDecoder.DecodeSixel(dcs, out decodedWidth, out decodedHeight)
+                        : ImageDecoder.DecodeSixel(source, out decodedWidth, out decodedHeight);
                     if (handle is not null)
                     {
                         pixelWidth = Math.Clamp(decodedWidth, 0, SixelGeometry.DefaultMaxPixelDimension);
@@ -130,13 +137,13 @@ namespace Ntilde.VT
             {
                 TerminalLogger.Debug($"[ANSI_PARSER] Sixel decode failed: {ex.Message}");
             }
-            if (pixelWidth <= 0 || pixelHeight <= 0) return;
+            if (pixelWidth <= 0 || pixelHeight <= 0) { source?.Dispose(); return; }
             SixelCellSize? size = SixelCellSizeOverride;
             float cellWidth = size?.WidthPx ?? CellWidth;
             float cellHeight = size?.HeightPx ?? CellHeight;
             float cw = float.IsFinite(cellWidth) && cellWidth > 0 ? Math.Max(1, cellWidth) : 10;
             float ch = float.IsFinite(cellHeight) && cellHeight > 0 ? Math.Max(1, cellHeight) : 20;
-            _buffer.PlaceSixelImage(handle, (int)Math.Ceiling(pixelWidth / cw), (int)Math.Ceiling(pixelHeight / ch));
+            _buffer.PlaceSixelImage(handle ?? source, (int)Math.Ceiling(pixelWidth / cw), (int)Math.Ceiling(pixelHeight / ch), source);
             _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
         }
 

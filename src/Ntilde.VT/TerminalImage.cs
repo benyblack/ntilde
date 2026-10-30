@@ -17,7 +17,8 @@ namespace Ntilde.VT
         public int ClipBottomRows { get; internal set; }
         public int ClipRightColumns { get; internal set; }
 
-        public object ImageHandle { get; }
+        public SixelSource? SixelSource { get; internal set; }
+        public object ImageHandle { get; internal set; }
 
         public bool IsSticky { get; set; } = true;
 
