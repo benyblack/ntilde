@@ -155,7 +155,11 @@ size rather than their own font/DIP metrics. That size is supplied at spawn befo
 then updated in stream order. GUI panes retain bounded SIXEL source and decode at most one new image
 per live frame, requesting further frames until complete. Each pane/session retains at most 256 sources
 and 2 Mi UTF-16 characters (about 4 MiB), evicting retired sources before oldest live sources and refusing oversized ones.
-Expired undecoded placements are retired through the snapshot-session gate; materialized bitmaps remain intact. Attach
+Expired undecoded placements are retired through the snapshot-session gate; materialized bitmaps remain intact.
+Render snapshots pin only the copied undecoded sources. Overlapping captures share references, with a separate
+allowance of at most 256 sources and 2 Mi UTF-16 characters (about 4 MiB), keeping retained payloads plus
+capture pins within 8 MiB per pane/session. Capture refuses an exhausted allowance before advancing the
+live row-diff baseline, and releases retry a pending render. Source leases last through the final draw. Attach
 snapshots carry retained source, placement and irreversible clipping for both screens; clients restore
 images without replaying placement or cursor movement. The daemon retains no bitmap resources;
 other image protocols remain disabled for persistent sessions. Page-origin frames retire older,

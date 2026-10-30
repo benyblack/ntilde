@@ -339,7 +339,7 @@ namespace Ntilde.Shell
             int snapshotSession = _buffer.BeginSnapshotSession();
             try
             {
-                return DrawTerminalInternalCore(canvas);
+                return DrawTerminalInternalCore(canvas, snapshotSession);
             }
             finally
             {
@@ -347,7 +347,7 @@ namespace Ntilde.Shell
             }
         }
 
-        private TerminalRenderSnapshot? DrawTerminalInternalCore(SKCanvas canvas)
+        private TerminalRenderSnapshot? DrawTerminalInternalCore(SKCanvas canvas, int snapshotSession)
         {
             try
             {
@@ -374,7 +374,8 @@ namespace Ntilde.Shell
                     Selection = _selection,
                     SearchMatches = _searchMatches,
                     ActiveSearchIndex = _activeSearchIndex,
-                    Isolated = _isolatedSnapshot
+                    Isolated = _isolatedSnapshot,
+                    SnapshotSessionId = snapshotSession,
                 };
                 TerminalRenderSnapshot renderSnapshot = _buffer.CaptureRenderSnapshot(snapshotRequest, out long readLockMs);
                 RendererStatistics.RecordBufferReadLockTimeMs(readLockMs);

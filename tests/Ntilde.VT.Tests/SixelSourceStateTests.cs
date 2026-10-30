@@ -5,6 +5,34 @@ namespace Ntilde.VT.Tests;
 public sealed class SixelSourceStateTests
 {
     [Fact]
+    public void Snapshot_source_pins_are_shared_bounded_and_concurrently_idempotent()
+    {
+        var budget = new SixelSourceBudget(6, 2);
+        var first = budget.Retain("abc");
+        Assert.True(budget.TryPinSnapshot([first], out var a));
+        Assert.True(budget.TryPinSnapshot([first], out var b));
+        Assert.Equal(3, budget.SnapshotChars);
+        budget.Retain("de");
+        var second = budget.Retain("fgh");
+        Assert.Null(first.Data);
+        Assert.Equal("abc", first.DecodeData);
+        Assert.True(budget.TryPinSnapshot([second], out var c));
+        var third = budget.Retain("ijk");
+        Assert.False(budget.TryPinSnapshot([third], out var rejected));
+        Assert.Null(rejected);
+        Assert.Equal(6, budget.SnapshotChars);
+        Parallel.For(0, 32, _ => a!.Dispose());
+        Assert.Equal("abc", first.DecodeData); // the overlapping capture still owns it
+        b!.Dispose();
+        Assert.Null(first.DecodeData);
+        Assert.True(budget.TryPinSnapshot([third], out var d));
+        c!.Dispose();
+        d!.Dispose();
+        Assert.Equal(0, budget.SnapshotChars);
+        Assert.InRange(budget.RetainedChars, 0, 6);
+    }
+
+    [Fact]
     public void Repeated_fixed_cursor_images_keep_headless_placements_bounded_and_latest_restorable()
     {
         var buffer = new TerminalBuffer(10, 6) { SixelSources = new SixelSourceBudget(1024, 4) };

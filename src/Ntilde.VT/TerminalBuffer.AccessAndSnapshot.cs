@@ -1070,6 +1070,7 @@ namespace Ntilde.VT
                         CellWidth = img.CellWidth,
                         CellHeight = img.CellHeight,
                         ImageHandle = img.ImageHandle,
+                        Source = img.SixelSource ?? (img.ImageHandle as IDeferredSixelImage)?.Source,
                         ClipRightColumns = img.ClipRightColumns,
                         ClipTopRows = img.ClipTopRows,
                         ClipBottomRows = img.ClipBottomRows,

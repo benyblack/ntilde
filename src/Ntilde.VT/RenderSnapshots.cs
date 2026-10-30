@@ -28,6 +28,8 @@ namespace Ntilde.VT
         /// the live renderer alone, so every other caller must set this.
         /// </remarks>
         public bool Isolated { get; init; }
+        /// <summary>An active image-handle session; zero makes this snapshot own its source lease.</summary>
+        public int SnapshotSessionId { get; init; }
     }
 
     public readonly struct RenderThemeSnapshot
@@ -105,6 +107,7 @@ namespace Ntilde.VT
         public PooledArray<DirtySpan> DirtySpans { get; init; }
         public PooledArray<RenderRowSnapshot> RowsData { get; init; }
         public PooledArray<RenderImageSnapshot> Images { get; init; }
+        internal IDisposable? ImageSourceLease { get; init; }
         public PooledArray<SelectionRowSnapshot> SelectionRows { get; init; }
         public PooledArray<SearchHighlightSnapshot> SearchHighlights { get; init; }
 
@@ -113,6 +116,7 @@ namespace Ntilde.VT
             DirtySpans.Dispose();
             RowsData.Dispose();
             Images.Dispose();
+            ImageSourceLease?.Dispose();
             SelectionRows.Dispose();
             SearchHighlights.Dispose();
         }
@@ -158,6 +162,7 @@ namespace Ntilde.VT
         public int CellWidth;
         public int CellHeight;
         public object ImageHandle;
+        internal SixelSource? Source;
         public bool IsSticky;
         public int ClipTopRows { get; init; }
         public int ClipBottomRows { get; init; }

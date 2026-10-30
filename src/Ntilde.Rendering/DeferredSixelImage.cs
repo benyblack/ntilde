@@ -14,6 +14,8 @@ public sealed class DeferredSixelImage(SixelSource source, int maxPixelDimension
     private SKBitmap? _bitmap;
     private bool _disposed;
 
+    public SixelSource Source => source;
+    public bool NeedsSource => !Volatile.Read(ref _decodeAttempted) && !Volatile.Read(ref _disposed);
     public bool IsMaterialized { get { lock (_gate) return _bitmap is not null; } }
     internal bool IsDecoded => IsMaterialized;
 
@@ -32,7 +34,7 @@ public sealed class DeferredSixelImage(SixelSource source, int maxPixelDimension
         {
             pending = false;
             if (_disposed) return null;
-            if (_decodeAttempted || source.Data is not { } data) return _bitmap;
+            if (_decodeAttempted || source.DecodeData is not { } data) return _bitmap;
             if (remainingDecodes <= 0) { pending = true; return null; }
             remainingDecodes--;
             _decodeAttempted = true;

@@ -4,6 +4,9 @@ namespace Ntilde.VT
     public interface IDeferredSixelImage
     {
         bool IsMaterialized { get; }
+        /// <summary>False once decoding has captured its input; reads must not wait for decoding.</summary>
+        bool NeedsSource { get; }
+        SixelSource Source { get; }
     }
 
     public interface IImageDecoder
@@ -12,7 +15,7 @@ namespace Ntilde.VT
         object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight);
         object? DecodeSixel(SixelSource source, out int pixelWidth, out int pixelHeight)
         {
-            if (source.Data is { } data) return DecodeSixel(data, out pixelWidth, out pixelHeight);
+            if (source.DecodeData is { } data) return DecodeSixel(data, out pixelWidth, out pixelHeight);
             pixelWidth = pixelHeight = 0;
             return null;
         }

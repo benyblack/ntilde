@@ -293,7 +293,11 @@ invariant changes.
   attach snapshot. GUI panes retain bounded SIXEL source and materialize at most one fresh bitmap per
   live frame. One shared per-pane/session source budget caps retention at 256 sources and 2 Mi UTF-16
   characters (about 4 MiB); retired sources are evicted before oldest live sources, and oversized sources are omitted.
-  Expired undecoded placements retire through the snapshot-session gate; materialized pixels remain intact. Attach
+  Expired undecoded placements retire through the snapshot-session gate; materialized pixels remain intact.
+  Copied undecoded sources are pinned through the final draw; overlapping captures share references. Pins
+  have a separate 256-source/2 Mi-character allowance, so retained payloads plus capture pins stay within
+  8 MiB per pane/session. Snapshot sessions own renderer leases; standalone render snapshots own theirs
+  until disposal. Quota refusal happens before updating the live row-diff baseline and retries on release. Attach
   snapshots restore retained source/placement/clipping for both screens without replaying cursor motion.
   The daemon remains free of Skia, and other
   image protocols remain disabled there with truthful capability replies. Pending resizes coalesce per sender; observers

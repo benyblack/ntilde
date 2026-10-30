@@ -106,7 +106,7 @@ namespace Ntilde.Rendering
         public object? DecodeSixel(SixelSource source, out int pixelWidth, out int pixelHeight)
         {
             pixelWidth = pixelHeight = 0;
-            if (source.Data is not { } data) return null;
+            if (source.DecodeData is not { } data) return null;
             if (!DeferSixelDecoding) return DecodeSixel(data, out pixelWidth, out pixelHeight);
             (pixelWidth, pixelHeight) = SixelGeometry.Measure(data, MaxPixelDimension);
             return pixelWidth > 0 && pixelHeight > 0 ? new DeferredSixelImage(source, MaxPixelDimension) : null;

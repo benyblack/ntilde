@@ -12,6 +12,9 @@ public sealed class SixelSourceBudget
     private readonly int _maxSources;
     private int _retainedChars;
     private long _evictionVersion;
+    private int _snapshotChars;
+    private int _snapshotSources;
+    public int SnapshotChars { get { lock (_gate) return _snapshotChars; } }
     internal long EvictionVersion => Volatile.Read(ref _evictionVersion);
 
     public SixelSourceBudget(int maxChars = DefaultMaxChars, int maxSources = DefaultMaxSources)
@@ -39,6 +42,60 @@ public sealed class SixelSourceBudget
             source.Node = _sources.AddLast(source);
             _retainedChars += data.Length;
             return source;
+        }
+    }
+
+    internal bool TryPinSnapshot(IReadOnlyList<SixelSource> sources, out IDisposable? lease)
+    {
+        lease = null;
+        lock (_gate)
+        {
+            var unique = sources.Distinct().ToArray();
+            int chars = _snapshotChars;
+            int count = _snapshotSources;
+            foreach (var source in unique)
+            {
+                if (source.Owner != this) throw new ArgumentException("Source belongs to another budget.", nameof(sources));
+                if (source.SnapshotPins > 0) continue;
+                if (source.Data is not { } data) return false;
+                if (data.Length > _maxChars - chars || count >= _maxSources) return false;
+                chars += data.Length;
+                count++;
+            }
+            foreach (var source in unique)
+            {
+                if (source.SnapshotPins++ == 0) source.SnapshotData = source.Data;
+            }
+            _snapshotChars = chars;
+            _snapshotSources = count;
+            lease = new SnapshotPins(this, unique);
+            return true;
+        }
+    }
+
+    private void ReleaseSnapshot(SixelSource[] sources)
+    {
+        lock (_gate)
+        {
+            foreach (var source in sources)
+            {
+                if (--source.SnapshotPins != 0) continue;
+                _snapshotChars -= source.SnapshotData?.Length ?? 0;
+                _snapshotSources--;
+                source.SnapshotData = null;
+            }
+        }
+    }
+
+    private sealed class SnapshotPins(SixelSourceBudget owner, SixelSource[] sources) : IDisposable
+    {
+        private SixelSourceBudget? _owner = owner;
+        private SixelSource[]? _sources = sources;
+        public void Dispose()
+        {
+            var released = Interlocked.Exchange(ref _sources, null);
+            if (released is null) return;
+            Interlocked.Exchange(ref _owner, null)?.ReleaseSnapshot(released);
         }
     }
 
@@ -71,6 +128,11 @@ public sealed class SixelSource : IDisposable
 {
     private readonly SixelSourceBudget _owner;
     private string? _data;
+    private string? _snapshotData;
+    internal SixelSourceBudget Owner => _owner;
+    internal int SnapshotPins { get; set; }
+    internal string? SnapshotData { get => Volatile.Read(ref _snapshotData); set => Volatile.Write(ref _snapshotData, value); }
+    public string? DecodeData => Data ?? SnapshotData;
     internal SixelSource(SixelSourceBudget owner) => _owner = owner;
     public string? Data { get => Volatile.Read(ref _data); internal set => Volatile.Write(ref _data, value); }
     internal LinkedListNode<SixelSource>? Node { get; set; }

@@ -27,6 +27,77 @@ public class SkiaImageDecoderTests
     }
 
     [Fact]
+    public void A_captured_undecoded_source_survives_replacement_and_releases_with_its_session()
+    {
+        var buffer = new TerminalBuffer(10, 6) { SixelSources = new SixelSourceBudget(1024, 4) };
+        var parser = new AnsiParser(buffer) { RetainSixelSources = true, ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true } };
+        const string red = "q#1;2;100;0;0#1!30~";
+        parser.Process("\x1b[?80h\x1bP" + red + "\x1b\\");
+        int session = buffer.BeginSnapshotSession();
+        try
+        {
+            using var captured = buffer.CaptureRenderSnapshot(new RenderSnapshotRequest { ViewportRows = 6, ViewportCols = 10, SnapshotSessionId = session }, out _);
+            var old = Assert.IsType<DeferredSixelImage>(captured.Images.Array[0].ImageHandle);
+            for (int i = 0; i < 100; i++) parser.Process("\x1bPq#1;2;0;0;100#1!30~\x1b\\");
+            Assert.Null(old.Source.Data);
+            Assert.Equal(red, old.Source.DecodeData);
+            Assert.InRange(buffer.SixelSources.SnapshotChars, 1, 1024);
+            var retired = new List<object>();
+            Assert.False(buffer.DrainRetiredImageHandles(retired, long.MinValue));
+            buffer.EndSnapshotSession(session);
+            Assert.Equal(0, buffer.SixelSources.SnapshotChars);
+            Assert.Null(old.Source.DecodeData);
+            Assert.True(buffer.DrainRetiredImageHandles(retired, long.MinValue));
+            foreach (var handle in retired) ((IDisposable)handle).Dispose();
+        }
+        finally { buffer.EndSnapshotSession(session); }
+    }
+
+    [Fact]
+    public void A_captured_source_materializes_its_original_pixels_after_it_is_replaced()
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+        var buffer = new TerminalBuffer(10, 6) { SixelSources = new SixelSourceBudget(1024, 2) };
+        var parser = new AnsiParser(buffer) { RetainSixelSources = true, ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true } };
+        parser.Process("\x1b[?80h\x1bPq#1;2;100;0;0#1!30~\x1b\\");
+        int session = buffer.BeginSnapshotSession();
+        try
+        {
+            using var captured = buffer.CaptureRenderSnapshot(new RenderSnapshotRequest { ViewportRows = 6, ViewportCols = 10, SnapshotSessionId = session }, out _);
+            var old = Assert.IsType<DeferredSixelImage>(captured.Images.Array[0].ImageHandle);
+            for (int i = 0; i < 20; i++) parser.Process("\x1bPq#1;2;0;0;100#1!30~\x1b\\");
+            Assert.Null(old.Source.Data);
+            var original = Assert.IsType<SKBitmap>(old.GetBitmap());
+            Assert.Equal(SKColors.Red, original.GetPixel(0, 0));
+            buffer.EndSnapshotSession(session);
+            var retired = new List<object>();
+            Assert.True(buffer.DrainRetiredImageHandles(retired, long.MinValue));
+            foreach (var handle in retired) ((IDisposable)handle).Dispose();
+        }
+        finally { buffer.EndSnapshotSession(session); }
+    }
+
+    [Fact]
+    public void Snapshot_source_limit_rejects_atomically_and_recovers_when_the_previous_capture_ends()
+    {
+        var buffer = new TerminalBuffer(10, 6) { SixelSources = new SixelSourceBudget(1024, 1) };
+        var parser = new AnsiParser(buffer) { RetainSixelSources = true, ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true } };
+        parser.Process("\x1b[?80h\x1bPq!30~\x1b\\");
+        var first = buffer.CaptureRenderSnapshot(new RenderSnapshotRequest { ViewportRows = 6, ViewportCols = 10 }, out _);
+        parser.Process("\x1bPq!40~\x1b\\\x1b[3;1Hupdated");
+        Assert.Throws<InvalidOperationException>(() => buffer.CaptureRenderSnapshot(new RenderSnapshotRequest { ViewportRows = 6, ViewportCols = 10 }, out _));
+        Assert.InRange(buffer.SixelSources.SnapshotChars, 1, 1024);
+        first.Dispose();
+        Assert.Equal(0, buffer.SixelSources.SnapshotChars);
+        using (var second = buffer.CaptureRenderSnapshot(new RenderSnapshotRequest { ViewportRows = 6, ViewportCols = 10 }, out _))
+        {
+            Assert.InRange(buffer.SixelSources.SnapshotChars, 1, 1024);
+            Assert.True(second.DirtySpans.Length > 0); // the rejected frame must not advance the live baseline
+        }
+        Assert.Equal(0, buffer.SixelSources.SnapshotChars);
+    }
+
+    [Fact]
     public void Replaced_pending_frames_do_not_evict_an_uncovered_live_image_source()
     {
         var buffer = new TerminalBuffer(10, 6) { SixelSources = new SixelSourceBudget(1024, 4) };
