@@ -42,10 +42,13 @@ for (const [field, value] of [
     });
 }
 
-function launch(executable, interrupt) {
+function launch(executable, interrupt, observation = {}) {
     return new Promise((resolve, reject) => {
-        const child = spawn(process.execPath, ['scripts/terminfo-owned.mjs', '--executable', executable, '--app-version', '0.0.0'], {
+        const preload = observation.log ? ['--import', join(repo, 'scripts/terminfo/fixtures/owned-lifecycle.mjs')] : [];
+        const child = spawn(process.execPath, [...preload, 'scripts/terminfo-owned.mjs', '--executable', executable, '--app-version', '0.0.0'], {
             cwd: repo, stdio: ['ignore', 'pipe', 'pipe'],
+            env: { ...process.env, NTILDE_TERMINFO_TEST_LIFECYCLE_LOG: observation.log,
+                NTILDE_TERMINFO_TEST_LIFECYCLE_PHASE: observation.phase },
         });
         let output = '';
         let errors = '';
@@ -92,3 +95,41 @@ test('interrupting a launched Ntilde instance tears it down', {
     assert.match(result.errors, /Interrupted by SIGINT/);
     assertCleaned(result);
 });
+
+for (const [phase, initialInterrupt, collected] of [
+    ['preparation', false, false], ['post-spawn', false, false],
+    ['teardown', true, false], ['fixture-removal', true, false],
+    ['fixture-removal', false, true],
+]) {
+    test(`repeated signals remain handled during ${phase}${collected ? ' after collection' : ''} and resources are cleaned`, {
+        skip: !prepared || !process.env.NTILDE_TERMINFO_TEST_EXECUTABLE,
+    }, async () => {
+        const root = mkdtempSync(join(tmpdir(), 'nt-observe-'));
+        const log = join(root, 'lifecycle.jsonl');
+        try {
+            const result = await launch(process.env.NTILDE_TERMINFO_TEST_EXECUTABLE,
+                initialInterrupt, { log, phase });
+            assert.equal(result.code, 1, result.output + result.errors);
+            assert.match(result.errors, /Interrupted by SIGINT/);
+            const observations = readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+            const boundaries = observations.filter(item => item.phase === phase);
+            assert.equal(boundaries.length, 2, JSON.stringify(observations));
+            for (const boundary of boundaries) {
+                assert.ok(boundary.sigint > 0, `Missing SIGINT handler: ${JSON.stringify(boundary)}`);
+                assert.ok(boundary.sigterm > 0, `Missing SIGTERM handler: ${JSON.stringify(boundary)}`);
+            }
+            for (const item of observations) {
+                if (item.scratch) assert.ok(!existsSync(item.scratch), 'Private fixture must be removed.');
+                if (item.appPid) assert.throws(() => process.kill(item.appPid, 0), /ESRCH/, 'Disposable app must have exited.');
+            }
+            const finished = observations.find(item => item.phase === 'finished');
+            assert.deepEqual(finished, { phase: 'finished', sigint: 0, sigterm: 0 });
+            if (collected) {
+                const output = /results: ([^\n]+)/.exec(result.output)[1];
+                assert.ok(existsSync(join(output, 'summary.json')));
+                assert.equal(JSON.parse(readFileSync(join(output, 'ownership-proof.json'))).completed, true);
+                assert.match(JSON.parse(readFileSync(join(output, 'failure.json'))).error, /Interrupted by SIGINT/);
+            }
+        } finally { rmSync(root, { recursive: true, force: true }); }
+    });
+}

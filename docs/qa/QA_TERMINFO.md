@@ -82,7 +82,9 @@ run marker. A private socket capability binds the worker to that launch; both
 ends verify its live app parent, executable, user, controlling TTY and output
 device. Geometry reads repeat the ownership/device check. Cleanup terminates
 only the launched process and its verified worker and removes the private root.
-Early exit and interruption retain failure evidence and still clean up.
+Early exit and interruption retain failure evidence and still clean up. Signal
+handlers cover fixture creation through app exit, socket closure and fixture
+removal, and remain installed for repeated signals during teardown.
 
 The pinned CLI has no public Ntilde ownership hook. This is a **local collector
 extension**, not an upstream-supported plugin. A digest-checked transformation

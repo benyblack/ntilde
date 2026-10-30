@@ -62,6 +62,12 @@ function collectionSummary(output, appVersion) {
         adapter: raw.collectorAdapter, observations: raw.observations.length, counts, reasons, rawSha256: hash(readFileSync(rawPath)) };
 }
 
+function terminateOwnedWorker(workerPid, appPid) {
+    if (!workerPid) return;
+    // Only terminate a worker whose direct parent is still the launched app.
+    try { if (processRecord(workerPid).ppid === appPid) process.kill(workerPid, 'SIGTERM'); } catch {}
+}
+
 async function main() {
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
@@ -77,10 +83,26 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     const executable = validateInvocation(args);
     const { tool, ownerModule, bundle, adapterBundleSha256, receiptBytes } = prepareCollector();
 
-    const output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
-    // Keep the socket short and the fixture below a validated private parent.
-    const scratch = createPrivateScratch();
+    let resolveDone;
+    let rejectDone;
+    const done = new Promise((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });
+    done.catch(() => {});
+    let interruption;
+    const interrupted = signal => {
+        interruption ??= new Error(`Interrupted by ${signal}.`);
+        process.exitCode = 1;
+        rejectDone(interruption);
+    };
+    const onInt = () => interrupted('SIGINT');
+    const onTerm = () => interrupted('SIGTERM');
+    let scratch;
+    let output;
+    // Persistent handlers also protect against a second signal during teardown.
+    process.on('SIGINT', onInt);
+    process.on('SIGTERM', onTerm);
     try {
+        output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
+        scratch = createPrivateScratch();
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = randomBytes(16).toString('hex');
@@ -109,11 +131,6 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let app;
         let workerPid;
         let completed = false;
-        let resolveDone;
-        let rejectDone;
-        const done = new Promise((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });
-        // Attach a handler immediately; startup can fail before main awaits done.
-        done.catch(() => {});
         const proofs = [];
         const image = statSync(executable);
         const context = {
@@ -167,16 +184,14 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 }
             });
         });
-        const interrupted = signal => rejectDone(new Error(`Interrupted by ${signal}.`));
-        const onInt = () => interrupted('SIGINT');
-        const onTerm = () => interrupted('SIGTERM');
         let deadline;
         let logFd;
         try {
-            await new Promise((resolve, reject) => {
+            await Promise.race([done, new Promise((resolve, reject) => {
                 server.once('error', reject);
                 server.listen(config.socket, resolve);
-            });
+            })]);
+            if (interruption) throw interruption;
             chmodSync(config.socket, 0o600);
             const env = { ...process.env, NTILDE_APPDATA_ROOT: appData, TERMINFO_RUN_ID: runId,
                 TERM_PROGRAM: 'Ntilde', TERM_PROGRAM_VERSION: args[3], PATH: dirname(process.execPath) + ':' + process.env.PATH };
@@ -188,8 +203,6 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             app.once('exit', (code, signal) => { if (!completed) rejectDone(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
             context.ownerPid = app.pid;
             writeJson(join(output, 'context.json'), context);
-            process.once('SIGINT', onInt);
-            process.once('SIGTERM', onTerm);
             deadline = setTimeout(() => rejectDone(new Error('Owned collection exceeded 5 minutes.')), 300000);
             console.log(`Collecting in disposable Ntilde pid ${app.pid}; results: ${output}`);
             await done;
@@ -201,27 +214,31 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             throw new Error(`${error.message} Evidence retained in ${output}`);
         } finally {
             clearTimeout(deadline);
-            process.removeListener('SIGINT', onInt);
-            process.removeListener('SIGTERM', onTerm);
-            // Only terminate the specific process we launched. Worker termination
-            // additionally requires its still-live direct parent relationship.
-            if (workerPid) {
-                try { if (processRecord(workerPid).ppid === app?.pid) process.kill(workerPid, 'SIGTERM'); } catch {}
-            }
+            terminateOwnedWorker(workerPid, app?.pid);
+            // Only terminate the specific app process we launched.
             if (app?.pid && app.exitCode === null && app.signalCode === null) {
                 app.kill('SIGTERM');
                 await new Promise(resolve => {
-                    const timer = setTimeout(() => { app.kill('SIGKILL'); resolve(); }, 2000);
+                    const timer = setTimeout(() => app.kill('SIGKILL'), 2000);
                     app.once('exit', () => { clearTimeout(timer); resolve(); });
                 });
             }
             if (logFd !== undefined) closeSync(logFd);
-            server.close();
+            await new Promise(resolve => server.close(() => resolve()));
             writeJson(join(output, 'ownership-proof.json'), { proofs, completed, cleanedUpAt: new Date().toISOString() });
         }
     } finally {
-        // Also handles preparation failures before the app or server is started.
-        rmSync(scratch, { recursive: true, force: true });
+        try {
+            // Also handles preparation failures before the app or server is started.
+            if (scratch) rmSync(scratch, { recursive: true, force: true });
+        } finally {
+            process.removeListener('SIGINT', onInt);
+            process.removeListener('SIGTERM', onTerm);
+        }
+    }
+    if (interruption) {
+        writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
+        throw interruption;
     }
 }
 
