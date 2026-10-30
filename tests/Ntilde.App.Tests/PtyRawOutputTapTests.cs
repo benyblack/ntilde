@@ -110,6 +110,47 @@ namespace Ntilde.Tests
 
         [Fact]
         [Trait("Category", "PtySmoke")]
+        public async Task Recording_started_with_queued_output_keeps_previously_read_bytes()
+        {
+            var reads = new ScriptedReads("held"u8.ToArray(), [0xE2], [0x82, 0xAC]);
+            using var arrived = new ManualResetEventSlim();
+            using var release = new ManualResetEventSlim();
+            string path = System.IO.Path.GetTempFileName();
+            try
+            {
+                using RustPtySession session = NewSession(reads);
+                int deliveries = 0;
+                session.SubscribeRecordingOutput((text, data) =>
+                {
+                    if (text == "held")
+                    {
+                        arrived.Set();
+                        Assert.True(release.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+                    }
+                    session.RecordOutputAtHostBoundary(data);
+                    Interlocked.Increment(ref deliveries);
+                });
+                foreach (var gate in reads.Gates) gate.Release();
+                Assert.True(arrived.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+                await WaitAsync(reads.Entered[3]); // all chunks queued before recording starts
+                session.StartRecording(path);
+                release.Set();
+                await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => Volatile.Read(ref deliveries) == 3, "all queued chunks reached the recording host");
+                session.StopRecording();
+                var raw = new System.Collections.Generic.List<byte>();
+                await new Ntilde.Replay.ReplayRunner(path).RunAsync(data => { raw.AddRange(data); return Task.CompletedTask; }, ct: TestContext.Current.CancellationToken);
+                Assert.Equal(Encoding.UTF8.GetBytes("held€"), raw);
+            }
+            finally
+            {
+                release.Set();
+                foreach (var gate in reads.Gates) { if (gate.CurrentCount == 0) gate.Release(); }
+                System.IO.File.Delete(path);
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "PtySmoke")]
         public async Task Bytes_read_before_the_first_raw_subscriber_are_replayed_then_live_bytes_follow_in_order()
         {
             var reads = new ScriptedReads("AB"u8.ToArray(), [0xC3], [0xA9, (byte)'C', (byte)'D']);

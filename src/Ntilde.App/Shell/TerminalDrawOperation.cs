@@ -66,6 +66,7 @@ namespace Ntilde.Shell
         /// live row-diff baseline alone. See <see cref="RenderSnapshotRequest.Isolated"/>.
         /// </summary>
         private readonly bool _isolatedSnapshot;
+        private readonly Action? _requestImageFrame;
         private bool _wasAltScreenLastFrame;
 
         private static readonly bool GlyphDiagnosticsEnabled = IsEnvFlagEnabled("NTILDE_DIAG_GLYPH");
@@ -223,7 +224,8 @@ namespace Ntilde.Shell
             bool showRenderHud = false,
             bool isolatedSnapshot = false,
             double minimumContrast = 1.0,
-            IDisposable? cacheLease = null)
+            IDisposable? cacheLease = null,
+            Action? requestImageFrame = null)
         {
             _bounds = bounds;
             _cacheLease = cacheLease;
@@ -254,6 +256,7 @@ namespace Ntilde.Shell
             _glyphCache = glyphCache;
             _showRenderHud = showRenderHud;
             _isolatedSnapshot = isolatedSnapshot;
+            _requestImageFrame = requestImageFrame;
             _cellWidthDevicePx = Math.Max(1, ToDevicePx(_metrics.CellWidth));
             _cellHeightDevicePx = Math.Max(1, ToDevicePx(_metrics.CellHeight));
             int baselineOffsetPx = ToDevicePx(_metrics.Baseline);
@@ -721,6 +724,9 @@ namespace Ntilde.Shell
                     }
                 }
 
+                // Bound first-frame work for live panes; exports still materialize every image.
+                int remainingImageDecodes = _requestImageFrame is null || _isolatedSnapshot ? int.MaxValue : 1;
+                bool pendingImageDecode = false;
                 // Pass 2: Images
                 using (var imagePaint = new SKPaint { Color = new SKColor(255, 255, 255, alpha) })
                 using (var imageBgPaint = new SKPaint { Color = frame.ThemeBg, Style = SKPaintStyle.Fill, IsAntialias = false })
@@ -752,12 +758,12 @@ namespace Ntilde.Shell
                             // image pixels do not reveal previously drawn text layers.
                             canvas.DrawRect(rect, imageBgPaint);
                             IncrementRectDrawCall();
-                            SKBitmap? bitmap = img.ImageHandle switch
+                            SKBitmap? bitmap = img.ImageHandle as SKBitmap;
+                            if (img.ImageHandle is DeferredSixelImage deferred)
                             {
-                                SKBitmap eager => eager,
-                                DeferredSixelImage deferred => deferred.GetBitmap(),
-                                _ => null,
-                            };
+                                bitmap = deferred.GetBitmap(ref remainingImageDecodes, out bool pending);
+                                pendingImageDecode |= pending;
+                            }
                             if (bitmap is { } bmp)
                             {
                                 canvas.DrawBitmap(bmp, rect, imagePaint);
@@ -767,6 +773,8 @@ namespace Ntilde.Shell
                         }
                     }
                 }
+
+                if (pendingImageDecode) _requestImageFrame?.Invoke();
 
                 // Redraws the text of [colStart, colEndExclusive) on visual row r over an overlay
                 // just drawn on top of it, so a selection, search match or block cursor is a fill

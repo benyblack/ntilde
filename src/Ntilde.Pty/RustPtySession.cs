@@ -924,7 +924,7 @@ namespace Ntilde.Pty
             // never throw at the agent-host lifecycle call site.
             int cols = _cols > 0 ? _cols : 80;
             int rows = _rows > 0 ? _rows : 24;
-            _flightRecorder = new Ntilde.Replay.FlightRecordingBuffer(maxTotalBytes, cols, rows, initialSixelCellSize: Volatile.Read(ref _recordingCellMetrics));
+            _flightRecorder = new Ntilde.Replay.FlightRecordingBuffer(maxTotalBytes, cols, rows, initialSixelCellSize: _recordingDelivery.CellMetrics);
         }
 
         public void DisableFlightRecording()
@@ -956,40 +956,28 @@ namespace Ntilde.Pty
             }
         }
 
-        private int _recordingBoundaryMode; // 0: transport, 1: external raw host, 2: decoded-output host
-        private ReadOnlyMemory<byte> _deliveredRecordingBytes;
+        private readonly Ntilde.Pty.RecordingOutputDelivery _recordingDelivery = new();
 
-        public void UseHostRecordingBoundary() => Volatile.Write(ref _recordingBoundaryMode, 1);
+        public void UseHostRecordingBoundary() => _recordingDelivery.UseRawHost();
 
         public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler)
         {
-            ArgumentNullException.ThrowIfNull(handler);
             lock (_outputInvocationLock)
             {
-                if (_recordingBoundaryMode == 2) throw new InvalidOperationException("A recording output host is already installed.");
-                Volatile.Write(ref _recordingBoundaryMode, 2);
-                OnOutputReceived += text => handler(text, _deliveredRecordingBytes);
+                OnOutputReceived += _recordingDelivery.CreateDecodedHost(handler);
             }
         }
 
         public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) =>
-            Ntilde.Replay.PtyRecorder.RecordOutputAtBoundary(_recorder, _flightRecorder, Volatile.Read(ref _recordingCellMetrics), output);
+            Ntilde.Replay.PtyRecorder.RecordOutputAtBoundary(_recorder, _flightRecorder, _recordingDelivery.CellMetrics, output);
 
-        private Ntilde.Replay.RecordingCellMetrics _recordingCellMetrics = new(10, 20);
-
-        public void SetRecordingCellMetrics(float widthPx, float heightPx)
-        {
-            var size = new Ntilde.Replay.RecordingCellMetrics(widthPx, heightPx);
-            if (Volatile.Read(ref _recordingCellMetrics) == size) return;
-            Volatile.Write(ref _recordingCellMetrics, size);
-            _recorder?.RecordSixelCellSize(widthPx, heightPx);
-            _flightRecorder?.RecordSixelCellSize(widthPx, heightPx);
-        }
+        public void SetRecordingCellMetrics(float widthPx, float heightPx) =>
+            _recordingDelivery.SetCellMetrics(widthPx, heightPx, _recorder, _flightRecorder);
 
         public void StartRecording(string filePath)
         {
             if (_recorder != null) return; // Already recording
-            var recorder = new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, Volatile.Read(ref _recordingCellMetrics));
+            var recorder = new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics);
             try
             {
                 recorder.RecordMarker("START");
@@ -1058,10 +1046,10 @@ namespace Ntilde.Pty
                         consecutiveReadErrors = 0;
 
                         // A parser host records at its own ordering boundary; retain original bytes
-                        // only while recording, keeping the ordinary output allocation path unchanged.
-                        int recordingMode = Volatile.Read(ref _recordingBoundaryMode);
+                        // in decoded-host mode, since recording may start before queued delivery.
+                        int recordingMode = _recordingDelivery.Mode;
                         if (recordingMode == 0) RecordOutputAtHostBoundary(buffer.AsMemory(0, read));
-                        byte[]? recordingBytes = recordingMode == 2 && (_recorder is not null || _flightRecorder is not null)
+                        byte[]? recordingBytes = recordingMode == 2
                             ? buffer.AsSpan(0, read).ToArray() : null;
                         _rawOutput.Publish(buffer.AsSpan(0, read));
 
@@ -1258,9 +1246,9 @@ namespace Ntilde.Pty
                 {
                     lock (_outputInvocationLock)
                     {
-                        _deliveredRecordingBytes = chunk.RecordingBytes;
+                        _recordingDelivery.Bytes = chunk.RecordingBytes;
                         try { EmitOutput(chunk.Text); }
-                        finally { _deliveredRecordingBytes = default; }
+                        finally { _recordingDelivery.Bytes = default; }
                     }
                 }
             }

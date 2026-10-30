@@ -90,17 +90,10 @@ public sealed class SshSession : ITerminalSession, ITerminalByteOutput, ITermina
 
     public void SendInput(string input) => _inner.SendInput(input);
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);
-    public void UseHostRecordingBoundary() => (_inner as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
-    public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler)
-    {
-        if (_inner is ITerminalRecordingBoundary boundary) boundary.SubscribeRecordingOutput(handler);
-        else _inner.OnOutputReceived += text => handler(text, default);
-    }
-    public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) =>
-        (_inner as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(output);
-
-    public void SetRecordingCellMetrics(float widthPx, float heightPx) =>
-        (_inner as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(widthPx, heightPx);
+    public void UseHostRecordingBoundary() => _inner.UseHostRecordingBoundary();
+    public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler) => _inner.SubscribeRecordingOutput(handler);
+    public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) => _inner.RecordOutputAtHostBoundary(output);
+    public void SetRecordingCellMetrics(float widthPx, float heightPx) => _inner.SetRecordingCellMetrics(widthPx, heightPx);
 
     public void StartRecording(string filePath) => _inner.StartRecording(filePath);
     public void StopRecording() => _inner.StopRecording();

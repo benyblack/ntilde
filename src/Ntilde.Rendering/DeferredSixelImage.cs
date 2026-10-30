@@ -20,10 +20,20 @@ public sealed class DeferredSixelImage(string source, int maxPixelDimension) : I
     /// <remarks>The renderer holds the owning buffer's snapshot session while using the returned bitmap.</remarks>
     public SKBitmap? GetBitmap()
     {
+        int budget = int.MaxValue;
+        return GetBitmap(ref budget, out _);
+    }
+
+    /// <summary>Consumes one decode from the frame budget; already decoded images are free.</summary>
+    public SKBitmap? GetBitmap(ref int remainingDecodes, out bool pending)
+    {
         lock (_gate)
         {
+            pending = false;
             if (_disposed) return null;
             if (_source is not { } data) return _bitmap;
+            if (remainingDecodes <= 0) { pending = true; return null; }
+            remainingDecodes--;
             _source = null;
             try { _bitmap = new SixelDecoder { MaxPixelDimension = maxPixelDimension }.Decode(data); }
             catch (Exception ex) { TerminalLogger.Debug($"[SIXEL] Deferred decode failed: {ex.Message}"); }

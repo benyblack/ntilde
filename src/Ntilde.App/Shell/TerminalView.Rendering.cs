@@ -187,7 +187,8 @@ namespace Ntilde.Shell
                 _showRenderHud,
                 isolatedSnapshot: offscreen,
                 minimumContrast: _minimumContrast,
-                cacheLease: cacheLease
+                cacheLease: cacheLease,
+                requestImageFrame: offscreen ? null : () => Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Render)
             ));
 
             if (_hoveredLink != null)

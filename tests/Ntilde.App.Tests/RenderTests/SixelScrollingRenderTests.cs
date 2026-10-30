@@ -38,6 +38,38 @@ public sealed class SixelScrollingRenderTests
         Assert.Equal(SKColors.Red, rendered.GetPixel(25, 3));
     }
 
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public void Live_frames_decode_one_image_and_request_the_next_frame_until_complete()
+    {
+        Assert.SkipUnless(HasSkia(), "SkiaSharp native library not available on this platform.");
+        var buffer = new TerminalBuffer(10, 6);
+        var parser = new AnsiParser(buffer) { ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true }, CellWidth = 10, CellHeight = 20 };
+        parser.Process("\x1b[?80h\x1bPq#1;2;100;0;0#1!30~\x1b\\\x1bPq#1;2;0;0;100#1!10~\x1b\\");
+        var typeface = new Avalonia.Media.Typeface("Cascadia Code, Consolas, Monospace");
+        var skTypeface = new SharedSKTypeface(SKTypeface.FromFamilyName(typeface.FontFamily.Name));
+        var skFont = new SharedSKFont(new SKFont(skTypeface.Typeface, 14));
+        using var rendered = new SKBitmap(100, 120);
+        using var canvas = new SKCanvas(rendered);
+        int requestedFrames = 0;
+        using var op = new TerminalDrawOperation(
+            new Avalonia.Rect(0, 0, 100, 120), buffer, 0, new SelectionState(), null, -1,
+            new CellMetrics { CellWidth = 10, CellHeight = 20, Baseline = 15, Ascent = 15, Descent = 5 },
+            typeface, 14, typeface.GlyphTypeface, skTypeface, skFont, false,
+            new System.Collections.Concurrent.ConcurrentDictionary<string, SKTypeface?>(), [], 1, true,
+            snapshotRows: 6, snapshotCols: 10, requestImageFrame: () => requestedFrames++);
+        skFont.Dispose(); // the draw operation owns the remaining references
+        skTypeface.Dispose();
+        op.DrawTerminalInternal(canvas);
+        Assert.Equal(1, requestedFrames);
+        Assert.Equal(SKColors.Red, rendered.GetPixel(25, 3));
+        Assert.NotEqual(SKColors.Blue, rendered.GetPixel(5, 3));
+        op.DrawTerminalInternal(canvas);
+        Assert.Equal(1, requestedFrames); // no more work remains
+        Assert.Equal(SKColors.Blue, rendered.GetPixel(5, 3));
+        Assert.Equal(SKColors.Red, rendered.GetPixel(25, 3));
+        foreach (var image in buffer.Images) ((IDisposable)image.ImageHandle).Dispose();
+    }
+
     [Fact]
     public void A_scrolled_SIXEL_clips_at_the_region_and_keeps_the_original_bitmap_sampling()
     {

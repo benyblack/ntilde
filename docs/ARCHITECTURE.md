@@ -152,7 +152,8 @@ clipping and image retirement. The renderer applies the snapshot's clipping meta
 scrolling semantics. DECSDM follows xterm polarity: `?80h` disables SIXEL-driven scrolling and draws
 at page origin; reset restores inline scrolling. Shared clients use the daemon's ordered pixel cell
 size rather than their own font/DIP metrics. That size is supplied at spawn before startup output,
-then updated in stream order. GUI panes retain bounded SIXEL source and decode on first render while the daemon only measures;
+then updated in stream order. GUI panes retain bounded SIXEL source and decode at most one new image
+per live frame, requesting further frames until complete, while the daemon only measures;
 other image protocols remain disabled for persistent sessions. Page-origin frames retire older,
 fully covered SIXELs through the existing snapshot-session disposal gate. Recording headers, ordered cell-size events and replay snapshots preserve SIXEL metrics; raw PTY writers receive only primitive values from the parser host. Flight exports retain the metric pair at the start of their bounded window. Parser snapshots preserve
 that override; legacy raw-only

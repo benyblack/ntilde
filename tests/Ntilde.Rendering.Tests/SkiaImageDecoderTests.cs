@@ -27,6 +27,26 @@ public class SkiaImageDecoderTests
     }
 
     [Fact]
+    public void Frame_decode_budget_defers_remaining_images_and_reuses_materialized_pixels()
+    {
+        using var first = new DeferredSixelImage("q#1;2;100;0;0#1~", 2000);
+        using var second = new DeferredSixelImage("q#1;2;0;0;100#1~", 2000);
+        int budget = 1;
+        var red = Assert.IsType<SkiaSharp.SKBitmap>(first.GetBitmap(ref budget, out bool firstPending));
+        Assert.False(firstPending);
+        Assert.Equal(0, budget);
+        Assert.Null(second.GetBitmap(ref budget, out bool secondPending));
+        Assert.True(secondPending);
+        Assert.Same(red, first.GetBitmap(ref budget, out firstPending));
+        Assert.False(firstPending);
+        budget = 1;
+        var blue = Assert.IsType<SkiaSharp.SKBitmap>(second.GetBitmap(ref budget, out secondPending));
+        Assert.False(secondPending);
+        Assert.Equal(SkiaSharp.SKColors.Red, red.GetPixel(0, 0));
+        Assert.Equal(SkiaSharp.SKColors.Blue, blue.GetPixel(0, 0));
+    }
+
+    [Fact]
     public void Deferred_SIXEL_preserves_pixels_and_bounds_until_first_materialization()
     {
         Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");

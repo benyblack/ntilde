@@ -1075,7 +1075,8 @@ public sealed class HeadlessTerminalSession : IDisposable
         {
             _parser.SixelCellSizeOverride = size;
             _sixelCellSizePending = true;
-            (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(width, height);
+            try { (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(width, height); }
+            catch (Exception ex) { Log($"[Mux] session {Id}: recording cell metrics failed: {ex.Message}"); }
         }
         if (float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0) _parser.CellWidth = presentation.CellWidthPx;
         if (float.IsFinite(presentation.CellHeightPx) && presentation.CellHeightPx > 0) _parser.CellHeight = presentation.CellHeightPx;

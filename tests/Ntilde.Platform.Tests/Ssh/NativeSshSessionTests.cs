@@ -73,6 +73,52 @@ public sealed class NativeSshSessionTests
     }
 
     [Fact]
+    public async Task Host_recording_preserves_session_error_after_incomplete_utf8()
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            var interop = new FakeNativeSshInterop();
+            using var session = new NativeSshSession(CreateProfile(), interop: interop);
+            var live = new Ntilde.VT.TerminalBuffer(80, 24);
+            var parser = new Ntilde.VT.AnsiParser(live);
+            session.SubscribeRecordingOutput((text, data) =>
+            {
+                session.RecordOutputAtHostBoundary(data);
+                parser.Process(text);
+            });
+            var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            session.OnExit += code => exit.TrySetResult(code);
+            session.StartRecording(path);
+            byte[] prefix = [(byte)'x', 0xE2, 0x82];
+            byte[] message = Encoding.UTF8.GetBytes("auth failed");
+            interop.Enqueue(NativeSshEvent.Data(prefix));
+            interop.Enqueue(new NativeSshEvent(NativeSshEventKind.Error, message, statusCode: 5));
+            Assert.Equal(5, await exit.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            session.StopRecording();
+            var replay = new Ntilde.VT.TerminalBuffer(80, 24);
+            var replayParser = new Ntilde.VT.AnsiParser(replay);
+            var decoder = new Ntilde.Pty.Utf8ChunkDecoder();
+            var raw = new List<byte>();
+            await new Ntilde.Replay.ReplayRunner(path).RunAsync(
+                onDataCallback: data =>
+                {
+                    raw.AddRange(data);
+                    char[] chars = new char[Ntilde.Pty.Utf8ChunkDecoder.GetMaxCharCount(data.Length)];
+                    int count = decoder.Decode(data, chars);
+                    replayParser.Process(new string(chars, 0, count));
+                    return Task.CompletedTask;
+                },
+                ct: TestContext.Current.CancellationToken);
+            Assert.Equal(prefix.Concat(message).Concat(Encoding.UTF8.GetBytes(Environment.NewLine)), raw);
+            Assert.Equal((live.CursorCol, live.CursorRow, live.TotalLines), (replay.CursorCol, replay.CursorRow, replay.TotalLines));
+            Assert.Equal(Ntilde.Replay.BufferSnapshot.Capture(live).Lines, Ntilde.Replay.BufferSnapshot.Capture(replay).Lines);
+            Assert.Contains("x�auth failed", string.Concat(Ntilde.Replay.BufferSnapshot.Capture(replay).Lines));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
     public async Task Recordings_preserve_initial_and_updated_physical_cell_metrics()
     {
         string path = Path.GetTempFileName();

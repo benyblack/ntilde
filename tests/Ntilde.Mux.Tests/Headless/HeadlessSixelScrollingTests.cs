@@ -55,12 +55,41 @@ public sealed class HeadlessSixelScrollingTests
         Guid id = await MuxTestHost.SpawnAsync(client);
         var presentation = MuxTestHost.DefaultPresentation with { CellWidthPx = 12, CellHeightPx = 6, SupportsSixelScrolling = true };
         var pane = await MuxTestHost.AttachPaneAsync(client, id, presentation);
+        host.Fake(id).EnableFlightRecording(4096);
         pane.Session.StartRecording("scripted.rec");
         await TestWait.UntilAsync(() => pane.Session.IsRecording, "recording was acknowledged");
         Assert.Equal(new Ntilde.Replay.RecordingCellMetrics(12, 6), host.Fake(id).RecordingCellMetricsAtStart);
         pane.Session.UpdatePresentation(presentation with { CellHeightPx = 12 });
         await host.SettleAsync(id, client);
         Assert.Equal(new Ntilde.Replay.RecordingCellMetrics(12, 12), host.Fake(id).CurrentRecordingCellMetrics);
+        string path = Path.GetTempFileName();
+        try
+        {
+            Assert.True(host.Fake(id).TryExportFlightRecording(path, out _));
+            var sizes = new List<(float, float)>();
+            await new Ntilde.Replay.ReplayRunner(path).RunAsync(
+                onDataCallback: _ => Task.CompletedTask,
+                onSixelCellSizeCallback: (w, h) => { sizes.Add((w, h)); return Task.CompletedTask; },
+                ct: TestContext.Current.CancellationToken);
+            Assert.Contains((12f, 12f), sizes);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task Recording_metric_failure_does_not_drop_resize_or_presentation()
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        host.Fake(id).ThrowOnRecordingCellMetrics = true;
+        var mux = host.Mux(id);
+        mux.PostResize(33, 9, MuxTestHost.DefaultPresentation with { CellWidthPx = 13, CellHeightPx = 7 });
+        await mux.FlushAsync();
+        Assert.Equal((33, 9), (mux.Buffer.Cols, mux.Buffer.Rows));
+        Assert.Equal((33, 9), (host.Fake(id).Cols, host.Fake(id).Rows));
+        Assert.Equal((13f, 7f), (mux.Parser.CellWidth, mux.Parser.CellHeight));
+        Assert.Equal(new SixelCellSize(13, 7), mux.Parser.SixelCellSizeOverride);
     }
 
     [Theory]

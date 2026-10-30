@@ -41,6 +41,12 @@ public sealed class ReplayWindowTests
             await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => model.DurationMs == 100, "the malformed snapshot was indexed");
             var parser = (AnsiParser)typeof(ReplayWindow).GetField("_parser", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
             var buffer = (TerminalBuffer)typeof(ReplayWindow).GetField("_buffer", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            await (Task)typeof(ReplayWindow).GetMethod("PerformSeek", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [50L])!;
+            Assert.Equal(50, model.CurrentTimeMs);
+            typeof(ReplayWindow).GetField("_isUserScrubbing", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(window, true);
+            window.FindControl<Slider>("TimelineSlider")!.Value = 100;
+            Assert.Equal(100, model.CurrentTimeMs); // the real drag handler previews a rejected target
+            typeof(ReplayWindow).GetField("_isUserScrubbing", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(window, false);
             parser.SixelCellSizeOverride = new SixelCellSize(13, 7);
             parser.Process("preserved");
             var before = BufferSnapshot.Capture(buffer);
@@ -48,6 +54,9 @@ public sealed class ReplayWindowTests
             Assert.Equal((80, 24), (buffer.Cols, buffer.Rows));
             Assert.Equal(before.Lines, BufferSnapshot.Capture(buffer).Lines);
             Assert.Equal(new SixelCellSize(13, 7), parser.SixelCellSizeOverride);
+            Assert.Equal(50, model.CurrentTimeMs);
+            Assert.Equal(50, window.FindControl<Slider>("TimelineSlider")!.Value);
+            model.CurrentTimeMs = 100; // independently exercise rejection during playback
             await (Task)typeof(ReplayWindow).GetMethod("PlaybackLoop", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [0, CancellationToken.None])!;
             Assert.Equal((80, 24), (buffer.Cols, buffer.Rows));
             Assert.Equal(before.Lines, BufferSnapshot.Capture(buffer).Lines);

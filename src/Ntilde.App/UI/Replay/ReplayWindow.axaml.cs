@@ -27,6 +27,7 @@ namespace Ntilde.UI.Replay
         private AnsiParser? _parser;
         private string? _filePath;
         private bool _isUserScrubbing;
+        private long _displayedTimeMs;
 
         public ReplayWindow()
         {
@@ -204,7 +205,6 @@ namespace Ntilde.UI.Replay
 
             // 1. Stop any running playback
             StopPlayback();
-            _viewModel.CurrentTimeMs = targetTimeMs;
 
             // 2. Find nearest snapshot
             var snapEntry = _viewModel.GetNearestSnapshotEntry(targetTimeMs);
@@ -212,7 +212,11 @@ namespace Ntilde.UI.Replay
             if (snapEntry != null)
             {
                 try { _ = RecordingCellMetrics.FromOptional(snapEntry.Snapshot.SixelCellWidthPx, snapEntry.Snapshot.SixelCellHeightPx); }
-                catch (InvalidDataException) { return; }
+                catch (InvalidDataException)
+                {
+                    _viewModel.CurrentTimeMs = _displayedTimeMs;
+                    return;
+                }
                 // Apply snapshot synchronously on UI thread if possible, or Dispatcher
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
@@ -224,6 +228,9 @@ namespace Ntilde.UI.Replay
                 // No snapshot? clear buffer?
                 await Dispatcher.UIThread.InvokeAsync(() => _buffer.Clear());
             }
+
+            _displayedTimeMs = targetTimeMs;
+            _viewModel.CurrentTimeMs = targetTimeMs;
 
             // 3. One-shot fast-forward to target frame to update screen
             // We run a short replay task
@@ -302,7 +309,11 @@ namespace Ntilde.UI.Replay
                         // Throttle UI updates or just post
                         await Dispatcher.UIThread.InvokeAsync(() =>
                         {
-                            if (!_isUserScrubbing) _viewModel.CurrentTimeMs = timeMs;
+                            if (!_isUserScrubbing && _playbackSessionGate.IsCurrent(sessionId))
+                            {
+                                _displayedTimeMs = timeMs;
+                                _viewModel.CurrentTimeMs = timeMs;
+                            }
                         });
                     },
                     realtime: true,

@@ -115,6 +115,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         lock (_gate) _flight?.RecordResize(cols, rows);
     }
 
+    public bool ThrowOnRecordingCellMetrics { get; set; }
     public RecordingCellMetrics? CurrentRecordingCellMetrics { get; private set; }
     public RecordingCellMetrics? RecordingCellMetricsAtStart { get; private set; }
     private volatile bool _hostRecords;
@@ -129,6 +130,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     }
     public void SetRecordingCellMetrics(float width, float height)
     {
+        if (ThrowOnRecordingCellMetrics) throw new IOException("scripted recording metric failure");
         var size = RecordingCellMetrics.FromOptional(width, height);
         if (CurrentRecordingCellMetrics == size) return;
         CurrentRecordingCellMetrics = size;
