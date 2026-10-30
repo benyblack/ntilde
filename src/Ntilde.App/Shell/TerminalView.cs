@@ -260,6 +260,7 @@ namespace Ntilde.Shell
 
         public void SetBuffer(TerminalBuffer buffer)
         {
+            ResetKittyKeyTracking();
             if (_buffer != null)
             {
                 _buffer.OnInvalidate -= InvalidateBuffer; // Idempotent remove
@@ -332,6 +333,7 @@ namespace Ntilde.Shell
         /// </summary>
         public void SetSession(ITerminalSession? session)
         {
+            if (!ReferenceEquals(_session, session)) ResetKittyKeyTracking();
             _session = session;
         }
 

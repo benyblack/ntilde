@@ -60,7 +60,15 @@ namespace Ntilde.Pty
         SshSessionDescriptor? Ssh,
         Guid? ExistingMuxSessionId = null,
         bool AttachShared = false,
-        bool ReattachAfterDrop = false);
+        bool ReattachAfterDrop = false)
+    {
+        /// <summary>
+        /// Opaque host keyboard enhancement mask for a persistent child's initial query replies.
+        /// Forwarded by the mux factory; null preserves an older caller's disambiguation-only ceiling.
+        /// The stream/process layer does not interpret the protocol bits.
+        /// </summary>
+        public int? KittyKeyboardSupportedFlags { get; init; }
+    }
 
     /// <summary>
     /// The SSH half of a <see cref="TerminalSessionRequest"/>, kept deliberately opaque.

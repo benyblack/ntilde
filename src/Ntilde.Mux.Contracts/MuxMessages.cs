@@ -72,6 +72,10 @@ public sealed record MuxPresentation
     public uint? DefaultFg { get; init; }
     public uint? DefaultBg { get; init; }
     public bool KittyKeyboardEnabled { get; init; } = true;
+
+    /// <summary>Supported progressive enhancements; absent on older clients means disambiguation only (1).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? KittyKeyboardSupportedFlags { get; init; }
 }
 
 /// <summary>The local fields of <c>TerminalSessionRequest</c>; SSH is not spawnable through the mux (spec §9.2).</summary>
@@ -85,6 +89,11 @@ public sealed record SpawnParams
     public IReadOnlyDictionary<string, string>? EnvironmentOverrides { get; init; }
     public bool SkipPowerShellPostLaunchInit { get; init; }
     public string Title { get; init; } = string.Empty;
+
+    /// <summary>Spawning host's initial keyboard ceiling, before any attach; absent means flag 1.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? KittyKeyboardSupportedFlags { get; init; }
+
 
     /// <summary>
     /// Phase 4 (spec §3, codex E1; additive): the id the new session takes, in the "D" form, chosen by the
@@ -280,6 +289,13 @@ public sealed record FaultedNotification
 
     /// <summary>Human-readable reason, for logs and the pane's banner; not machine-parsed. May be absent.</summary>
     public string? Message { get; init; }
+}
+
+/// <summary>Ordered keyboard state for peers opting in with an explicit presentation mask, on either protocol version.</summary>
+public sealed record KeyboardCapabilitiesNotification
+{
+    public Guid SessionId { get; init; }
+    public int SupportedFlags { get; init; }
 }
 
 /// <summary>Params of <see cref="MuxMethods.SessionChanged"/>: the session's facts after the change.</summary>

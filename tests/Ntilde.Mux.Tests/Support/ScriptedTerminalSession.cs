@@ -13,15 +13,16 @@ namespace Ntilde.Mux.Tests.Support;
 internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteOutput
 {
     private readonly object _gate = new();
-    private Action<ReadOnlyMemory<byte>>? _raw;
+    private readonly RawOutputTap _rawTap = new();
     private FlightRecordingBuffer? _flight;
     private int _exited;
 
-    public ScriptedTerminalSession(TerminalSessionRequest request)
+    public ScriptedTerminalSession(TerminalSessionRequest request, string? startupOutput = null)
     {
         Request = request;
         Cols = request.Cols;
         Rows = request.Rows;
+        if (startupOutput is not null) Emit(startupOutput);
     }
 
     public TerminalSessionRequest Request { get; }
@@ -57,9 +58,9 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         add
         {
             if (ThrowOnRawSubscribe) throw new InvalidOperationException("scripted raw-tap subscription failure");
-            lock (_gate) _raw += value;
+            lock (_gate) _rawTap.Subscribe(value);
         }
-        remove { lock (_gate) _raw -= value; }
+        remove { lock (_gate) _rawTap.Unsubscribe(value); }
     }
 
     public void Emit(byte[] chunk)
@@ -71,7 +72,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         lock (_gate)
         {
             _flight?.RecordChunk(chunk, chunk.Length);
-            _raw?.Invoke(chunk.ToArray());
+            _rawTap.Publish(chunk);
         }
     }
 

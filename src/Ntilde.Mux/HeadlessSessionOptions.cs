@@ -11,6 +11,9 @@ public sealed class HeadlessSessionOptions
     public bool ForceConPtyFiltering { get; init; } = OperatingSystem.IsWindows();
     public Action<string>? Log { get; init; }
 
+    /// <summary>Spawning host's keyboard ceiling, applied before startup output is subscribed. Null means flag 1.</summary>
+    public int? KittyKeyboardSupportedFlags { get; init; }
+
     /// <summary>
     /// Input (UTF-16 bytes) queued for the child's stdin and not yet written; past it, further input
     /// is dropped rather than queued forever behind a child that has stopped reading (spec §4).

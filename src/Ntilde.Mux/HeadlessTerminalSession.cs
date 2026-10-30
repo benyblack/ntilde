@@ -52,8 +52,10 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly Dictionary<IMuxFrameSink, long> _attachRequestIds = new(); // parse thread only: each subscriber's latest successful attach
 
     // Parse thread only: what each interactive subscriber last presented as KittyKeyboardEnabled. The
-    // parser's flag is the AND over these (Phase 4 spec §4 item 5); see RecomputeKitty.
-    private readonly Dictionary<IMuxFrameSink, bool> _kittyBySink = new();
+    // parser's enable flag is the AND, and its supported flags the intersection, over these (Phase 4 spec §4 item 5); see RecomputeKitty.
+    private readonly Dictionary<IMuxFrameSink, MuxPresentation> _kittyBySink = new();
+    private readonly HashSet<IMuxFrameSink> _keyboardCapabilitySinks = new(); // opt-in includes read-only observers
+    private bool _keyboardCapabilitiesPending;
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private long _rawOffset;
     private long _lastOutputUnixMs; // 0 until the first chunk; written by the parse thread only, once per chunk
@@ -107,7 +109,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly object _pendingResizeGate = new();
     private (int Cols, int Rows)? _pendingResize;
     private MuxPresentation? _pendingPresentation;
-    private Dictionary<IMuxFrameSink, bool>? _pendingKitty; // each sender's newest kitty flag in the pending burst
+    private Dictionary<IMuxFrameSink, MuxPresentation>? _pendingKitty; // each sender's newest Kitty presentation in the pending burst
     private bool _resizeQueued;
 
     /// <summary>Tests only: raised with the session id once the input writer thread has started.</summary>
@@ -132,10 +134,12 @@ public sealed class HeadlessTerminalSession : IDisposable
         _rows = options.Rows;
         _maxQueuedInputBytes = options.MaxQueuedInputBytes;
         _buffer = new TerminalBuffer(options.Cols, options.Rows);
+        _buffer.Modes.KittyKeyboard.SetSupportedFlags(options.KittyKeyboardSupportedFlags ?? KittyKeyboardState.FlagDisambiguateEscapeCodes);
         _parser = new AnsiParser(_buffer, options.ForceConPtyFiltering)
         {
             ImageDecoder = null,
             AllowNativeKittyGraphics = false,
+            KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
         };
         _parser.OnResponse = EnqueueInput; // through the writer too: the parse thread must never block on stdin
         _sessionChangedIntervalMs = (long)Math.Max(0, options.SessionChangedInterval.TotalMilliseconds);
@@ -248,6 +252,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     /// <summary>Tests: the parser's kitty keyboard flag, read on the parse thread after every control item queued before it.</summary>
     internal Task<bool> KittyKeyboardEnabled => InvokeAsync(() => _parser.KittyKeyboardEnabled);
+    internal Task<int> KittyKeyboardSupportedFlags => InvokeAsync(() => _buffer.Modes.KittyKeyboard.SupportedFlagMask);
 
     internal int QueuedDataCount => _data.Count;
 
@@ -371,7 +376,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             if (presentation is not null)
             {
                 _pendingPresentation = presentation;
-                if (from is not null) (_pendingKitty ??= new())[from] = presentation.KittyKeyboardEnabled;
+                if (from is not null) (_pendingKitty ??= new())[from] = presentation;
             }
 
             if (_resizeQueued) return;
@@ -385,7 +390,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         (int Cols, int Rows)? size;
         MuxPresentation? presentation;
-        Dictionary<IMuxFrameSink, bool>? kitty;
+        Dictionary<IMuxFrameSink, MuxPresentation>? kitty;
         lock (_pendingResizeGate)
         {
             size = _pendingResize;
@@ -400,7 +405,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (presentation is not null) ApplyPresentation(presentation);
         if (kitty is not null)
         {
-            foreach ((IMuxFrameSink sink, bool enabled) in kitty) RecordKitty(sink, enabled);
+            foreach ((IMuxFrameSink sink, MuxPresentation value) in kitty) RecordKitty(sink, value);
             RecomputeKitty();
         }
 
@@ -656,6 +661,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
                 Execute(item);
                 if (item.Kind == WorkKind.Exit && item.Terminal) break;
+                FlushKeyboardCapabilities();
                 if (_sessionChangePending && SessionChangeWaitMs() == 0) FlushSessionChanged();
             }
         }
@@ -842,12 +848,16 @@ public sealed class HeadlessTerminalSession : IDisposable
 
         // Fail safe regardless: an attach must always be answered, never left to the client's timeout.
         MuxOutboundFrame frame;
+        MuxOutboundFrame? keyboardFrame = null;
         try
         {
+            if (presentation.KittyKeyboardSupportedFlags.HasValue || _keyboardCapabilitySinks.Contains(sink))
+                keyboardFrame = AttachKeyboardCapabilities(sink, presentation, readOnly);
             frame = MuxFrames.Snapshot(requestId, Id, seq, json);
         }
         catch (Exception ex)
         {
+            keyboardFrame?.Release();
             Reply(sink, requestId, MuxErrorCodes.Internal, $"Snapshot frame could not be built: {ex.Message}");
             return;
         }
@@ -858,8 +868,15 @@ public sealed class HeadlessTerminalSession : IDisposable
         ReportSubscription(sink, subscribed: true, readOnly);
 
         bool accepted;
-        try { accepted = sink.TryEnqueue(frame); }
-        finally { frame.Release(); }
+        try
+        {
+            accepted = (keyboardFrame is null || sink.TryEnqueue(keyboardFrame)) && sink.TryEnqueue(frame);
+        }
+        finally
+        {
+            keyboardFrame?.Release();
+            frame.Release();
+        }
         if (!accepted)
         {
             // A sink that refuses a frame is gone (Broadcast drops it the same way).
@@ -869,6 +886,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
         if (!_subscribers.Contains(sink)) _subscribers.Add(sink);
         _attachRequestIds[sink] = requestId;
+        if (presentation.KittyKeyboardSupportedFlags.HasValue) _keyboardCapabilitySinks.Add(sink);
 
         // The kitty flag is recorded only once the subscription has taken effect: a refused or failed
         // attach changes no client's say in the AND. A re-attach as an observer gives its say up.
@@ -880,7 +898,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         else
         {
             _readOnlySinks.Remove(sink);
-            _kittyBySink[sink] = presentation.KittyKeyboardEnabled;
+            _kittyBySink[sink] = presentation;
             Volatile.Write(ref _detachedByUser, 0); // a read-only peek must not undo a deliberate detach (spec §7.7)
             _undecidedDrop = null;                  // decided: a dropped sink's late detach no longer has a say
         }
@@ -963,6 +981,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private void Forget(IMuxFrameSink sink)
     {
         _readOnlySinks.Remove(sink);
+        _keyboardCapabilitySinks.Remove(sink);
         _attachRequestIds.Remove(sink);
         if (_kittyBySink.Remove(sink)) RecomputeKitty();
         ReportSubscription(sink, subscribed: false, readOnly: false);
@@ -1012,6 +1031,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         _readOnlySinks.Clear();
         _attachRequestIds.Clear();
         _kittyBySink.Clear();
+        _keyboardCapabilitySinks.Clear();
     }
 
     private void ReportSubscription(IMuxFrameSink sink, bool subscribed, bool readOnly)
@@ -1040,10 +1060,12 @@ public sealed class HeadlessTerminalSession : IDisposable
     /// observer's resize is dropped by its connection, but the session does not rely on that, and a
     /// sender that is not subscribed (yet, or any more) would leave an entry nothing removes.
     /// </summary>
-    private void RecordKitty(IMuxFrameSink sink, bool enabled)
+    private void RecordKitty(IMuxFrameSink sink, MuxPresentation presentation)
     {
         if (!_subscribers.Contains(sink) || _readOnlySinks.Contains(sink)) return;
-        _kittyBySink[sink] = enabled;
+        _kittyBySink[sink] = presentation;
+        if (presentation.KittyKeyboardSupportedFlags.HasValue && _keyboardCapabilitySinks.Add(sink))
+            _keyboardCapabilitiesPending = true; // The first opt-in resize also needs the current ceiling.
     }
 
     /// <summary>
@@ -1054,20 +1076,72 @@ public sealed class HeadlessTerminalSession : IDisposable
     /// </summary>
     private void RecomputeKitty()
     {
-        bool any = false, all = true;
-        foreach (IMuxFrameSink s in _subscribers)
-        {
-            if (_readOnlySinks.Contains(s) || !_kittyBySink.TryGetValue(s, out bool k)) continue;
-            any = true;
-            all &= k;
-        }
+        var (any, enabled, flags) = KittyCapabilities();
+        if (!any) return;
+        _parser.KittyKeyboardEnabled = enabled;
+        if (_buffer.Modes.KittyKeyboard.SupportedFlagMask == flags) return;
+        _buffer.Modes.KittyKeyboard.SetSupportedFlags(flags);
+        // Critical protocol state is separate from advisory, throttled sharing events.
+        // Pending resize bursts are already coalesced per sender in PostResize.
+        _keyboardCapabilitiesPending = true;
+    }
 
-        if (any) _parser.KittyKeyboardEnabled = all;
+    /// <summary>Current intersection, optionally replacing one client's presentation before an attach commits.</summary>
+    private (bool Any, bool Enabled, int Flags) KittyCapabilities(IMuxFrameSink? replacing = null, MuxPresentation? presentation = null, bool readOnly = false)
+    {
+        bool any = false, enabled = true;
+        int flags = KittyKeyboardState.SupportedFlags;
+        foreach (IMuxFrameSink sink in _subscribers)
+        {
+            if (ReferenceEquals(sink, replacing) || _readOnlySinks.Contains(sink) || !_kittyBySink.TryGetValue(sink, out var value)) continue;
+            any = true;
+            enabled &= value.KittyKeyboardEnabled;
+            flags &= Math.Max(0, value.KittyKeyboardSupportedFlags ?? KittyKeyboardState.FlagDisambiguateEscapeCodes);
+        }
+        if (presentation is not null && !readOnly)
+        {
+            any = true;
+            enabled &= presentation.KittyKeyboardEnabled;
+            flags &= Math.Max(0, presentation.KittyKeyboardSupportedFlags ?? KittyKeyboardState.FlagDisambiguateEscapeCodes);
+        }
+        if (!any) return (false, _parser.KittyKeyboardEnabled, _buffer.Modes.KittyKeyboard.SupportedFlagMask);
+        return (true, enabled, enabled ? flags : 0);
+    }
+
+    /// <summary>
+    /// Attaching clients that explicitly advertise a keyboard mask receive it before their snapshot.
+    /// Only this sink sees the prospective facts; existing subscribers change after the snapshot is accepted.
+    /// This handshake is opt-in via the mask field, including for a peer using the legacy protocol version.
+    /// </summary>
+    private MuxOutboundFrame AttachKeyboardCapabilities(IMuxFrameSink sink, MuxPresentation presentation, bool readOnly)
+    {
+        var (_, _, flags) = KittyCapabilities(sink, presentation, readOnly);
+        return KeyboardCapabilitiesFrame(flags);
+    }
+
+    private MuxOutboundFrame KeyboardCapabilitiesFrame(int flags) => MuxFrames.Notification(new MuxNotification
+    {
+        Method = MuxMethods.KeyboardCapabilities,
+        Params = MuxFrames.ToElement(new KeyboardCapabilitiesNotification { SessionId = Id, SupportedFlags = flags },
+            MuxJsonContext.Default.KeyboardCapabilitiesNotification),
+    });
+
+    /// <summary>Parse thread, between work items and before resize/output. Never recursively broadcast from Forget.</summary>
+    private void FlushKeyboardCapabilities()
+    {
+        while (_keyboardCapabilitiesPending)
+        {
+            _keyboardCapabilitiesPending = false;
+            if (IsFaulted || _keyboardCapabilitySinks.Count == 0) return;
+            Broadcast(KeyboardCapabilitiesFrame(_buffer.Modes.KittyKeyboard.SupportedFlagMask), _keyboardCapabilitySinks.Contains);
+            // A refusing sink may change the intersection again. Publish that before the next item.
+        }
     }
 
     private void ApplyResize(int cols, int rows)
     {
         if (cols <= 0 || rows <= 0 || (cols == _buffer.Cols && rows == _buffer.Rows)) return;
+        FlushKeyboardCapabilities();
 
         // Buffer, then event, then child: bytes the child writes after learning the new size sort
         // after the event every client applies it at.

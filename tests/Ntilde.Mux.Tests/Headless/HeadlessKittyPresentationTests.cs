@@ -26,6 +26,23 @@ public sealed class HeadlessKittyPresentationTests
         return (mux, fake);
     }
 
+    [Theory]
+    [InlineData(null, 1)]
+    [InlineData(3, 3)]
+    [InlineData(0, 0)]
+    [InlineData(31, 3)]
+    public async Task Spawn_capabilities_answer_the_first_query_before_any_attach(int? flags, int expected)
+    {
+        using var host = new MuxTestHost();
+        host.Factory.StartupOutput = "\x1b[>31u\x1b[?u";
+        using var client = await host.ConnectClientAsync();
+        Guid id = await client.SpawnAsync(new SpawnParams { Command = "scripted", KittyKeyboardSupportedFlags = flags }, TestContext.Current.CancellationToken);
+        Assert.Equal(0, host.Mux(id).AttachedClients);
+        await host.Mux(id).FlushAsync();
+        await TestWait.UntilAsync(() => !host.Fake(id).SentInput.IsEmpty, "the pre-attach keyboard query was answered");
+        Assert.Equal($"\x1b[?{expected}u", Assert.Single(host.Fake(id).SentInput));
+    }
+
     [Fact]
     public async Task Kitty_is_the_and_over_interactive_clients()
     {
@@ -149,4 +166,133 @@ public sealed class HeadlessKittyPresentationTests
             Assert.Equal((100, 30), (mux.Cols, mux.Rows));
         }
     }
+    [Fact]
+    public async Task Event_flags_are_intersected_with_legacy_clients_and_recover_after_detach()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            var gui = new RecordingFrameSink { WantsSessionEvents = true };
+            var legacy = new RecordingFrameSink();
+            var observer = new RecordingFrameSink();
+            mux.PostAttach(gui, 1, 0, Kitty with { KittyKeyboardSupportedFlags = 3 }, MuxProtocol.MaxFrameBytes);
+            Assert.Equal(3, await mux.KittyKeyboardSupportedFlags);
+            fake.Emit("\x1b[>3u\x1b[?u");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Contains("\x1b[?3u"), "new clients enable repeat/release reporting");
+            Assert.Equal(3, gui.KeyboardCapabilities[^1].SupportedFlags);
+
+            mux.PostAttach(observer, 2, 0, Kitty, MuxProtocol.MaxFrameBytes, MuxAttachMode.ReadOnly);
+            Assert.Equal(3, await mux.KittyKeyboardSupportedFlags);
+            mux.PostAttach(legacy, 3, 0, Kitty, MuxProtocol.MaxFrameBytes); // absent field: flag 1 only
+            Assert.Equal(1, await mux.KittyKeyboardSupportedFlags);
+            fake.Emit("\x1b[?u");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Contains("\x1b[?1u"), "legacy clients cannot produce release events");
+            Assert.Equal(1, gui.KeyboardCapabilities[^1].SupportedFlags);
+
+            mux.PostDetach(legacy);
+            Assert.Equal(3, await mux.KittyKeyboardSupportedFlags);
+            // The requested stack is retained, so relaxing the ceiling restores flags 3.
+            fake.Emit("\x1b[?u");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count(x => x == "\x1b[?3u") == 2, "the flag ceiling recovers after the legacy peer leaves");
+        }
+    }
+
+    [Fact]
+    public async Task Coalesced_presentations_keep_every_clients_supported_flag_mask()
+    {
+        (HeadlessTerminalSession mux, _) = NewSession();
+        using (mux)
+        {
+            var a = new RecordingFrameSink();
+            var b = new RecordingFrameSink();
+            MuxPresentation modern = Kitty with { KittyKeyboardSupportedFlags = 3 };
+            mux.PostAttach(a, 1, 0, modern, MuxProtocol.MaxFrameBytes);
+            mux.PostAttach(b, 2, 0, modern, MuxProtocol.MaxFrameBytes);
+            Assert.Equal(3, await mux.KittyKeyboardSupportedFlags);
+            using var release = new ManualResetEventSlim();
+            Task<int> parked = mux.InvokeAsync(() => { release.Wait(TimeSpan.FromSeconds(30)); return 0; });
+            await TestWait.UntilAsync(() => mux.QueuedControlCount == 0, "the parse thread is parked");
+            try
+            {
+                mux.PostResize(b, 80, 24, Kitty);
+                mux.PostResize(a, 80, 24, modern);
+            }
+            finally { release.Set(); }
+            await parked;
+            Assert.Equal(1, await mux.KittyKeyboardSupportedFlags);
+        }
+    }
+    [Fact]
+    public async Task Capability_bursts_coalesce_before_output_without_bypassing_sharing_throttle()
+    {
+        var fake = new ScriptedTerminalSession(new TerminalSessionRequest("scripted", string.Empty, string.Empty, 80, 24, null, false, null));
+        using var mux = new HeadlessTerminalSession(Guid.NewGuid(), fake, new HeadlessSessionOptions
+        {
+            Command = "scripted",
+            ForceConPtyFiltering = false,
+            SessionChangedInterval = TimeSpan.FromSeconds(30),
+        });
+        var gui = new RecordingFrameSink { WantsSessionEvents = true };
+        var observer = new RecordingFrameSink(); // Explicit mask, including a protocol-v1 observer.
+        var legacy = new RecordingFrameSink();
+        MuxPresentation modern = Kitty with { KittyKeyboardSupportedFlags = 3 };
+        mux.PostAttach(gui, 1, 0, modern, MuxProtocol.MaxFrameBytes);
+        mux.PostAttach(observer, 2, 0, modern, MuxProtocol.MaxFrameBytes, MuxAttachMode.ReadOnly);
+        mux.PostAttach(legacy, 3, 0, Kitty, MuxProtocol.MaxFrameBytes, MuxAttachMode.ReadOnly);
+        await mux.FlushAsync();
+        int capabilities = gui.KeyboardCapabilities.Count;
+        int sharing = gui.SessionChanges.Count;
+        using var parked = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        Task<int> waiting = mux.InvokeAsync(() => { parked.Set(); release.Wait(TimeSpan.FromSeconds(30)); return 0; });
+        Assert.True(parked.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        try
+        {
+            for (int i = 0; i < 500; i++)
+                mux.PostResize(gui, 80, 24, modern with { KittyKeyboardSupportedFlags = i % 2 == 0 ? 3 : 1 });
+            Assert.Equal(1, mux.QueuedControlCount);
+            fake.Emit("next-output");
+        }
+        finally { release.Set(); }
+        await waiting;
+        await mux.FlushAsync();
+        Assert.Equal(capabilities + 1, gui.KeyboardCapabilities.Count);
+        Assert.Equal(1, gui.KeyboardCapabilities[^1].SupportedFlags);
+        Assert.Equal(1, observer.KeyboardCapabilities[^1].SupportedFlags);
+        Assert.Empty(observer.SessionChanges);
+        Assert.Empty(legacy.KeyboardCapabilities);
+        Assert.Equal(sharing, gui.SessionChanges.Count);
+        string[] frames = gui.Described.ToArray();
+        Assert.Equal("KeyboardCapabilities:1", frames[^2]);
+        Assert.Equal("Output@0:next-output", frames[^1]);
+
+        for (int i = 0; i < 10; i++)
+        {
+            mux.PostResize(gui, 80, 24, modern with { KittyKeyboardSupportedFlags = 1 });
+            await mux.FlushAsync(); // Serial identical presentations also produce no duplicate state.
+        }
+        Assert.Equal(capabilities + 1, gui.KeyboardCapabilities.Count);
+    }
+
+    [Theory]
+    [InlineData(true, 3)]
+    [InlineData(false, 0)]
+    public async Task The_first_explicit_resize_opts_in_even_when_the_effective_mask_is_unchanged(bool enabled, int flags)
+    {
+        (HeadlessTerminalSession mux, _) = NewSession();
+        using (mux)
+        {
+            var sink = new RecordingFrameSink();
+            mux.PostAttach(sink, 1, 0, Kitty with { KittyKeyboardEnabled = enabled }, MuxProtocol.MaxFrameBytes);
+            await mux.FlushAsync();
+            Assert.Empty(sink.KeyboardCapabilities);
+            mux.PostResize(sink, 80, 24, Kitty with { KittyKeyboardEnabled = enabled, KittyKeyboardSupportedFlags = 3 });
+            await mux.FlushAsync();
+            Assert.Equal(flags, Assert.Single(sink.KeyboardCapabilities).SupportedFlags);
+        }
+    }
+
 }

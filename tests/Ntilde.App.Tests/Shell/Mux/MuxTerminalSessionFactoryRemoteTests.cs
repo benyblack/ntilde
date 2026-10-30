@@ -142,6 +142,20 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
         await MuxTestHost.AttachPaneAsync(client, id);
     }
 
+    [Theory]
+    [InlineData(3)]
+    [InlineData(0)]
+    public async Task Remote_spawn_passes_the_initial_keyboard_mask_to_startup_queries(int flags)
+    {
+        _remote.Shells.StartupOutput = "\x1b[>31u\x1b[?u";
+        PersistentSessionResult result = _factory.CreatePersistent(Ssh() with { KittyKeyboardSupportedFlags = flags });
+        var session = Assert.IsType<MuxClientSession>(result.Session);
+        Assert.False(session.IsAttached);
+        ScriptedTerminalSession child = Assert.Single(_remote.Shells.Sessions);
+        await TestWait.UntilAsync(() => !child.SentInput.IsEmpty, "the remote constructor-time query was answered");
+        Assert.Equal($"\x1b[?{flags}u", Assert.Single(child.SentInput));
+    }
+
     [Fact]
     public void New_persisted_ssh_tab_spawns_on_the_remote_daemon()
     {

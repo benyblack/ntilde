@@ -263,6 +263,13 @@ invariant changes.
 - **`sessionChanged` coalescing lives in the parse loop, with no timer.** The bounded wait the
   parse loop already does between `Process()` calls drives the trailing flush; no `Timer`,
   `Task.Delay`, `ThreadPool` or `Task.Run` on this path
+- **Keyboard capabilities are ordered protocol state.** An explicit presentation mask opts a subscriber
+  (including a v1 peer or read-only observer) into `keyboardCapabilities`, before its attach snapshot
+  and subsequent output. Pending presentation bursts coalesce per sender; identical effective masks
+  emit nothing. Distinct observable masks must cross the stream before the next output item, outside
+  the advisory `sessionChanged` interval. Refusing sinks are dropped under the existing bounded
+  transport policy; the parse thread never waits for a reader. Capability frames contain no sharing
+  counts, and v1 sharing counts remain unknown.
 - **The text client never relays raw output.** It renders every frame from its own
   `CaptureRenderSnapshot`, so a device query (DA, CPR, XTGETTCAP) the shell emits is answered by
   the model's parser and never reaches the terminal the client draws on

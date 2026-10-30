@@ -464,10 +464,16 @@ namespace Ntilde.Controls
             // the initial sharing right after the snapshot. One already posted when the connection
             // dropped must not re-show the badge that the loss hid.
             // A remote drop sets neither flag until its host speaks, hence the connection check too.
-            mux.SessionChanged += () => this.Dispatcher.Post(() =>
+            mux.SessionChanged += () =>
             {
-                if (IsCurrentMux(mux) && !_muxConnectionLost && !_muxReconnecting && mux.IsConnected) ApplyMuxSharing(mux.InteractiveOthers);
-            });
+                // Delivery thread: apply the capability ceiling before subsequent output,
+                // not after a UI dispatch. Older daemons stay at disambiguation-only.
+                if (IsCurrentMux(mux) && mux.IsConnected) Buffer?.Modes.KittyKeyboard.SetSupportedFlags(mux.KittyKeyboardSupportedFlags);
+                this.Dispatcher.Post(() =>
+                {
+                    if (IsCurrentMux(mux) && !_muxConnectionLost && !_muxReconnecting && mux.IsConnected) ApplyMuxSharing(mux.InteractiveOthers);
+                });
+            };
             _ = AttachMuxAsync(mux, previousLost);
         }
 
@@ -487,6 +493,7 @@ namespace Ntilde.Controls
             if (!IsCurrentMux(source) || Buffer is not { } buffer || Parser is not { } parser) return;
             try
             {
+                buffer.Modes.KittyKeyboard.SetSupportedFlags(source.KittyKeyboardSupportedFlags);
                 TerminalStateTransfer.Restore(buffer, parser, snapshot);
             }
             catch (Exception ex)
@@ -706,6 +713,7 @@ namespace Ntilde.Controls
                 DefaultFg = theme?.Foreground.ToUint(),
                 DefaultBg = theme?.Background.ToUint(),
                 KittyKeyboardEnabled = _settings?.EnableKittyKeyboardProtocol ?? true,
+                KittyKeyboardSupportedFlags = KittyKeyboardState.SupportedFlags,
             };
         }
     }

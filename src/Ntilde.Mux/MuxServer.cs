@@ -261,7 +261,10 @@ public sealed class MuxServer : IDisposable
 
         var request = new TerminalSessionRequest(
             p.Command, p.Arguments, p.StartingDirectory, p.Cols, p.Rows,
-            environment, p.SkipPowerShellPostLaunchInit, Ssh: null);
+            environment, p.SkipPowerShellPostLaunchInit, Ssh: null)
+        {
+            KittyKeyboardSupportedFlags = p.KittyKeyboardSupportedFlags,
+        };
 
         ITerminalSession inner;
         try
@@ -290,6 +293,7 @@ public sealed class MuxServer : IDisposable
                 Arguments = p.Arguments,
                 Cols = p.Cols,
                 Rows = p.Rows,
+                KittyKeyboardSupportedFlags = p.KittyKeyboardSupportedFlags,
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,
                 Log = Options.Log,
                 MaxQueuedInputBytes = Options.MaxQueuedInputBytes,

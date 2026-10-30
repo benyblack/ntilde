@@ -34,6 +34,11 @@ internal sealed class RecordingFrameSink : IMuxFrameSink
         return true;
     }
 
+    public IReadOnlyList<KeyboardCapabilitiesNotification> KeyboardCapabilities =>
+        Frames.Where(f => f.IsNotification(MuxMethods.KeyboardCapabilities))
+              .Select(f => MuxFrames.ParseParams(MuxFrames.ParseJson(f.Payload, MuxJsonContext.Default.MuxNotification).Params, MuxJsonContext.Default.KeyboardCapabilitiesNotification))
+              .ToArray();
+
     public IReadOnlyList<SessionChangedNotification> SessionChanges =>
         Frames.Where(f => f.IsNotification(MuxMethods.SessionChanged))
               .Select(f => MuxFrames.ParseParams(MuxFrames.ParseJson(f.Payload, MuxJsonContext.Default.MuxNotification).Params, MuxJsonContext.Default.SessionChangedNotification))
@@ -73,6 +78,8 @@ internal sealed record RecordedFrame(MuxFrameKind Kind, byte[] Payload)
             case MuxFrameKind.Notification:
                 MuxNotification n = MuxFrames.ParseJson(Payload, MuxJsonContext.Default.MuxNotification);
                 if (n.Method == MuxMethods.Faulted) return "Faulted";
+                if (n.Method == MuxMethods.KeyboardCapabilities)
+                    return "KeyboardCapabilities:" + MuxFrames.ParseParams(n.Params, MuxJsonContext.Default.KeyboardCapabilitiesNotification).SupportedFlags;
                 if (n.Method == MuxMethods.SessionChanged)
                 {
                     SessionChangedNotification sc = MuxFrames.ParseParams(n.Params, MuxJsonContext.Default.SessionChangedNotification);

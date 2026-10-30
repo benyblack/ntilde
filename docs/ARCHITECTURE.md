@@ -407,6 +407,7 @@ keeps a v1 peer's wire shape exactly the v1 shape.
 | `SessionSummary.InteractiveClients` | `AttachedClients` without read-only observers; serialized only when non-zero. Startup adoption reads it on v2, so a crash orphan someone peeks at with `--read-only` is still adopted; on v1 it falls back to `AttachedClients` |
 | `DetachParams.UserDetached` | `bool?`: true on a deliberate detach ("Pane: Detach", the shared-close prompt's Detach, the text client's `Ctrl+\ d` chord); absent/null is an ordinary detach |
 | Notification `sessionChanged` | attached-count, title or cwd changed; coalesced to at most one per session per 100 ms (§4 below); sent to v2 clients only |
+| Notification `keyboardCapabilities` | Ordered keyboard ceiling for clients opting in with an explicit presentation mask, on either negotiated version; before the attach snapshot and subsequent output, independent of sharing-event coalescing |
 | Notification `killed` | sent to every v2 subscriber except the killer, before that session's `exited` |
 | Error `session_attached` | `MuxErrorCodes.SessionAttached`: an `IfUnattached` attach refused because another interactive client is already attached |
 

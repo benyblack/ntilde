@@ -150,6 +150,7 @@ namespace Ntilde.Controls
             // the query-reply gate in the same state TerminalView's encoder gate will be in,
             // same reasoning as the DefaultForeground wiring above.
             Parser.KittyKeyboardEnabled = _settings?.EnableKittyKeyboardProtocol ?? true;
+            Buffer?.Modes.KittyKeyboard.SetSupportedFlags(muxBacked ? KittyKeyboardState.FlagDisambiguateEscapeCodes : KittyKeyboardState.SupportedFlags);
 
             // Native kitty graphics on Windows (ConPTY pass-through opt-in): a freshly-created
             // parser must match what ApplySettings will set, same reasoning as above.
@@ -522,7 +523,10 @@ namespace Ntilde.Controls
                         {
                             Interactive = !OpenedByAgent,
                         }
-                        : null);
+                        : null)
+                {
+                    KittyKeyboardSupportedFlags = (_settings?.EnableKittyKeyboardProtocol ?? true) ? KittyKeyboardState.SupportedFlags : 0,
+                };
 
                 // Phase 4 spec §7.4: an SSH pane whose profile persists its remote sessions goes to that
                 // profile's remote daemon, and takes its pending id as a local pane does. Any other SSH

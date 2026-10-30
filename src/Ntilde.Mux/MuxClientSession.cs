@@ -51,6 +51,9 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private int _disposed;
     private SharingState _sharing = SharingState.Unknown; // replaced whole, so a reader never sees a mix of two updates
     private int _killedElsewhere;
+    private int _kittyKeyboardSupportedFlags = 1;
+
+    public int KittyKeyboardSupportedFlags => Volatile.Read(ref _kittyKeyboardSupportedFlags);
 
     internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared)
     {
@@ -64,7 +67,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     /// <summary>The mode <see cref="AttachAsync(int, MuxPresentation, CancellationToken)"/> uses (chosen by whoever opened the session).</summary>
     public MuxAttachMode AttachMode { get; }
 
-    /// <summary>True when the connection negotiated v2: <see cref="SessionChanged"/> and <see cref="KilledElsewhere"/> can fire.</summary>
+    /// <summary>True when the connection negotiated v2 sharing and kill events; explicit keyboard capability updates also work on v1.</summary>
     public bool SupportsSessionEvents => _client.ProtocolVersion >= MuxProtocol.SessionEventsVersion;
 
     /// <summary>
@@ -118,7 +121,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     /// <summary>Set, before <see cref="OnExit"/> fires, when another client killed the session (v2).</summary>
     public bool WasKilledElsewhere => Volatile.Read(ref _killedElsewhere) != 0;
 
-    /// <summary>Delivery thread: <see cref="AttachedClients"/>, <see cref="Title"/> or <see cref="Cwd"/> changed.</summary>
+    /// <summary>Delivery thread: keyboard capabilities, or v2 sharing facts (<see cref="AttachedClients"/>, <see cref="Title"/>, <see cref="Cwd"/>), changed.</summary>
     public event Action? SessionChanged;
 
     /// <summary>Delivery thread, before <see cref="OnExit"/>: another client killed the session; the argument is its client kind.</summary>
@@ -518,7 +521,20 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     internal void DeliverSessionChanged(SessionChangedNotification changed)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
-        Volatile.Write(ref _sharing, new SharingState(Math.Max(0, changed.AttachedClients), changed.InteractiveClients is int ic ? Math.Max(0, ic) : -1, changed.Title, changed.Cwd));
+        if (SupportsSessionEvents)
+            Volatile.Write(ref _sharing, new SharingState(Math.Max(0, changed.AttachedClients), changed.InteractiveClients is int ic ? Math.Max(0, ic) : -1, changed.Title, changed.Cwd));
+        RaiseSessionChanged();
+    }
+
+    internal void DeliverKeyboardCapabilities(int flags)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        Volatile.Write(ref _kittyKeyboardSupportedFlags, Math.Max(0, flags) & Ntilde.VT.KittyKeyboardState.SupportedFlags);
+        RaiseSessionChanged();
+    }
+
+    private void RaiseSessionChanged()
+    {
         if (SessionChanged is not { } handlers) return;
         foreach (Action handler in Delegate.EnumerateInvocationList(handlers))
         {

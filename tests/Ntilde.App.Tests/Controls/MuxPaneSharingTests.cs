@@ -51,10 +51,12 @@ public sealed class MuxPaneSharingTests : IDisposable
     }
 
     /// <summary>A hosted pane (it spawns on first layout) beside a focusable decoy, so focus can move away and back.</summary>
-    private MuxClientSession StartHostedPane()
+    private MuxClientSession StartHostedPane(Ntilde.Shell.TerminalSettings? settings = null)
     {
         _pane = new TerminalPane();
-        PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        settings ??= new Ntilde.Shell.TerminalSettings();
+        settings.CommandAssistShellIntegrationEnabled = false;
+        _pane.ApplySettings(settings);
         _pane.SessionFactory = _factory;
         _decoy = new TextBox();
         var root = new DockPanel();
@@ -72,6 +74,15 @@ public sealed class MuxPaneSharingTests : IDisposable
         MuxClient c = await _mux.ConnectClientAsync();
         return await MuxTestHost.AttachPaneAsync(c, id, presentation);
     }).GetAwaiter().GetResult();
+
+    [AvaloniaTheory]
+    [InlineData(true, 3)]
+    [InlineData(false, 0)]
+    public void Spawn_carries_the_panes_keyboard_setting_before_attach(bool enabled, int flags)
+    {
+        StartHostedPane(new Ntilde.Shell.TerminalSettings { EnableKittyKeyboardProtocol = enabled });
+        Assert.Equal(flags, Assert.Single(_mux.Factory.Requests).KittyKeyboardSupportedFlags);
+    }
 
     [AvaloniaFact]
     public void The_headless_host_raises_GotFocus_on_the_terminal_view()
@@ -170,5 +181,22 @@ public sealed class MuxPaneSharingTests : IDisposable
 
         _pane.TermView.Focus();
         PumpUntil(() => _mux.Mux(s.Id).Cols == cols && _mux.Mux(s.Id).Rows == rows, "focus re-requested the pane's own grid");
+    }
+    [AvaloniaFact]
+    public void Keyboard_events_follow_the_daemons_interactive_capability_intersection()
+    {
+        MuxClientSession session = StartHostedPane();
+        PumpUntil(() => session.KittyKeyboardSupportedFlags == 3, "the new GUI advertised event reporting");
+        _mux.Fake(session.Id).Emit("\x1b[>3u");
+        PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 3, "the GUI parsed the requested event flag");
+        ClientPaneModel legacy = AttachOther(session.Id); // an older GUI omits supported flags
+        PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 1, "the GUI applied the shared flag ceiling");
+        Assert.False(_pane!.Buffer!.Modes.KittyKeyboard.ReportEventTypes);
+        legacy.Session.Dispose();
+        PumpUntil(() => _pane.Buffer.Modes.KittyKeyboard.Flags == 3, "event reporting recovered after legacy detach");
+
+        // Sharing notifications are advisory and cannot reset the separately negotiated keyboard state.
+        session.DeliverSessionChanged(new Ntilde.Mux.Contracts.SessionChangedNotification { SessionId = session.Id });
+        Assert.Equal(3, _pane.Buffer.Modes.KittyKeyboard.Flags);
     }
 }

@@ -95,8 +95,13 @@ public static class MuxMethods
     /// </summary>
     public const string Faulted = "faulted";
 
-    /// <summary>Notification (server → v2 client): attached count, title or cwd changed; coalesced (Phase 3 spec §4).</summary>
+    /// <summary>
+    /// Notification (server → v2 client): attached count, title or cwd changed; coalesced (Phase 3 spec §4).
+    /// </summary>
     public const string SessionChanged = "sessionChanged";
+
+    /// <summary>Ordered keyboard ceiling, before snapshot/output; only for peers advertising an explicit mask, including v1.</summary>
+    public const string KeyboardCapabilities = "keyboardCapabilities";
 
     /// <summary>Notification (server → v2 client): another client killed the session; precedes its <see cref="Exited"/>.</summary>
     public const string Killed = "killed";
