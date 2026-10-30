@@ -114,7 +114,7 @@ namespace Ntilde.Shell
         {
             if (_buffer == null) return;
 
-            var m = _buffer.GetMemoryMetrics(_glyphCache.EntryCount, GlyphCache.AtlasByteSize);
+            var m = _buffer.GetMemoryMetrics(_renderCaches.Glyphs.EntryCount, GlyphCache.AtlasByteSize);
 
             // Format for easy log parsing/grep
             TerminalLogger.Debug(
@@ -250,6 +250,9 @@ namespace Ntilde.Shell
             _autoScrollTimer?.Stop();
             _resizeThrottleTimer?.Stop();
             _metricsTimer.Stop();
+
+            // And its glyph atlas and row pictures: the last draw operation still holding them disposes them (#644).
+            _renderCaches.Release();
         }
 
         private bool ShouldRunUiTimers()

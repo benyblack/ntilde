@@ -42,13 +42,8 @@ namespace Ntilde.Shell
         int VisibleRows,
         float CellHeight);
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
-        Justification = "A control is not disposed, and the draw operations the render thread may still run after the view " +
-                        "is gone share both caches. A font change clears them; the images of a dropped view " +
-                        "are freed by their finalizers.")]
     public partial class TerminalView : Control
     {
-        private readonly RowImageCache _rowCache = new();
         public CellMetrics Metrics => _metrics;
 
         /// <summary>
@@ -172,7 +167,9 @@ namespace Ntilde.Shell
         private bool _enableComplexShaping = true;
         private double _minimumContrast = 1.0;
         private TerminalTheme? _appliedTheme; // a copy of the theme ApplySettings last gave the buffer
-        private readonly GlyphCache _glyphCache = new();
+        // The glyph atlas and the row pictures, which this view and its draw operations share (#644).
+        private readonly TerminalRenderCaches _renderCaches = new(new GlyphCache(), new RowImageCache());
+        internal TerminalRenderCaches RenderCachesForTest => _renderCaches;
         private double _lastRenderScalingForRowCache = -1.0;
         private TopLevel? _cachedTopLevel;
         private double _cachedRenderScaling = 1.0;
@@ -291,7 +288,7 @@ namespace Ntilde.Shell
             // CRITICAL: Clear the row picture cache on every screen switch.
             // AltScreen rows are reused objects whose revision counters can cycle back to
             // previously-cached values, causing stale blank SKPictures to be served.
-            _rowCache.RequestClear();
+            _renderCaches.Rows.RequestClear();
 
             // Issue #269: ?47/?1047/?1049 replaces every cell under a stationary pointer, so the
             // incoming application's first hover must report. Without this, a fresh session with

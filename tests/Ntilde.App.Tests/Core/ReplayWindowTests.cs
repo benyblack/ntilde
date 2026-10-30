@@ -1,5 +1,9 @@
 using System.Reflection;
+using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using Ntilde.Shell;
 using Ntilde.UI.Replay;
 using Ntilde.VT;
 
@@ -74,5 +78,31 @@ public sealed class ReplayWindowTests
         {
             window.Close();
         }
+    }
+
+    /// <summary>
+    /// #644, Codex review of #651: a replay window hosts its own view, which only a pane used to retire, so its glyph
+    /// atlas and row pictures waited for the finalizers after the window closed.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_the_window_disposes_its_views_render_caches()
+    {
+        string recording = Path.Combine(Path.GetTempPath(), $"ntilde_replay_{Guid.NewGuid():N}.rec");
+        var window = new ReplayWindow(recording);
+        TerminalView view = window.FindControl<TerminalView>("TermView")!;
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        window.CaptureRenderedFrame();
+
+        window.Close();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Null(view.RenderCachesForTest.TryLease()); // the window let its view go
+
+        // The compositor drops the closed window's last frame, and the draw operation holding the caches with it,
+        // on its next tick; the app's other windows keep it ticking.
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(view.RenderCachesForTest.IsDisposed);
     }
 }

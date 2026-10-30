@@ -145,11 +145,15 @@ namespace Ntilde.Shell
             if (Math.Abs(scaling - _lastRenderScalingForRowCache) > 0.0001)
             {
                 _lastRenderScalingForRowCache = scaling;
-                _rowCache.RequestClear();
+                _renderCaches.Rows.RequestClear();
             }
 
             // See RenderOffscreen for why an off-screen pass must not look like a live frame.
             bool offscreen = _offscreenRenderDepth > 0;
+
+            // The operation holds the caches until the compositor disposes it, possibly after this view is retired
+            // (#644). A retired view drawn before it leaves the tree gets no lease, and draws without them.
+            TerminalRenderCaches.Lease? cacheLease = _renderCaches.TryLease();
 
             context.Custom(new TerminalDrawOperation(
                 Bounds,
@@ -175,12 +179,13 @@ namespace Ntilde.Shell
                 totalLines,
                 cursorRow,
                 cursorCol,
-                offscreen ? null : _rowCache,
+                offscreen ? null : cacheLease?.Rows,
                 _enableComplexShaping,
-                _glyphCache,
+                cacheLease?.Glyphs,
                 _showRenderHud,
                 isolatedSnapshot: offscreen,
-                minimumContrast: _minimumContrast
+                minimumContrast: _minimumContrast,
+                cacheLease: cacheLease
             ));
 
             if (_hoveredLink != null)

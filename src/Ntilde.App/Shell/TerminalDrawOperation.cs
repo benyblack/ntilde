@@ -54,6 +54,7 @@ namespace Ntilde.Shell
         // screen has few distinct pairs, so the lightness search runs once per pair.
         private Dictionary<(uint Fg, uint Bg, uint Overlay), SKColor>? _contrastAdjusted;
         private readonly GlyphCache? _glyphCache;
+        private IDisposable? _cacheLease; // the view's caches (TerminalRenderCaches), held until Dispose
         private readonly int _cellWidthDevicePx;
         private readonly int _cellHeightDevicePx;
         private readonly PixelGrid _pixelGrid;
@@ -221,9 +222,11 @@ namespace Ntilde.Shell
             GlyphCache? glyphCache = null,
             bool showRenderHud = false,
             bool isolatedSnapshot = false,
-            double minimumContrast = 1.0)
+            double minimumContrast = 1.0,
+            IDisposable? cacheLease = null)
         {
             _bounds = bounds;
+            _cacheLease = cacheLease;
             _buffer = buffer;
             _scrollOffset = scrollOffset;
             _selection = selection;
@@ -284,6 +287,10 @@ namespace Ntilde.Shell
             _atlasColorPaint.Dispose();
             DisposeAndClearShapingCache();
             DisposeAndClearFallbackFontCache();
+
+            // Last: the caches this operation drew with may be disposed with it, when the view let them go (#644).
+            _cacheLease?.Dispose();
+            _cacheLease = null;
         }
 
         public bool Equals(ICustomDrawOperation? other) => false;
