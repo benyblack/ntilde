@@ -1,15 +1,71 @@
 // Lifecycle checks. A real app is used only when explicitly selected by the caller.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { upstreamReceipt } from './collector.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const prepared = process.platform === 'darwin' && existsSync(resolve(repo, 'artifacts/terminfo/tool/package-lock.json'));
+const prepared = process.platform === 'darwin'
+    && existsSync(resolve(repo, 'artifacts/terminfo/tool/package-lock.json'))
+    && existsSync(resolve(repo, 'artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs'));
+
+for (const alias of [false, true]) {
+    test(`packaged macOS executables are refused before launch${alias ? ' through an outside alias' : ''}`, {
+        skip: process.platform !== 'darwin' || Number(process.versions.node.split('.')[0]) < 24,
+    }, () => {
+        const root = mkdtempSync(join(tmpdir(), 'nt-bundle-'));
+        try {
+            const bundled = join(root, 'Installed.app/Contents/MacOS/Ntilde');
+            mkdirSync(dirname(bundled), { recursive: true });
+            writeFileSync(bundled, '#!/bin/sh\n: > "$NTILDE_TERMINFO_TEST_LAUNCH_MARKER"\n', { mode: 0o700 });
+            const executable = alias ? join(root, 'alias') : bundled;
+            if (alias) symlinkSync(bundled, executable);
+            const marker = join(root, 'launched');
+            const result = spawnSync(process.execPath, ['scripts/terminfo-owned.mjs',
+                '--executable', executable, '--app-version', '0.0.0'], {
+                cwd: repo, encoding: 'utf8', timeout: 5000,
+                env: { ...process.env, NTILDE_TERMINFO_TEST_LAUNCH_MARKER: marker },
+            });
+            assert.equal(result.status, 1, result.stdout + result.stderr);
+            assert.match(result.stderr, /uninstalled sidecar outside .app bundles/);
+            assert.ok(!result.stdout.includes('Collecting in disposable'));
+            assert.ok(!existsSync(marker), 'The packaged executable must never start.');
+        } finally { rmSync(root, { recursive: true, force: true }); }
+    });
+}
+
+function withCollectorFixture(receipt, lockfile, action) {
+    // Clone the small runner fixture so tests never mutate the real tool cache.
+    const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
+    try {
+        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs']) {
+            const target = join(root, 'scripts', file);
+            mkdirSync(dirname(target), { recursive: true });
+            copyFileSync(join(repo, 'scripts', file), target);
+        }
+        const tool = join(root, 'artifacts/terminfo/tool');
+        const pkg = join(tool, 'node_modules/terminfo.dev');
+        mkdirSync(join(pkg, 'dist'), { recursive: true });
+        writeFileSync(join(pkg, 'package.json'), JSON.stringify({ version: '4.0.0' }));
+        copyFileSync(join(repo, 'artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs'), join(pkg, 'dist/terminfo.bundle.mjs'));
+        writeFileSync(join(pkg, 'dist/terminfo.bundle.receipt.json'), JSON.stringify(receipt));
+        if (lockfile) copyFileSync(join(repo, 'artifacts/terminfo/tool/package-lock.json'), join(tool, 'package-lock.json'));
+        action(root);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+}
+
+function assertRejectedBeforeRun(root, errorPattern) {
+    const result = spawnSync(process.execPath, [join(root, 'scripts/terminfo-owned.mjs'),
+        '--executable', '/usr/bin/true', '--app-version', '0.0.0'], { encoding: 'utf8', timeout: 5000 });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, errorPattern);
+    assert.ok(!result.stdout.includes('Collecting in disposable'));
+    assert.deepEqual(readdirSync(join(root, 'artifacts/terminfo')).filter(name => name.startsWith('owned-')), []);
+}
 
 for (const [field, value] of [
     ['schemaVersion', 2],
@@ -19,28 +75,31 @@ for (const [field, value] of [
     ['bundleSha256', 'd'.repeat(64)],
 ]) {
     test(`owned runner rejects a modified receipt ${field} before creating evidence or launching an app`, { skip: !prepared }, () => {
-        // Clone the small runner fixture so tests never mutate the real tool cache.
-        const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
-        try {
-            for (const file of ['terminfo-owned.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs']) {
-                const target = join(root, 'scripts', file);
-                mkdirSync(dirname(target), { recursive: true });
-                copyFileSync(join(repo, 'scripts', file), target);
-            }
-            const pkg = join(root, 'artifacts/terminfo/tool/node_modules/terminfo.dev');
-            mkdirSync(join(pkg, 'dist'), { recursive: true });
-            writeFileSync(join(pkg, 'package.json'), JSON.stringify({ version: '4.0.0' }));
-            copyFileSync(join(repo, 'artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs'), join(pkg, 'dist/terminfo.bundle.mjs'));
-            writeFileSync(join(pkg, 'dist/terminfo.bundle.receipt.json'), JSON.stringify({ ...upstreamReceipt, [field]: value }));
-            const result = spawnSync(process.execPath, [join(root, 'scripts/terminfo-owned.mjs'),
-                '--executable', '/usr/bin/true', '--app-version', '0.0.0'], { encoding: 'utf8', timeout: 5000 });
-            assert.equal(result.status, 1, result.stdout + result.stderr);
-            assert.match(result.stderr, /Collector receipt/);
-            assert.ok(!result.stdout.includes('Collecting in disposable'));
-            assert.deepEqual(readdirSync(join(root, 'artifacts/terminfo')).filter(name => name.startsWith('owned-')), []);
-        } finally { rmSync(root, { recursive: true, force: true }); }
+        withCollectorFixture({ ...upstreamReceipt, [field]: value }, true,
+            root => assertRejectedBeforeRun(root, /Collector receipt/));
     });
 }
+
+test('owned runner rejects a missing lockfile before creating run evidence', { skip: !prepared }, () => {
+    withCollectorFixture(upstreamReceipt, false, root => assertRejectedBeforeRun(root, /missing package-lock.json/));
+});
+
+test('inline runner rejects a missing lockfile before creating run evidence', { skip: !prepared }, () => {
+    withCollectorFixture(upstreamReceipt, false, root => {
+        // Exercise preparation in isolation: no collector executes on this path.
+        const script = join(root, 'scripts/terminfo-baseline.mjs');
+        const program = `Object.defineProperty(process.stdin, 'isTTY', { value: true });
+            Object.defineProperty(process.stdout, 'isTTY', { value: true });
+            process.argv = ['node', ${JSON.stringify(script)}, '--app-version', '0.0.0'];
+            process.env.TERM_PROGRAM = 'Ntilde';
+            for (const key of ['TMUX', 'STY', 'SSH_CONNECTION', 'SSH_TTY']) delete process.env[key];
+            await import(${JSON.stringify(pathToFileURL(script).href)});`;
+        const result = spawnSync(process.execPath, ['--input-type=module', '--eval', program], { encoding: 'utf8', timeout: 5000 });
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(result.stderr, /missing package-lock.json/);
+        assert.deepEqual(readdirSync(join(root, 'artifacts/terminfo')).filter(name => name.startsWith('run-')), []);
+    });
+});
 
 function launch(executable, interrupt, observation = {}) {
     return new Promise((resolve, reject) => {

@@ -3,19 +3,59 @@ import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { checkoutRevision, createPrivateScratch, resolveNpmCli } from './runtime.mjs';
+import { checkoutRevision, createPrivateScratch, createProcessBudget, readCollectorLockfile, resolveNpmCli, resolveOwnedExecutable } from './runtime.mjs';
 
 function fixture(callback) {
     const root = realpathSync(mkdtempSync(join(tmpdir(), 'nt-test-')));
     try { callback(root); } finally { rmSync(root, { recursive: true, force: true }); }
 }
 
+test('owned launches accept an absolute standalone sidecar and reject bundle paths', () => fixture(root => {
+    const standalone = join(root, 'Ntilde');
+    writeFileSync(standalone, '');
+    assert.equal(resolveOwnedExecutable(standalone), standalone);
+    assert.throws(() => resolveOwnedExecutable('Ntilde'), /absolute/);
+    const bundled = join(root, 'Installed.App', 'Contents', 'MacOS', 'Ntilde');
+    mkdirSync(dirname(bundled), { recursive: true });
+    writeFileSync(bundled, '');
+    assert.throws(() => resolveOwnedExecutable(bundled), /uninstalled sidecar outside .app bundles/);
+}));
+
+test('an alias outside a bundle cannot bypass the owned launch restriction', { skip: process.platform === 'win32' }, () => fixture(root => {
+    const bundled = join(root, 'Installed.app', 'Contents', 'MacOS', 'Ntilde');
+    mkdirSync(dirname(bundled), { recursive: true });
+    writeFileSync(bundled, '');
+    const alias = join(root, 'alias');
+    symlinkSync(bundled, alias);
+    assert.throws(() => resolveOwnedExecutable(alias), /uninstalled sidecar outside .app bundles/);
+}));
+
 test('npm resolution uses the selected Node installation rather than PATH', () => fixture(root => {
     const cli = join(root, 'lib/node_modules/npm/bin/npm-cli.js');
     mkdirSync(dirname(cli), { recursive: true });
     writeFileSync(cli, '');
-    assert.equal(resolveNpmCli(join(root, 'bin/node'), undefined), cli);
+    // null explicitly selects the Node layout without inheriting a user override.
+    assert.equal(resolveNpmCli(join(root, 'bin/node'), null), cli);
 }));
+
+test('collector preparation refuses a missing lockfile and retains exact bytes', () => fixture(root => {
+    assert.throws(() => readCollectorLockfile(root), /missing package-lock.json/);
+    const bytes = Buffer.from('{"lockfileVersion":3}\n');
+    writeFileSync(join(root, 'package-lock.json'), bytes);
+    assert.deepEqual(readCollectorLockfile(root), bytes);
+}));
+
+test('serial process queries share one budget below the owner response ceiling', () => {
+    let elapsed = 0;
+    const timeout = createProcessBudget(4000, () => elapsed);
+    assert.equal(timeout(), 2000);
+    elapsed = 1900;
+    assert.equal(timeout(), 2000);
+    elapsed = 3800;
+    assert.equal(timeout(), 200);
+    elapsed = 4000;
+    assert.throws(timeout, /shared deadline/);
+});
 
 test('npm permits an explicit absolute CLI but refuses relative or absent files', () => fixture(root => {
     const cli = join(root, 'npm-cli.js');
@@ -33,8 +73,9 @@ test('checkout metadata refuses PATH lookup and tolerates an unavailable explici
 
 test('checkout metadata runs only the explicitly selected executable', { skip: process.platform === 'win32' }, () => fixture(root => {
     const git = join(root, 'selected-git');
-    writeFileSync(git, '#!/bin/sh\nprintf "%s\\n" "0123456789012345678901234567890123456789"\n', { mode: 0o700 });
+    writeFileSync(git, '#!/bin/sh\n[ "$#" -eq 4 ] && [ "$1" = "-C" ] && [ "$2" = "${0%/*}" ] && [ "$3" = "rev-parse" ] && [ "$4" = "HEAD" ] || exit 1\nprintf "%s\\n" "0123456789012345678901234567890123456789"\n', { mode: 0o700 });
     assert.equal(checkoutRevision(root, git), '0123456789012345678901234567890123456789');
+    assert.equal(checkoutRevision(join(root, 'wrong-repository'), git), null);
     // Neither a non-revision stdout value nor a failed tool is checkout identity.
     writeFileSync(git, '#!/bin/sh\nprintf "%s\\n" invalid\n');
     assert.equal(checkoutRevision(root, git), null);

@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { assertPrivateFile, assertProcessOwnership, bindOutput, parseProcessRecord, requestOwner } from './ownership.mjs';
+import { assertPrivateFile, assertProcessOwnership, bindOutput, matchesRecordedWorker, parseProcessRecord, requestOwner } from './ownership.mjs';
 
 const proof = () => ({
     app: { pid: 100, uid: 501, executable: '/test/Ntilde' },
@@ -74,4 +74,41 @@ test('process records preserve spaces in executable names without backtracking',
     assert.throws(() => parseProcessRecord('100 10 501 ttys012'), /Could not identify/);
     assert.throws(() => parseProcessRecord('invalid 10 501 ttys012 /Ntilde'), /Could not identify/);
     assert.throws(() => parseProcessRecord(' '.repeat(8192)), /Could not identify/);
+});
+
+const recordedWorker = { pid: 101, ppid: 100, uid: 501, tty: 'ttys012', executable: '/runtime/node' };
+const workerRun = 'a'.repeat(32);
+const workerCommand = `/runtime/node /private/worker.mjs /private/worker.json --ntilde-terminfo-worker=${workerRun}`;
+
+test('cleanup recognizes the recorded worker after reparenting or PTY hangup', () => {
+    assert.ok(matchesRecordedWorker({ ...recordedWorker, ppid: 1 }, recordedWorker, workerCommand, workerRun));
+    assert.ok(matchesRecordedWorker({ ...recordedWorker, ppid: 1, tty: '??' }, recordedWorker, workerCommand, workerRun));
+});
+
+for (const [field, value] of [['pid', 202], ['uid', 502], ['tty', 'ttys099'], ['executable', '/other/node']]) {
+    test(`cleanup refuses a reused worker identity with a different ${field}`, () => {
+        assert.equal(matchesRecordedWorker({ ...recordedWorker, [field]: value }, recordedWorker, workerCommand, workerRun), false);
+    });
+}
+
+test('cleanup refuses another run marker or a missing ownership record', () => {
+    assert.equal(matchesRecordedWorker(recordedWorker, recordedWorker, workerCommand + '-suffix', workerRun), false);
+    assert.equal(matchesRecordedWorker(recordedWorker, recordedWorker, workerCommand, 'b'.repeat(32)), false);
+    assert.equal(matchesRecordedWorker(recordedWorker, null, workerCommand, workerRun), false);
+});
+
+test('an owner success response resolves with its measured owner PID', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'nto-'));
+    const path = join(dir, 'owner.sock');
+    const server = createServer(socket => {
+        socket.once('data', () => socket.end('{"ok":true,"ownerPid":100}\n'));
+    });
+    try {
+        await new Promise(resolve => server.listen(path, resolve));
+        const response = await requestOwner({ socket: path, token: 'test', runId: 'a'.repeat(32) }, 'prove');
+        assert.equal(response.ownerPid, 100);
+    } finally {
+        await new Promise(resolve => server.close(resolve));
+        rmSync(dir, { recursive: true, force: true });
+    }
 });

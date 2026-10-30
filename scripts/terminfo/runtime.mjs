@@ -1,7 +1,37 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, isAbsolute, join } from 'node:path';
+import { dirname, isAbsolute, join, sep } from 'node:path';
+
+export function readCollectorLockfile(tool) {
+    try {
+        return readFileSync(join(tool, 'package-lock.json'));
+    } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        throw new Error('Collector cache is missing package-lock.json; remove artifacts/terminfo/tool and prepare it again.');
+    }
+}
+
+export function createProcessBudget(budgetMs, clock = () => performance.now()) {
+    const deadline = clock() + budgetMs;
+    return () => {
+        const remaining = Math.floor(deadline - clock());
+        if (remaining < 1) throw new Error('Process identity checks exceeded their shared deadline.');
+        return Math.min(2000, remaining);
+    };
+}
+
+export function resolveOwnedExecutable(executable) {
+    if (!isAbsolute(executable)) throw new Error('Supply an absolute app executable path.');
+    const resolved = realpathSync(executable);
+    // Velopack 1.2.0's macOS locator recognizes installed apps inside .app/.
+    // Refuse those before launch, including an outside symlink into a bundle:
+    // a staged update can restart via LaunchServices without our private root.
+    if ([executable, resolved].some(path => path.split(sep).join('/').toLowerCase().includes('.app/'))) {
+        throw new Error('Owned collection requires an uninstalled sidecar outside .app bundles; packaged macOS apps can restart outside the private fixture.');
+    }
+    return resolved;
+}
 
 export function resolveNpmCli(nodeExecutable = process.execPath, configuredPath = process.env.NTILDE_TERMINFO_NPM_CLI) {
     const path = configuredPath ?? join(dirname(nodeExecutable), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');

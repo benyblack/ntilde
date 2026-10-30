@@ -3,10 +3,10 @@ import { fstatSync, lstatSync, realpathSync, statSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { isatty } from 'node:tty';
 
-export function processRecord(pid) {
+export function processRecord(pid, timeout = 2000) {
     if (!Number.isSafeInteger(pid) || pid < 2) throw new Error('Invalid process ID.');
     const text = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'pid=,ppid=,uid=,tty=,comm='], {
-        encoding: 'utf8', timeout: 2000, maxBuffer: 8192,
+        encoding: 'utf8', timeout, maxBuffer: 8192,
     }).trim();
     return parseProcessRecord(text, pid);
 }
@@ -35,6 +35,16 @@ export function assertProcessOwnership({ app, worker, ownerPid, executable, uid,
     if (!/^tty[a-zA-Z0-9._-]+$/.test(worker.tty) || tty !== `/dev/${worker.tty}`) {
         throw new Error('Worker controlling TTY differs from its claimed output.');
     }
+}
+
+export function matchesRecordedWorker(current, recorded, command, runId) {
+    if (!current || !recorded || !/^[a-f\d]{32}$/.test(runId)) return false;
+    return current.pid === recorded.pid && current.uid === recorded.uid
+        && current.executable === recorded.executable
+        && /^tty[a-zA-Z0-9._-]+$/.test(recorded.tty)
+        // A PTY hangup can detach the controlling terminal before cleanup runs.
+        && (current.tty === recorded.tty || current.tty === '??')
+        && command.split(/\s+/).includes(`--ntilde-terminfo-worker=${runId}`);
 }
 
 export function requestOwner(config, kind, extra = {}) {
@@ -96,7 +106,8 @@ export function assertPrivateFile(path) {
 export async function verifyNtildeOutput(config, out) {
     if (process.platform !== 'darwin') throw new Error('This owned adapter currently supports macOS.');
     if (process.env.NTILDE_APPDATA_ROOT !== config.appData || process.env.TERMINFO_RUN_ID !== config.runId
-        || process.env.TERM_PROGRAM !== 'Ntilde') throw new Error('Worker launch environment differs from this run.');
+        || process.env.TERM_PROGRAM !== 'Ntilde'
+        || process.argv[3] !== `--ntilde-terminfo-worker=${config.runId}`) throw new Error('Worker launch environment differs from this run.');
     const worker = processRecord(process.pid);
     const tty = `/dev/${worker.tty}`;
     const binding = bindOutput(out, tty);

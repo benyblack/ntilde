@@ -31,12 +31,13 @@ set `NTILDE_TERMINFO_NPM_CLI` to its absolute `npm-cli.js` path, or prepare the
 cache manually. On Windows, prepare that cache first in PowerShell:
 
 ```powershell
-npm install --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --save-exact terminfo.dev@4.0.0
+npm install --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --package-lock=true --save-exact terminfo.dev@4.0.0
 ```
 
 Both runners check the package version and the full pinned suite receipt
 (schema, probe hash, collector revision, manifest and bundle digests) before
-retaining evidence. They retain the exact bytes they validated. The inline
+retaining evidence. Both require the dependency lockfile before creating a
+run directory and retain the exact receipt and lockfile bytes they read. The inline
 runner then executes the bundle with the same Node runtime as the runner. It removes the
 inherited `__CFBundleIdentifier` and sets the collector's version hint to the
 explicit argument, recording the original hints separately. This affects only
@@ -69,8 +70,20 @@ node scripts/terminfo-owned.mjs --executable /absolute/path/to/Ntilde --app-vers
 
 This runner requires macOS, Node 24+, and the pinned collector prepared above.
 It runs from an ordinary shell; it does not need an existing Ntilde tab or agent
-access enabled. Use a sidecar copy of the app to keep builds separate from the
-running binary. Do not interact with the test window while it runs.
+access enabled. The executable must be an **uninstalled sidecar outside any
+`.app` bundle**. Packaged macOS apps and aliases pointing into their bundles
+are refused before launch. Do not interact with the test window while it runs.
+
+Velopack can apply a staged update before GUI settings are loaded. On macOS its
+restart loses the private `NTILDE_APPDATA_ROOT` and can open the real profile;
+disabling automatic update checks in the fresh settings does not stop that
+startup path. The adapter therefore accepts only standalone sidecars. This
+also protects runs against older app builds without a dedicated QA startup
+mode. The gate follows Velopack 1.2.0's
+[macOS locator](https://github.com/velopack/velopack/blob/f2edcbcafb81da5b3c884aaea330e225ad91d8b6/src/lib-csharp/Locators/OsxVelopackLocator.cs)
+and the [config storage contract](../CONFIG_STORAGE_CONTRACT.md#environment-variables);
+revisit it when changing the pinned updater dependency. Installed-app update
+behavior is outside this adapter's coverage.
 
 The adapter creates fresh settings and a worker profile in a private fixture
 under `~/.ntilde-qa`. It verifies that the parent is owned by the current user,
@@ -82,6 +95,9 @@ run marker. A private socket capability binds the worker to that launch; both
 ends verify its live app parent, executable, user, controlling TTY and output
 device. Geometry reads repeat the ownership/device check. Cleanup terminates
 only the launched process and its verified worker and removes the private root.
+Worker cleanup checks the recorded process identity and unique run marker even
+if an app crash has reparented it. Ownership replies share a four-second budget
+for their process queries within the existing five-second response timeout.
 Early exit and interruption retain failure evidence and still clean up. Signal
 handlers cover fixture creation through app exit, socket closure and fixture
 removal, and remain installed for repeated signals during teardown.

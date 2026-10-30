@@ -3,10 +3,10 @@
 // would measure the harness rather than Ntilde. Requires Node 24+ and npm.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkoutRevision, resolveNpmCli } from './terminfo/runtime.mjs';
+import { checkoutRevision, readCollectorLockfile, resolveNpmCli } from './terminfo/runtime.mjs';
 import { validateCollectorReceipt } from './terminfo/collector.mjs';
 
 const cliVersion = '4.0.0';
@@ -53,12 +53,12 @@ function prepareCollector(tool, pkgManifest, env) {
     if (!existsSync(pkgManifest)) {
         if (process.platform === 'win32') fail('Install the collector first using the Windows preparation command in docs/qa/QA_TERMINFO.md.');
         // Execute the selected Node installation's npm CLI directly. Never search PATH.
-        run([resolveNpmCli(), 'install', '--prefix', tool, '--ignore-scripts', '--no-audit', '--no-fund',
+        run([resolveNpmCli(), 'install', '--prefix', tool, '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=true',
             '--save-exact', `terminfo.dev@${cliVersion}`], env);
     }
     if (json(pkgManifest).version !== cliVersion) fail(`Expected terminfo.dev ${cliVersion}; remove artifacts/terminfo/tool and retry.`);
+    return readCollectorLockfile(tool);
 }
-
 
 function main() {
     const args = process.argv.slice(2);
@@ -83,7 +83,7 @@ See docs/qa/QA_TERMINFO.md.`);
     mkdirSync(root, { recursive: true });
     // Child tool invocations inherit the selected Node runtime first.
     const env = { ...process.env, PATH: dirname(process.execPath) + (process.platform === 'win32' ? ';' : ':') + process.env.PATH };
-    prepareCollector(tool, pkgManifest, env);
+    const lockBytes = prepareCollector(tool, pkgManifest, env);
 
     const bundle = join(pkg, 'dist', 'terminfo.bundle.mjs');
     const receiptPath = join(pkg, 'dist', 'terminfo.bundle.receipt.json');
@@ -108,7 +108,7 @@ See docs/qa/QA_TERMINFO.md.`);
     };
     writeJson(join(directory, 'context.json'), context);
     writeFileSync(join(directory, 'suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
-    copyFileSync(join(tool, 'package-lock.json'), join(directory, 'package-lock.json'));
+    writeFileSync(join(directory, 'package-lock.json'), lockBytes, { flag: 'wx', mode: 0o600 });
     console.log(`Recording terminfo.dev ${cliVersion} observations in ${directory}`);
     const detected = JSON.parse(run([bundle, 'detect', '--json'], env, true));
     writeJson(join(directory, 'detect.json'), detected);

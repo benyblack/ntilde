@@ -2,13 +2,13 @@
 // Launches a private macOS desktop instance; never attaches to an existing pane.
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import { chmodSync, closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
-import { assertProcessOwnership, processRecord } from './terminfo/ownership.mjs';
-import { createPrivateScratch } from './terminfo/runtime.mjs';
+import { assertProcessOwnership, matchesRecordedWorker, processRecord } from './terminfo/ownership.mjs';
+import { createPrivateScratch, createProcessBudget, readCollectorLockfile, resolveOwnedExecutable } from './terminfo/runtime.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -20,8 +20,7 @@ function validateInvocation(args) {
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
-    if (!isAbsolute(args[1])) throw new Error('Supply an absolute app executable path.');
-    return realpathSync(args[1]);
+    return resolveOwnedExecutable(args[1]);
 }
 
 function prepareCollector() {
@@ -34,6 +33,7 @@ function prepareCollector() {
     const source = readFileSync(original, 'utf8');
     const receiptBytes = readFileSync(join(pkg, 'dist', 'terminfo.bundle.receipt.json'));
     validateCollectorReceipt(source, JSON.parse(receiptBytes));
+    const lockBytes = readCollectorLockfile(tool);
     const adapted = adaptCollector(source, ownerModule);
     const adapterBundleSha256 = hash(adapted);
     // Keep external package resolution beside the original bundle. A derived
@@ -42,7 +42,7 @@ function prepareCollector() {
     if (!existsSync(bundle)) writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
     if (hash(readFileSync(bundle)) !== adapterBundleSha256) throw new Error('Derived adapter bundle digest mismatch.');
 
-    return { tool, ownerModule, bundle, adapterBundleSha256, receiptBytes };
+    return { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes };
 }
 
 function collectionSummary(output, appVersion) {
@@ -62,10 +62,15 @@ function collectionSummary(output, appVersion) {
         adapter: raw.collectorAdapter, observations: raw.observations.length, counts, reasons, rawSha256: hash(readFileSync(rawPath)) };
 }
 
-function terminateOwnedWorker(workerPid, appPid) {
-    if (!workerPid) return;
-    // Only terminate a worker whose direct parent is still the launched app.
-    try { if (processRecord(workerPid).ppid === appPid) process.kill(workerPid, 'SIGTERM'); } catch {}
+function terminateOwnedWorker(recorded, runId) {
+    if (!recorded) return;
+    try {
+        const current = processRecord(recorded.pid);
+        const command = execFileSync('/bin/ps', ['-p', String(recorded.pid), '-o', 'command='], {
+            encoding: 'utf8', timeout: 2000, maxBuffer: 16384,
+        });
+        if (matchesRecordedWorker(current, recorded, command, runId)) process.kill(recorded.pid, 'SIGTERM');
+    } catch {}
 }
 
 async function main() {
@@ -73,7 +78,9 @@ async function main() {
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
         console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION
 
-Requires macOS and Node 24+. Prepare terminfo.dev@4.0.0 under
+Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
+Packaged apps are refused because a staged update can restart outside the fixture.
+Prepare terminfo.dev@4.0.0 under
 artifacts/terminfo/tool (see docs/qa/QA_TERMINFO.md). Launches a disposable
 Ntilde process with private settings and runs a locally extended collector.
 Results go to artifacts/terminfo/owned-*. No existing sessions are used.
@@ -81,7 +88,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         return;
     }
     const executable = validateInvocation(args);
-    const { tool, ownerModule, bundle, adapterBundleSha256, receiptBytes } = prepareCollector();
+    const { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes } = prepareCollector();
 
     let resolveDone;
     let rejectDone;
@@ -113,7 +120,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
         const command = join(scratch, 'worker.sh');
-        writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)}\n`, { flag: 'wx', mode: 0o700 });
+        writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
         const profileId = randomUUID();
         const settings = {
             Profiles: [{ Id: profileId, Name: 'terminfo disposable worker', Command: command, Arguments: '', StartingDirectory: scratch, Type: 0 }],
@@ -126,10 +133,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
         writeFileSync(join(output, 'upstream-suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
-        copyFileSync(join(tool, 'package-lock.json'), join(output, 'package-lock.json'));
+        writeFileSync(join(output, 'package-lock.json'), lockBytes, { flag: 'wx', mode: 0o600 });
 
         let app;
-        let workerPid;
+        let workerIdentity;
         let completed = false;
         const proofs = [];
         const image = statSync(executable);
@@ -162,13 +169,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) throw new Error('Owned app is no longer live.');
                     const currentImage = statSync(executable);
                     if (image.ino !== currentImage.ino || image.size !== currentImage.size || image.mtimeMs !== currentImage.mtimeMs) throw new Error('Owned executable changed during collection.');
-                    const owner = processRecord(app.pid);
-                    const worker = processRecord(request.workerPid);
+                    // Three serial queries must fit inside the existing 5s reply timeout.
+                    const queryTimeout = createProcessBudget(4000);
+                    const owner = processRecord(app.pid, queryTimeout());
+                    const worker = processRecord(request.workerPid, queryTimeout());
                     assertProcessOwnership({ app: { ...owner, executable: realpathSync(owner.executable) }, worker,
                         ownerPid: app.pid, executable, uid: process.getuid(), runId, tty: request.tty,
-                        appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: 2000 }) });
-                    if (workerPid && workerPid !== worker.pid) throw new Error('Another worker tried to use this run.');
-                    workerPid = worker.pid;
+                        appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
+                    if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
+                    workerIdentity ??= worker;
                     if (request.kind === 'prove') {
                         // Retain the measured proof, never the capability token.
                         if (proofs.length === 0) proofs.push({ app: owner, worker, tty: request.tty, at: new Date().toISOString() });
@@ -214,7 +223,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             throw new Error(`${error.message} Evidence retained in ${output}`);
         } finally {
             clearTimeout(deadline);
-            terminateOwnedWorker(workerPid, app?.pid);
+            terminateOwnedWorker(workerIdentity, runId);
             // Only terminate the specific app process we launched.
             if (app?.pid && app.exitCode === null && app.signalCode === null) {
                 app.kill('SIGTERM');
