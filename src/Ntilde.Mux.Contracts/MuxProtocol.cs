@@ -95,7 +95,10 @@ public static class MuxMethods
     /// </summary>
     public const string Faulted = "faulted";
 
-    /// <summary>Notification (server → v2 client): attached count, title or cwd changed; coalesced (Phase 3 spec §4).</summary>
+    /// <summary>
+    /// Notification (server → v2 client): attached count, title, cwd or keyboard ceiling changed; coalesced (Phase 3 spec §4).
+    /// An attach opting into keyboard capabilities also receives this metadata before its snapshot, on either protocol version.
+    /// </summary>
     public const string SessionChanged = "sessionChanged";
 
     /// <summary>Notification (server → v2 client): another client killed the session; precedes its <see cref="Exited"/>.</summary>

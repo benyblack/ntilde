@@ -208,6 +208,34 @@ public sealed class KittyKeyEventRoutingTests
         Assert.Empty(sent);
     }
 
+    [AvaloniaTheory]
+    [InlineData(1, "\x1b", "\x1b", null)]
+    [InlineData(2, "\x1b", "\x1b[27;7:2u", "\x1b[27;7:3u")]
+    [InlineData(3, "\x1b[27;7u", "\x1b[27;7:2u", "\x1b[27;7:3u")]
+    public void ControlAltEscape_ReportsNegotiatedEventsWithoutChangingFlagOne(int flags, string press, string repeat, string? release)
+    {
+        var (view, _, _, sent) = Create(flags);
+        view.Down(Key.Escape, KeyModifiers.Control | KeyModifiers.Alt);
+        view.Down(Key.Escape, KeyModifiers.Control | KeyModifiers.Alt);
+        view.Up(Key.Escape, KeyModifiers.Control | KeyModifiers.Alt);
+        string[] expected = release is null ? [press, repeat] : [press, repeat, release];
+        Assert.Equal(expected, sent);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void AltGrC_ComposesTextWithoutSendingAnInterrupt(int flags)
+    {
+        var (view, _, _, sent) = Create(flags);
+        Assert.False(view.Down(Key.C, KeyModifiers.Control | KeyModifiers.Alt).Handled);
+        view.Text("©");
+        Assert.False(view.Up(Key.C, KeyModifiers.Control | KeyModifiers.Alt).Handled);
+        Assert.Equal(new[] { "©" }, sent);
+    }
+
     [AvaloniaFact]
     public void UnpairedOrConsumedKeyUp_SendsNothingAndClearsTracking()
     {

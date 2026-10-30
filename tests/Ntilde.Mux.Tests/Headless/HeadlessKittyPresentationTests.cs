@@ -34,10 +34,10 @@ public sealed class HeadlessKittyPresentationTests
     public async Task Spawn_capabilities_answer_the_first_query_before_any_attach(int? flags, int expected)
     {
         using var host = new MuxTestHost();
+        host.Factory.StartupOutput = "\x1b[>31u\x1b[?u";
         using var client = await host.ConnectClientAsync();
         Guid id = await client.SpawnAsync(new SpawnParams { Command = "scripted", KittyKeyboardSupportedFlags = flags }, TestContext.Current.CancellationToken);
         Assert.Equal(0, host.Mux(id).AttachedClients);
-        host.Fake(id).Emit("\x1b[>31u\x1b[?u");
         await host.Mux(id).FlushAsync();
         await TestWait.UntilAsync(() => !host.Fake(id).SentInput.IsEmpty, "the pre-attach keyboard query was answered");
         Assert.Equal($"\x1b[?{expected}u", Assert.Single(host.Fake(id).SentInput));

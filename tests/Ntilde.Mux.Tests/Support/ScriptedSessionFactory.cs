@@ -8,6 +8,9 @@ internal sealed class ScriptedSessionFactory : ITerminalSessionFactory
     public ConcurrentQueue<TerminalSessionRequest> Requests { get; } = new();
     public bool FailNext { get; set; }
 
+    /// <summary>Optional bytes emitted inside the child constructor and replayed to its first raw subscriber.</summary>
+    public string? StartupOutput { get; set; }
+
     /// <summary>Every Create throws while set (unlike <see cref="FailNext"/>, which fails once).</summary>
     public bool ThrowOnCreate { get; set; }
     public bool ProduceSessionsWithoutByteTap { get; set; }
@@ -48,7 +51,7 @@ internal sealed class ScriptedSessionFactory : ITerminalSessionFactory
 
         bool throwOnSubscribe = ThrowOnSubscribeNext;
         ThrowOnSubscribeNext = false;
-        var session = new ScriptedTerminalSession(request) { ThrowOnRawSubscribe = throwOnSubscribe };
+        var session = new ScriptedTerminalSession(request, StartupOutput) { ThrowOnRawSubscribe = throwOnSubscribe };
         Sessions.Enqueue(session);
         return LastScriptedSession = session;
     }

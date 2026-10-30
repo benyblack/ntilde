@@ -8,6 +8,23 @@ public sealed class SessionEventsClientTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    [Theory]
+    [InlineData(3, true, 3, 2)]
+    [InlineData(3, true, 3, 1)]
+    [InlineData(3, false, 0, 2)]
+    [InlineData(null, true, 1, 2)]
+    public async Task Keyboard_capabilities_are_current_inside_the_first_snapshot(int? flags, bool enabled, int expected, int version)
+    {
+        using var host = new MuxTestHost(new MuxServerOptions { ForceConPtyFiltering = false, SessionChangedInterval = TimeSpan.FromSeconds(30) });
+        using MuxClient client = await host.ConnectClientAsync(new MuxClientOptions { MinProtocolVersion = version, MaxProtocolVersion = version });
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        using MuxClientSession session = client.OpenSession(id, "scripted");
+        int seen = -1;
+        session.SnapshotReceived += _ => seen = session.KittyKeyboardSupportedFlags;
+        await session.AttachAsync(0, MuxTestHost.DefaultPresentation with { KittyKeyboardSupportedFlags = flags, KittyKeyboardEnabled = enabled }, Ct);
+        Assert.Equal(expected, seen);
+    }
+
     [Fact]
     public async Task SessionChanged_reaches_every_attached_v2_client()
     {

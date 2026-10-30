@@ -259,7 +259,7 @@ namespace Ntilde.Shell
         /// <summary>Off macOS, Ctrl+C copies a selection; otherwise it sends the interrupt byte.</summary>
         private bool HandleLegacyControlC(KeyModifiers keyModifiers, PhysicalKey physicalKey)
         {
-            if ((keyModifiers & KeyModifiers.Control) == 0) return false;
+            if ((keyModifiers & (KeyModifiers.Control | KeyModifiers.Alt)) != KeyModifiers.Control) return false;
             if (HasSelection() && !UseMacOSClipboardChords)
             {
                 _ = CopySelectionToClipboard();

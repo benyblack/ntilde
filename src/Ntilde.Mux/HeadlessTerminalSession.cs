@@ -845,12 +845,16 @@ public sealed class HeadlessTerminalSession : IDisposable
 
         // Fail safe regardless: an attach must always be answered, never left to the client's timeout.
         MuxOutboundFrame frame;
+        MuxOutboundFrame? keyboardFrame = null;
         try
         {
+            if (presentation.KittyKeyboardSupportedFlags.HasValue)
+                keyboardFrame = AttachKeyboardCapabilities(sink, presentation, readOnly);
             frame = MuxFrames.Snapshot(requestId, Id, seq, json);
         }
         catch (Exception ex)
         {
+            keyboardFrame?.Release();
             Reply(sink, requestId, MuxErrorCodes.Internal, $"Snapshot frame could not be built: {ex.Message}");
             return;
         }
@@ -861,8 +865,15 @@ public sealed class HeadlessTerminalSession : IDisposable
         ReportSubscription(sink, subscribed: true, readOnly);
 
         bool accepted;
-        try { accepted = sink.TryEnqueue(frame); }
-        finally { frame.Release(); }
+        try
+        {
+            accepted = (keyboardFrame is null || sink.TryEnqueue(keyboardFrame)) && sink.TryEnqueue(frame);
+        }
+        finally
+        {
+            keyboardFrame?.Release();
+            frame.Release();
+        }
         if (!accepted)
         {
             // A sink that refuses a frame is gone (Broadcast drops it the same way).
@@ -1057,29 +1068,64 @@ public sealed class HeadlessTerminalSession : IDisposable
     /// </summary>
     private void RecomputeKitty()
     {
-        bool any = false, all = true;
-        int commonFlags = KittyKeyboardState.SupportedFlags;
-        foreach (IMuxFrameSink s in _subscribers)
-        {
-            if (_readOnlySinks.Contains(s) || !_kittyBySink.TryGetValue(s, out MuxPresentation? k)) continue;
-            any = true;
-            all &= k.KittyKeyboardEnabled;
-            commonFlags &= Math.Max(0, k.KittyKeyboardSupportedFlags ?? KittyKeyboardState.FlagDisambiguateEscapeCodes);
-        }
+        var (any, enabled, flags) = KittyCapabilities();
+        if (!any) return;
+        _parser.KittyKeyboardEnabled = enabled;
+        if (_buffer.Modes.KittyKeyboard.SupportedFlagMask == flags) return;
+        _buffer.Modes.KittyKeyboard.SetSupportedFlags(flags);
+        // A keyboard capability change belongs before the next output chunk, not
+        // behind the normal title/count coalescing interval.
+        MarkSessionChanged();
+        _lastSessionChangeSentMs = Environment.TickCount64 - _sessionChangedIntervalMs;
+    }
 
-        if (any)
+    /// <summary>Current intersection, optionally replacing one client's presentation before an attach commits.</summary>
+    private (bool Any, bool Enabled, int Flags) KittyCapabilities(IMuxFrameSink? replacing = null, MuxPresentation? presentation = null, bool readOnly = false)
+    {
+        bool any = false, enabled = true;
+        int flags = KittyKeyboardState.SupportedFlags;
+        foreach (IMuxFrameSink sink in _subscribers)
         {
-            _parser.KittyKeyboardEnabled = all;
-            int effective = all ? commonFlags : 0;
-            if (_buffer.Modes.KittyKeyboard.SupportedFlagMask != effective)
-            {
-                _buffer.Modes.KittyKeyboard.SetSupportedFlags(effective);
-                // A keyboard capability change belongs before the next output chunk, not
-                // behind the normal title/count coalescing interval.
-                MarkSessionChanged();
-                _lastSessionChangeSentMs = Environment.TickCount64 - _sessionChangedIntervalMs;
-            }
+            if (ReferenceEquals(sink, replacing) || _readOnlySinks.Contains(sink) || !_kittyBySink.TryGetValue(sink, out var value)) continue;
+            any = true;
+            enabled &= value.KittyKeyboardEnabled;
+            flags &= Math.Max(0, value.KittyKeyboardSupportedFlags ?? KittyKeyboardState.FlagDisambiguateEscapeCodes);
         }
+        if (presentation is not null && !readOnly)
+        {
+            any = true;
+            enabled &= presentation.KittyKeyboardEnabled;
+            flags &= Math.Max(0, presentation.KittyKeyboardSupportedFlags ?? KittyKeyboardState.FlagDisambiguateEscapeCodes);
+        }
+        if (!any) return (false, _parser.KittyKeyboardEnabled, _buffer.Modes.KittyKeyboard.SupportedFlagMask);
+        return (true, enabled, enabled ? flags : 0);
+    }
+
+    /// <summary>
+    /// Attaching clients that explicitly advertise a keyboard mask receive it before their snapshot.
+    /// Only this sink sees the prospective facts; existing subscribers change after the snapshot is accepted.
+    /// This handshake is opt-in via the mask field, including for a peer using the legacy protocol version.
+    /// </summary>
+    private MuxOutboundFrame AttachKeyboardCapabilities(IMuxFrameSink sink, MuxPresentation presentation, bool readOnly)
+    {
+        bool alreadyAttached = _subscribers.Contains(sink);
+        int interactive = _subscribers.Count - _readOnlySinks.Count;
+        if (alreadyAttached && !_readOnlySinks.Contains(sink)) interactive--;
+        if (!readOnly) interactive++;
+        var (_, _, flags) = KittyCapabilities(sink, presentation, readOnly);
+        return MuxFrames.Notification(new MuxNotification
+        {
+            Method = MuxMethods.SessionChanged,
+            Params = MuxFrames.ToElement(new SessionChangedNotification
+            {
+                SessionId = Id,
+                AttachedClients = _subscribers.Count + (alreadyAttached ? 0 : 1),
+                InteractiveClients = interactive,
+                Title = Title,
+                Cwd = Cwd,
+                KittyKeyboardSupportedFlags = flags,
+            }, MuxJsonContext.Default.SessionChangedNotification),
+        });
     }
 
     private void ApplyResize(int cols, int rows)

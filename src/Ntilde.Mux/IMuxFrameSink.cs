@@ -14,7 +14,9 @@ internal interface IMuxFrameSink
 
     /// <summary>
     /// True when this peer negotiated protocol v2 or later and so understands <c>sessionChanged</c> and
-    /// <c>killed</c> (Phase 3 spec §2). Default false: a v1 peer - and the test recorder - never gets them.
+    /// <c>killed</c> (Phase 3 spec §2). Default false: no unsolicited session events.
+    /// An attach explicitly carrying the keyboard-mask extension receives capability metadata
+    /// before its snapshot even on v1; older peers omit that field and receive no such frame.
     /// </summary>
     bool WantsSessionEvents => false;
 

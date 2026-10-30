@@ -203,6 +203,7 @@ namespace Ntilde.Shell
             // Ctrl+Alt can compose AltGr text. A release is already paired with a proved
             // non-text press, so changed modifiers must not erase that release.
             if (eventKind != TerminalKeyEventKind.Release
+                && !(reportEvents && key == Key.Escape)
                 && (modifiers & (KeyModifiers.Control | KeyModifiers.Alt)) == (KeyModifiers.Control | KeyModifiers.Alt)) return null;
 
             return key is Key.Enter or Key.Tab or Key.Back or Key.Escape
