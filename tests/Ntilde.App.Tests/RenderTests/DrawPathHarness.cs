@@ -125,6 +125,8 @@ internal sealed class DrawPathHarness : IDisposable
             rowCache: RowCache,
             enableComplexShaping: true,
             glyphCache: GlyphCache);
+        // A compositor frame starts clean; so does this one, or a stale row would hide under the last frame's pixels.
+        _surface.Canvas.Clear(SKColors.Black);
         try
         {
             // As TerminalDrawOperation.Render does: the snapshot's pooled arrays go back after the frame (Codex
@@ -135,6 +137,14 @@ internal sealed class DrawPathHarness : IDisposable
         {
             op.Dispose();
         }
+    }
+
+    /// <summary>The last frame's pixels.</summary>
+    public byte[] Pixels()
+    {
+        using SKImage image = _surface.Snapshot();
+        using SKBitmap bitmap = SKBitmap.FromImage(image);
+        return bitmap.Bytes;
     }
 
     /// <summary>
