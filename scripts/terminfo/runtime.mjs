@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, sep } from 'node:path';
 
@@ -10,6 +10,33 @@ export function readCollectorLockfile(tool) {
         if (error.code !== 'ENOENT') throw error;
         throw new Error('Collector cache is missing package-lock.json; remove artifacts/terminfo/tool and prepare it again.');
     }
+}
+
+export function installLockedCollector(directory, manifestBytes, lockBytes, npmCli = resolveNpmCli()) {
+    // Only immutable registry archives can establish the retained dependency tree.
+    const lock = JSON.parse(lockBytes);
+    const packages = lock.packages;
+    if (![2, 3].includes(lock.lockfileVersion) || !packages || !packages['node_modules/terminfo.dev']) {
+        throw new Error('Collector lockfile must describe the complete installed package tree.');
+    }
+    for (const [path, entry] of Object.entries(packages)) {
+        if (path && (entry.link || !/^https:\/\//.test(entry.resolved ?? '')
+            || !/^sha(?:256|384|512)-[A-Za-z0-9+/]+={0,2}$/.test(entry.integrity ?? ''))) {
+            throw new Error('Collector lockfile dependencies require HTTPS archives with integrity digests.');
+        }
+    }
+    npmCli = resolveNpmCli(process.execPath, npmCli);
+    mkdirSync(directory, { mode: 0o700 });
+    writeFileSync(join(directory, 'package.json'), manifestBytes, { flag: 'wx', mode: 0o600 });
+    writeFileSync(join(directory, 'package-lock.json'), lockBytes, { flag: 'wx', mode: 0o600 });
+    const result = spawnSync(process.execPath, [npmCli, 'ci', '--prefix', directory,
+        '--ignore-scripts', '--no-audit', '--no-fund', '--include=prod', '--include=dev', '--include=optional'], {
+        encoding: 'utf8', timeout: 120000, maxBuffer: 1024 * 1024,
+    });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error(`Locked collector installation failed (${result.status ?? result.signal}): ${result.stderr ?? ''}`);
+    if (!readCollectorLockfile(directory).equals(lockBytes)) throw new Error('Collector lockfile changed during installation.');
+    return join(directory, 'node_modules', 'terminfo.dev');
 }
 
 export function createProcessBudget(budgetMs, clock = () => performance.now()) {
@@ -36,7 +63,7 @@ export function resolveOwnedExecutable(executable) {
 export function resolveNpmCli(nodeExecutable = process.execPath, configuredPath = process.env.NTILDE_TERMINFO_NPM_CLI) {
     const path = configuredPath ?? join(dirname(nodeExecutable), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');
     if (!isAbsolute(path)) throw new Error('NTILDE_TERMINFO_NPM_CLI must be an absolute npm-cli.js path.');
-    if (!existsSync(path)) throw new Error('Prepare the collector cache manually or set NTILDE_TERMINFO_NPM_CLI; see docs/qa/QA_TERMINFO.md.');
+    if (!existsSync(path)) throw new Error('Install npm beside the selected Node or set NTILDE_TERMINFO_NPM_CLI; see docs/qa/QA_TERMINFO.md.');
     return realpathSync(path);
 }
 

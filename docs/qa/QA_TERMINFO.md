@@ -27,8 +27,9 @@ when available. On macOS/Linux the runner installs `terminfo.dev@4.0.0` into the
 ignored `artifacts/terminfo/tool` directory on first use, with install scripts
 disabled. Automatic preparation executes `npm-cli.js` beside the selected Node
 installation directly, without searching `PATH`. For a different installation,
-set `NTILDE_TERMINFO_NPM_CLI` to its absolute `npm-cli.js` path, or prepare the
-cache manually. On Windows, prepare that cache first in PowerShell:
+set `NTILDE_TERMINFO_NPM_CLI` to its absolute `npm-cli.js` path. Both runners
+need that npm CLI for each run, including when the cache was prepared manually.
+On Windows, prepare that cache first in PowerShell:
 
 ```powershell
 npm install --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --package-lock=true --save-exact terminfo.dev@4.0.0
@@ -37,9 +38,15 @@ npm install --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fu
 Both runners check the package version and the full pinned suite receipt
 (schema, probe hash, collector revision, manifest and bundle digests) before
 retaining evidence. Both require the dependency lockfile before creating a
-run directory and retain the exact receipt and lockfile bytes they read. The inline
-runner then executes the bundle with the same Node runtime as the runner. It removes the
-inherited `__CFBundleIdentifier` and sets the collector's version hint to the
+run directory. Each run creates a separate dependency installation using the
+retained lockfile and `npm ci --ignore-scripts`; modified or partially upgraded
+files in the prepared cache never execute. Only HTTPS package archives with
+integrity digests are accepted, and installation failure or a changed lockfile
+stops collection. The freshly installed bundle and receipt are checked again.
+This may need registry access if npm's archive cache is cold. Runs do not change
+one another's dependencies. Both retain the exact installed receipt and
+lockfile bytes they validated. The inline runner executes the bundle with the
+same Node runtime as the runner. It removes the inherited `__CFBundleIdentifier` and sets the collector's version hint to the
 explicit argument, recording the original hints separately. This affects only
 the child collector; the raw run retains upstream's `identity: unverified`.
 Version hints and `TERM_PROGRAM` do not independently prove app identity.
@@ -55,6 +62,8 @@ Each invocation creates a private `artifacts/terminfo/run-*` directory containin
 - `detect.json`, `suite-receipt.json`, and `package-lock.json`: collector identity,
   suite identity and resolved dependencies.
 - `summary.json`: outcome/reason counts and the raw file's SHA256.
+- `collector/`: the run's manifest, lockfile and isolated dependency installation.
+  This uses about 128 MB on macOS and stays with the inline evidence directory.
 
 Keep the whole directory when comparing runs; do not edit raw JSON to correct
 identity or support labels. A failed invocation retains available context and
@@ -68,7 +77,7 @@ To permit behavioral probes, launch a separate disposable desktop instance:
 node scripts/terminfo-owned.mjs --executable /absolute/path/to/Ntilde --app-version 0.12.0
 ```
 
-This runner requires macOS, Node 24+, and the pinned collector prepared above.
+This runner requires macOS, Node 24+, npm, and the pinned collector prepared above.
 It runs from an ordinary shell; it does not need an existing Ntilde tab or agent
 access enabled. The executable must be an **uninstalled sidecar outside any
 `.app` bundle**. Packaged macOS apps and aliases pointing into their bundles
@@ -86,7 +95,8 @@ revisit it when changing the pinned updater dependency. Installed-app update
 behavior is outside this adapter's coverage.
 
 The adapter creates fresh settings and a worker profile in a private fixture
-under `~/.ntilde-qa`. It verifies that the parent is owned by the current user,
+under `~/.ntilde-qa`, including its isolated dependency installation, which is
+removed during cleanup. It verifies that the parent is owned by the current user,
 is not a symlink, and has no group/other permissions. A long home path that
 cannot fit the macOS socket limit is rejected before launching the app.
 Persistence, updates, hotkeys, clipboard writes and agent access are disabled
@@ -123,8 +133,10 @@ Adapter tests use Node's built-in test runner:
 node --test scripts/terminfo/*.test.mjs
 ```
 
-The real-app interruption test is opt-in. On macOS, select the disposable app
-executable to exercise it as well:
+The changed-dependency regression runs when the cache is prepared and
+`NTILDE_TERMINFO_NPM_CLI` explicitly selects a usable npm CLI. The real-app
+interruption test is opt-in. On macOS, select the disposable app
+executable to exercise it as well, with a connected, awake desktop display:
 
 ```sh
 NTILDE_TERMINFO_TEST_EXECUTABLE=/absolute/path/to/Ntilde node --test scripts/terminfo/*.test.mjs

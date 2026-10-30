@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkoutRevision, readCollectorLockfile, resolveNpmCli } from './terminfo/runtime.mjs';
+import { checkoutRevision, installLockedCollector, readCollectorLockfile, resolveNpmCli } from './terminfo/runtime.mjs';
 import { validateCollectorReceipt } from './terminfo/collector.mjs';
 
 const cliVersion = '4.0.0';
@@ -67,7 +67,8 @@ function main() {
 
 Run inside a local Ntilde tab with Node 24+ and an npm installation.
 VERSION must identify the running app (About/build log), not the checkout.
-Installs terminfo.dev@${cliVersion} under artifacts/terminfo/tool if needed.
+Prepares terminfo.dev@${cliVersion} under artifacts/terminfo/tool if needed, then
+recreates the locked dependencies in a separate installation for this run.
 Saves raw observations, detection, suite receipt, dependency lock, context and
 summary in a new private artifacts/terminfo/run-* directory. Nothing is uploaded.
 State-changing probes may be refused by the collector; these are inconclusive.
@@ -78,16 +79,20 @@ See docs/qa/QA_TERMINFO.md.`);
 
     const root = join(repo, 'artifacts', 'terminfo');
     const tool = join(root, 'tool');
-    const pkg = join(tool, 'node_modules', 'terminfo.dev');
+    let pkg = join(tool, 'node_modules', 'terminfo.dev');
     const pkgManifest = join(pkg, 'package.json');
     mkdirSync(root, { recursive: true });
     // Child tool invocations inherit the selected Node runtime first.
     const env = { ...process.env, PATH: dirname(process.execPath) + (process.platform === 'win32' ? ';' : ':') + process.env.PATH };
     const lockBytes = prepareCollector(tool, pkgManifest, env);
 
+    validateCollectorReceipt(readFileSync(join(pkg, 'dist', 'terminfo.bundle.mjs')),
+        JSON.parse(readFileSync(join(pkg, 'dist', 'terminfo.bundle.receipt.json'))));
+    const manifestBytes = readFileSync(join(tool, 'package.json'));
+    const directory = mkdtempSync(join(root, 'run-'));
+    pkg = installLockedCollector(join(directory, 'collector'), manifestBytes, lockBytes);
     const bundle = join(pkg, 'dist', 'terminfo.bundle.mjs');
-    const receiptPath = join(pkg, 'dist', 'terminfo.bundle.receipt.json');
-    const receiptBytes = readFileSync(receiptPath);
+    const receiptBytes = readFileSync(join(pkg, 'dist', 'terminfo.bundle.receipt.json'));
     const receipt = JSON.parse(receiptBytes);
     validateCollectorReceipt(readFileSync(bundle), receipt);
     // The upstream launcher prefers Bun if installed. Execute the checked bundle
@@ -97,12 +102,12 @@ See docs/qa/QA_TERMINFO.md.`);
     delete env.__CFBundleIdentifier; // Upstream checks this before TERM_PROGRAM.
     env.TERM_PROGRAM_VERSION = args[1]; // Never inherit the launching terminal's version.
 
-    const directory = mkdtempSync(join(root, 'run-'));
     const context = {
         schemaVersion: 1, startedAt: new Date().toISOString(),
         appVersion: args[1], appVersionSource: 'operator-supplied; not independently verified',
         checkoutRevision: checkoutRevision(repo),
         nodeVersion: process.version, cliVersion, receipt, inheritedHints,
+        dependencyInstall: 'isolated npm ci --ignore-scripts',
         geometry: { columns: process.stdout.columns, rows: process.stdout.rows },
         rawCommand: ['node', 'terminfo.bundle.mjs', 'test', '--output', 'raw.json'],
     };

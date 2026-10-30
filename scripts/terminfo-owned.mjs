@@ -8,7 +8,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
 import { assertProcessOwnership, matchesRecordedWorker, processRecord } from './terminfo/ownership.mjs';
-import { createPrivateScratch, createProcessBudget, readCollectorLockfile, resolveOwnedExecutable } from './terminfo/runtime.mjs';
+import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable } from './terminfo/runtime.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -23,22 +23,26 @@ function validateInvocation(args) {
     return resolveOwnedExecutable(args[1]);
 }
 
-function prepareCollector() {
-    const tool = join(repo, 'artifacts', 'terminfo', 'tool');
+function readPreparedCollector(tool) {
     const pkg = join(tool, 'node_modules', 'terminfo.dev');
     const original = join(pkg, 'dist', 'terminfo.bundle.mjs');
     if (!existsSync(original)) throw new Error('Prepare the pinned collector first; see docs/qa/QA_TERMINFO.md.');
     if (JSON.parse(readFileSync(join(pkg, 'package.json'))).version !== '4.0.0') throw new Error('Expected terminfo.dev 4.0.0.');
-    const ownerModule = join(repo, 'scripts', 'terminfo', 'ownership.mjs');
     const source = readFileSync(original, 'utf8');
     const receiptBytes = readFileSync(join(pkg, 'dist', 'terminfo.bundle.receipt.json'));
     validateCollectorReceipt(source, JSON.parse(receiptBytes));
     const lockBytes = readCollectorLockfile(tool);
+    return { source, receiptBytes, lockBytes, manifestBytes: readFileSync(join(tool, 'package.json')) };
+}
+
+function prepareCollector(tool) {
+    const { source, receiptBytes, lockBytes } = readPreparedCollector(tool);
+    const ownerModule = join(repo, 'scripts', 'terminfo', 'ownership.mjs');
     const adapted = adaptCollector(source, ownerModule);
     const adapterBundleSha256 = hash(adapted);
     // Keep external package resolution beside the original bundle. A derived
     // file is content-addressed; the downloaded original is never overwritten.
-    const bundle = join(pkg, 'dist', `ntilde-${adapterBundleSha256}.mjs`);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-${adapterBundleSha256}.mjs`);
     if (!existsSync(bundle)) writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
     if (hash(readFileSync(bundle)) !== adapterBundleSha256) throw new Error('Derived adapter bundle digest mismatch.');
 
@@ -80,6 +84,7 @@ async function main() {
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
+Requires an npm installation (or NTILDE_TERMINFO_NPM_CLI) to recreate locked dependencies.
 Prepare terminfo.dev@4.0.0 under
 artifacts/terminfo/tool (see docs/qa/QA_TERMINFO.md). Launches a disposable
 Ntilde process with private settings and runs a locally extended collector.
@@ -88,7 +93,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         return;
     }
     const executable = validateInvocation(args);
-    const { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes } = prepareCollector();
+    const input = readPreparedCollector(join(repo, 'artifacts', 'terminfo', 'tool'));
 
     let resolveDone;
     let rejectDone;
@@ -110,6 +115,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     try {
         output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
         scratch = createPrivateScratch();
+        if (interruption) throw interruption;
+        const privateTool = join(scratch, 'collector');
+        installLockedCollector(privateTool, input.manifestBytes, input.lockBytes);
+        const { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes } = prepareCollector(privateTool);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = randomBytes(16).toString('hex');
@@ -145,7 +154,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             appVersionSource: 'operator supplied; not independently verified',
             executable, executableSha256: hash(readFileSync(executable)),
             assemblySha256: existsSync(join(dirname(executable), 'Ntilde.dll')) ? hash(readFileSync(join(dirname(executable), 'Ntilde.dll'))) : null,
-            nodeVersion: process.version, startedAt: new Date().toISOString(), runId,
+            nodeVersion: process.version, dependencyInstall: 'isolated npm ci --ignore-scripts', startedAt: new Date().toISOString(), runId,
             adapterSourceSha256: hash(readFileSync(fileURLToPath(import.meta.url))),
             ownershipSourceSha256: hash(readFileSync(ownerModule)), workerSourceSha256: hash(readFileSync(workerScript)),
             runtimeSourceSha256: hash(readFileSync(join(repo, 'scripts', 'terminfo', 'runtime.mjs'))),
@@ -236,6 +245,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             await new Promise(resolve => server.close(() => resolve()));
             writeJson(join(output, 'ownership-proof.json'), { proofs, completed, cleanedUpAt: new Date().toISOString() });
         }
+    } catch (error) {
+        if (output && !existsSync(join(output, 'failure.json'))) {
+            writeJson(join(output, 'failure.json'), { error: error.message, at: new Date().toISOString() });
+        }
+        throw error;
     } finally {
         try {
             // Also handles preparation failures before the app or server is started.

@@ -3,7 +3,7 @@ import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { checkoutRevision, createPrivateScratch, createProcessBudget, readCollectorLockfile, resolveNpmCli, resolveOwnedExecutable } from './runtime.mjs';
+import { checkoutRevision, createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveNpmCli, resolveOwnedExecutable } from './runtime.mjs';
 
 function fixture(callback) {
     const root = realpathSync(mkdtempSync(join(tmpdir(), 'nt-test-')));
@@ -62,7 +62,7 @@ test('npm permits an explicit absolute CLI but refuses relative or absent files'
     writeFileSync(cli, '');
     assert.equal(resolveNpmCli(process.execPath, cli), cli);
     assert.throws(() => resolveNpmCli(process.execPath, 'npm-cli.js'), /absolute/);
-    assert.throws(() => resolveNpmCli(process.execPath, join(root, 'missing.js')), /Prepare the collector cache/);
+    assert.throws(() => resolveNpmCli(process.execPath, join(root, 'missing.js')), /Install npm beside the selected Node/);
 }));
 
 test('checkout metadata refuses PATH lookup and tolerates an unavailable explicit git', () => fixture(root => {
@@ -106,4 +106,30 @@ test('long private fixture paths are rejected before creating scratch data', { s
     assert.throws(() => createPrivateScratch(parent), /too long/);
     assert.ok(existsSync(parent));
     assert.deepEqual(readdirSync(parent), []);
+}));
+
+function lockedPackage(overrides = {}) {
+    return Buffer.from(JSON.stringify({ lockfileVersion: 3, packages: {
+        '': { dependencies: { 'terminfo.dev': '4.0.0' } },
+        'node_modules/terminfo.dev': { version: '4.0.0', resolved: 'https://registry.npmjs.org/terminfo.dev/-/terminfo.dev-4.0.0.tgz',
+            integrity: 'sha512-' + 'a'.repeat(86) + '==', ...overrides },
+    } }));
+}
+
+for (const entry of [{ link: true }, { resolved: 'file:../mutable' }, { integrity: undefined }]) {
+    test(`locked installations refuse mutable or unverified dependencies: ${JSON.stringify(entry)}`, () => fixture(root => {
+        const directory = join(root, 'collector');
+        assert.throws(() => installLockedCollector(directory, Buffer.from('{}'), lockedPackage(entry), '/unused/npm-cli.js'), /integrity digests/);
+        assert.ok(!existsSync(directory));
+    }));
+}
+
+test('failed locked installs stop collection and lockfile rewriting is refused', () => fixture(root => {
+    const cli = join(root, 'npm-cli.mjs');
+    writeFileSync(cli, 'process.exit(42);');
+    assert.throws(() => installLockedCollector(join(root, 'failed'), Buffer.from('{}'), lockedPackage(), cli), /installation failed \(42\)/);
+    writeFileSync(cli, `import { writeFileSync } from 'node:fs';
+        import { join } from 'node:path';
+        writeFileSync(join(process.argv[4], 'package-lock.json'), '{}');`);
+    assert.throws(() => installLockedCollector(join(root, 'rewritten'), Buffer.from('{}'), lockedPackage(), cli), /lockfile changed/);
 }));
