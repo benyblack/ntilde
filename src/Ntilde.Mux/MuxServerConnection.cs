@@ -556,7 +556,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     }
 
                 case MuxMethods.StopRecording:
-                    Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).Inner.StopRecording();
+                    Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).StopRecording();
                     ReplyEmpty(request);
                     break;
                 case MuxMethods.EnableFlightRecording:

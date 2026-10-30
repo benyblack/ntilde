@@ -538,8 +538,22 @@ public sealed class HeadlessTerminalSession : IDisposable
         return snapshot;
     }
 
+    // Recordings consume bytes on the parse thread. A file/export boundary must include output
+    // already queued before the request. Dropped flushes complete too, permitting exports after exit.
+    private void FlushRecordingOutput()
+    {
+        if (Thread.CurrentThread != _parseThread) FlushAsync().GetAwaiter().GetResult();
+    }
+
+    internal void StopRecording()
+    {
+        FlushRecordingOutput();
+        _session.StopRecording();
+    }
+
     internal ExportFlightResult ExportFlight()
     {
+        FlushRecordingOutput();
         string path = Path.Combine(Path.GetTempPath(), $"ntilde-mux-flight-{Guid.NewGuid():N}.rec");
         try
         {
