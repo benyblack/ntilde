@@ -149,7 +149,13 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         RecordingPath = filePath;
         RecordingCellMetricsAtStart = CurrentRecordingCellMetrics;
     }
-    public void StopRecording() => IsRecording = false;
+    public Action? OnStopRecording { get; set; }
+    public Action? OnFlightExport { get; set; }
+    public void StopRecording()
+    {
+        OnStopRecording?.Invoke();
+        IsRecording = false;
+    }
 
     public bool IsFlightRecording { get { lock (_gate) return _flight is not null; } }
     /// <summary>The budget the mux actually passed to the last EnableFlightRecording call.</summary>
@@ -167,6 +173,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
 
     public bool TryExportFlightRecording(string filePath, out FlightExportInfo info)
     {
+        OnFlightExport?.Invoke();
         FlightRecordingBuffer? flight;
         lock (_gate) flight = _flight;
         if (flight is null) { info = default; return false; }

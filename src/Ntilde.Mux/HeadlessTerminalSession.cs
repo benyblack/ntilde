@@ -473,7 +473,9 @@ public sealed class HeadlessTerminalSession : IDisposable
             PublishAttachedCount();
         });
 
-    internal Task<T> InvokeAsync<T>(Func<T> func)
+    internal Task<T> InvokeAsync<T>(Func<T> func) => InvokeAsync(_control, func);
+
+    private Task<T> InvokeAsync<T>(BlockingCollection<WorkItem> queue, Func<T> func)
     {
         var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         var item = WorkItem.ForAction(
@@ -483,7 +485,7 @@ public sealed class HeadlessTerminalSession : IDisposable
                 catch (Exception ex) { tcs.TrySetException(ex); }
             },
             onDropped: () => tcs.TrySetException(new ObjectDisposedException(nameof(HeadlessTerminalSession))));
-        if (!TryEnqueue(_control, item)) item.OnDropped!();
+        if (!TryEnqueue(queue, item)) item.OnDropped!();
         return tcs.Task;
     }
 
@@ -538,22 +540,26 @@ public sealed class HeadlessTerminalSession : IDisposable
         return snapshot;
     }
 
-    // Recordings consume bytes on the parse thread. A file/export boundary must include output
-    // already queued before the request. Dropped flushes complete too, permitting exports after exit.
-    private void FlushRecordingOutput()
+    // Take the boundary inside the FIFO data queue, before any subsequent chunk can be parsed.
+    private T AtRecordingBoundary<T>(Func<T> operation)
     {
-        if (Thread.CurrentThread != _parseThread) FlushAsync().GetAwaiter().GetResult();
+        if (Thread.CurrentThread == _parseThread) return operation();
+        try { return InvokeAsync(_data, operation).GetAwaiter().GetResult(); }
+        catch (ObjectDisposedException ex) when (ex.ObjectName == nameof(HeadlessTerminalSession))
+        {
+            // A stopped parser still permits export of retained evidence. Wait for teardown to
+            // finish so this fallback cannot race a final in-flight chunk; a wedged parser fails closed.
+            if (!_parseThread.Join(TimeSpan.FromSeconds(5))) throw;
+            return operation();
+        }
     }
 
-    internal void StopRecording()
-    {
-        FlushRecordingOutput();
-        _session.StopRecording();
-    }
+    internal void StopRecording() => AtRecordingBoundary(() => { _session.StopRecording(); return 0; });
 
-    internal ExportFlightResult ExportFlight()
+    internal ExportFlightResult ExportFlight() => AtRecordingBoundary(ExportFlightAtBoundary);
+
+    private ExportFlightResult ExportFlightAtBoundary()
     {
-        FlushRecordingOutput();
         string path = Path.Combine(Path.GetTempPath(), $"ntilde-mux-flight-{Guid.NewGuid():N}.rec");
         try
         {
