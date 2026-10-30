@@ -178,6 +178,37 @@ public sealed class KittyKeyEventRoutingTests
     }
 
     [AvaloniaFact]
+    public void EventFlagAlone_ReportsEscapeRepeatAndRelease()
+    {
+        var (view, _, _, sent) = Create(2);
+        view.Down(Key.Escape, KeyModifiers.None);
+        view.Down(Key.Escape, KeyModifiers.None);
+        view.Up(Key.Escape, KeyModifiers.None);
+        Assert.Equal(new[] { "\x1b", "\x1b[27;1:2u", "\x1b[27;1:3u" }, sent);
+    }
+
+    [AvaloniaFact]
+    public void Repeat_AfterLayoutChange_KeepsThePressedLogicalKey()
+    {
+        var (view, _, _, sent) = Create();
+        view.Down(Key.C, KeyModifiers.Control, PhysicalKey.C);
+        view.Down(Key.A, KeyModifiers.Control, PhysicalKey.C);
+        view.Up(Key.A, KeyModifiers.Control, PhysicalKey.C);
+        Assert.Equal(new[] { "\x1b[99;5u", "\x1b[99;5:2u", "\x1b[99;5:3u" }, sent);
+    }
+
+    [AvaloniaFact]
+    public void FailedPressWrite_DoesNotAcquireAReleaseReport()
+    {
+        var (view, _, session, sent) = Create();
+        session.Setup(s => s.SendInput(It.IsAny<string>())).Throws(new InvalidOperationException("write rejected"));
+        Assert.Throws<InvalidOperationException>(() => view.Down(Key.C, KeyModifiers.Control));
+        session.Setup(s => s.SendInput(It.IsAny<string>())).Callback<string>(sent.Add);
+        Assert.False(view.Up(Key.C, KeyModifiers.Control).Handled);
+        Assert.Empty(sent);
+    }
+
+    [AvaloniaFact]
     public void UnpairedOrConsumedKeyUp_SendsNothingAndClearsTracking()
     {
         var (view, _, _, sent) = Create();

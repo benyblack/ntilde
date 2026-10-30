@@ -48,13 +48,17 @@ namespace Ntilde.Shell
         private static (PhysicalKey, Key) KeyIdentity(Key key, PhysicalKey physical)
             => physical == PhysicalKey.None ? (physical, key) : (physical, Key.None);
 
-        private TerminalKeyEventKind KittyEventKind(Key key, PhysicalKey physical)
+        private TerminalKeyEventKind KittyEventKind(ref Key key, PhysicalKey physical)
         {
             var identity = KeyIdentity(key, physical);
             if (_reportedKittyKeys?.TryGetValue(identity, out var held) == true)
             {
                 if (ReferenceEquals(held.State, _buffer?.Modes.KittyKeyboard)
-                    && held.Generation == held.State.Generation) return TerminalKeyEventKind.Repeat;
+                    && held.Generation == held.State.Generation)
+                {
+                    key = held.Key;
+                    return TerminalKeyEventKind.Repeat;
+                }
                 _reportedKittyKeys.Remove(identity);
             }
             return TerminalKeyEventKind.Press;
@@ -74,15 +78,27 @@ namespace Ntilde.Shell
 
         private void ResetKittyKeyTracking() => _reportedKittyKeys?.Clear();
 
+        /// <summary>
+        /// Tracks an eligible key only after the session's input call returns. This is a
+        /// fire-and-forget transport contract: it cannot acknowledge delivery to the child.
+        /// A thrown write acquires no release; a context change during the call also discards it.
+        /// </summary>
         private void SendKeyInput(Key key, KeyModifiers modifiers, PhysicalKey physical, string sequence)
         {
-            var state = _buffer?.Modes.KittyKeyboard;
-            if (_enableKittyKeyboardProtocol && state?.ReportEventTypes == true
-                && (key == Key.Escape || TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, _buffer?.Modes, TerminalKeyEventKind.Repeat) != null))
+            var session = _session;
+            ReportedKittyKey? reported = null;
+            if (_enableKittyKeyboardProtocol && _buffer?.Modes is { } modes && modes.KittyKeyboard.ReportEventTypes
+                && (key == Key.Escape || TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, modes, TerminalKeyEventKind.Repeat) != null))
             {
-                (_reportedKittyKeys ??= new()).TryAdd(KeyIdentity(key, physical), new(key, state, state.Generation));
+                var state = modes.KittyKeyboard;
+                reported = new(key, state, state.Generation);
             }
             SendUserInput(sequence);
+            if (reported is { } held && ReferenceEquals(session, _session)
+                && ReferenceEquals(held.State, _buffer?.Modes.KittyKeyboard) && held.Generation == held.State.Generation)
+            {
+                (_reportedKittyKeys ??= new()).TryAdd(KeyIdentity(key, physical), held);
+            }
         }
 
         internal Func<Key, KeyModifiers, bool>? KeyDownInterceptor { get; set; }
@@ -127,12 +143,8 @@ namespace Ntilde.Shell
                 return false;
             }
 
-            TerminalKeyEventKind eventKind = KittyEventKind(key, physicalKey);
+            TerminalKeyEventKind eventKind = KittyEventKind(ref key, physicalKey);
             ResetCursorBlink();
-
-            // Handle keys that don't generate text input (Control codes, arrows, etc.)
-            // Logic copied from MainWindow
-            bool isCtrl = (keyModifiers & KeyModifiers.Control) != 0;
 
             // Kitty keyboard protocol (disambiguation and negotiated event reporting). Must run before every legacy path
             // below - including Alt-sends-ESC - because the protocol replaces those encodings
@@ -145,7 +157,7 @@ namespace Ntilde.Shell
             // even if a TUI already pushed Kitty flags onto the buffer's ModeState.
             if (_enableKittyKeyboardProtocol && TryEncodeKittyKey(key, keyModifiers, eventKind, out string? kittySequence))
             {
-                SendKeyInput(key, keyModifiers, physicalKey, kittySequence!);
+                SendKeyInput(key, keyModifiers, physicalKey, kittySequence);
                 return true;
             }
 
@@ -161,112 +173,7 @@ namespace Ntilde.Shell
                 }
             }
 
-            switch (key)
-            {
-                case Key.Enter:
-                    if (!_session.IsProcessRunning)
-                    {
-                        // The session has exited (e.g. SSH disconnected) but the dead session
-                        // object is kept around so the "[Press Enter to reconnect]" banner works.
-                        // Don't swallow Enter into the dead PTY — let it bubble up to
-                        // TerminalPane.OnKeyDown, which owns the reconnect-on-Enter logic.
-                        return false;
-                    }
-                    // Two phases around the carriage return, and which side each lands on is
-                    // load-bearing (Codex P1 and P2 on #448).
-                    //
-                    // EnterObserving must precede the CR. It is where the command line is read out
-                    // of the grid, and that read is only truthful while the line is still on screen:
-                    // the moment the CR reaches the PTY the shell may repaint over it, and - since
-                    // the OSC 133 command-input window closes synchronously on the parse thread - a
-                    // fast shell answering with a bare 133;C can shut the window before this method's
-                    // next statement runs, at which point the read is refused and the command is
-                    // lost from history silently. Cost is one grid read under the buffer's read lock.
-                    //
-                    // EnterObserved must NOT. It is where history persistence starts, and
-                    // JsonlHistoryStore.AppendAsync does redaction, migration checks, directory
-                    // creation and a file open synchronously before its first incomplete await.
-                    // Slow storage has no business sitting between a keypress and the shell.
-                    //
-                    // finally, so a throwing observer cannot swallow the user's Enter: the keystroke
-                    // reaches the shell either way, and the exception still propagates behind it.
-                    try
-                    {
-                        EnterObserving?.Invoke();
-                    }
-                    finally
-                    {
-                        SendKeyInput(key, keyModifiers, physicalKey, "\r");
-                    }
-
-                    EnterObserved?.Invoke();
-                    return true;
-                case Key.Back:
-                    SendKeyInput(key, keyModifiers, physicalKey, "\x7f");
-                    BackspaceObserved?.Invoke();
-                    return true;
-                case Key.Tab:
-                    // Shift+Tab must emit the back-tab (CBT) sequence ESC [ Z, exactly as
-                    // xterm does. TUIs like Claude Code rely on it for reverse navigation
-                    // (e.g. cycling permission modes backward); a literal tab breaks that.
-                    SendKeyInput(key, keyModifiers, physicalKey, (keyModifiers & KeyModifiers.Shift) != 0 ? "\x1b[Z" : "\t");
-                    return true;
-                case Key.Escape:
-                    SendKeyInput(key, keyModifiers, physicalKey, "\x1b");
-                    return true;
-
-                default:
-                    if (isCtrl)
-                    {
-                        // Ctrl+A..Z -> 0x01..0x1A, plus the Ctrl+punctuation/digit C0 rows
-                        // (Ctrl+\ -> FS, Ctrl+] -> GS, Ctrl+_ -> US, ...). Declines AltGr
-                        // (Ctrl+Alt) so composed text still arrives through OnTextInput. App
-                        // shortcuts on these chords never get here: MainWindow's tunnel handler
-                        // consumes them first.
-                        string? controlSequence = TerminalInputModeEncoder.EncodeLegacyControlKey(key, keyModifiers);
-                        if (controlSequence != null)
-                        {
-                            SendKeyInput(key, keyModifiers, physicalKey, controlSequence);
-                            return true;
-                        }
-                    }
-                    break;
-
-                case Key.C:
-                    if (isCtrl)
-                    {
-                        // Copy-on-Ctrl+C is the Windows/Linux convenience. macOS copies with Cmd+C
-                        // (above), so there Ctrl+C is always the interrupt, selection or not.
-                        if (HasSelection() && !UseMacOSClipboardChords)
-                        {
-                            _ = CopySelectionToClipboard();
-                            ClearSelection();
-                        }
-                        else
-                        {
-                            SendKeyInput(key, keyModifiers, physicalKey, "\x03");
-                        }
-                        return true;
-                    }
-                    break;
-                case Key.V:
-                    if (isCtrl)
-                    {
-                        // Clipboard paste - handled by wrapping logic or we need dependency injection?
-                        // TerminalView technically doesn't know about Window's PasteFromClipboard.
-                        // But providing a way to paste is essential.
-                        // For now we might leave CTRL+V in MainWindow or raise an event?
-                        // MainWindow is better for accessing Clipboard safely.
-                        // So we WON'T handle Ctrl+V here, let it bubble/tunnel?
-                        // Actually MainWindow has a global handler for Ctrl+V.
-                        // If we don't handle it here, MainWindow will see it?
-                        // MainWindow's handler is Tunnel, so it sees it BEFORE this.
-                        // So Ctrl+V is fine in MainWindow.
-                    }
-                    break;
-
-                    // Arrows
-            }
+            if (HandleLegacyKeyDown(key, keyModifiers, physicalKey)) return true;
 
             // Cursor, editing and function keys, with their modifiers (Ctrl+Left -> CSI 1;5D). Every
             // modifier combination not claimed by Kitty event reporting arrives here:
@@ -286,6 +193,95 @@ namespace Ntilde.Shell
             return false;
         }
 
+        /// <summary>Legacy control/recovery keys, after Kitty and Alt encoders decline them.</summary>
+        private bool HandleLegacyKeyDown(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey)
+        {
+            switch (key)
+            {
+                case Key.Enter:
+                    // Let the pane's reconnect-on-Enter binding handle an exited session.
+                    if (_session?.IsProcessRunning != true) return false;
+                    return SendEnterKey(keyModifiers, physicalKey);
+                case Key.Back:
+                    SendKeyInput(key, keyModifiers, physicalKey, "\x7f");
+                    BackspaceObserved?.Invoke();
+                    return true;
+                case Key.Tab:
+                    SendKeyInput(key, keyModifiers, physicalKey, (keyModifiers & KeyModifiers.Shift) != 0 ? "\x1b[Z" : "\t");
+                    return true;
+                case Key.Escape:
+                    SendKeyInput(key, keyModifiers, physicalKey, "\x1b");
+                    return true;
+                case Key.C:
+                    return HandleLegacyControlC(keyModifiers, physicalKey);
+                case Key.V:
+                    // Paste belongs to MainWindow's tunnel handler.
+                    return false;
+                default:
+                    return SendLegacyControlKey(key, keyModifiers, physicalKey);
+            }
+        }
+
+        /// <summary>Preserves command-history reads before CR, and persistence after it.</summary>
+        private bool SendEnterKey(KeyModifiers keyModifiers, PhysicalKey physicalKey)
+        {
+            // Two phases around the carriage return, and which side each lands on is
+            // load-bearing (Codex P1 and P2 on #448).
+            //
+            // EnterObserving must precede the CR. It is where the command line is read out
+            // of the grid, and that read is only truthful while the line is still on screen:
+            // the moment the CR reaches the PTY the shell may repaint over it, and - since
+            // the OSC 133 command-input window closes synchronously on the parse thread - a
+            // fast shell answering with a bare 133;C can shut the window before this method's
+            // next statement runs, at which point the read is refused and the command is
+            // lost from history silently. Cost is one grid read under the buffer's read lock.
+            //
+            // EnterObserved must NOT. It is where history persistence starts, and
+            // JsonlHistoryStore.AppendAsync does redaction, migration checks, directory
+            // creation and a file open synchronously before its first incomplete await.
+            // Slow storage has no business sitting between a keypress and the shell.
+            //
+            // finally, so a throwing observer cannot swallow the user's Enter: the keystroke
+            // reaches the shell either way, and the exception still propagates behind it.
+            try
+            {
+                EnterObserving?.Invoke();
+            }
+            finally
+            {
+                SendKeyInput(Key.Enter, keyModifiers, physicalKey, "\r");
+            }
+
+            EnterObserved?.Invoke();
+            return true;
+        }
+
+        /// <summary>Off macOS, Ctrl+C copies a selection; otherwise it sends the interrupt byte.</summary>
+        private bool HandleLegacyControlC(KeyModifiers keyModifiers, PhysicalKey physicalKey)
+        {
+            if ((keyModifiers & KeyModifiers.Control) == 0) return false;
+            if (HasSelection() && !UseMacOSClipboardChords)
+            {
+                _ = CopySelectionToClipboard();
+                ClearSelection();
+            }
+            else
+            {
+                SendKeyInput(Key.C, keyModifiers, physicalKey, "\x03");
+            }
+            return true;
+        }
+
+        /// <summary>Encodes legacy Ctrl letters/punctuation, leaving AltGr text untouched.</summary>
+        private bool SendLegacyControlKey(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey)
+        {
+            if ((keyModifiers & KeyModifiers.Control) == 0) return false;
+            string? sequence = TerminalInputModeEncoder.EncodeLegacyControlKey(key, keyModifiers);
+            if (sequence == null) return false;
+            SendKeyInput(key, keyModifiers, physicalKey, sequence);
+            return true;
+        }
+
         /// <summary>
         /// Applies the two Ntilde-local carve-outs that must win over the kitty keyboard
         /// protocol, then defers to <see cref="TerminalInputModeEncoder.EncodeKittyKey"/>.
@@ -297,7 +293,7 @@ namespace Ntilde.Shell
         ///    as CSI 99;5u (the spec explicitly notes Ctrl+C stops raising SIGINT in this mode).
         ///    Not on macOS, where copy is Cmd+C and Ctrl+C is always the real key.
         /// </summary>
-        private bool TryEncodeKittyKey(Key key, KeyModifiers keyModifiers, TerminalKeyEventKind eventKind, out string? sequence)
+        private bool TryEncodeKittyKey(Key key, KeyModifiers keyModifiers, TerminalKeyEventKind eventKind, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? sequence)
         {
             sequence = null;
 

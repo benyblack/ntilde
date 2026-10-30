@@ -217,12 +217,17 @@ namespace Ntilde.Shell
                 // The report-all-keys enhancement is intentionally not implemented. Keep
                 // these recovery keys usable, including suppressing their modified releases.
                 if (eventKind == TerminalKeyEventKind.Release || bits == 0) return null;
-                int number = key == Key.Enter ? KittyKeyEnter : key == Key.Tab ? KittyKeyTab : KittyKeyBackspace;
+                int number = key switch
+                {
+                    Key.Enter => KittyKeyEnter,
+                    Key.Tab => KittyKeyTab,
+                    _ => KittyKeyBackspace
+                };
                 return FormatKittyEvent(number, bits, 'u', eventKind);
             }
             if (key == Key.Escape)
             {
-                if (!disambiguate && eventKind != TerminalKeyEventKind.Release) return null;
+                if (!disambiguate && eventKind == TerminalKeyEventKind.Press) return null;
                 return FormatKittyEvent(KittyKeyEscape, bits, 'u', eventKind);
             }
 
