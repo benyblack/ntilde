@@ -167,6 +167,60 @@ namespace Ntilde.Tests.RenderTests
         }
 
         [AvaloniaFact]
+        public void ScrollingOutput_ServesTheMovedRowsFromTheRowCache()
+        {
+            // #657: output scrolling a line moves every row up one, unchanged. ScrollUp also touched each row's
+            // revision, so every row missed the cache, every frame, for as long as output streamed - the case a cache
+            // is for. Only the new bottom row (and the row the text went into) should be drawn afresh.
+            var buffer = BufferWithContent();
+            var parser = new AnsiParser(buffer);
+            using var rowCache = new RowImageCache();
+            Render(buffer, rowCache, glyphCache: null);
+
+            parser.Process("one more line\r\n");
+            RendererStatistics.Reset();
+            Render(buffer, rowCache, glyphCache: null);
+
+            Assert.True(
+                RendererStatistics.RowCacheHits >= Rows - 3,
+                $"after a one-line scroll: {RendererStatistics.RowCacheHits} hits, {RendererStatistics.RowCacheMisses} misses (#657)");
+        }
+
+        [AvaloniaFact]
+        public void AScrolledFrame_DrawnFromWarmCaches_MatchesAFreshTerminalsFirstFrame()
+        {
+            // The other half of #657. A moved row keeps its revision now, so what keys by viewport index must also key
+            // by row Id - the snapshot's row-cell cache, the dirty tracking - and a row picture reused after its row
+            // moved must land where the row now is. A terminal drawing from caches warmed frame after frame must show
+            // what a new terminal, fed the same output and drawn once, shows: nothing in that one can be stale.
+            // Drawn as a live view draws (DrawPathHarness); an off-screen capture takes a path without those caches.
+            var output = new System.Text.StringBuilder();
+            using var warm = new DrawPathHarness(120, 12);
+            void Feed(string text)
+            {
+                output.Append(text);
+                warm.Parser.Process(text);
+            }
+
+            for (int i = 0; i < 11; i++)
+            {
+                Feed(DrawPathHarness.TypicalLine(i) + "\r\n");
+            }
+
+            warm.DrawFrame();
+            for (int step = 0; step < 4; step++)
+            {
+                Feed($"\x1b[3{step + 1}mscrolled line {step}\x1b[0m and some text after it\r\n");
+                warm.DrawFrame();
+
+                using var fresh = new DrawPathHarness(120, 12);
+                fresh.Parser.Process(output.ToString());
+                fresh.DrawFrame();
+                Assert.True(warm.Pixels().AsSpan().SequenceEqual(fresh.Pixels()), $"scroll {step}: the warm frame differs from a fresh terminal's (#657)");
+            }
+        }
+
+        [AvaloniaFact]
         public void RenderingWithoutARowCache_ReportsNoHits()
         {
             // Guards the guard: if `RowCache = null` still produced hits, the tests above would be

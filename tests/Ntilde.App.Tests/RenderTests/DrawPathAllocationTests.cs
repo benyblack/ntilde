@@ -16,8 +16,9 @@ namespace Ntilde.Tests.RenderTests;
 /// when the cache that keeps it there is defeated, so a regression of that kind fails here rather than passing CI.
 /// </para>
 /// <para>
-/// Measured on Windows when written (bytes per frame): unchanged 20,968, typing 41,426, scrolling 494,466; without the
-/// row cache (the alternate screen, where vim and less draw) unchanged 162,024.
+/// Measured on Windows when written (bytes per frame): unchanged 20,968, typing 41,426, scrolling 268,503 (494,466
+/// before #657 let moved rows keep their pictures); without the row cache (the alternate screen, where vim and less
+/// draw) unchanged 162,024.
 /// </para>
 /// </remarks>
 [Trait("Category", "RenderMetrics")]
@@ -69,13 +70,13 @@ public class DrawPathAllocationTests
     [AvaloniaFact]
     public void ScrollingFrames_StayWithinBudget()
     {
-        // Every row misses the row cache while output scrolls (ScrollUp touches every row's revision, #657), so this
-        // is a full redraw plus the recording of 40 row pictures; the budget holds that from growing further. Tighten
-        // it once #657 lands.
+        // Moved rows replay their pictures (#657): only the new bottom row is drawn afresh. What remains is mostly the
+        // snapshot rebuilding each index's cells, since every index now shows another row. Every row missing the cache
+        // again, as it did before #657, allocates about 494 KB and fails here.
         int line = 0;
         double bytes = Measure("scrolling", withRowCache: true, h => () => h.Parser.Process("\r\n" + DrawPathHarness.TypicalLine(line++)));
 
-        AssertWithin(bytes, 768 * 1024, "output scrolling a line per frame");
+        AssertWithin(bytes, 384 * 1024, "output scrolling a line per frame");
     }
 
     [AvaloniaFact]
