@@ -504,6 +504,42 @@ public sealed class NativeSshSessionTests
         Assert.Equal("late", Encoding.UTF8.GetString(raw.SelectMany(b => b).ToArray()));
     }
 
+    [Fact]
+    public async Task AnIdlePollLoop_ParksInTheNativeWait_OnAThreadOfItsOwn()
+    {
+        // #173: the loop slept 25 ms between polls, a latency floor on every idle-to-active wake. The native wait
+        // returns the moment the session queues output. It blocks, so the loop holds a thread of its own rather than
+        // one of the pool's (the #81 starvation family).
+        var interop = new FakeNativeSshInterop();
+        using var session = new NativeSshSession(CreateProfile(), interop: interop);
+
+        await WaitUntilAsync(() => interop.WaitCalls > 0);
+
+        Assert.False(interop.PolledOnPoolThread);
+    }
+
+    [Fact]
+    public async Task AnExitHandlerThatDisposesTheSession_DoesNotWaitForItsOwnPollThread()
+    {
+        // Exit is raised on the poll thread, and a handler there may dispose the session. The thread cannot join
+        // itself, so Dispose must not sit out its two seconds waiting for it.
+        var interop = new FakeNativeSshInterop();
+        var session = new NativeSshSession(CreateProfile(), interop: interop);
+        var disposed = new TaskCompletionSource<(string? Thread, TimeSpan Took)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.OnExit += _ =>
+        {
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            session.Dispose();
+            disposed.TrySetResult((Thread.CurrentThread.Name, clock.Elapsed));
+        };
+
+        interop.Enqueue(NativeSshEvent.ExitStatus(0));
+        (string? thread, TimeSpan took) = await disposed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        Assert.Equal("SshSessionPoll", thread);
+        Assert.True(took < TimeSpan.FromSeconds(1), $"Dispose took {took}");
+    }
+
     private static SshProfile CreateProfile()
     {
         return new SshProfile
@@ -576,9 +612,33 @@ public sealed class NativeSshSessionTests
                 throw new InvalidOperationException("Unexpected null handle.");
             }
 
+            Interlocked.CompareExchange(ref _polledOnPoolThread, Thread.CurrentThread.IsThreadPoolThread ? 1 : 0, -1);
             return _events.TryDequeue(out NativeSshEvent? nextEvent)
                 ? nextEvent
                 : null;
+        }
+
+        // What the poll loop did: whether it polled on a pool thread (-1 until it polled), and how often it parked.
+        private int _polledOnPoolThread = -1;
+        private int _waitCalls;
+
+        public bool? PolledOnPoolThread => Volatile.Read(ref _polledOnPoolThread) switch { -1 => null, 0 => false, _ => true };
+
+        public int WaitCalls => Volatile.Read(ref _waitCalls);
+
+        /// <summary>What a wait does; by default what the interface's default does: sleep briefly, then report ready.</summary>
+        public Func<TimeSpan, bool>? WaitBehavior { get; set; }
+
+        public bool WaitForEvent(NovaSshSafeHandle sessionHandle, TimeSpan timeout)
+        {
+            Interlocked.Increment(ref _waitCalls);
+            if (WaitBehavior is { } behavior)
+            {
+                return behavior(timeout);
+            }
+
+            Thread.Sleep(timeout < TimeSpan.FromMilliseconds(10) ? timeout : TimeSpan.FromMilliseconds(10));
+            return true;
         }
 
         public void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data)

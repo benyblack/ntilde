@@ -39,6 +39,23 @@ public sealed class NativeSshConnectionPoolTests
     }
 
     [Fact]
+    public async Task TheConnectionAndEachTab_ParkInTheNativeWait_OnThreadsOfTheirOwn()
+    {
+        // #173: both loops slept 25 ms between polls. The connection's carries the forwards' traffic, and a tab's its
+        // shell's output; each now parks in the native wait, on a thread of its own (the #81 starvation family).
+        var interop = new SharingInterop();
+        var pool = new NativeSshConnectionPool();
+        using NativeSshSession tab = new(CreateProfile(), interop: interop, connectionPool: pool);
+        nint connection = interop.Connections.Single();
+        nint shell = interop.OpenedShells.Single().Handle;
+
+        await WaitUntilAsync(() => interop.WaitedOn(connection) && interop.WaitedOn(shell));
+
+        Assert.False(interop.PolledOnPoolThread(connection));
+        Assert.False(interop.PolledOnPoolThread(shell));
+    }
+
+    [Fact]
     public void ProfileWithoutMultiplexing_ConnectsPerTab()
     {
         var interop = new SharingInterop();
@@ -545,6 +562,21 @@ public sealed class NativeSshConnectionPoolTests
     private sealed class SharingInterop : INativeSshInterop
     {
         private readonly ConcurrentDictionary<nint, ConcurrentQueue<NativeSshEvent>> _events = new();
+
+        // Per handle: whether its poll loop polled on a pool thread, and whether it parked in the native wait.
+        private readonly ConcurrentDictionary<nint, bool> _polledOnPoolThread = new();
+        private readonly ConcurrentDictionary<nint, bool> _waitedOn = new();
+
+        public bool? PolledOnPoolThread(nint handle) => _polledOnPoolThread.TryGetValue(handle, out bool pool) ? pool : null;
+
+        public bool WaitedOn(nint handle) => _waitedOn.ContainsKey(handle);
+
+        public bool WaitForEvent(NovaSshSafeHandle sessionHandle, TimeSpan timeout)
+        {
+            _waitedOn[sessionHandle.DangerousGetHandle()] = true;
+            Thread.Sleep(timeout < TimeSpan.FromMilliseconds(10) ? timeout : TimeSpan.FromMilliseconds(10));
+            return true;
+        }
         private int _nextHandle = 100;
 
         public int PlainConnectCount { get; private set; }
@@ -632,6 +664,7 @@ public sealed class NativeSshConnectionPoolTests
 
         public NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle)
         {
+            _polledOnPoolThread.TryAdd(sessionHandle.DangerousGetHandle(), Thread.CurrentThread.IsThreadPoolThread);
             if (!Queue(sessionHandle.DangerousGetHandle()).TryDequeue(out NativeSshEvent? nextEvent))
             {
                 return null;
