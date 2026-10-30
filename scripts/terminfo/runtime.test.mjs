@@ -30,12 +30,25 @@ test('an alias outside a bundle cannot bypass the owned launch restriction', { s
     assert.throws(() => resolveOwnedExecutable(alias), /uninstalled sidecar outside .app bundles/);
 }));
 
-test('npm resolution uses the selected Node installation rather than PATH', () => fixture(root => {
+test('Unix npm resolution uses the selected Node installation rather than PATH', () => fixture(root => {
     const cli = join(root, 'lib/node_modules/npm/bin/npm-cli.js');
     mkdirSync(dirname(cli), { recursive: true });
     writeFileSync(cli, '');
     // null explicitly selects the Node layout without inheriting a user override.
-    assert.equal(resolveNpmCli(join(root, 'bin/node'), null), cli);
+    assert.equal(resolveNpmCli(join(root, 'bin/node'), null, 'darwin'), cli);
+}));
+
+test('Windows npm resolution uses node_modules beside node.exe and preserves explicit overrides', () => fixture(root => {
+    const installation = join(root, 'Program Files', 'nodejs');
+    const cli = join(installation, 'node_modules', 'npm', 'bin', 'npm-cli.js');
+    mkdirSync(dirname(cli), { recursive: true });
+    writeFileSync(cli, '');
+    const node = join(installation, 'node.exe');
+    assert.equal(resolveNpmCli(node, null, 'win32'), cli);
+    const override = join(root, 'custom npm-cli.js');
+    writeFileSync(override, '');
+    assert.equal(resolveNpmCli(node, override, 'win32'), override);
+    assert.throws(() => resolveNpmCli(node, 'npm-cli.js', 'win32'), /absolute/);
 }));
 
 test('collector preparation refuses a missing lockfile and retains exact bytes', () => fixture(root => {

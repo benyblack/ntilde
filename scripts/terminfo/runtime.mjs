@@ -60,8 +60,10 @@ export function resolveOwnedExecutable(executable) {
     return resolved;
 }
 
-export function resolveNpmCli(nodeExecutable = process.execPath, configuredPath = process.env.NTILDE_TERMINFO_NPM_CLI) {
-    const path = configuredPath ?? join(dirname(nodeExecutable), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');
+export function resolveNpmCli(nodeExecutable = process.execPath, configuredPath = process.env.NTILDE_TERMINFO_NPM_CLI,
+    platform = process.platform) {
+    const prefix = platform === 'win32' ? dirname(nodeExecutable) : join(dirname(nodeExecutable), '..', 'lib');
+    const path = configuredPath ?? join(prefix, 'node_modules', 'npm', 'bin', 'npm-cli.js');
     if (!isAbsolute(path)) throw new Error('NTILDE_TERMINFO_NPM_CLI must be an absolute npm-cli.js path.');
     if (!existsSync(path)) throw new Error('Install npm beside the selected Node or set NTILDE_TERMINFO_NPM_CLI; see docs/qa/QA_TERMINFO.md.');
     return realpathSync(path);

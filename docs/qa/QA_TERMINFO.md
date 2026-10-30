@@ -26,7 +26,9 @@ Replace the example version with the actual version, including build metadata
 when available. On macOS/Linux the runner installs `terminfo.dev@4.0.0` into the
 ignored `artifacts/terminfo/tool` directory on first use, with install scripts
 disabled. Automatic preparation executes `npm-cli.js` beside the selected Node
-installation directly, without searching `PATH`. For a different installation,
+installation directly, without searching `PATH`: `../lib/node_modules/npm/bin`
+from the Node executable on Unix, or `node_modules/npm/bin` beside `node.exe`
+on Windows. For a different installation,
 set `NTILDE_TERMINFO_NPM_CLI` to its absolute `npm-cli.js` path. Both runners
 need that npm CLI for each run, including when the cache was prepared manually.
 On Windows, prepare that cache first in PowerShell:
