@@ -100,6 +100,36 @@ public class UnderlineStateTransferTests
     }
 
     [Fact]
+    public void APlainUnderlineEntry_ImportsAsNoEntry()
+    {
+        // A straight underline in the text color has no side-table entry on the live path; an attach that stored one
+        // would have the exports and the renderer treat a plain underline as a styled one.
+        var (source, parser) = NewTerminal();
+        parser.Process("\x1b[4:3mA\x1b[0m\r\nx\r\nx\r\nx\r\n\x1b[4:3mB");
+        Assert.True(source.Scrollback.Count > 0);
+        TerminalStateSnapshot snapshot = source.ExportState(int.MaxValue);
+        foreach (TerminalUnderlineEntry entry in snapshot.Underlines)
+        {
+            entry.Style = (byte)UnderlineStyle.Single;
+        }
+
+        var (restored, _) = NewTerminal();
+        restored.ImportState(snapshot);
+
+        Assert.Null(restored.GetUnderlineAbsolute(0, 0)); // scrollback
+        Assert.Null(OnScreen(restored, 0, restored.CursorRow));
+        restored.Lock.EnterReadLock();
+        try
+        {
+            Assert.True(restored.GetCellAbsolute(0, 0).IsUnderline);
+        }
+        finally
+        {
+            restored.Lock.ExitReadLock();
+        }
+    }
+
+    [Fact]
     public void AnUnderlineIndexNamingNoEntry_IsRejected()
     {
         var (source, parser) = NewTerminal();

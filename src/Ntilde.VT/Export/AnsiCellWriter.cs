@@ -104,8 +104,12 @@ namespace Ntilde.VT.Export
         {
             ArgumentNullException.ThrowIfNull(sb);
             ArgumentNullException.ThrowIfNull(underline);
-            sb.Append("\x1b[");
             bool styled = underline.Style != UnderlineStyle.Single;
+            // A straight underline in the text color takes nothing past the 4 of the main SGR. Written, it would be
+            // an empty ESC [ m: SGR 0, a reset.
+            if (!styled && !underline.HasColor) return;
+
+            sb.Append("\x1b[");
             if (styled) sb.Append("4:").Append((int)underline.Style);
             if (underline.HasColor)
             {

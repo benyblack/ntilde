@@ -1162,7 +1162,7 @@ namespace Ntilde.VT
                 // become one instance, as the cells written with one pen shared one.
                 if (snapshot.Underlines != null && snapshot.Cols > 0)
                 {
-                    var interned = new Dictionary<(byte, uint?, short), CellUnderline>();
+                    var interned = new Dictionary<(byte, uint?, short), CellUnderline?>();
                     foreach (var kvp in snapshot.Underlines)
                     {
                         TerminalUnderlineEntry? entry = kvp.Value;
@@ -1175,7 +1175,8 @@ namespace Ntilde.VT
                         var key = (entry.Style, entry.Color, entry.ColorIndex);
                         if (!interned.TryGetValue(key, out CellUnderline? underline))
                         {
-                            underline = new CellUnderline(
+                            // None for a straight underline in the text color, as on the live path.
+                            underline = CellUnderline.For(
                                 (UnderlineStyle)entry.Style,
                                 entry.Color is { } rgb ? TermColor.FromUint(rgb) : null,
                                 entry.ColorIndex);

@@ -144,6 +144,18 @@ public sealed class AnsiCellWriterTests
     }
 
     [Fact]
+    public void A_plain_underline_entry_adds_no_sequence()
+    {
+        // CodeRabbit review of #649: it wrote ESC [ m, which is SGR 0 and resets the cell's style. The live pen never
+        // stores such an entry; the main SGR's 4 already says all of it.
+        var sb = new StringBuilder();
+
+        AnsiCellWriter.AppendUnderlineSgr(sb, new CellUnderline(UnderlineStyle.Single));
+
+        Assert.Equal(string.Empty, sb.ToString());
+    }
+
+    [Fact]
     public void A_change_of_underline_style_alone_starts_a_new_style()
     {
         string row = WriteRow(Parse("\x1b[4:3mA\x1b[4:2mB"), 0, 2);

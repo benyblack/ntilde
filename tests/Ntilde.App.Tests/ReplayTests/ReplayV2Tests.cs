@@ -270,6 +270,45 @@ namespace Ntilde.Tests.ReplayTests
         }
 
         [Fact]
+        public async Task ReplayV2_Snapshot_APlainUnderlineEntry_RestoresAsNoEntry()
+        {
+            // A straight underline in the text color has no side-table entry on the live path, so a snapshot naming
+            // one restores none (CodeRabbit review of #649).
+            string tempFile = Path.GetTempFileName();
+            try
+            {
+                var liveBuffer = new TerminalBuffer(10, 3);
+                new AnsiParser(liveBuffer).Process("\x1b[4:3mA");
+                using (var recorder = new PtyRecorder(tempFile, 10, 3))
+                {
+                    recorder.RecordSnapshot(liveBuffer);
+                }
+
+                var replayBuffer = new TerminalBuffer(10, 3);
+                var runner = new ReplayRunner(tempFile);
+                await runner.RunAsync(
+                    onDataCallback: _ => Task.CompletedTask,
+                    onResizeCallback: (_, _) => Task.CompletedTask,
+                    onSnapshotCallback: snapshot =>
+                    {
+                        foreach (TerminalUnderlineEntry entry in snapshot.Underlines!.Values)
+                        {
+                            entry.Style = (byte)UnderlineStyle.Single;
+                        }
+
+                        replayBuffer.ApplySnapshot(snapshot);
+                        return Task.CompletedTask;
+                    }, ct: TestContext.Current.CancellationToken);
+
+                Assert.Null(replayBuffer.GetUnderlineAbsolute(0, 0));
+            }
+            finally
+            {
+                if (File.Exists(tempFile)) File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
         public async Task ReplayV2_Snapshot_RoundTrip_PreservesPendingWrap()
         {
             // A snapshot taken right after output fills the last column carries
