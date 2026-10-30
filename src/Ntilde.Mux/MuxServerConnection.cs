@@ -544,13 +544,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     {
                         StartRecordingParams p = Params(request, MuxJsonContext.Default.StartRecordingParams);
                         var recordingSession = LiveSession(p.SessionId);
-                        recordingSession.InvokeAsync(() =>
-                        {
-                            (recordingSession.Inner as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(
-                                recordingSession.Parser.SixelCellWidthPx ?? 10, recordingSession.Parser.SixelCellHeightPx ?? 20);
-                            recordingSession.Inner.StartRecording(p.Path);
-                            return 0;
-                        }).GetAwaiter().GetResult();
+                        recordingSession.StartRecording(p.Path);
                         ReplyEmpty(request);
                         break;
                     }
@@ -565,13 +559,13 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                         if (p.MaxBytes <= 0) throw new MuxRequestException(MuxErrorCodes.ProtocolError, "maxBytes must be positive.");
 
                         // The budget is memory the daemon holds: never the peer's to choose unbounded.
-                        LiveSession(p.SessionId).Inner.EnableFlightRecording(Math.Min(p.MaxBytes, _server.Options.MaxFlightRecordingBytes));
+                        LiveSession(p.SessionId).EnableFlightRecording(Math.Min(p.MaxBytes, _server.Options.MaxFlightRecordingBytes));
                         ReplyEmpty(request);
                         break;
                     }
 
                 case MuxMethods.DisableFlightRecording:
-                    Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).Inner.DisableFlightRecording();
+                    Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).DisableFlightRecording();
                     ReplyEmpty(request);
                     break;
                 case MuxMethods.ExportFlight:

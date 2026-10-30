@@ -173,7 +173,7 @@ namespace Ntilde.Replay
         {
             ArgumentNullException.ThrowIfNull(filePath);
             // Surface path errors before PtyRecorder's best-effort asynchronous writer starts.
-            using (File.Create(filePath)) { }
+            using (File.Create(filePath)) { /* Close the writable-path probe before starting the writer. */ }
             using var recorder = new PtyRecorder(filePath, cols, rows, shell ?? string.Empty, cellSize);
 
             if (entries.Length == 0)

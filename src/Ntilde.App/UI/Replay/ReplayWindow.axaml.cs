@@ -115,7 +115,7 @@ namespace Ntilde.UI.Replay
                 slider.PointerReleased += (s, e) =>
                 {
                     _isUserScrubbing = false;
-                    _ = PerformSeek((long)slider.Value);
+                    _ = PerformSeek((long)slider.Value, CancellationToken.None);
                 };
 
                 // Also handle value changes (e.g. clicking on track)
@@ -252,7 +252,7 @@ namespace Ntilde.UI.Replay
                 appliedTime = Math.Max(appliedTime, result.LastGoodOffset);
                 reachedTarget = !seekCts.IsCancellationRequested && !result.Truncated;
             }
-            catch (OperationCanceledException) when (seekCts.IsCancellationRequested) { }
+            catch (OperationCanceledException) when (seekCts.IsCancellationRequested) { /* Keep the last applied seek position. */ }
             catch (Exception ex) { TerminalLogger.Error($"[ReplayWindow] Seek Error: {ex.Message}"); }
             await ApplyInSessionAsync(sessionId, () =>
             {
@@ -326,11 +326,13 @@ namespace Ntilde.UI.Replay
             }
             finally
             {
-                if (_playbackSessionGate.IsCurrent(sessionId))
-                {
-                    Dispatcher.UIThread.Post(() => { if (_playbackSessionGate.IsCurrent(sessionId)) StopPlayback(); });
-                }
+                Dispatcher.UIThread.Post(() => StopPlaybackIfCurrent(sessionId));
             }
+        }
+
+        private void StopPlaybackIfCurrent(int sessionId)
+        {
+            if (_playbackSessionGate.IsCurrent(sessionId)) StopPlayback();
         }
 
         private void ApplySelectedPlaybackSpeed(ComboBox comboSpeed)

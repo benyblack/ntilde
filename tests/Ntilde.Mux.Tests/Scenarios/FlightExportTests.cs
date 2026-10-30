@@ -7,6 +7,70 @@ namespace Ntilde.Mux.Tests.Scenarios;
 public sealed class FlightExportTests
 {
     [Theory]
+    [InlineData("start")]
+    [InlineData("enable")]
+    [InlineData("disable")]
+    public async Task Recording_lifecycle_requests_do_not_overtake_output_waiting_to_be_parsed(string operation)
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        using MuxClientSession session = client.OpenSession(id, "scripted");
+        if (operation == "disable") session.EnableFlightRecording(1 << 20);
+        await client.PingAsync(TestContext.Current.CancellationToken);
+        var mux = host.Mux(id);
+        await mux.FlushAsync();
+        Thread? operationThread = null;
+        string? lineAtOperation = null;
+        Action observed = () => { operationThread = Thread.CurrentThread; lineAtOperation = BufferSnapshot.Capture(mux.Buffer).Lines[0]; };
+        if (operation == "start") host.Fake(id).OnStartRecording = observed;
+        else if (operation == "enable") host.Fake(id).OnEnableFlightRecording = observed;
+        else host.Fake(id).OnDisableFlightRecording = observed;
+        using var parked = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        Thread? parseThread = null;
+        Task<bool> parking = mux.InvokeAsync(() => { parseThread = Thread.CurrentThread; parked.Set(); return release.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); });
+        Assert.True(parked.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        try
+        {
+            host.Fake(id).Emit("before\r\n");
+            Task change = Task.Run(async () =>
+            {
+                if (operation == "start") session.StartRecording("scripted.rec");
+                else if (operation == "enable") session.EnableFlightRecording(1 << 20);
+                else session.DisableFlightRecording();
+                await client.PingAsync(TestContext.Current.CancellationToken);
+            }, TestContext.Current.CancellationToken);
+            await TestWait.UntilAsync(() => change.IsCompleted || mux.QueuedControlCount > 0 || mux.QueuedDataCount == 2, "the lifecycle request reached its queue");
+            bool changedBeforeParsing = change.IsCompleted;
+            host.Fake(id).Emit("later");
+            release.Set();
+            Assert.True(await parking);
+            await change;
+            await mux.FlushAsync();
+            Assert.False(changedBeforeParsing);
+            Assert.Same(parseThread, operationThread);
+            Assert.Equal("before", lineAtOperation);
+            if (operation == "start")
+                Assert.Equal("later", Encoding.UTF8.GetString(host.Fake(id).RecordedOutput.SelectMany(data => data).ToArray()));
+            if (operation == "disable") Assert.False(host.Fake(id).IsFlightRecording);
+            if (operation == "enable")
+            {
+                string path = Path.GetTempFileName();
+                try
+                {
+                    Assert.True(await Task.Run(() => session.TryExportFlightRecording(path, out _), TestContext.Current.CancellationToken));
+                    var bytes = new List<byte>();
+                    await new ReplayRunner(path).RunAsync(data => { bytes.AddRange(data); return Task.CompletedTask; }, ct: TestContext.Current.CancellationToken);
+                    Assert.Equal("later", Encoding.UTF8.GetString(bytes.ToArray()));
+                }
+                finally { File.Delete(path); }
+            }
+        }
+        finally { release.Set(); }
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task An_exited_session_can_still_export_its_retained_flight_recording(bool stopParser)

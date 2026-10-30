@@ -543,11 +543,11 @@ public sealed class HeadlessTerminalSession : IDisposable
     }
 
     // Take the boundary inside the FIFO data queue, before any subsequent chunk can be parsed.
-    private T AtRecordingBoundary<T>(Func<T> operation)
+    private T AtRecordingBoundary<T>(Func<T> operation, bool allowStopped = true)
     {
         if (Thread.CurrentThread == _parseThread) return operation();
         try { return InvokeAsync(_data, operation).GetAwaiter().GetResult(); }
-        catch (ObjectDisposedException ex) when (ex.ObjectName == nameof(HeadlessTerminalSession))
+        catch (ObjectDisposedException ex) when (allowStopped && ex.ObjectName == nameof(HeadlessTerminalSession))
         {
             // A stopped parser still permits export of retained evidence. Wait for teardown to
             // finish so this fallback cannot race a final in-flight chunk; a wedged parser fails closed.
@@ -555,6 +555,25 @@ public sealed class HeadlessTerminalSession : IDisposable
             return operation();
         }
     }
+
+    internal void StartRecording(string path) => AtRecordingBoundary(() =>
+    {
+        SetRecordingMetrics();
+        _session.StartRecording(path);
+        return 0;
+    }, allowStopped: false);
+
+    internal void EnableFlightRecording(long maxBytes) => AtRecordingBoundary(() =>
+    {
+        SetRecordingMetrics();
+        _session.EnableFlightRecording(maxBytes);
+        return 0;
+    }, allowStopped: false);
+
+    internal void DisableFlightRecording() => AtRecordingBoundary(() => { _session.DisableFlightRecording(); return 0; });
+
+    private void SetRecordingMetrics() => (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(
+        _parser.SixelCellWidthPx ?? 10, _parser.SixelCellHeightPx ?? 20);
 
     internal void StopRecording() => AtRecordingBoundary(() => { _session.StopRecording(); return 0; });
 
