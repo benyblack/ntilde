@@ -120,7 +120,7 @@ public sealed class TextClientSession : IDisposable
             try
             {
                 // The outer terminal sends legacy keys and the mux answers queries: no kitty keyboard.
-                session.AttachAsync(mode, 0, new MuxPresentation { Cols = attachedSize.Cols, Rows = attachedSize.Rows, KittyKeyboardEnabled = false })
+                session.AttachAsync(mode, 0, new MuxPresentation { Cols = attachedSize.Cols, Rows = attachedSize.Rows, KittyKeyboardEnabled = false, SupportsSixelScrolling = true })
                     .GetAwaiter().GetResult();
             }
             catch (Exception ex) when (ex is MuxProtocolException or IOException or TimeoutException or ObjectDisposedException)

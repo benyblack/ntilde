@@ -92,7 +92,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     {
         MuxClient c = await _mux.ConnectClientAsync();
         Guid id = await MuxTestHost.SpawnAsync(c);
-        return (c, await MuxTestHost.AttachPaneAsync(c, id));
+        return (c, await MuxTestHost.AttachPaneAsync(c, id, MuxTestHost.DefaultPresentation with { SupportsSixelScrolling = true }));
     }).GetAwaiter().GetResult();
 
     /// <summary>Runs "Attach to session…", choosing <paramref name="id"/>, and returns the pane that attached it.</summary>

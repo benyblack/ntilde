@@ -39,6 +39,30 @@ public sealed class TextClientTests
         Assert.False(host.Mux(id).IsExited);
     }
 
+    [Fact]
+    public async Task Attach_opts_into_GUI_font_changes_for_SIXEL_cursor_layout()
+    {
+        using var host = new MuxTestHost();
+        MuxClient gui = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(gui);
+        MuxClientSession owner = gui.OpenSession(id, "scripted");
+        var presentation = MuxTestHost.DefaultPresentation with { SupportsSixelScrolling = true };
+        await owner.AttachAsync(0, presentation, Ct);
+        MuxClient attacher = await host.ConnectClientAsync();
+        using var console = new FakeConsoleSurface(80, 24);
+        using var client = new TextClientSession(attacher, id, console, new TextClientOptions { ReadOnly = true });
+        Task<int> run = RunAsync(client);
+        await TestWait.UntilAsync(() => console.ScreenText().Contains("read-only", StringComparison.Ordinal), "the CLI attached");
+
+        owner.UpdatePresentation(presentation with { CellHeightPx = 6 });
+        await host.SettleAsync(id, gui, attacher);
+        host.Fake(id).Emit("\x1b[H\x1bPq!30~-~\x1b\\after-image");
+        await TestWait.UntilAsync(() => console.ScreenText().Split('\n')[2].Contains("after-image", StringComparison.Ordinal),
+            "the actual CLI used two image rows after the GUI font change");
+        console.Type("\u001cd");
+        Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+    }
+
     /// <summary>Final review: a render thread that never started makes Join throw; the console is still restored.</summary>
     [Fact]
     public async Task A_render_thread_that_never_started_still_restores_the_console()

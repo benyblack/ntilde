@@ -17,12 +17,14 @@ public sealed class TextClientModel : IDisposable
         Parser = new AnsiParser(Buffer, session.ForceConPtyFiltering)
         {
             ImageDecoder = null,
+            AllowNonSixelImages = false,
             AllowNativeKittyGraphics = false,
         };
         Parser.OnResponse = static _ => { };
         session.SnapshotReceived += OnSnapshot;
         session.OnOutputReceived += OnOutput;
         session.StreamResize += OnResize;
+        session.SixelCellSizeChanged += OnSixelCellSize;
     }
 
     public MuxClientSession Session { get; }
@@ -38,6 +40,7 @@ public sealed class TextClientModel : IDisposable
         Session.SnapshotReceived -= OnSnapshot;
         Session.OnOutputReceived -= OnOutput;
         Session.StreamResize -= OnResize;
+        Session.SixelCellSizeChanged -= OnSixelCellSize;
     }
 
     private void OnSnapshot(TerminalStateSnapshot snapshot)
@@ -51,6 +54,9 @@ public sealed class TextClientModel : IDisposable
         Parser.Process(text);
         Changed?.Invoke();
     }
+
+    private void OnSixelCellSize(float width, float height) =>
+        Parser.SixelCellSizeOverride = new SixelCellSize(width, height);
 
     private void OnResize(int cols, int rows)
     {
