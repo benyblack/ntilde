@@ -1,3 +1,4 @@
+using Ntilde.Replay;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -11,6 +12,50 @@ namespace Ntilde.Tests.Core;
 
 public sealed class ReplayWindowTests
 {
+    [AvaloniaFact]
+    public async Task Malformed_snapshot_metrics_leave_the_GUI_buffer_and_parser_unchanged()
+    {
+        string path = Path.GetTempFileName();
+        ReplayWindow? window = null;
+        try
+        {
+            var header = new ReplayHeader { Type = ReplayHeader.TypeToken, Cols = 80, Rows = 24 };
+            var bad = new ReplayEvent
+            {
+                Type = "snapshot",
+                TimeOffsetMs = 100,
+                Snapshot = new ReplaySnapshot
+                {
+                    Cols = 20,
+                    Rows = 8,
+                    SixelCellWidthPx = 12,
+                    SixelCellHeightPx = null,
+                }
+            };
+            File.WriteAllLines(path, [
+                System.Text.Json.JsonSerializer.Serialize(header, Ntilde.VT.ReplayJsonContext.Default.ReplayHeader),
+                System.Text.Json.JsonSerializer.Serialize(bad, Ntilde.VT.ReplayJsonContext.Default.ReplayEvent),
+            ]);
+            window = new ReplayWindow(path);
+            var model = (ReplayViewModel)window.DataContext!;
+            await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => model.DurationMs == 100, "the malformed snapshot was indexed");
+            var parser = (AnsiParser)typeof(ReplayWindow).GetField("_parser", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            var buffer = (TerminalBuffer)typeof(ReplayWindow).GetField("_buffer", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            parser.SixelCellSizeOverride = new SixelCellSize(13, 7);
+            parser.Process("preserved");
+            var before = BufferSnapshot.Capture(buffer);
+            await (Task)typeof(ReplayWindow).GetMethod("PerformSeek", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [100L])!;
+            Assert.Equal((80, 24), (buffer.Cols, buffer.Rows));
+            Assert.Equal(before.Lines, BufferSnapshot.Capture(buffer).Lines);
+            Assert.Equal(new SixelCellSize(13, 7), parser.SixelCellSizeOverride);
+            await (Task)typeof(ReplayWindow).GetMethod("PlaybackLoop", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [0, CancellationToken.None])!;
+            Assert.Equal((80, 24), (buffer.Cols, buffer.Rows));
+            Assert.Equal(before.Lines, BufferSnapshot.Capture(buffer).Lines);
+            Assert.Equal(new SixelCellSize(13, 7), parser.SixelCellSizeOverride);
+        }
+        finally { window?.Close(); File.Delete(path); }
+    }
+
     [AvaloniaFact]
     public async Task Seeking_uses_snapshot_cell_metrics_instead_of_the_header_or_current_font()
     {

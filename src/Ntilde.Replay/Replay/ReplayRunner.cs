@@ -98,13 +98,11 @@ namespace Ntilde.Replay
             string? line = await ReadLineOrEndAsync(reader, ct);
             if (line == null) return result;
 
-            ReplayHeader? header = null;
-            try { header = JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader); }
-            catch (JsonException) { /* A legacy first line is handled by the v1 reader below. */ }
-            bool isV2 = header is not null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2;
-            if (isV2)
+            ReplayHeader? header = ReadHeader(line);
+            bool isV2 = header is not null;
+            if (header is not null)
             {
-                _ = RecordingCellMetrics.FromOptional(header!.SixelCellWidthPx, header.SixelCellHeightPx);
+                _ = RecordingCellMetrics.FromOptional(header.SixelCellWidthPx, header.SixelCellHeightPx);
                 if (onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
                 if (onHeaderCallback is not null) await onHeaderCallback(header);
             }
@@ -170,6 +168,14 @@ namespace Ntilde.Replay
             }
 
             return result;
+        }
+
+        private static ReplayHeader? ReadHeader(string line)
+        {
+            ReplayHeader? header;
+            try { header = JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader); }
+            catch (JsonException) { return null; }
+            return header is not null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2 ? header : null;
         }
 
         // The reads honour the token, but a cancelled run still ends the way it always has: quietly, with the result so
@@ -292,6 +298,7 @@ namespace Ntilde.Replay
         public static void ApplySnapshot(TerminalBuffer buffer, AnsiParser parser, ReplaySnapshot snapshot)
         {
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
+            buffer.Resize(snapshot.Cols, snapshot.Rows);
             buffer.ApplySnapshot(snapshot);
             ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
         }

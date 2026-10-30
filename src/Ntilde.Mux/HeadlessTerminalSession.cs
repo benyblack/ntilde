@@ -149,6 +149,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             AllowNativeKittyGraphics = false,
             KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
         };
+        (_session as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
         (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(cellWidth, cellHeight);
         _parser.OnResponse = EnqueueInput; // through the writer too: the parse thread must never block on stdin
         _sessionChangedIntervalMs = (long)Math.Max(0, options.SessionChangedInterval.TotalMilliseconds);
@@ -725,6 +726,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         // vouch for would only make them diverge from something that is itself wrong.
         if (IsFaulted) return;
 
+        (_session as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(data);
         int maxChars = Utf8ChunkDecoder.GetMaxCharCount(data.Length);
         if (_chars.Length < maxChars) _chars = new char[maxChars];
         int charCount = _decoder.Decode(data, _chars);

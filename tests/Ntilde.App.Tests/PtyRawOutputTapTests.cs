@@ -60,6 +60,56 @@ namespace Ntilde.Tests
 
         [Fact]
         [Trait("Category", "PtySmoke")]
+        public async Task Host_recording_keeps_raw_chunks_with_their_delivery_and_applied_metrics()
+        {
+            byte[] image = Encoding.UTF8.GetBytes("\x1b[24;1H\x1bPq!35~-~\x1b\\Z");
+            var reads = new ScriptedReads([0xE2], [0x82, 0xAC], image);
+            using var arrived = new ManualResetEventSlim();
+            using var release = new ManualResetEventSlim();
+            string path = System.IO.Path.GetTempFileName();
+            try
+            {
+                using RustPtySession session = NewSession(reads);
+                var live = new Ntilde.VT.TerminalBuffer(80, 24);
+                var parser = new Ntilde.VT.AnsiParser(live);
+                int deliveries = 0;
+                session.SubscribeRecordingOutput((text, data) =>
+                {
+                    if (text.Contains("\x1bP", StringComparison.Ordinal))
+                    {
+                        arrived.Set();
+                        Assert.True(release.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+                    }
+                    session.RecordOutputAtHostBoundary(data);
+                    parser.Process(text);
+                    Interlocked.Increment(ref deliveries);
+                });
+                session.StartRecording(path);
+                foreach (var gate in reads.Gates) gate.Release();
+                Assert.True(arrived.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+                session.SetRecordingCellMetrics(12, 6);
+                parser.SixelCellSizeOverride = new Ntilde.VT.SixelCellSize(12, 6);
+                release.Set();
+                await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => Volatile.Read(ref deliveries) == 3, "all raw chunks reached their host boundary");
+                session.StopRecording();
+                var raw = new System.Collections.Generic.List<byte>();
+                await new Ntilde.Replay.ReplayRunner(path).RunAsync(data => { raw.AddRange(data); return Task.CompletedTask; }, ct: TestContext.Current.CancellationToken);
+                Assert.Equal(new byte[] { 0xE2, 0x82, 0xAC }.Concat(image), raw);
+                using var stdout = new System.IO.StringWriter();
+                using var stderr = new System.IO.StringWriter();
+                Assert.Equal(0, ReplayCommand.Execute(["--replay", path], stdout, stderr));
+                Assert.Equal(Ntilde.Replay.BufferSnapshot.Capture(live).ToFormattedString() + Environment.NewLine, stdout.ToString());
+            }
+            finally
+            {
+                release.Set();
+                foreach (var gate in reads.Gates) { if (gate.CurrentCount == 0) gate.Release(); }
+                System.IO.File.Delete(path);
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "PtySmoke")]
         public async Task Bytes_read_before_the_first_raw_subscriber_are_replayed_then_live_bytes_follow_in_order()
         {
             var reads = new ScriptedReads("AB"u8.ToArray(), [0xC3], [0xA9, (byte)'C', (byte)'D']);

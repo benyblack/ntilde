@@ -6,7 +6,7 @@ using Ntilde.Pty;
 
 namespace Ntilde.Platform.Ssh.Sessions;
 
-public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingCellMetrics
+public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary
 {
     private readonly ITerminalSession _inner;
 
@@ -84,6 +84,15 @@ public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITer
 
     public void SendInput(string input) => _inner.SendInput(input);
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);
+    public void UseHostRecordingBoundary() => (_inner as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
+    public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler)
+    {
+        if (_inner is ITerminalRecordingBoundary boundary) boundary.SubscribeRecordingOutput(handler);
+        else _inner.OnOutputReceived += text => handler(text, default);
+    }
+    public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) =>
+        (_inner as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(output);
+
     public void SetRecordingCellMetrics(float widthPx, float heightPx) =>
         (_inner as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(widthPx, heightPx);
 

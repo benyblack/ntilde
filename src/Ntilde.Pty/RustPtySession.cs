@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Ntilde.Pty
 {
-    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingCellMetrics
+    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary
     {
         public Guid Id { get; } = Guid.NewGuid();
         private readonly PtySafeHandle _handle;
@@ -237,7 +237,7 @@ namespace Ntilde.Pty
         private Task? _powerShellInitTask;
 
         // Bounded queue for back-pressure - prevents OOM on high-throughput output
-        private readonly BlockingCollection<string> _outputQueue = new BlockingCollection<string>(boundedCapacity: 100);
+        private readonly BlockingCollection<(string Text, byte[]? RecordingBytes)> _outputQueue = new BlockingCollection<(string, byte[]?)>(boundedCapacity: 100);
 
         // Bounded input queue drained by a dedicated writer thread. The native side does
         // write_all, which can block indefinitely while the foreground program isn't
@@ -956,11 +956,30 @@ namespace Ntilde.Pty
             }
         }
 
+        private int _recordingBoundaryMode; // 0: transport, 1: external raw host, 2: decoded-output host
+        private ReadOnlyMemory<byte> _deliveredRecordingBytes;
+
+        public void UseHostRecordingBoundary() => Volatile.Write(ref _recordingBoundaryMode, 1);
+
+        public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler)
+        {
+            ArgumentNullException.ThrowIfNull(handler);
+            lock (_outputInvocationLock)
+            {
+                if (_recordingBoundaryMode == 2) throw new InvalidOperationException("A recording output host is already installed.");
+                Volatile.Write(ref _recordingBoundaryMode, 2);
+                OnOutputReceived += text => handler(text, _deliveredRecordingBytes);
+            }
+        }
+
+        public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) =>
+            Ntilde.Replay.PtyRecorder.RecordOutputAtBoundary(_recorder, _flightRecorder, Volatile.Read(ref _recordingCellMetrics), output);
+
         private Ntilde.Replay.RecordingCellMetrics _recordingCellMetrics = new(10, 20);
 
         public void SetRecordingCellMetrics(float widthPx, float heightPx)
         {
-            var size = Ntilde.Replay.RecordingCellMetrics.FromOptional(widthPx, heightPx)!;
+            var size = new Ntilde.Replay.RecordingCellMetrics(widthPx, heightPx);
             if (Volatile.Read(ref _recordingCellMetrics) == size) return;
             Volatile.Write(ref _recordingCellMetrics, size);
             _recorder?.RecordSixelCellSize(widthPx, heightPx);
@@ -1038,21 +1057,24 @@ namespace Ntilde.Pty
                     {
                         consecutiveReadErrors = 0;
 
-                        // Record raw bytes before any processing
-                        _recorder?.RecordChunk(buffer, read);
-                        _flightRecorder?.RecordChunk(buffer, read);
+                        // A parser host records at its own ordering boundary; retain original bytes
+                        // only while recording, keeping the ordinary output allocation path unchanged.
+                        int recordingMode = Volatile.Read(ref _recordingBoundaryMode);
+                        if (recordingMode == 0) RecordOutputAtHostBoundary(buffer.AsMemory(0, read));
+                        byte[]? recordingBytes = recordingMode == 2 && (_recorder is not null || _flightRecorder is not null)
+                            ? buffer.AsSpan(0, read).ToArray() : null;
                         _rawOutput.Publish(buffer.AsSpan(0, read));
 
                         // Use the stateful decoder - it will hold incomplete multi-byte sequences
                         // until more bytes arrive, preventing U+FFFD replacement characters
                         int charCount = _utf8Decoder.Decode(buffer.AsSpan(0, read), charBuffer);
-                        if (charCount > 0)
+                        if (charCount > 0 || recordingBytes is not null)
                         {
-                            string text = new string(charBuffer, 0, charCount);
+                            string text = charCount > 0 ? new string(charBuffer, 0, charCount) : string.Empty;
                             try
                             {
                                 // Block when the queue is full so we apply back-pressure instead of dropping output.
-                                _outputQueue.Add(text, _cts.Token);
+                                _outputQueue.Add((text, recordingBytes), _cts.Token);
                             }
                             catch (OperationCanceledException)
                             {
@@ -1232,9 +1254,14 @@ namespace Ntilde.Pty
         {
             try
             {
-                foreach (var text in _outputQueue.GetConsumingEnumerable(_cts.Token))
+                foreach (var chunk in _outputQueue.GetConsumingEnumerable(_cts.Token))
                 {
-                    EmitOutput(text);
+                    lock (_outputInvocationLock)
+                    {
+                        _deliveredRecordingBytes = chunk.RecordingBytes;
+                        try { EmitOutput(chunk.Text); }
+                        finally { _deliveredRecordingBytes = default; }
+                    }
                 }
             }
             catch (OperationCanceledException)

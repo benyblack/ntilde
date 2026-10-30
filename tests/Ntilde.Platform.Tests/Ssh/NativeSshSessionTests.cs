@@ -14,6 +14,65 @@ public sealed class NativeSshSessionTests
     private static readonly string[] HelloOnly = ["hello"];
 
     [Fact]
+    public async Task Host_recording_preserves_original_bytes_and_metrics_when_delivery_is_delayed()
+    {
+        string path = Path.GetTempFileName();
+        using var arrived = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        try
+        {
+            var interop = new FakeNativeSshInterop();
+            using var session = new NativeSshSession(CreateProfile(), interop: interop);
+            var live = new Ntilde.VT.TerminalBuffer(80, 24);
+            var parser = new Ntilde.VT.AnsiParser(live);
+            int delivered = 0;
+            session.SubscribeRecordingOutput((text, data) =>
+            {
+                if (Volatile.Read(ref delivered) == 0)
+                {
+                    arrived.Set();
+                    Assert.True(release.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+                }
+                session.RecordOutputAtHostBoundary(data);
+                parser.Process(text);
+                Interlocked.Increment(ref delivered);
+            });
+            session.StartRecording(path);
+            byte[] first = Encoding.UTF8.GetBytes("\x1b[24;1H\x1bPq!35~-~\x1b\\").Concat(new byte[] { 0xE2 }).ToArray();
+            byte[] second = [0x82, 0xAC, (byte)'Z'];
+            interop.Enqueue(NativeSshEvent.Data(first));
+            Assert.True(arrived.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            session.SetRecordingCellMetrics(12, 6);
+            parser.SixelCellSizeOverride = new Ntilde.VT.SixelCellSize(12, 6);
+            release.Set();
+            await WaitUntilAsync(() => Volatile.Read(ref delivered) == 1);
+            interop.Enqueue(NativeSshEvent.Data(second));
+            await WaitUntilAsync(() => Volatile.Read(ref delivered) == 2);
+            session.StopRecording();
+            var replay = new Ntilde.VT.TerminalBuffer(80, 24);
+            var replayParser = new Ntilde.VT.AnsiParser(replay);
+            var decoder = new Ntilde.Pty.Utf8ChunkDecoder();
+            var raw = new List<byte>();
+            await new Ntilde.Replay.ReplayRunner(path).RunAsync(
+                onDataCallback: data =>
+                {
+                    raw.AddRange(data);
+                    char[] chars = new char[Ntilde.Pty.Utf8ChunkDecoder.GetMaxCharCount(data.Length)];
+                    int count = decoder.Decode(data, chars);
+                    replayParser.Process(new string(chars, 0, count));
+                    return Task.CompletedTask;
+                },
+                onHeaderCallback: header => { Ntilde.Replay.ReplayRunner.ApplyHeaderMetrics(replayParser, header); return Task.CompletedTask; },
+                onSixelCellSizeCallback: (w, h) => { replayParser.SixelCellSizeOverride = new Ntilde.VT.SixelCellSize(w, h); return Task.CompletedTask; },
+                ct: TestContext.Current.CancellationToken);
+            Assert.Equal(first.Concat(second), raw);
+            Assert.Equal((live.CursorCol, live.CursorRow, live.TotalLines), (replay.CursorCol, replay.CursorRow, replay.TotalLines));
+            Assert.Equal(Ntilde.Replay.BufferSnapshot.Capture(live).Lines, Ntilde.Replay.BufferSnapshot.Capture(replay).Lines);
+        }
+        finally { release.Set(); File.Delete(path); }
+    }
+
+    [Fact]
     public async Task Recordings_preserve_initial_and_updated_physical_cell_metrics()
     {
         string path = Path.GetTempFileName();

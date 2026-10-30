@@ -1,8 +1,19 @@
 namespace Ntilde.Replay;
 
 /// <summary>Physical cell metrics carried by recordings; contains no terminal or UI types.</summary>
-public sealed record RecordingCellMetrics(float WidthPx, float HeightPx)
+public sealed record RecordingCellMetrics
 {
+    public float WidthPx { get; }
+    public float HeightPx { get; }
+
+    public RecordingCellMetrics(float widthPx, float heightPx)
+    {
+        if (!float.IsFinite(widthPx) || !float.IsFinite(heightPx) || widthPx <= 0 || heightPx <= 0)
+            throw new InvalidDataException("Recording SIXEL cell metrics must be finite and positive.");
+        WidthPx = widthPx;
+        HeightPx = heightPx;
+    }
+
     public static RecordingCellMetrics? FromOptional(float? width, float? height)
     {
         if (width is null && height is null) return null;

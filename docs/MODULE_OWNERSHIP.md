@@ -280,7 +280,11 @@ invariant changes.
   counts, and v1 sharing counts remain unknown.
 - **Recordings retain SIXEL geometry without coupling PTY to VT.** Parser hosts supply physical
   cell metrics through `ITerminalRecordingCellMetrics`; raw writers store the initial pair and
-  later changes, and flight-ring eviction advances the exported initial pair. Replay headers and
+  later changes, and flight-ring eviction advances the exported initial pair. Parser hosts claim
+  `ITerminalRecordingBoundary` before recording starts: daemon bytes are recorded on its parse
+  thread; local hosts receive original bytes paired with decoded delivery and serialize recording
+  with font metrics and parsing. Agent lifecycle publication (which can enable recording) follows
+  output ownership installation. Replay headers and
   snapshots restore those metrics before subsequent image output; legacy files retain defaults.
 - **SIXEL-aware peers opt into ordered pixel metrics.** `SupportsSixelScrolling` in a presentation
   opts into `sixelCellSize` notifications on either negotiated version, before subsequent resize/output.

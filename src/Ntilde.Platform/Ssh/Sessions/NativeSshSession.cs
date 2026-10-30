@@ -9,7 +9,7 @@ using Ntilde.Pty;
 
 namespace Ntilde.Platform.Ssh.Sessions;
 
-public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingCellMetrics
+public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary
 {
 
     private readonly INativeSshInterop _interop;
@@ -342,11 +342,30 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         }
     }
 
+    private int _recordingBoundaryMode; // 0: transport, 1: external raw host, 2: decoded-output host
+    private ReadOnlyMemory<byte> _deliveredRecordingBytes;
+
+    public void UseHostRecordingBoundary() => Volatile.Write(ref _recordingBoundaryMode, 1);
+
+    public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        lock (_outputInvocationLock)
+        {
+            if (_recordingBoundaryMode == 2) throw new InvalidOperationException("A recording output host is already installed.");
+            Volatile.Write(ref _recordingBoundaryMode, 2);
+            OnOutputReceived += text => handler(text, _deliveredRecordingBytes);
+        }
+    }
+
+    public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) =>
+        Ntilde.Replay.PtyRecorder.RecordOutputAtBoundary(_recorder, _flightRecorder, Volatile.Read(ref _recordingCellMetrics), output);
+
     private Ntilde.Replay.RecordingCellMetrics _recordingCellMetrics = new(10, 20);
 
     public void SetRecordingCellMetrics(float widthPx, float heightPx)
     {
-        var size = Ntilde.Replay.RecordingCellMetrics.FromOptional(widthPx, heightPx)!;
+        var size = new Ntilde.Replay.RecordingCellMetrics(widthPx, heightPx);
         if (Volatile.Read(ref _recordingCellMetrics) == size) return;
         Volatile.Write(ref _recordingCellMetrics, size);
         _recorder?.RecordSixelCellSize(widthPx, heightPx);
@@ -523,12 +542,16 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
     private void EmitOutput(byte[] payload)
     {
         _metrics.MarkFirstOutput();
-        _recorder?.RecordChunk(payload, payload.Length);
-        _flightRecorder?.RecordChunk(payload, payload.Length);
+        if (Volatile.Read(ref _recordingBoundaryMode) == 0) RecordOutputAtHostBoundary(payload);
         lock (_decodeGate)
         {
             _rawOutput.Publish(payload);
-            EmitDecoded(payload);
+            lock (_outputInvocationLock)
+            {
+                _deliveredRecordingBytes = _recordingBoundaryMode == 2 ? payload : default;
+                try { EmitDecoded(payload); }
+                finally { _deliveredRecordingBytes = default; }
+            }
         }
     }
 
@@ -552,9 +575,9 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         }
 
         int charCount = _utf8Decoder.Decode(bytes, _decodeChars);
-        if (charCount > 0)
+        if (charCount > 0 || (_recordingBoundaryMode == 2 && (_recorder is not null || _flightRecorder is not null)))
         {
-            EmitText(new string(_decodeChars, 0, charCount));
+            EmitText(charCount > 0 ? new string(_decodeChars, 0, charCount) : string.Empty);
         }
     }
 

@@ -66,16 +66,22 @@ namespace Ntilde.Controls
             return (null, null);
         }
 
+        private readonly object _localSixelRecordingGate = new();
+
         private void SyncLocalSixelCellSize()
         {
-            if (Parser is not { } parser || Session is MuxClientSession) return;
-            double scale = TermView.EffectiveRenderScaling;
-            if (!double.IsFinite(scale) || scale <= 0) scale = 1;
-            float width = (float)(TermView.Metrics.CellWidth * scale);
-            float height = (float)(TermView.Metrics.CellHeight * scale);
-            if (!float.IsFinite(width) || !float.IsFinite(height) || width <= 0 || height <= 0) return;
-            parser.SixelCellSizeOverride = new SixelCellSize(width, height);
-            (Session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(width, height);
+            if (Session is MuxClientSession) return;
+            lock (_localSixelRecordingGate)
+            {
+                if (Parser is not { } parser || Session is MuxClientSession) return;
+                double scale = TermView.EffectiveRenderScaling;
+                if (!double.IsFinite(scale) || scale <= 0) scale = 1;
+                float width = (float)(TermView.Metrics.CellWidth * scale);
+                float height = (float)(TermView.Metrics.CellHeight * scale);
+                if (!float.IsFinite(width) || !float.IsFinite(height) || width <= 0 || height <= 0) return;
+                parser.SixelCellSizeOverride = new SixelCellSize(width, height);
+                (Session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(width, height);
+            }
         }
 
         private void InitializeSession(string? shell, TerminalProfile? profile, int cols, int rows, string? explicitArgs = null)
@@ -663,6 +669,58 @@ namespace Ntilde.Controls
             if (session is not MuxClientSession) RegisterActiveSshSession(session, profile);
             UpdateCommandAssistContext();
 
+
+        }
+
+        /// <summary>
+        /// UI thread, after <see cref="WireSessionLifecycle"/>: the session's output reaches the parser, the
+        /// parser's replies reach the session (unless it answers them itself), and a mux session is wired
+        /// and attached, last (spec §8).
+        /// </summary>
+        private void WireSessionStream(ITerminalSession session, bool muxPreviousLost)
+        {
+            // Wire up Output. CreateAndWireParser, which session start runs first, sets Parser, and nothing
+            // sets it back to null.
+            void ApplyOutput(string text, ReadOnlyMemory<byte> recordedBytes)
+            {
+                lock (_localSixelRecordingGate)
+                {
+                    if (!ReferenceEquals(Session, session)) return;
+                    (session as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(recordedBytes);
+                    if (text.Length == 0) return; // Raw UTF-8 prefixes are recorded but have not painted anything yet.
+                    Parser!.Process(text);
+                }
+                NoteSessionOutputApplied();
+                QueueOutputUiRefresh();
+            }
+
+            // Wire up Parser responses (e.g. DA1). The accumulator invalidation for these lives in
+            // CreateAndWireParser, next to the parser's other observers.
+            //
+            // Skipped for a session that answers device queries itself: a multiplexer-attached
+            // pane runs a second, downstream parser over a stream whose authoritative parser is
+            // in the daemon, and both replying means the child gets two answers to one query.
+            // The ObserveDeviceReply observer in CreateAndWireParser deliberately stays wired
+            // either way - it only invalidates a local heuristic and writes nothing to the child.
+            if (!SessionAnswersDeviceQueries(Session))
+            {
+                Parser!.OnResponse += response =>
+                {
+                    Session?.SendInput(response);
+                };
+            }
+
+            if (session is ITerminalRecordingBoundary boundary) boundary.SubscribeRecordingOutput(ApplyOutput);
+            else session.OnOutputReceived += text => ApplyOutput(text, default);
+
+            PublishAgentSessionLifecycle(session);
+            WireReusedTermViewHandlers();
+            WireStreamOrderedSession(muxPreviousLost);
+        }
+
+        // Publishing can enable the flight recorder. Output ownership must be installed first.
+        private void PublishAgentSessionLifecycle(ITerminalSession session)
+        {
             // Publish the PTY lifecycle to the registration (the endpoint's
             // sweep probes only this published reference, never the pane).
             if (_agentRegistration is { } agentReg)
@@ -683,45 +741,6 @@ namespace Ntilde.Controls
                         DispatcherPriority.Background);
                 });
             }
-        }
-
-        /// <summary>
-        /// UI thread, after <see cref="WireSessionLifecycle"/>: the session's output reaches the parser, the
-        /// parser's replies reach the session (unless it answers them itself), and a mux session is wired
-        /// and attached, last (spec §8).
-        /// </summary>
-        private void WireSessionStream(ITerminalSession session, bool muxPreviousLost)
-        {
-            // Wire up Output. CreateAndWireParser, which session start runs first, sets Parser, and nothing
-            // sets it back to null.
-            session.OnOutputReceived += text =>
-            {
-                Parser!.Process(text);
-
-                // After Parse, not before: the flag's contract is "the grid may be behind the
-                // keyboard", so it may only be cleared once these bytes are actually painted.
-                NoteSessionOutputApplied();
-                QueueOutputUiRefresh();
-            };
-
-            // Wire up Parser responses (e.g. DA1). The accumulator invalidation for these lives in
-            // CreateAndWireParser, next to the parser's other observers.
-            //
-            // Skipped for a session that answers device queries itself: a multiplexer-attached
-            // pane runs a second, downstream parser over a stream whose authoritative parser is
-            // in the daemon, and both replying means the child gets two answers to one query.
-            // The ObserveDeviceReply observer in CreateAndWireParser deliberately stays wired
-            // either way - it only invalidates a local heuristic and writes nothing to the child.
-            if (!SessionAnswersDeviceQueries(Session))
-            {
-                Parser!.OnResponse += response =>
-                {
-                    Session?.SendInput(response);
-                };
-            }
-
-            WireReusedTermViewHandlers();
-            WireStreamOrderedSession(muxPreviousLost);
         }
 
         /// <summary>

@@ -10,7 +10,7 @@ namespace Ntilde.Mux.Tests.Support;
 /// it, synchronously on the caller's thread, and records SendInput / Resize. Flight recording is a
 /// real FlightRecordingBuffer so exports replay through the real ReplayRunner.
 /// </summary>
-internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingCellMetrics
+internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary
 {
     private readonly object _gate = new();
     private readonly RawOutputTap _rawTap = new();
@@ -71,7 +71,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         // deadlock a real subscriber could hit against RawOutputTap.
         lock (_gate)
         {
-            _flight?.RecordChunk(chunk, chunk.Length);
+            if (!_hostRecords) _flight?.RecordChunk(chunk, chunk.Length);
             _rawTap.Publish(chunk);
         }
     }
@@ -117,15 +117,22 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
 
     public RecordingCellMetrics? CurrentRecordingCellMetrics { get; private set; }
     public RecordingCellMetrics? RecordingCellMetricsAtStart { get; private set; }
+    private volatile bool _hostRecords;
+    public void UseHostRecordingBoundary() => _hostRecords = true;
+    public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler) =>
+        throw new NotSupportedException("The scripted daemon fixture exposes raw output only.");
+    public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output)
+    {
+        if (_flight is not { } flight) return;
+        if (CurrentRecordingCellMetrics is { } size) flight.RecordSixelCellSize(size);
+        flight.RecordChunk(output.ToArray(), output.Length);
+    }
     public void SetRecordingCellMetrics(float width, float height)
     {
-        lock (_gate)
-        {
-            var size = RecordingCellMetrics.FromOptional(width, height);
-            if (CurrentRecordingCellMetrics == size) return;
-            CurrentRecordingCellMetrics = size;
-            _flight?.RecordSixelCellSize(width, height);
-        }
+        var size = RecordingCellMetrics.FromOptional(width, height);
+        if (CurrentRecordingCellMetrics == size) return;
+        CurrentRecordingCellMetrics = size;
+        _flight?.RecordSixelCellSize(size!);
     }
 
     public bool IsRecording { get; private set; }

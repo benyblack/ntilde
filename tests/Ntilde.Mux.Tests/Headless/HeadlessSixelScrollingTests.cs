@@ -9,6 +9,45 @@ public sealed class HeadlessSixelScrollingTests
     private const string Image = "\x1bPq!30~-~\x1b\\";
 
     [Fact]
+    public async Task Queued_output_records_the_metrics_applied_by_the_authoritative_parse_thread()
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync();
+        Guid id = await client.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 10, Rows = 5 }, TestContext.Current.CancellationToken);
+        var mux = host.Mux(id);
+        host.Fake(id).EnableFlightRecording(4096);
+        using var parked = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        Task<bool> parking = mux.InvokeAsync(() => { parked.Set(); return release.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken); });
+        Assert.True(parked.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        try
+        {
+            host.Fake(id).Emit("\x1b[5;1H\x1bPq!35~-~\x1b\\Z");
+            mux.PostResize(10, 5, MuxTestHost.DefaultPresentation with { Cols = 10, Rows = 5, CellWidthPx = 12, CellHeightPx = 6 });
+        }
+        finally { release.Set(); }
+        Assert.True(await parking);
+        await mux.FlushAsync();
+        Assert.Equal(7, mux.Buffer.TotalLines);
+        string path = Path.GetTempFileName();
+        try
+        {
+            Assert.True(host.Fake(id).TryExportFlightRecording(path, out _));
+            var replay = new TerminalBuffer(10, 5);
+            var parser = new AnsiParser(replay);
+            await new Ntilde.Replay.ReplayRunner(path).RunAsync(
+                onDataCallback: data => { parser.Process(System.Text.Encoding.UTF8.GetString(data)); return Task.CompletedTask; },
+                onHeaderCallback: header => { Ntilde.Replay.ReplayRunner.ApplyHeaderMetrics(parser, header); return Task.CompletedTask; },
+                onSixelCellSizeCallback: (w, h) => { parser.SixelCellSizeOverride = new SixelCellSize(w, h); return Task.CompletedTask; },
+                ct: TestContext.Current.CancellationToken);
+            Assert.Equal(mux.Buffer.TotalLines, replay.TotalLines);
+            Assert.Equal((mux.Buffer.CursorCol, mux.Buffer.CursorRow), (replay.CursorCol, replay.CursorRow));
+            Assert.Equal(Ntilde.Replay.BufferSnapshot.Capture(mux.Buffer).Lines, Ntilde.Replay.BufferSnapshot.Capture(replay).Lines);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
     public async Task Recording_starts_with_authoritative_metrics_and_follows_font_updates()
     {
         using var host = new MuxTestHost();

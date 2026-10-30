@@ -186,9 +186,21 @@ namespace Ntilde.UI.Replay
             _playbackCts = null;
         }
 
+        private async Task ApplyHeaderMetricsAsync(ReplayHeader header, bool restoreHeader)
+        {
+            if (restoreHeader && _parser is { } parser)
+                await Dispatcher.UIThread.InvokeAsync(() => ReplayRunner.ApplyHeaderMetrics(parser, header));
+        }
+
+        private async Task ApplyCellMetricsAsync(float width, float height)
+        {
+            if (_parser is { } parser)
+                await Dispatcher.UIThread.InvokeAsync(() => parser.SixelCellSizeOverride = new SixelCellSize(width, height));
+        }
+
         private async Task PerformSeek(long targetTimeMs)
         {
-            if (_viewModel == null || _buffer == null || _filePath == null) return;
+            if (_viewModel == null || _buffer == null || _filePath == null || _parser == null) return;
 
             // 1. Stop any running playback
             StopPlayback();
@@ -199,11 +211,12 @@ namespace Ntilde.UI.Replay
 
             if (snapEntry != null)
             {
+                try { _ = RecordingCellMetrics.FromOptional(snapEntry.Snapshot.SixelCellWidthPx, snapEntry.Snapshot.SixelCellHeightPx); }
+                catch (InvalidDataException) { return; }
                 // Apply snapshot synchronously on UI thread if possible, or Dispatcher
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    _buffer.Resize(snapEntry.Snapshot.Cols, snapEntry.Snapshot.Rows);
-                    ReplayRunner.ApplySnapshot(_buffer, _parser!, snapEntry.Snapshot);
+                    ReplayRunner.ApplySnapshot(_buffer, _parser, snapEntry.Snapshot);
                 });
             }
             else
@@ -227,14 +240,8 @@ namespace Ntilde.UI.Replay
                         var text = System.Text.Encoding.UTF8.GetString(data);
                         await Dispatcher.UIThread.InvokeAsync(() => _parser?.Process(text));
                     },
-                    onHeaderCallback: async header =>
-                    {
-                        if (snapEntry is null) await Dispatcher.UIThread.InvokeAsync(() => ReplayRunner.ApplyHeaderMetrics(_parser!, header));
-                    },
-                    onSixelCellSizeCallback: async (width, height) =>
-                    {
-                        await Dispatcher.UIThread.InvokeAsync(() => _parser!.SixelCellSizeOverride = new SixelCellSize(width, height));
-                    },
+                    onHeaderCallback: header => ApplyHeaderMetricsAsync(header, snapEntry is null),
+                    onSixelCellSizeCallback: ApplyCellMetricsAsync,
                     onResizeCallback: async (w, h) =>
                     {
                         await Dispatcher.UIThread.InvokeAsync(() => _buffer.Resize(w, h));
@@ -250,7 +257,7 @@ namespace Ntilde.UI.Replay
 
         private async Task PlaybackLoop(int sessionId, CancellationToken ct)
         {
-            if (_filePath == null || _viewModel == null || _buffer == null) return;
+            if (_filePath == null || _viewModel == null || _buffer == null || _parser == null) return;
 
             try
             {
@@ -265,8 +272,7 @@ namespace Ntilde.UI.Replay
                 {
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        _buffer.Resize(snapEntry.Snapshot.Cols, snapEntry.Snapshot.Rows);
-                        ReplayRunner.ApplySnapshot(_buffer, _parser!, snapEntry.Snapshot);
+                        ReplayRunner.ApplySnapshot(_buffer, _parser, snapEntry.Snapshot);
                     });
                 }
                 else
@@ -281,14 +287,8 @@ namespace Ntilde.UI.Replay
                         var text = System.Text.Encoding.UTF8.GetString(data);
                         await Dispatcher.UIThread.InvokeAsync(() => _parser?.Process(text));
                     },
-                    onHeaderCallback: async header =>
-                    {
-                        if (snapEntry is null) await Dispatcher.UIThread.InvokeAsync(() => ReplayRunner.ApplyHeaderMetrics(_parser!, header));
-                    },
-                    onSixelCellSizeCallback: async (width, height) =>
-                    {
-                        await Dispatcher.UIThread.InvokeAsync(() => _parser!.SixelCellSizeOverride = new SixelCellSize(width, height));
-                    },
+                    onHeaderCallback: header => ApplyHeaderMetricsAsync(header, snapEntry is null),
+                    onSixelCellSizeCallback: ApplyCellMetricsAsync,
                     onResizeCallback: async (w, h) =>
                     {
                         await Dispatcher.UIThread.InvokeAsync(() => _buffer.Resize(w, h));

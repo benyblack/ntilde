@@ -66,6 +66,7 @@ namespace Ntilde.Replay
         private int _windowStartRows;
         private bool _truncatedAtStart;
         private RecordingCellMetrics? _windowStartCellSize;
+        private RecordingCellMetrics? _currentCellSize;
 
         /// <param name="maxTotalBytes">
         /// Retention budget: sum of payload bytes plus <see cref="EntryOverheadBytes"/>
@@ -85,6 +86,7 @@ namespace Ntilde.Replay
             if (initialRows <= 0) throw new ArgumentOutOfRangeException(nameof(initialRows), initialRows, "Rows must be positive.");
 
             _windowStartCellSize = RecordingCellMetrics.FromOptional(initialSixelCellSize?.WidthPx, initialSixelCellSize?.HeightPx);
+            _currentCellSize = _windowStartCellSize;
             _maxTotalBytes = maxTotalBytes;
             _windowStartCols = initialCols;
             _windowStartRows = initialRows;
@@ -109,11 +111,14 @@ namespace Ntilde.Replay
             }
         }
 
-        public void RecordSixelCellSize(float width, float height)
+        public void RecordSixelCellSize(float width, float height) => RecordSixelCellSize(new RecordingCellMetrics(width, height));
+
+        public void RecordSixelCellSize(RecordingCellMetrics size)
         {
-            var size = RecordingCellMetrics.FromOptional(width, height)!;
             lock (_gate)
             {
+                if (_currentCellSize == size) return;
+                _currentCellSize = size;
                 _entries.Enqueue(Entry.Metrics(NowMs(), size));
                 _retainedBytes += EntryOverheadBytes;
                 TrimLocked();
