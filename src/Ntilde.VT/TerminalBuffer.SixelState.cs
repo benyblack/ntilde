@@ -72,6 +72,7 @@ public partial class TerminalBuffer
             int right = Math.Clamp(state.ClipRight, 0, width);
             if (top + bottom >= height || right >= width) continue;
             var source = SixelSources.Retain(state.Source);
+            if (source.Data is null) continue;
             int lastRow = state.Alt ? Rows - 1 : _scrollback.Count + Rows - 1;
             _images.Add(new TerminalImage(source, Math.Clamp(state.X, 0, Cols - 1), Math.Clamp(state.Y, 1 - height, lastRow), width, height)
             {

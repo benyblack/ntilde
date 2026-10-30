@@ -146,18 +146,11 @@ namespace Ntilde.Replay
         /// Throws (IOException, UnauthorizedAccessException, …) when the target path
         /// is not writable.
         /// </summary>
-        public FlightExportInfo ExportTo(string filePath, string shell)
+        public FlightExportInfo ExportTo(string filePath, string shell) => CaptureExport(shell)(filePath);
+
+        /// <summary>Freezes the retained window without I/O; the returned writer may run on another thread.</summary>
+        public Func<string, FlightExportInfo> CaptureExport(string shell)
         {
-            ArgumentNullException.ThrowIfNull(filePath);
-
-            // Surface path errors synchronously. PtyRecorder's writer task swallows
-            // I/O failures (best-effort semantics for live recording), so without
-            // this probe an export to an unwritable path would "succeed" while
-            // writing nothing — the Try* session surface could never report false.
-            using (File.Create(filePath))
-            {
-            }
-
             Entry[] entries;
             int cols;
             int rows;
@@ -172,6 +165,15 @@ namespace Ntilde.Replay
                 truncated = _truncatedAtStart;
             }
 
+            return filePath => WriteCapturedWindow(filePath, shell, entries, cols, rows, truncated, cellSize);
+        }
+
+        private static FlightExportInfo WriteCapturedWindow(string filePath, string shell, Entry[] entries,
+            int cols, int rows, bool truncated, RecordingCellMetrics? cellSize)
+        {
+            ArgumentNullException.ThrowIfNull(filePath);
+            // Surface path errors before PtyRecorder's best-effort asynchronous writer starts.
+            using (File.Create(filePath)) { }
             using var recorder = new PtyRecorder(filePath, cols, rows, shell ?? string.Empty, cellSize);
 
             if (entries.Length == 0)

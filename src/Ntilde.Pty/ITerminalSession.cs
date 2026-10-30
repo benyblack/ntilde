@@ -78,6 +78,9 @@ namespace Ntilde.Pty
         /// enabled.
         /// </summary>
         bool TryExportFlightRecording(string filePath, out FlightExportInfo info);
+
+        /// <summary>Freezes recent output without I/O; invoke the returned file writer outside the parser queue.</summary>
+        Func<string, FlightExportInfo>? CaptureFlightRecording() => null;
     }
 
     /// <summary>

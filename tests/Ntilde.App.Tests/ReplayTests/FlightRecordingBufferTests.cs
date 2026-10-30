@@ -18,6 +18,31 @@ namespace Ntilde.Tests.ReplayTests
     /// </summary>
     public class FlightRecordingBufferTests
     {
+        [Fact]
+        public async Task A_captured_window_preserves_its_bytes_and_initial_metrics_after_the_live_ring_changes()
+        {
+            string path = Path.GetTempFileName();
+            try
+            {
+                var ring = new FlightRecordingBuffer(40, 10, 5, initialSixelCellSize: new RecordingCellMetrics(10, 20));
+                ring.RecordChunk([65], 1);
+                var write = ring.CaptureExport("scripted");
+                ring.RecordSixelCellSize(20, 6);
+                ring.RecordResize(30, 8);
+                ring.RecordChunk([66], 1);
+                var info = write(path);
+                var bytes = new List<byte>();
+                ReplayHeader? header = null;
+                await new ReplayRunner(path).RunAsync(data => { bytes.AddRange(data); return Task.CompletedTask; },
+                    onHeaderCallback: value => { header = value; return Task.CompletedTask; }, ct: TestContext.Current.CancellationToken);
+                Assert.Equal("A", Encoding.UTF8.GetString(bytes.ToArray()));
+                Assert.Equal(1, info.EventCount);
+                Assert.Equal((10, 5), (header!.Cols, header.Rows));
+                Assert.Equal((10f, 20f), (header.SixelCellWidthPx, header.SixelCellHeightPx));
+            }
+            finally { File.Delete(path); }
+        }
+
         private sealed class FakeClock
         {
             public long NowMs;

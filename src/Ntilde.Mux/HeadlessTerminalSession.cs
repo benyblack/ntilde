@@ -558,17 +558,19 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     internal void StopRecording() => AtRecordingBoundary(() => { _session.StopRecording(); return 0; });
 
-    internal ExportFlightResult ExportFlight() => AtRecordingBoundary(ExportFlightAtBoundary);
+    internal ExportFlightResult ExportFlight()
+    {
+        var write = AtRecordingBoundary(() => _session.CaptureFlightRecording());
+        if (write is null) return new ExportFlightResult { Exported = false };
+        return WriteFlightExport(write);
+    }
 
-    private ExportFlightResult ExportFlightAtBoundary()
+    private static ExportFlightResult WriteFlightExport(Func<string, FlightExportInfo> write)
     {
         string path = Path.Combine(Path.GetTempPath(), $"ntilde-mux-flight-{Guid.NewGuid():N}.rec");
         try
         {
-            if (!_session.TryExportFlightRecording(path, out FlightExportInfo info))
-            {
-                return new ExportFlightResult { Exported = false };
-            }
+            FlightExportInfo info = write(path);
 
             return new ExportFlightResult
             {
@@ -579,6 +581,10 @@ public sealed class HeadlessTerminalSession : IDisposable
                 LastEventMs = info.LastEventMs,
                 TruncatedAtStart = info.TruncatedAtStart,
             };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return new ExportFlightResult { Exported = false };
         }
         finally
         {

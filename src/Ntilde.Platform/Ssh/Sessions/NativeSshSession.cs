@@ -193,6 +193,8 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         _flightRecorder = null;
     }
 
+    public Func<string, Ntilde.Replay.FlightExportInfo>? CaptureFlightRecording() => _flightRecorder?.CaptureExport(ShellCommand);
+
     public bool TryExportFlightRecording(string filePath, out FlightExportInfo info)
     {
         FlightRecordingBuffer? ring = _flightRecorder;

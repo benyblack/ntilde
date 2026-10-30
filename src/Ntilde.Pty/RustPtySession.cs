@@ -932,6 +932,8 @@ namespace Ntilde.Pty
             _flightRecorder = null;
         }
 
+        public Func<string, Ntilde.Replay.FlightExportInfo>? CaptureFlightRecording() => _flightRecorder?.CaptureExport(ShellCommand);
+
         public bool TryExportFlightRecording(string filePath, out Ntilde.Replay.FlightExportInfo info)
         {
             var ring = _flightRecorder;

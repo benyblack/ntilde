@@ -151,6 +151,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     }
     public Action? OnStopRecording { get; set; }
     public Action? OnFlightExport { get; set; }
+    public Action? OnFlightCapture { get; set; }
     public void StopRecording()
     {
         OnStopRecording?.Invoke();
@@ -171,13 +172,21 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     }
     public void DisableFlightRecording() { lock (_gate) _flight = null; }
 
-    public bool TryExportFlightRecording(string filePath, out FlightExportInfo info)
+    public Func<string, FlightExportInfo>? CaptureFlightRecording()
     {
-        OnFlightExport?.Invoke();
+        OnFlightCapture?.Invoke();
         FlightRecordingBuffer? flight;
         lock (_gate) flight = _flight;
-        if (flight is null) { info = default; return false; }
-        info = flight.ExportTo(filePath, ShellCommand);
+        if (flight is null) return null;
+        var write = flight.CaptureExport(ShellCommand);
+        return path => { OnFlightExport?.Invoke(); return write(path); };
+    }
+
+    public bool TryExportFlightRecording(string filePath, out FlightExportInfo info)
+    {
+        var write = CaptureFlightRecording();
+        if (write is null) { info = default; return false; }
+        info = write(filePath);
         return true;
     }
 

@@ -101,6 +101,8 @@ public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITer
     public bool IsFlightRecording => _inner.IsFlightRecording;
     public void EnableFlightRecording(long maxTotalBytes) => _inner.EnableFlightRecording(maxTotalBytes);
     public void DisableFlightRecording() => _inner.DisableFlightRecording();
+    public Func<string, Ntilde.Replay.FlightExportInfo>? CaptureFlightRecording() => _inner.CaptureFlightRecording();
+
     public bool TryExportFlightRecording(string filePath, out Ntilde.Replay.FlightExportInfo info) => _inner.TryExportFlightRecording(filePath, out info);
     public void Dispose() => _inner.Dispose();
 

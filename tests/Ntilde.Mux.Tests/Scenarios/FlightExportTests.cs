@@ -92,7 +92,16 @@ public sealed class FlightExportTests
         using MuxClientSession session = client.OpenSession(id, "scripted");
 
         Thread? exportThread = null;
-        host.Fake(id).OnFlightExport = () => exportThread = Thread.CurrentThread;
+        Thread? captureThread = null;
+        using var writing = new ManualResetEventSlim();
+        using var releaseWrite = new ManualResetEventSlim();
+        host.Fake(id).OnFlightCapture = () => captureThread = Thread.CurrentThread;
+        host.Fake(id).OnFlightExport = () =>
+        {
+            exportThread = Thread.CurrentThread;
+            writing.Set();
+            Assert.True(releaseWrite.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        };
         session.EnableFlightRecording(1 << 20);
         await client.PingAsync(TestContext.Current.CancellationToken);
         var mux = host.Mux(id);
@@ -114,11 +123,14 @@ public sealed class FlightExportTests
             host.Fake(id).Emit("later"); // must remain outside this export even if parsing resumes quickly
             release.Set();
             Assert.True(await parking);
+            Assert.True(writing.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            await mux.FlushAsync().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.Equal("worldlater", BufferSnapshot.Capture(mux.Buffer).Lines[1]);
+            releaseWrite.Set();
             Assert.True(await export);
             Assert.False(exportedBeforeParsing);
-            Assert.Same(parseThread, exportThread);
-            await mux.FlushAsync();
-            Assert.Equal("worldlater", BufferSnapshot.Capture(mux.Buffer).Lines[1]);
+            Assert.Same(parseThread, captureThread);
+            Assert.NotSame(parseThread, exportThread);
 
             var replayed = new List<byte>();
             await new ReplayRunner(path).RunAsync(d => { replayed.AddRange(d); return Task.CompletedTask; }, ct: TestContext.Current.CancellationToken);
@@ -127,6 +139,7 @@ public sealed class FlightExportTests
         finally
         {
             release.Set();
+            releaseWrite.Set();
             File.Delete(path);
         }
     }

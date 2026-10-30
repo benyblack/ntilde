@@ -5,6 +5,18 @@ namespace Ntilde.VT.Tests;
 public sealed class SixelSourceStateTests
 {
     [Fact]
+    public void An_import_rejected_by_a_smaller_destination_source_budget_creates_no_placement()
+    {
+        var snapshot = new TerminalBuffer(10, 3).ExportState(0);
+        snapshot.Sixels = [new TerminalSixelImageState { Source = "q" + new string('~', 20), Width = 3, Height = 1 }];
+        var buffer = new TerminalBuffer(10, 3) { SixelSources = new SixelSourceBudget(10, 2) };
+        TerminalStateTransfer.Restore(buffer, new AnsiParser(buffer), snapshot);
+        Assert.Empty(buffer.Images);
+        Assert.Equal(0, buffer.SixelSources.Count);
+        Assert.Null(buffer.ExportState(0).Sixels);
+    }
+
+    [Fact]
     public void Snapshot_source_pins_are_shared_bounded_and_concurrently_idempotent()
     {
         var budget = new SixelSourceBudget(6, 2);

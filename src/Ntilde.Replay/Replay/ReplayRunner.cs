@@ -19,6 +19,8 @@ namespace Ntilde.Replay
     public sealed class ReplayRunOptions
     {
         public ReplayPlaybackMode PlaybackMode { get; init; } = ReplayPlaybackMode.Virtual;
+        /// <summary>Inclusive event boundary for seek fast-forward; null plays through the file.</summary>
+        public long? StopAtTimeMs { get; init; }
     }
 
     public sealed class ReplayRunResult
@@ -139,6 +141,7 @@ namespace Ntilde.Replay
                         bool isLastLine = nextLine == null;
                         try
                         {
+                            if (IsPastStopTime(line, options?.StopAtTimeMs)) break;
                             ProcessedLine processedLine = isV2
                                 ? await ProcessV2Line(line, onDataCallback, onResizeCallback, onMarkerCallback, onInputCallback, onSnapshotCallback, onSixelCellSizeCallback,
                                     playbackMode, lastOffset, minTimeMs, fastForwardToMs, playbackSpeed)
@@ -168,6 +171,13 @@ namespace Ntilde.Replay
             }
 
             return result;
+        }
+
+        private static bool IsPastStopTime(string line, long? stopAtTimeMs)
+        {
+            if (stopAtTimeMs is not { } end) return false;
+            using var document = JsonDocument.Parse(line);
+            return document.RootElement.TryGetProperty("t", out var time) && time.TryGetInt64(out long offset) && offset > end;
         }
 
         private static ReplayHeader? ReadHeader(string line)
