@@ -51,6 +51,9 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private int _disposed;
     private SharingState _sharing = SharingState.Unknown; // replaced whole, so a reader never sees a mix of two updates
     private int _killedElsewhere;
+    private int _kittyKeyboardSupportedFlags = 1;
+
+    public int KittyKeyboardSupportedFlags => Volatile.Read(ref _kittyKeyboardSupportedFlags);
 
     internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared)
     {
@@ -518,6 +521,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     internal void DeliverSessionChanged(SessionChangedNotification changed)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
+        Volatile.Write(ref _kittyKeyboardSupportedFlags, Math.Max(0, changed.KittyKeyboardSupportedFlags ?? 1) & Ntilde.VT.KittyKeyboardState.SupportedFlags);
         Volatile.Write(ref _sharing, new SharingState(Math.Max(0, changed.AttachedClients), changed.InteractiveClients is int ic ? Math.Max(0, ic) : -1, changed.Title, changed.Cwd));
         if (SessionChanged is not { } handlers) return;
         foreach (Action handler in Delegate.EnumerateInvocationList(handlers))

@@ -16,8 +16,8 @@ namespace Ntilde.VT
     /// editor can raise the keyboard mode inside the alternate screen without disturbing - or
     /// even knowing - the shell's mode on the main screen.
     ///
-    /// SCOPE / DEVIATION: Ntilde only implements the disambiguate-escape-codes tier
-    /// (0b1). Unsupported bits (report event types, report alternate keys, report all keys,
+    /// SCOPE / DEVIATION: Ntilde implements disambiguate escape codes (0b1) and
+    /// report event types (0b10). Unsupported bits (report alternate keys, report all keys,
     /// report associated text) are masked out on push/set, so they are never stored and never
     /// echoed by the CSI ? u query. This is deliberate: the spec's detection section tells
     /// applications to "set the desired progressive enhancements and then query" to discover
@@ -27,11 +27,14 @@ namespace Ntilde.VT
     /// </summary>
     public sealed class KittyKeyboardState
     {
-        /// <summary>0b1 - disambiguate escape codes. The only tier Ntilde implements.</summary>
+        /// <summary>0b1 - disambiguate escape codes. Disambiguates legacy control chords.</summary>
         public const int FlagDisambiguateEscapeCodes = 0b1;
 
+        /// <summary>0b10 - report key repeat and release events.</summary>
+        public const int FlagReportEventTypes = 0b10;
+
         /// <summary>Bit mask of the flags this terminal honors; everything else is dropped.</summary>
-        public const int SupportedFlags = FlagDisambiguateEscapeCodes;
+        public const int SupportedFlags = FlagDisambiguateEscapeCodes | FlagReportEventTypes;
 
         /// <summary>
         /// Stack depth cap. The spec only says "terminals should limit the size of the stack
@@ -50,12 +53,33 @@ namespace Ntilde.VT
         // Cached top-of-active-stack so the UI thread can read the flags while the PTY
         // reader thread mutates the stack, without taking a lock on every keystroke.
         private volatile int _currentFlags;
+        private volatile int _generation;
+        private volatile int _supportedFlagMask = SupportedFlags;
 
         /// <summary>Flags currently in effect for the active screen buffer.</summary>
-        public int Flags => _currentFlags;
+        public int Flags => _currentFlags & _supportedFlagMask;
+
+        /// <summary>Changes with the flag-stack lifetime, even when the resulting flags match.</summary>
+        public int Generation => _generation;
+
+        public bool ReportEventTypes => (Flags & FlagReportEventTypes) != 0;
 
         /// <summary>True when the disambiguate-escape-codes tier is active.</summary>
-        public bool DisambiguateEscapeCodes => (_currentFlags & FlagDisambiguateEscapeCodes) != 0;
+        public bool DisambiguateEscapeCodes => (Flags & FlagDisambiguateEscapeCodes) != 0;
+
+        /// <summary>The host's negotiated feature ceiling; requested stacks stay intact across changes.</summary>
+        public int SupportedFlagMask => _supportedFlagMask;
+
+        public void SetSupportedFlags(int flags)
+        {
+            int mask = Math.Max(0, flags) & SupportedFlags;
+            lock (_gate)
+            {
+                if (_supportedFlagMask == mask) return;
+                _supportedFlagMask = mask;
+                _generation = unchecked(_generation + 1);
+            }
+        }
 
         /// <summary>Depth of the active screen buffer's stack (diagnostics/tests).</summary>
         public int StackDepth
@@ -104,7 +128,7 @@ namespace Ntilde.VT
         /// </summary>
         public void Pop(int count)
         {
-            if (count < 0) count = 0;
+            if (count <= 0) return;
 
             lock (_gate)
             {
@@ -136,6 +160,7 @@ namespace Ntilde.VT
 
                 int masked = Mask(flags);
                 int index = count - 1;
+                int previous = stack[index];
                 stack[index] = mode switch
                 {
                     2 => stack[index] | masked,
@@ -143,7 +168,7 @@ namespace Ntilde.VT
                     _ => masked
                 };
 
-                RefreshCurrentFlagsNoLock();
+                RefreshCurrentFlagsNoLock(newLifetime: previous != stack[index]);
             }
         }
 
@@ -155,6 +180,7 @@ namespace Ntilde.VT
         {
             lock (_gate)
             {
+                if (_altActive == isAltScreen) return;
                 _altActive = isAltScreen;
                 RefreshCurrentFlagsNoLock();
             }
@@ -169,6 +195,7 @@ namespace Ntilde.VT
                 _altCount = 0;
                 _altActive = false;
                 _currentFlags = 0;
+                _generation = unchecked(_generation + 1);
             }
         }
 
@@ -178,7 +205,7 @@ namespace Ntilde.VT
             return string.Concat(
                 ((char)0x1b).ToString(),
                 "[?",
-                _currentFlags.ToString(CultureInfo.InvariantCulture),
+                Flags.ToString(CultureInfo.InvariantCulture),
                 "u");
         }
 
@@ -193,6 +220,8 @@ namespace Ntilde.VT
                 clone._altCount = _altCount;
                 clone._altActive = _altActive;
                 clone._currentFlags = _currentFlags;
+                clone._generation = _generation;
+                clone._supportedFlagMask = _supportedFlagMask;
             }
 
             return clone;
@@ -249,11 +278,12 @@ namespace Ntilde.VT
 
         private static int Mask(int flags) => flags <= 0 ? 0 : flags & SupportedFlags;
 
-        private void RefreshCurrentFlagsNoLock()
+        private void RefreshCurrentFlagsNoLock(bool newLifetime = true)
         {
             int count = _altActive ? _altCount : _mainCount;
             int[] stack = _altActive ? _altStack : _mainStack;
             _currentFlags = count > 0 ? stack[count - 1] : 0;
+            if (newLifetime) _generation = unchecked(_generation + 1);
         }
     }
 }

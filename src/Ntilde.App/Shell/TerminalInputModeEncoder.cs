@@ -4,6 +4,13 @@ using Ntilde.VT;
 
 namespace Ntilde.Shell
 {
+    internal enum TerminalKeyEventKind
+    {
+        Press = 1,
+        Repeat = 2,
+        Release = 3
+    }
+
     internal enum TerminalMouseButton
     {
         None = -1,
@@ -163,82 +170,110 @@ namespace Ntilde.Shell
         private const int KittyKeyBackspace = 127;
 
         /// <summary>
-        /// Encodes a key event using the kitty keyboard protocol's <c>CSI number ; modifiers u</c>
-        /// form when the disambiguate-escape-codes tier (flag 0b1) is active for the current
-        /// screen buffer. Returns <c>null</c> when the protocol is off, or when the key is one the
-        /// disambiguate tier deliberately leaves in its legacy encoding - the caller then falls
-        /// through to the unchanged legacy paths, so behavior is byte-identical with flags = 0.
-        ///
-        /// Per spec (https://sw.kovidgoyal.net/kitty/keyboard-protocol/#disambiguate-escape-codes):
-        /// - Esc always becomes <c>CSI 27 u</c>, which is the whole point of the tier: it is what
-        ///   lets an application tell a real Esc keypress from the start of an escape sequence.
-        /// - Enter, Tab and Backspace keep their legacy bytes when unmodified (so a user can still
-        ///   type "reset" at a shell prompt after a crashed TUI leaves the mode on), but take the
-        ///   CSI u form as soon as any modifier is held. This is the Shift+Enter fix:
-        ///   <c>CSI 13;2u</c>.
-        /// - "Legacy text" keys (a-z, 0-9, the ASCII punctuation keys and Space) switch to CSI u
-        ///   whenever ctrl, alt or super is held, which is what disambiguates Ctrl+I from Tab and
-        ///   Ctrl+M from Enter. Plain and shift-only presses still produce text.
-        /// - Keypad and functional keys (arrows, F-keys, Home/End/PgUp/PgDn, Insert/Delete) are out
-        ///   of scope for this tier in Ntilde and keep their legacy encodings, which for the
-        ///   functional keys carry modifiers in xterm's form (<see cref="EncodeSpecialKey"/>).
-        ///
-        /// The modifiers field is omitted entirely when no modifiers are active, per spec.
+        /// Encodes supported non-text keys with the negotiated Kitty flags. Flag 1
+        /// disambiguates ASCII control chords; flag 2 adds repeat/release subparameters
+        /// and canonical functional-key frames. Press is the omitted/default event type.
+        /// Ordinary text and AltGr remain on TextInput. Without flag 2, repeats keep the
+        /// previous press encoding and releases are suppressed. Enter/Tab/Backspace
+        /// retain their recovery bytes when unmodified and never report releases.
         /// </summary>
         public static string? EncodeKittyKey(Key key, KeyModifiers modifiers, ModeState? modes)
+            => EncodeKittyKey(key, modifiers, modes, TerminalKeyEventKind.Press);
+
+        /// <summary>
+        /// Release is called only for a key whose non-text press the view forwarded. Its
+        /// current modifiers can differ from the press (for example Ctrl released before C).
+        /// Text/IME/AltGr presses remain on OnTextInput and are never tracked for release.
+        /// </summary>
+        public static string? EncodeKittyKey(Key key, KeyModifiers modifiers, ModeState? modes, TerminalKeyEventKind eventKind)
         {
-            if (modes?.KittyKeyboard.DisambiguateEscapeCodes != true)
+            int flags = modes?.KittyKeyboard.Flags ?? 0;
+            bool reportEvents = (flags & KittyKeyboardState.FlagReportEventTypes) != 0;
+            bool disambiguate = (flags & KittyKeyboardState.FlagDisambiguateEscapeCodes) != 0;
+            if (flags == 0 || (eventKind == TerminalKeyEventKind.Release && !reportEvents)) return null;
+            if (!reportEvents) eventKind = TerminalKeyEventKind.Press;
+
+            int bits = GetKittyModifierBits(modifiers);
+            if (reportEvents)
             {
-                return null;
+                var (number, final) = KittyFunctionalKey(key);
+                if (final != '\0') return FormatKittyEvent(number, bits, final, eventKind);
             }
 
-            // AltGr carve-out: on Windows, Avalonia reports AltGr as Control|Alt (there is no
-            // separate "AltGr" modifier in KeyModifiers). On German/French/Spanish/Polish/
-            // Nordic/Turkish and other non-US layouts, AltGr+<key> composes real text (e.g.
-            // AltGr+Q -> '@' on a German layout) that arrives via OnTextInput/WM_CHAR - but only
-            // if KeyDown is left unhandled. If we encode this here, HandleKeyDownCore returns
-            // true, OnKeyDown sets e.Handled = true, and the Win32 backend then suppresses the
-            // following WM_CHAR, so the composed character is silently lost rather than sent
-            // twice. Mirrors the identical guard in EncodeAltKey below. Per spec, "all key
-            // events that do NOT generate text" get the CSI u form - an AltGr keypress that
-            // produces text does not qualify, so returning null here (falling through to the
-            // legacy/text path) is spec-correct, not just a workaround.
-            //
-            // Trade-off (matches EncodeAltKey, same accepted status quo): on US layouts, a user
-            // who deliberately holds literal Ctrl+Alt+<key> as a shortcut also loses kitty
-            // encoding for that combination, because there is no way to distinguish "AltGr on a
-            // non-US layout" from "Ctrl+Alt held together on a US layout" at this layer without
-            // consulting the OS keyboard layout tables. That combination was never encodable by
-            // this protocol path before AltGr support existed, so nothing regresses for it.
-            if ((modifiers & (KeyModifiers.Control | KeyModifiers.Alt)) == (KeyModifiers.Control | KeyModifiers.Alt))
-            {
-                return null;
-            }
+            // Ctrl+Alt can compose AltGr text. A release is already paired with a proved
+            // non-text press, so changed modifiers must not erase that release.
+            if (eventKind != TerminalKeyEventKind.Release
+                && (modifiers & (KeyModifiers.Control | KeyModifiers.Alt)) == (KeyModifiers.Control | KeyModifiers.Alt)) return null;
 
-            int modifierBits = GetKittyModifierBits(modifiers);
-
-            switch (key)
-            {
-                case Key.Escape:
-                    return FormatKittyCsiU(KittyKeyEscape, modifierBits);
-                case Key.Enter:
-                    return modifierBits == 0 ? null : FormatKittyCsiU(KittyKeyEnter, modifierBits);
-                case Key.Tab:
-                    return modifierBits == 0 ? null : FormatKittyCsiU(KittyKeyTab, modifierBits);
-                case Key.Back:
-                    return modifierBits == 0 ? null : FormatKittyCsiU(KittyKeyBackspace, modifierBits);
-            }
-
-            // Unmodified and shift-only presses of text keys still arrive through OnTextInput
-            // as plain UTF-8; only ctrl/alt/super combinations are ambiguous in legacy encoding.
-            if ((modifierBits & ~KittyShift) == 0)
-            {
-                return null;
-            }
-
-            int codepoint = GetUnshiftedCodepoint(key);
-            return codepoint < 0 ? null : FormatKittyCsiU(codepoint, modifierBits);
+            return key is Key.Enter or Key.Tab or Key.Back or Key.Escape
+                ? EncodeKittyControlKey(key, bits, disambiguate, eventKind)
+                : EncodeKittyTextKey(key, bits, disambiguate, eventKind);
         }
+
+        private static string? EncodeKittyControlKey(Key key, int bits, bool disambiguate, TerminalKeyEventKind eventKind)
+        {
+            if (key is Key.Enter or Key.Tab or Key.Back)
+            {
+                // The report-all-keys enhancement is intentionally not implemented. Keep
+                // these recovery keys usable, including suppressing their modified releases.
+                if (eventKind == TerminalKeyEventKind.Release || bits == 0) return null;
+                int number = key == Key.Enter ? KittyKeyEnter : key == Key.Tab ? KittyKeyTab : KittyKeyBackspace;
+                return FormatKittyEvent(number, bits, 'u', eventKind);
+            }
+            if (key == Key.Escape)
+            {
+                if (!disambiguate && eventKind != TerminalKeyEventKind.Release) return null;
+                return FormatKittyEvent(KittyKeyEscape, bits, 'u', eventKind);
+            }
+
+            return null;
+        }
+
+        private static string? EncodeKittyTextKey(Key key, int bits, bool disambiguate, TerminalKeyEventKind eventKind)
+        {
+            int codepoint = GetUnshiftedCodepoint(key);
+            if (codepoint < 0) return null;
+            if (eventKind != TerminalKeyEventKind.Release)
+            {
+                if ((bits & ~KittyShift) == 0) return null;
+                if (!disambiguate && eventKind == TerminalKeyEventKind.Press) return null;
+            }
+            return FormatKittyEvent(codepoint, bits, 'u', eventKind);
+        }
+
+        private static (int Number, char Final) KittyFunctionalKey(Key key) => key switch
+        {
+            Key.Up => (1, 'A'),
+            Key.Down => (1, 'B'),
+            Key.Right => (1, 'C'),
+            Key.Left => (1, 'D'),
+            Key.Home => (1, 'H'),
+            Key.End => (1, 'F'),
+            Key.Insert => (2, '~'),
+            Key.Delete => (3, '~'),
+            Key.PageUp => (5, '~'),
+            Key.PageDown => (6, '~'),
+            Key.F1 => (1, 'P'),
+            Key.F2 => (1, 'Q'),
+            Key.F3 => (13, '~'),
+            Key.F4 => (1, 'S'),
+            Key.F5 => (15, '~'),
+            Key.F6 => (17, '~'),
+            Key.F7 => (18, '~'),
+            Key.F8 => (19, '~'),
+            Key.F9 => (20, '~'),
+            Key.F10 => (21, '~'),
+            Key.F11 => (23, '~'),
+            Key.F12 => (24, '~'),
+            Key.CapsLock => (57358, 'u'),
+            Key.Scroll => (57359, 'u'),
+            Key.NumLock => (57360, 'u'),
+            Key.Snapshot => (57361, 'u'),
+            Key.Pause => (57362, 'u'),
+            Key.Apps => (57363, 'u'),
+            >= Key.F13 and <= Key.F24 => (57376 + (key - Key.F13), 'u'),
+            _ => (0, '\0')
+        };
 
         private static int GetKittyModifierBits(KeyModifiers modifiers)
         {
@@ -250,17 +285,15 @@ namespace Ntilde.Shell
             return bits;
         }
 
-        private static string FormatKittyCsiU(int codepoint, int modifierBits)
+        private static string FormatKittyEvent(int number, int modifierBits, char final, TerminalKeyEventKind eventKind)
         {
-            string csi = ((char)0x1b) + "[";
-            return modifierBits == 0
-                ? string.Concat(csi, codepoint.ToString(System.Globalization.CultureInfo.InvariantCulture), "u")
-                : string.Concat(
-                    csi,
-                    codepoint.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    ";",
-                    (modifierBits + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    "u");
+            bool hasEvent = eventKind != TerminalKeyEventKind.Press;
+            bool hasModifiers = modifierBits != 0 || hasEvent;
+            bool omitNumber = number == 1 && final is not ('u' or '~') && !hasModifiers;
+            var culture = System.Globalization.CultureInfo.InvariantCulture;
+            return string.Concat("\x1b[", omitNumber ? "" : number.ToString(culture),
+                hasModifiers ? ";" + (modifierBits + 1).ToString(culture) : "",
+                hasEvent ? ":" + ((int)eventKind).ToString(culture) : "", final);
         }
 
         /// <summary>

@@ -149,4 +149,63 @@ public sealed class HeadlessKittyPresentationTests
             Assert.Equal((100, 30), (mux.Cols, mux.Rows));
         }
     }
+    [Fact]
+    public async Task Event_flags_are_intersected_with_legacy_clients_and_recover_after_detach()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            var gui = new RecordingFrameSink { WantsSessionEvents = true };
+            var legacy = new RecordingFrameSink();
+            var observer = new RecordingFrameSink();
+            mux.PostAttach(gui, 1, 0, Kitty with { KittyKeyboardSupportedFlags = 3 }, MuxProtocol.MaxFrameBytes);
+            Assert.Equal(3, await mux.KittyKeyboardSupportedFlags);
+            fake.Emit("\x1b[>3u\x1b[?u");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Contains("\x1b[?3u"), "new clients enable repeat/release reporting");
+            Assert.Equal(3, gui.SessionChanges[^1].KittyKeyboardSupportedFlags);
+
+            mux.PostAttach(observer, 2, 0, Kitty, MuxProtocol.MaxFrameBytes, MuxAttachMode.ReadOnly);
+            Assert.Equal(3, await mux.KittyKeyboardSupportedFlags);
+            mux.PostAttach(legacy, 3, 0, Kitty, MuxProtocol.MaxFrameBytes); // absent field: flag 1 only
+            Assert.Equal(1, await mux.KittyKeyboardSupportedFlags);
+            fake.Emit("\x1b[?u");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Contains("\x1b[?1u"), "legacy clients cannot produce release events");
+            Assert.Equal(1, gui.SessionChanges[^1].KittyKeyboardSupportedFlags);
+
+            mux.PostDetach(legacy);
+            Assert.Equal(3, await mux.KittyKeyboardSupportedFlags);
+            // The requested stack is retained, so relaxing the ceiling restores flags 3.
+            fake.Emit("\x1b[?u");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count(x => x == "\x1b[?3u") == 2, "the flag ceiling recovers after the legacy peer leaves");
+        }
+    }
+
+    [Fact]
+    public async Task Coalesced_presentations_keep_every_clients_supported_flag_mask()
+    {
+        (HeadlessTerminalSession mux, _) = NewSession();
+        using (mux)
+        {
+            var a = new RecordingFrameSink();
+            var b = new RecordingFrameSink();
+            MuxPresentation modern = Kitty with { KittyKeyboardSupportedFlags = 3 };
+            mux.PostAttach(a, 1, 0, modern, MuxProtocol.MaxFrameBytes);
+            mux.PostAttach(b, 2, 0, modern, MuxProtocol.MaxFrameBytes);
+            Assert.Equal(3, await mux.KittyKeyboardSupportedFlags);
+            using var release = new ManualResetEventSlim();
+            Task<int> parked = mux.InvokeAsync(() => { release.Wait(TimeSpan.FromSeconds(30)); return 0; });
+            await TestWait.UntilAsync(() => mux.QueuedControlCount == 0, "the parse thread is parked");
+            try
+            {
+                mux.PostResize(b, 80, 24, Kitty);
+                mux.PostResize(a, 80, 24, modern);
+            }
+            finally { release.Set(); }
+            await parked;
+            Assert.Equal(1, await mux.KittyKeyboardSupportedFlags);
+        }
+    }
 }

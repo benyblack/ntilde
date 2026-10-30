@@ -171,4 +171,21 @@ public sealed class MuxPaneSharingTests : IDisposable
         _pane.TermView.Focus();
         PumpUntil(() => _mux.Mux(s.Id).Cols == cols && _mux.Mux(s.Id).Rows == rows, "focus re-requested the pane's own grid");
     }
+    [AvaloniaFact]
+    public void Keyboard_events_follow_the_daemons_interactive_capability_intersection()
+    {
+        MuxClientSession session = StartHostedPane();
+        PumpUntil(() => session.KittyKeyboardSupportedFlags == 3, "the new GUI advertised event reporting");
+        _mux.Fake(session.Id).Emit("\x1b[>3u");
+        PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 3, "the GUI parsed the requested event flag");
+        ClientPaneModel legacy = AttachOther(session.Id); // an older GUI omits supported flags
+        PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 1, "the GUI applied the shared flag ceiling");
+        Assert.False(_pane!.Buffer!.Modes.KittyKeyboard.ReportEventTypes);
+        legacy.Session.Dispose();
+        PumpUntil(() => _pane.Buffer.Modes.KittyKeyboard.Flags == 3, "event reporting recovered after legacy detach");
+
+        // An older daemon omits the field entirely. It must never imply support for flag 2.
+        session.DeliverSessionChanged(new Ntilde.Mux.Contracts.SessionChangedNotification { SessionId = session.Id });
+        Assert.Equal(1, _pane.Buffer.Modes.KittyKeyboard.Flags);
+    }
 }

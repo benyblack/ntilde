@@ -202,6 +202,11 @@ internal static class ParityCorpus
             "\u001b[>1u" + "\u001b[>1u" + "\u001b[=1;2u" + "\u001b[<1u" + "\u001b[?u" +
             "\u001b[?1049h" + "\u001b[>1u" + "\u001b[?1049l"));
 
+        yield return ("kitty-keyboard-events", Utf8(
+            "\u001b[>3u\u001b[?u\u001b[>2u\u001b[<u" +
+            "\u001b[?1049h\u001b[>7u\u001b[=2;3u\u001b[?u" +
+            "\u001b[?1049l\u001b[?u\u001b[>1u\u001b[<u"));
+
         yield return ("synchronized-output", Utf8(
             "\u001b[?2026h" + "batched text one\r\nbatched text two" + "\u001b[?2026l" +
             "\u001b[?2026h" + "left open"));

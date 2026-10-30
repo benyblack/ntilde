@@ -163,4 +163,22 @@ public sealed class SessionEventsClientTests
         Assert.Equal((80, 24), (host.Mux(id).Cols, host.Mux(id).Rows));
         Assert.Equal((80, 24), (model.Buffer.Cols, model.Buffer.Rows));
     }
+    [Fact]
+    public async Task Keyboard_capabilities_are_available_before_handlers_and_default_safely_for_older_daemons()
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        MuxClientSession session = (await MuxTestHost.AttachPaneAsync(client, id)).Session;
+        await TestWait.UntilAsync(() => session.AttachedClients == 1, "the initial notification arrived");
+        Assert.Equal(1, session.KittyKeyboardSupportedFlags);
+        int seen = -1;
+        session.SessionChanged += () => seen = session.KittyKeyboardSupportedFlags;
+        session.DeliverSessionChanged(new SessionChangedNotification { SessionId = id, KittyKeyboardSupportedFlags = 3 });
+        Assert.Equal(3, seen);
+        session.DeliverSessionChanged(new SessionChangedNotification { SessionId = id });
+        Assert.Equal(1, seen);
+        session.DeliverSessionChanged(new SessionChangedNotification { SessionId = id, KittyKeyboardSupportedFlags = 0 });
+        Assert.Equal(0, seen);
+    }
 }

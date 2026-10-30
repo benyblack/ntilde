@@ -55,7 +55,7 @@ namespace Ntilde.Shell
         public bool BellVisualEnabled { get; set; } = true;
         public bool SmoothScrolling { get; set; } = true;
         public bool EnableLinkDetection { get; set; } = true;
-        // Kill switch for the kitty keyboard protocol's disambiguate-escape-codes tier
+        // Kill switch for Kitty keyboard disambiguation and repeat/release reporting
         // (issue #266 / PR #277 review, Blocker 2). Default on. When false: TerminalView
         // never calls TryEncodeKittyKey (so every key falls through to the legacy encoding
         // path unconditionally, even if a TUI pushed flag 1), and AnsiParser answers the

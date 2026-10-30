@@ -25,10 +25,64 @@ namespace Ntilde.Shell
             base.OnKeyDown(e);
             if (e.Handled) return;
 
-            if (HandleKeyDownCore(e.Key, e.KeyModifiers))
+            if (HandleKeyDownCore(e.Key, e.KeyModifiers, e.PhysicalKey))
             {
                 e.Handled = true;
             }
+        }
+
+        protected override void OnKeyUp(KeyEventArgs e)
+        {
+            base.OnKeyUp(e);
+            if (e.Handled)
+            {
+                _reportedKittyKeys?.Remove(KeyIdentity(e.Key, e.PhysicalKey));
+                return;
+            }
+            if (HandleKeyUpCore(e.Key, e.KeyModifiers, e.PhysicalKey)) e.Handled = true;
+        }
+
+        private readonly record struct ReportedKittyKey(Key Key, Ntilde.VT.KittyKeyboardState State, int Generation);
+        private Dictionary<(PhysicalKey Physical, Key Logical), ReportedKittyKey>? _reportedKittyKeys;
+
+        private static (PhysicalKey, Key) KeyIdentity(Key key, PhysicalKey physical)
+            => physical == PhysicalKey.None ? (physical, key) : (physical, Key.None);
+
+        private TerminalKeyEventKind KittyEventKind(Key key, PhysicalKey physical)
+        {
+            var identity = KeyIdentity(key, physical);
+            if (_reportedKittyKeys?.TryGetValue(identity, out var held) == true)
+            {
+                if (ReferenceEquals(held.State, _buffer?.Modes.KittyKeyboard)
+                    && held.Generation == held.State.Generation) return TerminalKeyEventKind.Repeat;
+                _reportedKittyKeys.Remove(identity);
+            }
+            return TerminalKeyEventKind.Press;
+        }
+
+        internal bool HandleKeyUpCore(Key key, KeyModifiers modifiers, PhysicalKey physical = PhysicalKey.None)
+        {
+            if (_reportedKittyKeys?.Remove(KeyIdentity(key, physical), out var held) != true) return false;
+            if (!_enableKittyKeyboardProtocol || _session?.IsProcessRunning != true
+                || !ReferenceEquals(held.State, _buffer?.Modes.KittyKeyboard)
+                || held.Generation != held.State.Generation) return false;
+            string? sequence = TerminalInputModeEncoder.EncodeKittyKey(held.Key, modifiers, _buffer?.Modes, TerminalKeyEventKind.Release);
+            if (sequence == null) return false;
+            SendUserInput(sequence);
+            return true;
+        }
+
+        private void ResetKittyKeyTracking() => _reportedKittyKeys?.Clear();
+
+        private void SendKeyInput(Key key, KeyModifiers modifiers, PhysicalKey physical, string sequence)
+        {
+            var state = _buffer?.Modes.KittyKeyboard;
+            if (_enableKittyKeyboardProtocol && state?.ReportEventTypes == true
+                && (key == Key.Escape || TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, _buffer?.Modes, TerminalKeyEventKind.Repeat) != null))
+            {
+                (_reportedKittyKeys ??= new()).TryAdd(KeyIdentity(key, physical), new(key, state, state.Generation));
+            }
+            SendUserInput(sequence);
         }
 
         internal Func<Key, KeyModifiers, bool>? KeyDownInterceptor { get; set; }
@@ -48,7 +102,7 @@ namespace Ntilde.Shell
             return isMacOS && key == expected && (modifiers & relevant) == KeyModifiers.Meta;
         }
 
-        internal bool HandleKeyDownCore(Key key, KeyModifiers keyModifiers)
+        internal bool HandleKeyDownCore(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey = PhysicalKey.None)
         {
             if (KeyDownInterceptor?.Invoke(key, keyModifiers) == true)
             {
@@ -73,13 +127,14 @@ namespace Ntilde.Shell
                 return false;
             }
 
+            TerminalKeyEventKind eventKind = KittyEventKind(key, physicalKey);
             ResetCursorBlink();
 
             // Handle keys that don't generate text input (Control codes, arrows, etc.)
             // Logic copied from MainWindow
             bool isCtrl = (keyModifiers & KeyModifiers.Control) != 0;
 
-            // Kitty keyboard protocol (disambiguate tier). Must run before every legacy path
+            // Kitty keyboard protocol (disambiguation and negotiated event reporting). Must run before every legacy path
             // below - including Alt-sends-ESC - because the protocol replaces those encodings
             // for the keys it claims. When the protocol is off (flags = 0) the encoder returns
             // null for every key and the legacy behavior below is byte-identical to before.
@@ -87,10 +142,10 @@ namespace Ntilde.Shell
             // _enableKittyKeyboardProtocol is the user-facing kill switch (Blocker 2,
             // TerminalSettings.EnableKittyKeyboardProtocol). When false, this call is skipped
             // entirely so every key falls through to the legacy path below unconditionally,
-            // even if a TUI already pushed flag 1 onto the buffer's ModeState.
-            if (_enableKittyKeyboardProtocol && TryEncodeKittyKey(key, keyModifiers, out string? kittySequence))
+            // even if a TUI already pushed Kitty flags onto the buffer's ModeState.
+            if (_enableKittyKeyboardProtocol && TryEncodeKittyKey(key, keyModifiers, eventKind, out string? kittySequence))
             {
-                SendUserInput(kittySequence!);
+                SendKeyInput(key, keyModifiers, physicalKey, kittySequence!);
                 return true;
             }
 
@@ -101,7 +156,7 @@ namespace Ntilde.Shell
                 string? altSequence = TerminalInputModeEncoder.EncodeAltKey(key, keyModifiers);
                 if (altSequence != null)
                 {
-                    SendUserInput(altSequence);
+                    SendKeyInput(key, keyModifiers, physicalKey, altSequence);
                     return true;
                 }
             }
@@ -141,23 +196,23 @@ namespace Ntilde.Shell
                     }
                     finally
                     {
-                        SendUserInput("\r");
+                        SendKeyInput(key, keyModifiers, physicalKey, "\r");
                     }
 
                     EnterObserved?.Invoke();
                     return true;
                 case Key.Back:
-                    SendUserInput("\x7f");
+                    SendKeyInput(key, keyModifiers, physicalKey, "\x7f");
                     BackspaceObserved?.Invoke();
                     return true;
                 case Key.Tab:
                     // Shift+Tab must emit the back-tab (CBT) sequence ESC [ Z, exactly as
                     // xterm does. TUIs like Claude Code rely on it for reverse navigation
                     // (e.g. cycling permission modes backward); a literal tab breaks that.
-                    SendUserInput((keyModifiers & KeyModifiers.Shift) != 0 ? "\x1b[Z" : "\t");
+                    SendKeyInput(key, keyModifiers, physicalKey, (keyModifiers & KeyModifiers.Shift) != 0 ? "\x1b[Z" : "\t");
                     return true;
                 case Key.Escape:
-                    SendUserInput("\x1b");
+                    SendKeyInput(key, keyModifiers, physicalKey, "\x1b");
                     return true;
 
                 default:
@@ -171,7 +226,7 @@ namespace Ntilde.Shell
                         string? controlSequence = TerminalInputModeEncoder.EncodeLegacyControlKey(key, keyModifiers);
                         if (controlSequence != null)
                         {
-                            SendUserInput(controlSequence);
+                            SendKeyInput(key, keyModifiers, physicalKey, controlSequence);
                             return true;
                         }
                     }
@@ -189,7 +244,7 @@ namespace Ntilde.Shell
                         }
                         else
                         {
-                            SendUserInput("\x03");
+                            SendKeyInput(key, keyModifiers, physicalKey, "\x03");
                         }
                         return true;
                     }
@@ -214,8 +269,8 @@ namespace Ntilde.Shell
             }
 
             // Cursor, editing and function keys, with their modifiers (Ctrl+Left -> CSI 1;5D). Every
-            // modifier combination of these keys arrives here: the kitty encoder leaves functional
-            // keys alone, EncodeAltKey declines non-printable keys (so Alt+arrow lands here too),
+            // modifier combination not claimed by Kitty event reporting arrives here:
+            // EncodeAltKey declines non-printable keys (so Alt+arrow lands here too),
             // and the Ctrl branch above only claims letters. Command Assist's interceptor matches
             // its bindings with exact modifiers, so by default it takes only the unmodified
             // Up/Down. App chords on these keys never get this far - MainWindow's tunnel handler
@@ -224,7 +279,7 @@ namespace Ntilde.Shell
             string? sequence = TerminalInputModeEncoder.EncodeSpecialKey(key, keyModifiers, _buffer?.Modes);
             if (sequence != null)
             {
-                SendUserInput(sequence);
+                SendKeyInput(key, keyModifiers, physicalKey, sequence);
                 return true;
             }
 
@@ -242,7 +297,7 @@ namespace Ntilde.Shell
         ///    as CSI 99;5u (the spec explicitly notes Ctrl+C stops raising SIGINT in this mode).
         ///    Not on macOS, where copy is Cmd+C and Ctrl+C is always the real key.
         /// </summary>
-        private bool TryEncodeKittyKey(Key key, KeyModifiers keyModifiers, out string? sequence)
+        private bool TryEncodeKittyKey(Key key, KeyModifiers keyModifiers, TerminalKeyEventKind eventKind, out string? sequence)
         {
             sequence = null;
 
@@ -256,10 +311,10 @@ namespace Ntilde.Shell
                 return false;
             }
 
-            sequence = TerminalInputModeEncoder.EncodeKittyKey(key, keyModifiers, _buffer?.Modes);
+            sequence = TerminalInputModeEncoder.EncodeKittyKey(key, keyModifiers, _buffer?.Modes, eventKind);
             return sequence != null;
         }
-        // Kill switch for the kitty keyboard protocol's disambiguate tier (Blocker 2, #277
+        // Kill switch for the kitty keyboard protocol (Blocker 2, #277
         // review). Defaults true so behavior is unchanged until ApplySettings runs; a fresh
         // TerminalView created outside the settings pipeline (as several tests do) still gets
         // the protocol, matching pre-kill-switch behavior.

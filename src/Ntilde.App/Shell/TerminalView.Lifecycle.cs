@@ -52,6 +52,7 @@ namespace Ntilde.Shell
         protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
         {
             base.OnDetachedFromVisualTree(e);
+            ResetKittyKeyTracking();
             _isAttachedToVisualTree = false;
             _isUiRenderable = false;
             StopUiTimers();
@@ -152,6 +153,7 @@ namespace Ntilde.Shell
         protected override void OnLostFocus(FocusChangedEventArgs e)
         {
             base.OnLostFocus(e);
+            ResetKittyKeyTracking();
             string? sequence = TerminalInputModeEncoder.EncodeFocusChanged(_buffer?.Modes, isFocused: false);
             if (_session != null && sequence != null)
             {

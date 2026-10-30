@@ -144,7 +144,7 @@ namespace Ntilde.Tests.Input
         public void UnsupportedFlagsAlone_DoNotEnableEncoding()
         {
             var modes = new ModeState();
-            modes.KittyKeyboard.Push(0b11110); // event types + alternates + all keys + text
+            modes.KittyKeyboard.Push(0b11100); // alternates + all keys + associated text
 
             Assert.Equal(0, modes.KittyKeyboard.Flags);
             Assert.Null(TerminalInputModeEncoder.EncodeKittyKey(Key.Escape, KeyModifiers.None, modes));

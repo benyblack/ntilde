@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "4b5eefda018ce0651363a5620d3ae81cd19394707a7d17d1a59f31b81f7b22d5",
+  "matrixSha256": "3680667562c65a1939d5c656a0d02830c85ea435fa7449da818b1cb1e086f2d0",
   "summary": {
     "totalRows": 65,
     "supportedCount": 29,
@@ -806,7 +806,7 @@
       "feature": "Kitty keyboard protocol",
       "status": "\u26A0 Partial",
       "specOrNotes": "Progressive-enhancement flags: query, push, pop, set. Per-screen-buffer flag stacks (depth 32, oldest evicted on overflow); RIS clears both",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/KittyKeyboardProtocolTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/KittyKeyboardEncodingTests.cs\u0060, \u0060tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs\u0060, \u0060tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/KittyKeyboardProtocolTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyKeyboardEventTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/KittyKeyEventEncodingTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/KittyKeyEventRoutingTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/KittyKeyboardEncodingTests.cs\u0060, \u0060tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs\u0060, \u0060tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -820,7 +820,19 @@
           "exists": true
         },
         {
+          "path": "tests/Ntilde.App.Tests/Input/KittyKeyEventEncodingTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.App.Tests/Input/KittyKeyEventRoutingTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.App.Tests/Input/KittyKeyboardEncodingTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/KittyKeyboardEventTests.cs",
           "exists": true
         },
         {
@@ -831,7 +843,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BInput",
-      "knownDeviations": "Scope: disambiguate-escape-codes tier (\u00600b1\u0060) only. Bits \u00600b10\u0060/\u00600b100\u0060/\u00600b1000\u0060/\u00600b10000\u0060 (event types, alternate keys, all-keys, associated text) are accepted but masked out on push/set, so the \u0060CSI ? u\u0060 reply only advertises flags actually honored. Key encoding covers Esc, modified Enter/Tab/Backspace, and ctrl/alt/super combinations on the spec\u0027s legacy-text keys; keypad and functional keys keep their legacy encodings, which for arrows/Home/End/Insert/Delete/PgUp/PgDn/F1-F12 carry modifiers in xterm\u0027s PC-style form (e.g. Ctrl\u002BLeft is \u0060CSI 1;5D\u0060, Ctrl\u002BDelete \u0060CSI 3;5~\u0060). AltGr on Windows non-US layouts is reported as Control\u002BAlt; the encoder carves that combination out (falls through to legacy/text) so composed characters are not swallowed - the accepted trade-off is that literal Ctrl\u002BAlt\u002B\u0026lt;key\u0026gt; shortcuts on US layouts also lose kitty encoding, same as the pre-existing Alt-sends-ESC carve-out. Gated end-to-end by \u0060TerminalSettings.EnableKittyKeyboardProtocol\u0060 (default on): when off, the App-side encoder is skipped unconditionally and the \u0060CSI ? u\u0060 reply always reports flags 0 regardless of the pushed stack state. The tab-broadcast path in \u0060MainWindow\u0060 builds its own input independently of this encoder and always sends legacy encoding to broadcast targets regardless of their own flag state.",
+      "knownDeviations": "Scope: disambiguate escape codes (\u00600b1\u0060) and report event types (\u00600b10\u0060). Repeat/release events use modifier subparameters \u0060:2\u0060/\u0060:3\u0060; press is the default. Releases are paired with forwarded non-text presses and discarded on focus/session/buffer/keyboard-stack changes. Enter/Tab/Backspace have no releases; ordinary text, IME and AltGr stay on TextInput. Bits \u00600b100\u0060/\u00600b1000\u0060/\u00600b10000\u0060 (alternate keys, all-keys, associated text) are accepted but masked out on push/set, so the \u0060CSI ? u\u0060 reply only advertises flags actually honored. Key encoding covers Esc, modified Enter/Tab/Backspace, and ctrl/alt/super combinations on the spec\u0027s legacy-text keys; keypad text remains text. Without event reporting, functional keys keep their legacy encodings, which for arrows/Home/End/Insert/Delete/PgUp/PgDn/F1-F12 carry modifiers in xterm\u0027s PC-style form (e.g. Ctrl\u002BLeft is \u0060CSI 1;5D\u0060, Ctrl\u002BDelete \u0060CSI 3;5~\u0060). With event reporting, supported functional keys use canonical CSI frames (F3 uses \u006013~\u0060 to avoid CPR collisions), independent of application cursor mode. AltGr on Windows non-US layouts is reported as Control\u002BAlt; the encoder carves that combination out (falls through to legacy/text) so composed characters are not swallowed - the accepted trade-off is that literal Ctrl\u002BAlt\u002B\u0026lt;key\u0026gt; shortcuts on US layouts also lose kitty encoding, same as the pre-existing Alt-sends-ESC carve-out. Gated end-to-end by \u0060TerminalSettings.EnableKittyKeyboardProtocol\u0060 (default on): when off, the App-side encoder is skipped unconditionally and the \u0060CSI ? u\u0060 reply always reports flags 0 regardless of the pushed stack state. Persistent sessions intersect the supported flag masks of interactive clients; old daemons/clients without the optional mask stay at flag 1, and read-only observers do not reduce capabilities. The GUI applies capability notifications before subsequent output; raw requested stacks survive a temporary ceiling reduction. The tab-broadcast path in \u0060MainWindow\u0060 builds its own input independently of this encoder and always sends legacy encoding to broadcast targets regardless of their own flag state.",
       "sourceLine": 118
     },
     {

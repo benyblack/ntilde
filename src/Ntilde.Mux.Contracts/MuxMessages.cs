@@ -72,6 +72,10 @@ public sealed record MuxPresentation
     public uint? DefaultFg { get; init; }
     public uint? DefaultBg { get; init; }
     public bool KittyKeyboardEnabled { get; init; } = true;
+
+    /// <summary>Supported progressive enhancements; absent on older clients means disambiguation only (1).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? KittyKeyboardSupportedFlags { get; init; }
 }
 
 /// <summary>The local fields of <c>TerminalSessionRequest</c>; SSH is not spawnable through the mux (spec §9.2).</summary>
@@ -294,6 +298,10 @@ public sealed record SessionChangedNotification
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? InteractiveClients { get; init; }
+
+    /// <summary>Intersection over interactive clients; absent on older daemons means flag 1 only.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? KittyKeyboardSupportedFlags { get; init; }
 
     public string Title { get; init; } = string.Empty;
     public string? Cwd { get; init; }
