@@ -116,8 +116,9 @@ namespace Ntilde.VT.Export
                 }
                 else
                 {
-                    TermColor rgb = underline.Color!.Value;
-                    sb.Append("58:2::").Append(rgb.R).Append(':').Append(rgb.G).Append(':').Append(rgb.B);
+                    // 58:2:<color space id>:r:g:b, the id left empty as xterm and kitty write it.
+                    TermColor rgb = underline.Color.GetValueOrDefault();
+                    sb.Append("58:2:").Append(':').Append(rgb.R).Append(':').Append(rgb.G).Append(':').Append(rgb.B);
                 }
             }
 
