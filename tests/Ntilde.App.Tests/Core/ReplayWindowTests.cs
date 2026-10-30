@@ -13,6 +13,95 @@ namespace Ntilde.Tests.Core;
 public sealed class ReplayWindowTests
 {
     [AvaloniaFact]
+    public async Task A_restored_snapshot_keeps_its_geometry_until_an_in_stream_resize()
+    {
+        string path = Path.GetTempFileName();
+        ReplayWindow? window = null;
+        try
+        {
+            var initial = new TerminalBuffer(20, 6);
+            var parser = new AnsiParser(initial) { SixelCellSizeOverride = new SixelCellSize(20, 6) };
+            using (var recorder = new PtyRecorder(path, 10, 5))
+            {
+                recorder.RecordSnapshot(initial, parser);
+                byte[] data = System.Text.Encoding.UTF8.GetBytes("abcdefghijklmnop");
+                recorder.RecordChunkAt(100, data, data.Length);
+                recorder.RecordResizeAt(200, 30, 7);
+            }
+            window = new ReplayWindow(path);
+            var model = (ReplayViewModel)window.DataContext!;
+            await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => model.DurationMs == 200, "the resized snapshot was indexed");
+            var buffer = (TerminalBuffer)typeof(ReplayWindow).GetField("_buffer", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            foreach (long target in new[] { 100L, 200L })
+            {
+                await (Task)typeof(ReplayWindow).GetMethod("PerformSeek", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [target, CancellationToken.None])!;
+                Assert.Equal(target == 100 ? 20 : 30, buffer.Cols);
+                Assert.Equal("abcdefghijklmnop", BufferSnapshot.Capture(buffer).Lines[0]);
+            }
+        }
+        finally { window?.Close(); File.Delete(path); }
+    }
+
+    [AvaloniaFact]
+    public async Task Corrupt_snapshot_cells_leave_seek_state_unchanged_and_do_not_escape_the_seek_task()
+    {
+        string path = Path.GetTempFileName();
+        ReplayWindow? window = null;
+        try
+        {
+            var header = new ReplayHeader { Type = ReplayHeader.TypeToken, Cols = 80, Rows = 24 };
+            var bad = new ReplayEvent { Type = "snapshot", TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { Cols = 20, Rows = 8, CursorCol = 5, IsAltScreen = true, CellsBase64 = "not base64!" } };
+            File.WriteAllLines(path, [System.Text.Json.JsonSerializer.Serialize(header, Ntilde.VT.ReplayJsonContext.Default.ReplayHeader), System.Text.Json.JsonSerializer.Serialize(bad, Ntilde.VT.ReplayJsonContext.Default.ReplayEvent)]);
+            window = new ReplayWindow(path);
+            var model = (ReplayViewModel)window.DataContext!;
+            await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => model.DurationMs == 100, "the corrupt snapshot was indexed");
+            var parser = (AnsiParser)typeof(ReplayWindow).GetField("_parser", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            var buffer = (TerminalBuffer)typeof(ReplayWindow).GetField("_buffer", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            parser.Process("preserved");
+            var before = BufferSnapshot.Capture(buffer);
+            await (Task)typeof(ReplayWindow).GetMethod("PerformSeek", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [100L, CancellationToken.None])!;
+            Assert.Equal((80, 24), (buffer.Cols, buffer.Rows));
+            Assert.Equal(before.ToFormattedString(), BufferSnapshot.Capture(buffer).ToFormattedString());
+            Assert.Equal(0, model.CurrentTimeMs);
+            Assert.False(buffer.IsAltScreenActive);
+        }
+        finally { window?.Close(); File.Delete(path); }
+    }
+
+    [AvaloniaFact]
+    public async Task Metrics_queued_by_an_old_session_cannot_overwrite_the_session_started_before_they_execute()
+    {
+        var window = new ReplayWindow(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".rec"));
+        try
+        {
+            var gate = (PlaybackSessionGate)typeof(ReplayWindow).GetField("_playbackSessionGate", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            var parser = (AnsiParser)typeof(ReplayWindow).GetField("_parser", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            foreach (bool header in new[] { false, true })
+            {
+                int old = gate.BeginSession();
+                Task? queued = null;
+                using var posted = new ManualResetEventSlim();
+                var poster = Task.Run(() =>
+                {
+                    string name = header ? "ApplyHeaderMetricsAsync" : "ApplyCellMetricsAsync";
+                    object[] args = header ? [old, new ReplayHeader { SixelCellWidthPx = 10, SixelCellHeightPx = 20 }, true] : [old, 10f, 20f];
+                    queued = (Task)typeof(ReplayWindow).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, args)!;
+                    posted.Set();
+                }, TestContext.Current.CancellationToken);
+                Assert.True(posted.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)); // do not pump the UI yet
+                Assert.False(queued!.IsCompleted);
+                gate.BeginSession();
+                parser.SixelCellSizeOverride = new SixelCellSize(20, 6);
+                Dispatcher.UIThread.RunJobs();
+                await queued;
+                await poster;
+                Assert.Equal(new SixelCellSize(20, 6), parser.SixelCellSizeOverride);
+            }
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task A_cancelled_seek_keeps_the_applied_position_instead_of_committing_its_target()
     {
         string path = Path.GetTempFileName();

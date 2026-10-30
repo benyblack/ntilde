@@ -1,11 +1,86 @@
 using System.Text;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Replay;
+using Ntilde.Mux.Contracts;
 
 namespace Ntilde.Mux.Tests.Scenarios;
 
 public sealed class FlightExportTests
 {
+    [Fact]
+    public async Task Flight_recording_stays_active_until_the_last_connection_owner_disables_it()
+    {
+        using var host = new MuxTestHost();
+        using var a = await host.ConnectClientAsync();
+        using var b = await host.ConnectClientAsync();
+        using var stranger = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(a);
+        async Task Enable(MuxClient client) => _ = await client.RequestAsync(MuxMethods.EnableFlightRecording,
+            new EnableFlightRecordingParams { SessionId = id, MaxBytes = 4096 }, MuxJsonContext.Default.EnableFlightRecordingParams, MuxJsonContext.Default.MuxEmpty, TestContext.Current.CancellationToken);
+        async Task Disable(MuxClient client) => _ = await client.RequestAsync(MuxMethods.DisableFlightRecording,
+            new SessionIdParams { SessionId = id }, MuxJsonContext.Default.SessionIdParams, MuxJsonContext.Default.MuxEmpty, TestContext.Current.CancellationToken);
+        await Enable(a);
+        await Enable(b);
+        await Disable(stranger); // bypasses the client wrapper: the server also enforces ownership
+        Assert.True(host.Fake(id).IsFlightRecording);
+        await Disable(a);
+        Assert.True(host.Fake(id).IsFlightRecording);
+        await Disable(b);
+        Assert.False(host.Fake(id).IsFlightRecording);
+    }
+
+    [Fact]
+    public async Task Disconnect_releases_only_that_connections_flight_ownership()
+    {
+        using var host = new MuxTestHost();
+        using var a = await host.ConnectClientAsync();
+        using var b = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(a);
+        foreach (var client in new[] { a, b })
+            await client.RequestAsync(MuxMethods.EnableFlightRecording, new EnableFlightRecordingParams { SessionId = id, MaxBytes = 4096 },
+                MuxJsonContext.Default.EnableFlightRecordingParams, MuxJsonContext.Default.MuxEmpty, TestContext.Current.CancellationToken);
+        a.Dispose();
+        await b.RequestAsync(MuxMethods.DisableFlightRecording, new SessionIdParams { SessionId = id }, MuxJsonContext.Default.SessionIdParams,
+            MuxJsonContext.Default.MuxEmpty, TestContext.Current.CancellationToken);
+        await TestWait.UntilAsync(() => !host.Fake(id).IsFlightRecording, "both connection owners were released");
+    }
+
+    [Theory]
+    [InlineData(MuxMethods.StartRecording)]
+    [InlineData(MuxMethods.StopRecording)]
+    [InlineData(MuxMethods.EnableFlightRecording)]
+    [InlineData(MuxMethods.DisableFlightRecording)]
+    [InlineData(MuxMethods.ExportFlight)]
+    public async Task Recording_requests_leave_the_connection_reader_free_while_the_target_parser_is_held(string method)
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        var mux = host.Mux(id);
+        using var parked = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        Task<bool> parking = mux.InvokeAsync(() => { parked.Set(); return release.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken); });
+        Assert.True(parked.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        try
+        {
+            Task request = method switch
+            {
+                MuxMethods.StartRecording => client.RequestAsync(method, new StartRecordingParams { SessionId = id, Path = "scripted.rec" }, MuxJsonContext.Default.StartRecordingParams, MuxJsonContext.Default.MuxEmpty, TestContext.Current.CancellationToken),
+                MuxMethods.EnableFlightRecording => client.RequestAsync(method, new EnableFlightRecordingParams { SessionId = id, MaxBytes = 4096 }, MuxJsonContext.Default.EnableFlightRecordingParams, MuxJsonContext.Default.MuxEmpty, TestContext.Current.CancellationToken),
+                MuxMethods.ExportFlight => client.RequestAsync(method, new SessionIdParams { SessionId = id }, MuxJsonContext.Default.SessionIdParams, MuxJsonContext.Default.ExportFlightResult, TestContext.Current.CancellationToken),
+                _ => client.RequestAsync(method, new SessionIdParams { SessionId = id }, MuxJsonContext.Default.SessionIdParams, MuxJsonContext.Default.MuxEmpty, TestContext.Current.CancellationToken),
+            };
+            await client.PingAsync(TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.False(request.IsCompleted);
+            Assert.False(host.Fake(id).IsRecording);
+            release.Set();
+            Assert.True(await parking);
+            await request;
+            Assert.Equal(method == MuxMethods.StartRecording, host.Fake(id).IsRecording);
+        }
+        finally { release.Set(); }
+    }
+
     [Fact]
     public async Task Disabling_an_unowned_flight_recorder_does_not_wait_for_the_parser_or_clear_another_clients_ring()
     {
@@ -70,7 +145,7 @@ public sealed class FlightExportTests
                 await client.PingAsync(TestContext.Current.CancellationToken);
             }, TestContext.Current.CancellationToken);
             await TestWait.UntilAsync(() => change.IsCompleted || mux.QueuedControlCount > 0 || mux.QueuedDataCount == 2, "the lifecycle request reached its queue");
-            bool changedBeforeParsing = change.IsCompleted;
+            bool changedBeforeParsing = operationThread is not null;
             host.Fake(id).Emit("later");
             release.Set();
             Assert.True(await parking);
@@ -153,13 +228,10 @@ public sealed class FlightExportTests
         {
             host.Fake(id).Emit("hello\r\n");
             host.Fake(id).Emit("world");
-            Task stop = Task.Run(async () =>
-            {
-                session.StopRecording();
-                await client.PingAsync(TestContext.Current.CancellationToken);
-            }, TestContext.Current.CancellationToken);
+            Task stop = client.RequestAsync(MuxMethods.StopRecording, new SessionIdParams { SessionId = id },
+                MuxJsonContext.Default.SessionIdParams, MuxJsonContext.Default.MuxEmpty, TestContext.Current.CancellationToken);
             await TestWait.UntilAsync(() => stop.IsCompleted || mux.QueuedDataCount == 3, "stop either bypassed or queued behind output");
-            bool stoppedBeforeParsing = stop.IsCompleted;
+            bool stoppedBeforeParsing = stopThread is not null;
             host.Fake(id).Emit("later"); // queued after the stop boundary
             release.Set();
             Assert.True(await parking);

@@ -226,13 +226,7 @@ namespace Ntilde.UI.Replay
             }
 
             long appliedTime = snapEntry?.TimeMs ?? 0;
-            await ApplyInSessionAsync(sessionId, () =>
-            {
-                if (snapEntry is not null) ReplayRunner.ApplySnapshot(_buffer, _parser, snapEntry.Snapshot);
-                else _buffer.Clear();
-                _displayedTimeMs = appliedTime;
-                _viewModel.CurrentTimeMs = appliedTime;
-            });
+            if (!await ApplySeekSnapshotAsync(sessionId, snapEntry?.Snapshot, appliedTime)) return;
 
             bool reachedTarget = false;
             using var seekCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -246,7 +240,7 @@ namespace Ntilde.UI.Replay
                     onSixelCellSizeCallback: (w, h) => ApplyCellMetricsAsync(sessionId, w, h),
                     onResizeCallback: (w, h) => ApplyInSessionAsync(sessionId, () => _buffer.Resize(w, h)),
                     onTimeUpdate: time => { appliedTime = Math.Max(appliedTime, time); return Task.CompletedTask; },
-                    options: new ReplayRunOptions { StopAtTimeMs = targetTimeMs },
+                    options: new ReplayRunOptions { StopAtTimeMs = targetTimeMs, ApplyHeaderResize = snapEntry is null },
                     minTimeMs: snapEntry?.TimeMs ?? 0,
                     ct: seekCts.Token);
                 appliedTime = Math.Max(appliedTime, result.LastGoodOffset);
@@ -259,6 +253,27 @@ namespace Ntilde.UI.Replay
                 _displayedTimeMs = reachedTarget ? targetTimeMs : appliedTime;
                 _viewModel.CurrentTimeMs = _displayedTimeMs;
             });
+        }
+
+        private async Task<bool> ApplySeekSnapshotAsync(int sessionId, ReplaySnapshot? snapshot, long appliedTime)
+        {
+            try
+            {
+                await ApplyInSessionAsync(sessionId, () =>
+                {
+                    if (snapshot is not null) ReplayRunner.ApplySnapshot(_buffer!, _parser!, snapshot);
+                    else _buffer!.Clear();
+                    _displayedTimeMs = appliedTime;
+                    _viewModel!.CurrentTimeMs = appliedTime;
+                });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                TerminalLogger.Error($"[ReplayWindow] Snapshot Error: {ex.Message}");
+                await ApplyInSessionAsync(sessionId, () => _viewModel!.CurrentTimeMs = _displayedTimeMs);
+                return false;
+            }
         }
 
         private async Task PlaybackLoop(int sessionId, CancellationToken ct)
@@ -284,7 +299,7 @@ namespace Ntilde.UI.Replay
                     if (minTime == 0) await ApplyInSessionAsync(sessionId, () => _buffer.Clear());
                 }
 
-                await runner.RunAsync(
+                await runner.RunWithResultAsync(
                     onDataCallback: async (data) =>
                     {
                         var text = System.Text.Encoding.UTF8.GetString(data);
@@ -312,7 +327,7 @@ namespace Ntilde.UI.Replay
                             }
                         });
                     },
-                    realtime: true,
+                    options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Realtime, ApplyHeaderResize = snapEntry is null },
                     minTimeMs: minTime,
                     fastForwardToMs: startTimeMs,
                     playbackSpeed: _viewModel.PlaybackSpeed,

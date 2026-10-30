@@ -542,46 +542,71 @@ public sealed class HeadlessTerminalSession : IDisposable
         return snapshot;
     }
 
-    // Take the boundary inside the FIFO data queue, before any subsequent chunk can be parsed.
-    private T AtRecordingBoundary<T>(Func<T> operation, bool allowStopped = true)
+    private readonly object _flightOwnersGate = new();
+    private readonly HashSet<Guid> _flightOwners = new();
+
+    // Admit synchronously to preserve order relative to later output and requests; completion is asynchronous.
+    private Task<T> AtRecordingBoundaryAsync<T>(Func<T> operation, bool allowStopped = true)
     {
-        if (Thread.CurrentThread == _parseThread) return operation();
-        try { return InvokeAsync(_data, operation).GetAwaiter().GetResult(); }
+        if (Thread.CurrentThread == _parseThread) return Task.FromResult(operation());
+        return CompleteRecordingBoundaryAsync(InvokeAsync(_data, operation), operation, allowStopped);
+    }
+
+    private async Task<T> CompleteRecordingBoundaryAsync<T>(Task<T> pending, Func<T> operation, bool allowStopped)
+    {
+        try { return await pending.ConfigureAwait(false); }
         catch (ObjectDisposedException ex) when (allowStopped && ex.ObjectName == nameof(HeadlessTerminalSession))
         {
-            // A stopped parser still permits export of retained evidence. Wait for teardown to
-            // finish so this fallback cannot race a final in-flight chunk; a wedged parser fails closed.
-            if (!_parseThread.Join(TimeSpan.FromSeconds(5))) throw;
-            return operation();
+            return await Task.Run(() =>
+            {
+                ObjectDisposedException.ThrowIf(!_parseThread.Join(TimeSpan.FromSeconds(5)), this);
+                return operation();
+            }, CancellationToken.None).ConfigureAwait(false);
         }
     }
 
-    internal void StartRecording(string path) => AtRecordingBoundary(() =>
+    internal Task StartRecordingAsync(string path) => AtRecordingBoundaryAsync(() =>
     {
         SetRecordingMetrics();
         _session.StartRecording(path);
         return 0;
     }, allowStopped: false);
 
-    internal void EnableFlightRecording(long maxBytes) => AtRecordingBoundary(() =>
+    internal Task EnableFlightRecordingAsync(Guid owner, long maxBytes) => AtRecordingBoundaryAsync(() =>
     {
-        SetRecordingMetrics();
-        _session.EnableFlightRecording(maxBytes);
+        lock (_flightOwnersGate)
+        {
+            if (!_flightOwners.Contains(owner))
+            {
+                SetRecordingMetrics();
+                _session.EnableFlightRecording(maxBytes);
+                _flightOwners.Add(owner);
+            }
+        }
         return 0;
     }, allowStopped: false);
 
-    internal void DisableFlightRecording() => AtRecordingBoundary(() => { _session.DisableFlightRecording(); return 0; });
+    internal Task DisableFlightRecordingAsync(Guid owner) => AtRecordingBoundaryAsync(() =>
+    {
+        lock (_flightOwnersGate)
+        {
+            if (_flightOwners.Remove(owner) && _flightOwners.Count == 0) _session.DisableFlightRecording();
+        }
+        return 0;
+    });
 
     private void SetRecordingMetrics() => (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(
         _parser.SixelCellWidthPx ?? 10, _parser.SixelCellHeightPx ?? 20);
 
-    internal void StopRecording() => AtRecordingBoundary(() => { _session.StopRecording(); return 0; });
+    internal Task StopRecordingAsync() => AtRecordingBoundaryAsync(() => { _session.StopRecording(); return 0; });
 
-    internal ExportFlightResult ExportFlight()
+    internal ExportFlightResult ExportFlight() => ExportFlightAsync().GetAwaiter().GetResult();
+
+    internal async Task<ExportFlightResult> ExportFlightAsync()
     {
-        var write = AtRecordingBoundary(() => _session.CaptureFlightRecording());
+        var write = await AtRecordingBoundaryAsync(() => _session.CaptureFlightRecording()).ConfigureAwait(false);
         if (write is null) return new ExportFlightResult { Exported = false };
-        return WriteFlightExport(write);
+        return await Task.Run(() => WriteFlightExport(write), CancellationToken.None).ConfigureAwait(false);
     }
 
     private static ExportFlightResult WriteFlightExport(Func<string, FlightExportInfo> write)

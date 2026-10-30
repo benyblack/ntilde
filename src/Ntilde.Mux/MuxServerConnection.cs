@@ -36,6 +36,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     /// Nothing else is decided from it: supersession and read-only state belong to the parse thread.
     /// </summary>
     private readonly HashSet<Guid> _attached = new();
+    private readonly HashSet<Guid> _flightSessions = new(); // reader-thread cleanup, including pending enables
 
     /// <summary>
     /// Sessions this connection is subscribed to read-only. Written only by those sessions' parse
@@ -352,6 +353,8 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 }
 
                 _attached.Clear();
+                foreach (Guid id in _flightSessions) _ = ReleaseFlightOwnershipAsync(id);
+                _flightSessions.Clear();
                 if (!IsClosing) Abort(ReasonDisconnected);
             }
         }
@@ -543,33 +546,31 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.StartRecording:
                     {
                         StartRecordingParams p = Params(request, MuxJsonContext.Default.StartRecordingParams);
-                        var recordingSession = LiveSession(p.SessionId);
-                        recordingSession.StartRecording(p.Path);
-                        ReplyEmpty(request);
+                        _ = CompleteRecordingRequestAsync(request, LiveSession(p.SessionId).StartRecordingAsync(p.Path));
                         break;
                     }
-
                 case MuxMethods.StopRecording:
-                    Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).StopRecording();
-                    ReplyEmpty(request);
+                    _ = CompleteRecordingRequestAsync(request, Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).StopRecordingAsync());
                     break;
                 case MuxMethods.EnableFlightRecording:
                     {
                         EnableFlightRecordingParams p = Params(request, MuxJsonContext.Default.EnableFlightRecordingParams);
                         if (p.MaxBytes <= 0) throw new MuxRequestException(MuxErrorCodes.ProtocolError, "maxBytes must be positive.");
-
-                        // The budget is memory the daemon holds: never the peer's to choose unbounded.
-                        LiveSession(p.SessionId).EnableFlightRecording(Math.Min(p.MaxBytes, _server.Options.MaxFlightRecordingBytes));
-                        ReplyEmpty(request);
+                        var session = LiveSession(p.SessionId);
+                        _flightSessions.Add(p.SessionId);
+                        _ = CompleteRecordingRequestAsync(request, session.EnableFlightRecordingAsync(ConnectionId, Math.Min(p.MaxBytes, _server.Options.MaxFlightRecordingBytes)));
                         break;
                     }
-
                 case MuxMethods.DisableFlightRecording:
-                    Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).DisableFlightRecording();
-                    ReplyEmpty(request);
-                    break;
+                    {
+                        var id = Params(request, MuxJsonContext.Default.SessionIdParams).SessionId;
+                        var session = Session(id);
+                        _flightSessions.Remove(id);
+                        _ = CompleteRecordingRequestAsync(request, session.DisableFlightRecordingAsync(ConnectionId));
+                        break;
+                    }
                 case MuxMethods.ExportFlight:
-                    Reply(request, Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).ExportFlight(), MuxJsonContext.Default.ExportFlightResult);
+                    _ = CompleteFlightExportAsync(request, Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).ExportFlightAsync());
                     break;
                 case MuxMethods.ReadScreen:
                     HandleReadScreen(request);
@@ -596,6 +597,37 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             string message = ex.Message.Length <= 512 ? ex.Message : string.Concat(ex.Message.AsSpan(0, 512), "…");
             ReplyError(request, MuxErrorCodes.Internal, $"{ex.GetType().Name}: {message}");
         }
+    }
+
+    private async Task CompleteRecordingRequestAsync(MuxRequest request, Task operation)
+    {
+        await Task.Yield(); // even an already-completed operation must not do completion work on the reader
+        try { await operation.ConfigureAwait(false); ReplyEmpty(request); }
+        catch (Exception ex) { ReplyRecordingFailure(request, ex); }
+    }
+
+    private async Task CompleteFlightExportAsync(MuxRequest request, Task<ExportFlightResult> operation)
+    {
+        await Task.Yield();
+        try { Reply(request, await operation.ConfigureAwait(false), MuxJsonContext.Default.ExportFlightResult); }
+        catch (Exception ex) { ReplyRecordingFailure(request, ex); }
+    }
+
+    private void ReplyRecordingFailure(MuxRequest request, Exception ex)
+    {
+        SafeLog($"[MuxServer] connection {ConnectionId}: {Clip(request.Method)} failed: {ex}");
+        ReplyError(request, MuxErrorCodes.Internal, $"{ex.GetType().Name}: {Clip(ex.Message)}");
+    }
+
+    private async Task ReleaseFlightOwnershipAsync(Guid sessionId)
+    {
+        await Task.Yield(); // a full data queue must not hold connection teardown up
+        try
+        {
+            if (_server.TryGetSession(sessionId, out HeadlessTerminalSession? session))
+                await session.DisableFlightRecordingAsync(ConnectionId).ConfigureAwait(false);
+        }
+        catch (Exception ex) { SafeLog($"[MuxServer] flight ownership cleanup failed: {ex.Message}"); }
     }
 
     private void HandleAttach(MuxRequest request)

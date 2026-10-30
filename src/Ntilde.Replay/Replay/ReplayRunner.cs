@@ -21,6 +21,8 @@ namespace Ntilde.Replay
         public ReplayPlaybackMode PlaybackMode { get; init; } = ReplayPlaybackMode.Virtual;
         /// <summary>Inclusive event boundary for seek fast-forward; null plays through the file.</summary>
         public long? StopAtTimeMs { get; init; }
+        /// <summary>False when the caller has restored a snapshot with authoritative geometry.</summary>
+        public bool ApplyHeaderResize { get; init; } = true;
     }
 
     public sealed class ReplayRunResult
@@ -105,7 +107,7 @@ namespace Ntilde.Replay
             if (header is not null)
             {
                 _ = RecordingCellMetrics.FromOptional(header.SixelCellWidthPx, header.SixelCellHeightPx);
-                if (onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
+                if ((options?.ApplyHeaderResize ?? true) && onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
                 if (onHeaderCallback is not null) await onHeaderCallback(header);
             }
 
@@ -308,6 +310,8 @@ namespace Ntilde.Replay
         public static void ApplySnapshot(TerminalBuffer buffer, AnsiParser parser, ReplaySnapshot snapshot)
         {
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
+            // Validate the disk payload before Resize or ApplySnapshot can mutate any state.
+            if (!string.IsNullOrEmpty(snapshot.CellsBase64)) _ = Convert.FromBase64String(snapshot.CellsBase64);
             buffer.Resize(snapshot.Cols, snapshot.Rows);
             buffer.ApplySnapshot(snapshot);
             ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);

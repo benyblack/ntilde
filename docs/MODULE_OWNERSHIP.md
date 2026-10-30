@@ -287,6 +287,10 @@ invariant changes.
   output FIFO for queued decoded hosts; synchronous SSH delivery uses its invocation gate.
   Flight export freezes its window at that boundary and writes the file outside it. Raw mux
   hosts use the daemon's data queue instead, avoiding a second transport-queue boundary.
+  The connection reader admits recording actions in FIFO order and completes their replies
+  asynchronously; waiting for a parser or writing an export must leave unrelated requests live.
+  Flight recording belongs to its enabling connections: only the final owner release disables
+  the ring, and disconnect releases that connection's ownership.
   Agent lifecycle publication (which can enable recording) follows
   output ownership installation. Replay headers and
   snapshots restore those metrics before subsequent image output; legacy files retain defaults.
