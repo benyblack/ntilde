@@ -298,6 +298,22 @@ public sealed class KittyKeyEventRoutingTests
     }
 
     [AvaloniaFact]
+    public void Release_ReportsKeyStateWithoutMovingTheScrollbackViewport()
+    {
+        var (view, buffer, _, sent) = Create();
+        var parser = new AnsiParser(buffer);
+        for (int i = 0; i < 40; i++) parser.Process($"line {i}\r\n");
+        view.Down(Key.Left, KeyModifiers.None);
+        view.ScrollOffset = 8;
+        Assert.Equal(8, view.ScrollOffset);
+        Assert.True(view.Up(Key.Left, KeyModifiers.None).Handled);
+        Assert.Equal(8, view.ScrollOffset);
+        Assert.Equal(new[] { "\x1b[D", "\x1b[1;1:3D" }, sent);
+        view.Down(Key.Left, KeyModifiers.None);
+        Assert.Equal(0, view.ScrollOffset); // A new writing key still returns to the live line.
+    }
+
+    [AvaloniaFact]
     public void UnpairedOrConsumedKeyUp_SendsNothingAndClearsTracking()
     {
         var (view, _, _, sent) = Create();

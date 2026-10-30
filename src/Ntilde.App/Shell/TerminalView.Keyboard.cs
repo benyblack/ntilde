@@ -72,7 +72,8 @@ namespace Ntilde.Shell
                 || held.Generation != held.State.Generation) return false;
             string? sequence = TerminalInputModeEncoder.EncodeKittyKey(held.Key, modifiers, _buffer?.Modes, TerminalKeyEventKind.Release);
             if (sequence == null) return false;
-            SendUserInput(sequence);
+            // A release reports state, without snapping a scrolled viewport to the live line.
+            _session.SendInput(sequence);
             return true;
         }
 
