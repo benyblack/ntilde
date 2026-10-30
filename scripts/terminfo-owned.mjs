@@ -1,0 +1,207 @@
+#!/usr/bin/env node
+// Launches a private macOS desktop instance; never attaches to an existing pane.
+import { spawn, execFileSync } from 'node:child_process';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { chmodSync, closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { adapterId, adaptCollector, upstreamBundleSha256 } from './terminfo/collector.mjs';
+import { assertProcessOwnership, processRecord } from './terminfo/ownership.mjs';
+
+const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const writeJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
+
+async function main() {
+    const args = process.argv.slice(2);
+    if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION
+
+Requires macOS and Node 24+. Prepare terminfo.dev@4.0.0 under
+artifacts/terminfo/tool (see docs/qa/QA_TERMINFO.md). Launches a disposable
+Ntilde process with private settings and runs a locally extended collector.
+Results go to artifacts/terminfo/owned-*. No existing sessions are used.
+The collector extension and its digest are recorded; this is not stock CLI data.`);
+        return;
+    }
+    if (args.length !== 4 || args[0] !== '--executable' || args[2] !== '--app-version'
+        || !/^[0-9][0-9A-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
+    if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
+    if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
+    if (!isAbsolute(args[1])) throw new Error('Supply an absolute app executable path.');
+    const executable = realpathSync(args[1]);
+    const tool = join(repo, 'artifacts', 'terminfo', 'tool');
+    const pkg = join(tool, 'node_modules', 'terminfo.dev');
+    const original = join(pkg, 'dist', 'terminfo.bundle.mjs');
+    if (!existsSync(original)) throw new Error('Prepare the pinned collector first; see docs/qa/QA_TERMINFO.md.');
+    if (JSON.parse(readFileSync(join(pkg, 'package.json'))).version !== '4.0.0') throw new Error('Expected terminfo.dev 4.0.0.');
+    const ownerModule = join(repo, 'scripts', 'terminfo', 'ownership.mjs');
+    const adapted = adaptCollector(readFileSync(original, 'utf8'), ownerModule);
+    const adapterBundleSha256 = hash(adapted);
+    // Keep external package resolution beside the original bundle. A derived
+    // file is content-addressed; the downloaded original is never overwritten.
+    const bundle = join(pkg, 'dist', `ntilde-${adapterBundleSha256}.mjs`);
+    if (!existsSync(bundle)) writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== adapterBundleSha256) throw new Error('Derived adapter bundle digest mismatch.');
+
+    const output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
+    // macOS Unix socket paths are short. /tmp also avoids a long checkout path.
+    const scratch = mkdtempSync('/tmp/ntilde-terminfo-');
+    try {
+        const appData = join(scratch, 'appdata');
+        mkdirSync(appData, { mode: 0o700 });
+        const runId = randomBytes(16).toString('hex');
+        const token = randomBytes(32).toString('hex');
+        const configPath = join(scratch, 'worker.json');
+        const workerScript = join(repo, 'scripts', 'terminfo', 'worker.mjs');
+        const config = { runId, token, appData, output, executable, bundle,
+            socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
+        writeJson(configPath, config);
+        const command = join(scratch, 'worker.sh');
+        writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)}\n`, { flag: 'wx', mode: 0o700 });
+        const profileId = randomUUID();
+        const settings = {
+            Profiles: [{ Id: profileId, Name: 'terminfo disposable worker', Command: command, Arguments: '', StartingDirectory: scratch, Type: 0 }],
+            DefaultProfileId: profileId, SessionPersistence: 'Off', ShellExitPolicy: 'Always', PaneClosePolicy: 'Always',
+            QuakeModeEnabled: false, AutomaticUpdateChecks: false, AllowOsc52ClipboardWrite: false,
+            BellAudioEnabled: false, BellVisualEnabled: false, SmoothScrolling: false,
+            CommandAssistEnabled: false, CommandAssistShellIntegrationEnabled: false,
+            CommandAssistPowerShellIntegrationEnabled: false, AgentAccessObserveEnabled: false, AgentAccessActEnabled: false,
+        };
+        writeJson(join(appData, 'settings.json'), settings);
+        writeJson(join(output, 'initial-settings.json'), settings);
+        copyFileSync(join(pkg, 'dist', 'terminfo.bundle.receipt.json'), join(output, 'upstream-suite-receipt.json'));
+        copyFileSync(join(tool, 'package-lock.json'), join(output, 'package-lock.json'));
+
+        let app;
+        let workerPid;
+        let completed = false;
+        let resolveDone;
+        let rejectDone;
+        const done = new Promise((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });
+        // Attach a handler immediately; startup can fail before main awaits done.
+        done.catch(() => {});
+        const proofs = [];
+        const image = statSync(executable);
+        const context = {
+            adapter: adapterId, adapterBundleSha256, upstreamBundleSha256, appVersion: args[3],
+            appVersionSource: 'operator supplied; not independently verified',
+            executable, executableSha256: hash(readFileSync(executable)),
+            assemblySha256: existsSync(join(dirname(executable), 'Ntilde.dll')) ? hash(readFileSync(join(dirname(executable), 'Ntilde.dll'))) : null,
+            nodeVersion: process.version, startedAt: new Date().toISOString(), runId,
+            adapterSourceSha256: hash(readFileSync(fileURLToPath(import.meta.url))),
+            ownershipSourceSha256: hash(readFileSync(ownerModule)), workerSourceSha256: hash(readFileSync(workerScript)),
+            clipboard: 'disabled; no clipboard fixture', pixels: 'no pixel capture adapter',
+        };
+        const server = createServer(socket => {
+            let buffer = '';
+            socket.setTimeout(5000, () => socket.destroy());
+            socket.on('error', () => {});
+            socket.on('data', chunk => {
+                buffer += chunk;
+                if (buffer.length > 8192) return socket.destroy();
+                if (!buffer.includes('\n')) return;
+                socket.removeAllListeners('data');
+                try {
+                    const request = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
+                    if (typeof request.token !== 'string' || request.token.length !== token.length
+                        || !timingSafeEqual(Buffer.from(request.token), Buffer.from(token)) || request.runId !== runId) {
+                        throw new Error('Invalid run capability.');
+                    }
+                    if (!app?.pid || app.exitCode !== null || app.signalCode !== null) throw new Error('Owned app is no longer live.');
+                    const currentImage = statSync(executable);
+                    if (image.ino !== currentImage.ino || image.size !== currentImage.size || image.mtimeMs !== currentImage.mtimeMs) throw new Error('Owned executable changed during collection.');
+                    const owner = processRecord(app.pid);
+                    const worker = processRecord(request.workerPid);
+                    assertProcessOwnership({ app: { ...owner, executable: realpathSync(owner.executable) }, worker,
+                        ownerPid: app.pid, executable, uid: process.getuid(), runId, tty: request.tty,
+                        appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: 2000 }) });
+                    if (workerPid && workerPid !== worker.pid) throw new Error('Another worker tried to use this run.');
+                    workerPid = worker.pid;
+                    if (request.kind === 'prove') {
+                        // Retain the measured proof, never the capability token.
+                        if (proofs.length === 0) proofs.push({ app: owner, worker, tty: request.tty, at: new Date().toISOString() });
+                    } else if (request.kind === 'done') {
+                        completed = true;
+                        resolveDone();
+                    } else if (request.kind === 'failed') {
+                        rejectDone(new Error(request.error ?? 'Worker failed.'));
+                    } else throw new Error('Unknown owner request.');
+                    socket.end(JSON.stringify({ ok: true, ownerPid: app.pid }) + '\n');
+                } catch (error) {
+                    socket.end(JSON.stringify({ ok: false, error: error.message }) + '\n');
+                }
+            });
+        });
+        const interrupted = signal => rejectDone(new Error(`Interrupted by ${signal}.`));
+        const onInt = () => interrupted('SIGINT');
+        const onTerm = () => interrupted('SIGTERM');
+        let deadline;
+        let logFd;
+        try {
+            await new Promise((resolve, reject) => {
+                server.once('error', reject);
+                server.listen(config.socket, resolve);
+            });
+            chmodSync(config.socket, 0o600);
+            const env = { ...process.env, NTILDE_APPDATA_ROOT: appData, TERMINFO_RUN_ID: runId,
+                TERM_PROGRAM: 'Ntilde', TERM_PROGRAM_VERSION: args[3], PATH: dirname(process.execPath) + ':' + process.env.PATH };
+            for (const name of ['__CFBundleIdentifier', 'TMUX', 'STY', 'SSH_CONNECTION', 'SSH_TTY',
+                'TERMINFO_CAPTURE_DIRECTORY', 'TERMINFO_CLIPBOARD_FIXTURE_RECEIPT', 'TERMINFO_RUNTIME_PROVENANCE']) delete env[name];
+            logFd = openSync(join(output, 'app-output.log'), 'wx', 0o600);
+            app = spawn(executable, [`--ntilde-terminfo-owner=${runId}`], { env, cwd: dirname(executable), stdio: ['ignore', logFd, logFd] });
+            app.once('error', rejectDone);
+            app.once('exit', (code, signal) => { if (!completed) rejectDone(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
+            context.ownerPid = app.pid;
+            writeJson(join(output, 'context.json'), context);
+            process.once('SIGINT', onInt);
+            process.once('SIGTERM', onTerm);
+            deadline = setTimeout(() => rejectDone(new Error('Owned collection exceeded 5 minutes.')), 300000);
+            console.log(`Collecting in disposable Ntilde pid ${app.pid}; results: ${output}`);
+            await done;
+            const rawPath = join(output, 'raw.json');
+            const raw = JSON.parse(readFileSync(rawPath));
+            if (raw.target?.id !== 'ntilde' || raw.target?.version !== args[3] || raw.collectorAdapter?.id !== adapterId) throw new Error('Unexpected collected identity.');
+            const counts = {};
+            const reasons = {};
+            for (const observation of raw.observations) {
+                counts[observation.outcome] = (counts[observation.outcome] ?? 0) + 1;
+                if (observation.reason) reasons[observation.reason] = (reasons[observation.reason] ?? 0) + 1;
+            }
+            const summary = { runId: raw.runId, suiteId: raw.suiteId, suiteComplete: raw.suiteComplete,
+                ungradedDiagnostics: raw.ungradedDiagnostics, measuredAt: raw.measuredAt, target: raw.target,
+                adapter: raw.collectorAdapter, observations: raw.observations.length, counts, reasons, rawSha256: hash(readFileSync(rawPath)) };
+            writeJson(join(output, 'summary.json'), summary);
+            console.log(JSON.stringify(summary, null, 2));
+        } catch (error) {
+            writeJson(join(output, 'failure.json'), { error: error.message, at: new Date().toISOString() });
+            throw new Error(`${error.message} Evidence retained in ${output}`);
+        } finally {
+            clearTimeout(deadline);
+            process.removeListener('SIGINT', onInt);
+            process.removeListener('SIGTERM', onTerm);
+            // Only terminate the specific process we launched. Worker termination
+            // additionally requires its still-live direct parent relationship.
+            if (workerPid) {
+                try { if (processRecord(workerPid).ppid === app?.pid) process.kill(workerPid, 'SIGTERM'); } catch {}
+            }
+            if (app?.pid && app.exitCode === null && app.signalCode === null) {
+                app.kill('SIGTERM');
+                await new Promise(resolve => {
+                    const timer = setTimeout(() => { app.kill('SIGKILL'); resolve(); }, 2000);
+                    app.once('exit', () => { clearTimeout(timer); resolve(); });
+                });
+            }
+            if (logFd !== undefined) closeSync(logFd);
+            server.close();
+            writeJson(join(output, 'ownership-proof.json'), { proofs, completed, cleanedUpAt: new Date().toISOString() });
+        }
+    } finally {
+        // Also handles preparation failures before the app or server is started.
+        rmSync(scratch, { recursive: true, force: true });
+    }
+}
+
+main().catch(error => { console.error(`[terminfo-owned] ${error.message}`); process.exitCode = 1; });

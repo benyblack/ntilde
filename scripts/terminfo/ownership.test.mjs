@@ -1,0 +1,69 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { assertPrivateFile, assertProcessOwnership, bindOutput, requestOwner } from './ownership.mjs';
+
+const proof = () => ({
+    app: { pid: 100, uid: 501, executable: '/test/Ntilde' },
+    worker: { pid: 101, ppid: 100, uid: 501, tty: 'ttys012' },
+    ownerPid: 100, uid: 501, executable: '/test/Ntilde', runId: 'a'.repeat(32),
+    appCommand: '/test/Ntilde --ntilde-terminfo-owner=' + 'a'.repeat(32), tty: '/dev/ttys012',
+});
+
+test('accepts an identified child on the claimed PTY', () => {
+    assert.doesNotThrow(() => assertProcessOwnership(proof()));
+});
+
+for (const [name, change] of [
+    ['unrelated pane', p => { p.worker.ppid = 200; }],
+    ['reused owner PID', p => { p.app.pid = 200; }],
+    ['different executable', p => { p.app.executable = '/test/Other'; }],
+    ['different app user', p => { p.app.uid = 502; }],
+    ['different worker user', p => { p.worker.uid = 502; }],
+    ['another run marker', p => { p.appCommand = '/test/Ntilde --ntilde-terminfo-owner=' + 'b'.repeat(32); }],
+    ['marker suffix', p => { p.appCommand += '-suffix'; }],
+    ['no controlling TTY', p => { p.worker.tty = '??'; }],
+    ['swapped PTY', p => { p.tty = '/dev/ttys013'; }],
+    ['invalid run ID', p => { p.runId = 'not-a-run'; }],
+]) {
+    test(`refuses ${name}`, () => {
+        const p = proof();
+        change(p);
+        assert.throws(() => assertProcessOwnership(p));
+    });
+}
+
+test('a stream-like object cannot obtain a PTY binding', () => {
+    assert.throws(() => bindOutput({ fd: 1 }, '/dev/ttys012'), /real stdin and stdout PTYs/);
+});
+
+test('worker configuration refuses symlinks and group-readable files', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ntilde-owner-test-'));
+    try {
+        const path = join(dir, 'worker.json');
+        writeFileSync(path, '{}', { mode: 0o600 });
+        assert.doesNotThrow(() => assertPrivateFile(path));
+        symlinkSync(path, join(dir, 'link'));
+        assert.throws(() => assertPrivateFile(join(dir, 'link')), /private file/);
+        writeFileSync(join(dir, 'public.json'), '{}', { mode: 0o644 });
+        assert.throws(() => assertPrivateFile(join(dir, 'public.json')), /private file/);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('an owner refusal propagates instead of granting a worker capability', async () => {
+    const dir = mkdtempSync('/tmp/ntilde-owner-test-');
+    const path = join(dir, 'owner.sock');
+    const server = createServer(socket => {
+        socket.once('data', () => socket.end('{"ok":false,"error":"wrong owner"}\n'));
+    });
+    try {
+        await new Promise(resolve => server.listen(path, resolve));
+        await assert.rejects(requestOwner({ socket: path, token: 'test', runId: 'a'.repeat(32) }, 'prove'), /wrong owner/);
+    } finally {
+        await new Promise(resolve => server.close(resolve));
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
