@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { fstatSync, lstatSync, realpathSync, statSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { isatty } from 'node:tty';
+import { setTimeout as delay } from 'node:timers/promises';
 
 export function processRecord(pid, timeout = 2000) {
     if (!Number.isSafeInteger(pid) || pid < 2) throw new Error('Invalid process ID.');
@@ -45,6 +46,49 @@ export function matchesRecordedWorker(current, recorded, command, runId) {
         // A PTY hangup can detach the controlling terminal before cleanup runs.
         && (current.tty === recorded.tty || current.tty === '??')
         && command.split(/\s+/).includes(`--ntilde-terminfo-worker=${runId}`);
+}
+
+export function workerExists(pid) {
+    try { process.kill(pid, 0); return true; }
+    catch (error) { if (error.code === 'ESRCH') return false; throw error; }
+}
+
+function verifyRecordedWorker(recorded, runId) {
+    if (!workerExists(recorded.pid)) return false;
+    try {
+        const current = processRecord(recorded.pid, 500);
+        const command = execFileSync('/bin/ps', ['-p', String(recorded.pid), '-o', 'command='], {
+            encoding: 'utf8', timeout: 500, maxBuffer: 16384,
+        });
+        if (!matchesRecordedWorker(current, recorded, command, runId)) {
+            throw new Error('Worker identity changed; refusing to signal an unverified process.');
+        }
+        return true;
+    } catch (error) {
+        // The process can exit between the existence check and either query.
+        if (!workerExists(recorded.pid)) return false;
+        throw error;
+    }
+}
+
+async function waitForWorkerExit(pid) {
+    const deadline = performance.now() + 2000;
+    while (workerExists(pid)) {
+        if (performance.now() >= deadline) return false;
+        await delay(25);
+    }
+    return true;
+}
+
+export async function terminateRecordedWorker(recorded, runId) {
+    if (!recorded) return;
+    for (const signal of ['SIGTERM', 'SIGKILL']) {
+        if (!verifyRecordedWorker(recorded, runId)) return;
+        try { process.kill(recorded.pid, signal); }
+        catch (error) { if (error.code === 'ESRCH') return; throw error; }
+        if (await waitForWorkerExit(recorded.pid)) return;
+    }
+    throw new Error(`Owned worker ${recorded.pid} did not exit after SIGKILL.`);
 }
 
 export function requestOwner(config, kind, extra = {}) {

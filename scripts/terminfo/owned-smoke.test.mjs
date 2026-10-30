@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { upstreamReceipt } from './collector.mjs';
 import { installLockedCollector } from './runtime.mjs';
+import { terminateRecordedWorker } from './ownership.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const prepared = process.platform === 'darwin'
@@ -112,7 +113,10 @@ function launch(executable, interrupt, observation = {}) {
         const preload = observation.log ? ['--import', join(repo, 'scripts/terminfo/fixtures/owned-lifecycle.mjs')] : [];
         const child = spawn(process.execPath, [...preload, 'scripts/terminfo-owned.mjs', '--executable', executable, '--app-version', '0.0.0'], {
             cwd: repo, stdio: ['ignore', 'pipe', 'pipe'],
-            env: { ...process.env, NTILDE_TERMINFO_TEST_LIFECYCLE_LOG: observation.log,
+            env: { ...process.env, ...(observation.stubborn ? {
+                NTILDE_TERMINFO_TEST_STUBBORN_WORKER: '1',
+                NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${pathToFileURL(join(repo, 'scripts/terminfo/fixtures/owned-lifecycle.mjs')).href}`].filter(Boolean).join(' '),
+            } : {}), NTILDE_TERMINFO_TEST_LIFECYCLE_LOG: observation.log,
                 NTILDE_TERMINFO_TEST_LIFECYCLE_PHASE: observation.phase },
         });
         let output = '';
@@ -241,3 +245,35 @@ for (const runner of ['owned', 'inline']) {
         });
     });
 }
+
+test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangup', {
+    skip: !prepared || !process.env.NTILDE_TERMINFO_TEST_EXECUTABLE,
+}, async () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-resistant-'));
+    const log = join(root, 'lifecycle.jsonl');
+    try {
+        const result = await launch(process.env.NTILDE_TERMINFO_TEST_EXECUTABLE, false, { log, stubborn: true });
+        assert.equal(result.code, 0, result.output + result.errors);
+        const output = /results: ([^\n]+)/.exec(result.output)[1];
+        const proof = JSON.parse(readFileSync(join(output, 'ownership-proof.json')));
+        const worker = proof.proofs[0].worker;
+        const events = readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+        assert.ok(events.some(event => event.stubbornWorker?.pid === worker.pid));
+        assert.ok(events.some(event => event.workerSignal === 'SIGTERM' && event.pid === worker.pid));
+        const removal = events.find(event => event.removingFixture);
+        assert.ok(removal, 'The fixture removal boundary must be observed.');
+        assert.equal(removal.workerAlive, false, 'The worker must exit before fixture removal begins.');
+        assert.throws(() => process.kill(worker.pid, 0), /ESRCH/, 'Cleanup must wait for the worker to exit.');
+        assert.equal(proof.completed, true);
+        assert.ok(proof.cleanedUpAt);
+        const settings = JSON.parse(readFileSync(join(output, 'initial-settings.json')));
+        assert.ok(!existsSync(dirname(settings.Profiles[0].Command)));
+    } finally {
+        if (existsSync(log)) {
+            const events = readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+            const worker = events.find(event => event.stubbornWorker);
+            if (worker) await terminateRecordedWorker(worker.stubbornWorker, worker.runId);
+        }
+        rmSync(root, { recursive: true, force: true });
+    }
+});

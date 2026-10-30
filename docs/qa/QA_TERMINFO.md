@@ -108,7 +108,12 @@ ends verify its live app parent, executable, user, controlling TTY and output
 device. Geometry reads repeat the ownership/device check. Cleanup terminates
 only the launched process and its verified worker and removes the private root.
 Worker cleanup checks the recorded process identity and unique run marker even
-if an app crash has reparented it. Ownership replies share a four-second budget
+if an app crash has reparented it. It waits up to two seconds after `SIGTERM`,
+rechecks identity before escalating to `SIGKILL`, and waits another two seconds
+for exit. Cleanup is recorded and the fixture removed only after the worker
+has exited. If identity cannot be verified or termination fails, the run fails
+and retains the fixture with cleanup-failure evidence; app and socket shutdown
+are still attempted. Ownership replies share a four-second budget
 for their process queries within the existing five-second response timeout.
 Early exit and interruption retain failure evidence and still clean up. Signal
 handlers cover fixture creation through app exit, socket closure and fixture

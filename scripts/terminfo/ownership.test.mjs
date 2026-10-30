@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { assertPrivateFile, assertProcessOwnership, bindOutput, matchesRecordedWorker, parseProcessRecord, requestOwner } from './ownership.mjs';
+import { assertPrivateFile, assertProcessOwnership, bindOutput, matchesRecordedWorker, parseProcessRecord, processRecord, requestOwner, terminateRecordedWorker, workerExists } from './ownership.mjs';
 
 const proof = () => ({
     app: { pid: 100, uid: 501, executable: '/test/Ntilde' },
@@ -111,4 +113,58 @@ test('an owner success response resolves with its measured owner PID', async () 
         await new Promise(resolve => server.close(resolve));
         rmSync(dir, { recursive: true, force: true });
     }
+});
+
+async function withRecordedChild(program, action) {
+    const child = spawn(process.execPath, ['--input-type=module', '--eval', program, '--',
+        `--ntilde-terminfo-worker=${workerRun}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const exited = once(child, 'exit');
+    try {
+        // Readiness follows handler installation; an early exit must fail promptly.
+        await Promise.race([once(child.stdout, 'data'), exited.then(() => { throw new Error('Worker exited before readiness.'); })]);
+        const recorded = { ...processRecord(child.pid), tty: 'ttysDetached' };
+        await action(child, recorded, exited);
+    } finally {
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+        await exited;
+    }
+}
+
+const delayedWorker = `process.on('SIGTERM', () => setTimeout(() => process.exit(0), 100));
+    setInterval(() => {}, 1000); process.stdout.write('ready');`;
+const stubbornWorker = `process.on('SIGTERM', () => {});
+    setInterval(() => {}, 1000); process.stdout.write('ready');`;
+
+test('worker cleanup waits for a delayed exit after SIGTERM', { skip: process.platform !== 'darwin' }, async () => {
+    await withRecordedChild(delayedWorker, async (child, recorded) => {
+        await terminateRecordedWorker(recorded, workerRun);
+        assert.equal(workerExists(child.pid), false);
+        assert.equal(child.exitCode, 0);
+    });
+});
+
+test('worker cleanup escalates a verified SIGTERM-resistant worker and waits for its exit', {
+    skip: process.platform !== 'darwin',
+}, async () => {
+    await withRecordedChild(stubbornWorker, async (child, recorded) => {
+        await terminateRecordedWorker(recorded, workerRun);
+        assert.equal(workerExists(child.pid), false);
+        assert.equal(child.signalCode, 'SIGKILL');
+    });
+});
+
+test('worker cleanup refuses a live process with a different run identity', { skip: process.platform !== 'darwin' }, async () => {
+    await withRecordedChild(stubbornWorker, async (child, recorded) => {
+        await assert.rejects(terminateRecordedWorker(recorded, 'b'.repeat(32)), /identity changed/);
+        assert.equal(workerExists(child.pid), true);
+    });
+});
+
+test('worker cleanup tolerates a process that has already exited', { skip: process.platform !== 'darwin' }, async () => {
+    await withRecordedChild(stubbornWorker, async (child, recorded, exited) => {
+        child.kill('SIGKILL');
+        await exited;
+        await terminateRecordedWorker(recorded, workerRun);
+        assert.equal(workerExists(child.pid), false);
+    });
 });

@@ -7,7 +7,7 @@ import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
-import { assertProcessOwnership, matchesRecordedWorker, processRecord } from './terminfo/ownership.mjs';
+import { assertProcessOwnership, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable } from './terminfo/runtime.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -66,15 +66,33 @@ function collectionSummary(output, appVersion) {
         adapter: raw.collectorAdapter, observations: raw.observations.length, counts, reasons, rawSha256: hash(readFileSync(rawPath)) };
 }
 
-function terminateOwnedWorker(recorded, runId) {
-    if (!recorded) return;
-    try {
-        const current = processRecord(recorded.pid);
-        const command = execFileSync('/bin/ps', ['-p', String(recorded.pid), '-o', 'command='], {
-            encoding: 'utf8', timeout: 2000, maxBuffer: 16384,
-        });
-        if (matchesRecordedWorker(current, recorded, command, runId)) process.kill(recorded.pid, 'SIGTERM');
-    } catch {}
+async function terminateLaunchedApp(app) {
+    if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return;
+    app.kill('SIGTERM');
+    await new Promise(resolve => {
+        const timer = setTimeout(() => app.kill('SIGKILL'), 2000);
+        app.once('exit', () => { clearTimeout(timer); resolve(); });
+    });
+}
+
+async function cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }) {
+    let workerError;
+    try { await terminateRecordedWorker(workerIdentity, runId); }
+    catch (error) { workerError = error; }
+    // App shutdown still runs if worker verification or termination failed.
+    let appError;
+    try { await terminateLaunchedApp(app); }
+    catch (error) { appError = error; }
+    if (logFd !== undefined) closeSync(logFd);
+    await new Promise(resolve => server.close(() => resolve()));
+    // Parent shutdown can reap an already-exited worker that was a zombie.
+    if (workerError && workerIdentity && !workerExists(workerIdentity.pid)) workerError = undefined;
+    const cleanupError = workerError ?? appError;
+    const cleanup = cleanupError
+        ? { cleanupError: cleanupError.message, retainedFixture: scratch }
+        : { cleanedUpAt: new Date().toISOString() };
+    writeJson(join(output, 'ownership-proof.json'), { proofs, completed, ...cleanup });
+    if (cleanupError) throw cleanupError;
 }
 
 function retainPreparationFailure(output, error) {
@@ -115,6 +133,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     const onTerm = () => interrupted('SIGTERM');
     let scratch;
     let output;
+    let preserveScratch = false;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
@@ -238,18 +257,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             throw new Error(`${error.message} Evidence retained in ${output}`);
         } finally {
             clearTimeout(deadline);
-            terminateOwnedWorker(workerIdentity, runId);
-            // Only terminate the specific app process we launched.
-            if (app?.pid && app.exitCode === null && app.signalCode === null) {
-                app.kill('SIGTERM');
-                await new Promise(resolve => {
-                    const timer = setTimeout(() => app.kill('SIGKILL'), 2000);
-                    app.once('exit', () => { clearTimeout(timer); resolve(); });
-                });
-            }
-            if (logFd !== undefined) closeSync(logFd);
-            await new Promise(resolve => server.close(() => resolve()));
-            writeJson(join(output, 'ownership-proof.json'), { proofs, completed, cleanedUpAt: new Date().toISOString() });
+            preserveScratch = true;
+            await cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch });
+            preserveScratch = false;
         }
     } catch (error) {
         retainPreparationFailure(output, error);
@@ -257,7 +267,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     } finally {
         try {
             // Also handles preparation failures before the app or server is started.
-            if (scratch) rmSync(scratch, { recursive: true, force: true });
+            if (scratch && !preserveScratch) rmSync(scratch, { recursive: true, force: true });
         } finally {
             process.removeListener('SIGINT', onInt);
             process.removeListener('SIGTERM', onTerm);
