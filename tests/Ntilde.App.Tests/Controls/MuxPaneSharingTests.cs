@@ -195,8 +195,8 @@ public sealed class MuxPaneSharingTests : IDisposable
         legacy.Session.Dispose();
         PumpUntil(() => _pane.Buffer.Modes.KittyKeyboard.Flags == 3, "event reporting recovered after legacy detach");
 
-        // An older daemon omits the field entirely. It must never imply support for flag 2.
+        // Sharing notifications are advisory and cannot reset the separately negotiated keyboard state.
         session.DeliverSessionChanged(new Ntilde.Mux.Contracts.SessionChangedNotification { SessionId = session.Id });
-        Assert.Equal(1, _pane.Buffer.Modes.KittyKeyboard.Flags);
+        Assert.Equal(3, _pane.Buffer.Modes.KittyKeyboard.Flags);
     }
 }

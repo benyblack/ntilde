@@ -35,6 +35,7 @@ namespace Ntilde.Mux.Contracts;
 [JsonSerializable(typeof(ExitedNotification))]
 [JsonSerializable(typeof(FaultedNotification))]
 [JsonSerializable(typeof(SessionChangedNotification))]
+[JsonSerializable(typeof(KeyboardCapabilitiesNotification))]
 [JsonSerializable(typeof(KilledNotification))]
 [JsonSerializable(typeof(MuxEndpointDescriptor))]
 public sealed partial class MuxJsonContext : JsonSerializerContext

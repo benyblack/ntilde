@@ -297,6 +297,25 @@ public sealed class KittyKeyEventRoutingTests
         Assert.Equal(new[] { "\r", "\x1b[13;1:2u" }, sent);
     }
 
+    [AvaloniaTheory]
+    [InlineData(1, KeyModifiers.Shift, 2)]
+    [InlineData(3, KeyModifiers.Shift, 2)]
+    [InlineData(3, KeyModifiers.Control | KeyModifiers.Alt, 7)]
+    public void ModifiedEnter_IsAnApplicationKeyAndDoesNotSubmitCommandHistory(int flags, KeyModifiers modifiers, int parameter)
+    {
+        var (view, _, _, sent) = Create(flags);
+        int submitting = 0, submitted = 0;
+        view.EnterObserving += () => submitting++;
+        view.EnterObserved += () => submitted++;
+        view.Down(Key.Enter, modifiers);
+        view.Down(Key.Enter, modifiers);
+        Assert.False(view.Up(Key.Enter, modifiers).Handled);
+        string repeat = flags == 1 ? $"\x1b[13;{parameter}u" : $"\x1b[13;{parameter}:2u";
+        Assert.Equal(new[] { $"\x1b[13;{parameter}u", repeat }, sent);
+        Assert.Equal(0, submitting);
+        Assert.Equal(0, submitted);
+    }
+
     [AvaloniaFact]
     public void Release_ReportsKeyStateWithoutMovingTheScrollbackViewport()
     {

@@ -291,6 +291,13 @@ public sealed record FaultedNotification
     public string? Message { get; init; }
 }
 
+/// <summary>Ordered keyboard state for peers opting in with an explicit presentation mask, on either protocol version.</summary>
+public sealed record KeyboardCapabilitiesNotification
+{
+    public Guid SessionId { get; init; }
+    public int SupportedFlags { get; init; }
+}
+
 /// <summary>Params of <see cref="MuxMethods.SessionChanged"/>: the session's facts after the change.</summary>
 public sealed record SessionChangedNotification
 {
@@ -303,10 +310,6 @@ public sealed record SessionChangedNotification
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? InteractiveClients { get; init; }
-
-    /// <summary>Intersection over interactive clients; absent on older daemons means flag 1 only.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int? KittyKeyboardSupportedFlags { get; init; }
 
     public string Title { get; init; } = string.Empty;
     public string? Cwd { get; init; }

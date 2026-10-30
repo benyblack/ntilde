@@ -23,6 +23,32 @@ public sealed class SessionEventsClientTests
         session.SnapshotReceived += _ => seen = session.KittyKeyboardSupportedFlags;
         await session.AttachAsync(0, MuxTestHost.DefaultPresentation with { KittyKeyboardSupportedFlags = flags, KittyKeyboardEnabled = enabled }, Ct);
         Assert.Equal(expected, seen);
+        if (version == 1)
+        {
+            Assert.Null(session.AttachedClients);
+            Assert.Null(session.InteractiveClients);
+            Assert.Null(session.InteractiveOthers);
+        }
+    }
+
+    [Fact]
+    public async Task A_v1_peer_keeps_capability_updates_on_legacy_reattach_without_caching_sharing()
+    {
+        using var host = new MuxTestHost();
+        using MuxClient client = await host.ConnectClientAsync(new MuxClientOptions { MinProtocolVersion = 1, MaxProtocolVersion = 1 });
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        using MuxClientSession session = client.OpenSession(id, "scripted");
+        int seen = -1;
+        session.SnapshotReceived += _ => seen = session.KittyKeyboardSupportedFlags;
+        await session.AttachAsync(0, MuxTestHost.DefaultPresentation with { KittyKeyboardSupportedFlags = 3 }, Ct);
+        Assert.Equal(3, seen);
+        await session.AttachAsync(0, MuxTestHost.DefaultPresentation, Ct);
+        Assert.Equal(1, seen);
+        Assert.Null(session.AttachedClients);
+        Assert.Null(session.InteractiveClients);
+        // Even an unexpected sharing event must not cache counts on v1.
+        session.DeliverSessionChanged(new SessionChangedNotification { SessionId = id, AttachedClients = 9, InteractiveClients = 7 });
+        Assert.Null(session.InteractiveOthers);
     }
 
     [Fact]
@@ -191,11 +217,11 @@ public sealed class SessionEventsClientTests
         Assert.Equal(1, session.KittyKeyboardSupportedFlags);
         int seen = -1;
         session.SessionChanged += () => seen = session.KittyKeyboardSupportedFlags;
-        session.DeliverSessionChanged(new SessionChangedNotification { SessionId = id, KittyKeyboardSupportedFlags = 3 });
+        session.DeliverKeyboardCapabilities(3);
         Assert.Equal(3, seen);
         session.DeliverSessionChanged(new SessionChangedNotification { SessionId = id });
-        Assert.Equal(1, seen);
-        session.DeliverSessionChanged(new SessionChangedNotification { SessionId = id, KittyKeyboardSupportedFlags = 0 });
+        Assert.Equal(3, seen); // Advisory sharing updates cannot overwrite protocol state.
+        session.DeliverKeyboardCapabilities(0);
         Assert.Equal(0, seen);
     }
 }
