@@ -26,9 +26,10 @@ public class ReaderHandoffTests
         buffer.EnterBatchWrite();
         var reader = new Thread(() =>
         {
+            // The flag is set inside the read lock, and the next batch takes the write lock only once the reader is
+            // out: if the batch gave way, the flag is set by the time it holds the lock.
             buffer.Lock.EnterReadLock();
             readerIn.Set();
-            Thread.Sleep(50);
             buffer.Lock.ExitReadLock();
         })
         { IsBackground = true };

@@ -194,6 +194,9 @@ namespace Ntilde.VT
         /// </summary>
         internal TimeSpan ReaderHandoffLimit { get; init; } = TimeSpan.FromMilliseconds(2);
 
+        // S7133, as on EnterWriteLockIfNeeded: the lock is taken for the caller, which releases it through ExitBatchWrite.
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Critical Bug", "S7133:Locks should be released within the same method",
+            Justification = "Acquires on behalf of the caller, which releases via ExitBatchWrite.")]
         public void EnterBatchWrite()
         {
             LetWaitingReadersIn();
