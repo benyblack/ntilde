@@ -32,7 +32,7 @@ namespace Ntilde.Shell
                 {
                     _minimumContrast = minimumContrast;
                     // Cached row pictures hold their colors baked in.
-                    _rowCache.RequestClear();
+                    _renderCaches.Rows.RequestClear();
                 }
                 _windowOpacity = settings.WindowOpacity;
                 _cursorBlinkEnabled = settings.CursorBlink;
@@ -79,7 +79,7 @@ namespace Ntilde.Shell
                         _appliedTheme = newTheme.Clone();
 
                         // Clear row cache as colors are now baked into SKPictures
-                        _rowCache.RequestClear();
+                        _renderCaches.Rows.RequestClear();
 
                         // Update all existing cells, remapping old theme colors to new
                         _buffer.UpdateThemeColors(oldTheme);
@@ -93,7 +93,7 @@ namespace Ntilde.Shell
                     }
                     else if (rowPicturesStale)
                     {
-                        _rowCache.RequestClear();
+                        _renderCaches.Rows.RequestClear();
                         InvalidateVisual();
                     }
                 }

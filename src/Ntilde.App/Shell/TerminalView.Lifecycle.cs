@@ -170,8 +170,8 @@ namespace Ntilde.Shell
             _skTypeface = null;
 
             _fallbackCache.Clear();
-            _rowCache.RequestClear();
-            _glyphCache.Clear();
+            _renderCaches.Rows.RequestClear();
+            _renderCaches.Glyphs.Clear();
         }
     }
 }

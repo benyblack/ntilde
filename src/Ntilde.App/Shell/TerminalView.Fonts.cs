@@ -201,7 +201,7 @@ namespace Ntilde.Shell
 
         public void MeasureCharSize()
         {
-            _rowCache.RequestClear();
+            _renderCaches.Rows.RequestClear();
             double scaling = _cachedRenderScaling;
 
             // Try to get SKTypeface first as it's our source of truth

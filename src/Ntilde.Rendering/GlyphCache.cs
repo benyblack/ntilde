@@ -528,6 +528,7 @@ namespace Ntilde.Rendering
         }
 
         private bool _needsUpdate = true;
+        private bool _disposed;
         private SKImage? _alphaSnapshot;
         private SKImage? _colorSnapshot;
 
@@ -548,10 +549,24 @@ namespace Ntilde.Rendering
             }
         }
 
+        /// <summary>True once <see cref="Dispose"/> has run.</summary>
+        public bool IsDisposed
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _disposed;
+                }
+            }
+        }
+
         public void Clear()
         {
             lock (_lock)
             {
+                // A font change can still reach a view whose caches its last draw operation disposed (#644).
+                if (_disposed) return;
                 ClearInternal();
             }
         }
@@ -589,6 +604,8 @@ namespace Ntilde.Rendering
         {
             lock (_lock)
             {
+                if (_disposed) return;
+                _disposed = true;
                 _entries.Clear();
                 _alphaSnapshot?.Dispose();
                 _colorSnapshot?.Dispose();

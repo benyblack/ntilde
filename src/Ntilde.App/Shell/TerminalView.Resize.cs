@@ -58,8 +58,8 @@ namespace Ntilde.Shell
             if (_buffer is not { } buffer) return;
             RecordDispatchedGrid(buffer.Cols, buffer.Rows);
             ResetMouseMotionTracking();
-            _rowCache.MaxEntries = Math.Max(buffer.Rows * 3, 50);
-            _rowCache.RequestClear();
+            _renderCaches.Rows.MaxEntries = Math.Max(buffer.Rows * 3, 50);
+            _renderCaches.Rows.RequestClear();
             ApplyScrollOffset(_scrollOffset, retireWheelTarget: true); // re-clamp against the new TotalLines/Rows
             InvalidateBuffer();
         }
@@ -194,7 +194,7 @@ namespace Ntilde.Shell
                 // Row pictures encode snapped positions for a specific geometry.
                 // Clear immediately on size changes so startup/layout transitions
                 // cannot reuse stale pictures until the throttled resize path runs.
-                _rowCache.RequestClear();
+                _renderCaches.Rows.RequestClear();
 
                 // Force immediate render pass on any size change to prevent white panes
                 InvalidateVisual();
@@ -386,8 +386,8 @@ namespace Ntilde.Shell
                     if (!DefersBufferResizeToSession)
                     {
                         _buffer.Resize(_pendingCols, _pendingRows);
-                        _rowCache.MaxEntries = Math.Max(_pendingRows * 3, 50);
-                        _rowCache.RequestClear();
+                        _renderCaches.Rows.MaxEntries = Math.Max(_pendingRows * 3, 50);
+                        _renderCaches.Rows.RequestClear();
                     }
 
                     // Recorded here, where the dispatch actually happens, and not where the grid
