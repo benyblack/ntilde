@@ -530,10 +530,13 @@ namespace Ntilde.VT
                 _viewport[i] = _viewport[i + 1];
             }
 
-            // 3. Create new blank line at the bottom of the region
+            // 3. Create new blank line at the bottom of the region: a new row, with an Id of its own.
             _viewport[ScrollBottom] = new TerminalRow(Cols, Theme.Foreground, Theme.Background);
-            // Shifted and newly created rows invalidate viewport-index caches.
-            for (int i = ScrollTop; i <= ScrollBottom; i++) _viewport[i].TouchRevision();
+
+            // A move is not an edit (#657): the rows keep their revisions. What is keyed by viewport index - the
+            // snapshot's row-cell cache, the dirty tracking - also keys by row Id, so a row that arrives at an index is
+            // redrawn there; and the row-picture cache, keyed by (Id, revision), replays the moved row's picture at
+            // its new y. Touching every row here made all of them miss, every frame output scrolled.
         }
 
         /// <summary>
@@ -587,7 +590,7 @@ namespace Ntilde.VT
             // Create new blank line at the top of the region
             _viewport[ScrollTop] = new TerminalRow(Cols, Theme.Foreground, Theme.Background);
 
-            for (int i = ScrollTop; i <= ScrollBottom; i++) _viewport[i].TouchRevision();
+            // Moved rows keep their revisions, as in ScrollUpInternal (#657).
         }
 
         public void InsertCharacters(int count)

@@ -628,7 +628,7 @@ namespace Ntilde.VT
                     _viewport[top + i] = new TerminalRow(Cols, CurrentForeground, CurrentBackground);
                 }
 
-                for (int i = top; i <= bottom; i++) _viewport[i].TouchRevision();
+                // Moved rows keep their revisions, as in ScrollUpInternal (#657).
             }
             finally
             {
@@ -699,7 +699,7 @@ namespace Ntilde.VT
                     _viewport[bottom - n + 1 + i] = new TerminalRow(Cols, CurrentForeground, CurrentBackground);
                 }
 
-                for (int i = top; i <= bottom; i++) _viewport[i].TouchRevision();
+                // Moved rows keep their revisions, as in ScrollUpInternal (#657).
             }
             finally
             {
