@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 
@@ -15,18 +16,27 @@ namespace Ntilde.Tests
     /// A <see cref="Core.TestAppDataRoot"/> scope still gives a class an empty root of its own, and restores this one.
     /// </para>
     /// <para>
-    /// The root starts empty, as a CI runner's real one does, so a local run sees what CI sees rather than the
-    /// developer's settings and saved session.
+    /// The root starts empty, so a run sees defaults rather than the developer's settings and saved session. Pointing
+    /// the variable at an empty directory is not enough for that: <see cref="Ntilde.Shell.AppPaths.EnsureInitialized"/> copies
+    /// legacy data (a roaming <c>last_session.json</c>, the themes beside the test binaries) into whichever root is
+    /// current the first time anything touches <see cref="Ntilde.Shell.AppPaths"/>, so this runs it here and sweeps the root
+    /// as a <see cref="Core.TestAppDataRoot"/> scope does.
     /// </para>
     /// </remarks>
     internal static class TestAppDataDefault
     {
+        /// <summary>The files the root held once initialized, before any test ran: none, whatever the machine holds.</summary>
+        internal static IReadOnlyList<string> FilesAtStart { get; private set; } = [];
+
         [ModuleInitializer]
         internal static void Init()
         {
             string root = Path.Combine(Path.GetTempPath(), $"ntilde_test_process_{Environment.ProcessId}_{Guid.NewGuid():N}");
             Directory.CreateDirectory(root);
             Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", root);
+            Core.TestAppDataRoot.Isolate(root);
+
+            FilesAtStart = Directory.GetFiles(root, "*", SearchOption.AllDirectories);
 
             AppDomain.CurrentDomain.ProcessExit += (_, _) =>
             {

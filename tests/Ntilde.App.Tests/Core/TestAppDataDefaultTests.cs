@@ -34,6 +34,15 @@ public class TestAppDataDefaultTests
         }
     }
 
+    [Fact]
+    public void TheProcessRoot_StartsEmpty_WhateverTheLegacyMigrationFinds()
+    {
+        // Codex review of #652: AppPaths' first use migrates legacy data into the current root - a roaming
+        // last_session.json, the themes beside the test binaries - so pointing the variable at an empty directory
+        // did not keep it empty.
+        Assert.Empty(TestAppDataDefault.FilesAtStart);
+    }
+
     private static bool IsInside(string path, string directory)
     {
         StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
