@@ -236,6 +236,35 @@ public sealed class KittyKeyEventRoutingTests
         Assert.Equal(new[] { "©" }, sent);
     }
 
+    [AvaloniaTheory]
+    [InlineData(Key.Enter, 13, 2)]
+    [InlineData(Key.Tab, 9, 2)]
+    [InlineData(Key.Back, 127, 2)]
+    [InlineData(Key.Enter, 13, 3)]
+    [InlineData(Key.Tab, 9, 3)]
+    [InlineData(Key.Back, 127, 3)]
+    public void UnmodifiedRecoveryKeys_ReportRepeatsButKeepTheInitialRecoveryByte(Key key, int code, int flags)
+    {
+        var (view, _, _, sent) = Create(flags);
+        view.Down(key, KeyModifiers.None);
+        view.Down(key, KeyModifiers.None);
+        Assert.False(view.Up(key, KeyModifiers.None).Handled);
+        Assert.Equal(new[] { ((char)code).ToString(), $"\x1b[{code};1:2u" }, sent);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(Key.Enter, 13)]
+    [InlineData(Key.Tab, 9)]
+    [InlineData(Key.Back, 127)]
+    public void ControlAltRecoveryKeys_AreNonTextUnderEventReporting(Key key, int code)
+    {
+        var (view, _, _, sent) = Create(3);
+        view.Down(key, KeyModifiers.Control | KeyModifiers.Alt);
+        view.Down(key, KeyModifiers.Control | KeyModifiers.Alt);
+        Assert.False(view.Up(key, KeyModifiers.Control | KeyModifiers.Alt).Handled);
+        Assert.Equal(new[] { $"\x1b[{code};7u", $"\x1b[{code};7:2u" }, sent);
+    }
+
     [AvaloniaFact]
     public void UnpairedOrConsumedKeyUp_SendsNothingAndClearsTracking()
     {

@@ -175,7 +175,7 @@ namespace Ntilde.Shell
         /// and canonical functional-key frames. Press is the omitted/default event type.
         /// Ordinary text and AltGr remain on TextInput. Without flag 2, repeats keep the
         /// previous press encoding and releases are suppressed. Enter/Tab/Backspace
-        /// retain their recovery bytes when unmodified and never report releases.
+        /// retain their initial recovery bytes when unmodified and never report releases.
         /// </summary>
         public static string? EncodeKittyKey(Key key, KeyModifiers modifiers, ModeState? modes)
             => EncodeKittyKey(key, modifiers, modes, TerminalKeyEventKind.Press);
@@ -202,14 +202,17 @@ namespace Ntilde.Shell
 
             // Ctrl+Alt can compose AltGr text. A release is already paired with a proved
             // non-text press, so changed modifiers must not erase that release.
+            // Non-text control keys also bypass composition filtering with event reporting.
             if (eventKind != TerminalKeyEventKind.Release
-                && !(reportEvents && key == Key.Escape)
+                && !(reportEvents && IsKittyControlKey(key))
                 && (modifiers & (KeyModifiers.Control | KeyModifiers.Alt)) == (KeyModifiers.Control | KeyModifiers.Alt)) return null;
 
-            return key is Key.Enter or Key.Tab or Key.Back or Key.Escape
+            return IsKittyControlKey(key)
                 ? EncodeKittyControlKey(key, bits, disambiguate, eventKind)
                 : EncodeKittyTextKey(key, bits, disambiguate, eventKind);
         }
+
+        private static bool IsKittyControlKey(Key key) => key is Key.Enter or Key.Tab or Key.Back or Key.Escape;
 
         private static string? EncodeKittyControlKey(Key key, int bits, bool disambiguate, TerminalKeyEventKind eventKind)
         {
@@ -217,7 +220,7 @@ namespace Ntilde.Shell
             {
                 // The report-all-keys enhancement is intentionally not implemented. Keep
                 // these recovery keys usable, including suppressing their modified releases.
-                if (eventKind == TerminalKeyEventKind.Release || bits == 0) return null;
+                if (eventKind == TerminalKeyEventKind.Release || (bits == 0 && eventKind == TerminalKeyEventKind.Press)) return null;
                 int number = key switch
                 {
                     Key.Enter => KittyKeyEnter,
