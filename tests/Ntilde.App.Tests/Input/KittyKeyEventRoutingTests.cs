@@ -265,6 +265,38 @@ public sealed class KittyKeyEventRoutingTests
         Assert.Equal(new[] { $"\x1b[{code};7u", $"\x1b[{code};7:2u" }, sent);
     }
 
+    [AvaloniaTheory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void RecoveryBackspaceRepeats_PreserveThePaneObserver(int flags)
+    {
+        var (view, _, _, sent) = Create(flags);
+        int observed = 0;
+        view.BackspaceObserved += () => observed++;
+        view.Down(Key.Back, KeyModifiers.None);
+        view.Down(Key.Back, KeyModifiers.None);
+        view.Down(Key.Back, KeyModifiers.None);
+        Assert.False(view.Up(Key.Back, KeyModifiers.None).Handled);
+        Assert.Equal(3, observed);
+        Assert.Equal(new[] { "\x7f", "\x1b[127;1:2u", "\x1b[127;1:2u" }, sent);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void RecoveryEnterRepeats_PreserveObserverOrderingAroundEachWrite(int flags)
+    {
+        var (view, _, _, sent) = Create(flags);
+        var observed = new List<string>();
+        view.EnterObserving += () => observed.Add($"before:{sent.Count}");
+        view.EnterObserved += () => observed.Add($"after:{sent.Count}");
+        view.Down(Key.Enter, KeyModifiers.None);
+        view.Down(Key.Enter, KeyModifiers.None);
+        Assert.False(view.Up(Key.Enter, KeyModifiers.None).Handled);
+        Assert.Equal(new[] { "before:0", "after:1", "before:1", "after:2" }, observed);
+        Assert.Equal(new[] { "\r", "\x1b[13;1:2u" }, sent);
+    }
+
     [AvaloniaFact]
     public void UnpairedOrConsumedKeyUp_SendsNothingAndClearsTracking()
     {

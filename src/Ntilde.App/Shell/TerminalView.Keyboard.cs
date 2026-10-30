@@ -101,6 +101,19 @@ namespace Ntilde.Shell
             }
         }
 
+        /// <summary>Negotiated unmodified recovery repeats retain the pane's input-observer contract.</summary>
+        private void SendKittyKeyInput(Key key, KeyModifiers modifiers, PhysicalKey physical, string sequence, TerminalKeyEventKind kind)
+        {
+            if (kind == TerminalKeyEventKind.Repeat && modifiers == KeyModifiers.None && key == Key.Enter)
+            {
+                SendEnterKey(modifiers, physical, sequence);
+                return;
+            }
+            SendKeyInput(key, modifiers, physical, sequence);
+            if (kind == TerminalKeyEventKind.Repeat && modifiers == KeyModifiers.None && key == Key.Back)
+                BackspaceObserved?.Invoke();
+        }
+
         internal Func<Key, KeyModifiers, bool>? KeyDownInterceptor { get; set; }
 
         /// <summary>
@@ -157,7 +170,7 @@ namespace Ntilde.Shell
             // even if a TUI already pushed Kitty flags onto the buffer's ModeState.
             if (_enableKittyKeyboardProtocol && TryEncodeKittyKey(key, keyModifiers, eventKind, out string? kittySequence))
             {
-                SendKeyInput(key, keyModifiers, physicalKey, kittySequence);
+                SendKittyKeyInput(key, keyModifiers, physicalKey, kittySequence, eventKind);
                 return true;
             }
 
@@ -222,8 +235,8 @@ namespace Ntilde.Shell
             }
         }
 
-        /// <summary>Preserves command-history reads before CR, and persistence after it.</summary>
-        private bool SendEnterKey(KeyModifiers keyModifiers, PhysicalKey physicalKey)
+        /// <summary>Preserves command-history reads before Enter's input bytes, and persistence after them.</summary>
+        private bool SendEnterKey(KeyModifiers keyModifiers, PhysicalKey physicalKey, string sequence = "\r")
         {
             // Two phases around the carriage return, and which side each lands on is
             // load-bearing (Codex P1 and P2 on #448).
@@ -249,7 +262,7 @@ namespace Ntilde.Shell
             }
             finally
             {
-                SendKeyInput(Key.Enter, keyModifiers, physicalKey, "\r");
+                SendKeyInput(Key.Enter, keyModifiers, physicalKey, sequence);
             }
 
             EnterObserved?.Invoke();
