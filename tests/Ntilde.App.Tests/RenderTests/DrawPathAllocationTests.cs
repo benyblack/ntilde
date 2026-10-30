@@ -16,8 +16,8 @@ namespace Ntilde.Tests.RenderTests;
 /// when the cache that keeps it there is defeated, so a regression of that kind fails here rather than passing CI.
 /// </para>
 /// <para>
-/// Measured on Windows when written (bytes per frame): unchanged 23,040, typing 46,029, scrolling 497,228; without the
-/// row cache (the alternate screen, where vim and less draw) unchanged 164,096.
+/// Measured on Windows when written (bytes per frame): unchanged 20,968, typing 41,426, scrolling 494,466; without the
+/// row cache (the alternate screen, where vim and less draw) unchanged 162,024.
 /// </para>
 /// </remarks>
 [Trait("Category", "RenderMetrics")]
@@ -52,7 +52,7 @@ public class DrawPathAllocationTests
     [AvaloniaFact]
     public void UnchangedFrames_AreServedFromTheRowCache_WithinBudget()
     {
-        // Without the row cache the same frame allocates about 164 KB: a cache that stops hitting fails here.
+        // Without the row cache the same frame allocates about 162 KB: a cache that stops hitting fails here.
         double bytes = Measure("unchanged", withRowCache: true, _ => () => { });
 
         AssertWithin(bytes, 48 * 1024, "an unchanged screen");

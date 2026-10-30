@@ -127,7 +127,9 @@ internal sealed class DrawPathHarness : IDisposable
             glyphCache: GlyphCache);
         try
         {
-            op.DrawTerminalInternal(_surface.Canvas);
+            // As TerminalDrawOperation.Render does: the snapshot's pooled arrays go back after the frame (Codex
+            // review of #659). Dropped, every frame rented fresh ones and the figures measured the leak.
+            using TerminalRenderSnapshot? snapshot = op.DrawTerminalInternal(_surface.Canvas);
         }
         finally
         {

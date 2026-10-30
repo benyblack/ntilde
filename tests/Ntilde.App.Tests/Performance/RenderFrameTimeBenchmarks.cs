@@ -81,7 +81,7 @@ public class RenderFrameTimeBenchmarks
         // other. Output arrives in PTY-sized chunks while a render thread draws at 60 Hz, as the view's timer does.
         //
         // Parsing loses nothing to rendering. Rendering does lose to parsing: the parser re-takes the write lock
-        // back to back, and the loop draws about 12 frames a second during the flood where it could draw about 48
+        // back to back, and the loop draws about 9 frames a second during the flood where it could draw about 48
         // (#658). The frame-rate floor catches rendering stopping altogether; raise it once #658 is fixed.
         byte[][] chunks = OutputChunks(megabytes: 8, chunkBytes: 16 * 1024);
 
@@ -134,7 +134,7 @@ public class RenderFrameTimeBenchmarks
                 while (!stop.IsCancellationRequested)
                 {
                     renderer.DrawFrame();
-                    drawn++;
+                    Interlocked.Increment(ref drawn);
                     Thread.Sleep(TimeSpan.FromMilliseconds(VsyncIntervalMs));
                 }
             })
@@ -152,9 +152,11 @@ public class RenderFrameTimeBenchmarks
         }
 
         clock.Stop();
+        // Counted at the end of the timed window (Codex review of #659): a frame blocked through the whole flood
+        // finishes after it, and counting that one would let a starved loop pass the floor.
+        frames = Volatile.Read(ref drawn);
         stop.Cancel();
         renderThread?.Join();
-        frames = drawn;
         return clock.Elapsed;
     }
 }
