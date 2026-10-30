@@ -132,11 +132,12 @@ public sealed class HeadlessTerminalSession : IDisposable
         _rows = options.Rows;
         _maxQueuedInputBytes = options.MaxQueuedInputBytes;
         _buffer = new TerminalBuffer(options.Cols, options.Rows);
-        _buffer.Modes.KittyKeyboard.SetSupportedFlags(KittyKeyboardState.FlagDisambiguateEscapeCodes);
+        _buffer.Modes.KittyKeyboard.SetSupportedFlags(options.KittyKeyboardSupportedFlags ?? KittyKeyboardState.FlagDisambiguateEscapeCodes);
         _parser = new AnsiParser(_buffer, options.ForceConPtyFiltering)
         {
             ImageDecoder = null,
             AllowNativeKittyGraphics = false,
+            KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
         };
         _parser.OnResponse = EnqueueInput; // through the writer too: the parse thread must never block on stdin
         _sessionChangedIntervalMs = (long)Math.Max(0, options.SessionChangedInterval.TotalMilliseconds);

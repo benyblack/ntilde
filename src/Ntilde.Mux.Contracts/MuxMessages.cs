@@ -90,6 +90,11 @@ public sealed record SpawnParams
     public bool SkipPowerShellPostLaunchInit { get; init; }
     public string Title { get; init; } = string.Empty;
 
+    /// <summary>Spawning host's initial keyboard ceiling, before any attach; absent means flag 1.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? KittyKeyboardSupportedFlags { get; init; }
+
+
     /// <summary>
     /// Phase 4 (spec §3, codex E1; additive): the id the new session takes, in the "D" form, chosen by the
     /// client so that a spawn whose reply is lost still names a session the client can end. Null (absent):

@@ -28,6 +28,23 @@ public sealed class MuxTerminalSessionFactoryTests
         return await MuxTestHost.AttachPaneAsync(c, id);
     }).GetAwaiter().GetResult();
 
+    [Theory]
+    [InlineData(3)]
+    [InlineData(0)]
+    public async Task Spawn_forwards_the_hosts_initial_keyboard_capabilities(int flags)
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            var session = Assert.IsType<MuxClientSession>(factory.CreatePersistent(Local() with { KittyKeyboardSupportedFlags = flags }).Session);
+            Assert.False(session.IsAttached);
+            mux.Fake(session.Id).Emit("\x1b[>31u\x1b[?u");
+            await mux.Mux(session.Id).FlushAsync();
+            await TestWait.UntilAsync(() => !mux.Fake(session.Id).SentInput.IsEmpty, "the child negotiated before any pane attached");
+            Assert.Equal($"\x1b[?{flags}u", Assert.Single(mux.Fake(session.Id).SentInput));
+        }
+    }
+
     [Fact]
     public void Local_request_spawns_an_unattached_mux_session()
     {

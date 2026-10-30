@@ -523,7 +523,10 @@ namespace Ntilde.Controls
                         {
                             Interactive = !OpenedByAgent,
                         }
-                        : null);
+                        : null)
+                {
+                    KittyKeyboardSupportedFlags = (_settings?.EnableKittyKeyboardProtocol ?? true) ? KittyKeyboardState.SupportedFlags : 0,
+                };
 
                 // Phase 4 spec §7.4: an SSH pane whose profile persists its remote sessions goes to that
                 // profile's remote daemon, and takes its pending id as a local pane does. Any other SSH
