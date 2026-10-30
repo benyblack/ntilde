@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkoutRevision, resolveNpmCli } from './terminfo/runtime.mjs';
 
 const cliVersion = '4.0.0';
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,21 +36,8 @@ function run(args, env, capture = false) {
     return result.stdout;
 }
 
-function main() {
-    const args = process.argv.slice(2);
-    if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-baseline.mjs --app-version VERSION
-
-Run inside a local Ntilde tab with Node 24+ and npm on PATH.
-VERSION must identify the running app (About/build log), not the checkout.
-Installs terminfo.dev@${cliVersion} under artifacts/terminfo/tool if needed.
-Saves raw observations, detection, suite receipt, dependency lock, context and
-summary in a new private artifacts/terminfo/run-* directory. Nothing is uploaded.
-State-changing probes may be refused by the collector; these are inconclusive.
-See docs/qa/QA_TERMINFO.md.`);
-        return;
-    }
-    if (args.length !== 2 || args[0] !== '--app-version' || !/^[0-9][0-9A-Za-z.+_-]*$/.test(args[1])) {
+function validateInvocation(args) {
+    if (args.length !== 2 || args[0] !== '--app-version' || !/^\d[\dA-Za-z.+_-]*$/.test(args[1])) {
         fail('Supply --app-version VERSION; use --help for usage.');
     }
     if (Number(process.versions.node.split('.')[0]) < 24) fail('Node 24+ is required.');
@@ -58,36 +46,56 @@ See docs/qa/QA_TERMINFO.md.`);
     if (process.env.TMUX || process.env.STY || process.env.SSH_CONNECTION || process.env.SSH_TTY) {
         fail('Use a direct local tab: this baseline does not identify remote or multiplexer paths.');
     }
+}
 
-    const root = join(repo, 'artifacts', 'terminfo');
-    const tool = join(root, 'tool');
-    const pkg = join(tool, 'node_modules', 'terminfo.dev');
-    const pkgManifest = join(pkg, 'package.json');
-    mkdirSync(root, { recursive: true });
-    // npm's shebang must select the same supported Node as this runner.
-    const env = { ...process.env, PATH: dirname(process.execPath) + (process.platform === 'win32' ? ';' : ':') + process.env.PATH };
+function prepareCollector(tool, pkgManifest, env) {
     if (!existsSync(pkgManifest)) {
-        // Do not introduce cmd.exe argument expansion for checkout paths. Windows
-        // users prepare the cache with the documented PowerShell npm command.
         if (process.platform === 'win32') fail('Install the collector first using the Windows preparation command in docs/qa/QA_TERMINFO.md.');
-        const install = spawnSync('npm', [
-            'install', '--prefix', tool, '--ignore-scripts', '--no-audit', '--no-fund',
-            '--save-exact', `terminfo.dev@${cliVersion}`,
-        ], { stdio: 'inherit', env });
-        if (install.error) throw install.error;
-        if (install.status !== 0) fail('Could not install the pinned collector.');
+        // Execute the selected Node installation's npm CLI directly. Never search PATH.
+        run([resolveNpmCli(), 'install', '--prefix', tool, '--ignore-scripts', '--no-audit', '--no-fund',
+            '--save-exact', `terminfo.dev@${cliVersion}`], env);
     }
     if (json(pkgManifest).version !== cliVersion) fail(`Expected terminfo.dev ${cliVersion}; remove artifacts/terminfo/tool and retry.`);
+}
 
-    const bundle = join(pkg, 'dist', 'terminfo.bundle.mjs');
-    const receiptPath = join(pkg, 'dist', 'terminfo.bundle.receipt.json');
-    const receipt = json(receiptPath);
+function validateReceipt(bundle, receipt) {
     if (receipt.schemaVersion !== 1 || !/^[a-f0-9]{12}$/.test(receipt.probeHash)
         || !/^[a-f0-9]{40}$/.test(receipt.collectorRevision)
         || !/^[a-f0-9]{64}$/.test(receipt.manifestSha256)
         || sha256(bundle) !== receipt.bundleSha256) {
         fail('Collector bundle receipt is invalid or its SHA256 does not match.');
     }
+}
+
+function main() {
+    const args = process.argv.slice(2);
+    if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
+        console.log(`Usage: node scripts/terminfo-baseline.mjs --app-version VERSION
+
+Run inside a local Ntilde tab with Node 24+ and an npm installation.
+VERSION must identify the running app (About/build log), not the checkout.
+Installs terminfo.dev@${cliVersion} under artifacts/terminfo/tool if needed.
+Saves raw observations, detection, suite receipt, dependency lock, context and
+summary in a new private artifacts/terminfo/run-* directory. Nothing is uploaded.
+State-changing probes may be refused by the collector; these are inconclusive.
+See docs/qa/QA_TERMINFO.md.`);
+        return;
+    }
+    validateInvocation(args);
+
+    const root = join(repo, 'artifacts', 'terminfo');
+    const tool = join(root, 'tool');
+    const pkg = join(tool, 'node_modules', 'terminfo.dev');
+    const pkgManifest = join(pkg, 'package.json');
+    mkdirSync(root, { recursive: true });
+    // Child tool invocations inherit the selected Node runtime first.
+    const env = { ...process.env, PATH: dirname(process.execPath) + (process.platform === 'win32' ? ';' : ':') + process.env.PATH };
+    prepareCollector(tool, pkgManifest, env);
+
+    const bundle = join(pkg, 'dist', 'terminfo.bundle.mjs');
+    const receiptPath = join(pkg, 'dist', 'terminfo.bundle.receipt.json');
+    const receipt = json(receiptPath);
+    validateReceipt(bundle, receipt);
     // The upstream launcher prefers Bun if installed. Execute the checked bundle
     // with this explicit Node instead so the recorded runtime is the one used.
     const inheritedHints = Object.fromEntries(['TERM_PROGRAM', 'TERM_PROGRAM_VERSION', '__CFBundleIdentifier', 'TERM', 'COLORTERM']
@@ -99,7 +107,7 @@ See docs/qa/QA_TERMINFO.md.`);
     const context = {
         schemaVersion: 1, startedAt: new Date().toISOString(),
         appVersion: args[1], appVersionSource: 'operator-supplied; not independently verified',
-        checkoutRevision: spawnSync('git', ['-C', repo, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout?.trim() ?? null,
+        checkoutRevision: checkoutRevision(repo),
         nodeVersion: process.version, cliVersion, receipt, inheritedHints,
         geometry: { columns: process.stdout.columns, rows: process.stdout.rows },
         rawCommand: ['node', 'terminfo.bundle.mjs', 'test', '--output', 'raw.json'],

@@ -8,9 +8,22 @@ export function processRecord(pid) {
     const text = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'pid=,ppid=,uid=,tty=,comm='], {
         encoding: 'utf8', timeout: 2000, maxBuffer: 8192,
     }).trim();
-    const match = /^(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.+)$/.exec(text);
-    if (!match) throw new Error(`Could not identify process ${pid}.`);
-    return { pid: Number(match[1]), ppid: Number(match[2]), uid: Number(match[3]), tty: match[4], executable: match[5] };
+    return parseProcessRecord(text, pid);
+}
+
+export function parseProcessRecord(text, pid = '?') {
+    const fields = [];
+    let offset = 0;
+    for (const match of text.matchAll(/\S+/g)) {
+        fields.push(match[0]);
+        offset = match.index + match[0].length;
+        if (fields.length === 4) break;
+    }
+    const executable = text.slice(offset).trim();
+    if (fields.length !== 4 || !fields.slice(0, 3).every(field => /^\d+$/.test(field)) || !executable) {
+        throw new Error(`Could not identify process ${pid}.`);
+    }
+    return { pid: Number(fields[0]), ppid: Number(fields[1]), uid: Number(fields[2]), tty: fields[3], executable };
 }
 
 export function assertProcessOwnership({ app, worker, ownerPid, executable, uid, runId, appCommand, tty }) {

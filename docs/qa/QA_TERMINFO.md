@@ -7,7 +7,8 @@ tests, replay tests and rendering tests remain the release evidence.
 
 ## Run
 
-Requirements: Node 24+, npm, and a direct local Ntilde tab. Avoid tmux, Screen,
+Requirements: Node 24+, an npm installation (or a prepared collector cache),
+and a direct local Ntilde tab. Avoid tmux, Screen,
 SSH and the agent's own terminal: those measure a different path. Use a separate
 tab, wait for shell startup prompts to finish, and do not type during collection.
 
@@ -24,7 +25,10 @@ node scripts/terminfo-baseline.mjs --app-version 0.12.0
 Replace the example version with the actual version, including build metadata
 when available. On macOS/Linux the runner installs `terminfo.dev@4.0.0` into the
 ignored `artifacts/terminfo/tool` directory on first use, with install scripts
-disabled. On Windows, prepare that cache first in PowerShell:
+disabled. Automatic preparation executes `npm-cli.js` beside the selected Node
+installation directly, without searching `PATH`. For a different installation,
+set `NTILDE_TERMINFO_NPM_CLI` to its absolute `npm-cli.js` path, or prepare the
+cache manually. On Windows, prepare that cache first in PowerShell:
 
 ```powershell
 npm install --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --save-exact terminfo.dev@4.0.0
@@ -41,7 +45,10 @@ Each invocation creates a private `artifacts/terminfo/run-*` directory containin
 
 - `raw.json`: the exact upstream run, including replies and inconclusive outcomes.
 - `context.json`: runtime, supplied app version, original identity hints, geometry
-  and checkout revision. The checkout revision does not identify the running app.
+  and checkout revision. Checkout metadata uses `/usr/bin/git` on Unix or the
+  absolute `NTILDE_TERMINFO_GIT_EXECUTABLE` override; it is null when Git is
+  unavailable (including Windows without an override). The checkout revision
+  does not identify the running app.
 - `detect.json`, `suite-receipt.json`, and `package-lock.json`: collector identity,
   suite identity and resolved dependencies.
 - `summary.json`: outcome/reason counts and the raw file's SHA256.
@@ -63,9 +70,12 @@ It runs from an ordinary shell; it does not need an existing Ntilde tab or agent
 access enabled. Use a sidecar copy of the app to keep builds separate from the
 running binary. Do not interact with the test window while it runs.
 
-The adapter creates fresh settings and a worker profile in a private temporary
-app-data root. Persistence, updates, hotkeys, clipboard writes and agent access
-are disabled for that instance. It launches the exact executable with a unique
+The adapter creates fresh settings and a worker profile in a private fixture
+under `~/.ntilde-qa`. It verifies that the parent is owned by the current user,
+is not a symlink, and has no group/other permissions. A long home path that
+cannot fit the macOS socket limit is rejected before launching the app.
+Persistence, updates, hotkeys, clipboard writes and agent access are disabled
+for that instance. It launches the exact executable with a unique
 run marker. A private socket capability binds the worker to that launch; both
 ends verify its live app parent, executable, user, controlling TTY and output
 device. Geometry reads repeat the ownership/device check. Cleanup terminates

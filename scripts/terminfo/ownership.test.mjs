@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { assertPrivateFile, assertProcessOwnership, bindOutput, requestOwner } from './ownership.mjs';
+import { assertPrivateFile, assertProcessOwnership, bindOutput, parseProcessRecord, requestOwner } from './ownership.mjs';
 
 const proof = () => ({
     app: { pid: 100, uid: 501, executable: '/test/Ntilde' },
@@ -66,4 +66,12 @@ test('an owner refusal propagates instead of granting a worker capability', asyn
         await new Promise(resolve => server.close(resolve));
         rmSync(dir, { recursive: true, force: true });
     }
+});
+
+test('process records preserve spaces in executable names without backtracking', () => {
+    assert.deepEqual(parseProcessRecord('  100   10  501  ttys012  /Applications/My  App/Ntilde  '),
+        { pid: 100, ppid: 10, uid: 501, tty: 'ttys012', executable: '/Applications/My  App/Ntilde' });
+    assert.throws(() => parseProcessRecord('100 10 501 ttys012'), /Could not identify/);
+    assert.throws(() => parseProcessRecord('invalid 10 501 ttys012 /Ntilde'), /Could not identify/);
+    assert.throws(() => parseProcessRecord(' '.repeat(8192)), /Could not identify/);
 });

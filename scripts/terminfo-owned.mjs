@@ -8,30 +8,23 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256 } from './terminfo/collector.mjs';
 import { assertProcessOwnership, processRecord } from './terminfo/ownership.mjs';
+import { createPrivateScratch } from './terminfo/runtime.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writeJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
-const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
+const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 
-async function main() {
-    const args = process.argv.slice(2);
-    if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION
-
-Requires macOS and Node 24+. Prepare terminfo.dev@4.0.0 under
-artifacts/terminfo/tool (see docs/qa/QA_TERMINFO.md). Launches a disposable
-Ntilde process with private settings and runs a locally extended collector.
-Results go to artifacts/terminfo/owned-*. No existing sessions are used.
-The collector extension and its digest are recorded; this is not stock CLI data.`);
-        return;
-    }
+function validateInvocation(args) {
     if (args.length !== 4 || args[0] !== '--executable' || args[2] !== '--app-version'
-        || !/^[0-9][0-9A-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
+        || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
     if (!isAbsolute(args[1])) throw new Error('Supply an absolute app executable path.');
-    const executable = realpathSync(args[1]);
+    return realpathSync(args[1]);
+}
+
+function prepareCollector() {
     const tool = join(repo, 'artifacts', 'terminfo', 'tool');
     const pkg = join(tool, 'node_modules', 'terminfo.dev');
     const original = join(pkg, 'dist', 'terminfo.bundle.mjs');
@@ -46,9 +39,42 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     if (!existsSync(bundle)) writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
     if (hash(readFileSync(bundle)) !== adapterBundleSha256) throw new Error('Derived adapter bundle digest mismatch.');
 
+    return { tool, pkg, ownerModule, bundle, adapterBundleSha256 };
+}
+
+function collectionSummary(output, appVersion) {
+    const rawPath = join(output, 'raw.json');
+    const raw = JSON.parse(readFileSync(rawPath));
+    if (raw.target?.id !== 'ntilde' || raw.target?.version !== appVersion || raw.collectorAdapter?.id !== adapterId) throw new Error('Unexpected collected identity.');
+    const counts = {};
+    const reasons = {};
+    for (const observation of raw.observations) {
+        counts[observation.outcome] = (counts[observation.outcome] ?? 0) + 1;
+        if (observation.reason) reasons[observation.reason] = (reasons[observation.reason] ?? 0) + 1;
+    }
+    return { runId: raw.runId, suiteId: raw.suiteId, suiteComplete: raw.suiteComplete,
+        ungradedDiagnostics: raw.ungradedDiagnostics, measuredAt: raw.measuredAt, target: raw.target,
+        adapter: raw.collectorAdapter, observations: raw.observations.length, counts, reasons, rawSha256: hash(readFileSync(rawPath)) };
+}
+
+async function main() {
+    const args = process.argv.slice(2);
+    if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION
+
+Requires macOS and Node 24+. Prepare terminfo.dev@4.0.0 under
+artifacts/terminfo/tool (see docs/qa/QA_TERMINFO.md). Launches a disposable
+Ntilde process with private settings and runs a locally extended collector.
+Results go to artifacts/terminfo/owned-*. No existing sessions are used.
+The collector extension and its digest are recorded; this is not stock CLI data.`);
+        return;
+    }
+    const executable = validateInvocation(args);
+    const { tool, pkg, ownerModule, bundle, adapterBundleSha256 } = prepareCollector();
+
     const output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
-    // macOS Unix socket paths are short. /tmp also avoids a long checkout path.
-    const scratch = mkdtempSync('/tmp/ntilde-terminfo-');
+    // Keep the socket short and the fixture below a validated private parent.
+    const scratch = createPrivateScratch();
     try {
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
@@ -93,6 +119,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             nodeVersion: process.version, startedAt: new Date().toISOString(), runId,
             adapterSourceSha256: hash(readFileSync(fileURLToPath(import.meta.url))),
             ownershipSourceSha256: hash(readFileSync(ownerModule)), workerSourceSha256: hash(readFileSync(workerScript)),
+            runtimeSourceSha256: hash(readFileSync(join(repo, 'scripts', 'terminfo', 'runtime.mjs'))),
             clipboard: 'disabled; no clipboard fixture', pixels: 'no pixel capture adapter',
         };
         const server = createServer(socket => {
@@ -161,18 +188,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             deadline = setTimeout(() => rejectDone(new Error('Owned collection exceeded 5 minutes.')), 300000);
             console.log(`Collecting in disposable Ntilde pid ${app.pid}; results: ${output}`);
             await done;
-            const rawPath = join(output, 'raw.json');
-            const raw = JSON.parse(readFileSync(rawPath));
-            if (raw.target?.id !== 'ntilde' || raw.target?.version !== args[3] || raw.collectorAdapter?.id !== adapterId) throw new Error('Unexpected collected identity.');
-            const counts = {};
-            const reasons = {};
-            for (const observation of raw.observations) {
-                counts[observation.outcome] = (counts[observation.outcome] ?? 0) + 1;
-                if (observation.reason) reasons[observation.reason] = (reasons[observation.reason] ?? 0) + 1;
-            }
-            const summary = { runId: raw.runId, suiteId: raw.suiteId, suiteComplete: raw.suiteComplete,
-                ungradedDiagnostics: raw.ungradedDiagnostics, measuredAt: raw.measuredAt, target: raw.target,
-                adapter: raw.collectorAdapter, observations: raw.observations.length, counts, reasons, rawSha256: hash(readFileSync(rawPath)) };
+            const summary = collectionSummary(output, args[3]);
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
@@ -204,4 +220,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     }
 }
 
-main().catch(error => { console.error(`[terminfo-owned] ${error.message}`); process.exitCode = 1; });
+try {
+    await main();
+} catch (error) {
+    console.error(`[terminfo-owned] ${error.message}`);
+    process.exitCode = 1;
+}
