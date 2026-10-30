@@ -10,7 +10,7 @@ namespace Ntilde.Mux.Tests.Support;
 /// it, synchronously on the caller's thread, and records SendInput / Resize. Flight recording is a
 /// real FlightRecordingBuffer so exports replay through the real ReplayRunner.
 /// </summary>
-internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteOutput
+internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingCellMetrics
 {
     private readonly object _gate = new();
     private readonly RawOutputTap _rawTap = new();
@@ -115,6 +115,19 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         lock (_gate) _flight?.RecordResize(cols, rows);
     }
 
+    public RecordingCellMetrics? CurrentRecordingCellMetrics { get; private set; }
+    public RecordingCellMetrics? RecordingCellMetricsAtStart { get; private set; }
+    public void SetRecordingCellMetrics(float width, float height)
+    {
+        lock (_gate)
+        {
+            var size = RecordingCellMetrics.FromOptional(width, height);
+            if (CurrentRecordingCellMetrics == size) return;
+            CurrentRecordingCellMetrics = size;
+            _flight?.RecordSixelCellSize(width, height);
+        }
+    }
+
     public bool IsRecording { get; private set; }
     public string? RecordingPath { get; private set; }
     /// <summary>Makes StartRecording fail the way RustPtySession's does on an unwritable path.</summary>
@@ -125,6 +138,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         if (ThrowOnStartRecording) throw new UnauthorizedAccessException($"Access to the path '{filePath}' is denied.");
         IsRecording = true;
         RecordingPath = filePath;
+        RecordingCellMetricsAtStart = CurrentRecordingCellMetrics;
     }
     public void StopRecording() => IsRecording = false;
 
@@ -137,7 +151,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         lock (_gate)
         {
             LastFlightBudget = maxTotalBytes;
-            _flight ??= new FlightRecordingBuffer(maxTotalBytes, Cols, Rows);
+            _flight ??= new FlightRecordingBuffer(maxTotalBytes, Cols, Rows, initialSixelCellSize: CurrentRecordingCellMetrics);
         }
     }
     public void DisableFlightRecording() { lock (_gate) _flight = null; }

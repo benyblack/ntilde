@@ -85,10 +85,16 @@ internal static class ReplayCommand
                 },
                 onSnapshotCallback: snapshot =>
                 {
-                    buffer.ApplySnapshot(snapshot);
+                    ReplayRunner.ApplySnapshot(buffer, parser, snapshot);
                     return System.Threading.Tasks.Task.CompletedTask;
                 },
-                options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual })
+                options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual },
+                onHeaderCallback: header => { ReplayRunner.ApplyHeaderMetrics(parser, header); return System.Threading.Tasks.Task.CompletedTask; },
+                onSixelCellSizeCallback: (width, height) =>
+                {
+                    parser.SixelCellSizeOverride = new SixelCellSize(width, height);
+                    return System.Threading.Tasks.Task.CompletedTask;
+                })
                 .GetAwaiter().GetResult();
         }
         catch (Exception ex)

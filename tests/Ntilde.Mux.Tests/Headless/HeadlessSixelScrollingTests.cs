@@ -8,6 +8,22 @@ public sealed class HeadlessSixelScrollingTests
 {
     private const string Image = "\x1bPq!30~-~\x1b\\";
 
+    [Fact]
+    public async Task Recording_starts_with_authoritative_metrics_and_follows_font_updates()
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        var presentation = MuxTestHost.DefaultPresentation with { CellWidthPx = 12, CellHeightPx = 6, SupportsSixelScrolling = true };
+        var pane = await MuxTestHost.AttachPaneAsync(client, id, presentation);
+        pane.Session.StartRecording("scripted.rec");
+        await TestWait.UntilAsync(() => pane.Session.IsRecording, "recording was acknowledged");
+        Assert.Equal(new Ntilde.Replay.RecordingCellMetrics(12, 6), host.Fake(id).RecordingCellMetricsAtStart);
+        pane.Session.UpdatePresentation(presentation with { CellHeightPx = 12 });
+        await host.SettleAsync(id, client);
+        Assert.Equal(new Ntilde.Replay.RecordingCellMetrics(12, 12), host.Fake(id).CurrentRecordingCellMetrics);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]

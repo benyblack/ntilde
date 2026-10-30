@@ -50,6 +50,8 @@ namespace Ntilde.Replay
             long fastForwardToMs = 0,
             double playbackSpeed = 1.0,
             long startOffsetBytes = 0,
+            Func<ReplayHeader, Task>? onHeaderCallback = null,
+            Func<float, float, Task>? onSixelCellSizeCallback = null,
             CancellationToken ct = default)
         {
             ReplayPlaybackMode playbackMode = realtime ? ReplayPlaybackMode.Realtime : ReplayPlaybackMode.Virtual;
@@ -66,7 +68,7 @@ namespace Ntilde.Replay
                 fastForwardToMs,
                 playbackSpeed,
                 startOffsetBytes,
-                ct);
+                onHeaderCallback, onSixelCellSizeCallback, ct);
         }
 
         public async Task<ReplayRunResult> RunWithResultAsync(
@@ -81,6 +83,8 @@ namespace Ntilde.Replay
             long fastForwardToMs = 0,
             double playbackSpeed = 1.0,
             long startOffsetBytes = 0,
+            Func<ReplayHeader, Task>? onHeaderCallback = null,
+            Func<float, float, Task>? onSixelCellSizeCallback = null,
             CancellationToken ct = default)
         {
             if (!File.Exists(_filePath))
@@ -94,22 +98,16 @@ namespace Ntilde.Replay
             string? line = await ReadLineOrEndAsync(reader, ct);
             if (line == null) return result;
 
-            // Detect Version
-            bool isV2 = false;
-            try
+            ReplayHeader? header = null;
+            try { header = JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader); }
+            catch (JsonException) { /* A legacy first line is handled by the v1 reader below. */ }
+            bool isV2 = header is not null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2;
+            if (isV2)
             {
-                // Try to parse the VERY FIRST LINE as a v2 header
-                var header = JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader);
-                if (header != null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2)
-                {
-                    isV2 = true;
-                    if (onResizeCallback != null)
-                    {
-                        await onResizeCallback(header.Cols, header.Rows);
-                    }
-                }
+                _ = RecordingCellMetrics.FromOptional(header!.SixelCellWidthPx, header.SixelCellHeightPx);
+                if (onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
+                if (onHeaderCallback is not null) await onHeaderCallback(header);
             }
-            catch { }
 
             long lastOffset = -1;
             // If it's V2, we skip the first line (header).
@@ -144,7 +142,7 @@ namespace Ntilde.Replay
                         try
                         {
                             ProcessedLine processedLine = isV2
-                                ? await ProcessV2Line(line, onDataCallback, onResizeCallback, onMarkerCallback, onInputCallback, onSnapshotCallback,
+                                ? await ProcessV2Line(line, onDataCallback, onResizeCallback, onMarkerCallback, onInputCallback, onSnapshotCallback, onSixelCellSizeCallback,
                                     playbackMode, lastOffset, minTimeMs, fastForwardToMs, playbackSpeed)
                                 : await ProcessV1Line(line, onDataCallback, playbackMode, lastOffset, minTimeMs, fastForwardToMs, playbackSpeed);
 
@@ -207,6 +205,7 @@ namespace Ntilde.Replay
             Func<string, Task>? onMarkerCallback,
             Func<string, Task>? onInputCallback,
             Func<ReplaySnapshot, Task>? onSnapshotCallback,
+            Func<float, float, Task>? onSixelCellSizeCallback,
             ReplayPlaybackMode playbackMode,
             long lastOffset,
             long minTimeMs,
@@ -229,6 +228,11 @@ namespace Ntilde.Replay
                         byte[] data = Convert.FromBase64String(ev.Data);
                         await onDataCallback(data);
                     }
+                    break;
+                case "sixelCellSize":
+                    var cellSize = RecordingCellMetrics.FromOptional(ev.SixelCellWidthPx, ev.SixelCellHeightPx)
+                        ?? throw new InvalidDataException("Missing recording SIXEL cell metrics.");
+                    if (onSixelCellSizeCallback is not null) await onSixelCellSizeCallback(cellSize.WidthPx, cellSize.HeightPx);
                     break;
                 case "resize":
                     if (ev.Cols.HasValue && ev.Rows.HasValue && onResizeCallback != null)
@@ -282,8 +286,25 @@ namespace Ntilde.Replay
             return new ProcessedLine(updatedOffset, eventProcessed: true);
         }
 
+        public static void ApplyHeaderMetrics(AnsiParser parser, ReplayHeader header) =>
+            ApplyCellMetrics(parser, header.SixelCellWidthPx, header.SixelCellHeightPx);
+
+        public static void ApplySnapshot(TerminalBuffer buffer, AnsiParser parser, ReplaySnapshot snapshot)
+        {
+            _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
+            buffer.ApplySnapshot(snapshot);
+            ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
+        }
+
+        private static void ApplyCellMetrics(AnsiParser parser, float? width, float? height)
+        {
+            var size = RecordingCellMetrics.FromOptional(width, height);
+            parser.SixelCellSizeOverride = size is null ? null : new SixelCellSize(size.WidthPx, size.HeightPx);
+        }
+
         private static void ValidateSnapshotCellLayout(ReplaySnapshot snapshot)
         {
+            _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
             bool hasAnyLayoutMetadata = snapshot.CellsSizeOf.HasValue || snapshot.CellsLayoutId != null;
             if (!hasAnyLayoutMetadata)
             {

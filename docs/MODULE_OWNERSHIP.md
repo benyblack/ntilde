@@ -278,6 +278,10 @@ invariant changes.
   the advisory `sessionChanged` interval. Refusing sinks are dropped under the existing bounded
   transport policy; the parse thread never waits for a reader. Capability frames contain no sharing
   counts, and v1 sharing counts remain unknown.
+- **Recordings retain SIXEL geometry without coupling PTY to VT.** Parser hosts supply physical
+  cell metrics through `ITerminalRecordingCellMetrics`; raw writers store the initial pair and
+  later changes, and flight-ring eviction advances the exported initial pair. Replay headers and
+  snapshots restore those metrics before subsequent image output; legacy files retain defaults.
 - **SIXEL-aware peers opt into ordered pixel metrics.** `SupportsSixelScrolling` in a presentation
   opts into `sixelCellSize` notifications on either negotiated version, before subsequent resize/output.
   Initial spawn metrics are validated before starting a child and forwarded through both local and

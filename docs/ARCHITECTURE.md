@@ -154,7 +154,7 @@ at page origin; reset restores inline scrolling. Shared clients use the daemon's
 size rather than their own font/DIP metrics. That size is supplied at spawn before startup output,
 then updated in stream order. GUI panes retain bounded SIXEL source and decode on first render while the daemon only measures;
 other image protocols remain disabled for persistent sessions. Page-origin frames retire older,
-fully covered SIXELs through the existing snapshot-session disposal gate. Parser snapshots preserve
+fully covered SIXELs through the existing snapshot-session disposal gate. Recording headers, ordered cell-size events and replay snapshots preserve SIXEL metrics; raw PTY writers receive only primitive values from the parser host. Flight exports retain the metric pair at the start of their bounded window. Parser snapshots preserve
 that override; legacy raw-only
 recordings still rely on the replay host's configured cell metrics.
 

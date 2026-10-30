@@ -543,7 +543,14 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.StartRecording:
                     {
                         StartRecordingParams p = Params(request, MuxJsonContext.Default.StartRecordingParams);
-                        LiveSession(p.SessionId).Inner.StartRecording(p.Path);
+                        var recordingSession = LiveSession(p.SessionId);
+                        recordingSession.InvokeAsync(() =>
+                        {
+                            (recordingSession.Inner as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(
+                                recordingSession.Parser.SixelCellWidthPx ?? 10, recordingSession.Parser.SixelCellHeightPx ?? 20);
+                            recordingSession.Inner.StartRecording(p.Path);
+                            return 0;
+                        }).GetAwaiter().GetResult();
                         ReplyEmpty(request);
                         break;
                     }

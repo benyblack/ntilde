@@ -6,8 +6,8 @@ namespace Ntilde.Replay
     /// </summary>
     public sealed class ReplayWriter : PtyRecorder
     {
-        public ReplayWriter(string filePath, int cols, int rows, string shell = "")
-            : base(filePath, cols, rows, shell)
+        public ReplayWriter(string filePath, int cols, int rows, string shell = "", RecordingCellMetrics? sixelCellSize = null)
+            : base(filePath, cols, rows, shell, sixelCellSize)
         {
         }
     }

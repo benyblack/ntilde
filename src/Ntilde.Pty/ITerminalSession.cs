@@ -28,6 +28,12 @@ namespace Ntilde.Pty
         string? ShellArguments { get; }
     }
 
+    /// <summary>Optional primitive-only recording context supplied by the parser host.</summary>
+    public interface ITerminalRecordingCellMetrics
+    {
+        void SetRecordingCellMetrics(float widthPx, float heightPx);
+    }
+
     /// <summary>Replay/recording control for a session's byte stream.</summary>
     public interface ITerminalRecorder
     {

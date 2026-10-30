@@ -75,6 +75,7 @@ namespace Ntilde.Controls
             float height = (float)(TermView.Metrics.CellHeight * scale);
             if (!float.IsFinite(width) || !float.IsFinite(height) || width <= 0 || height <= 0) return;
             parser.SixelCellSizeOverride = new SixelCellSize(width, height);
+            (Session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(width, height);
         }
 
         private void InitializeSession(string? shell, TerminalProfile? profile, int cols, int rows, string? explicitArgs = null)
@@ -649,6 +650,7 @@ namespace Ntilde.Controls
         private void WireSessionLifecycle(ITerminalSession session, TerminalProfile? profile)
         {
             TermView.SetSession(session);
+            SyncLocalSixelCellSize();
             session.OnExit += code =>
             {
                 this.Dispatcher.Post(() =>

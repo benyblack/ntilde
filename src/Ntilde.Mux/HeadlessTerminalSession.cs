@@ -149,6 +149,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             AllowNativeKittyGraphics = false,
             KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
         };
+        (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(cellWidth, cellHeight);
         _parser.OnResponse = EnqueueInput; // through the writer too: the parse thread must never block on stdin
         _sessionChangedIntervalMs = (long)Math.Max(0, options.SessionChangedInterval.TotalMilliseconds);
         _parser.OnTitleChanged = title =>
@@ -1072,6 +1073,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         {
             _parser.SixelCellSizeOverride = size;
             _sixelCellSizePending = true;
+            (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(width, height);
         }
         if (float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0) _parser.CellWidth = presentation.CellWidthPx;
         if (float.IsFinite(presentation.CellHeightPx) && presentation.CellHeightPx > 0) _parser.CellHeight = presentation.CellHeightPx;

@@ -9,7 +9,7 @@ using Ntilde.Pty;
 
 namespace Ntilde.Platform.Ssh.Sessions;
 
-public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
+public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingCellMetrics
 {
 
     private readonly INativeSshInterop _interop;
@@ -185,7 +185,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         // never throw at the agent-host lifecycle call site.
         int cols = _cols > 0 ? _cols : 80;
         int rows = _rows > 0 ? _rows : 24;
-        _flightRecorder = new FlightRecordingBuffer(maxTotalBytes, cols, rows);
+        _flightRecorder = new FlightRecordingBuffer(maxTotalBytes, cols, rows, initialSixelCellSize: Volatile.Read(ref _recordingCellMetrics));
     }
 
     public void DisableFlightRecording()
@@ -342,6 +342,17 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         }
     }
 
+    private Ntilde.Replay.RecordingCellMetrics _recordingCellMetrics = new(10, 20);
+
+    public void SetRecordingCellMetrics(float widthPx, float heightPx)
+    {
+        var size = Ntilde.Replay.RecordingCellMetrics.FromOptional(widthPx, heightPx)!;
+        if (Volatile.Read(ref _recordingCellMetrics) == size) return;
+        Volatile.Write(ref _recordingCellMetrics, size);
+        _recorder?.RecordSixelCellSize(widthPx, heightPx);
+        _flightRecorder?.RecordSixelCellSize(widthPx, heightPx);
+    }
+
     public void StartRecording(string filePath)
     {
         if (_recorder != null)
@@ -349,7 +360,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
             return;
         }
 
-        var recorder = new ReplayWriter(filePath, _cols, _rows, ShellCommand);
+        var recorder = new ReplayWriter(filePath, _cols, _rows, ShellCommand, Volatile.Read(ref _recordingCellMetrics));
         recorder.RecordMarker("START");
 
         _recorder = recorder;

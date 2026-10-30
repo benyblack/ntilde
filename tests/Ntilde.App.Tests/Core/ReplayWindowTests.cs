@@ -11,6 +11,35 @@ namespace Ntilde.Tests.Core;
 
 public sealed class ReplayWindowTests
 {
+    [AvaloniaFact]
+    public async Task Seeking_uses_snapshot_cell_metrics_instead_of_the_header_or_current_font()
+    {
+        string path = Path.GetTempFileName();
+        ReplayWindow? window = null;
+        try
+        {
+            var original = new TerminalBuffer(10, 5);
+            var parser = new AnsiParser(original) { SixelCellSizeOverride = new SixelCellSize(20, 6) };
+            using (var recorder = new Ntilde.Replay.PtyRecorder(path, 10, 5, sixelCellSize: new Ntilde.Replay.RecordingCellMetrics(10, 20)))
+            {
+                recorder.RecordSnapshot(original, parser);
+                byte[] data = System.Text.Encoding.UTF8.GetBytes("\x1b[5;1H\x1bPq!35~-~\x1b\\Z");
+                recorder.RecordChunkAt(100, data, data.Length);
+            }
+            window = new ReplayWindow(path);
+            var model = (ReplayViewModel)window.DataContext!;
+            await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => model.DurationMs == 100, "the replay index reached EOF");
+            var seek = (Task)typeof(ReplayWindow).GetMethod("PerformSeek", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [100L])!;
+            await seek;
+            var replayParser = (AnsiParser)typeof(ReplayWindow).GetField("_parser", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            var replayBuffer = (TerminalBuffer)typeof(ReplayWindow).GetField("_buffer", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            Assert.Equal(new SixelCellSize(20, 6), replayParser.SixelCellSizeOverride);
+            Assert.Equal(7, replayBuffer.TotalLines);
+            Assert.Equal(2, Assert.Single(replayBuffer.Images).CellWidth);
+        }
+        finally { window?.Close(); File.Delete(path); }
+    }
+
     [Fact]
     public void TryAttachDeveloperTools_SwallowsDuplicateAttachmentFailure()
     {

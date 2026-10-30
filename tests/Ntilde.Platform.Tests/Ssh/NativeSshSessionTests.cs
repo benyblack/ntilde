@@ -14,6 +14,40 @@ public sealed class NativeSshSessionTests
     private static readonly string[] HelloOnly = ["hello"];
 
     [Fact]
+    public async Task Recordings_preserve_initial_and_updated_physical_cell_metrics()
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            var interop = new FakeNativeSshInterop();
+            using var session = new NativeSshSession(CreateProfile(), interop: interop);
+            session.SetRecordingCellMetrics(12, 6);
+            session.StartRecording(path);
+            var live = new Ntilde.VT.TerminalBuffer(80, 24);
+            var parser = new Ntilde.VT.AnsiParser(live) { SixelCellSizeOverride = new Ntilde.VT.SixelCellSize(12, 6) };
+            int delivered = 0;
+            session.OnOutputReceived += text => { parser.Process(text); Interlocked.Increment(ref delivered); };
+            interop.Enqueue(NativeSshEvent.Data(Encoding.UTF8.GetBytes("\x1b[24;1H\x1bPq!35~-~\x1b\\X")));
+            await WaitUntilAsync(() => Volatile.Read(ref delivered) == 1);
+            session.SetRecordingCellMetrics(12, 12);
+            parser.SixelCellSizeOverride = new Ntilde.VT.SixelCellSize(12, 12);
+            interop.Enqueue(NativeSshEvent.Data(Encoding.UTF8.GetBytes("\x1bPq!35~-~\x1b\\Z")));
+            await WaitUntilAsync(() => Volatile.Read(ref delivered) == 2);
+            session.StopRecording();
+            var replay = new Ntilde.VT.TerminalBuffer(80, 24);
+            var replayParser = new Ntilde.VT.AnsiParser(replay);
+            await new Ntilde.Replay.ReplayRunner(path).RunAsync(
+                onDataCallback: data => { replayParser.Process(Encoding.UTF8.GetString(data)); return Task.CompletedTask; },
+                onHeaderCallback: header => { Ntilde.Replay.ReplayRunner.ApplyHeaderMetrics(replayParser, header); return Task.CompletedTask; },
+                onSixelCellSizeCallback: (w, h) => { replayParser.SixelCellSizeOverride = new Ntilde.VT.SixelCellSize(w, h); return Task.CompletedTask; },
+                ct: TestContext.Current.CancellationToken);
+            Assert.Equal((live.CursorCol, live.CursorRow, live.TotalLines), (replay.CursorCol, replay.CursorRow, replay.TotalLines));
+            Assert.Equal(new Ntilde.VT.SixelCellSize(12, 12), replayParser.SixelCellSizeOverride);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
     public async Task OutputBytesAreDecodedIncrementallyAcrossPollEvents()
     {
         var interop = new FakeNativeSshInterop();

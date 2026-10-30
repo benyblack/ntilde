@@ -26,6 +26,11 @@ namespace Ntilde.VT
         [JsonPropertyName("rows")]
         public int Rows { get; set; }
 
+        [JsonPropertyName("sixel_cw"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? SixelCellWidthPx { get; set; }
+        [JsonPropertyName("sixel_ch"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? SixelCellHeightPx { get; set; }
+
         [JsonPropertyName("date")]
         public string Date { get; set; } = DateTime.UtcNow.ToString("O");
 
@@ -56,6 +61,11 @@ namespace Ntilde.VT
         [JsonPropertyName("i")]
         public string? Input { get; set; }
 
+        [JsonPropertyName("sixel_cw"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? SixelCellWidthPx { get; set; }
+        [JsonPropertyName("sixel_ch"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? SixelCellHeightPx { get; set; }
+
         [JsonPropertyName("s")]
         public ReplaySnapshot? Snapshot { get; set; }
     }
@@ -74,6 +84,8 @@ namespace Ntilde.VT
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
         [JsonPropertyName("decom")] public bool IsOriginMode { get; set; }
         [JsonPropertyName("sixel_display")] public bool IsSixelDisplayMode { get; set; }
+        [JsonPropertyName("sixel_cw"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public float? SixelCellWidthPx { get; set; }
+        [JsonPropertyName("sixel_ch"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public float? SixelCellHeightPx { get; set; }
         [JsonPropertyName("bp")] public bool IsBracketedPasteMode { get; set; }
         [JsonPropertyName("cv")] public bool IsCursorVisible { get; set; }
 

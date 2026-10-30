@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Ntilde.Pty
 {
-    public class RustPtySession : ITerminalSession, ITerminalByteOutput
+    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingCellMetrics
     {
         public Guid Id { get; } = Guid.NewGuid();
         private readonly PtySafeHandle _handle;
@@ -924,7 +924,7 @@ namespace Ntilde.Pty
             // never throw at the agent-host lifecycle call site.
             int cols = _cols > 0 ? _cols : 80;
             int rows = _rows > 0 ? _rows : 24;
-            _flightRecorder = new Ntilde.Replay.FlightRecordingBuffer(maxTotalBytes, cols, rows);
+            _flightRecorder = new Ntilde.Replay.FlightRecordingBuffer(maxTotalBytes, cols, rows, initialSixelCellSize: Volatile.Read(ref _recordingCellMetrics));
         }
 
         public void DisableFlightRecording()
@@ -956,10 +956,21 @@ namespace Ntilde.Pty
             }
         }
 
+        private Ntilde.Replay.RecordingCellMetrics _recordingCellMetrics = new(10, 20);
+
+        public void SetRecordingCellMetrics(float widthPx, float heightPx)
+        {
+            var size = Ntilde.Replay.RecordingCellMetrics.FromOptional(widthPx, heightPx)!;
+            if (Volatile.Read(ref _recordingCellMetrics) == size) return;
+            Volatile.Write(ref _recordingCellMetrics, size);
+            _recorder?.RecordSixelCellSize(widthPx, heightPx);
+            _flightRecorder?.RecordSixelCellSize(widthPx, heightPx);
+        }
+
         public void StartRecording(string filePath)
         {
             if (_recorder != null) return; // Already recording
-            var recorder = new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand);
+            var recorder = new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, Volatile.Read(ref _recordingCellMetrics));
             try
             {
                 recorder.RecordMarker("START");

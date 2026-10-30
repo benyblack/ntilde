@@ -18,7 +18,7 @@ public sealed class PtySshProcessLauncher : ISshProcessLauncher
     }
 }
 
-public sealed class SshSession : ITerminalSession, ITerminalByteOutput
+public sealed class SshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingCellMetrics
 {
     private readonly OpenSshSession _inner;
 
@@ -90,6 +90,9 @@ public sealed class SshSession : ITerminalSession, ITerminalByteOutput
 
     public void SendInput(string input) => _inner.SendInput(input);
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);
+    public void SetRecordingCellMetrics(float widthPx, float heightPx) =>
+        (_inner as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(widthPx, heightPx);
+
     public void StartRecording(string filePath) => _inner.StartRecording(filePath);
     public void StopRecording() => _inner.StopRecording();
     public bool IsFlightRecording => _inner.IsFlightRecording;

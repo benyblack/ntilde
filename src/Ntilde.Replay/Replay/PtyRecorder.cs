@@ -19,17 +19,21 @@ namespace Ntilde.Replay
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly DateTime _startTime;
         private readonly ReplayHeader _header;
+        private RecordingCellMetrics? _sixelCellSize;
 
-        public PtyRecorder(string filePath, int cols, int rows, string shell = "")
+        public PtyRecorder(string filePath, int cols, int rows, string shell = "", RecordingCellMetrics? sixelCellSize = null)
         {
             _filePath = filePath;
             _startTime = DateTime.UtcNow;
 
+            _sixelCellSize = RecordingCellMetrics.FromOptional(sixelCellSize?.WidthPx, sixelCellSize?.HeightPx);
             _header = new ReplayHeader
             {
                 Type = ReplayHeader.TypeToken,
                 Cols = cols,
                 Rows = rows,
+                SixelCellWidthPx = sixelCellSize?.WidthPx,
+                SixelCellHeightPx = sixelCellSize?.HeightPx,
                 Shell = shell
             };
 
@@ -102,10 +106,26 @@ namespace Ntilde.Replay
             });
         }
 
-        public void RecordSnapshot(TerminalBuffer buffer)
+        public void RecordSixelCellSize(float width, float height) => RecordSixelCellSizeAt(GetTimestamp(), width, height);
+
+        public void RecordSixelCellSizeAt(long timeOffsetMs, float width, float height)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(timeOffsetMs);
+            var cellSize = RecordingCellMetrics.FromOptional(width, height);
+            Volatile.Write(ref _sixelCellSize, cellSize);
+            if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
+            TryEnqueue(new ReplayEvent { Type = "sixelCellSize", TimeOffsetMs = timeOffsetMs, SixelCellWidthPx = width, SixelCellHeightPx = height });
+        }
+
+        public void RecordSnapshot(TerminalBuffer buffer, AnsiParser? parser = null)
         {
             if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
 
+            SixelCellSize? cellSize = parser?.SixelCellSizeOverride;
+            RecordingCellMetrics? recordedSize = Volatile.Read(ref _sixelCellSize);
+            float? width = parser is null ? recordedSize?.WidthPx : cellSize?.WidthPx ?? parser.CellWidth;
+            float? height = parser is null ? recordedSize?.HeightPx : cellSize?.HeightPx ?? parser.CellHeight;
+            _ = RecordingCellMetrics.FromOptional(width, height);
             ReplaySnapshot snapshot;
             buffer.Lock.EnterReadLock();
             try
@@ -128,6 +148,8 @@ namespace Ntilde.Replay
                     IsApplicationCursorKeys = buffer.Modes.IsApplicationCursorKeys,
                     IsOriginMode = buffer.Modes.IsOriginMode,
                     IsSixelDisplayMode = buffer.Modes.IsSixelDisplayMode,
+                    SixelCellWidthPx = width,
+                    SixelCellHeightPx = height,
                     IsBracketedPasteMode = buffer.Modes.IsBracketedPasteMode,
                     IsCursorVisible = buffer.Modes.IsCursorVisible,
                     IsPendingWrap = buffer.IsPendingWrap,
