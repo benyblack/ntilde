@@ -45,30 +45,37 @@ public sealed class SixelSourceBudget
         }
     }
 
-    internal bool TryPinSnapshot(IReadOnlyList<SixelSource> sources, out IDisposable? lease)
+    internal bool TryPinSnapshot(IReadOnlyList<SixelSource> sources, out IDisposable? lease, HashSet<SixelSource>? expiredSources = null)
     {
         lease = null;
         lock (_gate)
         {
             var unique = sources.Distinct().ToArray();
+            var available = new List<SixelSource>(unique.Length);
             int chars = _snapshotChars;
             int count = _snapshotSources;
             foreach (var source in unique)
             {
                 if (source.Owner != this) throw new ArgumentException("Source belongs to another budget.", nameof(sources));
-                if (source.SnapshotPins > 0) continue;
-                if (source.Data is not { } data) return false;
+                if (source.SnapshotPins > 0) { available.Add(source); continue; }
+                if (source.Data is not { } data)
+                {
+                    if (expiredSources is null) return false;
+                    expiredSources.Add(source);
+                    continue;
+                }
+                available.Add(source);
                 if (data.Length > _maxChars - chars || count >= _maxSources) return false;
                 chars += data.Length;
                 count++;
             }
-            foreach (var source in unique)
+            foreach (var source in available)
             {
                 if (source.SnapshotPins++ == 0) source.SnapshotData = source.Data;
             }
             _snapshotChars = chars;
             _snapshotSources = count;
-            lease = new SnapshotPins(this, unique);
+            if (available.Count > 0) lease = new SnapshotPins(this, available.ToArray());
             return true;
         }
     }

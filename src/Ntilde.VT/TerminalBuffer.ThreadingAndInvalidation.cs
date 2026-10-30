@@ -303,7 +303,7 @@ namespace Ntilde.VT
             int absDisplayStart = 0;
             int cursorRow = 0;
             int cursorCol = 0;
-            CursorStyle cursorStyle = CursorStyle.Block;
+            CursorStyle cursorStyle;
             RenderThemeSnapshot theme = default;
             var rowsData = viewportRows > 0 ? new PooledArray<RenderRowSnapshot>(System.Buffers.ArrayPool<RenderRowSnapshot>.Shared.Rent(viewportRows), viewportRows) : PooledArray<RenderRowSnapshot>.Empty;
             PooledArray<RenderImageSnapshot> images = PooledArray<RenderImageSnapshot>.Empty;

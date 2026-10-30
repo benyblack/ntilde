@@ -347,6 +347,7 @@ namespace Ntilde.Shell
             }
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "S3776", Justification = "Pre-existing rendering pipeline; this change only passes the snapshot session through to capture without adding branches. Splitting the frame pipeline is outside this lifetime fix.")]
         private TerminalRenderSnapshot? DrawTerminalInternalCore(SKCanvas canvas, int snapshotSession)
         {
             try

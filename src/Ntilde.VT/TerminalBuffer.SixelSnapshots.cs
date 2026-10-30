@@ -11,11 +11,11 @@ public partial class TerminalBuffer
         var sources = images.Where(image => image.ImageHandle is IDeferredSixelImage { NeedsSource: true } && image.Source is not null)
             .Select(image => image.Source).OfType<SixelSource>().Distinct().ToArray();
         IDisposable? lease = null;
-        if (sources.Length > 0 && !TryPinSnapshotSources(sources, out lease))
+        if (sources.Length > 0 && !TryPinSnapshotSources(sources, images, out lease))
         {
             Interlocked.Exchange(ref _sixelSnapshotRetry, 1);
-            if (!TryPinSnapshotSources(sources, out lease))
-                throw new InvalidOperationException("SIXEL capture sources are unavailable or its bounded snapshot allowance is in use; retry after current captures finish.");
+            if (!TryPinSnapshotSources(sources, images, out lease))
+                throw new InvalidOperationException("The bounded SIXEL snapshot allowance is in use; retry after current captures finish.");
         }
         if (lease is null) return null;
         bool ownsSession = sessionId == 0;
@@ -28,7 +28,10 @@ public partial class TerminalBuffer
                 throw new InvalidOperationException("The image snapshot session has already ended.");
             }
             if (!_sixelSnapshotLeases.TryGetValue(sessionId, out var leases))
-                _sixelSnapshotLeases.Add(sessionId, leases = []);
+            {
+                leases = [];
+                _sixelSnapshotLeases.Add(sessionId, leases);
+            }
             leases.Add(lease);
         }
         return ownsSession ? new OwnedImageSession(this, sessionId) : null;
@@ -40,14 +43,15 @@ public partial class TerminalBuffer
         public void Dispose() => Interlocked.Exchange(ref _buffer, null)?.EndSnapshotSession(sessionId);
     }
 
-    private bool TryPinSnapshotSources(SixelSource[] sources, out IDisposable? lease)
+    private bool TryPinSnapshotSources(SixelSource[] sources, List<RenderImageSnapshot> images, out IDisposable? lease)
     {
         var acquired = new List<IDisposable>();
+        var expired = new HashSet<SixelSource>();
         try
         {
             foreach (var group in sources.GroupBy(source => source.Owner))
             {
-                if (!group.Key.TryPinSnapshot(group.ToArray(), out var pin))
+                if (!group.Key.TryPinSnapshot(group.ToArray(), out var pin, expired))
                 {
                     foreach (var item in acquired) item.Dispose();
                     lease = null;
@@ -55,7 +59,11 @@ public partial class TerminalBuffer
                 }
                 if (pin is not null) acquired.Add(pin);
             }
-            lease = new ImageSourcePins(acquired, OnSnapshotSourcesReleased);
+            // Retention may evict before its parser obtains the buffer write lock to prune.
+            // Omit those undecoded placements at the same budget-locked decision as pinning.
+            images.RemoveAll(image => image.ImageHandle is IDeferredSixelImage { NeedsSource: true }
+                && image.Source is not null && expired.Contains(image.Source));
+            lease = acquired.Count > 0 ? new ImageSourcePins(acquired, OnSnapshotSourcesReleased) : null;
             return true;
         }
         catch

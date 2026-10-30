@@ -26,6 +26,25 @@ public class SkiaImageDecoderTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Capture_omits_an_evicted_source_while_its_parser_placement_is_waiting_to_be_pruned(bool isolated)
+    {
+        var buffer = new TerminalBuffer(10, 6) { SixelSources = new SixelSourceBudget(1024, 1) };
+        var parser = new AnsiParser(buffer) { RetainSixelSources = true, ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true } };
+        parser.Process("\x1b[?80h\x1bPq!30~\x1b\\text");
+        var image = Assert.Single(buffer.Images);
+        // Reproduce Retain succeeding before the producer can take the write lock to prune.
+        using var next = buffer.SixelSources.Retain("q!40~");
+        Assert.Null(image.SixelSource!.Data);
+        using var captured = buffer.CaptureRenderSnapshot(new RenderSnapshotRequest { ViewportRows = 6, ViewportCols = 10, Isolated = isolated }, out _);
+        Assert.Equal(0, captured.Images.Length);
+        Assert.True(captured.DirtySpans.Length > 0);
+        Assert.Equal(0, buffer.SixelSources.SnapshotChars);
+        Assert.Single(buffer.Images); // capture never mutates placements under its read lock
+    }
+
     [Fact]
     public void A_captured_undecoded_source_survives_replacement_and_releases_with_its_session()
     {
