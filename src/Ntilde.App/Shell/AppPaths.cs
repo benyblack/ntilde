@@ -29,11 +29,17 @@ namespace Ntilde.Shell
                     return Path.GetFullPath(overrideRoot);
                 }
 
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    AppName);
+                return DefaultRootDirectory;
             }
         }
+
+        /// <summary>
+        /// The root without the <c>NTILDE_APPDATA_ROOT</c> override: the machine's real app-data directory, which an
+        /// installed Ntilde uses. Tests read it here rather than clearing the variable, which is process-wide.
+        /// </summary>
+        public static string DefaultRootDirectory => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            AppName);
 
         /// <summary>Where a pre-rebrand install kept its data. Only consulted by <see cref="MigrateLegacyRoot"/>.</summary>
         public static string LegacyRootDirectory => Path.Combine(

@@ -29,10 +29,10 @@ public sealed class AppPathsTests
     }
 
     [Fact]
-    public void RootDirectory_IsUnderLocalApplicationData()
+    public void DefaultRootDirectory_IsUnderLocalApplicationData()
     {
         string localAppData = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
-        string root = Path.GetFullPath(AppPaths.RootDirectory);
+        string root = Path.GetFullPath(AppPaths.DefaultRootDirectory);
 
         if (OperatingSystem.IsWindows())
         {
@@ -288,19 +288,22 @@ public sealed class AppPathsTests
     }
 
     [Fact]
-    public void RootDirectory_FolderNameIsLowercaseNtilde()
+    public void DefaultRootDirectory_FolderNameIsLowercaseNtilde()
     {
-        string? previous = Environment.GetEnvironmentVariable("NTILDE_APPDATA_ROOT");
-        try
-        {
-            Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", null);
-            Assert.Equal("ntilde", Path.GetFileName(AppPaths.RootDirectory));
-            Assert.Equal("NovaTerminal", Path.GetFileName(AppPaths.LegacyRootDirectory));
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", previous);
-        }
+        // Read without clearing NTILDE_APPDATA_ROOT: the variable is process-wide, and a test running alongside this
+        // one would resolve the real root meanwhile (#317).
+        Assert.Equal("ntilde", Path.GetFileName(AppPaths.DefaultRootDirectory));
+        Assert.Equal("NovaTerminal", Path.GetFileName(AppPaths.LegacyRootDirectory));
+    }
+
+    [Fact]
+    public void RootDirectory_WithoutTheOverride_IsTheDefault()
+    {
+        string? overrideRoot = Environment.GetEnvironmentVariable("NTILDE_APPDATA_ROOT");
+
+        Assert.Equal(
+            string.IsNullOrWhiteSpace(overrideRoot) ? AppPaths.DefaultRootDirectory : Path.GetFullPath(overrideRoot),
+            AppPaths.RootDirectory);
     }
 
     private static string CreateTempDirectory()
