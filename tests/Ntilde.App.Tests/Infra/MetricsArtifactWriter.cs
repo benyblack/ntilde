@@ -33,6 +33,26 @@ namespace Ntilde.Tests.Infra
             }
         }
 
+        /// <summary>Writes a scenario's own report (#127's render benchmarks) beside the statistics snapshots.</summary>
+        internal static void WriteReport(string scenario, string report)
+        {
+            if (!ShouldWrite()) return;
+
+            string? root = Environment.GetEnvironmentVariable("METRICS_ARTIFACT_DIR");
+            if (string.IsNullOrWhiteSpace(root))
+            {
+                root = Path.Combine(AppContext.BaseDirectory, "metrics");
+            }
+
+            string stamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssfff", CultureInfo.InvariantCulture);
+            string path = Path.Combine(root, $"{MakeSafeFilePart(scenario)}_{stamp}.txt");
+            lock (_gate)
+            {
+                Directory.CreateDirectory(root);
+                File.WriteAllText(path, report);
+            }
+        }
+
         private static bool ShouldWrite()
         {
             string? value = Environment.GetEnvironmentVariable("WRITE_METRICS_ARTIFACTS");
