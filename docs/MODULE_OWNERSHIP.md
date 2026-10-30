@@ -283,7 +283,11 @@ invariant changes.
   later changes, and flight-ring eviction advances the exported initial pair. Parser hosts claim
   `ITerminalRecordingBoundary` before recording starts: daemon bytes are recorded on its parse
   thread; local hosts receive original bytes paired with decoded delivery and serialize recording
-  with font metrics and parsing. Agent lifecycle publication (which can enable recording) follows
+  with font metrics and parsing. Recording start/stop and flight lifecycle changes share the
+  output FIFO for queued decoded hosts; synchronous SSH delivery uses its invocation gate.
+  Flight export freezes its window at that boundary and writes the file outside it. Raw mux
+  hosts use the daemon's data queue instead, avoiding a second transport-queue boundary.
+  Agent lifecycle publication (which can enable recording) follows
   output ownership installation. Replay headers and
   snapshots restore those metrics before subsequent image output; legacy files retain defaults.
 - **SIXEL-aware peers opt into ordered pixel metrics.** `SupportsSixelScrolling` in a presentation

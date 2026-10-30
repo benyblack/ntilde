@@ -110,15 +110,55 @@ namespace Ntilde.Tests
 
         [Fact]
         [Trait("Category", "PtySmoke")]
-        public async Task Recording_started_with_queued_output_keeps_previously_read_bytes()
+        public async Task A_failed_output_consumer_rejects_queued_recording_activation()
         {
-            var reads = new ScriptedReads("held"u8.ToArray(), [0xE2], [0x82, 0xAC]);
+            var reads = new ScriptedReads("held"u8.ToArray(), "later"u8.ToArray());
             using var arrived = new ManualResetEventSlim();
             using var release = new ManualResetEventSlim();
             string path = System.IO.Path.GetTempFileName();
             try
             {
                 using RustPtySession session = NewSession(reads);
+                session.SubscribeRecordingOutput((_, _) =>
+                {
+                    arrived.Set();
+                    Assert.True(release.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+                    throw new InvalidOperationException("simulated consumer failure");
+                });
+                try
+                {
+                    reads.Gates[0].Release();
+                    Assert.True(arrived.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+                    Task start = Task.Run(() => session.StartRecording(path), TestContext.Current.CancellationToken);
+                    await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => start.IsCompleted || session.QueuedOutputCount == 1, "recording activation reached the held consumer");
+                    release.Set();
+                    await Assert.ThrowsAsync<ObjectDisposedException>(() => start.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+                    Assert.False(session.IsRecording);
+                    Assert.Equal(0, new System.IO.FileInfo(path).Length);
+                }
+                finally { release.Set(); foreach (var gate in reads.Gates) { if (gate.CurrentCount == 0) gate.Release(); } }
+            }
+            finally { System.IO.File.Delete(path); }
+        }
+
+        [Theory]
+        [InlineData("start")]
+        [InlineData("stop")]
+        [InlineData("enable")]
+        [InlineData("disable")]
+        [InlineData("export")]
+        [Trait("Category", "PtySmoke")]
+        public async Task Decoded_host_recording_lifecycle_crosses_queued_raw_output(string operation)
+        {
+            var reads = new ScriptedReads("held"u8.ToArray(), [0xE2], [0x82, 0xAC], "later"u8.ToArray());
+            using var arrived = new ManualResetEventSlim();
+            using var release = new ManualResetEventSlim();
+            string path = System.IO.Path.GetTempFileName();
+            try
+            {
+                using RustPtySession session = NewSession(reads);
+                if (operation == "stop") session.StartRecording(path);
+                if (operation is "disable" or "export") session.EnableFlightRecording(1 << 20);
                 int deliveries = 0;
                 session.SubscribeRecordingOutput((text, data) =>
                 {
@@ -130,16 +170,35 @@ namespace Ntilde.Tests
                     session.RecordOutputAtHostBoundary(data);
                     Interlocked.Increment(ref deliveries);
                 });
-                foreach (var gate in reads.Gates) gate.Release();
+                for (int i = 0; i < 3; i++) reads.Gates[i].Release();
                 Assert.True(arrived.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
-                await WaitAsync(reads.Entered[3]); // all chunks queued before recording starts
-                session.StartRecording(path);
+                await WaitAsync(reads.Entered[3]); // both UTF-8 chunks queued behind the held delivery
+                Task change = Task.Run(() =>
+                {
+                    switch (operation)
+                    {
+                        case "start": session.StartRecording(path); break;
+                        case "stop": session.StopRecording(); break;
+                        case "enable": session.EnableFlightRecording(1 << 20); break;
+                        case "disable": session.DisableFlightRecording(); break;
+                        case "export": Assert.True(session.TryExportFlightRecording(path, out _)); break;
+                    }
+                }, TestContext.Current.CancellationToken);
+                await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => change.IsCompleted || session.QueuedOutputCount == 3, "the lifecycle request reached its output boundary");
+                bool changedBeforeDelivery = change.IsCompleted;
+                reads.Gates[3].Release(); // later bytes must stay after the requested boundary
+                await WaitAsync(reads.Entered[4]);
                 release.Set();
-                await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => Volatile.Read(ref deliveries) == 3, "all queued chunks reached the recording host");
-                session.StopRecording();
+                await change;
+                await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => Volatile.Read(ref deliveries) == 4, "all raw chunks reached the host");
+                Assert.False(changedBeforeDelivery);
+                if (operation == "disable") { Assert.False(session.IsFlightRecording); return; }
+                if (operation == "start") session.StopRecording();
+                if (operation == "enable") Assert.True(session.TryExportFlightRecording(path, out _));
                 var raw = new System.Collections.Generic.List<byte>();
                 await new Ntilde.Replay.ReplayRunner(path).RunAsync(data => { raw.AddRange(data); return Task.CompletedTask; }, ct: TestContext.Current.CancellationToken);
-                Assert.Equal(Encoding.UTF8.GetBytes("held€"), raw);
+                string expected = operation is "start" or "enable" ? "later" : "held€";
+                Assert.Equal(Encoding.UTF8.GetBytes(expected), raw);
             }
             finally
             {

@@ -237,7 +237,9 @@ namespace Ntilde.Pty
         private Task? _powerShellInitTask;
 
         // Bounded queue for back-pressure - prevents OOM on high-throughput output
-        private readonly BlockingCollection<(string Text, byte[]? RecordingBytes)> _outputQueue = new BlockingCollection<(string, byte[]?)>(boundedCapacity: 100);
+        private readonly BlockingCollection<(string Text, byte[]? RecordingBytes, Action? RecordingAction)> _outputQueue = new(boundedCapacity: 100);
+        private readonly TaskCompletionSource _outputConsumerStopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal int QueuedOutputCount => _outputQueue.Count;
 
         // Bounded input queue drained by a dedicated writer thread. The native side does
         // write_all, which can block indefinitely while the foreground program isn't
@@ -916,39 +918,47 @@ namespace Ntilde.Pty
 
         public bool IsFlightRecording => _flightRecorder != null;
 
-        public void EnableFlightRecording(long maxTotalBytes)
+        public void EnableFlightRecording(long maxTotalBytes) => AtDecodedRecordingBoundary(() => { EnableFlightRecordingCore(maxTotalBytes); return 0; }, allowStopped: false);
+
+        private void EnableFlightRecordingCore(long maxTotalBytes)
         {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0 || (_recordingDelivery.Mode == 2 && _outputConsumerStopped.Task.IsCompleted), this);
             if (_flightRecorder != null) return; // Already enabled
             // Defensive fallback: geometry should always be positive here, but the
             // ring constructor rejects non-positive dimensions and enabling must
             // never throw at the agent-host lifecycle call site.
             int cols = _cols > 0 ? _cols : 80;
             int rows = _rows > 0 ? _rows : 24;
-            _flightRecorder = new Ntilde.Replay.FlightRecordingBuffer(maxTotalBytes, cols, rows, initialSixelCellSize: _recordingDelivery.CellMetrics);
+            var ring = new Ntilde.Replay.FlightRecordingBuffer(maxTotalBytes, cols, rows, initialSixelCellSize: _recordingDelivery.CellMetrics);
+            _flightRecorder = ring;
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                Interlocked.CompareExchange(ref _flightRecorder, null, ring);
+                throw new ObjectDisposedException(nameof(RustPtySession));
+            }
         }
 
-        public void DisableFlightRecording()
+        public void DisableFlightRecording() => AtDecodedRecordingBoundary(() => { DisableFlightRecordingCore(); return 0; });
+
+        private void DisableFlightRecordingCore()
         {
             _flightRecorder = null;
         }
 
-        public Func<string, Ntilde.Replay.FlightExportInfo>? CaptureFlightRecording() => _flightRecorder?.CaptureExport(ShellCommand);
+        public Func<string, Ntilde.Replay.FlightExportInfo>? CaptureFlightRecording() =>
+            Volatile.Read(ref _disposed) != 0 ? null : AtDecodedRecordingBoundary(() => _flightRecorder?.CaptureExport(ShellCommand));
 
         public bool TryExportFlightRecording(string filePath, out Ntilde.Replay.FlightExportInfo info)
         {
-            var ring = _flightRecorder;
-            if (ring == null)
-            {
-                info = default;
-                return false;
-            }
-
+            info = default;
             try
             {
-                info = ring.ExportTo(filePath, ShellCommand);
+                var write = CaptureFlightRecording();
+                if (write is null) return false;
+                info = write(filePath);
                 return true;
             }
-            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or ObjectDisposedException)
             {
                 // Try-pattern: expected I/O failures (bad path, permissions, full
                 // disk) must not crash the host on an agent-triggered export.
@@ -976,8 +986,55 @@ namespace Ntilde.Pty
         public void SetRecordingCellMetrics(float widthPx, float heightPx) =>
             _recordingDelivery.SetCellMetrics(widthPx, heightPx, _recorder, _flightRecorder);
 
-        public void StartRecording(string filePath)
+        // Decoded hosts record at consumption time. Lifecycle changes must follow output already
+        // queued, while raw mux hosts supply their own parser boundary and bypass this queue.
+        private T AtDecodedRecordingBoundary<T>(Func<T> operation, bool allowStopped = true)
         {
+            if (_recordingDelivery.Mode != 2 || Volatile.Read(ref _disposed) != 0 || Thread.CurrentThread == _processLoopThread || Monitor.IsEntered(_outputInvocationLock)) return operation();
+            if (_outputConsumerStopped.Task.IsCompleted) return AfterOutputConsumerStopped(operation, allowStopped);
+            var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var cancelled = _cts.Token.Register(() => completion.TrySetCanceled(_cts.Token));
+            if (TryQueueRecordingAction(CreateRecordingAction(operation, completion)))
+            {
+                Task.WhenAny(completion.Task, _outputConsumerStopped.Task).GetAwaiter().GetResult();
+                if (completion.Task.IsCompleted && !completion.Task.IsCanceled) return completion.Task.GetAwaiter().GetResult();
+            }
+            completion.TrySetCanceled();
+            return AfterOutputConsumerStopped(operation, allowStopped);
+        }
+
+        private static Action CreateRecordingAction<T>(Func<T> operation, TaskCompletionSource<T> completion) => () =>
+        {
+            if (completion.Task.IsCompleted) return;
+            try { completion.TrySetResult(operation()); }
+            catch (Exception ex) { completion.TrySetException(ex); }
+        };
+
+        private bool TryQueueRecordingAction(Action apply)
+        {
+            try
+            {
+                while (!_outputConsumerStopped.Task.IsCompleted)
+                {
+                    if (_outputQueue.TryAdd((string.Empty, null, apply), 50, _cts.Token)) return true;
+                }
+            }
+            catch (OperationCanceledException) { /* Session teardown cancels blocked producers. */ }
+            catch (InvalidOperationException) { /* EOF closed the queue; only retained operations may fall back. */ }
+            return false;
+        }
+
+        private T AfterOutputConsumerStopped<T>(Func<T> operation, bool allowStopped)
+        {
+            if (allowStopped && (_processLoopThread?.Join(TimeSpan.FromSeconds(5)) ?? true)) return operation();
+            throw new ObjectDisposedException(nameof(RustPtySession));
+        }
+
+        public void StartRecording(string filePath) => AtDecodedRecordingBoundary(() => { StartRecordingCore(filePath); return 0; }, allowStopped: false);
+
+        private void StartRecordingCore(string filePath)
+        {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0 || (_recordingDelivery.Mode == 2 && _outputConsumerStopped.Task.IsCompleted), this);
             if (_recorder != null) return; // Already recording
             var recorder = new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics);
             try
@@ -990,15 +1047,20 @@ namespace Ntilde.Pty
             }
 
             _recorder = recorder;
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                if (ReferenceEquals(Interlocked.CompareExchange(ref _recorder, null, recorder), recorder)) recorder.Dispose();
+                throw new ObjectDisposedException(nameof(RustPtySession));
+            }
             PtyLogger.Info($"[RustPtySession] Recording started to: {filePath}");
         }
 
-        public void StopRecording()
-        {
-            var recorder = _recorder;
-            if (recorder == null) return;
+        public void StopRecording() => AtDecodedRecordingBoundary(() => { StopRecordingCore(); return 0; });
 
-            _recorder = null;
+        private void StopRecordingCore()
+        {
+            var recorder = Interlocked.Exchange(ref _recorder, null);
+            if (recorder == null) return;
             try
             {
                 recorder.RecordMarker("END");
@@ -1064,7 +1126,7 @@ namespace Ntilde.Pty
                             try
                             {
                                 // Block when the queue is full so we apply back-pressure instead of dropping output.
-                                _outputQueue.Add((text, recordingBytes), _cts.Token);
+                                _outputQueue.Add((text, recordingBytes, null), _cts.Token);
                             }
                             catch (OperationCanceledException)
                             {
@@ -1248,6 +1310,7 @@ namespace Ntilde.Pty
                 {
                     lock (_outputInvocationLock)
                     {
+                        if (chunk.RecordingAction is { } action) { action(); continue; }
                         _recordingDelivery.Bytes = chunk.RecordingBytes;
                         try { EmitOutput(chunk.Text); }
                         finally { _recordingDelivery.Bytes = default; }
@@ -1265,6 +1328,7 @@ namespace Ntilde.Pty
                 // misbehaving subscriber can't take down the host; still notify exit below.
                 PtyLogger.Error($"[RustPtySession] ProcessLoop terminated by unhandled exception: {ex}");
             }
+            finally { _outputConsumerStopped.TrySetResult(); }
             // The child's real status, waited for briefly if EOF got here first (#313, #323).
             // Guarded: this line runs after the catch-alls above, so it is the one place in this
             // loop where a throw would escape the thread. See TryNotifyExitSafely.
@@ -1336,11 +1400,13 @@ namespace Ntilde.Pty
             // Idempotent: only the first caller runs teardown.
             if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
 
+            // Teardown aborts delivery; it must not enqueue behind a stalled host callback.
+            // Cancellation below releases boundary waiters, and activation checks _disposed.
             if (_recorder != null)
             {
                 try
                 {
-                    StopRecording();
+                    StopRecordingCore();
                 }
                 catch (Exception ex)
                 {
@@ -1348,7 +1414,7 @@ namespace Ntilde.Pty
                 }
             }
 
-            DisableFlightRecording();
+            DisableFlightRecordingCore();
 
             // 1. Stop the loops re-entering native calls, and let the process loop drain.
             _cts.Cancel();

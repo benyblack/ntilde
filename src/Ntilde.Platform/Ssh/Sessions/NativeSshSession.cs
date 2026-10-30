@@ -48,6 +48,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
     // Flight recorder ring (agent replay export) — same byte-level tap as _recorder,
     // never records input. See ITerminalFlightRecorder.
     private FlightRecordingBuffer? _flightRecorder;
+    private int _recordingDisposed;
     private NativePortForwardSession? _portForwardSession;
     private NativeSshSharedConnection.Lease? _connectionLease;
     private NovaSshSafeHandle? _sessionHandle;
@@ -173,8 +174,11 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
     public bool IsRecording => _recorder != null;
     public bool IsFlightRecording => _flightRecorder != null;
 
-    public void EnableFlightRecording(long maxTotalBytes)
+    public void EnableFlightRecording(long maxTotalBytes) => AtDecodedRecordingBoundary(() => { EnableFlightRecordingCore(maxTotalBytes); return 0; });
+
+    private void EnableFlightRecordingCore(long maxTotalBytes)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _recordingDisposed) != 0, this);
         if (_flightRecorder != null)
         {
             return; // Already enabled
@@ -185,31 +189,36 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         // never throw at the agent-host lifecycle call site.
         int cols = _cols > 0 ? _cols : 80;
         int rows = _rows > 0 ? _rows : 24;
-        _flightRecorder = new FlightRecordingBuffer(maxTotalBytes, cols, rows, initialSixelCellSize: _recordingDelivery.CellMetrics);
+        var ring = new FlightRecordingBuffer(maxTotalBytes, cols, rows, initialSixelCellSize: _recordingDelivery.CellMetrics);
+        _flightRecorder = ring;
+        if (Volatile.Read(ref _recordingDisposed) != 0)
+        {
+            Interlocked.CompareExchange(ref _flightRecorder, null, ring);
+            throw new ObjectDisposedException(nameof(NativeSshSession));
+        }
     }
 
-    public void DisableFlightRecording()
+    public void DisableFlightRecording() => AtDecodedRecordingBoundary(() => { DisableFlightRecordingCore(); return 0; });
+
+    private void DisableFlightRecordingCore()
     {
         _flightRecorder = null;
     }
 
-    public Func<string, Ntilde.Replay.FlightExportInfo>? CaptureFlightRecording() => _flightRecorder?.CaptureExport(ShellCommand);
+    public Func<string, Ntilde.Replay.FlightExportInfo>? CaptureFlightRecording() =>
+        Volatile.Read(ref _recordingDisposed) != 0 ? null : AtDecodedRecordingBoundary(() => _flightRecorder?.CaptureExport(ShellCommand));
 
     public bool TryExportFlightRecording(string filePath, out FlightExportInfo info)
     {
-        FlightRecordingBuffer? ring = _flightRecorder;
-        if (ring == null)
-        {
-            info = default;
-            return false;
-        }
-
+        info = default;
         try
         {
-            info = ring.ExportTo(filePath, ShellCommand);
+            var write = CaptureFlightRecording();
+            if (write is null) return false;
+            info = write(filePath);
             return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or ObjectDisposedException)
         {
             // Try-pattern: expected I/O failures (bad path, permissions, full
             // disk) must not crash the host on an agent-triggered export.
@@ -362,8 +371,17 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
     public void SetRecordingCellMetrics(float widthPx, float heightPx) =>
         _recordingDelivery.SetCellMetrics(widthPx, heightPx, _recorder, _flightRecorder);
 
-    public void StartRecording(string filePath)
+    private T AtDecodedRecordingBoundary<T>(Func<T> operation)
     {
+        if (_recordingDelivery.Mode != 2 || Volatile.Read(ref _recordingDisposed) != 0) return operation();
+        lock (_outputInvocationLock) return operation();
+    }
+
+    public void StartRecording(string filePath) => AtDecodedRecordingBoundary(() => { StartRecordingCore(filePath); return 0; });
+
+    private void StartRecordingCore(string filePath)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _recordingDisposed) != 0, this);
         if (_recorder != null)
         {
             return;
@@ -373,25 +391,32 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         recorder.RecordMarker("START");
 
         _recorder = recorder;
+        if (Volatile.Read(ref _recordingDisposed) != 0)
+        {
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _recorder, null, recorder), recorder)) recorder.Dispose();
+            throw new ObjectDisposedException(nameof(NativeSshSession));
+        }
     }
 
-    public void StopRecording()
+    public void StopRecording() => AtDecodedRecordingBoundary(() => { StopRecordingCore(); return 0; });
+
+    private void StopRecordingCore()
     {
-        var recorder = _recorder;
+        var recorder = Interlocked.Exchange(ref _recorder, null);
         if (recorder == null)
         {
             return;
         }
 
-        _recorder = null;
         recorder.RecordMarker("END");
         recorder.Dispose();
     }
 
     public void Dispose()
     {
-        StopRecording();
-        DisableFlightRecording();
+        Volatile.Write(ref _recordingDisposed, 1);
+        StopRecordingCore();
+        DisableFlightRecordingCore();
         _pollCts.Cancel();
         _metrics.MarkDisconnected("Disposed");
 
