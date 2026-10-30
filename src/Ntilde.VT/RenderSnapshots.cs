@@ -134,6 +134,8 @@ namespace Ntilde.VT
         public bool IsFaint;
         public bool IsItalic;
         public bool IsUnderline;
+        /// <summary>The underline's style and color when it is more than a straight line in the text color (#270).</summary>
+        public CellUnderline? Underline;
         public bool IsBlink;
         public bool IsStrikethrough;
         public short FgIndex;

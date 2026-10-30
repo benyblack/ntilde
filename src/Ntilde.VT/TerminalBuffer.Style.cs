@@ -72,6 +72,40 @@ namespace Ntilde.VT
 
         public bool IsUnderline { get => _isUnderline; set { _isUnderline = value; _isStyleDirty = true; } }
 
+        /// <summary>The style of the underline <see cref="IsUnderline"/> draws (SGR 4:x, 21); straight by default.</summary>
+        public UnderlineStyle UnderlineStyle
+        {
+            get => _state.UnderlineStyle;
+            set { _state.UnderlineStyle = value; RefreshCurrentUnderline(); }
+        }
+
+        /// <summary>The underline's own RGB color (SGR 58;2), or <c>null</c> for a palette index or the text color.</summary>
+        public TermColor? UnderlineColor
+        {
+            get => _state.UnderlineColor;
+            set { _state.UnderlineColor = value; RefreshCurrentUnderline(); }
+        }
+
+        /// <summary>The underline's palette color (SGR 58;5), or -1.</summary>
+        public short UnderlineColorIndex
+        {
+            get => _state.UnderlineColorIndex;
+            set { _state.UnderlineColorIndex = value; RefreshCurrentUnderline(); }
+        }
+
+        /// <summary>
+        /// The side-table entry cells written with this pen get when underlined, or <c>null</c> for a straight
+        /// underline in the text color. Rebuilt only when the value changes, so repeated SGRs keep sharing one instance.
+        /// </summary>
+        private void RefreshCurrentUnderline()
+        {
+            CellUnderline? next = CellUnderline.For(_state.UnderlineStyle, _state.UnderlineColor, _state.UnderlineColorIndex);
+            if (!Equals(next, _currentUnderline)) _currentUnderline = next;
+        }
+
+        /// <summary>What the next written cell's underline side entry is: none unless it is underlined.</summary>
+        private CellUnderline? UnderlineForWrite => _isUnderline ? _currentUnderline : null;
+
         public bool IsBlink { get => _isBlink; set { _isBlink = value; _isStyleDirty = true; } }
 
         public bool IsStrikethrough { get => _isStrikethrough; set { _isStrikethrough = value; _isStyleDirty = true; } }

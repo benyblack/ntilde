@@ -96,18 +96,22 @@ public class ScrollbackSideTableTests
         var scrollback = new Ntilde.VT.Storage.ScrollbackPages(4, pool);
         var map = new Ntilde.VT.Storage.SmallMap<string>();
         map.Set(0, "\U0001F44D");
-        scrollback.AppendRow(new TerminalCell[4], isWrapped: true, extendedText: map);
+        var underlines = new Ntilde.VT.Storage.SmallMap<CellUnderline>();
+        underlines.Set(1, new CellUnderline(UnderlineStyle.Curly));
+        scrollback.AppendRow(new TerminalCell[4], isWrapped: true, extendedText: map, underlines: underlines);
 
         // Pop returns the metadata with the row and vacates the slot…
-        Assert.True(scrollback.TryPopLastRow(new TerminalCell[4], out var isWrapped, out var extendedText, out _));
+        Assert.True(scrollback.TryPopLastRow(new TerminalCell[4], out var isWrapped, out var extendedText, out _, out var poppedUnderlines));
         Assert.True(isWrapped);
         Assert.NotNull(extendedText);
+        Assert.Same(underlines, poppedUnderlines);
 
         // …so a plain row appended into the same slot comes back clean: no
         // wrap flag, no extended text inherited from the popped row.
         long abs = scrollback.AppendRow(new TerminalCell[4]);
         int index = (int)(abs - scrollback.TotalRowsEvicted);
         Assert.Null(scrollback.GetExtendedTextMap(index));
+        Assert.Null(scrollback.GetUnderlineMap(index));
         Assert.False(scrollback.IsRowWrapped(index));
     }
 

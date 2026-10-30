@@ -39,6 +39,7 @@ namespace Ntilde.VT
         private bool _isStrikethrough { get => _state.IsStrikethrough; set => _state.IsStrikethrough = value; }
         private bool _isHidden { get => _state.IsHidden; set => _state.IsHidden = value; }
         private Links.Hyperlink? _currentHyperlink { get => _state.CurrentHyperlink; set => _state.CurrentHyperlink = value; }
+        private CellUnderline? _currentUnderline { get => _state.CurrentUnderline; set => _state.CurrentUnderline = value; }
         private bool _isPendingWrap { get => _state.IsPendingWrap; set => _state.IsPendingWrap = value; }
 
         // Output synchronization state
@@ -77,6 +78,10 @@ namespace Ntilde.VT
             public bool IsStrikethrough;
             public bool IsHidden;
             public Links.Hyperlink? CurrentHyperlink;
+            public UnderlineStyle UnderlineStyle = UnderlineStyle.Single;
+            public TermColor? UnderlineColor;
+            public short UnderlineColorIndex = -1;
+            public CellUnderline? CurrentUnderline;
             public bool IsPendingWrap;
 
             public bool IsSynchronizedOutput;

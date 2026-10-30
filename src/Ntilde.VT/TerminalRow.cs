@@ -21,6 +21,10 @@ namespace Ntilde.VT
         // one Hyperlink reference, so grouping is reference equality — see Links/Hyperlink.cs.
         private Storage.SmallMap<Links.Hyperlink>? _hyperlinks;
 
+        // #270: underline style and color, for the cells whose underline is more than a straight line in the
+        // text color. Cells written with one pen share one CellUnderline instance.
+        private Storage.SmallMap<CellUnderline>? _underlines;
+
         public string? GetExtendedText(int col)
         {
             if (_extendedText == null) return null;
@@ -68,6 +72,30 @@ namespace Ntilde.VT
             _hyperlinks = null;
         }
 
+        public CellUnderline? GetUnderline(int col)
+        {
+            if (_underlines == null) return null;
+            return _underlines.TryGet(col, out var underline) ? underline : null;
+        }
+
+        public void SetUnderline(int col, CellUnderline? underline)
+        {
+            if (underline is null)
+            {
+                _underlines?.Remove(col);
+                if (_underlines?.Count == 0) _underlines = null;
+                return;
+            }
+
+            _underlines ??= new Storage.SmallMap<CellUnderline>();
+            _underlines.Set(col, underline);
+        }
+
+        public void ClearUnderlines()
+        {
+            _underlines = null;
+        }
+
         /// <summary>
         /// Returns the raw SmallMap backing extended text (grapheme clusters) for this row.
         /// This is intended for preservation into paged scrollback — do not cache or mutate.
@@ -81,11 +109,17 @@ namespace Ntilde.VT
         public Storage.SmallMap<Links.Hyperlink>? GetHyperlinkMap() => _hyperlinks;
 
         /// <summary>
+        /// Returns the raw SmallMap backing underline styles and colors for this row.
+        /// This is intended for preservation into paged scrollback; do not cache or mutate.
+        /// </summary>
+        public Storage.SmallMap<CellUnderline>? GetUnderlineMap() => _underlines;
+
+        /// <summary>
         /// True when this row carries any side-table entry. Lets callers on the write hot path
         /// (insert mode runs per printable character) skip metadata maintenance entirely for
         /// the overwhelmingly common plain-ASCII, no-hyperlink row.
         /// </summary>
-        public bool HasRowMetadata => _extendedText != null || _hyperlinks != null;
+        public bool HasRowMetadata => _extendedText != null || _hyperlinks != null || _underlines != null;
 
         /// <summary>
         /// Moves side-table entries to follow a horizontal cell shift, so extended graphemes and
@@ -106,6 +140,7 @@ namespace Ntilde.VT
             if (delta == 0) return;
             _extendedText = ShiftMap(_extendedText, startCol, delta, cols);
             _hyperlinks = ShiftMap(_hyperlinks, startCol, delta, cols);
+            _underlines = ShiftMap(_underlines, startCol, delta, cols);
         }
 
         // Generic over the value type so the extended-text and hyperlink maps share one implementation:
@@ -175,18 +210,26 @@ namespace Ntilde.VT
             {
                 if (col < columnLimit) SetHyperlink(col, link);
             });
+            source._underlines?.ForEach((col, underline) =>
+            {
+                if (col < columnLimit) SetUnderline(col, underline);
+            });
         }
 
         /// <summary>
         /// Installs side tables wholesale. Counterpart of the Get*Map accessors:
         /// used when a row is restored from paged scrollback (height grow) so
-        /// extended graphemes and hyperlinks survive the round trip. The row
+        /// extended graphemes, hyperlinks and underline styles survive the round trip. The row
         /// takes ownership of the maps.
         /// </summary>
-        public void RestoreSideTables(Storage.SmallMap<string>? extendedText, Storage.SmallMap<Links.Hyperlink>? hyperlinks)
+        public void RestoreSideTables(
+            Storage.SmallMap<string>? extendedText,
+            Storage.SmallMap<Links.Hyperlink>? hyperlinks,
+            Storage.SmallMap<CellUnderline>? underlines)
         {
             _extendedText = extendedText is { Count: > 0 } ? extendedText : null;
             _hyperlinks = hyperlinks is { Count: > 0 } ? hyperlinks : null;
+            _underlines = underlines is { Count: > 0 } ? underlines : null;
         }
 
         public TerminalRow(int cols)

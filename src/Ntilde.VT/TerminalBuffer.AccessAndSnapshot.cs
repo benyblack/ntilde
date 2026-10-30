@@ -203,6 +203,25 @@ namespace Ntilde.VT
             finally { ExitReadLockIfNeeded(Lock, lockTaken); }
         }
 
+        /// <summary>
+        /// The underline style and color of a cell (#270), wherever its row lives, or <c>null</c> when it has none:
+        /// not underlined, or a straight underline in the text color.
+        /// </summary>
+        public CellUnderline? GetUnderlineAbsolute(int col, int absRow)
+        {
+            bool lockTaken = EnterReadLockIfNeeded();
+            try
+            {
+                if (col < 0 || col >= Cols || absRow < 0) return null;
+
+                Storage.SmallMap<CellUnderline>? underlines = !_isAltScreen && absRow < _scrollback.Count
+                    ? _scrollback.GetUnderlineMap(absRow)
+                    : GetRowAbsolute(absRow)?.GetUnderlineMap();
+                return underlines is not null && underlines.TryGet(col, out CellUnderline? underline) ? underline : null;
+            }
+            finally { ExitReadLockIfNeeded(Lock, lockTaken); }
+        }
+
         /// <summary>The hyperlink side table of an absolute row, wherever the row lives; null when it has none. Lock held.</summary>
         private Storage.SmallMap<Links.Hyperlink>? HyperlinkMapAbsolute(int absRow)
         {
@@ -258,6 +277,9 @@ namespace Ntilde.VT
             target.IsFaint = IsFaint;
             target.IsItalic = IsItalic;
             target.IsUnderline = IsUnderline;
+            target.UnderlineStyle = UnderlineStyle;
+            target.UnderlineColor = UnderlineColor;
+            target.UnderlineColorIndex = UnderlineColorIndex;
             target.IsBlink = IsBlink;
             target.IsStrikethrough = IsStrikethrough;
             target.IsHidden = IsHidden;
@@ -279,6 +301,9 @@ namespace Ntilde.VT
             IsFaint = source.IsFaint;
             IsItalic = source.IsItalic;
             IsUnderline = source.IsUnderline;
+            UnderlineStyle = source.UnderlineStyle;
+            UnderlineColor = source.UnderlineColor;
+            UnderlineColorIndex = source.UnderlineColorIndex;
             IsBlink = source.IsBlink;
             IsStrikethrough = source.IsStrikethrough;
             IsHidden = source.IsHidden;
@@ -310,6 +335,7 @@ namespace Ntilde.VT
 
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
+                row.ClearUnderlines();
                 row.TouchRevision();
             }
         }
@@ -330,6 +356,9 @@ namespace Ntilde.VT
             IsFaint = false;
             IsItalic = false;
             IsUnderline = false;
+            UnderlineStyle = UnderlineStyle.Single;
+            UnderlineColor = null;
+            UnderlineColorIndex = -1;
             IsBlink = false;
             IsStrikethrough = false;
             IsHidden = false;
@@ -356,6 +385,9 @@ namespace Ntilde.VT
             state.IsFaint = false;
             state.IsItalic = false;
             state.IsUnderline = false;
+            state.UnderlineStyle = UnderlineStyle.Single;
+            state.UnderlineColor = null;
+            state.UnderlineColorIndex = -1;
             state.IsBlink = false;
             state.IsStrikethrough = false;
             state.IsHidden = false;
@@ -442,6 +474,7 @@ namespace Ntilde.VT
                     row.Cells[i] = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
                     row.SetExtendedText(i, null);
                     row.SetHyperlink(i, null);
+                    row.SetUnderline(i, null);
                 }
                 row.TouchRevision();
             }
@@ -465,6 +498,7 @@ namespace Ntilde.VT
                     row.Cells[i] = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
                     row.SetExtendedText(i, null);
                     row.SetHyperlink(i, null);
+                    row.SetUnderline(i, null);
                 }
                 row.TouchRevision();
             }
@@ -509,6 +543,7 @@ namespace Ntilde.VT
             }
             row.ClearExtendedText();
             row.ClearHyperlinks();
+            row.ClearUnderlines();
             row.TouchRevision();
         }
 
@@ -528,6 +563,7 @@ namespace Ntilde.VT
                     row.Cells[col] = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
                     row.SetExtendedText(col, null);
                     row.SetHyperlink(col, null);
+                    row.SetUnderline(col, null);
                 }
                 row.TouchRevision();
             }
@@ -990,6 +1026,7 @@ namespace Ntilde.VT
                     IsFaint = cell.IsFaint,
                     IsItalic = cell.IsItalic,
                     IsUnderline = cell.IsUnderline,
+                    Underline = cell.IsUnderline ? row.GetUnderline(c) : null,
                     IsBlink = cell.IsBlink,
                     IsStrikethrough = cell.IsStrikethrough,
                     FgIndex = cell.FgIndex,
@@ -1065,6 +1102,9 @@ namespace Ntilde.VT
                 IsFaint = snapshot.IsFaint;
                 IsItalic = snapshot.IsItalic;
                 IsUnderline = snapshot.IsUnderline;
+                UnderlineStyle = UnderlineStyle.Single;
+                UnderlineColor = null;
+                UnderlineColorIndex = -1;
                 IsBlink = snapshot.IsBlink;
                 IsStrikethrough = snapshot.IsStrikethrough;
                 IsHidden = snapshot.IsHidden;
@@ -1094,6 +1134,7 @@ namespace Ntilde.VT
                             row.TouchRevision();
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
+                            row.ClearUnderlines();
                         }
                     }
                 }

@@ -18,6 +18,9 @@ namespace Ntilde.VT
                 _buffer.IsFaint = false;
                 _buffer.IsItalic = false;
                 _buffer.IsUnderline = false;
+                _buffer.UnderlineStyle = UnderlineStyle.Single;
+                _buffer.UnderlineColor = null;
+                _buffer.UnderlineColorIndex = -1;
                 _buffer.IsBlink = false;
                 _buffer.IsStrikethrough = false;
                 _buffer.IsInverse = false;
@@ -39,6 +42,9 @@ namespace Ntilde.VT
                     _buffer.IsFaint = false;
                     _buffer.IsItalic = false;
                     _buffer.IsUnderline = false;
+                    _buffer.UnderlineStyle = UnderlineStyle.Single;
+                    _buffer.UnderlineColor = null;
+                    _buffer.UnderlineColorIndex = -1;
                     _buffer.IsBlink = false;
                     _buffer.IsStrikethrough = false;
                     _buffer.IsInverse = false;
@@ -111,16 +117,19 @@ namespace Ntilde.VT
                         _buffer.IsDefaultBackground = false;
                     }
                 }
-                else if (code == 58)
+                else if (code == 58) // Underline color (#270): 58;5;n, 58;2;r;g;b and their colon forms
                 {
-                    // Underline color. We currently don't render underline color separately,
-                    // but we MUST consume its parameters so subvalues don't leak as SGR codes.
-                    short _;
-                    ParseExtendedColor(args, separators, ref i, out _);
+                    var color = ParseExtendedColor(args, separators, ref i, out short idx);
+                    if (color.HasValue)
+                    {
+                        _buffer.UnderlineColorIndex = idx;
+                        _buffer.UnderlineColor = idx >= 0 ? null : color;
+                    }
                 }
-                else if (code == 59)
+                else if (code == 59) // Default underline color: the text color again
                 {
-                    // Default underline color. No-op for now.
+                    _buffer.UnderlineColor = null;
+                    _buffer.UnderlineColorIndex = -1;
                 }
                 else if (code == 49)
                 {
@@ -169,12 +178,20 @@ namespace Ntilde.VT
                     {
                         int underlineStyle = args[i + 1];
                         _buffer.IsUnderline = underlineStyle != 0;
+                        // 1 straight, 2 double, 3 curly, 4 dotted, 5 dashed; anything else is still an underline
+                        _buffer.UnderlineStyle = underlineStyle is >= 1 and <= 5 ? (UnderlineStyle)underlineStyle : UnderlineStyle.Single;
                         i++; // consume subparameter
                     }
                     else
                     {
                         _buffer.IsUnderline = true;
+                        _buffer.UnderlineStyle = UnderlineStyle.Single;
                     }
+                }
+                else if (code == 21) // Doubly underlined (ECMA-48), as xterm, kitty, ghostty and wezterm read it
+                {
+                    _buffer.IsUnderline = true;
+                    _buffer.UnderlineStyle = UnderlineStyle.Double;
                 }
                 else if (code == 5) // Blink
                 {
@@ -214,6 +231,9 @@ namespace Ntilde.VT
             _buffer.IsFaint = false;
             _buffer.IsItalic = false;
             _buffer.IsUnderline = false;
+            _buffer.UnderlineStyle = UnderlineStyle.Single;
+            _buffer.UnderlineColor = null;
+            _buffer.UnderlineColorIndex = -1;
             _buffer.IsBlink = false;
             _buffer.IsStrikethrough = false;
             _buffer.IsHidden = false;

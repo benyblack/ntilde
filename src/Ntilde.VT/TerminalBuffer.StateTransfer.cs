@@ -375,6 +375,7 @@ namespace Ntilde.VT
                 row.IsWrapped = false;
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
+                row.ClearUnderlines();
                 for (int c = 0; c < row.Cells.Length; c++)
                 {
                     row.Cells[c] = TerminalCell.Default;

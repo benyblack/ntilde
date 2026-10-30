@@ -113,8 +113,8 @@ namespace Ntilde.Tests
             var buffer = new TerminalBuffer(80, 24);
             var parser = new AnsiParser(buffer);
 
-            // 4:2 means underline style (double) in SGR subparameters.
-            // We currently map styles to underline on/off, but must not treat ":2" as faint.
+            // 4:2 means underline style (double) in SGR subparameters, and must not be read as ":2" faint.
+            // The style itself is covered by Ntilde.VT.Tests' UnderlineStyleTests (#270).
             parser.Process("\x1b[4:2mA");
 
             var cell = GetCellSafe(buffer, 0, 0);

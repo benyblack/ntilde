@@ -244,7 +244,7 @@ namespace Ntilde.VT
                     // 3. Metadata-Aware Logical Reconstruction
                     // The hyperlink travels alongside the extended grapheme, not separately: both are
                     // column-keyed side tables, and reflow re-columns everything (#164 item 2a).
-                    var line = new (TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink)[Math.Max(oldCols, newCols) * 2 + 16];
+                    var line = new (TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline)[Math.Max(oldCols, newCols) * 2 + 16];
                     int lineLen = 0;
                     int lineStartPhys = -1;
                     int logicalIdx = 0;
@@ -292,9 +292,10 @@ namespace Ntilde.VT
                     {
                         if (isHistory)
                         {
-                            newScrollback.AppendRow(row.Cells, row.IsWrapped, row.GetExtendedTextMap(), row.GetHyperlinkMap());
+                            newScrollback.AppendRow(row.Cells, row.IsWrapped, row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap());
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
+                            row.ClearUnderlines();
                             row.IsWrapped = false;
                         }
                         else
@@ -418,6 +419,7 @@ namespace Ntilde.VT
                                     row.Cells[c] = entry.Cell;
                                     row.SetExtendedText(c, entry.ExtendedText);
                                     row.SetHyperlink(c, entry.Hyperlink);
+                                    row.SetUnderline(c, entry.Underline);
                                 }
 
                                 // Style-Aware Padding
@@ -457,7 +459,7 @@ namespace Ntilde.VT
                             int storeRow = i - oldRowsReleased;
                             _scrollback.GetRow(storeRow).CopyTo(scrollbackRow.Cells);
                             scrollbackRow.IsWrapped = _scrollback.IsRowWrapped(storeRow);
-                            scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(storeRow), _scrollback.GetHyperlinkMap(storeRow));
+                            scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(storeRow), _scrollback.GetHyperlinkMap(storeRow), _scrollback.GetUnderlineMap(storeRow));
                             physRow = scrollbackRow;
                         }
                         else
@@ -714,7 +716,7 @@ namespace Ntilde.VT
                                 // Extract Left+Middle
                                 for (int k = 0; k < gapStart; k++)
                                 {
-                                    line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
+                                    line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k));
                                 }
 
                                 // Calculate new position
@@ -729,20 +731,20 @@ namespace Ntilde.VT
                                     var spaceFill = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
                                     for (int s = currentPos; s < newRightPos; s++)
                                     {
-                                        line[lineLen++] = (spaceFill, null, null);
+                                        line[lineLen++] = (spaceFill, null, null, null);
                                     }
                                     // Add right content
                                     for (int k = rightStart; k <= rightEnd; k++)
                                     {
-                                        line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
+                                        line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k));
                                     }
                                 }
                                 else
                                 {
                                     // Truncate/Squish
                                     var spaceFill = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
-                                    line[lineLen++] = (spaceFill, null, null);
-                                    line[lineLen++] = (spaceFill, null, null);
+                                    line[lineLen++] = (spaceFill, null, null, null);
+                                    line[lineLen++] = (spaceFill, null, null, null);
 
                                     int available = newCols - lineLen;
                                     if (available > 0)
@@ -750,7 +752,7 @@ namespace Ntilde.VT
                                         int take = Math.Min(available, rightBlockWidth);
                                         int startOffset = rightBlockWidth - take;
                                         for (int k = rightStart + startOffset; k <= rightEnd; k++)
-                                            line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
+                                            line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k));
                                     }
                                 }
                                 isSparseRowRepositioned = true;
@@ -762,7 +764,7 @@ namespace Ntilde.VT
                         if (!isSparseRowRepositioned)
                         {
                             for (int k = 0; k < validLen; k++)
-                                line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
+                                line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k));
                         }
 
                         if (!physRow.IsWrapped || ignoreWrap)
@@ -818,7 +820,8 @@ namespace Ntilde.VT
                             activeRows[i].Cells,
                             activeRows[i].IsWrapped,
                             activeRows[i].GetExtendedTextMap(),
-                            activeRows[i].GetHyperlinkMap());
+                            activeRows[i].GetHyperlinkMap(),
+                            activeRows[i].GetUnderlineMap());
                     }
 
                     int discardedRows = (int)newScrollback.TotalRowsEvicted;
