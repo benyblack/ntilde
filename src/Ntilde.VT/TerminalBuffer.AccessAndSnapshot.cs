@@ -14,6 +14,10 @@ namespace Ntilde.VT
             // fieldRow is the visual row (0 to Rows-1)
             // We show: [scrollback tail] + [viewport]
 
+            // The alternate screen has no scrollback to show: its absolute rows are its screen rows. Counted
+            // from the main screen's scrollback, they read the wrong row, or past the end.
+            if (_isAltScreen) return GetCellAbsolute(col, fieldRow);
+
             int totalLines = _scrollback.Count + Rows;
             // Visible Top Index = Total - Rows - Offset
             int displayStart = Math.Max(0, totalLines - Rows - scrollOffset);
@@ -1158,7 +1162,7 @@ namespace Ntilde.VT
                 // become one instance, as the cells written with one pen shared one.
                 if (snapshot.Underlines != null && snapshot.Cols > 0)
                 {
-                    var interned = new Dictionary<(byte, uint?, short), CellUnderline>();
+                    var interned = new Dictionary<(byte, uint?, short), CellUnderline?>();
                     foreach (var kvp in snapshot.Underlines)
                     {
                         TerminalUnderlineEntry? entry = kvp.Value;
@@ -1171,7 +1175,8 @@ namespace Ntilde.VT
                         var key = (entry.Style, entry.Color, entry.ColorIndex);
                         if (!interned.TryGetValue(key, out CellUnderline? underline))
                         {
-                            underline = new CellUnderline(
+                            // None for a straight underline in the text color, as on the live path.
+                            underline = CellUnderline.For(
                                 (UnderlineStyle)entry.Style,
                                 entry.Color is { } rgb ? TermColor.FromUint(rgb) : null,
                                 entry.ColorIndex);

@@ -143,7 +143,7 @@ namespace Ntilde.VT
             try
             {
                 links = RebuildHyperlinks(snapshot.Hyperlinks);
-                CellUnderline[] underlines = RebuildUnderlines(snapshot.Underlines);
+                CellUnderline?[] underlines = RebuildUnderlines(snapshot.Underlines);
 
                 (TerminalRow[] mainRows, TerminalRow[] altRows) = ResolveScreensNoLock();
                 mainRows = EnsureScreenShapeNoLock(mainRows);
@@ -376,7 +376,7 @@ namespace Ntilde.VT
             int sourceCols,
             int sourceRows,
             Hyperlink[] links,
-            CellUnderline[] underlines)
+            CellUnderline?[] underlines)
         {
             for (int r = 0; r < rows.Length; r++)
             {
@@ -538,7 +538,7 @@ namespace Ntilde.VT
         }
 
         private void ImportScrollbackNoLock(
-            TerminalStateSnapshot snapshot, byte[]? blob, Hyperlink[] links, CellUnderline[] underlines)
+            TerminalStateSnapshot snapshot, byte[]? blob, Hyperlink[] links, CellUnderline?[] underlines)
         {
             _scrollback.Clear();
 
@@ -595,7 +595,8 @@ namespace Ntilde.VT
                     {
                         if (entry.Key >= colsToCopy) continue;
                         if ((uint)entry.Value >= (uint)underlines.Length) continue;
-                        (rowUnderlines ??= new SmallMap<CellUnderline>()).Set(entry.Key, underlines[entry.Value]);
+                        if (underlines[entry.Value] is not { } underline) continue;
+                        (rowUnderlines ??= new SmallMap<CellUnderline>()).Set(entry.Key, underline);
                     }
                 }
 
@@ -1144,14 +1145,17 @@ namespace Ntilde.VT
             }
         }
 
-        /// <summary>One <see cref="CellUnderline"/> per table entry, shared by every cell that names it (#270).</summary>
-        private static CellUnderline[] RebuildUnderlines(List<TerminalUnderlineEntry> entries)
+        /// <summary>
+        /// One <see cref="CellUnderline"/> per table entry, shared by every cell that names it (#270); <c>null</c> for
+        /// a straight underline in the text color, which has no entry on the live path either.
+        /// </summary>
+        private static CellUnderline?[] RebuildUnderlines(List<TerminalUnderlineEntry> entries)
         {
-            var underlines = new CellUnderline[entries.Count];
+            var underlines = new CellUnderline?[entries.Count];
             for (int i = 0; i < entries.Count; i++)
             {
                 TerminalUnderlineEntry entry = entries[i];
-                underlines[i] = new CellUnderline(
+                underlines[i] = CellUnderline.For(
                     (UnderlineStyle)entry.Style,
                     entry.Color is { } color ? TermColor.FromUint(color) : null,
                     entry.ColorIndex);

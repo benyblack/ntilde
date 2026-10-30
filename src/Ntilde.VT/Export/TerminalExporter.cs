@@ -6,19 +6,27 @@ namespace Ntilde.VT.Export
 {
     public static class TerminalExporter
     {
+        /// <summary>
+        /// The absolute row of screen row 0, for the absolute reads the exports make (cells, and the underline
+        /// side table): the alternate screen's absolute rows start at 0, the main screen's after its scrollback.
+        /// Lock held.
+        /// </summary>
+        private static int ScreenTop(TerminalBuffer buffer) => buffer.IsAltScreenActive ? 0 : buffer.Scrollback.Count;
+
         public static string ExportToPlainText(TerminalBuffer buffer)
         {
             buffer.Lock.EnterReadLock();
             try
             {
                 var sb = new StringBuilder();
+                int screenTop = ScreenTop(buffer);
                 for (int r = 0; r < buffer.Rows; r++)
                 {
                     int lastNonEmpty = -1;
                     var rowSb = new StringBuilder();
                     for (int c = 0; c < buffer.Cols; c++)
                     {
-                        var cell = buffer.GetCell(c, r);
+                        var cell = buffer.GetCellAbsolute(c, screenTop + r);
                         if (cell.IsWideContinuation) continue;
 
                         string text = buffer.GetGrapheme(c, r);
@@ -117,9 +125,10 @@ namespace Ntilde.VT.Export
         {
             int lastNonEmpty = -1;
             var rowSb = new StringBuilder();
+            int absRow = ScreenTop(buffer) + row;
             for (int c = 0; c < buffer.Cols; c++)
             {
-                var cell = buffer.GetCell(c, row);
+                var cell = buffer.GetCellAbsolute(c, absRow);
                 if (cell.IsWideContinuation) continue;
 
                 string text = buffer.GetGrapheme(c, row);
@@ -140,16 +149,23 @@ namespace Ntilde.VT.Export
             {
                 var sb = new StringBuilder();
                 TerminalCell lastCell = TerminalCell.Default;
+                CellUnderline? lastUnderline = null;
                 bool isFirstCell = true;
+
+                int screenTop = ScreenTop(buffer);
 
                 for (int r = 0; r < buffer.Rows; r++)
                 {
-                    // Find logical end of line (to avoid writing trailing background colors)
+                    int absRow = screenTop + r;
+
+                    // Find logical end of line (to avoid writing trailing background colors). A styled or colored
+                    // underline is drawn on blanks too (#270): an editor's squiggle on trailing whitespace.
                     int eol = buffer.Cols - 1;
                     while (eol >= 0)
                     {
-                        var cell = buffer.GetCell(eol, r);
-                        if (cell.Character != ' ' || !cell.IsDefaultBackground)
+                        var cell = buffer.GetCellAbsolute(eol, absRow);
+                        if (cell.Character != ' ' || !cell.IsDefaultBackground
+                            || (cell.IsUnderline && buffer.GetUnderlineAbsolute(eol, absRow) != null))
                         {
                             break;
                         }
@@ -158,13 +174,15 @@ namespace Ntilde.VT.Export
 
                     for (int c = 0; c <= eol; c++)
                     {
-                        var cell = buffer.GetCell(c, r);
+                        var cell = buffer.GetCellAbsolute(c, absRow);
                         if (cell.IsWideContinuation) continue;
 
-                        if (isFirstCell || StateChanged(lastCell, cell))
+                        CellUnderline? underline = cell.IsUnderline ? buffer.GetUnderlineAbsolute(c, absRow) : null;
+                        if (isFirstCell || StateChanged(lastCell, cell) || underline != lastUnderline)
                         {
-                            AppendSgrSequence(sb, cell, isFirstCell ? TerminalCell.Default : lastCell);
+                            AppendSgrSequence(sb, cell, underline, isFirstCell ? TerminalCell.Default : lastCell, lastUnderline);
                             lastCell = cell;
+                            lastUnderline = underline;
                             isFirstCell = false;
                         }
 
@@ -181,6 +199,7 @@ namespace Ntilde.VT.Export
                     {
                         sb.Append("\x1b[0m");
                         lastCell = TerminalCell.Default;
+                        lastUnderline = null;
                     }
 
                     sb.AppendLine();
@@ -214,12 +233,14 @@ namespace Ntilde.VT.Export
             return false;
         }
 
-        private static void AppendSgrSequence(StringBuilder sb, TerminalCell cell, TerminalCell lastCell)
+        private static void AppendSgrSequence(StringBuilder sb, TerminalCell cell, CellUnderline? underline, TerminalCell lastCell, CellUnderline? lastUnderline)
         {
             var codes = new List<int>();
 
-            // Always reset if we're turning off an attribute, it's safer
-            bool needsReset = (lastCell.IsBold && !cell.IsBold) ||
+            // Always reset if we're turning off an attribute, it's safer. A styled or colored underline
+            // changing or going away counts: undoing it takes 4 and 59 deltas a reset does without.
+            bool needsReset = (lastUnderline is not null && underline != lastUnderline) ||
+                              (lastCell.IsBold && !cell.IsBold) ||
                               (lastCell.IsItalic && !cell.IsItalic) ||
                               (lastCell.IsUnderline && !cell.IsUnderline) ||
                               (lastCell.IsInverse && !cell.IsInverse) ||
@@ -297,6 +318,11 @@ namespace Ntilde.VT.Export
                 sb.Append("\x1b[");
                 sb.Append(string.Join(";", codes));
                 sb.Append('m');
+            }
+
+            if (underline is not null && (needsReset || underline != lastUnderline))
+            {
+                AnsiCellWriter.AppendUnderlineSgr(sb, underline);
             }
         }
     }

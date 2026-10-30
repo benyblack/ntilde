@@ -88,11 +88,51 @@ namespace Ntilde.VT.Export
             if (!cell.IsDefaultForeground) AppendColor(sb, cell.FgIndex, cell.Foreground, foreground: true);
             if (!cell.IsDefaultBackground) AppendColor(sb, cell.BgIndex, cell.Background, foreground: false);
             sb.Append('m');
+            if (cell.IsUnderline && cell.Underline is { } underline) AppendUnderlineSgr(sb, underline);
+        }
+
+        /// <summary>
+        /// A styled or colored underline (#270) as its own <c>ESC [ 4:n ; 58:... m</c>, written after the SGR that
+        /// turns the underline on.
+        /// </summary>
+        /// <remarks>
+        /// Colon form, in a sequence of its own: a terminal that rejects colon sub-parameters drops only this
+        /// sequence and still shows the plain underline. The semicolon form of 58 would have a terminal that
+        /// doesn't know 58 read the color's numbers as SGR codes of their own (a 0 among them resets).
+        /// </remarks>
+        public static void AppendUnderlineSgr(StringBuilder sb, CellUnderline underline)
+        {
+            ArgumentNullException.ThrowIfNull(sb);
+            ArgumentNullException.ThrowIfNull(underline);
+            bool styled = underline.Style != UnderlineStyle.Single;
+            // A straight underline in the text color takes nothing past the 4 of the main SGR. Written, it would be
+            // an empty ESC [ m: SGR 0, a reset.
+            if (!styled && !underline.HasColor) return;
+
+            sb.Append("\x1b[");
+            if (styled) sb.Append("4:").Append((int)underline.Style);
+            if (underline.HasColor)
+            {
+                if (styled) sb.Append(';');
+                if (underline.ColorIndex >= 0)
+                {
+                    sb.Append("58:5:").Append(underline.ColorIndex);
+                }
+                else
+                {
+                    // 58:2:<color space id>:r:g:b, the id left empty as xterm and kitty write it.
+                    TermColor rgb = underline.Color.GetValueOrDefault();
+                    sb.Append("58:2:").Append(':').Append(rgb.R).Append(':').Append(rgb.G).Append(':').Append(rgb.B);
+                }
+            }
+
+            sb.Append('m');
         }
 
         public static bool SameStyle(in RenderCellSnapshot a, in RenderCellSnapshot b) =>
             a.IsBold == b.IsBold && a.IsFaint == b.IsFaint && a.IsItalic == b.IsItalic && a.IsUnderline == b.IsUnderline
             && a.IsBlink == b.IsBlink && a.IsInverse == b.IsInverse && a.IsHidden == b.IsHidden && a.IsStrikethrough == b.IsStrikethrough
+            && a.Underline == b.Underline
             && a.IsDefaultForeground == b.IsDefaultForeground && a.IsDefaultBackground == b.IsDefaultBackground
             && a.FgIndex == b.FgIndex && a.BgIndex == b.BgIndex
             && (a.IsDefaultForeground || a.FgIndex >= 0 || a.Foreground == b.Foreground)
