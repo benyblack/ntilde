@@ -139,10 +139,12 @@ public class RenderFrameTimeBenchmarks
                 }
             })
             { IsBackground = true, Name = "BenchmarkRender" };
-            renderThread.Start();
         }
 
+        // The window opens before the render thread starts, and the count is read when it closes: only frames drawn
+        // inside it count, neither one done before parsing began nor one finished after it ended (Codex review of #659).
         var clock = Stopwatch.StartNew();
+        renderThread?.Start();
         var decoder = Encoding.UTF8.GetDecoder();
         var chars = new char[Encoding.UTF8.GetMaxCharCount(chunks[0].Length)];
         foreach (byte[] chunk in chunks)
@@ -152,8 +154,7 @@ public class RenderFrameTimeBenchmarks
         }
 
         clock.Stop();
-        // Counted at the end of the timed window (Codex review of #659): a frame blocked through the whole flood
-        // finishes after it, and counting that one would let a starved loop pass the floor.
+        // A frame blocked through the whole flood finishes after the window; counted, it would let a starved loop pass.
         frames = Volatile.Read(ref drawn);
         stop.Cancel();
         renderThread?.Join();
