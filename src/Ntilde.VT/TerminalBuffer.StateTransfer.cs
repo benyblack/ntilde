@@ -24,6 +24,7 @@ namespace Ntilde.VT
             try
             {
                 var links = new HyperlinkTableBuilder();
+                var underlines = new UnderlineTableBuilder();
                 var snapshot = new TerminalStateSnapshot
                 {
                     Version = TerminalStateSnapshot.CurrentVersion,
@@ -67,7 +68,7 @@ namespace Ntilde.VT
                 // buffer must discover links in the same order or an "export, import, export"
                 // comparison sees a difference that is not one.
                 (TerminalRow[] mainRows, TerminalRow[] altRows) = ResolveScreensNoLock();
-                snapshot.Main = ExportScreenNoLock(mainRows, links);
+                snapshot.Main = ExportScreenNoLock(mainRows, links, underlines);
 
                 // The alt side is shape-normalised on the way out, the main side is not, because
                 // the two screens degrade differently when a resize leaves the detached one at the
@@ -79,10 +80,11 @@ namespace Ntilde.VT
                 // screen, while a buffer restored from the raw content would show the carried
                 // content in a now-correctly-shaped array that passes the very check that would
                 // have discarded it. ?1049h masks this by clearing; ?47h and ?1047h do not.
-                snapshot.Alt = ExportScreenNoLock(EnsureScreenShapeNoLock(altRows), links);
-                snapshot.Scrollback = ExportScrollbackNoLock(maxScrollbackRows, links, snapshot);
+                snapshot.Alt = ExportScreenNoLock(EnsureScreenShapeNoLock(altRows), links, underlines);
+                snapshot.Scrollback = ExportScrollbackNoLock(maxScrollbackRows, links, underlines, snapshot);
                 snapshot.CurrentHyperlinkId = links.IndexOf(_currentHyperlink);
                 snapshot.Hyperlinks = links.Entries;
+                snapshot.Underlines = underlines.Entries;
                 return snapshot;
             }
             finally
@@ -141,13 +143,14 @@ namespace Ntilde.VT
             try
             {
                 links = RebuildHyperlinks(snapshot.Hyperlinks);
+                CellUnderline[] underlines = RebuildUnderlines(snapshot.Underlines);
 
                 (TerminalRow[] mainRows, TerminalRow[] altRows) = ResolveScreensNoLock();
                 mainRows = EnsureScreenShapeNoLock(mainRows);
                 altRows = EnsureScreenShapeNoLock(altRows);
 
-                ImportScreenNoLock(mainRows, snapshot.Main, mainCells, snapshot.Cols, snapshot.Rows, links);
-                ImportScreenNoLock(altRows, snapshot.Alt, altCells, snapshot.Cols, snapshot.Rows, links);
+                ImportScreenNoLock(mainRows, snapshot.Main, mainCells, snapshot.Cols, snapshot.Rows, links, underlines);
+                ImportScreenNoLock(altRows, snapshot.Alt, altCells, snapshot.Cols, snapshot.Rows, links, underlines);
 
                 // Normalises the three fields at once: whichever of them was stale before (a
                 // main-screen resize replaces _viewport without touching _mainScreen) is now
@@ -163,7 +166,7 @@ namespace Ntilde.VT
                 _isAltScreen = snapshot.IsAltScreenActive;
                 _viewport = _isAltScreen ? _altScreen : _mainScreen;
 
-                ImportScrollbackNoLock(snapshot, scrollbackCells, links);
+                ImportScrollbackNoLock(snapshot, scrollbackCells, links, underlines);
                 ImportTabStopsNoLock(snapshot.TabStops);
 
                 _cursorCol = Math.Clamp(snapshot.CursorCol, 0, Math.Max(0, Cols - 1));
@@ -320,7 +323,7 @@ namespace Ntilde.VT
             return rebuilt;
         }
 
-        private TerminalScreenState ExportScreenNoLock(TerminalRow[] rows, HyperlinkTableBuilder links)
+        private TerminalScreenState ExportScreenNoLock(TerminalRow[] rows, HyperlinkTableBuilder links, UnderlineTableBuilder underlines)
         {
             int cols = Cols;
             int rowCount = Rows;
@@ -329,6 +332,7 @@ namespace Ntilde.VT
             var wraps = new bool[Math.Max(0, rowCount)];
             Dictionary<int, string>? extendedText = null;
             Dictionary<int, int>? linkIds = null;
+            Dictionary<int, int>? underlineIds = null;
 
             for (int r = 0; r < rowCount && r < rows.Length; r++)
             {
@@ -345,11 +349,14 @@ namespace Ntilde.VT
                 AppendSideTables(
                     row.GetExtendedTextMap(),
                     row.GetHyperlinkMap(),
+                    row.GetUnderlineMap(),
                     r * cols,
                     cols,
                     links,
+                    underlines,
                     ref extendedText,
-                    ref linkIds);
+                    ref linkIds,
+                    ref underlineIds);
             }
 
             return new TerminalScreenState
@@ -358,6 +365,7 @@ namespace Ntilde.VT
                 RowWraps = wraps,
                 ExtendedText = extendedText,
                 LinkIds = linkIds,
+                UnderlineIds = underlineIds,
             };
         }
 
@@ -367,7 +375,8 @@ namespace Ntilde.VT
             byte[]? blob,
             int sourceCols,
             int sourceRows,
-            Hyperlink[] links)
+            Hyperlink[] links,
+            CellUnderline[] underlines)
         {
             for (int r = 0; r < rows.Length; r++)
             {
@@ -438,6 +447,22 @@ namespace Ntilde.VT
                     }
                 }
             }
+
+            if (state.UnderlineIds != null)
+            {
+                foreach (KeyValuePair<int, int> kv in state.UnderlineIds)
+                {
+                    if (!TrySplitKey(kv.Key, sourceCols, rowsToCopy, colsToCopy, out int r, out int c))
+                    {
+                        continue;
+                    }
+
+                    if ((uint)kv.Value < (uint)underlines.Length)
+                    {
+                        rows[r].SetUnderline(c, underlines[kv.Value]);
+                    }
+                }
+            }
         }
 
         // ── scrollback ───────────────────────────────────────────────────────────
@@ -445,6 +470,7 @@ namespace Ntilde.VT
         private TerminalScreenState ExportScrollbackNoLock(
             int maxScrollbackRows,
             HyperlinkTableBuilder links,
+            UnderlineTableBuilder underlines,
             TerminalStateSnapshot snapshot)
         {
             int cols = Cols;
@@ -470,6 +496,7 @@ namespace Ntilde.VT
             var wraps = new bool[keep];
             Dictionary<int, string>? extendedText = null;
             Dictionary<int, int>? linkIds = null;
+            Dictionary<int, int>? underlineIds = null;
 
             for (int i = 0; i < keep; i++)
             {
@@ -490,11 +517,14 @@ namespace Ntilde.VT
                 AppendSideTables(
                     _scrollback.GetExtendedTextMap(logical),
                     _scrollback.GetHyperlinkMap(logical),
+                    _scrollback.GetUnderlineMap(logical),
                     i * cols,
                     cols,
                     links,
+                    underlines,
                     ref extendedText,
-                    ref linkIds);
+                    ref linkIds,
+                    ref underlineIds);
             }
 
             return new TerminalScreenState
@@ -503,11 +533,12 @@ namespace Ntilde.VT
                 RowWraps = wraps,
                 ExtendedText = extendedText,
                 LinkIds = linkIds,
+                UnderlineIds = underlineIds,
             };
         }
 
         private void ImportScrollbackNoLock(
-            TerminalStateSnapshot snapshot, byte[]? blob, Hyperlink[] links)
+            TerminalStateSnapshot snapshot, byte[]? blob, Hyperlink[] links, CellUnderline[] underlines)
         {
             _scrollback.Clear();
 
@@ -528,6 +559,7 @@ namespace Ntilde.VT
             int colsToCopy = Math.Min(sourceCols, Cols);
             List<KeyValuePair<int, string>>?[] extByRow = GroupByRow(state.ExtendedText, sourceCols, rowCount);
             List<KeyValuePair<int, int>>?[] linkByRow = GroupByRow(state.LinkIds, sourceCols, rowCount);
+            List<KeyValuePair<int, int>>?[] underlineByRow = GroupByRow(state.UnderlineIds, sourceCols, rowCount);
 
             var buffer = new TerminalCell[Cols];
             for (int i = 0; i < rowCount; i++)
@@ -556,8 +588,19 @@ namespace Ntilde.VT
                     }
                 }
 
+                SmallMap<CellUnderline>? rowUnderlines = null;
+                if (underlineByRow[i] is { } underlineEntries)
+                {
+                    foreach (KeyValuePair<int, int> entry in underlineEntries)
+                    {
+                        if (entry.Key >= colsToCopy) continue;
+                        if ((uint)entry.Value >= (uint)underlines.Length) continue;
+                        (rowUnderlines ??= new SmallMap<CellUnderline>()).Set(entry.Key, underlines[entry.Value]);
+                    }
+                }
+
                 bool wrapped = state.RowWraps != null && i < state.RowWraps.Length && state.RowWraps[i];
-                _scrollback.AppendRow(buffer, wrapped, extended, hyperlinks);
+                _scrollback.AppendRow(buffer, wrapped, extended, hyperlinks, rowUnderlines);
             }
         }
 
@@ -606,6 +649,9 @@ namespace Ntilde.VT
                 IsFaint = cursor.IsFaint,
                 IsItalic = cursor.IsItalic,
                 IsUnderline = cursor.IsUnderline,
+                UnderlineStyle = (byte)cursor.UnderlineStyle,
+                UnderlineColor = cursor.UnderlineColor?.ToUint(),
+                UnderlineColorIndex = cursor.UnderlineColorIndex,
                 IsBlink = cursor.IsBlink,
                 IsStrikethrough = cursor.IsStrikethrough,
                 IsHidden = cursor.IsHidden,
@@ -629,6 +675,9 @@ namespace Ntilde.VT
             target.IsFaint = sgr.IsFaint;
             target.IsItalic = sgr.IsItalic;
             target.IsUnderline = sgr.IsUnderline;
+            target.UnderlineStyle = (UnderlineStyle)sgr.UnderlineStyle;
+            target.UnderlineColor = sgr.UnderlineColor is { } targetColor ? TermColor.FromUint(targetColor) : null;
+            target.UnderlineColorIndex = sgr.UnderlineColorIndex;
             target.IsBlink = sgr.IsBlink;
             target.IsStrikethrough = sgr.IsStrikethrough;
             target.IsHidden = sgr.IsHidden;
@@ -647,6 +696,9 @@ namespace Ntilde.VT
             IsFaint = _isFaint,
             IsItalic = _isItalic,
             IsUnderline = _isUnderline,
+            UnderlineStyle = (byte)_state.UnderlineStyle,
+            UnderlineColor = _state.UnderlineColor?.ToUint(),
+            UnderlineColorIndex = _state.UnderlineColorIndex,
             IsBlink = _isBlink,
             IsStrikethrough = _isStrikethrough,
             IsHidden = _isHidden,
@@ -672,6 +724,9 @@ namespace Ntilde.VT
             _isFaint = sgr.IsFaint;
             _isItalic = sgr.IsItalic;
             _isUnderline = sgr.IsUnderline;
+            UnderlineStyle = (UnderlineStyle)sgr.UnderlineStyle;
+            UnderlineColor = sgr.UnderlineColor is { } liveColor ? TermColor.FromUint(liveColor) : null;
+            UnderlineColorIndex = sgr.UnderlineColorIndex;
             _isBlink = sgr.IsBlink;
             _isStrikethrough = sgr.IsStrikethrough;
             _isHidden = sgr.IsHidden;
@@ -871,7 +926,7 @@ namespace Ntilde.VT
             ValidateCursorState(snapshot.ScreenCursorMain, "screen cursor (main screen)");
             ValidateCursorState(snapshot.ScreenCursorAlt, "screen cursor (alternate screen)");
 
-            StateTransferValidation.RequirePresent(snapshot.Sgr, "live SGR state");
+            ValidateUnderlinePen(StateTransferValidation.RequirePresent(snapshot.Sgr, "live SGR state"), "live SGR state");
 
             TerminalModeState modes = StateTransferValidation.RequirePresent(
                 snapshot.Modes, "mode state");
@@ -902,15 +957,37 @@ namespace Ntilde.VT
             StateTransferValidation.RequireInRange(
                 snapshot.CurrentHyperlinkId, -1, hyperlinks.Count - 1, "current hyperlink index");
 
-            ValidateSideTables(main, hyperlinks.Count, "main screen");
-            ValidateSideTables(alt, hyperlinks.Count, "alternate screen");
-            ValidateSideTables(scrollback, hyperlinks.Count, "scrollback");
+            List<TerminalUnderlineEntry> underlines = StateTransferValidation.RequirePresent(
+                snapshot.Underlines, "underline table");
+            for (int i = 0; i < underlines.Count; i++)
+            {
+                TerminalUnderlineEntry entry = StateTransferValidation.RequirePresent(
+                    underlines[i], $"underline table entry {i}");
+                ValidateUnderlineValue(entry.Style, entry.ColorIndex, $"underline table entry {i}");
+            }
+
+            ValidateSideTables(main, hyperlinks.Count, underlines.Count, "main screen");
+            ValidateSideTables(alt, hyperlinks.Count, underlines.Count, "alternate screen");
+            ValidateSideTables(scrollback, hyperlinks.Count, underlines.Count, "scrollback");
         }
+
+        /// <summary>
+        /// An underline's style selects a drawing and its palette index a color (#270); like the cursor style,
+        /// neither has a defensible clamp. An RGB color is any value, so it is not checked.
+        /// </summary>
+        private static void ValidateUnderlineValue(byte style, short colorIndex, string what)
+        {
+            StateTransferValidation.RequireInRange(style, (int)UnderlineStyle.Single, (int)UnderlineStyle.Dashed, $"{what} style");
+            StateTransferValidation.RequireInRange(colorIndex, -1, 255, $"{what} palette color");
+        }
+
+        private static void ValidateUnderlinePen(TerminalSgrState sgr, string what)
+            => ValidateUnderlineValue(sgr.UnderlineStyle, sgr.UnderlineColorIndex, $"{what} underline");
 
         private static void ValidateCursorState(TerminalCursorState? cursor, string what)
         {
             TerminalCursorState present = StateTransferValidation.RequirePresent(cursor, what);
-            StateTransferValidation.RequirePresent(present.Sgr, $"{what} SGR");
+            ValidateUnderlinePen(StateTransferValidation.RequirePresent(present.Sgr, $"{what} SGR"), what);
         }
 
         /// <summary>
@@ -920,7 +997,7 @@ namespace Ntilde.VT
         /// <em>values</em> are: a null grapheme cluster and a link index naming no table entry are
         /// both malformed however the geometry lands.
         /// </summary>
-        private static void ValidateSideTables(TerminalScreenState state, int linkCount, string what)
+        private static void ValidateSideTables(TerminalScreenState state, int linkCount, int underlineCount, string what)
         {
             if (state.ExtendedText is { } extended)
             {
@@ -943,6 +1020,19 @@ namespace Ntilde.VT
                         throw StateTransferValidation.Reject(
                             $"{what} link index",
                             $"cell {entry.Key} names link {entry.Value} of {linkCount}");
+                    }
+                }
+            }
+
+            if (state.UnderlineIds is { } underlineIds)
+            {
+                foreach (KeyValuePair<int, int> entry in underlineIds)
+                {
+                    if ((uint)entry.Value >= (uint)underlineCount)
+                    {
+                        throw StateTransferValidation.Reject(
+                            $"{what} underline index",
+                            $"cell {entry.Key} names underline {entry.Value} of {underlineCount}");
                     }
                 }
             }
@@ -1025,6 +1115,51 @@ namespace Ntilde.VT
         /// <c>IEqualityComparer&lt;object&gt;</c> and <c>IEqualityComparer&lt;T&gt;</c> is
         /// invariant.
         /// </remarks>
+        /// <summary>
+        /// Numbers distinct underline values in the order the export meets them (#270). By value, not reference:
+        /// two equal entries become one, and the import hands every cell naming it one instance.
+        /// </summary>
+        private sealed class UnderlineTableBuilder
+        {
+            private readonly Dictionary<CellUnderline, int> _byValue = [];
+
+            public List<TerminalUnderlineEntry> Entries { get; } = [];
+
+            public int IndexOf(CellUnderline underline)
+            {
+                if (_byValue.TryGetValue(underline, out int existing))
+                {
+                    return existing;
+                }
+
+                int index = Entries.Count;
+                _byValue[underline] = index;
+                Entries.Add(new TerminalUnderlineEntry
+                {
+                    Style = (byte)underline.Style,
+                    Color = underline.Color?.ToUint(),
+                    ColorIndex = underline.ColorIndex,
+                });
+                return index;
+            }
+        }
+
+        /// <summary>One <see cref="CellUnderline"/> per table entry, shared by every cell that names it (#270).</summary>
+        private static CellUnderline[] RebuildUnderlines(List<TerminalUnderlineEntry> entries)
+        {
+            var underlines = new CellUnderline[entries.Count];
+            for (int i = 0; i < entries.Count; i++)
+            {
+                TerminalUnderlineEntry entry = entries[i];
+                underlines[i] = new CellUnderline(
+                    (UnderlineStyle)entry.Style,
+                    entry.Color is { } color ? TermColor.FromUint(color) : null,
+                    entry.ColorIndex);
+            }
+
+            return underlines;
+        }
+
         private sealed class HyperlinkTableBuilder
         {
             private readonly Dictionary<object, int> _byReference = new(ReferenceEqualityComparer.Instance);
@@ -1089,12 +1224,24 @@ namespace Ntilde.VT
         private static void AppendSideTables(
             SmallMap<string>? extendedText,
             SmallMap<Hyperlink>? hyperlinks,
+            SmallMap<CellUnderline>? underlineMap,
             int rowBase,
             int cols,
             HyperlinkTableBuilder links,
+            UnderlineTableBuilder underlines,
             ref Dictionary<int, string>? extendedOut,
-            ref Dictionary<int, int>? linkOut)
+            ref Dictionary<int, int>? linkOut,
+            ref Dictionary<int, int>? underlineOut)
         {
+            if (underlineMap is { Count: > 0 })
+            {
+                foreach (KeyValuePair<int, CellUnderline> entry in SortedEntries(underlineMap))
+                {
+                    if ((uint)entry.Key >= (uint)cols) continue;
+                    (underlineOut ??= [])[rowBase + entry.Key] = underlines.IndexOf(entry.Value);
+                }
+            }
+
             if (extendedText is { Count: > 0 })
             {
                 foreach (KeyValuePair<int, string> entry in SortedEntries(extendedText))

@@ -1102,9 +1102,10 @@ namespace Ntilde.VT
                 IsFaint = snapshot.IsFaint;
                 IsItalic = snapshot.IsItalic;
                 IsUnderline = snapshot.IsUnderline;
-                UnderlineStyle = UnderlineStyle.Single;
-                UnderlineColor = null;
-                UnderlineColorIndex = -1;
+                // A recording is read from disk, so a value no SGR could have set falls back to the default.
+                UnderlineStyle = snapshot.UnderlineStyle is >= 1 and <= 5 ? (UnderlineStyle)snapshot.UnderlineStyle : UnderlineStyle.Single;
+                UnderlineColor = snapshot.UnderlineColor is { } penColor ? TermColor.FromUint(penColor) : null;
+                UnderlineColorIndex = snapshot.UnderlineColorIndex is >= -1 and <= 255 ? snapshot.UnderlineColorIndex : (short)-1;
                 IsBlink = snapshot.IsBlink;
                 IsStrikethrough = snapshot.IsStrikethrough;
                 IsHidden = snapshot.IsHidden;
@@ -1150,6 +1151,34 @@ namespace Ntilde.VT
                         {
                             _viewport[r].SetExtendedText(c, kvp.Value);
                         }
+                    }
+                }
+
+                // Underline styles and colors (#270), absent in recordings made before them. Equal entries
+                // become one instance, as the cells written with one pen shared one.
+                if (snapshot.Underlines != null && snapshot.Cols > 0)
+                {
+                    var interned = new Dictionary<(byte, uint?, short), CellUnderline>();
+                    foreach (var kvp in snapshot.Underlines)
+                    {
+                        TerminalUnderlineEntry? entry = kvp.Value;
+                        if (kvp.Key < 0 || entry is null || entry.Style is < 1 or > 5 || entry.ColorIndex is < -1 or > 255) continue;
+
+                        int r = kvp.Key / snapshot.Cols;
+                        int c = kvp.Key % snapshot.Cols;
+                        if (r >= _viewport.Length || c >= Cols) continue;
+
+                        var key = (entry.Style, entry.Color, entry.ColorIndex);
+                        if (!interned.TryGetValue(key, out CellUnderline? underline))
+                        {
+                            underline = new CellUnderline(
+                                (UnderlineStyle)entry.Style,
+                                entry.Color is { } rgb ? TermColor.FromUint(rgb) : null,
+                                entry.ColorIndex);
+                            interned[key] = underline;
+                        }
+
+                        _viewport[r].SetUnderline(c, underline);
                     }
                 }
 
