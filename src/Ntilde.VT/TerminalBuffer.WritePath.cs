@@ -532,14 +532,7 @@ namespace Ntilde.VT
 
             // 3. Create new blank line at the bottom of the region
             _viewport[ScrollBottom] = new TerminalRow(Cols, Theme.Foreground, Theme.Background);
-            // Revisions are already handled by being a NEW row (Revision 0 is different from old row)
-            // But if we want to be explicit:
-            // _viewport[ScrollBottom].TouchRevision();
-
-            // All shifted rows in the region should have their revision incremented 
-            // if we are using Absolute Row Index + Revision as the key.
-            // If the row object itself is moved to a new index, it MUST be re-rendered 
-            // if we cache by viewport index.
+            // Shifted and newly created rows invalidate viewport-index caches.
             for (int i = ScrollTop; i <= ScrollBottom; i++) _viewport[i].TouchRevision();
         }
 
