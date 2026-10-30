@@ -23,18 +23,35 @@ node scripts/terminfo-baseline.mjs --app-version 0.12.0
 ```
 
 Replace the example version with the actual version, including build metadata
-when available. On macOS/Linux the runner installs `terminfo.dev@4.0.0` into the
-ignored `artifacts/terminfo/tool` directory on first use, with install scripts
-disabled. Automatic preparation executes `npm-cli.js` beside the selected Node
-installation directly, without searching `PATH`: `../lib/node_modules/npm/bin`
-from the Node executable on Unix, or `node_modules/npm/bin` beside `node.exe`
-on Windows. For a different installation,
-set `NTILDE_TERMINFO_NPM_CLI` to its absolute `npm-cli.js` path. Both runners
-need that npm CLI for each run, including when the cache was prepared manually.
+when available. On macOS/Linux the runner prepares `terminfo.dev@4.0.0` in the
+ignored `artifacts/terminfo/tool` directory on first use. It uses the checked-in
+`collector-package.json` and `collector-package-lock.json` under
+`scripts/terminfo`, with npm scripts disabled. Both inputs have pinned SHA-256
+digests; a changed manifest, package version, archive URL or integrity digest
+is refused before npm or the collector can run. Refresh these files and their
+pins together when intentionally upgrading the collector.
+
+Preparation executes `npm-cli.js` from the selected Node installation directly,
+without searching `PATH`: `../lib/node_modules/npm/bin` from the Node executable
+on Unix, or `node_modules/npm/bin` beside `node.exe` on Windows. For a different
+installation, set `NTILDE_TERMINFO_NPM_CLI` to its absolute `npm-cli.js` path.
+Both runners need that CLI for each run, including with a manually prepared
+cache. To prepare or replace the cache manually on Unix:
+
+```sh
+mkdir -p artifacts/terminfo/tool
+cp scripts/terminfo/collector-package.json artifacts/terminfo/tool/package.json
+cp scripts/terminfo/collector-package-lock.json artifacts/terminfo/tool/package-lock.json
+npm ci --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --include=prod --include=dev --include=optional
+```
+
 On Windows, prepare that cache first in PowerShell:
 
 ```powershell
-npm install --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --package-lock=true --save-exact terminfo.dev@4.0.0
+New-Item -ItemType Directory -Force artifacts/terminfo/tool | Out-Null
+Copy-Item scripts/terminfo/collector-package.json artifacts/terminfo/tool/package.json
+Copy-Item scripts/terminfo/collector-package-lock.json artifacts/terminfo/tool/package-lock.json
+npm ci --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --include=prod --include=dev --include=optional
 ```
 
 Both runners check the package version and the full pinned suite receipt
@@ -129,7 +146,14 @@ original/derived bundle digests; do not submit them as stock CLI measurements.
 
 Results go to `artifacts/terminfo/owned-*`, with initial settings, app/binary and
 adapter hashes, the upstream receipt/lock, raw replies, summary, and measured
-ownership/cleanup evidence. There is no screenshot or clipboard fixture yet.
+ownership/cleanup evidence. `collector-adapter.mjs` retains the exact derived
+bundle after its private installation is deleted. `sources/` retains the runner,
+collector transformation, ownership, worker and runtime source files, plus the
+pinned dependency inputs; context
+hashes bind each snapshot to the run. `adapterSourceSha256` identifies the
+collector transformation, while `runnerSourceSha256` identifies the launcher.
+These copies support auditing archived runs after the checkout changes.
+There is no screenshot or clipboard fixture yet.
 Keep their checks inconclusive where evidence is unavailable. A collector
 diagnostic or `suiteComplete: false` must remain visible; it is not a terminal
 failure. See the [first owned run](terminfo/2026-10-30-macos-owned.md).

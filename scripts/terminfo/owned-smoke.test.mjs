@@ -1,5 +1,6 @@
 // Lifecycle checks. A real app is used only when explicitly selected by the caller.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,6 +13,7 @@ import { terminateRecordedWorker } from './ownership.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const prepared = process.platform === 'darwin'
+    && existsSync(resolve(repo, 'artifacts/terminfo/tool/package.json'))
     && existsSync(resolve(repo, 'artifacts/terminfo/tool/package-lock.json'))
     && existsSync(resolve(repo, 'artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs'));
 
@@ -44,7 +46,7 @@ function withCollectorFixture(receipt, lockfile, action) {
     // Clone the small runner fixture so tests never mutate the real tool cache.
     const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
     try {
-        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs']) {
+        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs', 'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
             copyFileSync(join(repo, 'scripts', file), target);
@@ -136,6 +138,23 @@ function launch(executable, interrupt, observation = {}) {
     });
 }
 
+function assertRetainedCollector(output) {
+    const context = JSON.parse(readFileSync(join(output, 'context.json')));
+    const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+    assert.equal(digest(readFileSync(join(output, context.retainedAdapterBundle))), context.adapterBundleSha256);
+    for (const [field, source] of [
+        ['runnerSourceSha256', 'terminfo-owned.mjs'], ['adapterSourceSha256', 'terminfo/collector.mjs'],
+        ['ownershipSourceSha256', 'terminfo/ownership.mjs'], ['workerSourceSha256', 'terminfo/worker.mjs'],
+        ['runtimeSourceSha256', 'terminfo/runtime.mjs'],
+        ['collectorManifestSha256', 'terminfo/collector-package.json'],
+        ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
+    ]) {
+        const retained = readFileSync(join(output, context.retainedSources, source.split('/').at(-1)));
+        assert.equal(digest(retained), context[field], source);
+        assert.deepEqual(retained, readFileSync(join(repo, 'scripts', source)), source);
+    }
+}
+
 function assertCleaned(result) {
     assert.equal(result.code, 1, result.output + result.errors);
     const match = /pid (\d+); results: ([^\n]+)/.exec(result.output);
@@ -196,6 +215,7 @@ for (const [phase, initialInterrupt, collected] of [
             if (collected) {
                 const output = /results: ([^\n]+)/.exec(result.output)[1];
                 assert.ok(existsSync(join(output, 'summary.json')));
+                assertRetainedCollector(output);
                 assert.equal(JSON.parse(readFileSync(join(output, 'ownership-proof.json'))).completed, true);
                 assert.match(JSON.parse(readFileSync(join(output, 'failure.json'))).error, /Interrupted by SIGINT/);
             }
@@ -217,8 +237,10 @@ test('run dependencies are recreated from locked archives instead of the changed
         const dependency = join(dirname(installed), 'commander');
         assert.equal(JSON.parse(readFileSync(join(dependency, 'package.json'))).version,
             JSON.parse(lock).packages['node_modules/commander'].version);
-        assert.deepEqual(readFileSync(join(dependency, 'index.js')),
-            readFileSync(join(repo, 'artifacts/terminfo/tool/node_modules/commander/index.js')));
+        // Recorded from a fresh npm ci install verified against the checked-in lock.
+        assert.equal(JSON.parse(lock).packages['node_modules/commander'].version, '15.0.0');
+        assert.equal(createHash('sha256').update(readFileSync(join(dependency, 'index.js'))).digest('hex'),
+            '3b1110c896b70704627d415e6658953a5a6f099e0b141311c73dfb06e55bdbcc');
         assert.match(readFileSync(join(changed, 'index.js'), 'utf8'), /changed cache executed/);
         assert.ok(!existsSync(join(tool, 'node_modules/@silvery')), 'The prepared cache must not be rewritten.');
     });
@@ -266,6 +288,7 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.throws(() => process.kill(worker.pid, 0), /ESRCH/, 'Cleanup must wait for the worker to exit.');
         assert.equal(proof.completed, true);
         assert.ok(proof.cleanedUpAt);
+        assertRetainedCollector(output);
         const settings = JSON.parse(readFileSync(join(output, 'initial-settings.json')));
         assert.ok(!existsSync(dirname(settings.Profiles[0].Command)));
     } finally {
@@ -277,3 +300,19 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         rmSync(root, { recursive: true, force: true });
     }
 });
+
+for (const runner of ['owned', 'inline']) {
+    test(`${runner} runner rejects a changed HTTPS dependency archive before evidence or npm execution`, { skip: !prepared }, () => {
+        withCollectorFixture(upstreamReceipt, true, root => {
+            const tool = join(root, 'artifacts/terminfo/tool');
+            const lock = JSON.parse(readFileSync(join(tool, 'package-lock.json')));
+            lock.packages['node_modules/commander'].resolved = 'https://example.invalid/changed.tgz';
+            writeFileSync(join(tool, 'package-lock.json'), JSON.stringify(lock));
+            if (runner === 'owned') return assertRejectedBeforeRun(root, /checked-in pin/);
+            const result = runInlinePreparation(join(root, 'scripts/terminfo-baseline.mjs'));
+            assert.equal(result.status, 1, result.stdout + result.stderr);
+            assert.match(result.stderr, /checked-in pin/);
+            assert.deepEqual(readdirSync(join(root, 'artifacts/terminfo')).filter(name => name.startsWith('run-')), []);
+        });
+    });
+}

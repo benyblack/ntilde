@@ -4,11 +4,11 @@ import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
 import { assertProcessOwnership, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
-import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable } from './terminfo/runtime.mjs';
+import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -32,7 +32,9 @@ function readPreparedCollector(tool) {
     const receiptBytes = readFileSync(join(pkg, 'dist', 'terminfo.bundle.receipt.json'));
     validateCollectorReceipt(source, JSON.parse(receiptBytes));
     const lockBytes = readCollectorLockfile(tool);
-    return { source, receiptBytes, lockBytes, manifestBytes: readFileSync(join(tool, 'package.json')) };
+    const manifestBytes = readFileSync(join(tool, 'package.json'));
+    validateCollectorInputs(manifestBytes, lockBytes);
+    return { source, receiptBytes, lockBytes, manifestBytes };
 }
 
 function prepareCollector(tool) {
@@ -64,6 +66,29 @@ function collectionSummary(output, appVersion) {
     return { runId: raw.runId, suiteId: raw.suiteId, suiteComplete: raw.suiteComplete,
         ungradedDiagnostics: raw.ungradedDiagnostics, measuredAt: raw.measuredAt, target: raw.target,
         adapter: raw.collectorAdapter, observations: raw.observations.length, counts, reasons, rawSha256: hash(readFileSync(rawPath)) };
+}
+
+function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, workerScript) {
+    const bundleBytes = readFileSync(bundle);
+    if (hash(bundleBytes) !== expectedDigest) throw new Error('Derived adapter changed before evidence retention.');
+    writeFileSync(join(output, 'collector-adapter.mjs'), bundleBytes, { flag: 'wx', mode: 0o600 });
+    const sourceDirectory = join(output, 'sources');
+    mkdirSync(sourceDirectory, { mode: 0o700 });
+    const sources = {
+        runnerSourceSha256: fileURLToPath(import.meta.url),
+        adapterSourceSha256: join(repo, 'scripts', 'terminfo', 'collector.mjs'),
+        ownershipSourceSha256: ownerModule, workerSourceSha256: workerScript,
+        runtimeSourceSha256: join(repo, 'scripts', 'terminfo', 'runtime.mjs'),
+        collectorManifestSha256: join(repo, 'scripts', 'terminfo', 'collector-package.json'),
+        collectorLockSha256: join(repo, 'scripts', 'terminfo', 'collector-package-lock.json'),
+    };
+    const digests = {};
+    for (const [field, path] of Object.entries(sources)) {
+        const bytes = readFileSync(path);
+        writeFileSync(join(sourceDirectory, basename(path)), bytes, { flag: 'wx', mode: 0o600 });
+        digests[field] = hash(bytes);
+    }
+    return digests;
 }
 
 async function terminateLaunchedApp(app) {
@@ -180,9 +205,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             executable, executableSha256: hash(readFileSync(executable)),
             assemblySha256: existsSync(join(dirname(executable), 'Ntilde.dll')) ? hash(readFileSync(join(dirname(executable), 'Ntilde.dll'))) : null,
             nodeVersion: process.version, dependencyInstall: 'isolated npm ci --ignore-scripts', startedAt: new Date().toISOString(), runId,
-            adapterSourceSha256: hash(readFileSync(fileURLToPath(import.meta.url))),
-            ownershipSourceSha256: hash(readFileSync(ownerModule)), workerSourceSha256: hash(readFileSync(workerScript)),
-            runtimeSourceSha256: hash(readFileSync(join(repo, 'scripts', 'terminfo', 'runtime.mjs'))),
+            ...retainCollectorEvidence(output, bundle, adapterBundleSha256, ownerModule, workerScript),
+            retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
             clipboard: 'disabled; no clipboard fixture', pixels: 'no pixel capture adapter',
         };
         const server = createServer(socket => {

@@ -3,7 +3,7 @@ import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { checkoutRevision, createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveNpmCli, resolveOwnedExecutable } from './runtime.mjs';
+import { checkoutRevision, createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, readPinnedCollectorInputs, resolveNpmCli, resolveOwnedExecutable } from './runtime.mjs';
 
 function fixture(callback) {
     const root = realpathSync(mkdtempSync(join(tmpdir(), 'nt-test-')));
@@ -140,9 +140,34 @@ for (const entry of [{ link: true }, { resolved: 'file:../mutable' }, { integrit
 test('failed locked installs stop collection and lockfile rewriting is refused', () => fixture(root => {
     const cli = join(root, 'npm-cli.mjs');
     writeFileSync(cli, 'process.exit(42);');
-    assert.throws(() => installLockedCollector(join(root, 'failed'), Buffer.from('{}'), lockedPackage(), cli), /installation failed \(42\)/);
+    const { manifestBytes, lockBytes } = readPinnedCollectorInputs();
+    assert.throws(() => installLockedCollector(join(root, 'failed'), manifestBytes, lockBytes, cli), /installation failed \(42\)/);
     writeFileSync(cli, `import { writeFileSync } from 'node:fs';
         import { join } from 'node:path';
         writeFileSync(join(process.argv[4], 'package-lock.json'), '{}');`);
-    assert.throws(() => installLockedCollector(join(root, 'rewritten'), Buffer.from('{}'), lockedPackage(), cli), /lockfile changed/);
+    assert.throws(() => installLockedCollector(join(root, 'rewritten'), manifestBytes, lockBytes, cli), /lockfile changed/);
+}));
+
+for (const [field, value] of [
+    ['resolved', 'https://example.invalid/changed.tgz'],
+    ['integrity', 'sha512-' + 'b'.repeat(86) + '=='],
+    ['version', '999.0.0'],
+]) {
+    test(`locked installations reject a changed ${field} even with valid HTTPS/integrity metadata`, () => fixture(root => {
+        const { manifestBytes, lockBytes } = readPinnedCollectorInputs();
+        const lock = JSON.parse(lockBytes);
+        lock.packages['node_modules/commander'][field] = value;
+        const directory = join(root, 'collector');
+        assert.throws(() => installLockedCollector(directory, manifestBytes, Buffer.from(JSON.stringify(lock)), '/unused/npm-cli.js'), /checked-in pin/);
+        assert.ok(!existsSync(directory));
+    }));
+}
+
+test('locked installations reject root manifest overrides before running npm', () => fixture(root => {
+    const { manifestBytes, lockBytes } = readPinnedCollectorInputs();
+    const manifest = JSON.parse(manifestBytes);
+    manifest.overrides = { commander: '999.0.0' };
+    const directory = join(root, 'collector');
+    assert.throws(() => installLockedCollector(directory, Buffer.from(JSON.stringify(manifest)), lockBytes, '/unused/npm-cli.js'), /checked-in pin/);
+    assert.ok(!existsSync(directory));
 }));

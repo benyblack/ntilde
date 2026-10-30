@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkoutRevision, installLockedCollector, readCollectorLockfile, resolveNpmCli } from './terminfo/runtime.mjs';
+import { checkoutRevision, installLockedCollector, readCollectorLockfile, readPinnedCollectorInputs, validateCollectorInputs } from './terminfo/runtime.mjs';
 import { validateCollectorReceipt } from './terminfo/collector.mjs';
 
 const cliVersion = '4.0.0';
@@ -49,15 +49,16 @@ function validateInvocation(args) {
     }
 }
 
-function prepareCollector(tool, pkgManifest, env) {
+function prepareCollector(tool, pkgManifest) {
     if (!existsSync(pkgManifest)) {
         if (process.platform === 'win32') fail('Install the collector first using the Windows preparation command in docs/qa/QA_TERMINFO.md.');
-        // Execute the selected Node installation's npm CLI directly. Never search PATH.
-        run([resolveNpmCli(), 'install', '--prefix', tool, '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=true',
-            '--save-exact', `terminfo.dev@${cliVersion}`], env);
+        const { manifestBytes, lockBytes } = readPinnedCollectorInputs();
+        installLockedCollector(tool, manifestBytes, lockBytes);
     }
     if (json(pkgManifest).version !== cliVersion) fail(`Expected terminfo.dev ${cliVersion}; remove artifacts/terminfo/tool and retry.`);
-    return readCollectorLockfile(tool);
+    const lockBytes = readCollectorLockfile(tool);
+    validateCollectorInputs(readFileSync(join(tool, 'package.json')), lockBytes);
+    return lockBytes;
 }
 
 function main() {
@@ -84,7 +85,7 @@ See docs/qa/QA_TERMINFO.md.`);
     mkdirSync(root, { recursive: true });
     // Child tool invocations inherit the selected Node runtime first.
     const env = { ...process.env, PATH: dirname(process.execPath) + (process.platform === 'win32' ? ';' : ':') + process.env.PATH };
-    const lockBytes = prepareCollector(tool, pkgManifest, env);
+    const lockBytes = prepareCollector(tool, pkgManifest);
 
     validateCollectorReceipt(readFileSync(join(pkg, 'dist', 'terminfo.bundle.mjs')),
         JSON.parse(readFileSync(join(pkg, 'dist', 'terminfo.bundle.receipt.json'))));

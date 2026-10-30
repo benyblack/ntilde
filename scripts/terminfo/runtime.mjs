@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, sep } from 'node:path';
@@ -12,7 +13,12 @@ export function readCollectorLockfile(tool) {
     }
 }
 
-export function installLockedCollector(directory, manifestBytes, lockBytes, npmCli = resolveNpmCli()) {
+// Update these pins together with the checked-in inputs and collector receipt.
+const collectorManifestSha256 = '56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e';
+const collectorLockSha256 = '837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508';
+const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+
+export function validateCollectorInputs(manifestBytes, lockBytes) {
     // Only immutable registry archives can establish the retained dependency tree.
     const lock = JSON.parse(lockBytes);
     const packages = lock.packages;
@@ -25,6 +31,20 @@ export function installLockedCollector(directory, manifestBytes, lockBytes, npmC
             throw new Error('Collector lockfile dependencies require HTTPS archives with integrity digests.');
         }
     }
+    if (sha256(manifestBytes) !== collectorManifestSha256 || sha256(lockBytes) !== collectorLockSha256) {
+        throw new Error('Collector manifest or lockfile differs from the checked-in pin; prepare the pinned cache again.');
+    }
+}
+
+export function readPinnedCollectorInputs() {
+    const manifestBytes = readFileSync(new URL('./collector-package.json', import.meta.url));
+    const lockBytes = readFileSync(new URL('./collector-package-lock.json', import.meta.url));
+    validateCollectorInputs(manifestBytes, lockBytes);
+    return { manifestBytes, lockBytes };
+}
+
+export function installLockedCollector(directory, manifestBytes, lockBytes, npmCli = resolveNpmCli()) {
+    validateCollectorInputs(manifestBytes, lockBytes);
     npmCli = resolveNpmCli(process.execPath, npmCli);
     mkdirSync(directory, { mode: 0o700 });
     writeFileSync(join(directory, 'package.json'), manifestBytes, { flag: 'wx', mode: 0o600 });

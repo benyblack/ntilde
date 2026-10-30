@@ -2,7 +2,6 @@ import { execFileSync } from 'node:child_process';
 import { fstatSync, lstatSync, realpathSync, statSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { isatty } from 'node:tty';
-import { setTimeout as delay } from 'node:timers/promises';
 
 export function processRecord(pid, timeout = 2000) {
     if (!Number.isSafeInteger(pid) || pid < 2) throw new Error('Invalid process ID.');
@@ -50,7 +49,10 @@ export function matchesRecordedWorker(current, recorded, command, runId) {
 
 export function workerExists(pid) {
     try { process.kill(pid, 0); return true; }
-    catch (error) { if (error.code === 'ESRCH') return false; throw error; }
+    catch (error) {
+        if (error.code === 'ESRCH') { return false; }
+        throw error;
+    }
 }
 
 function verifyRecordedWorker(recorded, runId) {
@@ -71,13 +73,18 @@ function verifyRecordedWorker(recorded, runId) {
     }
 }
 
-async function waitForWorkerExit(pid) {
+function waitForWorkerExit(pid) {
     const deadline = performance.now() + 2000;
-    while (workerExists(pid)) {
-        if (performance.now() >= deadline) return false;
-        await delay(25);
-    }
-    return true;
+    return new Promise((resolve, reject) => {
+        const check = () => {
+            try {
+                if (!workerExists(pid)) return resolve(true);
+                if (performance.now() >= deadline) return resolve(false);
+                setTimeout(check, 25);
+            } catch (error) { reject(error); }
+        };
+        check();
+    });
 }
 
 export async function terminateRecordedWorker(recorded, runId) {
@@ -85,7 +92,10 @@ export async function terminateRecordedWorker(recorded, runId) {
     for (const signal of ['SIGTERM', 'SIGKILL']) {
         if (!verifyRecordedWorker(recorded, runId)) return;
         try { process.kill(recorded.pid, signal); }
-        catch (error) { if (error.code === 'ESRCH') return; throw error; }
+        catch (error) {
+            if (error.code === 'ESRCH') { return; }
+            throw error;
+        }
         if (await waitForWorkerExit(recorded.pid)) return;
     }
     throw new Error(`Owned worker ${recorded.pid} did not exit after SIGKILL.`);
