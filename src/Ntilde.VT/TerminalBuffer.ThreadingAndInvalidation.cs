@@ -194,9 +194,6 @@ namespace Ntilde.VT
         /// </summary>
         internal TimeSpan ReaderHandoffLimit { get; init; } = TimeSpan.FromMilliseconds(2);
 
-        // S7133, as on EnterWriteLockIfNeeded: the lock is taken for the caller, which releases it through ExitBatchWrite.
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Critical Bug", "S7133:Locks should be released within the same method",
-            Justification = "Acquires on behalf of the caller, which releases via ExitBatchWrite.")]
         public void EnterBatchWrite()
         {
             LetWaitingReadersIn();
@@ -224,7 +221,9 @@ namespace Ntilde.VT
         /// </remarks>
         private void LetWaitingReadersIn()
         {
-            if (Lock.WaitingReadCount == 0 || Lock.IsWriteLockHeld)
+            // No check for a write lock this thread already holds: the lock is not recursive, so AcquireWriteLock
+            // throws for a nested batch whatever happens here.
+            if (Lock.WaitingReadCount == 0)
             {
                 return;
             }
