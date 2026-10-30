@@ -88,6 +88,18 @@ public class UnderlineStateTransferTests
     }
 
     [Fact]
+    public void AnOutOfRangePaletteIndexFromTheApplication_StillAttaches()
+    {
+        // The validation below refuses an underline palette index past 255; the parser must never keep one.
+        var (source, parser) = NewTerminal();
+        parser.Process("\x1b[4:3;58;5;300mA");
+
+        var (restored, _) = RoundTrip(source, parser);
+
+        Assert.Equal(new CellUnderline(UnderlineStyle.Curly), OnScreen(restored, 0, 0));
+    }
+
+    [Fact]
     public void AnUnderlineIndexNamingNoEntry_IsRejected()
     {
         var (source, parser) = NewTerminal();

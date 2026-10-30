@@ -249,6 +249,9 @@ namespace Ntilde.VT
             {
                 if (i + 1 >= args.Length) return null;
                 int idx = args[++i];
+                // Past 255 names no color: ignored, as xterm and kitty do. Kept, it was white under an index no
+                // palette has, wrapped negative past 32767, and refused by state transfer as an underline's.
+                if (idx > 255) return null;
                 index = (short)idx; // Use the palette index!
                 return GetXtermColor(idx);
             }

@@ -379,4 +379,35 @@ public class UnderlineStyleTests
         Assert.True(cells[1].IsUnderline);
         Assert.Null(cells[1].Underline);
     }
+
+    [Theory]
+    [InlineData(256)]
+    [InlineData(40000)] // wrapped to a negative short
+    [InlineData(65535)] // the parameter cap; wrapped to -1, read as no index at all
+    public void UnderlineColor_PaletteIndexPast255_IsIgnored(int index)
+    {
+        // Codex review of #648: the pen kept an index no palette has, and the state transfer, which checks it,
+        // then refused the terminal's own snapshot. xterm and kitty ignore it; the pen keeps the color it had.
+        var (buffer, parser) = NewTerminal();
+
+        parser.Process($"\x1b[4:3;58;5;9m\x1b[58;5;{index}mA\x1b[0;4:3;58;5;{index}mB");
+
+        Assert.Equal(new CellUnderline(UnderlineStyle.Curly, null, 9), UnderlineAt(buffer, 0));
+        Assert.Equal(new CellUnderline(UnderlineStyle.Curly), UnderlineAt(buffer, 1));
+    }
+
+    [Theory]
+    [InlineData("38")]
+    [InlineData("48")]
+    public void TextColor_PaletteIndexPast255_IsIgnored(string code)
+    {
+        // The same parse serves 38 and 48, which took white under the out-of-range index.
+        var (buffer, parser) = NewTerminal();
+
+        parser.Process($"\x1b[{code};5;300mA");
+
+        TerminalCell cell = CellAt(buffer, 0);
+        Assert.True(cell.IsDefaultForeground, "foreground");
+        Assert.True(cell.IsDefaultBackground, "background");
+    }
 }
