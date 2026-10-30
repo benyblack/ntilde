@@ -348,6 +348,10 @@ right coverage together is a normal part of review here.
 
 ### Test Categories
 
+For an optional external desktop compatibility baseline, see
+[terminfo.dev QA](docs/qa/QA_TERMINFO.md). Run it inside Ntilde; it is separate
+from the CI test categories below.
+
 Suites are tagged with an xUnit `Category` trait so CI can split the slow ones
 into their own jobs. **The tags do not filter anything by default** — a bare
 `scripts/build.sh test` applies no `--filter` and runs every category, which is
