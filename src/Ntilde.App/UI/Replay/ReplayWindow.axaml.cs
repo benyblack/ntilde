@@ -155,6 +155,13 @@ namespace Ntilde.UI.Replay
             }
         }
 
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+            // Its glyph atlas and row pictures go once the last frame drawn with them does, as a closed pane's (#644).
+            this.FindControl<TerminalView>("TermView")?.Retire();
+        }
+
         private void StartPlayback()
         {
             if (_viewModel == null || _filePath == null) return;

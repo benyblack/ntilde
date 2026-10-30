@@ -20,6 +20,14 @@ public class TerminalRenderCachesTests
 {
     private static TerminalRenderCaches NewCaches() => new(new GlyphCache(), new RowImageCache());
 
+    // Text, so a frame really draws through the glyph atlas: the test app renders with Skia.
+    private static TerminalBuffer BufferWithText()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        new AnsiParser(buffer).Process("hello, atlas\r\nsecond row");
+        return buffer;
+    }
+
     [Fact]
     public void TheViewLettingGo_WithNoDrawOperationHoldingThem_DisposesThem()
     {
@@ -141,13 +149,14 @@ public class TerminalRenderCachesTests
     public void ARetiredView_KeepsItsCachesForTheFrameStillShown_AndDrawsOnWithoutThem()
     {
         var view = new TerminalView();
-        view.SetBuffer(new TerminalBuffer(80, 24));
+        view.SetBuffer(BufferWithText());
         var window = new Window { Content = view, Width = 800, Height = 400 };
         try
         {
             window.Show();
             Dispatcher.UIThread.RunJobs();
             window.CaptureRenderedFrame();
+            Assert.True(view.RenderCachesForTest.Glyphs.EntryCount > 0, "setup: the frame drew through the glyph atlas");
 
             view.Retire();
             Assert.False(view.RenderCachesForTest.IsDisposed); // the compositor still holds the last frame's operation
