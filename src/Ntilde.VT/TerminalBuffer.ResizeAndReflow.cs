@@ -115,7 +115,8 @@ namespace Ntilde.VT
                                     _viewport[i].Cells,
                                     _viewport[i].IsWrapped,
                                     _viewport[i].GetExtendedTextMap(),
-                                    _viewport[i].GetHyperlinkMap());
+                                    _viewport[i].GetHyperlinkMap(),
+                                    _viewport[i].GetUnderlineMap());
                             }
 
                             var newVp = new TerminalRow[newRows];
@@ -284,13 +285,13 @@ namespace Ntilde.VT
                 for (int i = linesNeeded - 1; i >= 0; i--)
                 {
                     var row = new TerminalRow(Cols, Theme.Foreground, Theme.Background);
-                    if (_scrollback.TryPopLastRow(row.Cells, out var isWrapped, out var extendedText, out var hyperlinks))
+                    if (_scrollback.TryPopLastRow(row.Cells, out var isWrapped, out var extendedText, out var hyperlinks, out var underlines))
                     {
                         // Restore the full row, not just cells: wrap flag and side
                         // tables (extended text, hyperlinks) must survive the
                         // shrink-then-grow round trip through scrollback.
                         row.IsWrapped = isWrapped;
-                        row.RestoreSideTables(extendedText, hyperlinks);
+                        row.RestoreSideTables(extendedText, hyperlinks, underlines);
                         newViewport[i] = row;
                         pulled++;
                     }
@@ -335,7 +336,8 @@ namespace Ntilde.VT
                         _viewport[i].Cells,
                         _viewport[i].IsWrapped,
                         _viewport[i].GetExtendedTextMap(),
-                        _viewport[i].GetHyperlinkMap());
+                        _viewport[i].GetHyperlinkMap(),
+                        _viewport[i].GetUnderlineMap());
                 }
 
                 Array.Copy(_viewport, linesToPush, newViewport, 0, newRows);

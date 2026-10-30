@@ -1270,6 +1270,7 @@ namespace Ntilde.Shell
                     var cf = ResolveCellForeground(cell, themeFg, alpha, themeSnapshot);
                     bool runIsItalic = cell.IsItalic;
                     bool runIsUnderline = cell.IsUnderline;
+                    CellUnderline? runUnderline = cell.IsUnderline ? cell.Underline : null;
                     bool runIsStrikethrough = cell.IsStrikethrough;
                     bool runIsFaint = cell.IsFaint;
                     var bg = cell.IsInverse ? cf : cb;
@@ -1319,6 +1320,7 @@ namespace Ntilde.Shell
                             break;
                         if (next.IsItalic != runIsItalic ||
                             next.IsUnderline != runIsUnderline ||
+                            !Equals(next.IsUnderline ? next.Underline : null, runUnderline) ||
                             next.IsStrikethrough != runIsStrikethrough ||
                             next.IsFaint != runIsFaint)
                             break;
@@ -1428,7 +1430,9 @@ namespace Ntilde.Shell
                     {
                         if (_glyphCache != null && !runIsItalic)
                         {
-                            if (ShouldDrawRunDirectWhenGlyphCacheEnabled(runText))
+                            // The shortcut skips the decorations below, so a run of blanks carrying a styled or colored
+                            // underline (#270) takes the per-glyph path instead; its blanks draw nothing there either.
+                            if (runUnderline is null && ShouldDrawRunDirectWhenGlyphCacheEnabled(runText))
                             {
                                 FlushBatches(canvas);
                                 canvas.DrawText(runText, rx, baselineYDip, font, fgPaint);
@@ -1652,7 +1656,12 @@ namespace Ntilde.Shell
                         canvas.Restore();
                     }
 
-                    bool underlineHasVisibleText = runIsUnderline && ContainsNonWhitespace(runText);
+                    // A plain underline stays trimmed to the visible text, as it has been since e25e6bd (a guard that
+                    // came with a CSI-leader misparse fix). A styled or colored one (#270) is only ever there because
+                    // an application asked for it with SGR 4:x, 21 or 58 - an editor's squiggle on trailing whitespace,
+                    // say - so it is drawn across the whole run, blanks included, as other terminals draw it.
+                    bool styledUnderline = runUnderline is not null;
+                    bool underlineHasVisibleText = runIsUnderline && (styledUnderline || ContainsNonWhitespace(runText));
                     if (underlineHasVisibleText || runIsStrikethrough)
                     {
                         _decoStrokePaint.Color = fg;
@@ -1664,19 +1673,26 @@ namespace Ntilde.Shell
                         {
                             float underlineX1 = rx;
                             float underlineX2 = rx + rw;
-                            if (TryGetUnderlineBounds(runCellTexts, c, colEdges, paddingLeft, out float trimmedX1, out float trimmedX2))
+                            if (!styledUnderline && TryGetUnderlineBounds(runCellTexts, c, colEdges, paddingLeft, out float trimmedX1, out float trimmedX2))
                             {
                                 underlineX1 = trimmedX1;
                                 underlineX2 = trimmedX2;
                             }
 
                             float underlineY = FromDevicePx(_pixelGrid.YForUnderline(rowIndex));
-                            canvas.DrawLine(underlineX1, underlineY, underlineX2, underlineY, _decoStrokePaint);
+                            float rowBottomY = FromDevicePx(_pixelGrid.YForRowTop(rowIndex) + _pixelGrid.CellHeightPx);
+                            if (runUnderline is { HasColor: true })
+                            {
+                                _decoStrokePaint.Color = ResolveUnderlineColor(runUnderline, themeSnapshot);
+                            }
+
+                            DrawUnderline(canvas, runUnderline?.Style ?? UnderlineStyle.Single, underlineX1, underlineX2, underlineY, rowBottomY, strokeWidth);
                             IncrementRectDrawCall();
                         }
 
                         if (runIsStrikethrough)
                         {
+                            _decoStrokePaint.Color = fg; // the underline may have taken its own color
                             float strikeY = FromDevicePx(_pixelGrid.YForStrike(rowIndex));
                             canvas.DrawLine(rx, strikeY, rx + rw, strikeY, _decoStrokePaint);
                             IncrementRectDrawCall();
@@ -3023,6 +3039,85 @@ namespace Ntilde.Shell
                 return new SKColor(c.R, c.G, c.B, 255);
             }
             return new SKColor(cell.Foreground.R, cell.Foreground.G, cell.Foreground.B, 255);
+        }
+
+        /// <summary>The SGR 58 underline color (#270): a palette index through the theme, as the foreground's is, or RGB.</summary>
+        private static SKColor ResolveUnderlineColor(CellUnderline underline, RenderThemeSnapshot themeSnapshot)
+        {
+            TermColor c = underline.ColorIndex >= 0
+                ? ResolvePaletteIndex(underline.ColorIndex, themeSnapshot)
+                : underline.Color!.Value;
+            return new SKColor(c.R, c.G, c.B, 255);
+        }
+
+        /// <summary>
+        /// One run's underline in its style (#270), from <paramref name="x1"/> to <paramref name="x2"/> on
+        /// <paramref name="y"/>, kept above <paramref name="rowBottom"/>. Strokes with <see cref="_decoStrokePaint"/>
+        /// as set up by the caller, and leaves it as it found it.
+        /// </summary>
+        private void DrawUnderline(SKCanvas canvas, UnderlineStyle style, float x1, float x2, float y, float rowBottom, float stroke)
+        {
+            switch (style)
+            {
+                case UnderlineStyle.Double:
+                    {
+                        // Two lines with a stroke's gap between them, the lower one kept inside the cell.
+                        float lower = Math.Min(y + stroke, rowBottom - (stroke / 2));
+                        float upper = lower - (2 * stroke);
+                        canvas.DrawLine(x1, upper, x2, upper, _decoStrokePaint);
+                        canvas.DrawLine(x1, lower, x2, lower, _decoStrokePaint);
+                        break;
+                    }
+
+                case UnderlineStyle.Curly:
+                    DrawCurlyUnderline(canvas, x1, x2, y, rowBottom, stroke);
+                    break;
+
+                case UnderlineStyle.Dotted:
+                case UnderlineStyle.Dashed:
+                    {
+                        float on = style == UnderlineStyle.Dotted ? stroke : stroke * 3;
+                        float off = style == UnderlineStyle.Dotted ? stroke : stroke * 2;
+                        // Phased by the absolute x, so the pattern runs on unbroken from one run into the next.
+                        using SKPathEffect dash = SKPathEffect.CreateDash([on, off], x1 % (on + off));
+                        _decoStrokePaint.PathEffect = dash;
+                        canvas.DrawLine(x1, y, x2, y, _decoStrokePaint);
+                        _decoStrokePaint.PathEffect = null;
+                        break;
+                    }
+
+                default:
+                    canvas.DrawLine(x1, y, x2, y, _decoStrokePaint);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// A wave of one period per cell, a stroke either side of <paramref name="y"/>; raised when its trough
+        /// would leave the cell.
+        /// </summary>
+        private void DrawCurlyUnderline(SKCanvas canvas, float x1, float x2, float y, float rowBottom, float stroke)
+        {
+            float amplitude = stroke;
+            float center = Math.Min(y, rowBottom - amplitude - (stroke / 2));
+            float halfPeriod = FromDevicePx(_pixelGrid.CellWidthPx) / 2;
+            if (halfPeriod <= 0 || x2 <= x1) return;
+
+            using var path = new SKPath();
+            path.MoveTo(x1, center);
+            float x = x1;
+            bool crest = true;
+            while (x < x2)
+            {
+                float next = Math.Min(x + halfPeriod, x2);
+                // A quadratic's peak sits halfway to its control point, so the control is two amplitudes out.
+                float reach = 2 * amplitude * ((next - x) / halfPeriod);
+                path.QuadTo((x + next) / 2, crest ? center - reach : center + reach, next, center);
+                x = next;
+                crest = !crest;
+            }
+
+            canvas.DrawPath(path, _decoStrokePaint);
         }
 
         private static SKColor ResolveCellBackground(RenderCellSnapshot cell, SKColor themeBg, byte alpha, RenderThemeSnapshot themeSnapshot)

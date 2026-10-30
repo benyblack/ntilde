@@ -142,6 +142,9 @@ namespace Ntilde.Replay
                     IsFaint = buffer.IsFaint,
                     IsItalic = buffer.IsItalic,
                     IsUnderline = buffer.IsUnderline,
+                    UnderlineStyle = (byte)buffer.UnderlineStyle,
+                    UnderlineColor = buffer.UnderlineColor?.ToUint(),
+                    UnderlineColorIndex = buffer.UnderlineColorIndex,
                     IsBlink = buffer.IsBlink,
                     IsStrikethrough = buffer.IsStrikethrough,
                     IsHidden = buffer.IsHidden,
@@ -170,6 +173,17 @@ namespace Ntilde.Replay
                             {
                                 snapshot.ExtendedText[r * cols + c] = text;
                             }
+                        }
+
+                        // Underline style and color (#270)
+                        if (row.Cells[c].IsUnderline && row.GetUnderline(c) is { } underline)
+                        {
+                            (snapshot.Underlines ??= new Dictionary<int, TerminalUnderlineEntry>())[r * cols + c] = new TerminalUnderlineEntry
+                            {
+                                Style = (byte)underline.Style,
+                                Color = underline.Color?.ToUint(),
+                                ColorIndex = underline.ColorIndex,
+                            };
                         }
                     }
                 }

@@ -100,6 +100,11 @@ namespace Ntilde.VT
         [JsonPropertyName("strike")] public bool IsStrikethrough { get; set; }
         [JsonPropertyName("hidden")] public bool IsHidden { get; set; }
 
+        /// <summary>The pen's underline style (#270); 1 (straight) in recordings made before it.</summary>
+        [JsonPropertyName("uls")] public byte UnderlineStyle { get; set; } = 1;
+        [JsonPropertyName("ulc")] public uint? UnderlineColor { get; set; }
+        [JsonPropertyName("uli")] public short UnderlineColorIndex { get; set; } = -1;
+
         [JsonPropertyName("cells")]
         public string? CellsBase64 { get; set; }
 
@@ -114,6 +119,10 @@ namespace Ntilde.VT
 
         [JsonPropertyName("wrap")]
         public bool[]? RowWraps { get; set; }
+
+        /// <summary>Underline styles and colors (#270) keyed by <c>row * cols + col</c>; absent when none.</summary>
+        [JsonPropertyName("ul_cells")]
+        public System.Collections.Generic.Dictionary<int, TerminalUnderlineEntry>? Underlines { get; set; }
     }
 
     [JsonSourceGenerationOptions(WriteIndented = false)]

@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "b779f433cd8b835ff159d0e4013c944663ffdefbb8c2c44bae6b8fc06bc8c012",
+  "matrixSha256": "72800602bef9e30399d6bc28e8a0e5ec20d58b3a9ad1a81c900c6d560fa97cdb",
   "summary": {
     "totalRows": 65,
-    "supportedCount": 28,
+    "supportedCount": 29,
     "partialCount": 31,
     "experimentalCount": 1,
-    "notSupportedCount": 4,
+    "notSupportedCount": 3,
     "wontSupportCount": 1,
-    "rowsWithLinkedEvidence": 44,
-    "supportedRowsWithLinkedEvidence": 28,
+    "rowsWithLinkedEvidence": 45,
+    "supportedRowsWithLinkedEvidence": 29,
     "errorCount": 0,
     "warningCount": 0
   },
@@ -995,16 +995,27 @@
     },
     {
       "section": "6) SGR attributes \u0026 colors",
-      "feature": "Underline styles",
-      "status": "\u274C Not supported",
-      "specOrNotes": "xterm",
-      "evidenceText": "\u2014",
-      "evidenceKinds": [],
-      "evidenceLinks": [],
-      "hasAutomatedEvidenceSignal": false,
-      "hasLinkedEvidence": false,
-      "ownership": "Buffer",
-      "knownDeviations": "",
+      "feature": "Underline styles and color",
+      "status": "\u2705 Supported",
+      "specOrNotes": "xterm, kitty",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/UnderlineStyleTests.cs\u0060; render: \u0060tests/Ntilde.App.Tests/RenderTests/UnderlineStyleRenderTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/UnderlineStyleRenderTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/UnderlineStyleTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer\u002BRenderer",
+      "knownDeviations": "Straight/double/curly/dotted/dashed, own RGB or palette color (#270). The ANSI exporters (mux text client, export) still write a plain underline",
       "sourceLine": 134
     },
     {

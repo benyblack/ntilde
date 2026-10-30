@@ -273,6 +273,7 @@ namespace Ntilde.VT
                                     nextCell = new TerminalCell(' ', _packedFg, _packedBg, (ushort)(_packedFlags | (ushort)TerminalCellFlags.WideContinuation));
                                     row.SetExtendedText(attachCol + 1, null); // Ensure no old text remains
                                     row.SetHyperlink(attachCol + 1, row.GetHyperlink(attachCol));
+                                    row.SetUnderline(attachCol + 1, UnderlineForWrite); // the continuation takes the pen's flags
                                     expandedIntoNextCell = true;
                                 }
 
@@ -339,6 +340,7 @@ namespace Ntilde.VT
                     row.Cells[_cursorCol + i] = new TerminalCell(' ', _packedFg, _packedBg, _packedFlags);
                     row.SetExtendedText(_cursorCol + i, null);
                     row.SetHyperlink(_cursorCol + i, null);
+                    row.SetUnderline(_cursorCol + i, null);
                 }
 
                 ushort flags = _packedFlags;
@@ -351,6 +353,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(_cursorCol, grapheme.ToString());
                 }
                 row.SetHyperlink(_cursorCol, _currentHyperlink);
+                row.SetUnderline(_cursorCol, UnderlineForWrite);
 
                 if (width >= 2 && _cursorCol + 1 < Cols)
                 {
@@ -360,6 +363,7 @@ namespace Ntilde.VT
                         row.Cells[_cursorCol + i] = new TerminalCell(' ', _packedFg, _packedBg, (ushort)(_packedFlags | (ushort)TerminalCellFlags.WideContinuation));
                         row.SetExtendedText(_cursorCol + i, null);
                         row.SetHyperlink(_cursorCol + i, _currentHyperlink);
+                        row.SetUnderline(_cursorCol + i, UnderlineForWrite);
                     }
                 }
 
@@ -454,7 +458,8 @@ namespace Ntilde.VT
                     evictingRow.Cells,
                     evictingRow.IsWrapped,
                     evictingRow.GetExtendedTextMap(),
-                    evictingRow.GetHyperlinkMap());
+                    evictingRow.GetHyperlinkMap(),
+                    evictingRow.GetUnderlineMap());
 
 
                 long newlyEvicted = _scrollback.TotalRowsEvicted - prevEvicted;

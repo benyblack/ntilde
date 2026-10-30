@@ -128,11 +128,13 @@ namespace Ntilde.VT.Storage
         /// <param name="isWrapped">Whether this row is wrapped (flows into the next).</param>
         /// <param name="extendedText">Optional extended grapheme clusters keyed by column index.</param>
         /// <param name="hyperlinks">Optional hyperlink URIs keyed by column index.</param>
+        /// <param name="underlines">Optional underline styles and colors keyed by column index (#270).</param>
         public long AppendRow(
             ReadOnlySpan<TerminalCell> row,
             bool isWrapped = false,
             SmallMap<string>? extendedText = null,
-            SmallMap<Ntilde.VT.Links.Hyperlink>? hyperlinks = null)
+            SmallMap<Ntilde.VT.Links.Hyperlink>? hyperlinks = null,
+            SmallMap<Ntilde.VT.CellUnderline>? underlines = null)
         {
             if (row.Length != _cols)
                 throw new ArgumentException($"Row length {row.Length} must equal Cols {_cols}.", nameof(row));
@@ -153,6 +155,8 @@ namespace Ntilde.VT.Storage
                 currentPage.SetExtendedTextFromMap(rowIndex, extendedText);
             if (hyperlinks != null && hyperlinks.Count > 0)
                 currentPage.SetHyperlinkFromMap(rowIndex, hyperlinks);
+            if (underlines != null && underlines.Count > 0)
+                currentPage.SetUnderlineFromMap(rowIndex, underlines);
             currentPage.UsedRows++;
             _totalRowsAppended++;
 
@@ -248,6 +252,13 @@ namespace Ntilde.VT.Storage
             return page.GetHyperlinkMap(rowInPage);
         }
 
+        /// <summary>Returns the underline SmallMap for the given logical row, or null if none.</summary>
+        public SmallMap<Ntilde.VT.CellUnderline>? GetUnderlineMap(int logicalIndex)
+        {
+            (TerminalPage page, int rowInPage) = FindPage(logicalIndex);
+            return page.GetUnderlineMap(rowInPage);
+        }
+
         /// <summary>
         /// Helper to find the <see cref="TerminalPage"/> and row index within that page
         /// for a given logical row index.
@@ -279,11 +290,11 @@ namespace Ntilde.VT.Storage
         /// Used during vertical resize (height grow) to pull history back into the viewport.
         /// </summary>
         public bool TryPopLastRow(Span<TerminalCell> destination)
-            => TryPopLastRow(destination, out _, out _, out _);
+            => TryPopLastRow(destination, out _, out _, out _, out _);
 
         /// <summary>
         /// As <see cref="TryPopLastRow(Span{TerminalCell})"/>, but also returns
-        /// the row's wrap flag and side tables (extended text, hyperlinks) so a
+        /// the row's wrap flag and side tables (extended text, hyperlinks, underlines) so a
         /// restored viewport row is complete — extended graphemes must survive
         /// the scrollback round trip. The vacated slot's metadata is cleared so
         /// a later append into it cannot resurrect stale entries.
@@ -292,11 +303,13 @@ namespace Ntilde.VT.Storage
             Span<TerminalCell> destination,
             out bool isWrapped,
             out SmallMap<string>? extendedText,
-            out SmallMap<Ntilde.VT.Links.Hyperlink>? hyperlinks)
+            out SmallMap<Ntilde.VT.Links.Hyperlink>? hyperlinks,
+            out SmallMap<Ntilde.VT.CellUnderline>? underlines)
         {
             isWrapped = false;
             extendedText = null;
             hyperlinks = null;
+            underlines = null;
 
             if (_pages.Last == null || _pages.Last.Value.UsedRows == 0)
                 return false;
@@ -307,6 +320,7 @@ namespace Ntilde.VT.Storage
             isWrapped = page.IsRowWrapped(rowIndex);
             extendedText = page.GetExtendedTextMap(rowIndex);
             hyperlinks = page.GetHyperlinkMap(rowIndex);
+            underlines = page.GetUnderlineMap(rowIndex);
             page.ClearRowMetadata(rowIndex);
 
             page.UsedRows--;

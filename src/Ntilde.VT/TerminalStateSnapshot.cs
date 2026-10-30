@@ -95,6 +95,12 @@ namespace Ntilde.VT
         /// <summary>Index into <see cref="Hyperlinks"/> of the link the cursor is writing under, or -1.</summary>
         [JsonPropertyName("cur_link")] public int CurrentHyperlinkId { get; set; } = -1;
 
+        /// <summary>
+        /// Every underline style and color an exported cell carries (#270), one entry per distinct value.
+        /// Cells carry an index into it, and the cells naming one index get one instance back.
+        /// </summary>
+        [JsonPropertyName("underlines")] public List<TerminalUnderlineEntry> Underlines { get; set; } = [];
+
         /// <summary>The parser's position in the stream. Applied with <c>AnsiParser.ImportState</c>.</summary>
         [JsonPropertyName("parser")] public AnsiParserState Parser { get; set; } = new();
 
@@ -128,6 +134,11 @@ namespace Ntilde.VT
         /// <c>row * cols + col</c>.
         /// </summary>
         [JsonPropertyName("links")] public Dictionary<int, int>? LinkIds { get; set; }
+
+        /// <summary>
+        /// Index into <see cref="TerminalStateSnapshot.Underlines"/> keyed by <c>row * cols + col</c> (#270).
+        /// </summary>
+        [JsonPropertyName("ul")] public Dictionary<int, int>? UnderlineIds { get; set; }
     }
 
     /// <summary>A DECSC-style saved cursor, mirroring <see cref="CursorState"/>.</summary>
@@ -153,6 +164,15 @@ namespace Ntilde.VT
         [JsonPropertyName("faint")] public bool IsFaint { get; set; }
         [JsonPropertyName("italic")] public bool IsItalic { get; set; }
         [JsonPropertyName("ul")] public bool IsUnderline { get; set; }
+
+        /// <summary>The underline's style (#270), an <c>UnderlineStyle</c> value; 1 (straight) when absent.</summary>
+        [JsonPropertyName("uls")] public byte UnderlineStyle { get; set; } = 1;
+
+        /// <summary>SGR 58's RGB underline color, as <c>TermColor.ToUint</c> gives it, or null.</summary>
+        [JsonPropertyName("ulc")] public uint? UnderlineColor { get; set; }
+
+        /// <summary>SGR 58's palette underline color, or -1.</summary>
+        [JsonPropertyName("uli")] public short UnderlineColorIndex { get; set; } = -1;
         [JsonPropertyName("blink")] public bool IsBlink { get; set; }
         [JsonPropertyName("strike")] public bool IsStrikethrough { get; set; }
         [JsonPropertyName("hidden")] public bool IsHidden { get; set; }
@@ -195,6 +215,14 @@ namespace Ntilde.VT
         [JsonPropertyName("col")] public int LastCharCol { get; set; } = -1;
         [JsonPropertyName("row")] public int LastCharRow { get; set; } = -1;
         [JsonPropertyName("zwj")] public bool IsAfterZwj { get; set; }
+    }
+
+    /// <summary>One underline style and color (#270), as a <c>CellUnderline</c> holds it.</summary>
+    public sealed class TerminalUnderlineEntry
+    {
+        [JsonPropertyName("s")] public byte Style { get; set; } = 1;
+        [JsonPropertyName("rgb")] public uint? Color { get; set; }
+        [JsonPropertyName("idx")] public short ColorIndex { get; set; } = -1;
     }
 
     /// <summary>One OSC 8 link identity: the (URI, id) pair that defines it.</summary>

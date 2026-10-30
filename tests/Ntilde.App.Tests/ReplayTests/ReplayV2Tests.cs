@@ -222,6 +222,54 @@ namespace Ntilde.Tests.ReplayTests
         }
 
         [Fact]
+        public async Task ReplayV2_Snapshot_RoundTrip_PreservesUnderlineStyles()
+        {
+            // #270, Codex review of PR #648: a snapshot keeps the cells' underline styles and colors and the
+            // pen's, so neither the restored screen nor the next chunk falls back to a plain underline.
+            string tempFile = Path.GetTempFileName();
+            try
+            {
+                var liveBuffer = new TerminalBuffer(10, 3);
+                var liveParser = new AnsiParser(liveBuffer);
+                liveParser.Process("\x1b[4:3;58;5;9mA\x1b[4:2;58;2;1;2;3m"); // a curly cell, then a double colored pen
+
+                using (var recorder = new PtyRecorder(tempFile, 10, 3))
+                {
+                    recorder.RecordSnapshot(liveBuffer);
+                    byte[] next = Encoding.UTF8.GetBytes("B");
+                    recorder.RecordChunk(next, next.Length);
+                }
+
+                var replayBuffer = new TerminalBuffer(10, 3);
+                var replayParser = new AnsiParser(replayBuffer);
+                var runner = new ReplayRunner(tempFile);
+                await runner.RunAsync(
+                    onDataCallback: data =>
+                    {
+                        replayParser.Process(Encoding.UTF8.GetString(data));
+                        return Task.CompletedTask;
+                    },
+                    onResizeCallback: (cols, rows) =>
+                    {
+                        replayBuffer.Resize(cols, rows);
+                        return Task.CompletedTask;
+                    },
+                    onSnapshotCallback: snapshot =>
+                    {
+                        replayBuffer.ApplySnapshot(snapshot);
+                        return Task.CompletedTask;
+                    }, ct: TestContext.Current.CancellationToken);
+
+                Assert.Equal(new CellUnderline(UnderlineStyle.Curly, null, 9), replayBuffer.GetUnderlineAbsolute(0, 0));
+                Assert.Equal(new CellUnderline(UnderlineStyle.Double, TermColor.FromRgb(1, 2, 3)), replayBuffer.GetUnderlineAbsolute(1, 0));
+            }
+            finally
+            {
+                if (File.Exists(tempFile)) File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
         public async Task ReplayV2_Snapshot_RoundTrip_PreservesPendingWrap()
         {
             // A snapshot taken right after output fills the last column carries

@@ -711,6 +711,7 @@ namespace Ntilde.VT
                    a.IsFaint == b.IsFaint &&
                    a.IsItalic == b.IsItalic &&
                    a.IsUnderline == b.IsUnderline &&
+                   Equals(a.Underline, b.Underline) &&
                    a.IsBlink == b.IsBlink &&
                    a.IsStrikethrough == b.IsStrikethrough &&
                    a.FgIndex == b.FgIndex &&
@@ -914,6 +915,7 @@ namespace Ntilde.VT
             // teaching GetGraphemeAbsolute about the same table; this is the drawing half (#164
             // item 4). Fetched once per row rather than per cell.
             var extendedText = _scrollback.GetExtendedTextMap(absRow);
+            var underlines = _scrollback.GetUnderlineMap(absRow);
 
             for (int c = 0; c < viewportCols; c++)
             {
@@ -939,6 +941,9 @@ namespace Ntilde.VT
                         IsFaint = cell.IsFaint,
                         IsItalic = cell.IsItalic,
                         IsUnderline = cell.IsUnderline,
+                        Underline = cell.IsUnderline && underlines != null && underlines.TryGet(c, out CellUnderline? underline)
+                            ? underline
+                            : null,
                         IsBlink = cell.IsBlink,
                         IsStrikethrough = cell.IsStrikethrough,
                         FgIndex = cell.FgIndex,

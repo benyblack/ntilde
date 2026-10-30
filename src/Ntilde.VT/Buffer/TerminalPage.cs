@@ -41,6 +41,7 @@ namespace Ntilde.VT.Storage
         // Indexed by rowIndex (0..RowsInPage-1). Each element is null if that row has no metadata.
         private SmallMap<string>?[]? _extendedText;
         private SmallMap<Ntilde.VT.Links.Hyperlink>?[]? _hyperlinks;
+        private SmallMap<Ntilde.VT.CellUnderline>?[]? _underlines;
 
         public TerminalPage(int rowsInPage, int cols)
         {
@@ -114,6 +115,7 @@ namespace Ntilde.VT.Storage
             _isWrappedMask = 0;
             _extendedText = null;
             _hyperlinks = null;
+            _underlines = null;
             ResetCells();
         }
 
@@ -128,6 +130,7 @@ namespace Ntilde.VT.Storage
             _isWrappedMask = 0;
             _extendedText = null;
             _hyperlinks = null;
+            _underlines = null;
             // Clear the usable portion so pooled memory doesn't retain stale data.
             Cells.AsSpan(0, RowsInPage * Cols).Clear();
             ArrayPool<TerminalCell>.Shared.Return(Cells, clearArray: false);
@@ -201,6 +204,18 @@ namespace Ntilde.VT.Storage
         public SmallMap<Ntilde.VT.Links.Hyperlink>? GetHyperlinkMap(int rowIndex) =>
             _hyperlinks?[rowIndex];
 
+        /// <summary>Installs a row's underline side table (#270); the page takes ownership of the map.</summary>
+        public void SetUnderlineFromMap(int rowIndex, SmallMap<Ntilde.VT.CellUnderline>? source)
+        {
+            if (source == null || source.Count == 0) return;
+            _underlines ??= new SmallMap<Ntilde.VT.CellUnderline>?[RowsInPage];
+            _underlines[rowIndex] = source;
+        }
+
+        /// <summary>Returns the raw SmallMap for the row's underline styles and colors (null if none).</summary>
+        public SmallMap<Ntilde.VT.CellUnderline>? GetUnderlineMap(int rowIndex) =>
+            _underlines?[rowIndex];
+
         /// <summary>
         /// Clears a row's wrap flag and side tables. Must be called when a row
         /// slot is vacated (pop) so a later append into the same slot cannot
@@ -211,6 +226,7 @@ namespace Ntilde.VT.Storage
             SetRowWrapped(rowIndex, false);
             if (_extendedText != null) _extendedText[rowIndex] = null;
             if (_hyperlinks != null) _hyperlinks[rowIndex] = null;
+            if (_underlines != null) _underlines[rowIndex] = null;
         }
 
         /// <summary>
