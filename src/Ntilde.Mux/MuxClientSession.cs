@@ -329,7 +329,9 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
     public void DisableFlightRecording()
     {
-        Volatile.Write(ref _flightRecording, 0);
+        // An unowned/disabled recorder needs no server action. In particular, closing a
+        // not-yet-attached share must not wait behind its parser or clear another view's ring.
+        if (Interlocked.Exchange(ref _flightRecording, 0) == 0) return;
         _client.PostRequest(MuxMethods.DisableFlightRecording, new SessionIdParams { SessionId = Id }, MuxJsonContext.Default.SessionIdParams);
     }
 

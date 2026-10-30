@@ -999,7 +999,7 @@ namespace Ntilde.Pty
                 Task.WhenAny(completion.Task, _outputConsumerStopped.Task).GetAwaiter().GetResult();
                 if (completion.Task.IsCompleted && !completion.Task.IsCanceled) return completion.Task.GetAwaiter().GetResult();
             }
-            completion.TrySetCanceled();
+            completion.TrySetCanceled(CancellationToken.None);
             return AfterOutputConsumerStopped(operation, allowStopped);
         }
 

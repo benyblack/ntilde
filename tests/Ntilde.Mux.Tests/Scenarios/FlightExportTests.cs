@@ -6,6 +6,34 @@ namespace Ntilde.Mux.Tests.Scenarios;
 
 public sealed class FlightExportTests
 {
+    [Fact]
+    public async Task Disabling_an_unowned_flight_recorder_does_not_wait_for_the_parser_or_clear_another_clients_ring()
+    {
+        using var host = new MuxTestHost();
+        using var ownerClient = await host.ConnectClientAsync();
+        using var otherClient = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(ownerClient);
+        using MuxClientSession owner = ownerClient.OpenSession(id, "scripted");
+        using MuxClientSession other = otherClient.OpenSession(id, "scripted");
+        owner.EnableFlightRecording(1 << 20);
+        await ownerClient.PingAsync(TestContext.Current.CancellationToken);
+        var mux = host.Mux(id);
+        using var parked = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        Task<bool> parking = mux.InvokeAsync(() => { parked.Set(); return release.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken); });
+        Assert.True(parked.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        try
+        {
+            other.DisableFlightRecording();
+            await otherClient.PingAsync(TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.True(host.Fake(id).IsFlightRecording);
+            Assert.True(owner.IsFlightRecording);
+            Assert.False(other.IsFlightRecording);
+        }
+        finally { release.Set(); }
+        Assert.True(await parking);
+    }
+
     [Theory]
     [InlineData("start")]
     [InlineData("enable")]
