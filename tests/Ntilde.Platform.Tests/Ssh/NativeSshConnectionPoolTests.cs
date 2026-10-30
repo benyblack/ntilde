@@ -39,6 +39,59 @@ public sealed class NativeSshConnectionPoolTests
     }
 
     [Fact]
+    public async Task TheConnectionAndEachTab_ParkInTheNativeWait_OnThreadsOfTheirOwn()
+    {
+        // #173: both loops slept 25 ms between polls. The connection's carries the forwards' traffic, and a tab's its
+        // shell's output; each now parks in the native wait, on a thread of its own (the #81 starvation family).
+        var interop = new SharingInterop();
+        var pool = new NativeSshConnectionPool();
+        using NativeSshSession tab = new(CreateProfile(), interop: interop, connectionPool: pool);
+        nint connection = interop.Connections.Single();
+        nint shell = interop.OpenedShells.Single().Handle;
+
+        await WaitUntilAsync(() => interop.WaitedOn(connection) && interop.WaitedOn(shell));
+
+        Assert.False(interop.PolledOnPoolThread(connection));
+        Assert.False(interop.PolledOnPoolThread(shell));
+    }
+
+    [Fact]
+    public async Task AnOutOfMemoryOnTheConnectionsPollThread_EndsTheConnection_NotTheProcess()
+    {
+        // Codex review of #655: the loop's catch let OutOfMemoryException through on purpose. On Task.Run that faulted a
+        // task and left the connection unpolled; on a thread of its own it would end the process, every tab with it.
+        // It fails the connection now, as any other poll failure does.
+        var interop = new SharingInterop();
+        var pool = new NativeSshConnectionPool();
+        using NativeSshSession tab = new(CreateProfile(), interop: interop, connectionPool: pool);
+        nint connection = interop.Connections.Single();
+
+#pragma warning disable CA2201 // The runtime's own exception, simulated: the one the loop's catch let through.
+        interop.PollFailures[connection] = new OutOfMemoryException("simulated");
+#pragma warning restore CA2201
+
+        await WaitUntilAsync(() => interop.ClosedHandles.Contains(connection));
+        Assert.Equal(0, pool.Count);
+    }
+
+    [Fact]
+    public async Task AConnectionWhoseCloseThrowsWhileItFails_DoesNotEndTheProcess()
+    {
+        // What the loop's failure handling calls can throw past it too: here the native close.
+        var interop = new SharingInterop();
+        var pool = new NativeSshConnectionPool();
+        var logged = new ConcurrentQueue<string>();
+        using NativeSshSession tab = new(CreateProfile(), log: logged.Enqueue, interop: interop, connectionPool: pool);
+        nint connection = interop.Connections.Single();
+
+        interop.CloseFailures[connection] = true;
+        interop.PollFailures[connection] = new InvalidOperationException("poll failed");
+
+        await WaitUntilAsync(() => logged.Any(line => line.Contains("poll thread ended", StringComparison.OrdinalIgnoreCase)));
+        Assert.Equal(0, pool.Count);
+    }
+
+    [Fact]
     public void ProfileWithoutMultiplexing_ConnectsPerTab()
     {
         var interop = new SharingInterop();
@@ -545,6 +598,27 @@ public sealed class NativeSshConnectionPoolTests
     private sealed class SharingInterop : INativeSshInterop
     {
         private readonly ConcurrentDictionary<nint, ConcurrentQueue<NativeSshEvent>> _events = new();
+
+        // Per handle: whether its poll loop polled on a pool thread, and whether it parked in the native wait.
+        private readonly ConcurrentDictionary<nint, bool> _polledOnPoolThread = new();
+        private readonly ConcurrentDictionary<nint, bool> _waitedOn = new();
+
+        public bool? PolledOnPoolThread(nint handle) => _polledOnPoolThread.TryGetValue(handle, out bool pool) ? pool : null;
+
+        /// <summary>A handle's next poll throws this.</summary>
+        public ConcurrentDictionary<nint, Exception> PollFailures { get; } = new();
+
+        /// <summary>Closing one of these handles throws.</summary>
+        public ConcurrentDictionary<nint, bool> CloseFailures { get; } = new();
+
+        public bool WaitedOn(nint handle) => _waitedOn.ContainsKey(handle);
+
+        public bool WaitForEvent(NovaSshSafeHandle sessionHandle, TimeSpan timeout)
+        {
+            _waitedOn[sessionHandle.DangerousGetHandle()] = true;
+            Thread.Sleep(timeout < TimeSpan.FromMilliseconds(10) ? timeout : TimeSpan.FromMilliseconds(10));
+            return true;
+        }
         private int _nextHandle = 100;
 
         public int PlainConnectCount { get; private set; }
@@ -632,6 +706,12 @@ public sealed class NativeSshConnectionPoolTests
 
         public NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle)
         {
+            _polledOnPoolThread.TryAdd(sessionHandle.DangerousGetHandle(), Thread.CurrentThread.IsThreadPoolThread);
+            if (PollFailures.TryRemove(sessionHandle.DangerousGetHandle(), out Exception? failure))
+            {
+                throw failure;
+            }
+
             if (!Queue(sessionHandle.DangerousGetHandle()).TryDequeue(out NativeSshEvent? nextEvent))
             {
                 return null;
@@ -661,7 +741,14 @@ public sealed class NativeSshConnectionPoolTests
             Responses.Enqueue((sessionHandle.DangerousGetHandle(), responseKind));
         }
 
-        public void Close(NovaSshSafeHandle sessionHandle) => ClosedHandles.Add(sessionHandle.DangerousGetHandle());
+        public void Close(NovaSshSafeHandle sessionHandle)
+        {
+            ClosedHandles.Add(sessionHandle.DangerousGetHandle());
+            if (CloseFailures.ContainsKey(sessionHandle.DangerousGetHandle()))
+            {
+                throw new InvalidOperationException("close failed");
+            }
+        }
 
         public int OpenDirectTcpIp(NovaSshSafeHandle sessionHandle, NativePortForwardOpenOptions options) => 1;
 

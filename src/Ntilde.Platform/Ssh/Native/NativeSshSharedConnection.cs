@@ -21,8 +21,6 @@ namespace Ntilde.Platform.Ssh.Native;
                     "would let one tab end a connection other tabs still hold.")]
 internal sealed class NativeSshSharedConnection
 {
-    private static readonly TimeSpan PollDelay = TimeSpan.FromMilliseconds(25);
-
     private readonly NativeSshConnectionPool _pool;
     private readonly INativeSshInterop _interop;
     private readonly ISshInteractionHandler? _interactionHandler;
@@ -34,7 +32,7 @@ internal sealed class NativeSshSharedConnection
     private readonly List<Lease> _leases = [];
     private readonly NovaSshSafeHandle _handle;
     private readonly NativePortForwardSession? _forwards;
-    private readonly Task _pollTask;
+    private readonly Thread _pollThread;
     private TimeSpan _persist;
     private Timer? _persistTimer;
     private bool _connected;
@@ -78,7 +76,9 @@ internal sealed class NativeSshSharedConnection
         }
 
         _log($"[NativeSshSharedConnection] connecting target={_target} forwards={profile.Forwards.Count}");
-        _pollTask = Task.Run(PollLoopAsync, _pollCts.Token);
+        // As a tab's session: the loop parks in the native wait (#173), so it holds a thread of its own, not the pool's.
+        _pollThread = new Thread(RunPollLoop) { IsBackground = true, Name = "SshConnectionPoll" };
+        _pollThread.Start();
     }
 
     /// <summary>
@@ -295,14 +295,7 @@ internal sealed class NativeSshSharedConnection
         // before the forwards are disposed. The poll loop itself cannot wait for itself.
         if (!fromPollLoop)
         {
-            try
-            {
-                _pollTask.Wait(TimeSpan.FromSeconds(2), CancellationToken.None);
-            }
-            catch (AggregateException ex) when (ex.InnerExceptions.All(inner => inner is TaskCanceledException or OperationCanceledException))
-            {
-                // The loop ended by being cancelled, which is what was asked of it.
-            }
+            _pollThread.Join(TimeSpan.FromSeconds(2));
         }
 
         _forwards?.Dispose();
@@ -314,7 +307,28 @@ internal sealed class NativeSshSharedConnection
         }
     }
 
-    private async Task PollLoopAsync()
+    // The poll thread's entry: nothing may leave it, as in NativeSshSession.RunPollLoop. What can get this far is what
+    // the loop's failure handling calls: the log and the close.
+    private void RunPollLoop()
+    {
+        try
+        {
+            PollLoop();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                _log($"[NativeSshSharedConnection] target={_target} poll thread ended by {ex.GetType().Name}: {ex.Message}");
+            }
+            catch (Exception)
+            {
+                // The log is what threw; there is nowhere left to report it.
+            }
+        }
+    }
+
+    private void PollLoop()
     {
         try
         {
@@ -323,7 +337,7 @@ internal sealed class NativeSshSharedConnection
                 NativeSshEvent? nextEvent = _interop.PollEvent(_handle);
                 if (nextEvent == null)
                 {
-                    await Task.Delay(PollDelay, _pollCts.Token).ConfigureAwait(false);
+                    NativeSshEventWait.Park(_interop, _handle);
                     continue;
                 }
 
@@ -357,7 +371,9 @@ internal sealed class NativeSshSharedConnection
                     case NativeSshEventKind.PasswordPrompt:
                     case NativeSshEventKind.PassphrasePrompt:
                     case NativeSshEventKind.KeyboardInteractivePrompt:
-                        await _promptResponder.RespondAsync(nextEvent, _interop, _handle, _interactionHandler, _pollCts.Token, OnPromptAnswered).ConfigureAwait(false);
+                        // Blocks this thread only; the handler's dialog runs on the UI thread and is awaited there.
+                        _promptResponder.RespondAsync(nextEvent, _interop, _handle, _interactionHandler, _pollCts.Token, OnPromptAnswered)
+                            .GetAwaiter().GetResult();
                         break;
                     case NativeSshEventKind.Error:
                         // Each tab's shell reports the failure in its own terminal; this is for the log.
@@ -374,8 +390,10 @@ internal sealed class NativeSshSharedConnection
         {
             // Close cancelled the loop.
         }
-        catch (Exception ex) when (ex is not (OutOfMemoryException or AccessViolationException))
+        catch (Exception ex)
         {
+            // Every failure, OutOfMemoryException included: on a thread of its own, an exception that leaves the loop
+            // ends the process, and the connection is failed and closed for the tabs instead (Codex review of #655).
             if (!_pollCts.IsCancellationRequested)
             {
                 _log($"[NativeSshSharedConnection] target={_target} poll loop failed: {ex.Message}");

@@ -11,12 +11,11 @@ namespace Ntilde.Platform.Ssh.Sessions;
 
 public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
 {
-    private static readonly TimeSpan PollDelay = TimeSpan.FromMilliseconds(25);
 
     private readonly INativeSshInterop _interop;
     private readonly ISshInteractionHandler? _interactionHandler;
     private readonly CancellationTokenSource _pollCts = new();
-    private readonly Task _pollTask;
+    private readonly Thread _pollThread;
     // See RustPtySession's field of the same name for why this is Utf8ChunkDecoder rather than
     // Encoding.UTF8.GetDecoder(): byte-identical output, plus a reportable stream offset and
     // pending tail for the multiplexer snapshot.
@@ -149,7 +148,10 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
 
             _isRunning = 1;
             ShellArguments = $"{profile.User}@{profile.Host}:{profile.Port}";
-            _pollTask = Task.Run(PollLoopAsync);
+            // A thread of its own: the loop parks in the native wait between events (#173), and a parked pool
+            // thread per SSH tab is the starvation the #81 family was.
+            _pollThread = new Thread(RunPollLoop) { IsBackground = true, Name = "SshSessionPoll" };
+            _pollThread.Start();
         }
         catch
         {
@@ -380,12 +382,10 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         // cancellation token — can still race, and then teardown proceeding anyway is the lesser
         // evil. CloseNativeHandle is last (the loop's own finally usually beats it to the close);
         // the native close tears down every channel the forward session's best-effort closes miss.
-        try
+        // The loop cannot wait for itself: a handler on it may dispose the session.
+        if (Thread.CurrentThread != _pollThread)
         {
-            _pollTask.Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (AggregateException ex) when (ex.InnerExceptions.All(inner => inner is TaskCanceledException or OperationCanceledException))
-        {
+            _pollThread.Join(TimeSpan.FromSeconds(2));
         }
 
         _portForwardSession?.Dispose();
@@ -393,7 +393,29 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         _pollCts.Dispose();
     }
 
-    private async Task PollLoopAsync()
+    // The poll thread's entry. Nothing may leave it: an exception that escapes a thread of its own ends the process,
+    // where the Task.Run this replaced only faulted its task (Codex review of #655). What can still get this far is
+    // what the loop's own failure handling calls: an output or exit subscriber, the log, the close.
+    private void RunPollLoop()
+    {
+        try
+        {
+            PollLoop();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                _log($"[NativeSshSession] Poll thread ended by {ex.GetType().Name}: {ex.Message}");
+            }
+            catch (Exception)
+            {
+                // The log is what threw; there is nowhere left to report it.
+            }
+        }
+    }
+
+    private void PollLoop()
     {
         try
         {
@@ -409,7 +431,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
                 NativeSshEvent? nextEvent = _interop.PollEvent(handle);
                 if (nextEvent == null)
                 {
-                    await Task.Delay(PollDelay, _pollCts.Token).ConfigureAwait(false);
+                    NativeSshEventWait.Park(_interop, handle);
                     continue;
                 }
 
@@ -454,7 +476,9 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
                     case NativeSshEventKind.PasswordPrompt:
                     case NativeSshEventKind.PassphrasePrompt:
                     case NativeSshEventKind.KeyboardInteractivePrompt:
-                        await HandleInteractionAsync(nextEvent).ConfigureAwait(false);
+                        // Blocks this thread only, as the exec poll thread does: the handler shows its dialog on the UI
+                        // thread and is awaited there, never waited on.
+                        HandleInteractionAsync(nextEvent).GetAwaiter().GetResult();
                         break;
                     case NativeSshEventKind.Closed:
                         _metrics.MarkDisconnected("Closed");
