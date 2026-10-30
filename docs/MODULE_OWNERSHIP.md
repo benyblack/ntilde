@@ -39,6 +39,12 @@ invariant changes.
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops content
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
+- **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
+  decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,
+  and owns DECSDM state, page/scroll-region clipping and retirement. Clip metadata is copied into
+  render snapshots; the renderer only applies it. Discarded pixels never reappear after scrolling
+  or widening. An immutable cell-size override is authoritative for shared sessions and travels
+  in parser snapshots; bitmap handles remain host-owned and are not serialized.
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
 - **Lock re-entrancy contract:** `Lock` is a non-recursive `ReaderWriterLockSlim`. `EnterReadLockIfNeeded()` returns `false` (and acquires nothing) when a read *or* write lock is already held. `EnterWriteLockIfNeeded()` returns `false` only when a *write* lock is already held — calling it while holding a read lock throws `LockRecursionException` (upgrading is not supported), it does **not** return `false`. Both return `true` when they actually acquired the lock. The returned `bool` says *whether this call took the lock* — callers must pass it to the matching `Exit…IfNeeded(..., lockTaken)` and must **not** unlock when it is `false`. Treating a `false` return as "lock acquired" double-unlocks (or unlocks a caller's outer lock).
 - **`GetRowAbsolute()` null contract:** returns `null` for any absolute row that has no persistent `TerminalRow` — including **paged-out scrollback rows** (scrollback lives in `ScrollbackPages`, not as row objects), out-of-range rows, and negative indices. To read scrollback content use the cell/grapheme accessors (`GetCellAbsolute`, `GetGraphemeAbsolute`), which page it in; callers that assume a non-null row for scrollback indices will NRE.
@@ -270,6 +276,10 @@ invariant changes.
   the advisory `sessionChanged` interval. Refusing sinks are dropped under the existing bounded
   transport policy; the parse thread never waits for a reader. Capability frames contain no sharing
   counts, and v1 sharing counts remain unknown.
+- **SIXEL-aware peers opt into ordered pixel metrics.** `SupportsSixelScrolling` in a presentation
+  opts into `sixelCellSize` notifications on either negotiated version, before subsequent resize/output.
+  Initial cell metrics travel in the attach snapshot. Pending resizes coalesce per sender; observers
+  follow the authoritative geometry without changing it. Legacy peers receive no new notification.
 - **The text client never relays raw output.** It renders every frame from its own
   `CaptureRenderSnapshot`, so a device query (DA, CPR, XTGETTCAP) the shell emits is answered by
   the model's parser and never reaches the terminal the client draws on

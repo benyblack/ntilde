@@ -68,6 +68,9 @@ public sealed record MuxPresentation
     public int Rows { get; init; }
     public float CellWidthPx { get; init; }
     public float CellHeightPx { get; init; }
+    /// <summary>Opt in to ordered SIXEL cell-size updates. Older peers omit this extension.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool SupportsSixelScrolling { get; init; }
     /// <summary>ARGB as <c>TermColor.ToUint()</c>; null = parser default.</summary>
     public uint? DefaultFg { get; init; }
     public uint? DefaultBg { get; init; }
@@ -291,7 +294,15 @@ public sealed record FaultedNotification
     public string? Message { get; init; }
 }
 
-/// <summary>Ordered keyboard state for peers opting in with an explicit presentation mask, on either protocol version.</summary>
+/// <summary>Authoritative SIXEL cell size for opted-in peers, independent of advisory sharing events.</summary>
+public sealed record SixelCellSizeNotification
+{
+    public Guid SessionId { get; init; }
+    public float CellWidthPx { get; init; }
+    public float CellHeightPx { get; init; }
+}
+
+/// <summary>Ordered keyboard state for opted-in peers.</summary>
 public sealed record KeyboardCapabilitiesNotification
 {
     public Guid SessionId { get; init; }

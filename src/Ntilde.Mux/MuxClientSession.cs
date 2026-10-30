@@ -53,6 +53,17 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private int _killedElsewhere;
     private int _kittyKeyboardSupportedFlags = 1;
 
+    /// <summary>Delivery thread, before subsequent output: the daemon changed its SIXEL layout metrics.</summary>
+    public event Action<float, float>? SixelCellSizeChanged;
+
+    internal void DeliverSixelCellSize(float width, float height)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        if (!float.IsFinite(width) || !float.IsFinite(height) || width <= 0 || height <= 0)
+            throw new InvalidDataException("Invalid SIXEL cell metrics in mux notification.");
+        SixelCellSizeChanged?.Invoke(width, height);
+    }
+
     public int KittyKeyboardSupportedFlags => Volatile.Read(ref _kittyKeyboardSupportedFlags);
 
     internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared)

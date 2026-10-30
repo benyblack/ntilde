@@ -146,6 +146,14 @@ A focused module that owns the record/replay file format and the snapshot/byte-s
 
 ## 5. Renderer Primitives — `Ntilde.Rendering`
 
+SIXEL cursor advancement and clipping belong to VT and run without a bitmap decoder. `SixelGeometry`
+measures bounded raster extents for headless parsing; `TerminalBuffer` owns placement, scroll-region
+clipping and image retirement. The renderer applies the snapshot's clipping metadata without deciding
+scrolling semantics. DECSDM follows xterm polarity: `?80h` disables SIXEL-driven scrolling and draws
+at page origin; reset restores inline scrolling. Shared clients use the daemon's ordered pixel cell
+size rather than their own font/DIP metrics. Parser snapshots preserve that override; legacy raw-only
+recordings still rely on the replay host's configured cell metrics.
+
 Skia-only helpers: glyph atlas (`GlyphAtlas`), glyph cache (`GlyphCache`), pixel grid math (`PixelGrid`), font wrappers (`SharedSKFont`, `SharedSKTypeface`), image registry, sixel decoder, render performance metrics.
 
 This module is intentionally **Avalonia-agnostic**. The actual Avalonia `DrawOperation` and viewport (`TerminalDrawOperation`, `TerminalView`) live in `src/Ntilde.App/Shell/` today — see Known Tech Debt below for the planned extraction.
@@ -408,6 +416,7 @@ keeps a v1 peer's wire shape exactly the v1 shape.
 | `DetachParams.UserDetached` | `bool?`: true on a deliberate detach ("Pane: Detach", the shared-close prompt's Detach, the text client's `Ctrl+\ d` chord); absent/null is an ordinary detach |
 | Notification `sessionChanged` | attached-count, title or cwd changed; coalesced to at most one per session per 100 ms (§4 below); sent to v2 clients only |
 | Notification `keyboardCapabilities` | Ordered keyboard ceiling for clients opting in with an explicit presentation mask, on either negotiated version; before the attach snapshot and subsequent output, independent of sharing-event coalescing |
+| Notification `sixelCellSize` | Authoritative device-pixel cell size, ordered before resize/output for peers opting in with `SupportsSixelScrolling`; initial values travel in the parser snapshot |
 | Notification `killed` | sent to every v2 subscriber except the killer, before that session's `exited` |
 | Error `session_attached` | `MuxErrorCodes.SessionAttached`: an `IfUnattached` attach refused because another interactive client is already attached |
 

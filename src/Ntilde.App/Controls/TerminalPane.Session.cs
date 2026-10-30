@@ -57,6 +57,17 @@ namespace Ntilde.Controls
             return "unknown";
         }
 
+        private void SyncLocalSixelCellSize()
+        {
+            if (Parser is not { } parser || Session is MuxClientSession) return;
+            double scale = TermView.EffectiveRenderScaling;
+            if (!double.IsFinite(scale) || scale <= 0) scale = 1;
+            float width = (float)(TermView.Metrics.CellWidth * scale);
+            float height = (float)(TermView.Metrics.CellHeight * scale);
+            if (!float.IsFinite(width) || !float.IsFinite(height) || width <= 0 || height <= 0) return;
+            parser.SixelCellSizeOverride = new SixelCellSize(width, height);
+        }
+
         private void InitializeSession(string? shell, TerminalProfile? profile, int cols, int rows, string? explicitArgs = null)
         {
             if (Session != null || Buffer == null) return;
@@ -72,6 +83,7 @@ namespace Ntilde.Controls
             float ch = TermView.Metrics.CellHeight;
             if (cw > 0) Parser!.CellWidth = cw;
             if (ch > 0) Parser!.CellHeight = ch;
+            SyncLocalSixelCellSize();
 
             // Setup Session.
             //

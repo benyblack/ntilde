@@ -447,6 +447,11 @@ namespace Ntilde.Controls
             if (cw > 0) Parser!.CellWidth = cw;
             if (ch > 0) Parser!.CellHeight = ch;
 
+            mux.SixelCellSizeChanged += (width, height) =>
+            {
+                if (!IsCurrentMux(mux) || Parser is not { } parser) return;
+                parser.SixelCellSizeOverride = new SixelCellSize(width, height);
+            };
             mux.SnapshotReceived += snapshot => HandleMuxSnapshot(mux, snapshot);
             mux.StreamResize += (c, r) => HandleMuxStreamResize(mux, c, r);
             // Disconnected can fire on any thread (even concurrently with a delivery); both marshal. A remote
@@ -710,6 +715,7 @@ namespace Ntilde.Controls
                 Rows = rows,
                 CellWidthPx = (float)(TermView.Metrics.CellWidth * scale),
                 CellHeightPx = (float)(TermView.Metrics.CellHeight * scale),
+                SupportsSixelScrolling = true,
                 DefaultFg = theme?.Foreground.ToUint(),
                 DefaultBg = theme?.Background.ToUint(),
                 KittyKeyboardEnabled = _settings?.EnableKittyKeyboardProtocol ?? true,

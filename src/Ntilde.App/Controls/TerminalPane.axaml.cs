@@ -862,6 +862,7 @@ namespace Ntilde.Controls
                     float chResize = TermView.Metrics.CellHeight;
                     if (cwResize > 0) Parser.CellWidth = cwResize;
                     if (chResize > 0) Parser.CellHeight = chResize;
+                    SyncLocalSixelCellSize();
                 }
                 Session?.Resize(c, r);
 
@@ -889,6 +890,7 @@ namespace Ntilde.Controls
                 {
                     Parser.CellWidth = cwMetric;
                     Parser.CellHeight = chMetric;
+                    SyncLocalSixelCellSize();
                 }
 
                 // The daemon's parser answers size reports, so it needs the new cell pixels too.
@@ -1039,6 +1041,7 @@ namespace Ntilde.Controls
                 float ch = TermView.Metrics.CellHeight;
                 if (cw > 0) Parser.CellWidth = cw;
                 if (ch > 0) Parser.CellHeight = ch;
+                SyncLocalSixelCellSize();
 
                 // Keep OSC 10/11 (fg/bg color query) responses in sync with the active theme,
                 // including profile-specific theme overrides (see effectiveSettings above).

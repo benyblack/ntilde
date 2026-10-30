@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "7fe1f1194a3ed69b20c0ca7b841da43ee0e312a470451157f0d926f5834a94de",
+  "matrixSha256": "bb519f86b83a495b6368eaf847a91cd1125e64c00ef76bcff38982803d5f4e52",
   "summary": {
     "totalRows": 65,
-    "supportedCount": 29,
+    "supportedCount": 30,
     "partialCount": 31,
     "experimentalCount": 1,
-    "notSupportedCount": 3,
+    "notSupportedCount": 2,
     "wontSupportCount": 1,
-    "rowsWithLinkedEvidence": 45,
-    "supportedRowsWithLinkedEvidence": 29,
+    "rowsWithLinkedEvidence": 46,
+    "supportedRowsWithLinkedEvidence": 30,
     "errorCount": 0,
     "warningCount": 0
   },
@@ -850,7 +850,7 @@
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
       "feature": "DECRQM / DECRPM (mode query)",
       "status": "\u2705 Supported",
-      "specOrNotes": "Reports live set/reset state for private modes 1, 6, 7, 25, 47, 1000, 1002, 1003, 1004, 1006, 1047, 1049, 2004, 2026 and ANSI modes 4 (IRM), 12 (SRM), 20 (LNM); unrecognized modes report \u0060Pm=0\u0060. Lets apps (e.g. probing \u0060?2026\u0060 synchronized output) detect real support instead of assuming it from unanswered queries",
+      "specOrNotes": "Reports live set/reset state for private modes 1, 6, 7, 25, 47, 80, 1000, 1002, 1003, 1004, 1006, 1047, 1049, 2004, 2026 and ANSI modes 4 (IRM), 12 (SRM), 20 (LNM); unrecognized modes report \u0060Pm=0\u0060. Lets apps (e.g. probing \u0060?2026\u0060 synchronized output) detect real support instead of assuming it from unanswered queries",
       "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/DecrqmTests.cs\u0060",
       "evidenceKinds": [
         "unit"
@@ -1342,15 +1342,30 @@
     {
       "section": "10) SIXEL",
       "feature": "SIXEL scrolling behavior",
-      "status": "\u274C Not supported",
-      "specOrNotes": "",
-      "evidenceText": "\u2014",
-      "evidenceKinds": [],
-      "evidenceLinks": [],
-      "hasAutomatedEvidenceSignal": false,
-      "hasLinkedEvidence": false,
-      "ownership": "Buffer\u002BRenderer",
-      "knownDeviations": "",
+      "status": "\u2705 Supported",
+      "specOrNotes": "DECSDM (\u0060?80\u0060), xterm polarity",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SixelScrollingTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSixelScrollingTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/SixelScrollingRenderTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/SixelScrollingRenderTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.Mux.Tests/Headless/HeadlessSixelScrollingTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/SixelScrollingTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer\u002BRenderer",
+      "knownDeviations": "Default scrolling reserves rows without writing text cells or wrapping wide images. Set \u0060?80\u0060 places at page origin without moving the text cursor; reset restores scrolling. Regional and alternate-screen scrolling clip discarded pixels; right-edge clipping survives widening. Shared sessions use ordered authoritative device-pixel cell sizes, including headless parsing and snapshot resumption; updated GUI/daemon required for shared layout parity. Existing below-image cursor and immediate trailing-newline policy is retained. Cursor-right extension \u0060?8452\u0060 is not implemented; placement remains cell-aligned.",
       "sourceLine": 177
     },
     {

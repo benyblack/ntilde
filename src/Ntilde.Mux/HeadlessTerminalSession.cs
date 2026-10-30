@@ -56,6 +56,8 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly Dictionary<IMuxFrameSink, MuxPresentation> _kittyBySink = new();
     private readonly HashSet<IMuxFrameSink> _keyboardCapabilitySinks = new(); // opt-in includes read-only observers
     private bool _keyboardCapabilitiesPending;
+    private readonly HashSet<IMuxFrameSink> _sixelLayoutSinks = new();
+    private bool _sixelCellSizePending;
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private long _rawOffset;
     private long _lastOutputUnixMs; // 0 until the first chunk; written by the parse thread only, once per chunk
@@ -138,6 +140,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         _parser = new AnsiParser(_buffer, options.ForceConPtyFiltering)
         {
             ImageDecoder = null,
+            SixelCellSizeOverride = new SixelCellSize(10, 20),
             AllowNativeKittyGraphics = false,
             KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
         };
@@ -662,6 +665,7 @@ public sealed class HeadlessTerminalSession : IDisposable
                 Execute(item);
                 if (item.Kind == WorkKind.Exit && item.Terminal) break;
                 FlushKeyboardCapabilities();
+                FlushSixelCellSize();
                 if (_sessionChangePending && SessionChangeWaitMs() == 0) FlushSessionChanged();
             }
         }
@@ -886,6 +890,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
         if (!_subscribers.Contains(sink)) _subscribers.Add(sink);
         _attachRequestIds[sink] = requestId;
+        if (presentation.SupportsSixelScrolling) _sixelLayoutSinks.Add(sink);
         if (presentation.KittyKeyboardSupportedFlags.HasValue) _keyboardCapabilitySinks.Add(sink);
 
         // The kitty flag is recorded only once the subscription has taken effect: a refused or failed
@@ -982,6 +987,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         _readOnlySinks.Remove(sink);
         _keyboardCapabilitySinks.Remove(sink);
+        _sixelLayoutSinks.Remove(sink);
         _attachRequestIds.Remove(sink);
         if (_kittyBySink.Remove(sink)) RecomputeKitty();
         ReportSubscription(sink, subscribed: false, readOnly: false);
@@ -1032,6 +1038,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         _attachRequestIds.Clear();
         _kittyBySink.Clear();
         _keyboardCapabilitySinks.Clear();
+        _sixelLayoutSinks.Clear();
     }
 
     private void ReportSubscription(IMuxFrameSink sink, bool subscribed, bool readOnly)
@@ -1048,8 +1055,15 @@ public sealed class HeadlessTerminalSession : IDisposable
     /// </summary>
     private void ApplyPresentation(MuxPresentation presentation)
     {
-        if (presentation.CellWidthPx > 0) _parser.CellWidth = presentation.CellWidthPx;
-        if (presentation.CellHeightPx > 0) _parser.CellHeight = presentation.CellHeightPx;
+        float width = float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0 ? presentation.CellWidthPx : _parser.CellWidth;
+        float height = float.IsFinite(presentation.CellHeightPx) && presentation.CellHeightPx > 0 ? presentation.CellHeightPx : _parser.CellHeight;
+        if (_parser.SixelCellWidthPx != width || _parser.SixelCellHeightPx != height)
+        {
+            _parser.SixelCellSizeOverride = new SixelCellSize(width, height);
+            _sixelCellSizePending = true;
+        }
+        if (float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0) _parser.CellWidth = presentation.CellWidthPx;
+        if (float.IsFinite(presentation.CellHeightPx) && presentation.CellHeightPx > 0) _parser.CellHeight = presentation.CellHeightPx;
         _parser.DefaultForeground = presentation.DefaultFg is uint fg ? TermColor.FromUint(fg) : null;
         _parser.DefaultBackground = presentation.DefaultBg is uint bg ? TermColor.FromUint(bg) : null;
     }
@@ -1064,6 +1078,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         if (!_subscribers.Contains(sink) || _readOnlySinks.Contains(sink)) return;
         _kittyBySink[sink] = presentation;
+        if (presentation.SupportsSixelScrolling && _sixelLayoutSinks.Add(sink)) _sixelCellSizePending = true;
         if (presentation.KittyKeyboardSupportedFlags.HasValue && _keyboardCapabilitySinks.Add(sink))
             _keyboardCapabilitiesPending = true; // The first opt-in resize also needs the current ceiling.
     }
@@ -1138,10 +1153,28 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
+    private void FlushSixelCellSize()
+    {
+        if (!_sixelCellSizePending) return;
+        _sixelCellSizePending = false;
+        if (IsFaulted || _sixelLayoutSinks.Count == 0) return;
+        Broadcast(MuxFrames.Notification(new MuxNotification
+        {
+            Method = MuxMethods.SixelCellSize,
+            Params = MuxFrames.ToElement(new SixelCellSizeNotification
+            {
+                SessionId = Id,
+                CellWidthPx = _parser.SixelCellWidthPx ?? 10,
+                CellHeightPx = _parser.SixelCellHeightPx ?? 20,
+            }, MuxJsonContext.Default.SixelCellSizeNotification),
+        }), _sixelLayoutSinks.Contains);
+    }
+
     private void ApplyResize(int cols, int rows)
     {
         if (cols <= 0 || rows <= 0 || (cols == _buffer.Cols && rows == _buffer.Rows)) return;
         FlushKeyboardCapabilities();
+        FlushSixelCellSize();
 
         // Buffer, then event, then child: bytes the child writes after learning the new size sort
         // after the event every client applies it at.

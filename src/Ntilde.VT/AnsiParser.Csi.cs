@@ -884,6 +884,7 @@ namespace Ntilde.VT
                 case 7: return _buffer.Modes.IsAutoWrapMode ? 1 : 2;             // DECAWM
                 case 25: return _buffer.Modes.IsCursorVisible ? 1 : 2;           // DECTCEM
                 case 47: return _buffer.IsAltScreenActive ? 1 : 2;               // Alt screen (legacy)
+                case 80: return _buffer.Modes.IsSixelDisplayMode ? 1 : 2;        // DECSDM
                 case 1000: return _buffer.Modes.MouseModeX10 ? 1 : 2;
                 case 1002: return _buffer.Modes.MouseModeButtonEvent ? 1 : 2;
                 case 1003: return _buffer.Modes.MouseModeAnyEvent ? 1 : 2;
@@ -936,6 +937,9 @@ namespace Ntilde.VT
                         break;
                     case 7: // DECAWM - Auto Wrap Mode
                         _buffer.Modes.IsAutoWrapMode = enable;
+                        break;
+                    case 80: // DECSDM: set disables SIXEL scrolling, matching xterm.
+                        _buffer.Modes.IsSixelDisplayMode = enable;
                         break;
                     case 1004: // FocusIn/FocusOut event reporting
                         _buffer.Modes.IsFocusEventReporting = enable;

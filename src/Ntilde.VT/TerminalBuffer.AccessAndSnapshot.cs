@@ -614,7 +614,7 @@ namespace Ntilde.VT
                     if (img.IsSticky && img.CellY >= absTop && img.CellY <= absBottom)
                     {
                         img.CellY += n;
-                        if (img.CellY > absBottom)
+                        if (ClipSixelImage(img, absTop, absBottom) || img.CellY > absBottom)
                         {
                             RetireImage(img);
                             _images.RemoveAt(i);
@@ -684,6 +684,11 @@ namespace Ntilde.VT
                         {
                             // Image is below the deleted range, shift it UP
                             img.CellY -= n;
+                            if (ClipSixelImage(img, absTop, absBottom))
+                            {
+                                RetireImage(img);
+                                _images.RemoveAt(i);
+                            }
                         }
                     }
                 }
@@ -1056,7 +1061,7 @@ namespace Ntilde.VT
                 if (img.IsAltScreenImage != _isAltScreen) continue;
 
                 // Simple visibility check
-                if (img.CellY + img.CellHeight > absDisplayStart && img.CellY < absEnd)
+                if (img.CellY + img.CellHeight - img.ClipBottomRows > absDisplayStart && img.CellY + img.ClipTopRows < absEnd)
                 {
                     list.Add(new RenderImageSnapshot
                     {
@@ -1065,6 +1070,9 @@ namespace Ntilde.VT
                         CellWidth = img.CellWidth,
                         CellHeight = img.CellHeight,
                         ImageHandle = img.ImageHandle,
+                        ClipRightColumns = img.ClipRightColumns,
+                        ClipTopRows = img.ClipTopRows,
+                        ClipBottomRows = img.ClipBottomRows,
                         IsSticky = img.IsSticky
                     });
                 }
@@ -1092,6 +1100,7 @@ namespace Ntilde.VT
                 Modes.IsAutoWrapMode = snapshot.IsAutoWrapMode;
                 Modes.IsApplicationCursorKeys = snapshot.IsApplicationCursorKeys;
                 Modes.IsOriginMode = snapshot.IsOriginMode;
+                Modes.IsSixelDisplayMode = snapshot.IsSixelDisplayMode;
                 Modes.IsBracketedPasteMode = snapshot.IsBracketedPasteMode;
                 Modes.IsCursorVisible = snapshot.IsCursorVisible;
 

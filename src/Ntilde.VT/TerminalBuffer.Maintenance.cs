@@ -347,6 +347,7 @@ namespace Ntilde.VT
             {
                 ScrollTop = 0;
                 ScrollBottom = Rows - 1;
+                Modes.IsSixelDisplayMode = false;
                 Modes.IsAutoWrapMode = true;
                 Modes.IsApplicationCursorKeys = false;
 

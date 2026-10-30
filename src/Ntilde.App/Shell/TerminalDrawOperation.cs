@@ -741,6 +741,13 @@ namespace Ntilde.Shell
 
                             canvas.Save();
                             canvas.ClipRect(new SKRect(paddingLeft, 0, (float)Bounds.Width, (float)Bounds.Height));
+                            if (img.ClipTopRows > 0 || img.ClipBottomRows > 0 || img.ClipRightColumns > 0)
+                            {
+                                canvas.ClipRect(new SKRect(x,
+                                    GetRowEdge(rowEdges, visualY + img.ClipTopRows, paddingTop),
+                                    GetColEdge(colEdges, img.CellX + img.CellWidth - img.ClipRightColumns, paddingLeft),
+                                    GetRowEdge(rowEdges, visualY + img.CellHeight - img.ClipBottomRows, paddingTop)));
+                            }
                             // Clear image target region first so transparent/semi-transparent
                             // image pixels do not reveal previously drawn text layers.
                             canvas.DrawRect(rect, imageBgPaint);

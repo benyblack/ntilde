@@ -112,36 +112,34 @@ namespace Ntilde.VT
 
         private void HandleSixel(string dcs)
         {
+            var (pixelWidth, pixelHeight) = SixelGeometry.Measure(dcs);
+            object? handle = null;
             try
             {
-                if (ImageDecoder == null) return;
-
-                object? imageHandle = ImageDecoder.DecodeSixel(dcs, out int pixelWidth, out int pixelHeight);
-                if (imageHandle != null)
+                if (ImageDecoder is not null)
                 {
-                    // Calculate cell dimensions (rough estimate based on current font metrics)
-                    int widthCells = (int)Math.Max(1, Math.Ceiling(pixelWidth / (CellWidth > 0 ? CellWidth : 10f)));
-                    int heightCells = (int)Math.Max(1, Math.Ceiling(pixelHeight / (CellHeight > 0 ? CellHeight : 20f)));
-
-                    int absRow = ImageAnchorRow();
-
-                    var img = new TerminalImage(imageHandle, _buffer.CursorCol, absRow, widthCells, heightCells);
-                    _buffer.AddImage(img);
-
-                    // Position cursor past the image
-                    // We move the cursor relative to current position, but try to avoid redundant newlines
-                    // Tools like 'viu' usually handle their own layout. 
-                    // We just need to ensure the buffer knows we've "used" these cells.
-                    ReserveImageCells(img, widthCells, heightCells);
+                    handle = ImageDecoder.DecodeSixel(dcs, out int decodedWidth, out int decodedHeight);
+                    if (handle is not null)
+                    {
+                        pixelWidth = Math.Clamp(decodedWidth, 0, SixelGeometry.DefaultMaxPixelDimension);
+                        pixelHeight = Math.Clamp(decodedHeight, 0, SixelGeometry.DefaultMaxPixelDimension);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 TerminalLogger.Debug($"[ANSI_PARSER] Sixel decode failed: {ex.Message}");
             }
+            if (pixelWidth <= 0 || pixelHeight <= 0) return;
+            SixelCellSize? size = SixelCellSizeOverride;
+            float cellWidth = size?.WidthPx ?? CellWidth;
+            float cellHeight = size?.HeightPx ?? CellHeight;
+            float cw = float.IsFinite(cellWidth) && cellWidth > 0 ? Math.Max(1, cellWidth) : 10;
+            float ch = float.IsFinite(cellHeight) && cellHeight > 0 ? Math.Max(1, cellHeight) : 20;
+            _buffer.PlaceSixelImage(handle, (int)Math.Ceiling(pixelWidth / cw), (int)Math.Ceiling(pixelHeight / ch));
+            _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
         }
 
-        // OSC 1339: an image tunneled through an OSC, which ConPTY passes on where it filters DCS and
         // APC: kitty graphics after a "Kitty:" or "K:" prefix, Sixel otherwise.
         private void HandleTunneledImage(string content)
         {

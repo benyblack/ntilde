@@ -188,6 +188,7 @@ namespace Ntilde.VT
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; } = true;
         [JsonPropertyName("decom")] public bool IsOriginMode { get; set; }
+        [JsonPropertyName("sixel_display")] public bool IsSixelDisplayMode { get; set; }
         [JsonPropertyName("focus")] public bool IsFocusEventReporting { get; set; }
         [JsonPropertyName("bp")] public bool IsBracketedPasteMode { get; set; }
         [JsonPropertyName("cv")] public bool IsCursorVisible { get; set; } = true;

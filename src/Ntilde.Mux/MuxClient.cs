@@ -651,6 +651,11 @@ public sealed class MuxClient : IDisposable
             FaultedNotification faulted = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.FaultedNotification);
             if (_sessions.TryGetValue(faulted.SessionId, out MuxClientSession? session)) session.DeliverFaulted(faulted.Message ?? "The mux session faulted.");
         }
+        else if (notification.Method == MuxMethods.SixelCellSize)
+        {
+            SixelCellSizeNotification size = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.SixelCellSizeNotification);
+            if (_sessions.TryGetValue(size.SessionId, out MuxClientSession? session)) session.DeliverSixelCellSize(size.CellWidthPx, size.CellHeightPx);
+        }
         else if (notification.Method == MuxMethods.KeyboardCapabilities)
         {
             KeyboardCapabilitiesNotification capabilities = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.KeyboardCapabilitiesNotification);

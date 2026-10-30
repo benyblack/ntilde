@@ -742,6 +742,7 @@ namespace Ntilde.VT
             IsApplicationCursorKeys = modes.IsApplicationCursorKeys,
             IsAutoWrapMode = modes.IsAutoWrapMode,
             IsOriginMode = modes.IsOriginMode,
+            IsSixelDisplayMode = modes.IsSixelDisplayMode,
             IsFocusEventReporting = modes.IsFocusEventReporting,
             IsBracketedPasteMode = modes.IsBracketedPasteMode,
             IsCursorVisible = modes.IsCursorVisible,
@@ -761,6 +762,7 @@ namespace Ntilde.VT
             target.IsApplicationCursorKeys = source.IsApplicationCursorKeys;
             target.IsAutoWrapMode = source.IsAutoWrapMode;
             target.IsOriginMode = source.IsOriginMode;
+            target.IsSixelDisplayMode = source.IsSixelDisplayMode;
             target.IsFocusEventReporting = source.IsFocusEventReporting;
             target.IsBracketedPasteMode = source.IsBracketedPasteMode;
             target.IsCursorVisible = source.IsCursorVisible;

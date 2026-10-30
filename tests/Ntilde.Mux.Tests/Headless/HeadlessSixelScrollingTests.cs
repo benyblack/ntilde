@@ -1,0 +1,105 @@
+using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Tests.Support;
+using Ntilde.VT;
+
+namespace Ntilde.Mux.Tests.Headless;
+
+public sealed class HeadlessSixelScrollingTests
+{
+    private const string Image = "\x1bPq!30~-~\x1b\\";
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task The_daemon_and_clients_share_SIXEL_layout_before_and_after_metric_changes(int version)
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync(new MuxClientOptions { MinProtocolVersion = version, MaxProtocolVersion = version });
+        Guid id = await client.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 10, Rows = 6 }, TestContext.Current.CancellationToken);
+        using MuxClientSession session = client.OpenSession(id, "scripted");
+        var pane = new ClientPaneModel(session);
+        pane.Parser.CellWidth = 3; // Local font/DIP metrics must not decide the shared layout.
+        pane.Parser.CellHeight = 3;
+        var presentation = new MuxPresentation { Cols = 10, Rows = 6, CellWidthPx = 20, CellHeightPx = 6, SupportsSixelScrolling = true };
+        await session.AttachAsync(0, presentation, TestContext.Current.CancellationToken);
+        Assert.Equal(6, pane.Parser.SixelCellHeightPx);
+        host.Fake(id).Emit("\x1b[6;5H" + Image + "\x1b[6n");
+        await TestWait.UntilAsync(() => pane.Buffer.TotalLines == 8, "the GUI scrolled the same two image rows as the headless daemon");
+        await host.Mux(id).FlushAsync();
+        Assert.Equal(host.Mux(id).Buffer.TotalLines, pane.Buffer.TotalLines);
+        Assert.Equal((0, 5), (pane.Buffer.CursorCol, pane.Buffer.CursorRow));
+        await TestWait.UntilAsync(() => host.Fake(id).SentInput.Contains("\x1b[6;1R"), "the daemon answers CPR from the same position");
+
+        session.UpdatePresentation(presentation with { CellHeightPx = 12 });
+        await TestWait.UntilAsync(() => pane.Parser.SixelCellHeightPx == 12, "the ordered metric notification reached the client");
+        host.Fake(id).Emit(Image);
+        await TestWait.UntilAsync(() => pane.Buffer.TotalLines == 9, "the next image uses the new one-row height");
+        Assert.Equal(host.Mux(id).Buffer.TotalLines, pane.Buffer.TotalLines);
+        Assert.Equal(3, pane.Parser.CellHeight); // SIXEL did not mutate general local font metrics.
+        if (version == 1) Assert.Null(session.AttachedClients);
+    }
+
+    [Fact]
+    public async Task Snapshot_and_partial_DCS_tail_restore_display_mode_and_cell_size()
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        using MuxClientSession session = client.OpenSession(id, "scripted");
+        var pane = new ClientPaneModel(session);
+        var presentation = MuxTestHost.DefaultPresentation with { CellHeightPx = 6, SupportsSixelScrolling = true };
+        await session.AttachAsync(0, presentation, TestContext.Current.CancellationToken);
+        host.Fake(id).Emit("\x1b[?80h\x1b[4;3H\x1bPq!30~");
+        await host.Mux(id).FlushAsync();
+        var snapshot = await host.Mux(id).InvokeAsync(() => host.Mux(id).CaptureSnapshot(0));
+        var restored = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(restored);
+        TerminalStateTransfer.Restore(restored, parser, snapshot);
+        parser.Process("-~\x1b\\");
+        host.Fake(id).Emit("-~\x1b\\");
+        await host.Mux(id).FlushAsync();
+        Assert.Equal((2, 3), (restored.CursorCol, restored.CursorRow));
+        Assert.Equal(host.Mux(id).Buffer.CursorRow, restored.CursorRow);
+        Assert.True(restored.Modes.IsSixelDisplayMode);
+        Assert.Equal(6, parser.SixelCellHeightPx);
+    }
+    [Fact]
+    public async Task Pending_metric_bursts_coalesce_and_observers_do_not_override_them()
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        var gui = new RecordingFrameSink();
+        var observer = new RecordingFrameSink();
+        var legacy = new RecordingFrameSink();
+        var presentation = MuxTestHost.DefaultPresentation with { SupportsSixelScrolling = true };
+        var mux = host.Mux(id);
+        mux.PostAttach(gui, 1, 0, presentation, MuxProtocol.MaxFrameBytes);
+        mux.PostAttach(observer, 2, 0, presentation with { CellHeightPx = 999 }, MuxProtocol.MaxFrameBytes, MuxAttachMode.ReadOnly);
+        mux.PostAttach(legacy, 3, 0, MuxTestHost.DefaultPresentation, MuxProtocol.MaxFrameBytes, MuxAttachMode.ReadOnly);
+        await mux.FlushAsync();
+        int initial = gui.Frames.Count(f => f.IsNotification(MuxMethods.SixelCellSize));
+        using var parked = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        Task<int> waiting = mux.InvokeAsync(() => { parked.Set(); release.Wait(TimeSpan.FromSeconds(30)); return 0; });
+        Assert.True(parked.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        try
+        {
+            for (int i = 0; i < 500; i++) mux.PostResize(gui, 80, 24, presentation with { CellHeightPx = 6 + (i % 2) });
+            Assert.Equal(1, mux.QueuedControlCount);
+            host.Fake(id).Emit(Image);
+        }
+        finally { release.Set(); }
+        await waiting;
+        await mux.FlushAsync();
+        Assert.Equal(initial + 1, gui.Frames.Count(f => f.IsNotification(MuxMethods.SixelCellSize)));
+        var frames = gui.Frames;
+        Assert.True(frames[^2].IsNotification(MuxMethods.SixelCellSize));
+        Assert.Equal(MuxFrameKind.Output, frames[^1].Kind);
+        SixelCellSizeNotification size = MuxFrames.ParseParams(MuxFrames.ParseJson(frames[^2].Payload, MuxJsonContext.Default.MuxNotification).Params, MuxJsonContext.Default.SixelCellSizeNotification);
+        Assert.Equal(7, size.CellHeightPx);
+        Assert.Contains(observer.Frames, f => f.IsNotification(MuxMethods.SixelCellSize));
+        Assert.DoesNotContain(legacy.Frames, f => f.IsNotification(MuxMethods.SixelCellSize));
+    }
+
+}

@@ -103,6 +103,9 @@ public static class MuxMethods
     /// <summary>Ordered keyboard ceiling, before snapshot/output; only for peers advertising an explicit mask, including v1.</summary>
     public const string KeyboardCapabilities = "keyboardCapabilities";
 
+    /// <summary>Authoritative device-pixel metrics before subsequent output, for SIXEL-aware subscribers on either version.</summary>
+    public const string SixelCellSize = "sixelCellSize";
+
     /// <summary>Notification (server → v2 client): another client killed the session; precedes its <see cref="Exited"/>.</summary>
     public const string Killed = "killed";
 }

@@ -506,6 +506,12 @@ namespace Ntilde.VT
                     if (img.IsSticky && img.CellY + img.CellHeight > absTop && img.CellY <= absBottom)
                     {
                         img.CellY--;
+                        if (ClipSixelImage(img, absTop, absBottom))
+                        {
+                            RetireImage(img);
+                            _images.RemoveAt(i);
+                            continue;
+                        }
 
                         // If image moved entirely above the region (and it was a regional scroll),
                         // we might prune it if it's no longer visible in the region.
@@ -569,8 +575,9 @@ namespace Ntilde.VT
                 if (img.IsSticky && img.CellY + img.CellHeight > absTop && img.CellY < absBottom)
                 {
                     img.CellY++;
+                    bool clipped = ClipSixelImage(img, absTop, absBottom);
                     // If the image moves below the region, remove it
-                    if (img.CellY > absBottom)
+                    if (clipped || img.CellY > absBottom)
                     {
                         RetireImage(img);
                         _images.RemoveAt(i);

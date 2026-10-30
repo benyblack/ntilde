@@ -199,4 +199,26 @@ public sealed class MuxPaneSharingTests : IDisposable
         session.DeliverSessionChanged(new Ntilde.Mux.Contracts.SessionChangedNotification { SessionId = session.Id });
         Assert.Equal(3, _pane.Buffer.Modes.KittyKeyboard.Flags);
     }
+    [AvaloniaFact]
+    public void Sixel_scrolling_uses_the_daemons_pixel_metrics_before_following_output()
+    {
+        MuxClientSession session = StartHostedPane();
+        int cols = _pane!.Buffer!.Cols, rows = _pane.Buffer.Rows;
+        var other = AttachOther(session.Id, MuxTestHost.DefaultPresentation with
+        {
+            Cols = cols,
+            Rows = rows,
+            CellWidthPx = 12,
+            CellHeightPx = 6,
+            SupportsSixelScrolling = true,
+        });
+        PumpUntil(() => _pane.Parser!.SixelCellHeightPx == 6, "the pane adopted the ordered authoritative pixel size");
+        int total = _pane.Buffer.TotalLines;
+        _mux.Fake(session.Id).Emit($"\x1b[{rows};1H\x1bPq!30~-~\x1b\\");
+        PumpUntil(() => _pane.Buffer.TotalLines == total + 2, "the real decoder advances two rows using the daemon's metrics");
+        Assert.Equal(_mux.Mux(session.Id).Buffer.TotalLines, _pane.Buffer.TotalLines);
+        Assert.Equal(rows - 1, _pane.Buffer.CursorRow);
+        other.Session.Dispose();
+    }
+
 }

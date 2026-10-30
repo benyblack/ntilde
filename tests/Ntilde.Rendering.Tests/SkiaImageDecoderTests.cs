@@ -228,5 +228,20 @@ public class SkiaImageDecoderTests
         var handle = decoder.DecodeRawImage(new byte[3 * 4], bytesPerPixel: 3, width: 16, height: 1, out _, out _);
         Assert.Null(handle);
     }
+    [Theory]
+    [InlineData("q!99999999999999999999999~")]
+    [InlineData("q\"1;1;999999;999999~")]
+    [InlineData("q!20~$!2~-!3~")]
+    [InlineData("q!0~")]
+    [InlineData("q#1;2;100;0;0")]
+    [InlineData("q!-~")]
+    public void Bitmap_and_headless_measurement_use_the_same_bounded_geometry(string data)
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+        using var bitmap = new SixelDecoder { MaxPixelDimension = 32 }.Decode(data);
+        var expected = SixelGeometry.Measure(data, 32);
+        Assert.Equal(expected, bitmap is null ? (0, 0) : (bitmap.Width, bitmap.Height));
+    }
+
 }
 
