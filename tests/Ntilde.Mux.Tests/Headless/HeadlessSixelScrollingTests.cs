@@ -9,9 +9,11 @@ public sealed class HeadlessSixelScrollingTests
     private const string Image = "\x1bPq!30~-~\x1b\\";
 
     [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    public async Task The_daemon_and_clients_share_SIXEL_layout_before_and_after_metric_changes(int version)
+    [InlineData(1, 12, 1)]
+    [InlineData(2, 12, 1)]
+    [InlineData(1, 5.9999995f, 3)]
+    [InlineData(2, 5.9999995f, 3)]
+    public async Task The_daemon_and_clients_share_SIXEL_layout_before_and_after_metric_changes(int version, float newHeight, int secondRows)
     {
         using var host = new MuxTestHost();
         using var client = await host.ConnectClientAsync(new MuxClientOptions { MinProtocolVersion = version, MaxProtocolVersion = version });
@@ -30,10 +32,10 @@ public sealed class HeadlessSixelScrollingTests
         Assert.Equal((0, 5), (pane.Buffer.CursorCol, pane.Buffer.CursorRow));
         await TestWait.UntilAsync(() => host.Fake(id).SentInput.Contains("\x1b[6;1R"), "the daemon answers CPR from the same position");
 
-        session.UpdatePresentation(presentation with { CellHeightPx = 12 });
-        await TestWait.UntilAsync(() => pane.Parser.SixelCellHeightPx == 12, "the ordered metric notification reached the client");
+        session.UpdatePresentation(presentation with { CellHeightPx = newHeight });
+        await TestWait.UntilAsync(() => pane.Parser.SixelCellHeightPx == newHeight, "the ordered metric notification reached the client");
         host.Fake(id).Emit(Image);
-        await TestWait.UntilAsync(() => pane.Buffer.TotalLines == 9, "the next image uses the new one-row height");
+        await TestWait.UntilAsync(() => pane.Buffer.TotalLines == 8 + secondRows, "the next image uses the new height, including a fractional boundary change");
         Assert.Equal(host.Mux(id).Buffer.TotalLines, pane.Buffer.TotalLines);
         Assert.Equal(3, pane.Parser.CellHeight); // SIXEL did not mutate general local font metrics.
         if (version == 1) Assert.Null(session.AttachedClients);

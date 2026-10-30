@@ -159,8 +159,8 @@ namespace Ntilde.VT
         public int CellHeight;
         public object ImageHandle;
         public bool IsSticky;
-        public int ClipTopRows;
-        public int ClipBottomRows;
-        public int ClipRightColumns;
+        public int ClipTopRows { get; init; }
+        public int ClipBottomRows { get; init; }
+        public int ClipRightColumns { get; init; }
     }
 }

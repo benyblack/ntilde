@@ -1,4 +1,5 @@
 using Ntilde.VT;
+using Ntilde.VT.Tests.StateTransfer;
 
 namespace Ntilde.VT.Tests;
 
@@ -167,6 +168,30 @@ public sealed class SixelScrollingTests
     public void Headless_geometry_is_bounded_and_does_not_trust_declared_raster_sizes(string data, int width, int height)
     {
         Assert.Equal((width, height), SixelGeometry.Measure(data));
+    }
+
+    [Theory]
+    [InlineData(10, 12)]
+    [InlineData(20, 6)]
+    public void The_shared_parity_oracle_detects_different_authoritative_SIXEL_metrics(float width, float height)
+    {
+        var expected = new TerminalBuffer(10, 5);
+        var actual = new TerminalBuffer(10, 5);
+        var a = new AnsiParser(expected) { SixelCellSizeOverride = new SixelCellSize(10, 6) };
+        var b = new AnsiParser(actual) { SixelCellSizeOverride = new SixelCellSize(width, height) };
+        var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => TerminalStateAssert.AssertEquivalent("metrics", expected, a, actual, b));
+        Assert.Contains("parser state", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_shared_parity_oracle_detects_different_SIXEL_display_modes()
+    {
+        var expected = new TerminalBuffer(10, 5);
+        var actual = new TerminalBuffer(10, 5);
+        expected.Modes.IsSixelDisplayMode = true;
+        var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+            TerminalStateAssert.AssertEquivalent("display mode", expected, new AnsiParser(expected), actual, new AnsiParser(actual)));
+        Assert.Contains("modes", error.Message, StringComparison.Ordinal);
     }
 
 }

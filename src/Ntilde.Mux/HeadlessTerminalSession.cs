@@ -1057,7 +1057,8 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         float width = float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0 ? presentation.CellWidthPx : _parser.CellWidth;
         float height = float.IsFinite(presentation.CellHeightPx) && presentation.CellHeightPx > 0 ? presentation.CellHeightPx : _parser.CellHeight;
-        if (_parser.SixelCellWidthPx != width || _parser.SixelCellHeightPx != height)
+        // Copied wire values need exact identity: even a subpixel change can cross a cell-count ceiling.
+        if (_parser.SixelCellSizeOverride is not { } size || !size.WidthPx.Equals(width) || !size.HeightPx.Equals(height))
         {
             _parser.SixelCellSizeOverride = new SixelCellSize(width, height);
             _sixelCellSizePending = true;

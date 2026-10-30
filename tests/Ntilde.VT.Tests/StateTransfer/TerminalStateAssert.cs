@@ -209,7 +209,7 @@ internal static class TerminalStateAssert
     private static string Describe(TerminalModeState modes) =>
         $"x10={modes.MouseModeX10} btn={modes.MouseModeButtonEvent} any={modes.MouseModeAnyEvent} " +
         $"sgrMouse={modes.MouseModeSGR} ckm={modes.IsApplicationCursorKeys} awm={modes.IsAutoWrapMode} " +
-        $"decom={modes.IsOriginMode} focus={modes.IsFocusEventReporting} bp={modes.IsBracketedPasteMode} " +
+        $"sixelDisplay={modes.IsSixelDisplayMode} decom={modes.IsOriginMode} focus={modes.IsFocusEventReporting} bp={modes.IsBracketedPasteMode} " +
         $"cv={modes.IsCursorVisible} cblink={modes.IsCursorBlinkEnabled} cstyle={modes.CursorStyle} " +
         $"irm={modes.IsInsertMode} lnm={modes.IsLineFeedNewLineMode} srm={modes.IsEchoEnabled}";
 

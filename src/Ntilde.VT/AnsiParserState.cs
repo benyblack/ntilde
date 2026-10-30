@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -121,6 +122,8 @@ namespace Ntilde.VT
             sb.Append(" voff=").Append(VerticalOffset);
             sb.Append(" lastgfx=").Append(LastGraphicChar ?? "<null>");
             sb.Append(" inband=").Append(InBandResizeReportsEnabled);
+            sb.Append(" sixel_cw=").Append(SixelCellWidthPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");
+            sb.Append(" sixel_ch=").Append(SixelCellHeightPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");
             return sb.ToString();
         }
     }

@@ -131,6 +131,12 @@ internal static class ParityCorpus
             "\u001b]52;c;aGVsbG8gY2xpcGJvYXJk\u0007after" +
             "\u001b]52;c;?\u0007"));
 
+        yield return ("sixel-scrolling", Utf8(
+            "\u001b[24;75H\u001bPq!1200~-!3~-!3~-!3~\u001b\\after" +
+            "\u001b[?80h\u001b[4;3H\u001bPq!30~-~\u001b\\fixed" +
+            "\u001b[?1049h\u001b[?80l\u001b[2;20r\u001b[20;1H\u001bPq!30~-~\u001b\\alt" +
+            "\u001b[?1049l\u001b[?80h"));
+
         yield return ("dcs", Utf8(
             "\u001bP0;1|somedcsdata\u001b\\visible" +
             "\u001bPtmux;\u001b\u001b[31m\u001b\\more"));
