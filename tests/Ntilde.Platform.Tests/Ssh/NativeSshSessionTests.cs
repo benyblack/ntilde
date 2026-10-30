@@ -519,6 +519,21 @@ public sealed class NativeSshSessionTests
     }
 
     [Fact]
+    public async Task AnOutputSubscriberThatThrows_DoesNotEndTheProcess()
+    {
+        // Codex review of #655: the loop's failure handling hands its banner to the same subscriber, whose second
+        // throw leaves the loop. On Task.Run that faulted a task; on a thread of its own it would end the process.
+        var interop = new FakeNativeSshInterop();
+        var logged = new ConcurrentQueue<string>();
+        using var session = new NativeSshSession(CreateProfile(), log: logged.Enqueue, interop: interop);
+        session.OnOutputReceived += _ => throw new InvalidOperationException("subscriber failed");
+
+        interop.Enqueue(NativeSshEvent.Data("x"u8.ToArray()));
+
+        await WaitUntilAsync(() => logged.Any(line => line.Contains("poll thread ended", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [Fact]
     public async Task AnExitHandlerThatDisposesTheSession_DoesNotWaitForItsOwnPollThread()
     {
         // Exit is raised on the poll thread, and a handler there may dispose the session. The thread cannot join

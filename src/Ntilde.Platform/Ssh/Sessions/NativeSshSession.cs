@@ -150,7 +150,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
             ShellArguments = $"{profile.User}@{profile.Host}:{profile.Port}";
             // A thread of its own: the loop parks in the native wait between events (#173), and a parked pool
             // thread per SSH tab is the starvation the #81 family was.
-            _pollThread = new Thread(PollLoop) { IsBackground = true, Name = "SshSessionPoll" };
+            _pollThread = new Thread(RunPollLoop) { IsBackground = true, Name = "SshSessionPoll" };
             _pollThread.Start();
         }
         catch
@@ -391,6 +391,28 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         _portForwardSession?.Dispose();
         CloseNativeHandle();
         _pollCts.Dispose();
+    }
+
+    // The poll thread's entry. Nothing may leave it: an exception that escapes a thread of its own ends the process,
+    // where the Task.Run this replaced only faulted its task (Codex review of #655). What can still get this far is
+    // what the loop's own failure handling calls: an output or exit subscriber, the log, the close.
+    private void RunPollLoop()
+    {
+        try
+        {
+            PollLoop();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                _log($"[NativeSshSession] Poll thread ended by {ex.GetType().Name}: {ex.Message}");
+            }
+            catch (Exception)
+            {
+                // The log is what threw; there is nowhere left to report it.
+            }
+        }
     }
 
     private void PollLoop()

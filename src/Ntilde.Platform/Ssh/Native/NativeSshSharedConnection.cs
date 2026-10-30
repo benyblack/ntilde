@@ -77,7 +77,7 @@ internal sealed class NativeSshSharedConnection
 
         _log($"[NativeSshSharedConnection] connecting target={_target} forwards={profile.Forwards.Count}");
         // As a tab's session: the loop parks in the native wait (#173), so it holds a thread of its own, not the pool's.
-        _pollThread = new Thread(PollLoop) { IsBackground = true, Name = "SshConnectionPoll" };
+        _pollThread = new Thread(RunPollLoop) { IsBackground = true, Name = "SshConnectionPoll" };
         _pollThread.Start();
     }
 
@@ -307,6 +307,27 @@ internal sealed class NativeSshSharedConnection
         }
     }
 
+    // The poll thread's entry: nothing may leave it, as in NativeSshSession.RunPollLoop. What can get this far is what
+    // the loop's failure handling calls: the log and the close.
+    private void RunPollLoop()
+    {
+        try
+        {
+            PollLoop();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                _log($"[NativeSshSharedConnection] target={_target} poll thread ended by {ex.GetType().Name}: {ex.Message}");
+            }
+            catch (Exception)
+            {
+                // The log is what threw; there is nowhere left to report it.
+            }
+        }
+    }
+
     private void PollLoop()
     {
         try
@@ -369,8 +390,10 @@ internal sealed class NativeSshSharedConnection
         {
             // Close cancelled the loop.
         }
-        catch (Exception ex) when (ex is not (OutOfMemoryException or AccessViolationException))
+        catch (Exception ex)
         {
+            // Every failure, OutOfMemoryException included: on a thread of its own, an exception that leaves the loop
+            // ends the process, and the connection is failed and closed for the tabs instead (Codex review of #655).
             if (!_pollCts.IsCancellationRequested)
             {
                 _log($"[NativeSshSharedConnection] target={_target} poll loop failed: {ex.Message}");
