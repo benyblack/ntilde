@@ -188,10 +188,49 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>
+        /// The longest a batch writer gives way to readers already waiting before it takes the write lock regardless
+        /// (#658). Internal for the tests that need a limit no runner's scheduling can reach.
+        /// </summary>
+        internal TimeSpan ReaderHandoffLimit { get; init; } = TimeSpan.FromMilliseconds(2);
+
         public void EnterBatchWrite()
         {
+            LetWaitingReadersIn();
             AcquireWriteLock();
             _batchWriteDepth++;
+        }
+
+        /// <summary>
+        /// Gives way to readers already waiting before a batch takes the write lock (#658).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The parser takes a batch per chunk of output, back to back during a flood, and
+        /// <see cref="System.Threading.ReaderWriterLockSlim"/> does not hand a released lock to a waiting reader: the
+        /// next batch re-took it before the woken render thread ran, and rendering got about one frame in five. Once
+        /// the waiting readers are in, the batch queues for the lock as before; a waiting writer then admits no new
+        /// reader, so the handoff costs the batch one snapshot's read, not a stream of them.
+        /// </para>
+        /// <para>
+        /// Only <see cref="System.Threading.Thread.Yield"/>, which dispatches nothing. A batch can run on the UI thread
+        /// (a resize, the replay window), where a wait or a sleep could pump the messages that once deadlocked this lock
+        /// (see <see cref="BlockingWriteWaitScope"/>). Bounded by <see cref="ReaderHandoffLimit"/>, so a reader that
+        /// cannot get in - another writer holds the lock - costs the batch that long, not a hang.
+        /// </para>
+        /// </remarks>
+        private void LetWaitingReadersIn()
+        {
+            if (Lock.WaitingReadCount == 0 || Lock.IsWriteLockHeld)
+            {
+                return;
+            }
+
+            long started = Stopwatch.GetTimestamp();
+            while (Lock.WaitingReadCount > 0 && Stopwatch.GetElapsedTime(started) < ReaderHandoffLimit)
+            {
+                System.Threading.Thread.Yield();
+            }
         }
 
         public void ExitBatchWrite()

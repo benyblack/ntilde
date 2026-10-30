@@ -80,25 +80,45 @@ public class RenderFrameTimeBenchmarks
         // Rendering takes the buffer's read lock per frame and parsing its write lock per chunk: neither may starve the
         // other. Output arrives in PTY-sized chunks while a render thread draws at 60 Hz, as the view's timer does.
         //
-        // Parsing loses nothing to rendering. Rendering does lose to parsing: the parser re-takes the write lock
-        // back to back, and the loop draws about 9 frames a second during the flood where it could draw about 48
-        // (#658). The frame-rate floor catches rendering stopping altogether; raise it once #658 is fixed.
+        // The frame rate is judged against the same loop's rate with nothing parsing, not against a number: a 16.7 ms
+        // sleep lasts a timer tick or two on Windows and about that on Linux, so the loop's own ceiling differs by OS.
+        // Before #658 the parser re-took the write lock back to back and the loop drew about a third of its ceiling
+        // during the flood; a batch now gives way to a waiting reader, and it draws about all of it.
         byte[][] chunks = OutputChunks(megabytes: 8, chunkBytes: 16 * 1024);
 
         TimeSpan alone = ParseAll(chunks, renderer: null, out _);
         using var harness = new DrawPathHarness(Cols, Rows);
+        double idleFramesPerSecond = RenderAlone(harness, TimeSpan.FromSeconds(1));
         TimeSpan underRender = ParseAll(chunks, harness, out int frames);
 
         double throughputRatio = alone.TotalMilliseconds / underRender.TotalMilliseconds;
         double framesPerSecond = frames / underRender.TotalSeconds;
+        double frameRateRatio = framesPerSecond / idleFramesPerSecond;
         MetricsArtifactWriter.WriteReport(
             "parse-under-render",
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"8 MB in 16 KB chunks: alone {alone.TotalMilliseconds:F0} ms, under a 60 Hz render loop {underRender.TotalMilliseconds:F0} ms ({throughputRatio:P0} of the throughput), {frames} frames ({framesPerSecond:F1} fps)"));
+                $"8 MB in 16 KB chunks: alone {alone.TotalMilliseconds:F0} ms, under a 60 Hz render loop {underRender.TotalMilliseconds:F0} ms ({throughputRatio:P0} of the throughput); the loop drew {framesPerSecond:F1} fps during the flood, {idleFramesPerSecond:F1} with nothing parsing ({frameRateRatio:P0})"));
 
         Assert.True(throughputRatio >= 0.5, string.Create(CultureInfo.InvariantCulture, $"parsing kept {throughputRatio:P0} of its throughput under rendering (#127)"));
-        Assert.True(framesPerSecond >= 4, string.Create(CultureInfo.InvariantCulture, $"the render loop drew {framesPerSecond:F1} frames a second during the flood: parsing starved it (#127, #658)"));
+        Assert.True(
+            frameRateRatio >= 0.5,
+            string.Create(CultureInfo.InvariantCulture, $"the render loop drew {framesPerSecond:F1} fps during the flood against {idleFramesPerSecond:F1} with nothing parsing: parsing starved it (#658)"));
+    }
+
+    // The render loop's own rate, nothing parsing: the ceiling the flood's frame rate is judged against.
+    private static double RenderAlone(DrawPathHarness harness, TimeSpan duration)
+    {
+        int frames = 0;
+        var clock = Stopwatch.StartNew();
+        while (clock.Elapsed < duration)
+        {
+            harness.DrawFrame();
+            frames++;
+            Thread.Sleep(TimeSpan.FromMilliseconds(VsyncIntervalMs));
+        }
+
+        return frames / clock.Elapsed.TotalSeconds;
     }
 
     private static byte[][] OutputChunks(int megabytes, int chunkBytes)
