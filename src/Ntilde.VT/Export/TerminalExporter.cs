@@ -6,19 +6,27 @@ namespace Ntilde.VT.Export
 {
     public static class TerminalExporter
     {
+        /// <summary>
+        /// The absolute row of screen row 0, as <see cref="TerminalBuffer.GetGrapheme"/> reads the screen. The
+        /// alternate screen's absolute rows start at 0; <see cref="TerminalBuffer.GetCell"/> counts them from the
+        /// main screen's scrollback, so over scrollback it reads the wrong rows, or past the end. Lock held.
+        /// </summary>
+        private static int ScreenTop(TerminalBuffer buffer) => buffer.IsAltScreenActive ? 0 : buffer.Scrollback.Count;
+
         public static string ExportToPlainText(TerminalBuffer buffer)
         {
             buffer.Lock.EnterReadLock();
             try
             {
                 var sb = new StringBuilder();
+                int screenTop = ScreenTop(buffer);
                 for (int r = 0; r < buffer.Rows; r++)
                 {
                     int lastNonEmpty = -1;
                     var rowSb = new StringBuilder();
                     for (int c = 0; c < buffer.Cols; c++)
                     {
-                        var cell = buffer.GetCell(c, r);
+                        var cell = buffer.GetCellAbsolute(c, screenTop + r);
                         if (cell.IsWideContinuation) continue;
 
                         string text = buffer.GetGrapheme(c, r);
@@ -117,9 +125,10 @@ namespace Ntilde.VT.Export
         {
             int lastNonEmpty = -1;
             var rowSb = new StringBuilder();
+            int absRow = ScreenTop(buffer) + row;
             for (int c = 0; c < buffer.Cols; c++)
             {
-                var cell = buffer.GetCell(c, row);
+                var cell = buffer.GetCellAbsolute(c, absRow);
                 if (cell.IsWideContinuation) continue;
 
                 string text = buffer.GetGrapheme(c, row);
@@ -143,10 +152,7 @@ namespace Ntilde.VT.Export
                 CellUnderline? lastUnderline = null;
                 bool isFirstCell = true;
 
-                // The rows shown, as GetGrapheme reads them. The alternate screen's absolute rows start at 0;
-                // GetCell counted them from the main screen's scrollback, so with scrollback present an
-                // alternate-screen export read its attributes from the wrong rows, or past the end.
-                int screenTop = buffer.IsAltScreenActive ? 0 : buffer.Scrollback.Count;
+                int screenTop = ScreenTop(buffer);
 
                 for (int r = 0; r < buffer.Rows; r++)
                 {
