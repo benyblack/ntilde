@@ -27,6 +27,53 @@ public class SkiaImageDecoderTests
     }
 
     [Fact]
+    public void Deferred_SIXEL_preserves_pixels_and_bounds_until_first_materialization()
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+        var decoder = new SkiaImageDecoder { DeferSixelDecoding = true, MaxPixelDimension = 8 };
+        using var handle = Assert.IsType<DeferredSixelImage>(decoder.DecodeSixel("q#1;2;100;0;0#1!100~-!100~", out int width, out int height));
+        Assert.Equal((8, 8), (width, height));
+        Assert.False(handle.IsDecoded);
+        var bitmap = Assert.IsType<SKBitmap>(handle.GetBitmap());
+        Assert.True(handle.IsDecoded);
+        Assert.Equal((8, 8), (bitmap.Width, bitmap.Height));
+        Assert.Equal(SKColors.Red, bitmap.GetPixel(7, 7));
+        Assert.Same(bitmap, handle.GetBitmap());
+        handle.Dispose();
+        Assert.Null(handle.GetBitmap());
+    }
+
+    [Fact]
+    public void Unseen_page_origin_frames_are_retired_without_decoding_or_losing_the_latest_source()
+    {
+        var buffer = new TerminalBuffer(10, 6);
+        var parser = new AnsiParser(buffer) { ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true } };
+        parser.Process("\x1b[?80h\x1bPq!30~\x1b\\");
+        var first = Assert.IsType<DeferredSixelImage>(Assert.Single(buffer.Images).ImageHandle);
+        Assert.False(first.IsDecoded);
+        for (int i = 0; i < 50; i++) parser.Process("\x1bPq!30~\x1b\\");
+        Assert.False(first.IsDecoded);
+        var retired = new List<object>();
+        Assert.True(buffer.DrainRetiredImageHandles(retired, long.MinValue));
+        Assert.Equal(50, retired.Count);
+        foreach (var handle in retired) Assert.IsType<DeferredSixelImage>(handle).Dispose();
+        Assert.Null(first.GetBitmap()); // The render owner disposes retired source without materialization.
+        using var latest = Assert.IsType<DeferredSixelImage>(Assert.Single(buffer.Images).ImageHandle);
+        Assert.False(latest.IsDecoded);
+        Assert.NotSame(first, latest);
+    }
+
+    [Fact]
+    public async Task Concurrent_deferred_readers_share_one_bitmap()
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+        using var handle = new DeferredSixelImage("q~", 2000);
+        SKBitmap?[] results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(handle.GetBitmap)));
+        Assert.NotNull(results[0]);
+        Assert.All(results, bitmap => Assert.Same(results[0], bitmap));
+    }
+
+    [Fact]
     public void DecodeSixel_MinimalPayload_ReturnsBitmapWithPixelDimensions()
     {
         Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");

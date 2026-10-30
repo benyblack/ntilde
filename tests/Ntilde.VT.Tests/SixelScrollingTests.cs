@@ -8,6 +8,33 @@ public sealed class SixelScrollingTests
     private const string Image = "\x1bPq!30~-~\x1b\\";
 
     [Theory]
+    [InlineData("q!30~-~")]
+    [InlineData("0;0;0q!30~-~")]
+    public void Valid_tunneled_SIXEL_keeps_the_same_headless_scrolling_semantics(string body)
+    {
+        var buffer = new TerminalBuffer(10, 3);
+        var parser = new AnsiParser(buffer) { CellHeight = 6 };
+        parser.Process("\x1b[3;5H\x1b]1339;" + body + "\x07");
+        Assert.Equal((0, 2), (buffer.CursorCol, buffer.CursorRow));
+        Assert.Equal(5, buffer.TotalLines);
+    }
+
+    [Theory]
+    [InlineData("otherq~")]
+    [InlineData("$q~")]
+    [InlineData("+q~")]
+    public void Non_SIXEL_tunneled_bodies_do_not_change_layout(string body)
+    {
+        var buffer = new TerminalBuffer(10, 3);
+        var parser = new AnsiParser(buffer) { ImageDecoder = null };
+        parser.Process("\x1b[3;5H");
+        parser.Process("\x1b]1339;" + body + "\x07");
+        Assert.Equal((4, 2), (buffer.CursorCol, buffer.CursorRow));
+        Assert.Equal(3, buffer.TotalLines);
+        Assert.Empty(buffer.Images);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void A_wide_image_never_wraps_text_cells_or_erases_the_underlying_row(bool lnm)
@@ -46,6 +73,7 @@ public sealed class SixelScrollingTests
         Assert.Equal(3, buffer.TotalLines);
         var image = Assert.Single(buffer.Images);
         Assert.Equal((0, 0), (image.CellX, image.CellY));
+        Assert.Equal(2, image.ClipBottomRows);
     }
 
     [Fact]

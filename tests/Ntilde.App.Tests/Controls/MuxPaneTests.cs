@@ -126,7 +126,7 @@ public sealed class MuxPaneTests : IDisposable
     public void Mux_panes_decode_SIXEL_only_and_keep_other_transports_disabled()
     {
         StartPane();
-        Assert.IsType<Ntilde.Rendering.SkiaImageDecoder>(_pane!.Parser!.ImageDecoder);
+        Assert.True(Assert.IsType<Ntilde.Rendering.SkiaImageDecoder>(_pane!.Parser!.ImageDecoder).DeferSixelDecoding);
         Assert.False(_pane.Parser.AllowNonSixelImages);
         Assert.False(_pane.Parser.AllowNativeKittyGraphics);
         Assert.Null(_pane.Parser.ReadFileBytes);

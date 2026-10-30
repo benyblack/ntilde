@@ -752,7 +752,13 @@ namespace Ntilde.Shell
                             // image pixels do not reveal previously drawn text layers.
                             canvas.DrawRect(rect, imageBgPaint);
                             IncrementRectDrawCall();
-                            if (img.ImageHandle is SKBitmap bmp)
+                            SKBitmap? bitmap = img.ImageHandle switch
+                            {
+                                SKBitmap eager => eager,
+                                DeferredSixelImage deferred => deferred.GetBitmap(),
+                                _ => null,
+                            };
+                            if (bitmap is { } bmp)
                             {
                                 canvas.DrawBitmap(bmp, rect, imagePaint);
                                 IncrementOtherDrawCall();

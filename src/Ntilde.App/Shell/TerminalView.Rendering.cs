@@ -25,10 +25,12 @@ namespace Ntilde.Shell
         private readonly List<object> _retiredImageHandleScratch = new();
 
         /// <summary>
-        /// Drains retired image handles older than <paramref name="drainTick"/> and disposes
-        /// the Skia bitmaps. Called from <see cref="Render"/> (this view's frame boundary) and
-        /// internal so tests can drive it deterministically.
+        /// Drains eligible retired bitmap or deferred-source handles. Called at frame boundaries
+        /// and after hidden mux output; tests may supply an explicit age cutoff.
         /// </summary>
+        internal void DisposeRetiredImageBitmaps() =>
+            DisposeRetiredImageBitmaps(Environment.TickCount64 - RetiredImageDisposalGraceMs);
+
         internal void DisposeRetiredImageBitmaps(long drainTick)
         {
             var buffer = _buffer;
@@ -41,7 +43,7 @@ namespace Ntilde.Shell
 
             foreach (var handle in _retiredImageHandleScratch)
             {
-                if (handle is SKBitmap bitmap)
+                if (handle is IDisposable bitmap)
                 {
                     try
                     {
@@ -99,7 +101,7 @@ namespace Ntilde.Shell
                 return;
             }
 
-            DisposeRetiredImageBitmaps(Environment.TickCount64 - RetiredImageDisposalGraceMs);
+            DisposeRetiredImageBitmaps();
 
             // Failsafe: Ensure we have fonts, but even if we don't, we should draw a background
             // to avoid "white panes"

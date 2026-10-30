@@ -19,6 +19,26 @@ public sealed class SixelScrollingRenderTests
     }
 
     [Fact]
+    public void Deferred_page_origin_replacement_preserves_uncovered_pixels_when_first_rendered()
+    {
+        Assert.SkipUnless(HasSkia(), "SkiaSharp native library not available on this platform.");
+        var buffer = new TerminalBuffer(10, 6);
+        var parser = new AnsiParser(buffer)
+        {
+            ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true },
+            CellWidth = 10,
+            CellHeight = 20,
+        };
+        parser.Process("\x1b[?80h\x1bPq#1;2;100;0;0#1!30~\x1b\\\x1bPq#1;2;0;0;100#1!10~\x1b\\");
+        Assert.Equal(2, buffer.Images.Count);
+        var metrics = new CellMetrics { CellWidth = 10, CellHeight = 20, Baseline = 15, Ascent = 15, Descent = 5 };
+        using var rendered = SKBitmap.Decode(SnapshotService.CapturePng(buffer, metrics, 100, 120,
+            new SnapshotCaptureOptions { HideCursor = true }));
+        Assert.Equal(SKColors.Blue, rendered.GetPixel(5, 3));
+        Assert.Equal(SKColors.Red, rendered.GetPixel(25, 3));
+    }
+
+    [Fact]
     public void A_scrolled_SIXEL_clips_at_the_region_and_keeps_the_original_bitmap_sampling()
     {
         Assert.SkipUnless(HasSkia(), "SkiaSharp native library not available on this platform.");

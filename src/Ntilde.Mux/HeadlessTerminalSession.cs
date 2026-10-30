@@ -896,6 +896,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (!_subscribers.Contains(sink)) _subscribers.Add(sink);
         _attachRequestIds[sink] = requestId;
         if (presentation.SupportsSixelScrolling) _sixelLayoutSinks.Add(sink);
+        else _sixelLayoutSinks.Remove(sink);
         if (presentation.KittyKeyboardSupportedFlags.HasValue) _keyboardCapabilitySinks.Add(sink);
 
         // The kitty flag is recorded only once the subscription has taken effect: a refused or failed

@@ -61,7 +61,16 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         if (Volatile.Read(ref _disposed) != 0) return;
         if (!float.IsFinite(width) || !float.IsFinite(height) || width <= 0 || height <= 0)
             throw new InvalidDataException("Invalid SIXEL cell metrics in mux notification.");
-        SixelCellSizeChanged?.Invoke(width, height);
+        if (Volatile.Read(ref _faulted) != 0) return;
+        try { SixelCellSizeChanged?.Invoke(width, height); }
+        catch (Exception ex)
+        {
+            // Geometry is stream-critical: continuing after a failed application would silently
+            // desynchronise this pane. Stop this session, while leaving sibling sessions connected.
+            _client.SafeLog($"[MuxClient] SIXEL metric delivery for session {Id} failed: {ex}");
+            try { DeliverFaulted("SIXEL metric delivery failed."); }
+            catch (Exception fault) { _client.SafeLog($"[MuxClient] a Faulted handler of session {Id} threw: {fault}"); }
+        }
     }
 
     public int KittyKeyboardSupportedFlags => Volatile.Read(ref _kittyKeyboardSupportedFlags);

@@ -149,7 +149,7 @@ namespace Ntilde.VT
                 content = content.Substring(skip);
                 HandleKittyGraphics(content, isTunneled: true);
             }
-            else
+            else if (IsSixel(content))
             {
                 HandleSixel(content);
             }

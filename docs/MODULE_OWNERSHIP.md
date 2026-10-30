@@ -89,7 +89,7 @@ invariant changes.
 
 **Namespace:** `Ntilde.Rendering`
 **Depends on:** VT, SkiaSharp 3.119.4
-**Public surface:** `PixelGrid`, `GlyphAtlas`, `GlyphCache`, `RowCache`, `ImageRegistry`, `SixelDecoder`, `RenderPerfMetrics`, `RenderPerfWriter`, `RendererStatistics`, `SharedSKFont`, `SharedSKTypeface`
+**Public surface:** `PixelGrid`, `GlyphAtlas`, `GlyphCache`, `RowCache`, `ImageRegistry`, `SixelDecoder`, `DeferredSixelImage`, `RenderPerfMetrics`, `RenderPerfWriter`, `RendererStatistics`, `SharedSKFont`, `SharedSKTypeface`
 
 **Owns**
 - Skia glyph atlas / cache (dual-atlas system)
@@ -282,7 +282,7 @@ invariant changes.
   opts into `sixelCellSize` notifications on either negotiated version, before subsequent resize/output.
   Initial spawn metrics are validated before starting a child and forwarded through both local and
   remote factories; absent legacy metrics retain 10x20 defaults. Initial cell metrics travel in the
-  attach snapshot. GUI panes decode fresh SIXEL bitmaps; the daemon remains free of Skia, and other
+  attach snapshot. GUI panes retain bounded SIXEL source and materialize fresh bitmaps on first render; the daemon remains free of Skia, and other
   image protocols remain disabled there with truthful capability replies. Pending resizes coalesce per sender; observers
   follow the authoritative geometry without changing it. Legacy peers receive no new notification.
 - **The text client never relays raw output.** It renders every frame from its own

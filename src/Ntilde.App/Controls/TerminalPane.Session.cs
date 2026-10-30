@@ -137,7 +137,7 @@ namespace Ntilde.Controls
 
             // The GUI decodes SIXEL pixels while the headless parser applies the same geometry.
             // Other bitmap protocols retain their existing mux restriction.
-            Parser.ImageDecoder = CreateImageDecoder();
+            Parser.ImageDecoder = CreateImageDecoder(muxBacked);
             Parser.AllowNonSixelImages = !muxBacked;
 
             // A device reply is text on the PTY that the keyboard path never produced: DA1, a DSR
@@ -424,7 +424,7 @@ namespace Ntilde.Controls
             };
         }
 
-        private static Ntilde.Rendering.SkiaImageDecoder CreateImageDecoder() => new();
+        private static Ntilde.Rendering.SkiaImageDecoder CreateImageDecoder(bool deferSixel) => new() { DeferSixelDecoding = deferSixel };
 
         private bool AllowsNativeKittyGraphics(bool muxBacked) =>
             !muxBacked && (_settings?.AllowNativeKittyGraphics ?? true);

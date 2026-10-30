@@ -817,6 +817,9 @@ namespace Ntilde.Controls
                     return;
                 }
 
+                // Hidden mux tabs still receive output, so release retired compressed sources
+                // without waiting for a draw. This runs on the same UI thread as the frame drain.
+                if (Session is MuxClientSession) TermView.DisposeRetiredImageBitmaps();
                 UpdateScrollUI();
                 OutputReceived?.Invoke(this);
             });

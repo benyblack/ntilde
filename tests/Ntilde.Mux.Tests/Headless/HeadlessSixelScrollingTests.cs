@@ -8,6 +8,63 @@ public sealed class HeadlessSixelScrollingTests
 {
     private const string Image = "\x1bPq!30~-~\x1b\\";
 
+    [Fact]
+    public async Task Reattaching_without_SIXEL_support_removes_the_previous_subscription()
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        var sink = new RecordingFrameSink();
+        var mux = host.Mux(id);
+        var presentation = MuxTestHost.DefaultPresentation with { SupportsSixelScrolling = true };
+        mux.PostAttach(sink, 1, 0, presentation, MuxProtocol.MaxFrameBytes);
+        await mux.FlushAsync();
+        mux.PostAttach(sink, 2, 0, presentation with { SupportsSixelScrolling = false }, MuxProtocol.MaxFrameBytes);
+        await mux.FlushAsync();
+        int before = sink.Frames.Count(f => f.IsNotification(MuxMethods.SixelCellSize));
+
+        mux.PostResize(80, 24, presentation with { CellHeightPx = 6 });
+        host.Fake(id).Emit(Image);
+        await mux.FlushAsync();
+
+        Assert.Equal(6, mux.Parser.SixelCellHeightPx);
+        Assert.Equal(before, sink.Frames.Count(f => f.IsNotification(MuxMethods.SixelCellSize)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Failed_metric_delivery_stops_only_that_session_before_later_output(bool faultHandlerThrows)
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync();
+        Guid brokenId = await MuxTestHost.SpawnAsync(client);
+        Guid healthyId = await MuxTestHost.SpawnAsync(client);
+        var presentation = MuxTestHost.DefaultPresentation with { SupportsSixelScrolling = true };
+        var broken = await MuxTestHost.AttachPaneAsync(client, brokenId, presentation);
+        var healthy = await MuxTestHost.AttachPaneAsync(client, healthyId, presentation);
+        int faults = 0;
+        broken.Session.SixelCellSizeChanged += (_, _) => throw new InvalidOperationException("metric handler failed");
+        broken.Session.Faulted += _ =>
+        {
+            Interlocked.Increment(ref faults);
+            if (faultHandlerThrows) throw new InvalidOperationException("fault handler failed");
+        };
+
+        broken.Session.UpdatePresentation(presentation with { CellHeightPx = 6 });
+        await TestWait.UntilAsync(() => Volatile.Read(ref faults) == 1, "the affected session faulted");
+        host.Fake(brokenId).Emit("unseen");
+        host.Fake(healthyId).Emit("still live");
+        await host.SettleAsync(brokenId, client);
+        await host.SettleAsync(healthyId, client);
+
+        Assert.True(client.IsConnected);
+        Assert.False(broken.Session.IsAttached);
+        Assert.DoesNotContain(broken.Events, e => e.StartsWith("out:", StringComparison.Ordinal));
+        Assert.Contains("out:still live", healthy.Events);
+        host.AssertPaneMatchesMux(healthyId, healthy, "sibling survived metric callback failure");
+    }
+
     [Theory]
     [InlineData(1, 12, 1)]
     [InlineData(2, 12, 1)]
