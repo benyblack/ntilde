@@ -56,7 +56,7 @@ public sealed class SixelSourceBudget
             int count = _snapshotSources;
             foreach (var source in unique)
             {
-                if (source.Owner != this) throw new ArgumentException("Source belongs to another budget.", nameof(sources));
+                ValidateSnapshotOwner(source);
                 if (source.SnapshotPins > 0) { available.Add(source); continue; }
                 if (source.Data is not { } data)
                 {
@@ -78,6 +78,11 @@ public sealed class SixelSourceBudget
             if (available.Count > 0) lease = new SnapshotPins(this, available.ToArray());
             return true;
         }
+    }
+
+    private void ValidateSnapshotOwner(SixelSource source)
+    {
+        if (source.Owner != this) throw new ArgumentException("Source belongs to another budget.", nameof(source));
     }
 
     private void ReleaseSnapshot(SixelSource[] sources)
