@@ -16,11 +16,11 @@ export function installLockedCollector(directory, manifestBytes, lockBytes, npmC
     // Only immutable registry archives can establish the retained dependency tree.
     const lock = JSON.parse(lockBytes);
     const packages = lock.packages;
-    if (![2, 3].includes(lock.lockfileVersion) || !packages || !packages['node_modules/terminfo.dev']) {
+    if (![2, 3].includes(lock.lockfileVersion) || !packages?.['node_modules/terminfo.dev']) {
         throw new Error('Collector lockfile must describe the complete installed package tree.');
     }
     for (const [path, entry] of Object.entries(packages)) {
-        if (path && (entry.link || !/^https:\/\//.test(entry.resolved ?? '')
+        if (path && (entry.link || !(entry.resolved ?? '').startsWith('https://')
             || !/^sha(?:256|384|512)-[A-Za-z0-9+/]+={0,2}$/.test(entry.integrity ?? ''))) {
             throw new Error('Collector lockfile dependencies require HTTPS archives with integrity digests.');
         }

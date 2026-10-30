@@ -233,6 +233,11 @@ for (const runner of ['owned', 'inline']) {
             assert.equal(result.status, 1, result.stdout + result.stderr);
             assert.match(result.stderr, /Locked collector installation failed \(42\)/);
             assert.ok(!/Collecting in disposable|Recording terminfo.dev/.test(result.stdout));
+            if (runner === 'owned') {
+                const output = readdirSync(join(root, 'artifacts/terminfo')).find(name => name.startsWith('owned-'));
+                assert.match(JSON.parse(readFileSync(join(root, 'artifacts/terminfo', output, 'failure.json'))).error,
+                    /Locked collector installation failed \(42\)/);
+            }
         });
     });
 }

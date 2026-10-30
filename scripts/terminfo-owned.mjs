@@ -77,6 +77,12 @@ function terminateOwnedWorker(recorded, runId) {
     } catch {}
 }
 
+function retainPreparationFailure(output, error) {
+    if (output && !existsSync(join(output, 'failure.json'))) {
+        writeJson(join(output, 'failure.json'), { error: error.message, at: new Date().toISOString() });
+    }
+}
+
 async function main() {
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
@@ -246,9 +252,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             writeJson(join(output, 'ownership-proof.json'), { proofs, completed, cleanedUpAt: new Date().toISOString() });
         }
     } catch (error) {
-        if (output && !existsSync(join(output, 'failure.json'))) {
-            writeJson(join(output, 'failure.json'), { error: error.message, at: new Date().toISOString() });
-        }
+        retainPreparationFailure(output, error);
         throw error;
     } finally {
         try {
