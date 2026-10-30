@@ -114,4 +114,40 @@ public sealed class AnsiCellWriterTests
         Assert.Equal(5, written);
         Assert.Equal(AnsiCellWriter.Reset + Family + EAcute + Heart + AnsiCellWriter.Reset, sb.ToString());
     }
+
+    [Fact]
+    public void Underline_styles_and_colors_survive_a_replay()
+    {
+        // #270: the mux text client paints a pane into the outer terminal through this writer.
+        TerminalBuffer source = Parse("\x1b[4:3;58:2::1:2:3mA\x1b[4:2;58;5;9mB\x1b[4mC\x1b[58;5;4mD\x1b[4:5mE\x1b[0mF");
+
+        TerminalBuffer replay = Parse(WriteRow(source, 0, source.Cols));
+
+        Assert.Equal(new CellUnderline(UnderlineStyle.Curly, TermColor.FromRgb(1, 2, 3)), replay.GetUnderlineAbsolute(0, 0));
+        for (int c = 1; c < 6; c++)
+        {
+            Assert.True(source.GetUnderlineAbsolute(c, 0) == replay.GetUnderlineAbsolute(c, 0), $"underline at {c}");
+        }
+    }
+
+    [Theory]
+    [InlineData("\x1b[1;4:3;58;2;1;2;3mA", "\x1b[0;1;4m\x1b[4:3;58:2::1:2:3mA")]
+    [InlineData("\x1b[21mA", "\x1b[0;4m\x1b[4:2mA")]
+    [InlineData("\x1b[4;58;5;9mA", "\x1b[0;4m\x1b[58:5:9mA")]
+    [InlineData("\x1b[4mA", "\x1b[0;4mA")]
+    public void A_styled_or_colored_underline_follows_the_main_sgr_in_a_sequence_of_its_own(string input, string expectedPrefix)
+    {
+        // Colon form, apart from the main SGR: a terminal that rejects colon sub-parameters drops only that
+        // sequence and keeps the plain underline, where 58's semicolon form could have it read the color's
+        // numbers as SGR codes of their own.
+        Assert.StartsWith(expectedPrefix, WriteRow(Parse(input), 0, 1), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_change_of_underline_style_alone_starts_a_new_style()
+    {
+        string row = WriteRow(Parse("\x1b[4:3mA\x1b[4:2mB"), 0, 2);
+
+        Assert.StartsWith("\x1b[0;4m\x1b[4:3mA\x1b[0;4m\x1b[4:2mB", row, StringComparison.Ordinal);
+    }
 }
