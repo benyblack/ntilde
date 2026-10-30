@@ -47,11 +47,17 @@ public static class PlatformAppPaths
                 return Path.GetFullPath(overrideRoot);
             }
 
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                AppName);
+            return DefaultRootDirectory;
         }
     }
+
+    /// <summary>
+    /// The root without the <c>NTILDE_APPDATA_ROOT</c> override: the machine's real app-data directory. Tests read it
+    /// here rather than clearing the variable, which is process-wide.
+    /// </summary>
+    public static string DefaultRootDirectory => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        AppName);
 
     /// <summary>The directory holding SSH profiles, generated OpenSSH config, and known-hosts.</summary>
     public static string SshDirectory => Path.Combine(RootDirectory, "ssh");

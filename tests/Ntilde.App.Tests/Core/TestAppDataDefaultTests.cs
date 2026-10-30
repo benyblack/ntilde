@@ -29,7 +29,7 @@ public class TestAppDataDefaultTests
                  })
         {
             Assert.False(
-                IsInside(Path.GetFullPath(root), real),
+                TestAppDataDefault.IsInside(root, real),
                 $"'{root}' is the machine's real app-data root '{real}'.");
         }
     }
@@ -40,14 +40,7 @@ public class TestAppDataDefaultTests
         // Codex review of #652: AppPaths' first use migrates legacy data into the current root - a roaming
         // last_session.json, the themes beside the test binaries - so pointing the variable at an empty directory
         // did not keep it empty.
+        Assert.True(TestAppDataDefault.SweptAppPathsMigration, "TestAppDataDefault.AppPaths.cs is not compiled into this project");
         Assert.Empty(TestAppDataDefault.FilesAtStart);
-    }
-
-    private static bool IsInside(string path, string directory)
-    {
-        StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        string trimmed = directory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return path.Equals(trimmed, comparison)
-            || path.StartsWith(trimmed + Path.DirectorySeparatorChar, comparison);
     }
 }

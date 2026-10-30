@@ -362,19 +362,11 @@ public sealed class JsonSshProfileStoreTests
     [Fact]
     public void GetDefaultStorePath_IsStablePerUserPath()
     {
-        string path = JsonSshProfileStore.GetDefaultStorePath();
-        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-
-        if (OperatingSystem.IsWindows())
-        {
-            Assert.StartsWith(localAppData, path, StringComparison.OrdinalIgnoreCase);
-        }
-        else
-        {
-            Assert.StartsWith(localAppData, path, StringComparison.Ordinal);
-        }
-
-        Assert.EndsWith(Path.Combine("ntilde", "ssh", "profiles.json"), path);
+        // Under the app-data root, which this test process points at a scratch directory (#317). The root's own
+        // default, LocalApplicationData\ntilde, is SshPathSandboxTests' to check.
+        Assert.Equal(
+            Path.Combine(PlatformAppPaths.RootDirectory, "ssh", "profiles.json"),
+            JsonSshProfileStore.GetDefaultStorePath());
     }
 
     [Fact]

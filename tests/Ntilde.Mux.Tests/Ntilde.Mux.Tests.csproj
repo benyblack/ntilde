@@ -29,6 +29,8 @@
          suite: a fix to either is a fix for both. -->
     <Compile Include="..\Ntilde.VT.Tests\StateTransfer\TerminalStateAssert.cs" Link="Shared\TerminalStateAssert.cs" />
     <Compile Include="..\Ntilde.VT.Tests\StateTransfer\ParityCorpus.cs" Link="Shared\ParityCorpus.cs" />
+    <!-- #317: the process starts on a scratch app-data root, never the developer's real one. -->
+    <Compile Include="..\Ntilde.App.Tests\TestAppDataDefault.cs" Link="Shared\TestAppDataDefault.cs" />
     <Content Include="..\Ntilde.App.Tests\Fixtures\Replay\*.rec">
       <Link>Fixtures/Replay/%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
