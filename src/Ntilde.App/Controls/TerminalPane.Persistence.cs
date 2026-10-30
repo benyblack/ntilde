@@ -707,7 +707,7 @@ namespace Ntilde.Controls
         internal MuxPresentation BuildMuxPresentation()
         {
             double scale = TermView.EffectiveRenderScaling;
-            if (double.IsNaN(scale) || scale <= 0) scale = 1;
+            if (!double.IsFinite(scale) || scale <= 0) scale = 1;
             TerminalTheme? theme = _settings is null ? null : BuildEffectiveSettings(_settings).ActiveTheme;
             int cols = TermView.Cols > 0 ? TermView.Cols : Buffer?.Cols ?? 80;
             int rows = TermView.Rows > 0 ? TermView.Rows : Buffer?.Rows ?? 24;

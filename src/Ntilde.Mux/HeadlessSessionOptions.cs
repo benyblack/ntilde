@@ -13,6 +13,8 @@ public sealed class HeadlessSessionOptions
 
     /// <summary>Spawning host's keyboard ceiling, applied before startup output is subscribed. Null means flag 1.</summary>
     public int? KittyKeyboardSupportedFlags { get; init; }
+    public float? CellWidthPx { get; init; }
+    public float? CellHeightPx { get; init; }
 
     /// <summary>
     /// Input (UTF-16 bytes) queued for the child's stdin and not yet written; past it, further input

@@ -202,7 +202,7 @@ namespace Ntilde.VT
             string probeTransport = _kittyPendingParams.TryGetValue("t", out var probeT) ? probeT : "d";
             bool transportSupported = probeTransport == "d"
                 || (probeTransport == "f" && ReadFileBytes != null);
-            string status = IsNativeKittyBlocked(isTunneled) || !transportSupported
+            string status = !AllowNonSixelImages || IsNativeKittyBlocked(isTunneled) || !transportSupported
                 ? "ERR"
                 : "OK";
             OnResponse?.Invoke($"\x1b_Gi={id};{status}\x1b\\");
@@ -213,6 +213,7 @@ namespace Ntilde.VT
         /// </summary>
         private void TransmitKittyImage()
         {
+            if (!AllowNonSixelImages) return;
             byte[]? data = ReadKittyPayload();
             if (data == null) return;
 

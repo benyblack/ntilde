@@ -123,10 +123,11 @@ public sealed class MuxPaneTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void The_mux_parser_is_built_without_image_support()
+    public void Mux_panes_decode_SIXEL_only_and_keep_other_transports_disabled()
     {
         StartPane();
-        Assert.Null(_pane!.Parser!.ImageDecoder);
+        Assert.IsType<Ntilde.Rendering.SkiaImageDecoder>(_pane!.Parser!.ImageDecoder);
+        Assert.False(_pane.Parser.AllowNonSixelImages);
         Assert.False(_pane.Parser.AllowNativeKittyGraphics);
         Assert.Null(_pane.Parser.ReadFileBytes);
         Assert.True(_pane.TermView.DefersBufferResizeToSession);

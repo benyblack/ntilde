@@ -137,10 +137,15 @@ public sealed class HeadlessTerminalSession : IDisposable
         _maxQueuedInputBytes = options.MaxQueuedInputBytes;
         _buffer = new TerminalBuffer(options.Cols, options.Rows);
         _buffer.Modes.KittyKeyboard.SetSupportedFlags(options.KittyKeyboardSupportedFlags ?? KittyKeyboardState.FlagDisambiguateEscapeCodes);
+        float cellWidth = InitialCellMetric(options.CellWidthPx, 10);
+        float cellHeight = InitialCellMetric(options.CellHeightPx, 20);
         _parser = new AnsiParser(_buffer, options.ForceConPtyFiltering)
         {
             ImageDecoder = null,
-            SixelCellSizeOverride = new SixelCellSize(10, 20),
+            AllowNonSixelImages = false,
+            CellWidth = cellWidth,
+            CellHeight = cellHeight,
+            SixelCellSizeOverride = new SixelCellSize(cellWidth, cellHeight),
             AllowNativeKittyGraphics = false,
             KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
         };
@@ -1049,6 +1054,9 @@ public sealed class HeadlessTerminalSession : IDisposable
         catch (Exception ex) { Log($"[Mux] session {Id}: reporting a subscription failed: {ex.Message}"); }
     }
 
+    private static float InitialCellMetric(float? value, float fallback) =>
+        value is float metric && float.IsFinite(metric) && metric > 0 ? metric : fallback;
+
     /// <summary>
     /// The session-wide fields: the latest client wins. Not <see cref="MuxPresentation.KittyKeyboardEnabled"/>,
     /// which is each interactive client's own (<see cref="RecordKitty"/>, <see cref="RecomputeKitty"/>).
@@ -1057,10 +1065,11 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         float width = float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0 ? presentation.CellWidthPx : _parser.CellWidth;
         float height = float.IsFinite(presentation.CellHeightPx) && presentation.CellHeightPx > 0 ? presentation.CellHeightPx : _parser.CellHeight;
-        // Copied wire values need exact identity: even a subpixel change can cross a cell-count ceiling.
-        if (_parser.SixelCellSizeOverride is not { } size || !size.WidthPx.Equals(width) || !size.HeightPx.Equals(height))
+        // Compare the immutable value pair exactly: subpixel changes can cross a cell-count ceiling.
+        var size = new SixelCellSize(width, height);
+        if (_parser.SixelCellSizeOverride != size)
         {
-            _parser.SixelCellSizeOverride = new SixelCellSize(width, height);
+            _parser.SixelCellSizeOverride = size;
             _sixelCellSizePending = true;
         }
         if (float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0) _parser.CellWidth = presentation.CellWidthPx;

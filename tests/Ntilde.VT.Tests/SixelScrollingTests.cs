@@ -194,4 +194,74 @@ public sealed class SixelScrollingTests
         Assert.Contains("modes", error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Repeated_page_origin_frames_retire_fully_covered_images_without_disposing_a_live_snapshot()
+    {
+        var buffer = new TerminalBuffer(10, 5);
+        var parser = new AnsiParser(buffer) { ImageDecoder = new FixedSizeImageDecoder(30, 40) };
+        parser.Process("\x1b[?80h" + Image);
+        object original = Assert.Single(buffer.Images).ImageHandle;
+        int snapshot = buffer.BeginSnapshotSession();
+        try
+        {
+            for (int i = 0; i < 50; i++) parser.Process(Image);
+            Assert.Single(buffer.Images);
+            Assert.NotSame(original, buffer.Images[0].ImageHandle);
+            var retired = new List<object>();
+            buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+            Assert.Empty(retired);
+        }
+        finally { buffer.EndSnapshotSession(snapshot); }
+        var ready = new List<object>();
+        buffer.DrainRetiredImageHandles(ready, long.MaxValue);
+        Assert.Equal(50, ready.Count);
+        Assert.Contains(original, ready);
+    }
+
+    [Fact]
+    public void Page_origin_replacement_preserves_uncovered_pixels_and_other_screen_images()
+    {
+        var buffer = new TerminalBuffer(10, 5);
+        var parser = new AnsiParser(buffer) { ImageDecoder = new FixedSizeImageDecoder(40, 40) };
+        parser.Process("\x1b[?80h" + Image);
+        object main = Assert.Single(buffer.Images).ImageHandle;
+        parser.ImageDecoder = new FixedSizeImageDecoder(20, 20);
+        parser.Process(Image);
+        Assert.Equal(2, buffer.Images.Count); // The older image still has uncovered pixels.
+        parser.Process("\x1b[?1049h" + Image + Image);
+        Assert.Equal(3, buffer.Images.Count); // Two hidden main images and one current alternate image.
+        Assert.Contains(buffer.Images, image => ReferenceEquals(image.ImageHandle, main));
+        Assert.Single(buffer.Images, image => image.IsAltScreenImage);
+    }
+
+    [Fact]
+    public void Sixel_only_hosts_preserve_chunk_state_but_refuse_other_image_transports_and_probes()
+    {
+        var buffer = new TerminalBuffer(10, 5);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false)
+        {
+            ImageDecoder = new FixedSizeImageDecoder(30, 40),
+            AllowNonSixelImages = false,
+        };
+        var headless = new AnsiParser(new TerminalBuffer(10, 5), forceConPtyFiltering: false) { AllowNonSixelImages = false };
+        const string first = "\x1b]1339;Kitty:Ga=T,m=1;AA\x07";
+        parser.Process(first);
+        headless.Process(first);
+        Assert.Equal(headless.ExportState().ToDebugString(), parser.ExportState().ToDebugString());
+        parser.Process("\x1b]1339;Kitty:Gm=0;AA==\x07");
+        headless.Process("\x1b]1339;Kitty:Gm=0;AA==\x07");
+        Assert.Equal(headless.ExportState().ToDebugString(), parser.ExportState().ToDebugString());
+        int reads = 0;
+        parser.ReadFileBytes = _ => { reads++; return new byte[4]; };
+        parser.Process("\x1b_Ga=T,t=f;L3RtcC9pbWFnZQ==\x1b\\\x1b]1337;File=inline=1:AQIDBA==\x07");
+        Assert.Equal(0, reads);
+        Assert.Empty(buffer.Images);
+        var replies = new List<string>();
+        parser.OnResponse += replies.Add;
+        parser.Process("\x1b_Ga=q,i=7;\x1b\\");
+        Assert.Equal("\x1b_Gi=7;ERR\x1b\\", Assert.Single(replies));
+        parser.Process(Image);
+        Assert.Single(buffer.Images); // SIXEL still decodes and advances normally.
+    }
+
 }

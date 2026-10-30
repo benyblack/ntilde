@@ -68,6 +68,10 @@ namespace Ntilde.Pty
         /// The stream/process layer does not interpret the protocol bits.
         /// </summary>
         public int? KittyKeyboardSupportedFlags { get; init; }
+
+        /// <summary>Initial device-pixel cell size for persistent-session layout; opaque to the process layer.</summary>
+        public float? CellWidthPx { get; init; }
+        public float? CellHeightPx { get; init; }
     }
 
     /// <summary>

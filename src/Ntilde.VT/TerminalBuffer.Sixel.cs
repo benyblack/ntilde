@@ -26,6 +26,7 @@ public partial class TerminalBuffer
                 if (image is not null) image.ClipBottomRows = Math.Max(0, heightCells - Rows);
             }
             else PlaceScrollingSixelImage(image, row, heightCells);
+            if (display && image is not null) RetireCoveredSixelImages(image);
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();
@@ -50,6 +51,27 @@ public partial class TerminalBuffer
             {
                 RetireImage(image);
                 _images.Remove(image);
+            }
+        }
+    }
+
+    private void RetireCoveredSixelImages(TerminalImage current)
+    {
+        int right = current.CellX + current.CellWidth - current.ClipRightColumns;
+        int top = current.CellY + current.ClipTopRows;
+        int bottom = current.CellY + current.CellHeight - current.ClipBottomRows;
+        if (right <= current.CellX || bottom <= top) return;
+        // The SIXEL draw path clears this rectangle before painting. Fully covered older
+        // SIXELs cannot reappear; retire them through the existing snapshot-session gate.
+        for (int i = _images.Count - 1; i >= 0; i--)
+        {
+            TerminalImage old = _images[i];
+            if (!old.IsSixelImage || ReferenceEquals(old, current) || old.IsAltScreenImage != current.IsAltScreenImage) continue;
+            if (old.CellX >= current.CellX && old.CellX + old.CellWidth - old.ClipRightColumns <= right &&
+                old.CellY + old.ClipTopRows >= top && old.CellY + old.CellHeight - old.ClipBottomRows <= bottom)
+            {
+                RetireImage(old, disposeImmediately: true);
+                _images.RemoveAt(i);
             }
         }
     }

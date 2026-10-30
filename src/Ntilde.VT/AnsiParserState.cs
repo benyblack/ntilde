@@ -13,7 +13,7 @@ namespace Ntilde.VT
     /// </summary>
     /// <remarks>
     /// Read-only configuration is deliberately absent: the image decoder, general cell metrics, default
-    /// colours, the kitty kill switch, the string-sequence cap, and the ConPTY-filtering flag are
+    /// colours, the image-protocol policy, the kitty kill switch, the string-sequence cap, and the ConPTY-filtering flag are
     /// host settings, not stream position. Two parsers exchanging state must be constructed with
     /// the same <c>forceConPtyFiltering</c>, because that one changes how a sequence is
     /// interpreted rather than what has been seen.

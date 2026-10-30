@@ -45,6 +45,21 @@ public sealed class MuxTerminalSessionFactoryTests
         }
     }
 
+
+    [Fact]
+    public async Task Local_spawn_carries_pixel_metrics_before_the_childs_first_image()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            mux.Factory.StartupOutput = "\x1b[2;1H\x1bPq!30~-~\x1b\\\x1b[6n";
+            var session = Assert.IsType<MuxClientSession>(factory.CreatePersistent(Local() with { CellWidthPx = 20, CellHeightPx = 6 }).Session);
+            Assert.False(session.IsAttached);
+            await TestWait.UntilAsync(() => !mux.Fake(session.Id).SentInput.IsEmpty, "local startup SIXEL used the launch metrics");
+            Assert.Equal("\x1b[4;1R", Assert.Single(mux.Fake(session.Id).SentInput));
+        }
+    }
+
     [Fact]
     public void Local_request_spawns_an_unattached_mux_session()
     {

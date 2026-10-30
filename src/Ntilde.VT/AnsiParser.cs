@@ -138,6 +138,9 @@ namespace Ntilde.VT
 
         /// <summary>Optional authoritative device-pixel metrics for SIXEL layout (mux stream or local host).</summary>
         private SixelCellSize? _sixelCellSizeOverride;
+        /// <summary>Host policy for image protocols without headless geometry support. SIXEL remains independent.</summary>
+        public bool AllowNonSixelImages { get; set; } = true;
+
         public SixelCellSize? SixelCellSizeOverride
         {
             get => System.Threading.Volatile.Read(ref _sixelCellSizeOverride);

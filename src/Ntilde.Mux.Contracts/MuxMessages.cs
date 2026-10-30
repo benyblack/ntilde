@@ -93,6 +93,12 @@ public sealed record SpawnParams
     public bool SkipPowerShellPostLaunchInit { get; init; }
     public string Title { get; init; } = string.Empty;
 
+    /// <summary>Spawning host's device-pixel metrics, applied before startup output; omitted by legacy callers.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public float? CellWidthPx { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public float? CellHeightPx { get; init; }
+
     /// <summary>Spawning host's initial keyboard ceiling, before any attach; absent means flag 1.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? KittyKeyboardSupportedFlags { get; init; }

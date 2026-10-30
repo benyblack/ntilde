@@ -104,4 +104,51 @@ public sealed class HeadlessSixelScrollingTests
         Assert.DoesNotContain(legacy.Frames, f => f.IsNotification(MuxMethods.SixelCellSize));
     }
 
+    [Theory]
+    [InlineData(null, null, 3)]
+    [InlineData(20f, 6f, 4)]
+    [InlineData(20f, 12f, 3)]
+    [InlineData(20f, 3f, 6)]
+    public async Task Initial_metrics_apply_to_constructor_time_SIXEL_before_any_attach(float? width, float? height, int expectedRow)
+    {
+        using var host = new MuxTestHost();
+        host.Factory.StartupOutput = "\x1b[2;1H" + Image + "\x1b[6n";
+        using var client = await host.ConnectClientAsync();
+        Guid id = await client.SpawnAsync(new SpawnParams
+        {
+            Command = "scripted",
+            Cols = 10,
+            Rows = 6,
+            CellWidthPx = width,
+            CellHeightPx = height,
+        }, TestContext.Current.CancellationToken);
+        await host.Mux(id).FlushAsync();
+        Assert.Equal(0, host.Mux(id).AttachedClients);
+        await TestWait.UntilAsync(() => !host.Fake(id).SentInput.IsEmpty, "the first startup query was answered before attach");
+        Assert.Equal($"\x1b[{expectedRow};1R", Assert.Single(host.Fake(id).SentInput));
+        var request = Assert.Single(host.Factory.Requests);
+        Assert.Equal(height, request.CellHeightPx);
+        Assert.Equal(width, request.CellWidthPx);
+        Assert.Equal(width ?? 10, host.Mux(id).Parser.SixelCellWidthPx);
+    }
+
+    [Theory]
+    [InlineData(null, 6f)]
+    [InlineData(10f, null)]
+    [InlineData(0f, 6f)]
+    [InlineData(10f, -1f)]
+    public async Task Invalid_initial_metric_pairs_are_refused_before_a_child_is_started(float? width, float? height)
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync();
+        var error = await Assert.ThrowsAsync<MuxProtocolException>(() => client.SpawnAsync(new SpawnParams
+        {
+            Command = "scripted",
+            CellWidthPx = width,
+            CellHeightPx = height,
+        }, TestContext.Current.CancellationToken));
+        Assert.Equal(MuxErrorCodes.ProtocolError, error.Code);
+        Assert.Empty(host.Factory.Requests);
+    }
+
 }

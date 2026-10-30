@@ -243,9 +243,18 @@ public sealed class MuxServer : IDisposable
         }
     }
 
+    private static void RequireInitialCellMetrics(float? width, float? height)
+    {
+        if (width.HasValue != height.HasValue ||
+            (width is float w && (!float.IsFinite(w) || w <= 0)) ||
+            (height is float h && (!float.IsFinite(h) || h <= 0)))
+            throw new MuxRequestException(MuxErrorCodes.ProtocolError, "Initial cell metrics must be an absent pair or two finite positive values.");
+    }
+
     internal Guid Spawn(SpawnParams p)
     {
         RequireGeometry(p.Cols, p.Rows);
+        RequireInitialCellMetrics(p.CellWidthPx, p.CellHeightPx);
 
         // Chosen before the spawn so the shell can be told its own id; added to the caller's
         // overrides, which the PTY layers on top of the daemon's environment. The caller may choose
@@ -264,6 +273,8 @@ public sealed class MuxServer : IDisposable
             environment, p.SkipPowerShellPostLaunchInit, Ssh: null)
         {
             KittyKeyboardSupportedFlags = p.KittyKeyboardSupportedFlags,
+            CellWidthPx = p.CellWidthPx,
+            CellHeightPx = p.CellHeightPx,
         };
 
         ITerminalSession inner;
@@ -294,6 +305,8 @@ public sealed class MuxServer : IDisposable
                 Cols = p.Cols,
                 Rows = p.Rows,
                 KittyKeyboardSupportedFlags = p.KittyKeyboardSupportedFlags,
+                CellWidthPx = p.CellWidthPx,
+                CellHeightPx = p.CellHeightPx,
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,
                 Log = Options.Log,
                 MaxQueuedInputBytes = Options.MaxQueuedInputBytes,

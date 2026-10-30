@@ -57,6 +57,15 @@ namespace Ntilde.Controls
             return "unknown";
         }
 
+        private (float? Width, float? Height) InitialMuxCellSize()
+        {
+            var presentation = BuildMuxPresentation();
+            if (float.IsFinite(presentation.CellWidthPx) && float.IsFinite(presentation.CellHeightPx) &&
+                presentation.CellWidthPx > 0 && presentation.CellHeightPx > 0)
+                return (presentation.CellWidthPx, presentation.CellHeightPx);
+            return (null, null);
+        }
+
         private void SyncLocalSixelCellSize()
         {
             if (Parser is not { } parser || Session is MuxClientSession) return;
@@ -122,15 +131,14 @@ namespace Ntilde.Controls
         {
             if (Buffer == null) return;
 
-            // A mux-backed pane parses the same bytes as the daemon's parser and must stay equal to
-            // it: same ConPTY filtering (from Welcome), and no image decoding - the mux parser has
-            // none, and decoding moves the cursor, so a decoding pane would diverge. Inline images
-            // are a documented v1 limit of persistent sessions.
+            // A mux-backed pane shares the daemon's SIXEL geometry even though only the GUI
+            // decodes the bitmap. Other image protocols keep their existing mux restriction.
             Parser = new AnsiParser(Buffer, forceConPtyFiltering);
 
-            // Inline images (sixel / iTerm2 / Kitty) decode to the SKBitmap handles the draw
-            // operation renders; without a decoder those parser paths silently no-op.
-            Parser.ImageDecoder = CreateImageDecoder(muxBacked);
+            // The GUI decodes SIXEL pixels while the headless parser applies the same geometry.
+            // Other bitmap protocols retain their existing mux restriction.
+            Parser.ImageDecoder = CreateImageDecoder();
+            Parser.AllowNonSixelImages = !muxBacked;
 
             // A device reply is text on the PTY that the keyboard path never produced: DA1, a DSR
             // cursor report, an answerback. Nothing here can promise the shell's line editor was not
@@ -416,8 +424,7 @@ namespace Ntilde.Controls
             };
         }
 
-        private static Ntilde.Rendering.SkiaImageDecoder? CreateImageDecoder(bool muxBacked) =>
-            muxBacked ? null : new Ntilde.Rendering.SkiaImageDecoder();
+        private static Ntilde.Rendering.SkiaImageDecoder CreateImageDecoder() => new();
 
         private bool AllowsNativeKittyGraphics(bool muxBacked) =>
             !muxBacked && (_settings?.AllowNativeKittyGraphics ?? true);
@@ -518,6 +525,7 @@ namespace Ntilde.Controls
                 }
 
                 bool isSsh = profile != null && profile.Type == ConnectionType.SSH;
+                var initialCellSize = InitialMuxCellSize();
                 var request = new TerminalSessionRequest(
                     Command: effectiveShell,
                     Arguments: args,
@@ -538,6 +546,8 @@ namespace Ntilde.Controls
                         : null)
                 {
                     KittyKeyboardSupportedFlags = (_settings?.EnableKittyKeyboardProtocol ?? true) ? KittyKeyboardState.SupportedFlags : 0,
+                    CellWidthPx = initialCellSize.Width,
+                    CellHeightPx = initialCellSize.Height,
                 };
 
                 // Phase 4 spec §7.4: an SSH pane whose profile persists its remote sessions goes to that

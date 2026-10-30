@@ -157,6 +157,7 @@ namespace Ntilde.VT
 
         private void HandleITerm2Image(string osc)
         {
+            if (!AllowNonSixelImages) return;
             // The payload is the bulk of an image sequence (megabytes), so it is read in place as a
             // span: Split(':', 2) used to copy all of it once more just to separate the header.
             int colon = osc.IndexOf(':');

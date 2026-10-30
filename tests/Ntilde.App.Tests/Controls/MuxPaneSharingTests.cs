@@ -81,7 +81,10 @@ public sealed class MuxPaneSharingTests : IDisposable
     public void Spawn_carries_the_panes_keyboard_setting_before_attach(bool enabled, int flags)
     {
         StartHostedPane(new Ntilde.Shell.TerminalSettings { EnableKittyKeyboardProtocol = enabled });
-        Assert.Equal(flags, Assert.Single(_mux.Factory.Requests).KittyKeyboardSupportedFlags);
+        var request = Assert.Single(_mux.Factory.Requests);
+        Assert.Equal(flags, request.KittyKeyboardSupportedFlags);
+        Assert.True(request.CellWidthPx > 0);
+        Assert.True(request.CellHeightPx > 0);
     }
 
     [AvaloniaFact]
@@ -218,6 +221,8 @@ public sealed class MuxPaneSharingTests : IDisposable
         PumpUntil(() => _pane.Buffer.TotalLines == total + 2, "the real decoder advances two rows using the daemon's metrics");
         Assert.Equal(_mux.Mux(session.Id).Buffer.TotalLines, _pane.Buffer.TotalLines);
         Assert.Equal(rows - 1, _pane.Buffer.CursorRow);
+        var bitmap = Assert.IsType<SkiaSharp.SKBitmap>(Assert.Single(_pane.Buffer.Images).ImageHandle);
+        Assert.Equal((30, 12), (bitmap.Width, bitmap.Height));
         other.Session.Dispose();
     }
 

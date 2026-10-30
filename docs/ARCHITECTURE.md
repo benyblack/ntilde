@@ -151,7 +151,11 @@ measures bounded raster extents for headless parsing; `TerminalBuffer` owns plac
 clipping and image retirement. The renderer applies the snapshot's clipping metadata without deciding
 scrolling semantics. DECSDM follows xterm polarity: `?80h` disables SIXEL-driven scrolling and draws
 at page origin; reset restores inline scrolling. Shared clients use the daemon's ordered pixel cell
-size rather than their own font/DIP metrics. Parser snapshots preserve that override; legacy raw-only
+size rather than their own font/DIP metrics. That size is supplied at spawn before startup output,
+then updated in stream order. GUI panes can decode fresh SIXELs while the daemon only measures;
+other image protocols remain disabled for persistent sessions. Page-origin frames retire older,
+fully covered SIXELs through the existing snapshot-session disposal gate. Parser snapshots preserve
+that override; legacy raw-only
 recordings still rely on the replay host's configured cell metrics.
 
 Skia-only helpers: glyph atlas (`GlyphAtlas`), glyph cache (`GlyphCache`), pixel grid math (`PixelGrid`), font wrappers (`SharedSKFont`, `SharedSKTypeface`), image registry, sixel decoder, render performance metrics.
