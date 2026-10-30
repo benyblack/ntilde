@@ -7,9 +7,9 @@ namespace Ntilde.VT.Export
     public static class TerminalExporter
     {
         /// <summary>
-        /// The absolute row of screen row 0, as <see cref="TerminalBuffer.GetGrapheme"/> reads the screen. The
-        /// alternate screen's absolute rows start at 0; <see cref="TerminalBuffer.GetCell"/> counts them from the
-        /// main screen's scrollback, so over scrollback it reads the wrong rows, or past the end. Lock held.
+        /// The absolute row of screen row 0, for the absolute reads the exports make (cells, and the underline
+        /// side table): the alternate screen's absolute rows start at 0, the main screen's after its scrollback.
+        /// Lock held.
         /// </summary>
         private static int ScreenTop(TerminalBuffer buffer) => buffer.IsAltScreenActive ? 0 : buffer.Scrollback.Count;
 

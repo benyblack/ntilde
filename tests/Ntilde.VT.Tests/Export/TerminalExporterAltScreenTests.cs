@@ -6,7 +6,7 @@ namespace Ntilde.VT.Tests.Export;
 /// <summary>
 /// The text exports on the alternate screen, over scrollback: they read cells with GetCell, which counted the
 /// alternate screen's rows from the main screen's scrollback, so their wide-character check looked at the
-/// wrong row, or found no cell at all, while GetGrapheme read the right one.
+/// wrong row, or found no cell at all, while GetGrapheme read the right one. GetCell itself is fixed too.
 /// </summary>
 public sealed class TerminalExporterAltScreenTests
 {
@@ -37,5 +37,23 @@ public sealed class TerminalExporterAltScreenTests
 
         Assert.Equal(WideThenX, TerminalExporter.GetVisibleRowTexts(buffer)[0]);
         Assert.Equal(WideThenX, TerminalExporter.GetLastNonEmptyRowText(buffer));
+    }
+
+    [Fact]
+    public void GetCell_ReadsTheAlternateScreensOwnRow()
+    {
+        TerminalBuffer buffer = AltScreenOverAScreenfulOfScrollback(WideThenX);
+
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.True(buffer.GetCell(0, 0).IsWide, "the wide character");
+            Assert.True(buffer.GetCell(1, 0).IsWideContinuation, "its second half");
+            Assert.Equal('X', buffer.GetCell(2, 0).Character);
+        }
+        finally
+        {
+            buffer.Lock.ExitReadLock();
+        }
     }
 }

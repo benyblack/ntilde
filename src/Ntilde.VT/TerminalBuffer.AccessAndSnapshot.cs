@@ -14,6 +14,10 @@ namespace Ntilde.VT
             // fieldRow is the visual row (0 to Rows-1)
             // We show: [scrollback tail] + [viewport]
 
+            // The alternate screen has no scrollback to show: its absolute rows are its screen rows. Counted
+            // from the main screen's scrollback, they read the wrong row, or past the end.
+            if (_isAltScreen) return GetCellAbsolute(col, fieldRow);
+
             int totalLines = _scrollback.Count + Rows;
             // Visible Top Index = Total - Rows - Offset
             int displayStart = Math.Max(0, totalLines - Rows - scrollOffset);
