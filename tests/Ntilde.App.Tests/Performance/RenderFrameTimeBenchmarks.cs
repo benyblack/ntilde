@@ -141,16 +141,21 @@ public class RenderFrameTimeBenchmarks
             { IsBackground = true, Name = "BenchmarkRender" };
         }
 
-        // The window opens before the render thread starts, and the count is read when it closes: only frames drawn
-        // inside it count, neither one done before parsing began nor one finished after it ended (Codex review of #659).
-        var clock = Stopwatch.StartNew();
-        renderThread?.Start();
         var decoder = Encoding.UTF8.GetDecoder();
         var chars = new char[Encoding.UTF8.GetMaxCharCount(chunks[0].Length)];
-        foreach (byte[] chunk in chunks)
+
+        // Only frames drawn while the flood runs count (Codex review of #659): the render thread is released once the
+        // first chunk is in, so its first frame already competes with parsing, and the count is read when the clock
+        // stops, so a frame finished after the flood does not count either.
+        var clock = Stopwatch.StartNew();
+        for (int i = 0; i < chunks.Length; i++)
         {
-            int count = decoder.GetChars(chunk, chars, flush: false);
+            int count = decoder.GetChars(chunks[i], chars, flush: false);
             parser.Process(new string(chars, 0, count));
+            if (i == 0)
+            {
+                renderThread?.Start();
+            }
         }
 
         clock.Stop();
