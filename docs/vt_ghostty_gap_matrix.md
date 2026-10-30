@@ -26,7 +26,7 @@ Priority:
 
 Ntilde is stronger than its current conformance matrix says. The matrix is stale for OSC 7, OSC 8, application cursor keys, DECOM, ICH/DCH/ECH, focus reporting, cursor style, and Unicode/grapheme support.
 
-The biggest real Ghostty parity gaps are not basic VT rendering. They are feature discovery, modern keyboard reporting, richer OSC support, complete shell-integration semantics, styled underline/color handling, and systematic conformance documentation.
+The biggest real Ghostty parity gaps are not basic VT rendering. They are feature discovery, modern keyboard reporting, richer OSC support, complete shell-integration semantics, and systematic conformance documentation.
 
 ## Gap Matrix
 
@@ -56,8 +56,8 @@ The biggest real Ghostty parity gaps are not basic VT rendering. They are featur
 | OSC 133 shell integration | Supports A/B/C/D and base64 command payload. | More complete semantic prompt behavior, click-to-move-cursor extensions, richer prompt/output regions. | Partial | P1 | `AnsiParser.cs` supports basic lifecycle markers; Ghostty 1.3 notes call out more complete OSC 133 plus click-events and `cl=line`. |
 | Command-finished notifications | Ntilde can observe OSC 133 finish; no Ghostty-style notification policy found. | Notify on long-running command finish via shell integration. | Real gap | P2 | Ghostty 1.3 release notes describe notification policy built on OSC 133. |
 | SGR italic/strike/faint/blink | Parser and renderer support italic/strike/faint/blink flags. | Core styling parity. | Already have / doc stale | P1 | `SgrAttributeTests`, `TerminalDrawOperation` decoration rendering. |
-| Styled underlines | `4:x` is parsed only as underline on/off; no distinct underline style model. | Colored and styled underlines advertised by Ghostty terminfo. | Partial | P1 | `AnsiParser` consumes underline style selector but collapses it; no `UnderlineStyle` storage. |
-| Underline color `SGR 58/59` | Parameters are consumed, but color is not rendered separately. | Colored underline support. | Partial | P1 | `AnsiParser` comments say underline color is not rendered separately. |
+| Styled underlines | `4:0`-`4:5` and `21` are kept per cell (`CellUnderline`, a row side table) and drawn straight, double, curly, dotted or dashed. | Colored and styled underlines advertised by Ghostty terminfo. | Have | P1 | `UnderlineStyleTests`, `UnderlineStyleRenderTests` (#270) |
+| Underline color `SGR 58/59` | `58;5;n` / `58;2;r;g;b` (and colon forms) color the underline, a palette index through the theme; `59` resets it. | Colored underline support. | Have | P1 | `UnderlineStyleTests`, `UnderlineStyleRenderTests` (#270) |
 | Unicode graphemes and emoji | Code and tests support combining attachment, ZWJ emoji, regional indicators, HarfBuzz shaping path. | Ghostty 1.3 calls out Unicode 17 and grapheme conformance for selection, cursor movement, width. | Partial / needs audit | P1 | Ntilde has `GraphemeAttachmentTests`, `WidthTests`, HarfBuzz renderer; no Unicode-version conformance target is documented. |
 | Complex script rendering | HarfBuzz shaping path and golden font tests exist. | Correct Brahmic/complex scripts and grapheme clustering. | Partial / likely close | P1 | `GoldenFontPngTests` covers Arabic and Devanagari; compare against Ghostty's broader claim before marking complete. |
 | Graphics protocols | Kitty graphics, iTerm2 inline images, Sixel, and OSC 1339 tunnel exist. | Robust graphics placement, scrolling, query, and platform behavior. | Partial | P1 | `IMAGE_PROTOCOL_SUPPORT.md` is strong; matrix still marks SIXEL scrolling unsupported and Kitty placement partial. |
@@ -70,7 +70,7 @@ The biggest real Ghostty parity gaps are not basic VT rendering. They are featur
 2. Add a terminfo/capability-advertising design before adding many more protocols. Without this, apps will keep treating Ntilde as plain `xterm-256color`.
 3. Implement Kitty keyboard protocol / `CSI u` and decide whether to support xterm `modifyOtherKeys`.
 4. Implement secure OSC 52 with explicit policy controls. This needs UI/security design, not just parser code.
-5. Add OSC color query/reset support and styled underline/underline-color rendering.
+5. Add OSC color query/reset support. (Styled and colored underlines landed with #270.)
 6. Expand OSC 133 toward semantic prompt regions and click-to-move-cursor if Command Assist will use shell structure deeply.
 
 ## Notes

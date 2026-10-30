@@ -131,7 +131,7 @@ It is designed to be:
 | 8/16 colors | 30–37/90–97, 40–47/100–107 | | ⚠ Partial | Replay | Parser+Buffer | |
 | 256-color | 38;5;N / 48;5;N | | ⚠ Partial | Replay | Parser+Buffer | |
 | Truecolor | 38;2;r;g;b / 48;2;r;g;b | | ⚠ Partial | Replay | Parser+Buffer | |
-| Underline styles | 4:1.. | xterm | ❌ Not supported | — | Buffer | |
+| Underline styles and color | 4:0-4:5, 21, 58, 59 | xterm, kitty | ✅ Supported | Unit: `tests/Ntilde.VT.Tests/UnderlineStyleTests.cs`; render: `tests/Ntilde.App.Tests/RenderTests/UnderlineStyleRenderTests.cs` | Parser+Buffer+Renderer | Straight/double/curly/dotted/dashed, own RGB or palette color (#270). The ANSI exporters (mux text client, export) still write a plain underline |
 
 ---
 
