@@ -72,35 +72,55 @@ public class ReaderHandoffTests
         {
             buffer.Lock.EnterWriteLock();
             holderIn.Set();
-            release.Wait(cancel);
-            buffer.Lock.ExitWriteLock();
+            try
+            {
+                release.Wait(cancel);
+            }
+            catch (OperationCanceledException)
+            {
+                // The run was cancelled: let go anyway. Thrown out of a thread of its own, this would end the process.
+            }
+            finally
+            {
+                buffer.Lock.ExitWriteLock();
+            }
         })
         { IsBackground = true };
         holder.Start();
         holderIn.Wait(cancel);
-        var reader = new Thread(() =>
+
+        Thread? reader = null;
+        Thread? batch = null;
+        try
         {
-            buffer.Lock.EnterReadLock();
-            buffer.Lock.ExitReadLock();
-        })
-        { IsBackground = true };
-        reader.Start();
-        Assert.True(SpinWait.SpinUntil(() => buffer.Lock.WaitingReadCount == 1, TimeSpan.FromSeconds(5)), "setup: the reader never waited");
+            reader = new Thread(() =>
+            {
+                buffer.Lock.EnterReadLock();
+                buffer.Lock.ExitReadLock();
+            })
+            { IsBackground = true };
+            reader.Start();
+            Assert.True(SpinWait.SpinUntil(() => buffer.Lock.WaitingReadCount == 1, TimeSpan.FromSeconds(5)), "setup: the reader never waited");
 
-        var batch = new Thread(() =>
+            batch = new Thread(() =>
+            {
+                buffer.EnterBatchWrite();
+                buffer.ExitBatchWrite();
+            })
+            { IsBackground = true };
+            batch.Start();
+
+            // Past the limit the batch queues for the lock as a waiting writer.
+            Assert.True(SpinWait.SpinUntil(() => buffer.Lock.WaitingWriteCount == 1, TimeSpan.FromSeconds(5)), "the batch never queued for the write lock");
+        }
+        finally
         {
-            buffer.EnterBatchWrite();
-            buffer.ExitBatchWrite();
-        })
-        { IsBackground = true };
-        batch.Start();
+            // Whichever assertion failed, the holder lets go, so no thread is left blocked on the lock (CodeRabbit, #662).
+            release.Set();
+        }
 
-        // Past the limit the batch queues for the lock as a waiting writer.
-        Assert.True(SpinWait.SpinUntil(() => buffer.Lock.WaitingWriteCount == 1, TimeSpan.FromSeconds(5)), "the batch never queued for the write lock");
-
-        release.Set();
         Assert.True(batch.Join(TimeSpan.FromSeconds(5)));
         Assert.True(reader.Join(TimeSpan.FromSeconds(5)));
-        holder.Join();
+        Assert.True(holder.Join(TimeSpan.FromSeconds(5)));
     }
 }
