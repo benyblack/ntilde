@@ -76,20 +76,13 @@ public sealed class SshPathSandboxTests
     [Fact]
     public void Without_the_override_the_default_root_is_the_real_appdata_directory()
     {
-        string? saved = Environment.GetEnvironmentVariable(RootOverrideEnvVar);
-        Environment.SetEnvironmentVariable(RootOverrideEnvVar, null);
-        try
-        {
-            string expected = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "ntilde");
+        // Read without clearing NTILDE_APPDATA_ROOT: the variable is process-wide, and a test running alongside this
+        // one would resolve the real root meanwhile (#317).
+        string expected = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "ntilde");
 
-            Assert.Equal(expected, PlatformAppPaths.RootDirectory);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(RootOverrideEnvVar, saved);
-        }
+        Assert.Equal(expected, PlatformAppPaths.DefaultRootDirectory);
     }
 
     /// <summary>

@@ -30,4 +30,12 @@
     <ProjectReference Include="..\..\src\Ntilde.App\Ntilde.App.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- #317: the process starts on a scratch app-data root, never the developer's real one. -->
+    <!-- With Ntilde.App referenced, AppPaths' legacy migration is swept too, as a TestAppDataRoot scope does. -->
+    <Compile Include="..\Ntilde.App.Tests\TestAppDataDefault.cs" Link="Shared\TestAppDataDefault.cs" />
+    <Compile Include="..\Ntilde.App.Tests\TestAppDataDefault.AppPaths.cs" Link="Shared\TestAppDataDefault.AppPaths.cs" />
+    <Compile Include="..\Ntilde.App.Tests\Core\TestAppDataRoot.cs" Link="Shared\TestAppDataRoot.cs" />
+  </ItemGroup>
+
 </Project>
