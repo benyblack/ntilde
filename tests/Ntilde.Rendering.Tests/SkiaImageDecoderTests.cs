@@ -27,6 +27,23 @@ public class SkiaImageDecoderTests
     }
 
     [Fact]
+    public void Replaced_pending_frames_do_not_evict_an_uncovered_live_image_source()
+    {
+        var buffer = new TerminalBuffer(10, 6) { SixelSources = new SixelSourceBudget(1024, 4) };
+        var parser = new AnsiParser(buffer) { RetainSixelSources = true, ImageDecoder = new SkiaImageDecoder { DeferSixelDecoding = true } };
+        parser.Process("\x1b[?80h\x1bPq#1;2;100;0;0#1!30~\x1b\\");
+        for (int i = 0; i < 100; i++) parser.Process("\x1bPq#1;2;0;0;100#1!10~\x1b\\");
+        Assert.Equal(2, buffer.Images.Count);
+        Assert.Equal(2, buffer.ExportState(0).Sixels!.Count);
+        Assert.Equal("q#1;2;100;0;0#1!30~", buffer.Images[0].SixelSource?.Data);
+        Assert.InRange(buffer.SixelSources.Count, 2, 4);
+        var retired = new List<object>();
+        buffer.DrainRetiredImageHandles(retired, long.MinValue);
+        foreach (var handle in retired) ((IDisposable)handle).Dispose();
+        foreach (var image in buffer.Images) ((IDisposable)image.ImageHandle).Dispose();
+    }
+
+    [Fact]
     public void Source_eviction_preserves_materialized_bitmaps_and_gates_undecoded_handle_disposal()
     {
         Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");

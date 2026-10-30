@@ -89,6 +89,7 @@ namespace Ntilde.VT
         {
             // A headless source handle has no renderer resources or in-flight bitmap users.
             if (image.ImageHandle is SixelSource source) { source.Dispose(); return; }
+            image.SixelSource?.Retire();
             _retiredImageHandles.Enqueue((image.ImageHandle, Environment.TickCount64, disposeImmediately));
         }
 
