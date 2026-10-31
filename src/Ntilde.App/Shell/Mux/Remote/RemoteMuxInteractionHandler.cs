@@ -320,11 +320,11 @@ internal sealed class RemoteMuxInteractionHandler
         lock (_gate) return _remembered.ContainsKey(kind);
     }
 
-    private bool TryRecall(SshInteractionKind kind, out SecretBuffer secret)
+    private bool TryRecall(SshInteractionKind kind, out SecretBuffer? secret)
     {
         lock (_gate)
         {
-            secret = _remembered.TryGetValue(kind, out var stored) ? stored.Clone() : null!;
+            secret = _remembered.TryGetValue(kind, out var stored) ? stored.Clone() : null;
             return secret is not null;
         }
     }
@@ -871,7 +871,7 @@ internal sealed class RemoteMuxInteractionHandler
                 if (_answers.Exists(a => a.Kind == kind && a.FromMemory && a.State == AnswerState.Superseded)) return null;
             }
 
-            return _owner.TryRecall(kind, out SecretBuffer secret) ? secret : null;
+            return _owner.TryRecall(kind, out SecretBuffer? secret) ? secret : null;
         }
 
         /// <summary>

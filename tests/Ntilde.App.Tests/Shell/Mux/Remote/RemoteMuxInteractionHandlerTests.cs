@@ -59,6 +59,29 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         Assert.True(handler.Remembers(prompt.Kind));
     }
 
+    [Fact]
+    public async Task Host_and_attempt_teardown_wipe_their_own_copies_without_invalidating_a_response()
+    {
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("owned-password")));
+        using var attempt = handler.BeginAttempt(interactive: true);
+        using var response = await attempt.HandleAsync(Password, Ct);
+        attempt.Succeeded();
+
+        var remembered = (System.Collections.IDictionary)typeof(RemoteMuxInteractionHandler)
+            .GetField("_remembered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(handler)!;
+        byte[] cacheBytes = SecretTestSnapshot.Bytes((SecretBuffer)remembered[SshInteractionKind.Password]!);
+        var answers = (System.Collections.IEnumerable)attempt.GetType()
+            .GetField("_answers", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(attempt)!;
+        object answer = answers.Cast<object>().Single();
+        byte[] attemptBytes = SecretTestSnapshot.Bytes((SecretBuffer)answer.GetType().GetProperty("Secret")!.GetValue(answer)!);
+
+        handler.Forget();
+        Assert.All(cacheBytes, value => Assert.Equal(0, value));
+        attempt.Dispose();
+        Assert.All(attemptBytes, value => Assert.Equal(0, value));
+        Assert.Equal("owned-password", response.Secret.DangerousGetString());
+    }
+
     [Theory]
     [InlineData(nameof(SshInteractionKind.Password))]
     [InlineData(nameof(SshInteractionKind.Passphrase))]

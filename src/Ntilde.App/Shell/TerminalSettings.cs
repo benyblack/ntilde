@@ -353,52 +353,56 @@ namespace Ntilde.Shell
         internal static TerminalSettings LoadFromPath(string settingsPath, VaultService? migrationVault = null)
         {
             bool migrationReady = LegacyProfilePasswordMigration.TryMigrate(settingsPath, () => migrationVault ?? new VaultService());
-            TerminalSettings settings;
-            if (File.Exists(settingsPath))
-            {
-                try
-                {
-                    string json = File.ReadAllText(settingsPath);
-                    settings = JsonSerializer.Deserialize(json, AppJsonContext.Default.TerminalSettings) ?? new TerminalSettings();
-                }
-                catch (Exception ex)
-                {
-                    // Corrupt settings must not be silently replaced with defaults (#167):
-                    // quarantine the evidence, then fall back to the .bak written by
-                    // AtomicFile before resorting to defaults.
-                    System.Diagnostics.Debug.WriteLine($"[Settings] '{settingsPath}' is unreadable ({ex.Message}); trying backup.");
-                    try { File.Copy(settingsPath, settingsPath + ".corrupt", overwrite: true); }
-                    catch { /* best effort */ }
+            TerminalSettings settings = ReadSettingsOrRecover(settingsPath, allowRepair: migrationReady);
+            ValidateLoadedProfiles(settings);
+            ValidateDefaultProfile(settings);
+            settings.CredentialMigrationPending = !migrationReady;
+            return settings;
+        }
 
-                    var fromBackup = TryLoadOrNull(settingsPath + ".bak");
-                    if (fromBackup != null)
-                    {
-                        settings = fromBackup;
-                        // Repair the primary immediately so subsequent launches don't
-                        // repeatedly quarantine + fall back (review feedback on #178).
-                        try
-                        {
-                            AtomicFile.WriteAllText(settingsPath,
-                                JsonSerializer.Serialize(fromBackup, AppJsonContext.Default.TerminalSettings));
-                        }
-                        catch (Exception repairEx)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[Settings] Failed to repair '{settingsPath}' from backup: {repairEx.Message}");
-                        }
-                    }
-                    else
-                    {
-                        // The reset to defaults must leave a diagnosable trace.
-                        System.Diagnostics.Debug.WriteLine($"[Settings] Backup '{settingsPath}.bak' is also unreadable; falling back to defaults.");
-                        settings = new TerminalSettings();
-                    }
-                }
-            }
-            else
+        private static TerminalSettings ReadSettingsOrRecover(string settingsPath, bool allowRepair)
+        {
+            if (!File.Exists(settingsPath)) return new TerminalSettings();
+            try
             {
-                settings = new TerminalSettings();
+                string json = File.ReadAllText(settingsPath);
+                return JsonSerializer.Deserialize(json, AppJsonContext.Default.TerminalSettings) ?? new TerminalSettings();
             }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Settings] '{settingsPath}' is unreadable ({ex.Message}); trying backup.");
+                return RecoverSettings(settingsPath, allowRepair);
+            }
+        }
 
+        private static TerminalSettings RecoverSettings(string settingsPath, bool allowRepair)
+        {
+            // Quarantine the evidence before recovering from the last good copy (#167).
+            try { File.Copy(settingsPath, settingsPath + ".corrupt", overwrite: true); }
+            catch { /* best effort */ }
+            var fromBackup = TryLoadOrNull(settingsPath + ".bak");
+            if (fromBackup == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Settings] Backup '{settingsPath}.bak' is also unreadable; falling back to defaults.");
+                return new TerminalSettings();
+            }
+            // A locked keyring may have left the only legacy credential in the backup. Repairing
+            // with the deserialized (credential-free) settings would destroy that source copy.
+            if (!allowRepair) return fromBackup;
+            // Repair immediately so subsequent launches do not repeat quarantine/recovery (#178).
+            try
+            {
+                AtomicFile.WriteAllTextWithoutBackup(settingsPath, JsonSerializer.Serialize(fromBackup, AppJsonContext.Default.TerminalSettings));
+            }
+            catch (Exception repairEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Settings] Failed to repair '{settingsPath}' from backup: {repairEx.Message}");
+            }
+            return fromBackup;
+        }
+
+        private static void ValidateLoadedProfiles(TerminalSettings settings)
+        {
             // Post-load validation
             if (settings.Profiles == null || settings.Profiles.Count == 0)
             {
@@ -433,6 +437,10 @@ namespace Ntilde.Shell
                 settings.TabTemplateRules = new System.Collections.Generic.List<TabTemplateRule>();
             }
 
+        }
+
+        private static void ValidateDefaultProfile(TerminalSettings settings)
+        {
             // Ensure we have a valid default profile
             bool defaultValid = settings.Profiles.Exists(p => p.Id == settings.DefaultProfileId);
             if (settings.DefaultProfileId == Guid.Empty || !defaultValid)
@@ -466,8 +474,6 @@ namespace Ntilde.Shell
                 }
             }
 
-            settings.CredentialMigrationPending = !migrationReady;
-            return settings;
         }
 
         private static TerminalSettings? TryLoadOrNull(string path)

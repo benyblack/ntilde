@@ -24,30 +24,31 @@ public sealed class SecretBuffer : IDisposable
         _bytes = GC.AllocateArray<byte>(checked(length + 1), pinned: true);
     }
 
-    public int Length => Span.Length;
-    public ReadOnlySpan<byte> Span => (_bytes ?? throw new ObjectDisposedException(nameof(SecretBuffer))).AsSpan(0, _length);
+    private byte[] Bytes => _bytes ?? throw new ObjectDisposedException(nameof(SecretBuffer));
+    public int Length => _bytes is not null ? _length : throw new ObjectDisposedException(nameof(SecretBuffer));
+    public ReadOnlySpan<byte> Span => Bytes.AsSpan(0, _length);
 
     // For synchronous C-string APIs only; the trailing zero is part of the owned allocation.
-    public ref readonly byte GetPinnableReference() => ref (_bytes ?? throw new ObjectDisposedException(nameof(SecretBuffer)))[0];
+    public ref readonly byte GetPinnableReference() => ref Bytes[0];
 
     public static SecretBuffer FromText(ReadOnlySpan<char> text)
     {
         var result = new SecretBuffer(Encoding.UTF8.GetByteCount(text));
-        Encoding.UTF8.GetBytes(text, result._bytes);
+        Encoding.UTF8.GetBytes(text, result.Bytes);
         return result;
     }
 
     public static SecretBuffer FromUtf8(ReadOnlySpan<byte> bytes)
     {
         var result = new SecretBuffer(bytes.Length);
-        bytes.CopyTo(result._bytes);
+        bytes.CopyTo(result.Bytes);
         return result;
     }
 
     /// <summary>Calls a synchronous native API with a NUL-terminated pointer. The pointer must not escape.</summary>
     public T UsePointer<T>(Func<IntPtr, T> action)
     {
-        byte[] bytes = _bytes ?? throw new ObjectDisposedException(nameof(SecretBuffer));
+        byte[] bytes = Bytes;
         try { return action(Marshal.UnsafeAddrOfPinnedArrayElement(bytes, 0)); }
         finally { GC.KeepAlive(this); }
     }
@@ -56,7 +57,7 @@ public sealed class SecretBuffer : IDisposable
     {
         ArgumentOutOfRangeException.ThrowIfNegative(length);
         var result = new SecretBuffer(length);
-        try { Marshal.Copy(address, result._bytes!, 0, length); return result; }
+        try { Marshal.Copy(address, result.Bytes, 0, length); return result; }
         catch { result.Dispose(); throw; }
     }
 

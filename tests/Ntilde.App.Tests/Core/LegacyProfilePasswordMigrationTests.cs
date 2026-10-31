@@ -53,6 +53,35 @@ public sealed class LegacyProfilePasswordMigrationTests : IDisposable
     }
 
     [Fact]
+    public void Successful_recovery_keeps_the_migrated_backup_usable()
+    {
+        WriteLegacy("from-backup");
+        File.WriteAllText(SettingsPath, "{broken");
+        var vault = new VaultService(new InMemorySecretStore());
+        TerminalSettings settings = TerminalSettings.LoadFromPath(SettingsPath, vault);
+        Assert.False(settings.CredentialMigrationPending);
+        foreach (string path in new[] { SettingsPath, SettingsPath + ".bak" })
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            Assert.False(document.RootElement.GetProperty("Profiles")[0].TryGetProperty("Password", out _));
+        }
+        Assert.Equal("from-backup", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
+    }
+
+    [Fact]
+    public void Recovery_does_not_overwrite_the_only_credential_when_the_store_is_locked()
+    {
+        WriteLegacy("only-in-the-backup");
+        string backup = File.ReadAllText(SettingsPath + ".bak");
+        File.WriteAllText(SettingsPath, "{broken");
+        var vault = new VaultService(new DiscardingStore(available: false));
+        TerminalSettings settings = TerminalSettings.LoadFromPath(SettingsPath, vault);
+        Assert.True(settings.CredentialMigrationPending);
+        Assert.Equal(backup, File.ReadAllText(SettingsPath + ".bak"));
+        Assert.Equal("{broken", File.ReadAllText(SettingsPath));
+    }
+
+    [Fact]
     public void Newer_keyring_credential_takes_precedence_over_legacy_and_backup()
     {
         WriteLegacy("old");

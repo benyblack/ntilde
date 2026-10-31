@@ -28,6 +28,11 @@ public sealed class SshInteractionResponse : IDisposable
             RememberPasswordInVault = rememberPasswordInVault
         };
 
+    /// <summary>Takes ownership of the buffer.</summary>
+    public static SshInteractionResponse FromSecret(SecretBuffer secret, bool rememberPasswordInVault = false) =>
+        new() { Secret = secret, RememberPasswordInVault = rememberPasswordInVault };
+
+
     /// <summary>A secret filled from a store rather than typed (<see cref="FilledFromStore"/>).</summary>
     public static SshInteractionResponse FromStoredSecret(string secret) =>
         new()
@@ -36,16 +41,13 @@ public sealed class SshInteractionResponse : IDisposable
             FilledFromStore = true
         };
 
-    public static SshInteractionResponse FromKeyboardResponses(params string[] responses) =>
-        new() { KeyboardResponses = (responses ?? Array.Empty<string>()).Select(value => SecretBuffer.FromText(value)).ToArray() };
-    /// <summary>Takes ownership of the buffer.</summary>
-    public static SshInteractionResponse FromSecret(SecretBuffer secret, bool rememberPasswordInVault = false) =>
-        new() { Secret = secret, RememberPasswordInVault = rememberPasswordInVault };
-
     /// <summary>Takes ownership of the buffer returned by a store.</summary>
     public static SshInteractionResponse FromStoredSecret(SecretBuffer secret) =>
         new() { Secret = secret, FilledFromStore = true };
 
+
+    public static SshInteractionResponse FromKeyboardResponses(params string[] responses) =>
+        new() { KeyboardResponses = (responses ?? Array.Empty<string>()).Select(value => SecretBuffer.FromText(value)).ToArray() };
     public void Dispose()
     {
         Secret.Dispose();

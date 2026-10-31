@@ -23,7 +23,8 @@ public partial class AuthPromptDialog : Window
         Closed += (_, _) =>
         {
             viewModel.Clear();
-            foreach (TextBox field in this.FindControl<StackPanel>("PromptHost")!.Children.OfType<TextBox>()) field.Text = string.Empty;
+            if (this.FindControl<StackPanel>("PromptHost") is { } prompts)
+                foreach (TextBox field in prompts.Children.OfType<TextBox>()) field.Text = string.Empty;
             DataContext = null;
         };
     }

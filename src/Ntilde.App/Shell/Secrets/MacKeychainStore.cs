@@ -154,11 +154,14 @@ namespace Ntilde.Shell.Secrets
                 return;
             }
 
-            IntPtr matchQuery = BuildQuery(key, forReturnData: false);
-            IntPtr attrsToUpdate = CFDictionaryCreateMutable();
-            IntPtr valueData = value.UsePointer(pointer => CFDataCreate(IntPtr.Zero, pointer, value.Length));
+            IntPtr matchQuery = IntPtr.Zero;
+            IntPtr attrsToUpdate = IntPtr.Zero;
+            IntPtr valueData = IntPtr.Zero;
             try
             {
+                matchQuery = BuildQuery(key, forReturnData: false);
+                attrsToUpdate = CFDictionaryCreateMutable();
+                valueData = value.UsePointer(address => CFDataCreate(IntPtr.Zero, address, value.Length));
                 CFDictionaryAddValue(attrsToUpdate, _kSecValueData, valueData);
                 int status = SecItemUpdate(matchQuery, attrsToUpdate);
                 if (status == errSecItemNotFound)
