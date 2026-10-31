@@ -134,6 +134,36 @@ public sealed class ReplaySeekIsolationTests
         Assert.Equal(0, fixture.Model.CurrentTimeMs);
     }
 
+    [AvaloniaTheory]
+    [InlineData(false, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    public async Task Invalid_legacy_or_future_snapshot_layout_preserves_the_displayed_pair(bool futureState, bool wrongSize, bool playback)
+    {
+        var snapshot = CaptureLegacy(new TerminalBuffer(10, 5));
+        if (futureState)
+        {
+            snapshot.State = new TerminalBuffer(10, 5).ExportState(0);
+            snapshot.State.Version = TerminalStateSnapshot.CurrentVersion + 1;
+        }
+        if (wrongSize) snapshot.CellsSizeOf = -1;
+        else snapshot.CellsLayoutId = "unsupported-layout";
+        using var fixture = new SeekFixture([Data(10, "prefix"), Snapshot(20, snapshot), Data(30, "later")]);
+        await fixture.Ready(30);
+        await fixture.Seek(10);
+        fixture.Parser.Process("preserved\u001b[31;");
+        var before = Pair(fixture.Buffer, fixture.Parser);
+        if (playback) await fixture.PlayFrom(20);
+        else await fixture.Seek(20);
+        Assert.Equivalent(before, Pair(fixture.Buffer, fixture.Parser), strict: true);
+        Assert.Equal(10, fixture.Model.CurrentTimeMs);
+    }
+
     [AvaloniaFact]
     public async Task Closing_invalidates_callbacks_from_the_last_playback_session()
     {

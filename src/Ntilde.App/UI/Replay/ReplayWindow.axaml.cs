@@ -25,7 +25,7 @@ namespace Ntilde.UI.Replay
         private readonly PlaybackSessionGate _playbackSessionGate = new();
         private TerminalBuffer? _buffer;
         private AnsiParser? _parser;
-        private TerminalStateSnapshot? _initialReplayState;
+        private readonly TerminalStateSnapshot? _initialReplayState;
         private string? _filePath;
         private bool _isUserScrubbing;
         private long _displayedTimeMs;
@@ -215,7 +215,7 @@ namespace Ntilde.UI.Replay
         {
             try
             {
-                _ = RecordingCellMetrics.FromOptional(snapshot?.SixelCellWidthPx, snapshot?.SixelCellHeightPx);
+                if (snapshot is not null) ReplayRunner.ValidateSnapshotCellLayout(snapshot);
                 if (snapshot is not null && snapshot.State is not { Version: TerminalStateSnapshot.CurrentVersion })
                     TerminalBuffer.ValidateReplaySnapshot(snapshot);
                 return true;
@@ -272,14 +272,15 @@ namespace Ntilde.UI.Replay
             var parser = _parser;
             var viewModel = _viewModel;
             var initialState = _initialReplayState;
-            if (buffer is null || parser is null || viewModel is null || (snapshot is null && initialState is null)) return false;
+            if (buffer is null || parser is null || viewModel is null) return false;
             bool applied = false;
             try
             {
                 await ApplyInSessionAsync(sessionId, () =>
                 {
                     if (snapshot is not null) ReplayRunner.ApplySnapshot(buffer, parser, snapshot);
-                    else TerminalStateTransfer.Restore(buffer, parser, initialState!);
+                    else if (initialState is not null) TerminalStateTransfer.Restore(buffer, parser, initialState);
+                    else return;
                     _displayedTimeMs = appliedTime;
                     viewModel.CurrentTimeMs = appliedTime;
                     applied = true;

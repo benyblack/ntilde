@@ -61,6 +61,32 @@ public sealed class ReplayCheckpointPositionTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task A_zero_time_line_resume_waits_before_the_first_later_event(bool v1)
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            var lines = new List<string>();
+            if (!v1) lines.Add(Header());
+            lines.Add(Data(0, "checkpoint prefix", v1));
+            int checkpointLine = lines.Count;
+            lines.Add(Data(200, "later", v1));
+            File.WriteAllLines(path, lines);
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            TimeSpan? deliveredAt = null;
+            await new ReplayReader(path).RunWithResultAsync(
+                _ => { deliveredAt = clock.Elapsed; return Task.CompletedTask; },
+                options: new ReplayRunOptions { StartAfterLineNumber = checkpointLine, PlaybackMode = ReplayPlaybackMode.Realtime },
+                minTimeMs: 0, ct: TestContext.Current.CancellationToken);
+            Assert.NotNull(deliveredAt);
+            Assert.True(deliveredAt.Value >= TimeSpan.FromMilliseconds(150), $"The 200 ms event arrived at {deliveredAt}.");
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
     [InlineData(-1, 0)]
     [InlineData(1, 1)]
     public async Task Invalid_resume_options_are_rejected_before_header_or_data_callbacks(long line, long byteOffset)

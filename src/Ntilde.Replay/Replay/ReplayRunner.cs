@@ -135,8 +135,8 @@ namespace Ntilde.Replay
                 skipCurrentLine = false; // We already skipped what we needed to via Seek
             }
 
-            // Use MinTimeMs if > 0, otherwise start from 0
-            if (minTimeMs > 0 && startOffsetBytes == 0)
+            // A line checkpoint has an established clock even when its timestamp is zero.
+            if ((minTimeMs > 0 || startAfterLine > 0) && startOffsetBytes == 0)
             {
                 // If we have a minTime, we assume the caller has already set the state 
                 // to what it was at minTimeMs (e.g. via snapshot).
@@ -357,7 +357,8 @@ namespace Ntilde.Replay
             parser.SixelCellSizeOverride = size is null ? null : new SixelCellSize(size.WidthPx, size.HeightPx);
         }
 
-        private static void ValidateSnapshotCellLayout(ReplaySnapshot snapshot)
+        /// <summary>Validates optional cell metrics and layout metadata before a snapshot is used.</summary>
+        public static void ValidateSnapshotCellLayout(ReplaySnapshot snapshot)
         {
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
             bool hasAnyLayoutMetadata = snapshot.CellsSizeOf.HasValue || snapshot.CellsLayoutId != null;
