@@ -168,7 +168,7 @@ public sealed class TextClientRenderer
         sb.Append(Cup(screenRow + 1, 1));
         if (clearFirst) sb.Append("\x1b[0m\x1b[2K");
         RenderRowSnapshot row = snap.RowsData.Array![sessionRow];
-        if (row.Cells is { Length: > 0 } cells) AnsiCellWriter.AppendRow(sb, cells, Math.Min(visibleCols, row.Cols));
+        if (row.Cells is { Length: > 0 } cells) AnsiCellWriter.AppendRow(sb, cells, Math.Min(visibleCols, row.Cols), snap.Theme);
     }
 
     /// <summary>Only on change against what was last EMITTED (unknown at first, so the first frame states each one).</summary>

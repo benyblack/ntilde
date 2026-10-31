@@ -45,6 +45,24 @@
       "matrixFeature": "Color-scheme notifications",
       "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
       "contractCase": "color-scheme-notifications"
+    },
+    {
+      "key": "OSC:30001",
+      "mnemonic": "Color stack push",
+      "support": "supported",
+      "description": "Save session runtime colors, including the 256-color palette; bounded to the newest 16 frames.",
+      "matrixFeature": "OSC 30001",
+      "evidencePath": "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
+      "contractCase": "color-stack-push"
+    },
+    {
+      "key": "OSC:30101",
+      "mnemonic": "Color stack pop",
+      "support": "supported",
+      "description": "Restore session runtime colors, including the 256-color palette; bounded to the newest 16 frames.",
+      "matrixFeature": "OSC 30101",
+      "evidencePath": "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
+      "contractCase": "color-stack-pop"
     }
   ]
 }

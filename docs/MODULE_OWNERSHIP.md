@@ -56,6 +56,26 @@ invariant changes.
   dark/light background transitions. DECSTR preserves the subscription, RIS clears it, and
   complete parser snapshots carry it without replacing the receiving host's colors. The mux
   alone writes shared-session device replies; downstream GUI parsers never duplicate them.
+- **Runtime colors belong to the terminal session, not saved theme settings.** VT parses numeric
+  OSC colors and owns foreground/background/cursor/selection overrides, the 256-entry palette,
+  and a newest-16-frame color stack. Null entries follow host defaults, including across a
+  theme change while a frame is saved. Colors are global across main/alternate screens;
+  DECSTR preserves them and RIS clears overrides and stack. Complete snapshots deep-copy
+  state and validate every frame before import/resize; absent legacy state clears it.
+  Render snapshots resolve overrides against the host theme and invalidate row picture
+  revisions on color changes. Each OSC publishes once; internally shared stack frames are
+  immutable, while import/export deep-copy them. The mux text renderer resolves cell overrides
+  into SGR, including underlines, without changing the outer terminal palette. Its physical
+  cursor and selection remain outer-host policy. Palette replies are capped at 256 per OSC;
+  updates after the cap still apply. Local PTY replies use a nonblocking best-effort sink
+  with one quarter of the input queue reserved from reply floods; OpenSSH wrappers forward
+  that policy. Native SSH holds a bounded 64 KiB reply reservation (including a
+  per-command surcharge) through channel writes; saturation or an older native binary
+  declines without falling back to unbounded input. Main-channel writes cancel on
+  session closure and subsequent network cleanup is bounded. Keyboard input retains its existing
+  backpressure. App never writes overrides
+  to theme files. Mux spawn
+  and presentation metadata supply host defaults; only the authoritative parser replies.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
   decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,
   and owns DECSDM state, page/scroll-region clipping and retirement. Clip metadata is copied into
@@ -65,6 +85,10 @@ invariant changes.
   retire fully covered prior SIXELs through the snapshot-session gate, without scanning history on
   the ordinary scrolling path.
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
+  Exception: `RuntimeForeground` and `RuntimeBackground` each read one immutable,
+  volatile-published color frame without the buffer lock, so UI preference queries
+  do not wait on terminal output. They return independent scalar values, not an
+  atomic pair or a coherent grid snapshot; compound buffer reads still require the lock.
 - **Lock re-entrancy contract:** `Lock` is a non-recursive `ReaderWriterLockSlim`. `EnterReadLockIfNeeded()` returns `false` (and acquires nothing) when a read *or* write lock is already held. `EnterWriteLockIfNeeded()` returns `false` only when a *write* lock is already held — calling it while holding a read lock throws `LockRecursionException` (upgrading is not supported), it does **not** return `false`. Both return `true` when they actually acquired the lock. The returned `bool` says *whether this call took the lock* — callers must pass it to the matching `Exit…IfNeeded(..., lockTaken)` and must **not** unlock when it is `false`. Treating a `false` return as "lock acquired" double-unlocks (or unlocks a caller's outer lock).
 - **`GetRowAbsolute()` null contract:** returns `null` for any absolute row that has no persistent `TerminalRow` — including **paged-out scrollback rows** (scrollback lives in `ScrollbackPages`, not as row objects), out-of-range rows, and negative indices. To read scrollback content use the cell/grapheme accessors (`GetCellAbsolute`, `GetGraphemeAbsolute`), which page it in; callers that assume a non-null row for scrollback indices will NRE.
 - **Blocking write waits go through the host's scope:** every write-lock acquisition goes through `AcquireWriteLock()`, and one that has to block runs inside `TerminalBuffer.BlockingWriteWaitScope` when the host has set it. VT owns the routing (`WriteLockReentrancyTests`); the policy - a UI thread's wait must not dispatch messages - and its native wait belong to App.

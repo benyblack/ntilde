@@ -117,6 +117,8 @@ public interface INativeSshInterop
         return true;
     }
     void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data);
+    /// <summary>Bounded, best-effort reply admission; false never falls back to the unbounded input path.</summary>
+    bool TryWriteDeviceReply(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => false;
     void Resize(NovaSshSafeHandle sessionHandle, int cols, int rows);
     int OpenDirectTcpIp(NovaSshSafeHandle sessionHandle, NativePortForwardOpenOptions options);
     void WriteChannel(NovaSshSafeHandle sessionHandle, int channelId, ReadOnlySpan<byte> data);

@@ -35,6 +35,8 @@ public sealed class VtCapabilityContractTests
             ["cursor-next-line"] = AssertCursorNextLine,
             ["cursor-previous-line"] = AssertCursorPreviousLine,
             ["cursor-horizontal-absolute"] = AssertCursorHorizontalAbsolute,
+            ["color-stack-push"] = AssertRuntimeColorStack,
+            ["color-stack-pop"] = AssertRuntimeColorStack,
             ["color-scheme-query"] = AssertColorSchemeQuery,
             ["color-scheme-notifications"] = AssertColorSchemeNotifications,
         };
@@ -45,6 +47,8 @@ public sealed class VtCapabilityContractTests
             ["cursor-next-line"] = "\x1b[2E",
             ["cursor-previous-line"] = "\x1b[2F",
             ["cursor-horizontal-absolute"] = "\x1b[4G",
+            ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
+            ["color-stack-pop"] = "\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a",
             ["color-scheme-query"] = "\x1b[?996n",
             ["color-scheme-notifications"] = "\x1b[?2031h\x1b[?2031$p",
         };
@@ -126,6 +130,15 @@ public sealed class VtCapabilityContractTests
         // is ignored, exactly as CSI ? 2 E and CSI 2 $ F are.
         AssertIgnored("\x1b[?2G");
         AssertIgnored("\x1b[2$G");
+    }
+
+    private static void AssertRuntimeColorStack()
+    {
+        var buffer = new TerminalBuffer(12, 8);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\u001b]10;#123456\a\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a");
+        Assert.Equal(0xff123456u, buffer.ExportState(0).Colors!.Current.Foreground);
+        Assert.Empty(buffer.ExportState(0).Colors!.Stack);
     }
 
     private static void AssertColorSchemeQuery()

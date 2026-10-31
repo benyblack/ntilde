@@ -151,6 +151,8 @@ public sealed class HeadlessTerminalSession : IDisposable
             KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
             DefaultBackground = options.DefaultBg is uint background ? TermColor.FromUint(background) : null,
         };
+        ApplyHostColors(options.DefaultFg, options.DefaultBg, options.CursorColor,
+            options.SelectionFg, options.SelectionBg, options.AnsiPalette);
         (_session as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
         (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(cellWidth, cellHeight);
         _parser.OnResponse = EnqueueInput; // through the writer too: the parse thread must never block on stdin
@@ -1153,8 +1155,24 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
         if (float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0) _parser.CellWidth = presentation.CellWidthPx;
         if (float.IsFinite(presentation.CellHeightPx) && presentation.CellHeightPx > 0) _parser.CellHeight = presentation.CellHeightPx;
-        _parser.DefaultForeground = presentation.DefaultFg is uint fg ? TermColor.FromUint(fg) : null;
-        _parser.DefaultBackground = presentation.DefaultBg is uint bg ? TermColor.FromUint(bg) : null;
+        ApplyHostColors(presentation.DefaultFg, presentation.DefaultBg, presentation.CursorColor,
+            presentation.SelectionFg, presentation.SelectionBg, presentation.AnsiPalette);
+    }
+
+    private void ApplyHostColors(uint? foreground, uint? background, uint? cursor,
+        uint? selectionForeground, uint? selectionBackground, uint[]? palette)
+    {
+        var theme = new TerminalTheme();
+        if (foreground is uint fg) theme.Foreground = TermColor.FromUint(fg);
+        if (background is uint bg) theme.Background = TermColor.FromUint(bg);
+        if (cursor is uint cursorValue) theme.CursorColor = TermColor.FromUint(cursorValue);
+        theme.SelectionForeground = selectionForeground is uint sf ? TermColor.FromUint(sf) : null;
+        theme.SelectionBackground = selectionBackground is uint sb ? TermColor.FromUint(sb) : null;
+        if (palette is { Length: 16 })
+            for (int i = 0; i < 16; i++) theme.SetAnsiColor(i % 8, i >= 8, TermColor.FromUint(palette[i]));
+        _buffer.Theme = theme;
+        _parser.DefaultForeground = foreground is uint f ? TermColor.FromUint(f) : null;
+        _parser.DefaultBackground = background is uint b ? TermColor.FromUint(b) : null;
     }
 
     /// <summary>

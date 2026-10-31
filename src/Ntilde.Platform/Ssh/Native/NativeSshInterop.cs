@@ -571,6 +571,15 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         }
     }
 
+    public bool TryWriteDeviceReply(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data)
+    {
+        if (sessionHandle is null || sessionHandle.IsInvalid || sessionHandle.IsClosed || data.Length > 64 * 1024) return false;
+        byte[] payload = data.ToArray();
+        try { return NativeMethods.nova_ssh_try_write_device_reply(sessionHandle, payload, (nuint)payload.Length) == ResultOk; }
+        catch (EntryPointNotFoundException) { return false; } // Older native binary: decline rather than enqueue without a bound.
+        catch (ObjectDisposedException) { return false; }
+    }
+
     public void Resize(NovaSshSafeHandle sessionHandle, int cols, int rows)
     {
         if (sessionHandle is null || sessionHandle.IsInvalid || sessionHandle.IsClosed || cols <= 0 || rows <= 0)
@@ -1390,6 +1399,9 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_write")]
         public static extern int nova_ssh_write(NovaSshSafeHandle session, byte[] data, nuint dataLength);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_try_write_device_reply")]
+        public static extern int nova_ssh_try_write_device_reply(NovaSshSafeHandle session, byte[] data, nuint dataLength);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_resize")]
         public static extern int nova_ssh_resize(NovaSshSafeHandle session, ushort cols, ushort rows);

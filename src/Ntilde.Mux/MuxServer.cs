@@ -274,6 +274,11 @@ public sealed class MuxServer : IDisposable
         {
             KittyKeyboardSupportedFlags = p.KittyKeyboardSupportedFlags,
             DefaultBg = p.DefaultBg,
+            DefaultFg = p.DefaultFg,
+            CursorColor = p.CursorColor,
+            SelectionFg = p.SelectionFg,
+            SelectionBg = p.SelectionBg,
+            AnsiPalette = p.AnsiPalette,
             CellWidthPx = p.CellWidthPx,
             CellHeightPx = p.CellHeightPx,
         };
@@ -307,6 +312,11 @@ public sealed class MuxServer : IDisposable
                 Rows = p.Rows,
                 KittyKeyboardSupportedFlags = p.KittyKeyboardSupportedFlags,
                 DefaultBg = p.DefaultBg,
+                DefaultFg = p.DefaultFg,
+                CursorColor = p.CursorColor,
+                SelectionFg = p.SelectionFg,
+                SelectionBg = p.SelectionBg,
+                AnsiPalette = p.AnsiPalette,
                 CellWidthPx = p.CellWidthPx,
                 CellHeightPx = p.CellHeightPx,
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,

@@ -25,6 +25,13 @@ namespace Ntilde.VT.Export
         /// continuation, are written as a space so the column count stays exact. Ends with SGR 0.
         /// </summary>
         public static int AppendRow(StringBuilder sb, ReadOnlySpan<RenderCellSnapshot> cells, int maxCols)
+            => AppendRowCore(sb, cells, maxCols, null);
+
+        /// <summary>Resolve session color overrides into SGR without changing the outer terminal's palette.</summary>
+        public static int AppendRow(StringBuilder sb, ReadOnlySpan<RenderCellSnapshot> cells, int maxCols, in RenderThemeSnapshot theme)
+            => AppendRowCore(sb, cells, maxCols, theme);
+
+        private static int AppendRowCore(StringBuilder sb, ReadOnlySpan<RenderCellSnapshot> cells, int maxCols, RenderThemeSnapshot? theme)
         {
             ArgumentNullException.ThrowIfNull(sb);
             int limit = Math.Min(maxCols, cells.Length);
@@ -40,30 +47,12 @@ namespace Ntilde.VT.Export
 
                 if (!haveStyle || !SameStyle(current, cell))
                 {
-                    AppendSgr(sb, cell);
+                    AppendSgrCore(sb, cell, theme);
                     current = cell;
                     haveStyle = true;
                 }
 
-                // Append the char directly rather than via cell.Text ?? cell.Character.ToString():
-                // this is the text client's repaint hot path, and .ToString() would allocate a new
-                // string for every plain (non-grapheme) cell in the row.
-                if (clippedToSpace)
-                {
-                    sb.Append(' ');
-                }
-                else if (cell.Text is not null)
-                {
-                    sb.Append(cell.Text);
-                }
-                else if (cell.Character == '\0')
-                {
-                    sb.Append(' ');
-                }
-                else
-                {
-                    sb.Append(cell.Character);
-                }
+                AppendCellText(sb, cell, clippedToSpace);
 
                 col += width;
             }
@@ -72,8 +61,18 @@ namespace Ntilde.VT.Export
             return col;
         }
 
+        private static void AppendCellText(StringBuilder sb, in RenderCellSnapshot cell, bool clippedToSpace)
+        {
+            // Avoid per-character strings on the text client's repaint path.
+            if (clippedToSpace || (cell.Text is null && cell.Character == '\0')) sb.Append(' ');
+            else if (cell.Text is not null) sb.Append(cell.Text);
+            else sb.Append(cell.Character);
+        }
+
         /// <summary>The cell's complete style as one <c>ESC [ 0 ; … m</c>.</summary>
-        public static void AppendSgr(StringBuilder sb, in RenderCellSnapshot cell)
+        public static void AppendSgr(StringBuilder sb, in RenderCellSnapshot cell) => AppendSgrCore(sb, cell, null);
+
+        private static void AppendSgrCore(StringBuilder sb, in RenderCellSnapshot cell, RenderThemeSnapshot? theme)
         {
             ArgumentNullException.ThrowIfNull(sb);
             sb.Append("\x1b[0");
@@ -85,10 +84,10 @@ namespace Ntilde.VT.Export
             if (cell.IsInverse) sb.Append(";7");
             if (cell.IsHidden) sb.Append(";8");
             if (cell.IsStrikethrough) sb.Append(";9");
-            if (!cell.IsDefaultForeground) AppendColor(sb, cell.FgIndex, cell.Foreground, foreground: true);
-            if (!cell.IsDefaultBackground) AppendColor(sb, cell.BgIndex, cell.Background, foreground: false);
+            AppendEffectiveColor(sb, cell.IsDefaultForeground, cell.FgIndex, cell.Foreground, true, theme);
+            AppendEffectiveColor(sb, cell.IsDefaultBackground, cell.BgIndex, cell.Background, false, theme);
             sb.Append('m');
-            if (cell.IsUnderline && cell.Underline is { } underline) AppendUnderlineSgr(sb, underline);
+            if (cell.IsUnderline && cell.Underline is { } underline) AppendUnderlineSgrCore(sb, underline, theme);
         }
 
         /// <summary>
@@ -100,7 +99,9 @@ namespace Ntilde.VT.Export
         /// sequence and still shows the plain underline. The semicolon form of 58 would have a terminal that
         /// doesn't know 58 read the color's numbers as SGR codes of their own (a 0 among them resets).
         /// </remarks>
-        public static void AppendUnderlineSgr(StringBuilder sb, CellUnderline underline)
+        public static void AppendUnderlineSgr(StringBuilder sb, CellUnderline underline) => AppendUnderlineSgrCore(sb, underline, null);
+
+        private static void AppendUnderlineSgrCore(StringBuilder sb, CellUnderline underline, RenderThemeSnapshot? theme)
         {
             ArgumentNullException.ThrowIfNull(sb);
             ArgumentNullException.ThrowIfNull(underline);
@@ -114,14 +115,16 @@ namespace Ntilde.VT.Export
             if (underline.HasColor)
             {
                 if (styled) sb.Append(';');
-                if (underline.ColorIndex >= 0)
+                RenderThemeSnapshot colors = theme.GetValueOrDefault();
+                bool overridePalette = colors.PaletteOverrides.Contains(underline.ColorIndex);
+                if (underline.ColorIndex >= 0 && !overridePalette)
                 {
                     sb.Append("58:5:").Append(underline.ColorIndex);
                 }
                 else
                 {
                     // 58:2:<color space id>:r:g:b, the id left empty as xterm and kitty write it.
-                    TermColor rgb = underline.Color.GetValueOrDefault();
+                    TermColor rgb = overridePalette ? colors.AnsiPalette[underline.ColorIndex] : underline.Color.GetValueOrDefault();
                     sb.Append("58:2:").Append(':').Append(rgb.R).Append(':').Append(rgb.G).Append(':').Append(rgb.B);
                 }
             }
@@ -137,6 +140,26 @@ namespace Ntilde.VT.Export
             && a.FgIndex == b.FgIndex && a.BgIndex == b.BgIndex
             && (a.IsDefaultForeground || a.FgIndex >= 0 || a.Foreground == b.Foreground)
             && (a.IsDefaultBackground || a.BgIndex >= 0 || a.Background == b.Background);
+
+        private static void AppendEffectiveColor(StringBuilder sb, bool isDefault, short index, TermColor literal,
+            bool foreground, RenderThemeSnapshot? theme)
+        {
+            if (theme is { } colors)
+            {
+                bool overrideDefault = isDefault && (foreground ? colors.HasForegroundOverride : colors.HasBackgroundOverride);
+                if (overrideDefault)
+                {
+                    AppendColor(sb, -1, foreground ? colors.Foreground : colors.Background, foreground);
+                    return;
+                }
+                if (!isDefault && colors.PaletteOverrides.Contains(index))
+                {
+                    AppendColor(sb, -1, colors.AnsiPalette[index], foreground);
+                    return;
+                }
+            }
+            if (!isDefault) AppendColor(sb, index, literal, foreground);
+        }
 
         private static void AppendColor(StringBuilder sb, short index, TermColor rgb, bool foreground)
         {

@@ -74,6 +74,14 @@ public sealed record MuxPresentation
     /// <summary>ARGB as <c>TermColor.ToUint()</c>; null = parser default.</summary>
     public uint? DefaultFg { get; init; }
     public uint? DefaultBg { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint? CursorColor { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint? SelectionFg { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint? SelectionBg { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint[]? AnsiPalette { get; init; }
     public bool KittyKeyboardEnabled { get; init; } = true;
 
     /// <summary>Supported progressive enhancements; absent on older clients means disambiguation only (1).</summary>
@@ -106,7 +114,16 @@ public sealed record SpawnParams
     /// <summary>Spawning host background ARGB before startup output; absent retains the dark fallback.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public uint? DefaultBg { get; init; }
-
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint? DefaultFg { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint? CursorColor { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint? SelectionFg { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint? SelectionBg { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint[]? AnsiPalette { get; init; }
 
     /// <summary>
     /// Phase 4 (spec §3, codex E1; additive): the id the new session takes, in the "D" form, chosen by the

@@ -280,36 +280,6 @@ namespace Ntilde.VT
             return _buffer.Theme.GetAnsiColor(index, bright);
         }
 
-        private TermColor GetXtermColor(int index)
-        {
-            // 0-15: Standard colors from theme
-            if (index < 16)
-            {
-                return GetBasicColor(index % 8, index >= 8);
-            }
-
-            // 16-231: 6x6x6 Cube
-            if (index < 232)
-            {
-                index -= 16;
-                int r = (index / 36);
-                int g = (index / 6) % 6;
-                int b = index % 6;
-
-                // Mapping 0-5 to 0-255: 0->0, 1->95, 2->135, 3->175, 4->215, 5->255
-                byte ToByte(int v) => (byte)(v == 0 ? 0 : (v * 40 + 55));
-                return TermColor.FromRgb(ToByte(r), ToByte(g), ToByte(b));
-            }
-
-            // 232-255: Grayscale
-            if (index < 256)
-            {
-                index -= 232;
-                byte v = (byte)(index * 10 + 8);
-                return TermColor.FromRgb(v, v, v);
-            }
-
-            return TermColor.White;
-        }
+        private TermColor GetXtermColor(int index) => _buffer.GetPaletteColor(index);
     }
 }

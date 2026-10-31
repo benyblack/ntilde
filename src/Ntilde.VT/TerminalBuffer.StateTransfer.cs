@@ -45,6 +45,7 @@ namespace Ntilde.VT
                     ScreenCursorAlt = ExportCursor(_screenCursorStates.Alt),
                     RestoreMainCursorOnAltExit = _restoreMainCursorOnAltExit,
                     Sgr = ExportLiveSgrNoLock(),
+                    Colors = ExportRuntimeColors(),
                     Modes = ExportModes(Modes),
                     KittyKeyboard = new TerminalKittyKeyboardState
                     {
@@ -191,6 +192,7 @@ namespace Ntilde.VT
                         : null;
 
                 ImportModes(Modes, snapshot.Modes);
+                ImportRuntimeColors(snapshot.Colors);
                 Modes.KittyKeyboard.ImportStacksForState(
                     snapshot.KittyKeyboard.MainStack,
                     snapshot.KittyKeyboard.AltStack,
@@ -832,6 +834,7 @@ namespace Ntilde.VT
             ValidateVersionAndCellLayout(snapshot);
             ValidateRequiredStructure(snapshot);
             ValidateSixelState(snapshot);
+            TerminalRuntimeColors.Validate(snapshot.Colors);
 
             // Ordered after the structure pass on purpose: the three CellsBase64 reads below
             // dereference Main/Alt/Scrollback, which the pass has just proven present.

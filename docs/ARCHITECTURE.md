@@ -131,6 +131,10 @@ with legacy viewport fields retained for older readers.
 - Scrollback is immutable once flushed
 - Buffer state is renderer-agnostic — no Skia, no Avalonia in the type surface
 - All read access requires holding `TerminalBuffer.Lock` (`ReaderWriterLockSlim`); reads without the lock throw `AssertLockHeld`
+  Exception: `RuntimeForeground` and `RuntimeBackground` each read one immutable,
+  volatile-published color frame without the buffer lock, so UI preference queries
+  do not wait on terminal output. They return independent scalar values, not an
+  atomic pair or a coherent grid snapshot; compound buffer reads still require the lock.
 - Every write-lock acquisition goes through `AcquireWriteLock()`; one that has to block runs inside the host-supplied `TerminalBuffer.BlockingWriteWaitScope`. VT owns that routing; the wait policy and any native wait belong to the host (VT declares no P/Invoke — `Vt_declares_no_native_interop`)
 
 #### `TerminalRow` / `TerminalCell`
@@ -148,10 +152,35 @@ The VT engine is **purely deterministic**:
 
 This enables deterministic replay, cross-platform parity testing, and safe refactoring.
 
-### 3.4 Color preference
+### 3.4 Runtime terminal colors
+
+`TerminalBuffer` owns stream color overrides separately from its host `Theme`. Numeric
+OSC 4, 10/11/12/17/19 mutations update effective render snapshots and queries; explicit
+truecolor cells stay literal, while default and indexed cells follow current overrides.
+OSC 104 and 110/111/112/117/119 reset overrides to current host defaults. X11 named colors,
+other dynamic slots and the separate OSC 21 protocol are outside this implementation.
+
+OSC 30001/30101 save/restore overrides for the five dynamic colors and 256 palette slots.
+The stack is session-wide, with the newest 16 frames retained and silent empty pops.
+Unset entries retain host-following semantics, so popping cannot restore a stale saved
+user theme after a host theme change. DECSTR preserves colors; RIS clears overrides and
+stack. The additive complete-state `colors` field carries bounded, validated deep copies
+through mux attach and new replay snapshots; legacy omission clears state on restore.
+Render theme/palette snapshots and row revisions change together, including extended
+palette entries and cached row pictures. The text client resolves overridden default/indexed
+cell colors and underlines into SGR RGB, preserving unmodified outer defaults/palette and
+never forwarding palette OSC. Its physical cursor/selection remain outer-host policy.
+Color commands stage one current-frame copy and publish once, with ordered query replies;
+internally shared saved frames stay immutable and deep copies remain at import/export.
+Host defaults reach a persistent parser before
+startup output and through later presentation updates; downstream views use their own
+host themes with the same stream overrides.
+
+### 3.5 Color preference
 
 Color preference queries (`CSI ? 996 n`) and opt-in updates (mode 2031) use the
-host-provided effective default background. The pure RGB luma classifier is shared
+effective background: a stream override takes precedence over the host-provided default.
+The pure RGB luma classifier is shared
 with UI theming; VT performs no OS/theme lookup. Only dark/light transitions emit
 updates. The subscription travels with parser state while host colors remain local
 configuration. Existing profile-theme wiring supplies local panes; mux presentation

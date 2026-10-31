@@ -18,7 +18,7 @@ public sealed class PtySshProcessLauncher : ISshProcessLauncher
     }
 }
 
-public sealed class SshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary
+public sealed class SshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink
 {
     private readonly OpenSshSession _inner;
 
@@ -89,6 +89,7 @@ public sealed class SshSession : ITerminalSession, ITerminalByteOutput, ITermina
     }
 
     public void SendInput(string input) => _inner.SendInput(input);
+    public bool TrySendDeviceReply(string response) => _inner.TrySendDeviceReply(response);
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);
     public void UseHostRecordingBoundary() => _inner.UseHostRecordingBoundary();
     public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler) => _inner.SubscribeRecordingOutput(handler);

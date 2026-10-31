@@ -186,6 +186,51 @@ public class PaneParserWiringTests
         }
     }
 
+    [AvaloniaFact]
+    public void Runtime_overrides_survive_settings_and_pop_follows_the_current_profile_theme()
+    {
+        string root = CreateTempAppRoot();
+        string? previous = Environment.GetEnvironmentVariable("NTILDE_APPDATA_ROOT");
+        try
+        {
+            Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", root);
+            var first = new TerminalTheme { Name = "RuntimeFirst", Foreground = TermColor.FromRgb(0x11, 0x22, 0x33), Background = TermColor.Black };
+            var second = new TerminalTheme { Name = "RuntimeSecond", Foreground = TermColor.FromRgb(0x44, 0x55, 0x66), Background = TermColor.White };
+            var manager = new ThemeManager();
+            manager.SaveTheme(first);
+            manager.SaveTheme(second);
+            var settings = new TerminalSettings { ThemeName = first.Name };
+            var profile = new TerminalProfile { ThemeName = first.Name };
+            using var pane = new TerminalPane(profile, settings);
+            pane.CreateAndWireParser();
+            var replies = new System.Collections.Generic.List<string>();
+            pane.Parser!.OnResponse += replies.Add;
+            pane.Parser.Process("\u001b[?2031h\u001b]30001\a\u001b]10;#abcdef;#000000\a");
+            profile.ThemeName = second.Name;
+            pane.ApplySettings(settings);
+            settings.FontSize++;
+            pane.ApplySettings(settings);
+            Assert.Empty(replies);
+            pane.Parser.Process("\u001b]10;?;?\a\u001b[?996n");
+            Assert.Equal(new[] { "\u001b]10;rgb:abab/cdcd/efef\u001b\\", "\u001b]11;rgb:0000/0000/0000\u001b\\", "\u001b[?997;1n" }, replies);
+            replies.Clear();
+            pane.Parser.Process("\u001b]30101\a\u001b]10;?;?\a");
+            Assert.Equal(new[] { "\u001b[?997;2n", "\u001b]10;rgb:4444/5555/6666\u001b\\", "\u001b]11;rgb:ffff/ffff/ffff\u001b\\" }, replies);
+            Assert.Equal(second.Foreground, pane.Buffer!.Theme.Foreground);
+            Assert.Equal(second.Background, pane.Buffer.Theme.Background);
+            var presentation = pane.BuildMuxPresentation();
+            Assert.Equal(second.Foreground.ToUint(), presentation.DefaultFg);
+            Assert.Equal(second.CursorColor.ToUint(), presentation.CursorColor);
+            Assert.Equal(16, presentation.AnsiPalette!.Length);
+            Assert.Equal(second.Blue.ToUint(), presentation.AnsiPalette[4]);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", previous);
+            Directory.Delete(root, true);
+        }
+    }
+
     /// <summary>Protocol reports follow the effective profile theme through normal settings updates.</summary>
     [AvaloniaFact]
     public void Color_scheme_queries_and_notifications_follow_profile_theme_overrides()

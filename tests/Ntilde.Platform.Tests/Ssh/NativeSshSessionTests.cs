@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Ntilde.Pty;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -13,6 +14,23 @@ public sealed class NativeSshSessionTests
     private static readonly string[] EuroSignOnly = ["\u20AC"];
     private static readonly int[] ExitCode23Only = [23];
     private static readonly string[] HelloOnly = ["hello"];
+
+    [Fact]
+    public void Device_replies_use_bounded_admission_and_never_fall_back_to_unbounded_input()
+    {
+        var interop = new FakeNativeSshInterop();
+        using var session = new NativeSshSession(CreateProfile(), interop: interop);
+        var sink = Assert.IsAssignableFrom<ITerminalDeviceReplySink>(session);
+        Assert.True(sink.TrySendDeviceReply("reply"));
+        Assert.Equal("reply", Encoding.UTF8.GetString(Assert.Single(interop.DeviceReplies)));
+        interop.AcceptDeviceReplies = false;
+        Assert.False(sink.TrySendDeviceReply("rejected"));
+        Assert.Empty(interop.Writes);
+        session.SendInput("keyboard");
+        Assert.Equal("keyboard", Encoding.UTF8.GetString(Assert.Single(interop.Writes)));
+        Assert.False(sink.TrySendDeviceReply(new string('x', 65537)));
+        Assert.Single(interop.DeviceReplies);
+    }
 
     [Fact]
     [Trait("Category", "Regression")]
@@ -772,6 +790,15 @@ public sealed class NativeSshSessionTests
         private int _nextHandle = 1;
 
         public List<byte[]> Writes { get; } = new();
+        public List<byte[]> DeviceReplies { get; } = new();
+        public bool AcceptDeviceReplies { get; set; } = true;
+
+        public bool TryWriteDeviceReply(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data)
+        {
+            if (!AcceptDeviceReplies) return false;
+            DeviceReplies.Add(data.ToArray());
+            return true;
+        }
         public List<(int Cols, int Rows)> Resizes { get; } = new();
         public int CloseCallCount { get; private set; }
         public NativeSshConnectionOptions? LastConnectOptions { get; private set; }

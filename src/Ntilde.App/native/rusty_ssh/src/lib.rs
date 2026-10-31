@@ -149,7 +149,8 @@ pub const NOVA_SSH_RESULT_CANCELED: c_int = -6;
 pub const NOVA_SSH_RESULT_PANIC: c_int = -7;
 /// A forward channel has more data queued toward the remote than its budget allows. Not an error:
 /// the caller is expected to retry, which is what applies backpressure to the local socket it is
-/// reading from. Only nova_ssh_channel_write returns this.
+/// reading from. Also returned for a saturated best-effort device-reply budget; those replies
+/// are dropped rather than retried through the ordinary input path.
 pub const NOVA_SSH_RESULT_WOULD_BLOCK: c_int = -8;
 
 /// The server refused a tcpip-forward request (or the request could not be sent). Distinct from
@@ -170,6 +171,11 @@ const MAX_EVENT_WAIT_MS: u32 = 1000;
 /// budget for the opposite direction. Reaching it makes nova_ssh_channel_write report
 /// NOVA_SSH_RESULT_WOULD_BLOCK rather than growing the queue without limit.
 const MAX_QUEUED_FORWARD_WRITE_BYTES: usize = 1024 * 1024;
+
+// Device replies cannot consume an unbounded number of commands or bytes while stdin stalls.
+// The surcharge also bounds empty replies. User input retains its existing delivery path.
+const MAX_QUEUED_DEVICE_REPLY_COST: usize = 64 * 1024;
+const DEVICE_REPLY_OVERHEAD: usize = 256;
 
 /// Ceiling on data-bearing payload bytes (Data, ExtendedData, ForwardChannelData) queued toward
 /// the managed poll loop. At the ceiling the channel readers park in `queue_data_event` instead
@@ -306,6 +312,7 @@ struct SharedState {
     // Data-bearing payload bytes currently in `events`, kept outside the queue's Mutex so the
     // async producers can check the budget without contending with the FFI poll thread's lock.
     queued_data_bytes: AtomicUsize,
+    queued_device_reply_cost: Arc<AtomicUsize>,
     // Wakes producers parked in `queue_data_event` when the poll loop drains below the budget,
     // or when the session closes (see mark_closed).
     event_space_notify: tokio::sync::Notify,
@@ -396,8 +403,41 @@ enum SftpOutcome {
     Listed(Vec<RemotePathListEntry>),
 }
 
+// The reservation travels with the command and stays live during a stalled channel write.
+// Drop also releases it on rejected sends, worker failure, EOF or connection teardown.
+struct DeviceReplyReservation {
+    budget: Arc<AtomicUsize>,
+    cost: usize,
+}
+
+impl Drop for DeviceReplyReservation {
+    fn drop(&mut self) {
+        self.budget.fetch_sub(self.cost, Ordering::AcqRel);
+    }
+}
+
+fn reserve_device_reply(
+    shared: &SharedState,
+    payload_len: usize,
+) -> Option<DeviceReplyReservation> {
+    let cost = payload_len.checked_add(DEVICE_REPLY_OVERHEAD)?;
+    let budget = shared.queued_device_reply_cost.clone();
+    budget
+        .fetch_update(Ordering::AcqRel, Ordering::Acquire, |queued| {
+            queued
+                .checked_add(cost)
+                .filter(|next| *next <= MAX_QUEUED_DEVICE_REPLY_COST)
+        })
+        .ok()?;
+    Some(DeviceReplyReservation { budget, cost })
+}
+
 enum WorkerCommand {
     Write(Vec<u8>),
+    DeviceReply {
+        data: Vec<u8>,
+        reservation: DeviceReplyReservation,
+    },
     /// EOF on the main channel: for an exec session, the remote command's stdin is finished.
     /// Sent at most once; the worker drops later Writes rather than putting data on the wire
     /// after an EOF.
@@ -921,6 +961,7 @@ impl SharedState {
             closed_notify: tokio::sync::Notify::new(),
             forward_write_budgets: Mutex::new(HashMap::new()),
             queued_data_bytes: AtomicUsize::new(0),
+            queued_device_reply_cost: Arc::new(AtomicUsize::new(0)),
             event_space_notify: tokio::sync::Notify::new(),
             remote_forward_requested: AtomicBool::new(false),
             finished: AtomicBool::new(false),
@@ -1699,6 +1740,7 @@ fn run_connection(
                         }
                         // No main channel to write to, resize, or end.
                         Some(WorkerCommand::Write(_))
+                        | Some(WorkerCommand::DeviceReply { .. })
                         | Some(WorkerCommand::SendEof)
                         | Some(WorkerCommand::Resize { .. }) => {}
                         Some(WorkerCommand::Close) | None => break,
@@ -1717,39 +1759,47 @@ fn run_connection(
 
         // Nothing may join a connection that is going away.
         fail_pending_shells(&mut command_rx, "the shared SSH connection was closed");
-        close_all_forward_channels(&forward_channels).await;
-        let _ = session
-            .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
-            .await;
-        for jump in jump_sessions.into_iter().rev() {
-            let _ = jump
+        let cleanup = async {
+            close_all_forward_channels(&forward_channels).await;
+            let _ = session
                 .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
                 .await;
-        }
-
-        // The disconnect ends every shell's channel, and their tasks finish on their own. Bounded,
-        // like the forward drain, because nova_ssh_close joins this thread (#155). A shell still
-        // running after that is dropped with the runtime, so it is finished here instead: whatever
-        // happens, every shell's handle sees Closed.
+            for jump in jump_sessions.into_iter().rev() {
+                let _ = jump
+                    .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
+                    .await;
+            }
+        };
         let message = lost
             .clone()
             .unwrap_or_else(|| "the shared SSH connection was closed".to_owned());
-        let drain = async {
-            for shell in &mut shells {
-                let _ = (&mut shell.task).await;
-            }
-        };
-        let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, drain).await;
-        for shell in shells {
-            shell.task.abort();
-            shell.shared.finish(Some(&message));
-        }
+        finish_shared_channels(shells, cleanup, &message).await;
 
         match lost {
             Some(message) => Err(anyhow::anyhow!(message)),
             None => Ok(()),
         }
     })
+}
+
+// A wedged protocol queue cannot prevent the shell abort/finish sweep. Bound network
+// cleanup and task draining separately, then release every shell even on timeout.
+async fn finish_shared_channels(
+    mut shells: Vec<SharedChannel>,
+    cleanup: impl Future<Output = ()>,
+    message: &str,
+) {
+    let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, cleanup).await;
+    let drain = async {
+        for shell in &mut shells {
+            let _ = (&mut shell.task).await;
+        }
+    };
+    let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, drain).await;
+    for shell in shells {
+        shell.task.abort();
+        shell.shared.finish(Some(message));
+    }
 }
 
 /// Fails every shell still waiting to be opened on a connection that will not serve it, and stops
@@ -1814,8 +1864,24 @@ async fn run_shared_channel(
         .await
         .err()
         .map(|error| error.to_string());
-    let _ = channel.close().await;
+    let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, channel.close()).await;
     shared.finish(error.as_deref());
+}
+
+// A remote with no window/queue space must not hold the worker join during disposal.
+// The caller retains its reply reservation until its operation completes or is canceled.
+async fn run_main_channel_operation(
+    shared: &SharedState,
+    operation: impl Future<Output = Result<(), russh::Error>>,
+) -> anyhow::Result<bool> {
+    tokio::select! {
+        biased;
+        _ = shared.wait_closed() => Ok(false),
+        result = operation => {
+            result?;
+            Ok(true)
+        }
+    }
 }
 
 async fn shared_channel_loop(
@@ -1842,25 +1908,36 @@ async fn shared_channel_loop(
     let has_pty = *mode == SessionMode::Shell;
     loop {
         tokio::select! {
+            _ = shared.wait_closed() => return Ok(()),
             command = next_worker_command(&mut pending_command, command_rx) => {
                 match command {
                     Some(WorkerCommand::Write(data)) => {
-                        if !eof_sent {
-                            channel.data(&data[..]).await?;
+                        if !eof_sent && !run_main_channel_operation(shared, channel.data(&data[..])).await? {
+                            return Ok(());
                         }
+                    }
+                    Some(WorkerCommand::DeviceReply { data, reservation }) => {
+                        if !eof_sent && !run_main_channel_operation(shared, channel.data(&data[..])).await? {
+                            return Ok(());
+                        }
+                        drop(reservation);
                     }
                     Some(WorkerCommand::Resize { cols, rows }) => {
                         let (cols, rows, pending_resize_command) =
                             coalesce_pending_resize_commands(command_rx, cols, rows);
                         pending_command = pending_resize_command;
                         if has_pty {
-                            channel.window_change(cols as u32, rows as u32, 0, 0).await?;
+                            if !run_main_channel_operation(shared, channel.window_change(cols as u32, rows as u32, 0, 0)).await? {
+                                return Ok(());
+                            }
                         }
                     }
                     Some(WorkerCommand::SendEof) => {
                         if !eof_sent {
                             eof_sent = true;
-                            channel.eof().await?;
+                            if !run_main_channel_operation(shared, channel.eof()).await? {
+                                return Ok(());
+                            }
                         }
                     }
                     // Forward calls on a shell's handle: the forwards are the connection's. A
@@ -1874,7 +1951,7 @@ async fn shared_channel_loop(
                     | Some(WorkerCommand::Sftp { .. }) => {}
                     Some(WorkerCommand::Close) | None => {
                         if !eof_sent {
-                            let _ = channel.eof().await;
+                            let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, channel.eof()).await;
                         }
                         return Ok(());
                     }
@@ -2002,6 +2079,45 @@ pub extern "C" fn nova_ssh_write(
         };
 
         send_command(&session, WorkerCommand::Write(bytes))
+    })
+}
+
+/// Best-effort device reply: reserve bounded cost before copying or enqueueing payload bytes.
+/// WOULD_BLOCK is a dropped reply, never a reason to retry through nova_ssh_write.
+///
+/// # Safety
+/// A nonempty admitted payload must point to `data_len` readable bytes for this call.
+/// Null nonempty payloads and lengths beyond the admission budget are rejected before access.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn nova_ssh_try_write_device_reply(
+    handle: usize,
+    data: *const u8,
+    data_len: usize,
+) -> c_int {
+    ffi_guard(NOVA_SSH_RESULT_PANIC, || {
+        if data.is_null() && data_len != 0 {
+            return NOVA_SSH_RESULT_INVALID_ARGUMENT;
+        }
+        let session = match registry_get(handle) {
+            Some(session) => session,
+            None => return NOVA_SSH_RESULT_INVALID_ARGUMENT,
+        };
+        let reservation = match reserve_device_reply(&session.shared, data_len) {
+            Some(reservation) => reservation,
+            None => return NOVA_SSH_RESULT_WOULD_BLOCK,
+        };
+        let bytes = if data_len == 0 {
+            Vec::new()
+        } else {
+            unsafe { std::slice::from_raw_parts(data, data_len) }.to_vec()
+        };
+        send_command(
+            &session,
+            WorkerCommand::DeviceReply {
+                data: bytes,
+                reservation,
+            },
+        )
     })
 }
 
@@ -4497,17 +4613,26 @@ fn run_session(
         let has_pty = mode == SessionMode::Shell;
         loop {
             tokio::select! {
+                _ = shared.wait_closed() => break,
                 command = next_worker_command(&mut pending_command, &mut command_rx) => {
                     match command {
                         Some(WorkerCommand::Write(data)) => {
-                            if !eof_sent {
-                                channel.data(&data[..]).await?;
+                            if !eof_sent && !run_main_channel_operation(&shared, channel.data(&data[..])).await? {
+                                break;
                             }
+                        }
+                        Some(WorkerCommand::DeviceReply { data, reservation }) => {
+                            if !eof_sent && !run_main_channel_operation(&shared, channel.data(&data[..])).await? {
+                                break;
+                            }
+                            drop(reservation);
                         }
                         Some(WorkerCommand::SendEof) => {
                             if !eof_sent {
                                 eof_sent = true;
-                                channel.eof().await?;
+                                if !run_main_channel_operation(&shared, channel.eof()).await? {
+                                    break;
+                                }
                             }
                         }
                         Some(WorkerCommand::Resize { cols, rows }) => {
@@ -4520,7 +4645,9 @@ fn run_session(
 
                             // An exec channel has no PTY, so there is nothing to resize.
                             if has_pty {
-                                channel.window_change(cols as u32, rows as u32, 0, 0).await?;
+                                if !run_main_channel_operation(&shared, channel.window_change(cols as u32, rows as u32, 0, 0)).await? {
+                                    break;
+                                }
                             }
                         }
                         Some(WorkerCommand::OpenDirectTcpIp {
@@ -4575,11 +4702,6 @@ fn run_session(
                         // Dropping the reply reads as CLOSED: the caller connects on its own.
                         Some(WorkerCommand::Sftp { .. }) => {}
                         Some(WorkerCommand::Close) | None => {
-                            close_all_forward_channels(&forward_channels).await;
-                            if !eof_sent {
-                                let _ = channel.eof().await;
-                            }
-                            let _ = channel.close().await;
                             break;
                         }
                     }
@@ -4605,17 +4727,26 @@ fn run_session(
             }
         }
 
-        let _ = session
-            .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
-            .await;
-        // Tear the chain down innermost-first, mirroring how it was built: each hop's transport
-        // is a channel of the hop before it, so disconnecting an outer hop first would just drop
-        // the inner ones mid-conversation.
-        for jump in jump_sessions.into_iter().rev() {
-            let _ = jump
+        // Bound all post-loop network cleanup together, including a peer that stops reading.
+        let cleanup = async {
+            close_all_forward_channels(&forward_channels).await;
+            if !eof_sent {
+                let _ = channel.eof().await;
+            }
+            let _ = channel.close().await;
+            let _ = session
                 .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
                 .await;
-        }
+            // Tear the chain down innermost-first, mirroring how it was built: each hop's transport
+            // is a channel of the hop before it, so disconnecting an outer hop first would just drop
+            // the inner ones mid-conversation.
+            for jump in jump_sessions.into_iter().rev() {
+                let _ = jump
+                    .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
+                    .await;
+            }
+        };
+        let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, cleanup).await;
         Ok(())
     })
 }
@@ -6034,6 +6165,190 @@ mod tests {
 
         let close = nova_ssh_close(session);
         assert_eq!(NOVA_SSH_RESULT_OK, close);
+    }
+
+    fn device_reply_test_session() -> (
+        usize,
+        Arc<SharedState>,
+        mpsc::UnboundedReceiver<WorkerCommand>,
+    ) {
+        let shared = Arc::new(SharedState::new());
+        let (tx, rx) = mpsc::unbounded_channel();
+        let handle = registry_insert(NovaSshSession {
+            shared: shared.clone(),
+            command_tx: Mutex::new(Some(tx)),
+            worker: Mutex::new(None),
+        }) as usize;
+        (handle, shared, rx)
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn channel_control_operations_cancel_on_close_and_preserve_errors() {
+        let shared = SharedState::new();
+        let (tx, _rx) = mpsc::channel::<()>(10);
+        for _ in 0..10 {
+            tx.send(()).await.unwrap();
+        }
+        // EOF and resize both wait on this bounded protocol queue, rather than the remote window.
+        let operation = async {
+            let _ = tx.send(()).await;
+            Ok(())
+        };
+        let close = async {
+            tokio::task::yield_now().await;
+            shared.mark_closed();
+        };
+        let (result, _) = tokio::time::timeout(Duration::from_secs(1), async {
+            tokio::join!(run_main_channel_operation(&shared, operation), close)
+        })
+        .await
+        .expect("control operation ignored session closure");
+        assert!(!result.unwrap());
+        let open = SharedState::new();
+        assert!(run_main_channel_operation(&open, async { Ok(()) })
+            .await
+            .unwrap());
+        assert!(run_main_channel_operation(&open, async { Err(russh::Error::Disconnect) })
+            .await
+            .is_err());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn saturated_disconnect_queue_still_finishes_shells_and_releases_replies() {
+        let shared = Arc::new(SharedState::new());
+        let reservation = reserve_device_reply(&shared, 4096).unwrap();
+        let task = tokio::spawn(async move {
+            let _held_reply = reservation;
+            std::future::pending::<()>().await;
+        });
+        // Stand in for russh's ten-message protocol queue with a processor that stops reading.
+        let (tx, _rx) = mpsc::channel::<()>(10);
+        for _ in 0..10 {
+            tx.send(()).await.unwrap();
+        }
+        let cleanup = async { let _ = tx.send(()).await; };
+        tokio::time::timeout(
+            Duration::from_secs(5),
+            finish_shared_channels(
+                vec![SharedChannel { shared: shared.clone(), task }],
+                cleanup,
+                "closed",
+            ),
+        )
+        .await
+        .expect("saturated disconnect prevented the shell finish sweep");
+        tokio::task::yield_now().await; // Execute the task abort and its reservation destructor.
+        assert!(shared.finished.load(Ordering::Acquire));
+        assert!(shared.is_closed());
+        assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
+        let mut saw_closed = false;
+        while let EventRead::Ready(event) = shared.take_event_if_fits(usize::MAX) {
+            saw_closed |= event.kind == NovaSshEventKind::Closed;
+        }
+        assert!(saw_closed);
+    }
+
+    #[test]
+    fn device_reply_budget_stays_reserved_while_dequeued_write_is_stalled() {
+        let (handle, shared, mut rx) = device_reply_test_session();
+        let payload = b"x";
+        let mut accepted = 0;
+        loop {
+            let rc = unsafe { nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len()) };
+            if rc == NOVA_SSH_RESULT_WOULD_BLOCK {
+                break;
+            }
+            assert_eq!(NOVA_SSH_RESULT_OK, rc);
+            accepted += 1;
+            assert!(accepted <= 256);
+        }
+        assert!(accepted > 0);
+        let cost = shared.queued_device_reply_cost.load(Ordering::Acquire);
+        assert!(cost <= MAX_QUEUED_DEVICE_REPLY_COST);
+        let held = rx.try_recv().unwrap();
+        assert_eq!(
+            cost,
+            shared.queued_device_reply_cost.load(Ordering::Acquire)
+        );
+        assert_eq!(
+            NOVA_SSH_RESULT_WOULD_BLOCK,
+            unsafe { nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len()) }
+        );
+        // Ordinary keyboard input stays independent of the reply admission budget.
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            nova_ssh_write(handle, b"typed".as_ptr(), 5)
+        );
+        drop(held);
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            unsafe { nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len()) }
+        );
+        let mut keyboard = 0;
+        while let Ok(command) = rx.try_recv() {
+            match command {
+                WorkerCommand::Write(data) => {
+                    assert_eq!(b"typed", data.as_slice());
+                    keyboard += 1;
+                }
+                WorkerCommand::DeviceReply { data, reservation } => {
+                    assert_eq!(payload, data.as_slice());
+                    drop(reservation);
+                }
+                _ => panic!("unexpected command"),
+            }
+        }
+        assert_eq!(1, keyboard);
+        assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+    }
+
+    #[test]
+    fn device_reply_budget_bounds_empty_packets_and_releases_on_receiver_drop() {
+        let (handle, shared, rx) = device_reply_test_session();
+        for _ in 0..MAX_QUEUED_DEVICE_REPLY_COST / DEVICE_REPLY_OVERHEAD {
+            assert_eq!(
+                NOVA_SSH_RESULT_OK,
+                unsafe { nova_ssh_try_write_device_reply(handle, ptr::null(), 0) }
+            );
+        }
+        assert_eq!(
+            NOVA_SSH_RESULT_WOULD_BLOCK,
+            unsafe { nova_ssh_try_write_device_reply(handle, ptr::null(), 0) }
+        );
+        assert_eq!(
+            MAX_QUEUED_DEVICE_REPLY_COST,
+            shared.queued_device_reply_cost.load(Ordering::Acquire)
+        );
+        drop(rx);
+        assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
+        assert_eq!(
+            NOVA_SSH_RESULT_CLOSED,
+            unsafe { nova_ssh_try_write_device_reply(handle, b"x".as_ptr(), 1) }
+        );
+        assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+    }
+
+    #[test]
+    fn device_reply_rejects_invalid_and_oversized_payloads_before_admission() {
+        let (handle, shared, rx) = device_reply_test_session();
+        let payload = vec![0; MAX_QUEUED_DEVICE_REPLY_COST];
+        assert_eq!(
+            NOVA_SSH_RESULT_WOULD_BLOCK,
+            unsafe { nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len()) }
+        );
+        assert_eq!(
+            NOVA_SSH_RESULT_INVALID_ARGUMENT,
+            unsafe { nova_ssh_try_write_device_reply(handle, ptr::null(), 1) }
+        );
+        assert_eq!(
+            NOVA_SSH_RESULT_INVALID_ARGUMENT,
+            unsafe { nova_ssh_try_write_device_reply(0, b"x".as_ptr(), 1) }
+        );
+        assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
+        drop(rx);
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
     }
 
     #[test]
@@ -10066,6 +10381,7 @@ mod shared_connection_e2e_tests {
         pty_requests: usize,
         shell_requests: usize,
         exec_requests: usize,
+        input_bytes: usize,
     }
 
     type SeenLog = Arc<Mutex<ServerSeen>>;
@@ -10076,6 +10392,7 @@ mod shared_connection_e2e_tests {
 
     struct TestServer {
         seen: SeenLog,
+        stall_input: bool,
     }
 
     impl russh::server::Handler for TestServer {
@@ -10145,12 +10462,24 @@ mod shared_connection_e2e_tests {
             session.data(channel, b"prompt$ ".to_vec())
         }
 
+        fn adjust_window(&mut self, _channel: ChannelId, current: u32) -> u32 {
+            if self.stall_input {
+                0
+            } else {
+                current
+            }
+        }
+
         async fn data(
             &mut self,
             channel: ChannelId,
             data: &[u8],
             session: &mut ServerSession,
         ) -> Result<(), Self::Error> {
+            lock(&self.seen).input_bytes += data.len();
+            if self.stall_input {
+                return Ok(());
+            }
             if data == b"drop\n" {
                 // The whole connection, not this channel: what a server restart looks like.
                 return session.disconnect(Disconnect::ByApplication, "going away", "en");
@@ -10170,6 +10499,10 @@ mod shared_connection_e2e_tests {
 
     /// Serves every connection to a loopback port on its own thread and runtime, counting them.
     fn start_server() -> (u16, SeenLog) {
+        start_server_with_stalled_input(false)
+    }
+
+    fn start_server_with_stalled_input(stall_input: bool) -> (u16, SeenLog) {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("loopback must bind");
         let port = listener.local_addr().expect("bound address").port();
         listener
@@ -10187,12 +10520,14 @@ mod shared_connection_e2e_tests {
                 let listener = tokio::net::TcpListener::from_std(listener).expect("tokio listener");
                 let config = Arc::new(russh::server::Config {
                     keys: vec![host_key()],
+                    window_size: if stall_input { 1 } else { 2 * 1024 * 1024 },
                     ..Default::default()
                 });
                 while let Ok((stream, _)) = listener.accept().await {
                     lock(&server_seen).connections += 1;
                     let handler = TestServer {
                         seen: server_seen.clone(),
+                        stall_input,
                     };
                     let config = config.clone();
                     tokio::spawn(async move {
@@ -10334,6 +10669,78 @@ mod shared_connection_e2e_tests {
             NOVA_SSH_RESULT_OK,
             nova_ssh_write(handle, data.as_ptr(), data.len())
         );
+    }
+
+    fn assert_stalled_reply_close(shared_connection: bool, close_connection: bool) {
+        let (port, seen) = start_server_with_stalled_input(true);
+        let strings = strings();
+        let args = args(&strings, port);
+        let (connection, shell) = if shared_connection {
+            let connection = nova_ssh_connect_shared(&args);
+            let shell = nova_ssh_open_shell(connection, &args);
+            drive_connection(connection, PASSWORD, NovaSshEventKind::Connected);
+            drive(shell, NovaSshEventKind::Data, |_| {});
+            (Some(connection), shell)
+        } else {
+            let shell = nova_ssh_connect(&args);
+            drive_connection(shell, PASSWORD, NovaSshEventKind::Data);
+            (None, shell)
+        };
+        let shared = registry_get(shell).unwrap().shared.clone();
+        let reply = vec![b'x'; 4096];
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            unsafe { nova_ssh_try_write_device_reply(shell, reply.as_ptr(), reply.len()) }
+        );
+        // A real server received the first byte, so the command has been dequeued and its
+        // channel.data future is waiting for the rest of a window that is never replenished.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while lock(&seen).input_bytes == 0 {
+            assert!(Instant::now() < deadline, "reply never reached the remote window");
+            thread::sleep(Duration::from_millis(2));
+        }
+        assert_eq!(1, lock(&seen).input_bytes);
+        assert_eq!(
+            reply.len() + DEVICE_REPLY_OVERHEAD,
+            shared.queued_device_reply_cost.load(Ordering::Acquire)
+        );
+        let close_handle = if close_connection { connection.unwrap() } else { shell };
+        let (closed_tx, closed_rx) = std::sync::mpsc::channel();
+        thread::spawn(move || {
+            let _ = closed_tx.send(nova_ssh_close(close_handle));
+        });
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            closed_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("close blocked on remote window")
+        );
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while shared.queued_device_reply_cost.load(Ordering::Acquire) != 0 {
+            assert!(Instant::now() < deadline, "canceled reply retained its reservation");
+            thread::sleep(Duration::from_millis(2));
+        }
+        if close_connection {
+            drive(shell, NovaSshEventKind::Closed, |_| {});
+            assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(shell));
+        } else if let Some(connection) = connection {
+            assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(connection));
+        }
+    }
+
+    #[test]
+    fn closing_connection_cancels_its_real_stalled_device_reply() {
+        assert_stalled_reply_close(true, true);
+    }
+
+    #[test]
+    fn closing_standalone_shell_cancels_a_real_stalled_device_reply() {
+        assert_stalled_reply_close(false, false);
+    }
+
+    #[test]
+    fn closing_shared_shell_cancels_a_real_stalled_device_reply() {
+        assert_stalled_reply_close(true, false);
     }
 
     #[test]

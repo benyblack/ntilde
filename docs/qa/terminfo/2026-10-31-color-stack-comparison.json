@@ -1,0 +1,651 @@
+{
+  "schemaVersion": 1,
+  "kind": "derived-owned-color-stack-comparison",
+  "collector": {
+    "suiteId": "16a690f34c0e",
+    "probeHash": "16a690f34c0e",
+    "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+    "adapter": {
+      "id": "ntilde-owned-macos-v1",
+      "bundleSha256": "10f5db68f76ecdcdda27c7cd9ffc0b9b51bdbb71888d6e8fede333dea34be5ce",
+      "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+    },
+    "adapterBundleSha256": "10f5db68f76ecdcdda27c7cd9ffc0b9b51bdbb71888d6e8fede333dea34be5ce",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "runnerSourceSha256": "a322ad12a62101e28f465275a7c6d6cd993ef9792e40c4aeeadb56113794fda5",
+    "adapterSourceSha256": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
+    "ownershipSourceSha256": "1bf16d996f4d4dfdb98cc2ec7011e64c6567de1515271bb2a4244ae48996d50f",
+    "workerSourceSha256": "00ed37f2cb00ce11268be08b4a69fc65e4a88236378fa35f032b4fde8976b83e",
+    "runtimeSourceSha256": "8199c0373ae9f423c2f2333f9166ce0f301dd6e5df238b78d1bdb317e3abfdd4",
+    "collectorManifestSha256": "56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e",
+    "collectorLockSha256": "837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508",
+    "nodeVersion": "v24.22.1"
+  },
+  "before": {
+    "sourceCommit": "aa640ee4384b963ddd9e156b78e0f8e0d532ee0f",
+    "appVersion": "0.12.0+aa640ee4384b963ddd9e156b78e0f8e0d532ee0f",
+    "artifactDirectory": "artifacts/terminfo/owned-qmH85E",
+    "measuredAt": "2026-10-31T22:11:29.621Z",
+    "runId": "543fbfb23788fb998b9fc984e6325003",
+    "rawSha256": "5887e6ecf3be2ded8a253d8eab9478e0b9311255ab22beacb287f8bbc168f645",
+    "assemblySha256": "91ef82f942999f4acad9da89194cbc9112c99f836518ab8a9536c980003e7777",
+    "counts": {
+      "inconclusive": 179,
+      "supported": 69,
+      "unsupported": 7
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 24,
+      "policy-refused": 3
+    },
+    "cleanupCompleted": true,
+    "cleanedUpAt": "2026-10-31T22:11:29.675Z"
+  },
+  "after": {
+    "sourceCommit": "ff9abd159d1ac53cddaea17d7bcfb71fa823ef50",
+    "appVersion": "0.12.0+ff9abd159d1ac53cddaea17d7bcfb71fa823ef50",
+    "artifactDirectory": "artifacts/terminfo/owned-WH1tzu",
+    "measuredAt": "2026-10-31T22:46:07.760Z",
+    "runId": "f7e06a492ea34376afda2594fdd8c2be",
+    "rawSha256": "bf51f1315aa111ded1fe905b0b825f61545b88e2d68f372b772b7a4b0c0dcfb7",
+    "assemblySha256": "ea22370a497fd5f65b3918408842435b9376de9c5dd2ce46c2dfc3ba3e1c5a44",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 73,
+      "unsupported": 5
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "cleanupCompleted": true,
+    "cleanedUpAt": "2026-10-31T22:46:07.786Z"
+  },
+  "baselineRuntimeSourceEquivalence": {
+    "mergedMainCommit": "e91eb8169d93cf90c121ae8c2f848a0d56a9520d",
+    "measuredCommit": "aa640ee4384b963ddd9e156b78e0f8e0d532ee0f",
+    "verifiedNoDiffPaths": [
+      "src/Ntilde.App",
+      "src/Ntilde.VT",
+      "src/Ntilde.Pty",
+      "src/Ntilde.Mux",
+      "src/Ntilde.Rendering",
+      "src/Ntilde.Mux.Contracts"
+    ],
+    "scope": "Runtime source equivalence, not an assertion that the complete repositories or embedded version strings are identical."
+  },
+  "geometry": {
+    "cols": 140,
+    "rows": 41
+  },
+  "suiteComplete": false,
+  "ungradedDiagnostics": {
+    "cursor.reverse-wrap": {
+      "kind": "collector-error",
+      "name": "UndeclaredTerminalGeometry",
+      "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+    }
+  },
+  "sameOutcomeAndReason": 251,
+  "changedObservations": [
+    {
+      "featureId": "extensions.osc4-palette",
+      "before": {
+        "featureId": "extensions.osc4-palette",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc4-palette"
+      },
+      "after": {
+        "featureId": "extensions.osc4-palette",
+        "outcome": "supported",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc4-palette"
+      },
+      "beforeTrace": {
+        "writes": [],
+        "queries": [
+          {
+            "sequence": "\u001b]4;0;?\u0007\u001b[c",
+            "match": null,
+            "reason": "sentinel",
+            "raw": "\u001b[?62;4;22c",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b]4;0;?\u0007\u001b[c",
+            "match": null,
+            "reason": "sentinel",
+            "raw": "\u001b[?62;4;22c",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          }
+        ]
+      },
+      "afterTrace": {
+        "writes": [],
+        "queries": [
+          {
+            "sequence": "\u001b]4;0;?\u0007\u001b[c",
+            "match": [
+              "\u001b]4;0;rgb:0000/0000/0000\u001b\\"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]4;0;rgb:0000/0000/0000\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G100OzA7cmdiOjAwMDAvMDAwMC8wMDAwG1wbWz82Mjs0OzIyYw=="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b]4;0;?\u0007\u001b[c",
+            "match": [
+              "\u001b]4;0;rgb:0000/0000/0000\u001b\\"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]4;0;rgb:0000/0000/0000\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G100OzA7cmdiOjAwMDAvMDAwMC8wMDAwG1wbWz82Mjs0OzIyYw=="
+          }
+        ]
+      }
+    },
+    {
+      "featureId": "extensions.osc12-cursor-color",
+      "before": {
+        "featureId": "extensions.osc12-cursor-color",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc12-cursor-color"
+      },
+      "after": {
+        "featureId": "extensions.osc12-cursor-color",
+        "outcome": "supported",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc12-cursor-color"
+      },
+      "beforeTrace": {
+        "writes": [],
+        "queries": [
+          {
+            "sequence": "\u001b]12;?\u0007\u001b[c",
+            "match": null,
+            "reason": "sentinel",
+            "raw": "\u001b[?62;4;22c",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b]12;?\u0007\u001b[c",
+            "match": null,
+            "reason": "sentinel",
+            "raw": "\u001b[?62;4;22c",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          }
+        ]
+      },
+      "afterTrace": {
+        "writes": [],
+        "queries": [
+          {
+            "sequence": "\u001b]12;?\u0007\u001b[c",
+            "match": [
+              "\u001b]12;rgb:ffff/ffff/ffff\u001b\\"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]12;rgb:ffff/ffff/ffff\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMjtyZ2I6ZmZmZi9mZmZmL2ZmZmYbXBtbPzYyOzQ7MjJj"
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b]12;?\u0007\u001b[c",
+            "match": [
+              "\u001b]12;rgb:ffff/ffff/ffff\u001b\\"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]12;rgb:ffff/ffff/ffff\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMjtyZ2I6ZmZmZi9mZmZmL2ZmZmYbXBtbPzYyOzQ7MjJj"
+          }
+        ]
+      }
+    },
+    {
+      "featureId": "extensions.osc30001-color-stack-push",
+      "before": {
+        "featureId": "extensions.osc30001-color-stack-push",
+        "outcome": "unsupported",
+        "evidence": "behavior",
+        "note": "Foreground change or stack restoration was not observed",
+        "rawReplyRef": "extensions.osc30001-color-stack-push"
+      },
+      "after": {
+        "featureId": "extensions.osc30001-color-stack-push",
+        "outcome": "supported",
+        "evidence": "behavior",
+        "note": "Foreground changed and color-stack pop restored its original value",
+        "rawReplyRef": "extensions.osc30001-color-stack-push"
+      },
+      "beforeTrace": {
+        "writes": [
+          "\u001b]30001\u001b\\",
+          "\u001b]10;rgb:aa/bb/cc\u0007",
+          "\u001b]30101\u001b\\",
+          "\u001b]10;rgb:d3d3/d3d3/d3d3\u0007"
+        ],
+        "queries": [
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]30001\u001b\\"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]10;rgb:aa/bb/cc\u0007"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]30101\u001b\\"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]10;rgb:d3d3/d3d3/d3d3\u0007"
+          }
+        ]
+      },
+      "afterTrace": {
+        "writes": [
+          "\u001b]30001\u001b\\",
+          "\u001b]10;rgb:aa/bb/cc\u0007",
+          "\u001b]30101\u001b\\",
+          "\u001b]10;rgb:d3d3/d3d3/d3d3\u0007"
+        ],
+        "queries": [
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\",
+              "rgb:aaaa/bbbb/cccc"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6YWFhYS9iYmJiL2NjY2MbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]30001\u001b\\"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]10;rgb:aa/bb/cc\u0007"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\",
+              "rgb:aaaa/bbbb/cccc"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6YWFhYS9iYmJiL2NjY2MbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]30101\u001b\\"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]10;rgb:d3d3/d3d3/d3d3\u0007"
+          }
+        ]
+      }
+    },
+    {
+      "featureId": "extensions.osc30101-color-stack-pop",
+      "before": {
+        "featureId": "extensions.osc30101-color-stack-pop",
+        "outcome": "unsupported",
+        "evidence": "behavior",
+        "note": "Foreground change or stack restoration was not observed",
+        "rawReplyRef": "extensions.osc30101-color-stack-pop"
+      },
+      "after": {
+        "featureId": "extensions.osc30101-color-stack-pop",
+        "outcome": "supported",
+        "evidence": "behavior",
+        "note": "Foreground changed and color-stack pop restored its original value",
+        "rawReplyRef": "extensions.osc30101-color-stack-pop"
+      },
+      "beforeTrace": {
+        "writes": [
+          "\u001b]30001\u001b\\",
+          "\u001b]10;rgb:aa/bb/cc\u0007",
+          "\u001b]30101\u001b\\",
+          "\u001b]10;rgb:d3d3/d3d3/d3d3\u0007"
+        ],
+        "queries": [
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]30001\u001b\\"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]10;rgb:aa/bb/cc\u0007"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]30101\u001b\\"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]10;rgb:d3d3/d3d3/d3d3\u0007"
+          }
+        ]
+      },
+      "afterTrace": {
+        "writes": [
+          "\u001b]30001\u001b\\",
+          "\u001b]10;rgb:aa/bb/cc\u0007",
+          "\u001b]30101\u001b\\",
+          "\u001b]10;rgb:d3d3/d3d3/d3d3\u0007"
+        ],
+        "queries": [
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\",
+              "rgb:aaaa/bbbb/cccc"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6YWFhYS9iYmJiL2NjY2MbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]30001\u001b\\"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]10;rgb:aa/bb/cc\u0007"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\",
+              "rgb:aaaa/bbbb/cccc"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6YWFhYS9iYmJiL2NjY2MbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]30101\u001b\\"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b]10;?\u0007\u001b[c",
+            "match": [
+              "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+              "rgb:d3d3/d3d3/d3d3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c",
+            "rawBase64": "G10xMDtyZ2I6ZDNkMy9kM2QzL2QzZDMbXBtbPzYyOzQ7MjJj"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]10;rgb:d3d3/d3d3/d3d3\u0007"
+          }
+        ]
+      }
+    }
+  ],
+  "scope": [
+    "Stack collector cases observe one foreground mutation and pop, not every color, nesting, rendering or shared-session behavior.",
+    "Palette and cursor promotions are query evidence only.",
+    "Independent domain, mux, profile, replay and live Skia tests cover the wider implementation.",
+    "Numeric colors only; no X11 named colors, OSC 21 or clipboard fixture.",
+    "The local adapter is an extension, not an upstream-approved collector result; upstream identity remains unverified.",
+    "Raw JSON and full ownership/dependency/source receipts remain in ignored local directories and were not rewritten."
+  ],
+  "intermediateFeatureBuilds": [
+    {
+      "sourceCommit": "b40702a1e25d403be9b8ece423abb714e9baabb5",
+      "appVersion": "0.12.0+b40702a1e25d403be9b8ece423abb714e9baabb5",
+      "artifactDirectory": "artifacts/terminfo/owned-RibI7Y",
+      "measuredAt": "2026-10-31T22:17:56.766Z",
+      "runId": "8c450e4a5655336264d937884df831e0",
+      "rawSha256": "429ef27c84f93c6fe6a612f7f61e0042fde33bde780c490e4f030880e12e3b9f",
+      "assemblySha256": "2c8d700ba3bc2c865fd711b07affaa3316a372af55b2c529449caa580d3d018f",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 73,
+        "unsupported": 5
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "cleanupCompleted": true,
+      "cleanedUpAt": "2026-10-31T22:17:56.805Z"
+    }
+  ]
+}

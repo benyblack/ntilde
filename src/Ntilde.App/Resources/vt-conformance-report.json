@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "ef5d5dc643396a3f25aab422bf769e5bc4c53b9f61dfebd5fe1040ed39c89533",
+  "matrixSha256": "df318d3c4c2b10efd51198606ecb99892e2f009a9d0e5b3e27a3aa60176610d9",
   "summary": {
-    "totalRows": 69,
-    "supportedCount": 34,
-    "partialCount": 31,
+    "totalRows": 74,
+    "supportedCount": 36,
+    "partialCount": 34,
     "experimentalCount": 1,
     "notSupportedCount": 2,
     "wontSupportCount": 1,
-    "rowsWithLinkedEvidence": 50,
-    "supportedRowsWithLinkedEvidence": 34,
+    "rowsWithLinkedEvidence": 55,
+    "supportedRowsWithLinkedEvidence": 36,
     "errorCount": 0,
     "warningCount": 0
   },
@@ -68,35 +68,35 @@
       "order": 7,
       "title": "8) OSC sequences",
       "startLine": 153,
-      "endLine": 163,
-      "rowCount": 9
+      "endLine": 168,
+      "rowCount": 14
     },
     {
       "order": 8,
       "title": "9) Kitty graphics / APC",
-      "startLine": 169,
-      "endLine": 172,
+      "startLine": 174,
+      "endLine": 177,
       "rowCount": 2
     },
     {
       "order": 9,
       "title": "10) SIXEL",
-      "startLine": 178,
-      "endLine": 181,
+      "startLine": 183,
+      "endLine": 186,
       "rowCount": 2
     },
     {
       "order": 10,
       "title": "11) Clipboard, selection, and hyperlinking",
-      "startLine": 187,
-      "endLine": 191,
+      "startLine": 192,
+      "endLine": 196,
       "rowCount": 3
     },
     {
       "order": 11,
       "title": "12) Unicode width, graphemes, and font behavior",
-      "startLine": 197,
-      "endLine": 201,
+      "startLine": 202,
+      "endLine": 206,
       "rowCount": 3
     }
   ],
@@ -1251,9 +1251,9 @@
     {
       "section": "8) OSC sequences",
       "feature": "OSC 10/11",
-      "status": "\u2705 Supported",
+      "status": "\u26A0 Partial",
       "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/OscUxTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/RuntimeColorTests.cs\u0060, \u0060tests/Ntilde.App.Tests/OscUxTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -1261,13 +1261,146 @@
         {
           "path": "tests/Ntilde.App.Tests/OscUxTests.cs",
           "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
+          "exists": true
         }
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
-      "ownership": "Parser\u002BApp",
-      "knownDeviations": "Query form (\u0060?\u0060) only; set form is ignored safely, no runtime palette change. Colors sourced from \u0060AnsiParser.DefaultForeground\u0060/\u0060DefaultBackground\u0060, wired from the active theme at parser creation and on \u0060TerminalPane.ApplySettings\u0060; falls back to fg C0C0C0 / bg 000000 when unset",
+      "ownership": "Parser\u002BBuffer\u002BRenderer",
+      "knownDeviations": "Numeric #RGB/#RRGGBB/#RRRGGGBBB/#RRRRGGGGBBBB, rgb: (1\u20134 hex digits/channel), finite rgbi: [0,1]; X11 named colors are not supported. Overrides affect existing default-colored cells, remain separate from saved host themes, and mask host color queries until reset. Query fallback remains fg C0C0C0 / bg 000000 when unset",
       "sourceLine": 157
+    },
+    {
+      "section": "8) OSC sequences",
+      "feature": "OSC 4/104",
+      "status": "\u26A0 Partial",
+      "specOrNotes": "",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/RuntimeColorTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer\u002BRenderer",
+      "knownDeviations": "All 256 indexed colors; numeric values only; multiple index/value pairs and per-index/all reset. At most 256 query replies per OSC; later mutations still apply after the reply cap. Explicit RGB cells stay unchanged; X11 names and special palette indices above 255 are not implemented",
+      "sourceLine": 158
+    },
+    {
+      "section": "8) OSC sequences",
+      "feature": "OSC 12/17/19",
+      "status": "\u26A0 Partial",
+      "specOrNotes": "",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/RuntimeColorTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer\u002BRenderer",
+      "knownDeviations": "Numeric values only; unset derived selection colors have no concrete query reply. Other dynamic slots and OSC 21 are not implemented",
+      "sourceLine": 159
+    },
+    {
+      "section": "8) OSC sequences",
+      "feature": "OSC 110/111/112/117/119",
+      "status": "\u2705 Supported",
+      "specOrNotes": "",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/RuntimeColorTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer",
+      "knownDeviations": "Empty payload resets the corresponding override to the current host default",
+      "sourceLine": 160
+    },
+    {
+      "section": "8) OSC sequences",
+      "feature": "OSC 30001",
+      "status": "\u2705 Supported",
+      "specOrNotes": "",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/RuntimeColorTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessColorSchemeTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.Mux.Tests/Headless/HeadlessColorSchemeTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer\u002BRenderer",
+      "knownDeviations": "Session-wide across screens; newest 16 frames retained, oldest discarded on overflow, empty pop is silent. Saves foreground/background/cursor/selection overrides and all 256 palette overrides; unset values continue following the receiving/current host theme. DECSTR preserves; RIS clears; complete mux/replay snapshots carry deep copies. Host theme metadata remains separate",
+      "sourceLine": 161
+    },
+    {
+      "section": "8) OSC sequences",
+      "feature": "OSC 30101",
+      "status": "\u2705 Supported",
+      "specOrNotes": "",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/RuntimeColorTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessColorSchemeTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.Mux.Tests/Headless/HeadlessColorSchemeTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer\u002BRenderer",
+      "knownDeviations": "Session-wide across screens; newest 16 frames retained, oldest discarded on overflow, empty pop is silent. Saves foreground/background/cursor/selection overrides and all 256 palette overrides; unset values continue following the receiving/current host theme. DECSTR preserves; RIS clears; complete mux/replay snapshots carry deep copies. Host theme metadata remains separate",
+      "sourceLine": 162
     },
     {
       "section": "8) OSC sequences",
@@ -1292,7 +1425,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "Write-only (issue #268): valid base64 decodes and raises \u0060AnsiParser.OnClipboardWrite\u0060, capped at 1 MiB decoded (rejected on encoded length before decoding, re-checked after); invalid base64 dropped silently; a sequence with no payload separator at all is ignored rather than clearing the clipboard. Targets \u0060c\u0060/\u0060p\u0060 both map to the system clipboard, other selection chars ignored. Query (\u0060?\u0060) always gets an empty-payload denial reply, never real clipboard contents \u2014 clipboard READ is unsupported by design (security). The echoed selection parameter is whitelisted to \u0060c p q s 0-7\u0060 and length-capped first: responses go to the child process\u0027s stdin, so an unsanitized echo was a command-injection primitive (PR #280 review). Gated by \u0060TerminalSettings.AllowOsc52ClipboardWrite\u0060 (default true, single global setting; per-profile/SSH-scoped opt-in is future work)",
-      "sourceLine": 158
+      "sourceLine": 163
     },
     {
       "section": "8) OSC sequences",
@@ -1313,7 +1446,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer\u002BUI",
       "knownDeviations": "Ctrl-click open path is app-level",
-      "sourceLine": 159
+      "sourceLine": 164
     },
     {
       "section": "8) OSC sequences",
@@ -1338,7 +1471,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "#271. \u00609;\u003Ctext\u003E\u0060 flattens/caps (200 chars) and raises \u0060OnDesktopNotification\u0060; \u00609;4;\u003Cstate\u003E[;\u003Cpct\u003E]\u0060 clamps pct 0-100 and raises \u0060OnProgressReported\u0060 (state 0-4, pct null when omitted; malformed payloads dropped; bare \u00604\u0060 without \u0060;\u0060 is notification text). App side: focus-gated in-app toast (\u0060Osc9NotificationsEnabled\u0060, default false, same policy as long-command notifications), per-tab progress \u2014 thin bar in vertical headers, trailing suffix in horizontal titles \u2014 and Windows taskbar progress mirroring the selected tab (\u0060Osc9ProgressReportingEnabled\u0060, default true). Progress withdraws on state 0, pane exit, and pane close",
-      "sourceLine": 160
+      "sourceLine": 165
     },
     {
       "section": "8) OSC sequences",
@@ -1359,7 +1492,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BCommand Assist",
       "knownDeviations": "Supports A/B/C/D markers; C\u0027s command from base64, plain text or kitty\u0027s \u0060cmdline_url\u0060 (fish 4); other semantic prompt extensions not audited",
-      "sourceLine": 161
+      "sourceLine": 166
     },
     {
       "section": "8) OSC sequences",
@@ -1385,7 +1518,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
       "knownDeviations": "Requires \u0060inline=1\u0060 and the \u0060File=\u0060 arg shape; no \u0060name=\u0060/\u0060size=\u0060 enforcement",
-      "sourceLine": 162
+      "sourceLine": 167
     },
     {
       "section": "8) OSC sequences",
@@ -1401,7 +1534,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BWin",
       "knownDeviations": "",
-      "sourceLine": 163
+      "sourceLine": 168
     },
     {
       "section": "9) Kitty graphics / APC",
@@ -1430,7 +1563,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
       "knownDeviations": "Native APC (non-tunneled) on Windows decodes behind \u0060TerminalSettings.AllowNativeKittyGraphics\u0060 (default on) \u2014 historically probes got \u0060ERR\u0060/images skipped; modern ConPTY passes APC through intact (live-verified 2026-09). Payload formats: container (PNG/...) plus raw \u0060f=24\u0060/\u0060f=32\u0060 sized by \u0060s=\u0060/\u0060v=\u0060, \u0060o=z\u0060 zlib inflation, and \u0060t=f\u0060 file transport read through the host-injected \u0060ReadFileBytes\u0060 delegate (App-side reader confined to \u0060%TEMP%\u0060, 64 MB cap). \u0060t=s\u0060 (shm) skips gracefully. Placement params (\u0060z\u0060, \u0060U=1\u0060, \u0060p=1\u0060, \u0060C=1\u0060) are accepted but only cursor-anchored placement is implemented.",
-      "sourceLine": 171
+      "sourceLine": 176
     },
     {
       "section": "9) Kitty graphics / APC",
@@ -1446,7 +1579,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Pruned images\u0027 bitmaps are retired by the buffer; the owning view disposes them once no in-flight snapshot session predates the retire (#166)",
-      "sourceLine": 172
+      "sourceLine": 177
     },
     {
       "section": "10) SIXEL",
@@ -1471,7 +1604,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Decoder\u002BRenderer",
       "knownDeviations": "",
-      "sourceLine": 180
+      "sourceLine": 185
     },
     {
       "section": "10) SIXEL",
@@ -1500,7 +1633,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BRenderer",
       "knownDeviations": "Default scrolling reserves rows without writing text cells or wrapping wide images. Set \u0060?80\u0060 places at page origin without moving the text cursor; reset restores scrolling. Regional and alternate-screen scrolling clip discarded pixels; right-edge clipping survives widening. Shared sessions receive initial pixel metrics at spawn and ordered updates afterward; GUI panes decode new SIXELs while the daemon measures geometry. Attach snapshots restore retained SIXEL source, placement and clipping for both screens without moving the cursor. Per pane/session, source retention is capped at 256 entries and 2 Mi UTF-16 characters; oldest or oversized sources are omitted when this budget is reached. Active captures share an additional bounded source-reference allowance of 256 entries and 2 Mi characters (at most 8 MiB retained payloads plus capture pins), preserving copied undecoded images through their final draw. Updated GUI/daemon required for shared layout parity. Existing below-image cursor and immediate trailing-newline policy is retained. Cursor-right extension \u0060?8452\u0060 is not implemented; placement remains cell-aligned.",
-      "sourceLine": 181
+      "sourceLine": 186
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1516,7 +1649,7 @@
       "hasLinkedEvidence": false,
       "ownership": "UI",
       "knownDeviations": "",
-      "sourceLine": 189
+      "sourceLine": 194
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1530,7 +1663,7 @@
       "hasLinkedEvidence": false,
       "ownership": "UI",
       "knownDeviations": "",
-      "sourceLine": 190
+      "sourceLine": 195
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1551,7 +1684,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BUI",
       "knownDeviations": "Ctrl-click open path is app-level",
-      "sourceLine": 191
+      "sourceLine": 196
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1581,7 +1714,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Deterministic 0/1/2-cell model for combining marks, emoji modifiers, ZWJ emoji, variation selectors, and regional-indicator flags. No Unicode-version pin or full UAX #11 conformance table is documented yet.",
-      "sourceLine": 199
+      "sourceLine": 204
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1614,7 +1747,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Combining/variation attachment is covered for common terminal cases, including pending-wrap boundaries. Full extended-grapheme-cluster conformance is not claimed.",
-      "sourceLine": 200
+      "sourceLine": 205
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1643,7 +1776,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Chunked ZWJ families, emoji modifiers, VS15/VS16, and chunked regional-indicator flag pairs are covered. Remaining gaps: cursor-addressing CSI remains cell-oriented, and width-changing selectors that arrive after a base glyph already placed at the last column are not guaranteed to retroactively reflow.",
-      "sourceLine": 201
+      "sourceLine": 206
     }
   ],
   "errors": [],

@@ -60,7 +60,12 @@ namespace Ntilde.VT
 
         public bool IsDefaultBackground { get => _isDefaultBackground; set { _isDefaultBackground = value; _isStyleDirty = true; } }
 
-        public TerminalTheme Theme { get; set; } = new TerminalTheme();
+        private TerminalTheme _theme = new();
+        public TerminalTheme Theme
+        {
+            get => _theme;
+            set { _theme = value; _runtimeTheme = null; }
+        }
 
         public bool IsInverse { get => _isInverse; set { _isInverse = value; _isStyleDirty = true; } }
 

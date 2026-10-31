@@ -71,6 +71,12 @@ namespace Ntilde.Pty
 
         /// <summary>Initial effective background ARGB for persistent query replies; opaque to the process layer.</summary>
         public uint? DefaultBg { get; init; }
+        public uint? DefaultFg { get; init; }
+        public uint? CursorColor { get; init; }
+        public uint? SelectionFg { get; init; }
+        public uint? SelectionBg { get; init; }
+        /// <summary>Sixteen host ANSI colors, independent of stream-owned overrides.</summary>
+        public uint[]? AnsiPalette { get; init; }
 
         /// <summary>Initial device-pixel cell size for persistent-session layout; opaque to the process layer.</summary>
         public float? CellWidthPx { get; init; }

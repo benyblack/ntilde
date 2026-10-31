@@ -617,6 +617,7 @@ namespace Ntilde.VT
                                     // stdin, and DECRQM must not report the mode as set.
                                     _inBandResizeReportsEnabled = false;
                                     _colorSchemeReportsEnabled = false;
+                                    RefreshColorScheme(notify: false);
                                     _state = State.Normal;
                                 }
                                 else if (c == '=' || c == '>') // DECKPAM / DECKPNM

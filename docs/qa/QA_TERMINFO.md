@@ -196,3 +196,8 @@ The [first macOS baseline](terminfo/2026-10-30-macos.md) records the pilot and i
 limitations. Changing the pinned collector requires a fresh run and review of
 its suite receipt and schema; results from different suites are not directly
 comparable as scores.
+
+Latest runtime-color follow-up: [2026-10-31 owned color-stack measurement](terminfo/2026-10-31-color-stack.md)
+and [derived digest-bound comparison](terminfo/2026-10-31-color-stack-comparison.json).
+It measured 73 supported / 5 unsupported / 177 inconclusive observations; the
+report separates query evidence from state, replay and pixel verification.
