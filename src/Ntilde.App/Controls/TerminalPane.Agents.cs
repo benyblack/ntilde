@@ -51,7 +51,8 @@ namespace Ntilde.Controls
                 (float)TermView.FontSize,
                 TermView.EnableLigatures,
                 TermView.EnableComplexShaping,
-                TermView.MinimumContrast));
+                TermView.MinimumContrast,
+                TermView.PreferredCursorStyle));
         }
 
         // ------------------------------------------------------------- Agent Output panel

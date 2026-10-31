@@ -177,6 +177,7 @@ namespace Ntilde.Shell
         /// <summary>Ligature setting currently in effect (for snapshot capture).</summary>
         internal bool EnableLigatures => _enableLigatures;
         internal double MinimumContrast => _minimumContrast;
+        internal CursorStyle PreferredCursorStyle => _preferredCursorStyle;
 
         /// <summary>Complex-shaping setting currently in effect (for snapshot capture).</summary>
         internal bool EnableComplexShaping => _enableComplexShaping;

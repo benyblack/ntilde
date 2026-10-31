@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Ntilde.Platform;
+using Ntilde.AgentHost;
 using Ntilde.Rendering;
 using Ntilde.Shell;
 using Ntilde.VT;
@@ -31,6 +32,24 @@ public sealed class CursorResetRenderTests
         Assert.Equal(SKColors.Red, reset.GetPixel(9, 10)); // the configured block covers the cell centre
         Assert.True(buffer.Modes.CursorStyleIsDefault);
         Assert.True(buffer.Modes.IsCursorBlinkEnabled);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(CursorStyle.Block, 9)]
+    [InlineData(CursorStyle.Beam, 4)]
+    public void Agent_capture_keeps_the_hosts_cursor_preference_after_reset(CursorStyle preference, int sampleX)
+    {
+        var buffer = new TerminalBuffer(3, 2)
+        {
+            Theme = new TerminalTheme { Background = TermColor.Black, Foreground = TermColor.White, CursorColor = TermColor.FromRgb(255, 0, 0) }
+        };
+        new AnsiParser(buffer).Process("\u001b[6 q\u001b[!p");
+        var metrics = new CellMetrics { CellWidth = 10, CellHeight = 20, Baseline = 15, Ascent = 15, Descent = 5 };
+        var parameters = new PaneRenderParameters(metrics, "Cascadia Code, Consolas, Monospace", 14, false, true,
+            PreferredCursorStyle: preference);
+        Assert.True(AgentSessionRegistration.TryRenderPng(buffer, parameters, 100, 1, out var capture, out var error), error.ToString());
+        using var bitmap = SKBitmap.Decode(capture.Png);
+        Assert.Equal(SKColors.Red, bitmap.GetPixel(sampleX, 10));
     }
 
     private static SKBitmap Draw(TerminalBuffer buffer, CursorStyle preference)
