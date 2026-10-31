@@ -23,6 +23,8 @@ namespace Ntilde.Replay
         public long? StopAtTimeMs { get; init; }
         /// <summary>False when the caller has restored a snapshot with authoritative geometry.</summary>
         public bool ApplyHeaderResize { get; init; } = true;
+        /// <summary>Resume strictly after this physical, one-based file line; zero reads from the start.</summary>
+        public long StartAfterLineNumber { get; init; }
     }
 
     public sealed class ReplayRunResult
@@ -91,6 +93,11 @@ namespace Ntilde.Replay
             Func<float, float, Task>? onSixelCellSizeCallback = null,
             CancellationToken ct = default)
         {
+            long startAfterLine = options?.StartAfterLineNumber ?? 0;
+            ArgumentOutOfRangeException.ThrowIfNegative(startAfterLine);
+            if (startAfterLine > 0 && startOffsetBytes > 0)
+                throw new ArgumentException("A checkpoint line cannot be combined with a byte offset.", nameof(startOffsetBytes));
+
             if (!File.Exists(_filePath))
                 throw new FileNotFoundException("Replay file not found", _filePath);
 
@@ -133,10 +140,11 @@ namespace Ntilde.Replay
                 lastOffset = minTimeMs;
             }
 
+            long lineNumber = 1;
             string? nextLine = await ReadLineOrEndAsync(reader, ct);
             while (line != null && !ct.IsCancellationRequested)
             {
-                if (!skipCurrentLine)
+                if (!skipCurrentLine && lineNumber > startAfterLine)
                 {
                     if (!string.IsNullOrWhiteSpace(line))
                     {
@@ -168,6 +176,7 @@ namespace Ntilde.Replay
                     }
                 }
                 skipCurrentLine = false;
+                lineNumber++;
                 line = nextLine;
                 nextLine = await ReadLineOrEndAsync(reader, ct);
             }

@@ -83,6 +83,11 @@ invariant changes.
 - Replay is a pure function of `(byte stream, optional snapshots) → buffer state`
 - Cannot reference Pty, Rendering, App, Avalonia, or SkiaSharp
 - Snapshot format is forward-compatible within v2
+- Restart positions can resume after a physical snapshot record, preserving output with equal timestamps.
+  Header validation remains active; App suppresses header geometry/metrics when a checkpoint
+  already supplied authoritative values.
+- Legacy sequential snapshots preserve parser continuation. App owns seek-session isolation: it
+  restores a supported complete checkpoint or reconstructs from the initial state and raw prefix.
 
 **Test authority**
 - `tests/Ntilde.Platform.Tests/Replay/`

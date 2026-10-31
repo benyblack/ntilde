@@ -74,8 +74,11 @@ namespace Ntilde.UI.Replay
                 _header = System.Text.Json.JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader);
 
                 long lastTime = 0;
+                long lineNumber = 1;
+                var snapshots = new List<SnapshotIndexEntry>();
                 while ((line = await reader.ReadLineAsync()) != null)
                 {
+                    lineNumber++;
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
                     try
@@ -86,13 +89,15 @@ namespace Ntilde.UI.Replay
                             lastTime = ev.TimeOffsetMs;
                             if (ev.Type == "snapshot" && ev.Snapshot != null)
                             {
-                                _snapshots.Add(new SnapshotIndexEntry { TimeMs = ev.TimeOffsetMs, Snapshot = ev.Snapshot });
+                                snapshots.Add(new SnapshotIndexEntry { TimeMs = ev.TimeOffsetMs, Snapshot = ev.Snapshot, LineNumber = lineNumber });
                             }
                         }
                     }
                     catch { /* skip malformed lines */ }
                 }
 
+                // Publish once: playback can read the index without racing the scan's list edits.
+                _snapshots = snapshots;
                 DurationMs = lastTime;
             }
             catch (Exception ex)
@@ -121,6 +126,7 @@ namespace Ntilde.UI.Replay
         {
             public long TimeMs { get; set; }
             public ReplaySnapshot Snapshot { get; set; } = null!;
+            public long LineNumber { get; set; }
         }
 
         public ReplaySnapshot? GetNearestSnapshot(long targetTimeMs)
@@ -131,7 +137,14 @@ namespace Ntilde.UI.Replay
         public SnapshotIndexEntry? GetNearestSnapshotEntry(long targetTimeMs)
         {
             return _snapshots.OrderByDescending(s => s.TimeMs)
+                             .ThenByDescending(s => s.LineNumber)
                              .FirstOrDefault(s => s.TimeMs <= targetTimeMs);
         }
+        /// <summary>Select a claimed complete checkpoint; restoration validates it before mutation.</summary>
+        public SnapshotIndexEntry? GetNearestSeekCheckpoint(long targetTimeMs) =>
+            _snapshots.Where(s => s.TimeMs <= targetTimeMs && s.Snapshot.State is { Version: TerminalStateSnapshot.CurrentVersion })
+                      .OrderByDescending(s => s.TimeMs)
+                      .ThenByDescending(s => s.LineNumber)
+                      .FirstOrDefault();
     }
 }
