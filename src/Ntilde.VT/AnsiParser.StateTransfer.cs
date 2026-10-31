@@ -33,6 +33,7 @@ namespace Ntilde.VT
                 VerticalOffset = _verticalOffset,
                 LastGraphicChar = _lastGraphicChar?.ToString(),
                 InBandResizeReportsEnabled = _inBandResizeReportsEnabled,
+                ColorSchemeReportsEnabled = _colorSchemeReportsEnabled,
                 PendingTextLength = _textBuffer.Length,
             };
 
@@ -105,6 +106,7 @@ namespace Ntilde.VT
             _verticalOffset = state.VerticalOffset;
             _lastGraphicChar = string.IsNullOrEmpty(state.LastGraphicChar) ? null : state.LastGraphicChar[0];
             _inBandResizeReportsEnabled = state.InBandResizeReportsEnabled;
+            _colorSchemeReportsEnabled = state.ColorSchemeReportsEnabled;
 
             // Deliberately not restored: the text-batching buffer (always empty between Process()
             // calls - AnsiParserStateTests asserts it) and the per-batch cursor-visibility flags

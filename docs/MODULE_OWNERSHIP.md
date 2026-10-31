@@ -48,6 +48,12 @@ invariant changes.
   blink policy for rendering and every timer/reset path, gated by attachment, visibility,
   focus, VT cursor visibility and retirement. Host settings preserve explicit application overrides; valid
   DECSCUSR changes publish normal batch-coalesced invalidation.
+- **Color-scheme reports describe the effective terminal palette.** Hosts keep parser default
+  colors in sync with the profile/shared presentation. VT uses the same pure perceived-luma
+  classifier as UI theming. DSR 996 answers independently of the opt-in; mode 2031 reports only
+  dark/light background transitions. DECSTR preserves the subscription, RIS clears it, and
+  complete parser snapshots carry it without replacing the receiving host's colors. The mux
+  alone writes shared-session device replies; downstream GUI parsers never duplicate them.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
   decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,
   and owns DECSDM state, page/scroll-region clipping and retirement. Clip metadata is copied into

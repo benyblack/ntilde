@@ -25,6 +25,10 @@ namespace Ntilde.VT
         public static TermColor FromRgb(byte r, byte g, byte b) => new TermColor(r, g, b, 255);
         public static TermColor FromArgb(byte a, byte r, byte g, byte b) => new TermColor(r, g, b, a);
 
+        /// <summary>Perceived RGB luma below half is dark; alpha does not alter the palette preference.</summary>
+        public static bool IsDark(TermColor color)
+            => (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255.0 < 0.5;
+
         public uint ToUint() => (uint)((A << 24) | (R << 16) | (G << 8) | B);
         public static TermColor FromUint(uint val) => new TermColor((byte)((val >> 16) & 0xFF), (byte)((val >> 8) & 0xFF), (byte)(val & 0xFF), (byte)((val >> 24) & 0xFF));
 

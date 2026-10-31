@@ -35,6 +35,8 @@ public sealed class VtCapabilityContractTests
             ["cursor-next-line"] = AssertCursorNextLine,
             ["cursor-previous-line"] = AssertCursorPreviousLine,
             ["cursor-horizontal-absolute"] = AssertCursorHorizontalAbsolute,
+            ["color-scheme-query"] = AssertColorSchemeQuery,
+            ["color-scheme-notifications"] = AssertColorSchemeNotifications,
         };
 
     private static readonly Dictionary<string, string> ContractSequences =
@@ -43,6 +45,8 @@ public sealed class VtCapabilityContractTests
             ["cursor-next-line"] = "\x1b[2E",
             ["cursor-previous-line"] = "\x1b[2F",
             ["cursor-horizontal-absolute"] = "\x1b[4G",
+            ["color-scheme-query"] = "\x1b[?996n",
+            ["color-scheme-notifications"] = "\x1b[?2031h\x1b[?2031$p",
         };
 
     public static IEnumerable<object[]> SupportedCapabilities()
@@ -122,6 +126,28 @@ public sealed class VtCapabilityContractTests
         // is ignored, exactly as CSI ? 2 E and CSI 2 $ F are.
         AssertIgnored("\x1b[?2G");
         AssertIgnored("\x1b[2$G");
+    }
+
+    private static void AssertColorSchemeQuery()
+    {
+        var parser = new AnsiParser(new TerminalBuffer(12, 8)) { DefaultBackground = TermColor.White };
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        parser.Process("\u001b[?996n");
+        Assert.Equal(new[] { "\u001b[?997;2n" }, replies);
+    }
+
+    private static void AssertColorSchemeNotifications()
+    {
+        var parser = new AnsiParser(new TerminalBuffer(12, 8));
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        parser.Process("\u001b[?2031h\u001b[?2031$p");
+        parser.DefaultBackground = TermColor.White;
+        Assert.Equal(new[] { "\u001b[?2031;1$y", "\u001b[?997;2n" }, replies);
+        parser.Process("\u001b[?2031l");
+        parser.DefaultBackground = TermColor.Black;
+        Assert.Equal(2, replies.Count);
     }
 
     private static void AssertPosition(string sequence, int expectedRow, int expectedCol)

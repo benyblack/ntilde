@@ -186,6 +186,57 @@ public class PaneParserWiringTests
         }
     }
 
+    /// <summary>Protocol reports follow the effective profile theme through normal settings updates.</summary>
+    [AvaloniaFact]
+    public void Color_scheme_queries_and_notifications_follow_profile_theme_overrides()
+    {
+        string tempRoot = CreateTempAppRoot();
+        string? previousRoot = Environment.GetEnvironmentVariable("NTILDE_APPDATA_ROOT");
+        try
+        {
+            Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", tempRoot);
+            var dark = new TerminalTheme { Name = "ColorSchemeDark", Background = TermColor.Black };
+            var light = new TerminalTheme { Name = "ColorSchemeLight", Background = TermColor.White };
+            var manager = new ThemeManager();
+            manager.SaveTheme(dark);
+            manager.SaveTheme(light);
+            var settings = new TerminalSettings { ThemeName = dark.Name };
+            var profile = new TerminalProfile { ThemeName = light.Name };
+            using var pane = new TerminalPane(profile, settings);
+            pane.CreateAndWireParser();
+            var replies = new System.Collections.Generic.List<string>();
+            pane.Parser!.OnResponse += replies.Add;
+            pane.Parser.Process("\u001b[?996n\u001b[?2031h");
+            Assert.Equal(new[] { "\u001b[?997;2n" }, replies);
+            replies.Clear();
+            pane.ApplySettings(settings);
+            settings.FontSize += 1;
+            pane.ApplySettings(settings);
+            Assert.Empty(replies);
+            profile.ThemeName = dark.Name;
+            pane.ApplySettings(settings);
+            Assert.Equal(new[] { "\u001b[?997;1n" }, replies);
+            replies.Clear();
+            profile.ThemeName = light.Name;
+            pane.ApplySettings(settings);
+            Assert.Equal(new[] { "\u001b[?997;2n" }, replies);
+            replies.Clear();
+            pane.Parser.Process("\u001b[?2031l");
+            profile.ThemeName = dark.Name;
+            pane.ApplySettings(settings);
+            Assert.Empty(replies);
+            pane.CreateAndWireParser();
+            pane.Parser!.OnResponse += replies.Add;
+            pane.Parser.Process("\u001b[?2031$p\u001b[?996n");
+            Assert.Equal(new[] { "\u001b[?2031;2$y", "\u001b[?997;1n" }, replies);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", previousRoot);
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
     /// <summary>
     /// PR #284's one behaviour change: "the command is running" is driven by OSC 133;C
     /// (command accepted / execution start), not OSC 133;B (prompt end). B fires once per
