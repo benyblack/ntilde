@@ -40,15 +40,15 @@
     "cleanedUpAt": "2026-10-31T19:06:13.787Z"
   },
   "after": {
-    "artifactDirectory": "artifacts/terminfo/owned-3LSugv",
-    "appVersion": "0.12.0+d19d05648308d5d5e6da159bf1cff356820e0f54",
+    "artifactDirectory": "artifacts/terminfo/owned-92wff5",
+    "appVersion": "0.12.0+aa640ee4384b963ddd9e156b78e0f8e0d532ee0f",
     "identity": "unverified",
     "appVersionSource": "operator supplied; not independently verified",
-    "measuredAt": "2026-10-31T19:26:51.608Z",
-    "collectorRunId": "6c84fcc8dd88fb3524d8ba7e9a637fd7",
-    "ownedRunId": "9e48f6987db0538d0dbb3c8d8470947b",
-    "rawSha256": "09e856a171220872201a708312a0df10f511263ad6ac02c6ed76871287ad4de1",
-    "assemblySha256": "79579c158e9b63ef2dd9e18bbb28e67ff4f22f61d843fdd09b82b125f9136f68",
+    "measuredAt": "2026-10-31T19:43:18.714Z",
+    "collectorRunId": "793835e40618977c130d426191f7fd32",
+    "ownedRunId": "3d2d500a855b53fe94d1bb0c4b483a9b",
+    "rawSha256": "a8eb12df6c3b240c4f486c678aff8ef2c002c8867ee74427ec3bf7b68bd80efc",
+    "assemblySha256": "91ef82f942999f4acad9da89194cbc9112c99f836518ab8a9536c980003e7777",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "counts": {
       "inconclusive": 179,
@@ -65,7 +65,7 @@
       "cols": 140,
       "rows": 41
     },
-    "cleanedUpAt": "2026-10-31T19:26:51.667Z"
+    "cleanedUpAt": "2026-10-31T19:43:18.770Z"
   },
   "changedObservations": [
     {
@@ -222,5 +222,33 @@
     "Collector identity is unverified. Supplied versions were read from the fresh sidecar assemblies.",
     "Queries do not verify unsolicited theme notifications, keyboard events or pixels.",
     "The unchanged collector geometry diagnostic leaves the suite incomplete."
-  ]
+  ],
+  "intermediateFeatureBuild": {
+    "artifactDirectory": "artifacts/terminfo/owned-3LSugv",
+    "appVersion": "0.12.0+d19d05648308d5d5e6da159bf1cff356820e0f54",
+    "identity": "unverified",
+    "appVersionSource": "operator supplied; not independently verified",
+    "measuredAt": "2026-10-31T19:26:51.608Z",
+    "collectorRunId": "6c84fcc8dd88fb3524d8ba7e9a637fd7",
+    "ownedRunId": "9e48f6987db0538d0dbb3c8d8470947b",
+    "rawSha256": "09e856a171220872201a708312a0df10f511263ad6ac02c6ed76871287ad4de1",
+    "assemblySha256": "79579c158e9b63ef2dd9e18bbb28e67ff4f22f61d843fdd09b82b125f9136f68",
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "counts": {
+      "inconclusive": 179,
+      "supported": 69,
+      "unsupported": 7
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 24,
+      "policy-refused": 3
+    },
+    "suiteComplete": false,
+    "geometry": {
+      "cols": 140,
+      "rows": 41
+    },
+    "cleanedUpAt": "2026-10-31T19:26:51.667Z"
+  }
 }

@@ -7,12 +7,12 @@ fresh locked dependency installation. Neither attached to existing sessions.
 
 | Context | Before | After |
 |---|---|---|
-| Source build | `954a1b7a8e7be757a1477b1f0c16c58357eee8e4` | `d19d05648308d5d5e6da159bf1cff356820e0f54` |
-| App version | `0.12.0+954a1b7a8e7be757a1477b1f0c16c58357eee8e4` | `0.12.0+d19d05648308d5d5e6da159bf1cff356820e0f54` |
-| Collection time (UTC) | `2026-10-31T19:06:13.732Z` | `2026-10-31T19:26:51.608Z` |
-| Local evidence | `artifacts/terminfo/owned-mSQy5d` | `artifacts/terminfo/owned-3LSugv` |
-| Raw SHA-256 | `9081c34579642b5dd190d349428bef97aaa0ee6e36fbbcdfd8e3e623bf740a5f` | `09e856a171220872201a708312a0df10f511263ad6ac02c6ed76871287ad4de1` |
-| Assembly SHA-256 | `107a02a4855b1614534a55e0f3ff8f2452823874d5614b6d7decf33df8e3fe9c` | `79579c158e9b63ef2dd9e18bbb28e67ff4f22f61d843fdd09b82b125f9136f68` |
+| Source build | `954a1b7a8e7be757a1477b1f0c16c58357eee8e4` | `aa640ee4384b963ddd9e156b78e0f8e0d532ee0f` |
+| App version | `0.12.0+954a1b7a8e7be757a1477b1f0c16c58357eee8e4` | `0.12.0+aa640ee4384b963ddd9e156b78e0f8e0d532ee0f` |
+| Collection time (UTC) | `2026-10-31T19:06:13.732Z` | `2026-10-31T19:43:18.714Z` |
+| Local evidence | `artifacts/terminfo/owned-mSQy5d` | `artifacts/terminfo/owned-92wff5` |
+| Raw SHA-256 | `9081c34579642b5dd190d349428bef97aaa0ee6e36fbbcdfd8e3e623bf740a5f` | `a8eb12df6c3b240c4f486c678aff8ef2c002c8867ee74427ec3bf7b68bd80efc` |
+| Assembly SHA-256 | `107a02a4855b1614534a55e0f3ff8f2452823874d5614b6d7decf33df8e3fe9c` | `91ef82f942999f4acad9da89194cbc9112c99f836518ab8a9536c980003e7777` |
 
 Platform: macOS 27.0.1. Runtime: Node v24.22.1. Collector: terminfo.dev 4.0.0,
 suite/probe hash `16a690f34c0e`, collector source `cf7d8759c7e637aa8dba1e429f3dddd1c0124158`.
@@ -48,7 +48,10 @@ Exactly two observations changed between the fresh before/after runs:
 | `modes.color-scheme-reporting` | Unsupported: DECRPM reports 2031 unrecognized (`0`) | Supported: recognized and reset (`2`) | Query only; unsolicited events were not tested by the collector |
 | `device.dsr-996-color-scheme` | Inconclusive: no matching response | Supported: dark preference (`CSI ? 997 ; 1 n`) | Query only; does not prove theme-change delivery |
 
-The other 253 observations retain their outcome/reason. The
+The other 253 observations retain their outcome/reason. An intermediate feature
+build (`d19d056`) measured the same 69/7/179 outcomes before the startup-context
+correction; that correction is exercised by startup/factory tests rather than
+this direct local collector fixture. The
 [derived comparison JSON](2026-10-31-color-scheme-comparison.json) retains both
 sets of counts, raw hashes, collector/adapter identity and the two exact query
 traces. Original raw JSON, dependency receipts, archived collector/runner sources
