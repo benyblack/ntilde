@@ -396,6 +396,9 @@ namespace Ntilde.VT
             state.IsStrikethrough = false;
             state.IsHidden = false;
             state.IsPendingWrap = false;
+            state.OriginMode = false;
+            state.Charsets = [0, 0, 0, 0];
+            state.Gl = 0;
         }
 
         private void SyncThemeDefaultsInCursorStateNoLock(CursorState state)
@@ -437,6 +440,20 @@ namespace Ntilde.VT
 
             return resized;
         }
+        // Parser-only access while its batch lock is held; no mutable slot escapes a host API.
+        internal CursorState ActiveSavedCursor
+        {
+            get { AssertLockHeld(); return _isAltScreen ? _savedCursors.Alt : _savedCursors.Main; }
+        }
+        internal bool RestoresMainCursorOnAltExit => _restoreMainCursorOnAltExit;
+
+        private void ApplySavedCursorNoLock(CursorState source)
+        {
+            ApplyCursorStateNoLock(source);
+            if (source.OriginMode is bool origin) Modes.IsOriginMode = origin;
+            // DECSC restores pending wrap, not DECAWM; the current autowrap mode survives.
+        }
+
         // Saved Cursor State (DEC SC / DEC RC)
         public void SaveCursor()
         {
@@ -445,6 +462,7 @@ namespace Ntilde.VT
             {
                 var target = _isAltScreen ? _savedCursors.Alt : _savedCursors.Main;
                 CaptureCursorStateNoLock(target);
+                target.OriginMode = Modes.IsOriginMode;
             }
             finally
             {
@@ -458,7 +476,7 @@ namespace Ntilde.VT
             try
             {
                 var source = _isAltScreen ? _savedCursors.Alt : _savedCursors.Main;
-                ApplyCursorStateNoLock(source);
+                ApplySavedCursorNoLock(source);
             }
             finally
             {
@@ -738,6 +756,7 @@ namespace Ntilde.VT
                 if (saveCursorForExit)
                 {
                     CaptureCursorStateNoLock(_savedCursors.Main);
+                    _savedCursors.Main.OriginMode = Modes.IsOriginMode;
                     _restoreMainCursorOnAltExit = true;
                 }
 
@@ -832,7 +851,7 @@ namespace Ntilde.VT
                 RestoreScreenStateNoLock(altScreen: false);
                 if (restoreSavedCursorIfArmed && _restoreMainCursorOnAltExit)
                 {
-                    ApplyCursorStateNoLock(_savedCursors.Main);
+                    ApplySavedCursorNoLock(_savedCursors.Main);
                 }
 
                 _restoreMainCursorOnAltExit = false;
@@ -1081,11 +1100,34 @@ namespace Ntilde.VT
             return list;
         }
 
+        /// <summary>Rejects malformed disk payloads before resize or snapshot application mutates state.</summary>
+        public static void ValidateReplaySnapshot(ReplaySnapshot snapshot)
+        {
+            ArgumentNullException.ThrowIfNull(snapshot);
+            if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
+                throw new InvalidOperationException("Invalid replay geometry: columns and rows must be positive.");
+            if (!string.IsNullOrEmpty(snapshot.CellsBase64)) _ = Convert.FromBase64String(snapshot.CellsBase64);
+        }
+
         public void ApplySnapshot(ReplaySnapshot snapshot)
         {
+            ArgumentNullException.ThrowIfNull(snapshot);
+            if (snapshot.State is { Version: TerminalStateSnapshot.CurrentVersion })
+            {
+                ImportState(snapshot.State);
+                return;
+            }
+            ValidateReplaySnapshot(snapshot);
             AcquireWriteLock();
             try
             {
+                // Legacy files cannot reconstruct a save from earlier chunks. Use deterministic defaults
+                // instead of retaining banks from a previous seek on this replay window.
+                ResetSavedCursorStateToDefaultsNoLock(_savedCursors.Main);
+                ResetSavedCursorStateToDefaultsNoLock(_savedCursors.Alt);
+                _restoreMainCursorOnAltExit = false;
+                ResetCursorPresentationNoLock();
+
                 // Core properties
                 _cursorCol = Math.Clamp(snapshot.CursorCol, 0, Math.Max(0, Cols - 1));
                 _cursorRow = Math.Clamp(snapshot.CursorRow, 0, Math.Max(0, Rows - 1));

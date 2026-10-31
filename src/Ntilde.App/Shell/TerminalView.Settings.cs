@@ -62,6 +62,7 @@ namespace Ntilde.Shell
                 {
                     _buffer.MaxHistory = settings.MaxHistory;
                     _buffer.Modes.CursorStyle = _preferredCursorStyle;
+                    _buffer.Modes.CursorStyleIsDefault = true;
                     _buffer.Modes.IsCursorBlinkEnabled = settings.CursorBlink;
 
                     // Every settings save lands here, most of them with the theme unchanged; re-applying

@@ -43,6 +43,7 @@ namespace Ntilde.Shell
         private readonly SKTypeface[] _fallbackChain;
         private readonly float _opacity;
         private readonly bool _hideCursor;
+        private readonly CursorStyle? _preferredCursorStyle;
         private readonly double _renderScaling;
         private readonly int _bufferRows;
         private readonly int _bufferCols;
@@ -225,9 +226,11 @@ namespace Ntilde.Shell
             bool isolatedSnapshot = false,
             double minimumContrast = 1.0,
             IDisposable? cacheLease = null,
-            Action? requestImageFrame = null)
+            Action? requestImageFrame = null,
+            CursorStyle? preferredCursorStyle = null)
         {
             _bounds = bounds;
+            _preferredCursorStyle = preferredCursorStyle;
             _cacheLease = cacheLease;
             _buffer = buffer;
             _scrollOffset = scrollOffset;
@@ -417,7 +420,8 @@ namespace Ntilde.Shell
                 frame.ThemeBg = new SKColor(renderSnapshot.Theme.Background.R, renderSnapshot.Theme.Background.G, renderSnapshot.Theme.Background.B, alpha);
                 frame.ThemeFg = new SKColor(renderSnapshot.Theme.Foreground.R, renderSnapshot.Theme.Foreground.G, renderSnapshot.Theme.Foreground.B, 255);
                 frame.CursorColor = new SKColor(renderSnapshot.Theme.CursorColor.R, renderSnapshot.Theme.CursorColor.G, renderSnapshot.Theme.CursorColor.B, 255);
-                frame.CursorStyle = renderSnapshot.CursorStyle;
+                frame.CursorStyle = renderSnapshot.CursorStyleIsDefault
+                    ? _preferredCursorStyle ?? renderSnapshot.CursorStyle : renderSnapshot.CursorStyle;
                 frame.RenderColors = TerminalRenderColors.For(renderSnapshot.Theme.Source ?? UnthemedSnapshotTheme);
 
                 if (renderSnapshot.Images.Length > 0 && renderSnapshot.Images.Array != null)

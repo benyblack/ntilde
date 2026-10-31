@@ -49,7 +49,8 @@ namespace Ntilde.Shell
         float FontSize,
         bool EnableLigatures,
         bool EnableComplexShaping,
-        double MinimumContrast = 1.0)
+        double MinimumContrast = 1.0,
+        CursorStyle? PreferredCursorStyle = null)
     {
         /// <summary>
         /// False before the control has measured its font (a pane that was just
@@ -69,6 +70,7 @@ namespace Ntilde.Shell
         public SelectionState? Selection { get; init; }
 
         public bool HideCursor { get; init; }
+        public CursorStyle? PreferredCursorStyle { get; init; }
         public bool EnableLigatures { get; init; }
         public bool EnableComplexShaping { get; init; } = true;
 
@@ -274,7 +276,8 @@ namespace Ntilde.Shell
                 // row-diff baseline under the live renderer, whose next frame would then leave
                 // out every change made before this capture.
                 isolatedSnapshot: true,
-                minimumContrast: options.MinimumContrast);
+                minimumContrast: options.MinimumContrast,
+                preferredCursorStyle: options.PreferredCursorStyle);
 
             try
             {

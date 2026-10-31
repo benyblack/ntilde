@@ -310,8 +310,17 @@ namespace Ntilde.Replay
         public static void ApplySnapshot(TerminalBuffer buffer, AnsiParser parser, ReplaySnapshot snapshot)
         {
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
-            // Validate the disk payload before Resize or ApplySnapshot can mutate any state.
-            if (!string.IsNullOrEmpty(snapshot.CellsBase64)) _ = Convert.FromBase64String(snapshot.CellsBase64);
+            if (snapshot.State is { Version: TerminalStateSnapshot.CurrentVersion })
+            {
+                if (snapshot.State.Parser is null)
+                    throw new InvalidOperationException("Invalid replay parser state: a complete snapshot requires a parser.");
+                // Restore validates both halves before resizing or mutating either object.
+                TerminalStateTransfer.Restore(buffer, parser, snapshot.State);
+                if (snapshot.State.Parser.SixelCellWidthPx is null)
+                    ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
+                return;
+            }
+            TerminalBuffer.ValidateReplaySnapshot(snapshot);
             buffer.Resize(snapshot.Cols, snapshot.Rows);
             buffer.ApplySnapshot(snapshot);
             ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);

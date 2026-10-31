@@ -439,7 +439,7 @@ namespace Ntilde.VT
                           // save DEC private mode values). They are NOT SCO save-cursor.
                     if (leader == '\0' && intermediates.Length == 0)
                     {
-                        _buffer.SaveCursor();
+                        SaveCursor();
                     }
                     break;
                 case 'u': // Restore Cursor (ANSI.SYS / SCO) or kitty keyboard protocol
@@ -451,7 +451,7 @@ namespace Ntilde.VT
                     {
                         if (leader == '\0')
                         {
-                            _buffer.RestoreCursor();
+                            RestoreCursor();
                         }
                         else
                         {
@@ -557,8 +557,8 @@ namespace Ntilde.VT
                 case 'p':
                     // DECRQM - Request Mode (Issue #267): CSI Ps $ p (ANSI) or
                     // CSI ? Ps $ p (DEC private) -> DECRPM reply CSI [?] Ps ; Pm $ y.
-                    // Key on the '$' intermediate exactly - CSI ! p (DECSTR, not yet
-                    // implemented) and bare CSI p must NOT be captured here, the same way
+                    // Key on the intermediate exactly - DECSTR and bare CSI p must
+                    // not be captured as mode queries, the same way
                     // PR #273 guards CSI s/u/r against leader-prefixed variants. Only the
                     // bare and '?' leader forms are defined for DECRQM; '<', '=', '>'
                     // leaders (used by other CSI...p extensions) are left unhandled.
@@ -566,6 +566,10 @@ namespace Ntilde.VT
                         (leader == '\0' || leader == '?'))
                     {
                         HandleDecrqm(isPrivate, arg0);
+                    }
+                    else if (leader == '\0' && validArgs.Length == 0 && intermediates.SequenceEqual("!"))
+                    {
+                        SoftReset();
                     }
                     break;
                 default:
@@ -775,6 +779,8 @@ namespace Ntilde.VT
 
         private void ApplyCursorStyle(int value)
         {
+            if (value is < 0 or > 6) return;
+            _buffer.Modes.CursorStyleIsDefault = false;
             // DECSCUSR:
             // 0/1 blinking block, 2 steady block, 3 blinking underline, 4 steady underline, 5 blinking bar, 6 steady bar
             switch (value)
@@ -971,20 +977,25 @@ namespace Ntilde.VT
                         break;
                     case 47:    // Alternate screen (legacy)
                         if (enable) _buffer.EnterAltScreen(clearAlt: false, saveCursorForExit: false);
-                        else _buffer.SwitchToMainScreen();
+                        else SwitchToMainScreen();
                         break;
                     case 1047:  // Alternate screen
                         if (enable) _buffer.EnterAltScreen(clearAlt: true, saveCursorForExit: false);
-                        else _buffer.SwitchToMainScreen();
+                        else SwitchToMainScreen();
+                        break;
+                    case 1048:  // Save/restore cursor, the same banks as DECSC/DECRC
+                        if (enable) SaveCursor();
+                        else RestoreCursor();
                         break;
                     case 1049:  // Alternate screen + save cursor
                         if (enable)
                         {
+                            if (!_buffer.IsAltScreenActive) SaveCursor();
                             _buffer.EnterAltScreen(clearAlt: true, saveCursorForExit: true);
                         }
                         else
                         {
-                            _buffer.SwitchToMainScreen();
+                            SwitchToMainScreen();
                         }
                         break;
                     case 2004:  // Bracketed Paste Mode

@@ -162,6 +162,9 @@ namespace Ntilde.VT
     /// <summary>A DECSC-style saved cursor, mirroring <see cref="CursorState"/>.</summary>
     public sealed class TerminalCursorState
     {
+        [JsonPropertyName("decom"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? OriginMode { get; set; }
+        [JsonPropertyName("gsets"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int[]? Charsets { get; set; }
+        [JsonPropertyName("gl")] public int Gl { get; set; }
         [JsonPropertyName("row")] public int Row { get; set; }
         [JsonPropertyName("col")] public int Col { get; set; }
         [JsonPropertyName("sgr")] public TerminalSgrState Sgr { get; set; } = new();
@@ -212,6 +215,7 @@ namespace Ntilde.VT
         [JsonPropertyName("cv")] public bool IsCursorVisible { get; set; } = true;
         [JsonPropertyName("cblink")] public bool IsCursorBlinkEnabled { get; set; } = true;
         [JsonPropertyName("cstyle")] public int CursorStyle { get; set; }
+        [JsonPropertyName("cdefault"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? CursorStyleIsDefault { get; set; }
         [JsonPropertyName("irm")] public bool IsInsertMode { get; set; }
         [JsonPropertyName("lnm")] public bool IsLineFeedNewLineMode { get; set; }
         [JsonPropertyName("srm")] public bool IsEchoEnabled { get; set; } = true;

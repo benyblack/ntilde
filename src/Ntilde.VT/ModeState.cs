@@ -23,6 +23,8 @@ namespace Ntilde.VT
         public bool IsCursorVisible { get; set; } = true; // ?25 - DECTCEM (Text Cursor Enable Mode)
         public bool IsCursorBlinkEnabled { get; set; } = true;
         public CursorStyle CursorStyle { get; set; } = CursorStyle.Underline;
+        /// <summary>Use the presenting host's configured cursor appearance instead of a DECSCUSR override.</summary>
+        public bool CursorStyleIsDefault { get; set; } = true;
         public bool IsInsertMode { get; set; }            //  4 - IRM (Insert Replacement Mode)
         public bool IsLineFeedNewLineMode { get; set; }   // 20 - LNM (Line Feed New Line Mode)
         public bool IsEchoEnabled { get; set; } = true;   // 12 - SRM (Send/Receive Mode)
@@ -77,6 +79,7 @@ namespace Ntilde.VT
                 IsCursorVisible = this.IsCursorVisible,
                 IsCursorBlinkEnabled = this.IsCursorBlinkEnabled,
                 CursorStyle = this.CursorStyle,
+                CursorStyleIsDefault = this.CursorStyleIsDefault,
                 IsInsertMode = this.IsInsertMode,
                 IsLineFeedNewLineMode = this.IsLineFeedNewLineMode,
                 IsEchoEnabled = this.IsEchoEnabled,

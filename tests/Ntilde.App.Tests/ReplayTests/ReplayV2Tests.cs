@@ -269,8 +269,10 @@ namespace Ntilde.Tests.ReplayTests
             }
         }
 
-        [Fact]
-        public async Task ReplayV2_Snapshot_APlainUnderlineEntry_RestoresAsNoEntry()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ReplayV2_Snapshot_APlainUnderlineEntry_RestoresAsNoEntry(bool legacy)
         {
             // A straight underline in the text color has no side-table entry on the live path, so a snapshot naming
             // one restores none (CodeRabbit review of #649).
@@ -278,10 +280,11 @@ namespace Ntilde.Tests.ReplayTests
             try
             {
                 var liveBuffer = new TerminalBuffer(10, 3);
-                new AnsiParser(liveBuffer).Process("\x1b[4:3mA");
+                var liveParser = new AnsiParser(liveBuffer);
+                liveParser.Process("\x1b[4:3mA");
                 using (var recorder = new PtyRecorder(tempFile, 10, 3))
                 {
-                    recorder.RecordSnapshot(liveBuffer);
+                    recorder.RecordSnapshot(liveBuffer, legacy ? null : liveParser);
                 }
 
                 var replayBuffer = new TerminalBuffer(10, 3);
@@ -291,9 +294,17 @@ namespace Ntilde.Tests.ReplayTests
                     onResizeCallback: (_, _) => Task.CompletedTask,
                     onSnapshotCallback: snapshot =>
                     {
-                        foreach (TerminalUnderlineEntry entry in snapshot.Underlines!.Values)
+                        if (legacy)
                         {
-                            entry.Style = (byte)UnderlineStyle.Single;
+                            snapshot.State = null;
+                            foreach (TerminalUnderlineEntry entry in snapshot.Underlines!.Values)
+                                entry.Style = (byte)UnderlineStyle.Single;
+                        }
+                        else
+                        {
+                            Assert.NotNull(snapshot.State);
+                            foreach (TerminalUnderlineEntry entry in snapshot.State.Underlines)
+                                entry.Style = (byte)UnderlineStyle.Single;
                         }
 
                         replayBuffer.ApplySnapshot(snapshot);

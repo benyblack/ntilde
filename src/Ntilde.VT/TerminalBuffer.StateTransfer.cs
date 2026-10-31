@@ -20,7 +20,7 @@ namespace Ntilde.VT
         /// </summary>
         public TerminalStateSnapshot ExportState(int maxScrollbackRows)
         {
-            Lock.EnterReadLock();
+            bool lockTaken = EnterReadLockIfNeeded();
             try
             {
                 var links = new HyperlinkTableBuilder();
@@ -90,7 +90,7 @@ namespace Ntilde.VT
             }
             finally
             {
-                Lock.ExitReadLock();
+                ExitReadLockIfNeeded(Lock, lockTaken);
             }
         }
 
@@ -630,6 +630,9 @@ namespace Ntilde.VT
 
         private static TerminalCursorState ExportCursor(CursorState cursor) => new()
         {
+            OriginMode = cursor.OriginMode,
+            Charsets = cursor.Charsets is null ? null : (int[])cursor.Charsets.Clone(),
+            Gl = cursor.Gl,
             Row = cursor.Row,
             Col = cursor.Col,
             IsPendingWrap = cursor.IsPendingWrap,
@@ -658,6 +661,9 @@ namespace Ntilde.VT
         private static void ImportCursor(CursorState target, TerminalCursorState source)
         {
             TerminalSgrState sgr = source.Sgr;
+            target.OriginMode = source.OriginMode;
+            target.Charsets = source.Charsets is null ? null : (int[])source.Charsets.Clone();
+            target.Gl = source.Gl;
             target.Row = source.Row;
             target.Col = source.Col;
             target.IsPendingWrap = source.IsPendingWrap;
@@ -744,6 +750,7 @@ namespace Ntilde.VT
             IsCursorVisible = modes.IsCursorVisible,
             IsCursorBlinkEnabled = modes.IsCursorBlinkEnabled,
             CursorStyle = (int)modes.CursorStyle,
+            CursorStyleIsDefault = modes.CursorStyleIsDefault,
             IsInsertMode = modes.IsInsertMode,
             IsLineFeedNewLineMode = modes.IsLineFeedNewLineMode,
             IsEchoEnabled = modes.IsEchoEnabled,
@@ -764,6 +771,7 @@ namespace Ntilde.VT
             target.IsCursorVisible = source.IsCursorVisible;
             target.IsCursorBlinkEnabled = source.IsCursorBlinkEnabled;
             target.CursorStyle = (CursorStyle)source.CursorStyle;
+            target.CursorStyleIsDefault = source.CursorStyleIsDefault ?? false; // legacy peers sent an explicit style only
             target.IsInsertMode = source.IsInsertMode;
             target.IsLineFeedNewLineMode = source.IsLineFeedNewLineMode;
             target.IsEchoEnabled = source.IsEchoEnabled;
@@ -926,7 +934,10 @@ namespace Ntilde.VT
             ValidateCursorState(snapshot.ScreenCursorMain, "screen cursor (main screen)");
             ValidateCursorState(snapshot.ScreenCursorAlt, "screen cursor (alternate screen)");
 
-            ValidateUnderlinePen(StateTransferValidation.RequirePresent(snapshot.Sgr, "live SGR state"), "live SGR state");
+            var liveSgr = StateTransferValidation.RequirePresent(snapshot.Sgr, "live SGR state");
+            ValidateUnderlinePen(liveSgr, "live SGR state");
+            StateTransferValidation.RequireInRange(liveSgr.FgIndex, -1, 255, "live SGR state foreground palette color");
+            StateTransferValidation.RequireInRange(liveSgr.BgIndex, -1, 255, "live SGR state background palette color");
 
             TerminalModeState modes = StateTransferValidation.RequirePresent(
                 snapshot.Modes, "mode state");
@@ -987,7 +998,17 @@ namespace Ntilde.VT
         private static void ValidateCursorState(TerminalCursorState? cursor, string what)
         {
             TerminalCursorState present = StateTransferValidation.RequirePresent(cursor, what);
-            ValidateUnderlinePen(StateTransferValidation.RequirePresent(present.Sgr, $"{what} SGR"), what);
+            var sgr = StateTransferValidation.RequirePresent(present.Sgr, $"{what} SGR");
+            ValidateUnderlinePen(sgr, what);
+            StateTransferValidation.RequireInRange(sgr.FgIndex, -1, 255, $"{what} foreground palette color");
+            StateTransferValidation.RequireInRange(sgr.BgIndex, -1, 255, $"{what} background palette color");
+            if (present.Charsets is { } charsets)
+            {
+                if (charsets.Length != 4) throw StateTransferValidation.Reject(what, "saved charset count must be four");
+                foreach (int charset in charsets)
+                    StateTransferValidation.RequireInRange(charset, 0, 1, $"{what} charset");
+                StateTransferValidation.RequireInRange(present.Gl, 0, 3, $"{what} GL slot");
+            }
         }
 
         /// <summary>

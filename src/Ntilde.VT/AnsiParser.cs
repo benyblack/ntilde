@@ -599,17 +599,18 @@ namespace Ntilde.VT
 
                                 if (c == '7') // Save Cursor
                                 {
-                                    _buffer.SaveCursor();
+                                    SaveCursor();
                                     _state = State.Normal;
                                 }
                                 else if (c == '8') // Restore Cursor
                                 {
-                                    _buffer.RestoreCursor();
+                                    RestoreCursor();
                                     _state = State.Normal;
                                 }
                                 else if (c == 'c') // RIS - Reset to Initial State
                                 {
-                                    _buffer.Reset(); // Ensure TerminalBuffer has a Reset method or use Clear
+                                    _buffer.Reset();
+                                    ResetCharsets();
                                     _verticalOffset = 0;
                                     // Parser-local mode state does not live in the buffer, so RIS
                                     // must clear it here too: a reset client that never re-enabled

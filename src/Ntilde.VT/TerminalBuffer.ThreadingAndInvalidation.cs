@@ -345,6 +345,7 @@ namespace Ntilde.VT
             int cursorRow = 0;
             int cursorCol = 0;
             CursorStyle cursorStyle;
+            bool cursorStyleIsDefault;
             RenderThemeSnapshot theme = default;
             var rowsData = viewportRows > 0 ? new PooledArray<RenderRowSnapshot>(System.Buffers.ArrayPool<RenderRowSnapshot>.Shared.Rent(viewportRows), viewportRows) : PooledArray<RenderRowSnapshot>.Empty;
             PooledArray<RenderImageSnapshot> images = PooledArray<RenderImageSnapshot>.Empty;
@@ -364,6 +365,7 @@ namespace Ntilde.VT
                     cursorRow = _cursorRow;
                     cursorCol = _cursorCol;
                     cursorStyle = Modes.CursorStyle;
+                    cursorStyleIsDefault = Modes.CursorStyleIsDefault;
 
                     var visibleImages = GetVisibleImagesSnapshot(absDisplayStart, viewportRows);
                     if (visibleImages.Count > 0)
@@ -411,6 +413,7 @@ namespace Ntilde.VT
                     CursorRow = cursorRow,
                     CursorCol = cursorCol,
                     CursorStyle = cursorStyle,
+                    CursorStyleIsDefault = cursorStyleIsDefault,
                     Theme = theme,
                     DirtySpans = dirtySpans,
                     RowsData = rowsData,

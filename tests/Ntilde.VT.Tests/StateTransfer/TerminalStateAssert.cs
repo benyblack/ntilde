@@ -198,19 +198,21 @@ internal static class TerminalStateAssert
     }
 
     private static string Describe(TerminalCursorState cursor) =>
-        $"row={cursor.Row} col={cursor.Col} pw={cursor.IsPendingWrap} sgr[{Describe(cursor.Sgr)}]";
+        $"row={cursor.Row} col={cursor.Col} pw={cursor.IsPendingWrap} origin={cursor.OriginMode} " +
+        $"gsets=[{(cursor.Charsets is null ? "legacy" : string.Join(',', cursor.Charsets))}] gl={cursor.Gl} sgr[{Describe(cursor.Sgr)}]";
 
     private static string Describe(TerminalSgrState sgr) =>
         $"fg={sgr.Foreground} bg={sgr.Background} fgi={sgr.FgIndex} bgi={sgr.BgIndex} " +
         $"dfg={sgr.IsDefaultForeground} dbg={sgr.IsDefaultBackground} inv={sgr.IsInverse} " +
         $"bold={sgr.IsBold} faint={sgr.IsFaint} italic={sgr.IsItalic} ul={sgr.IsUnderline} " +
-        $"blink={sgr.IsBlink} strike={sgr.IsStrikethrough} hidden={sgr.IsHidden}";
+        $"blink={sgr.IsBlink} strike={sgr.IsStrikethrough} hidden={sgr.IsHidden} " +
+        $"uls={sgr.UnderlineStyle} ulc={sgr.UnderlineColor} uli={sgr.UnderlineColorIndex}";
 
     private static string Describe(TerminalModeState modes) =>
         $"x10={modes.MouseModeX10} btn={modes.MouseModeButtonEvent} any={modes.MouseModeAnyEvent} " +
         $"sgrMouse={modes.MouseModeSGR} ckm={modes.IsApplicationCursorKeys} awm={modes.IsAutoWrapMode} " +
         $"sixelDisplay={modes.IsSixelDisplayMode} decom={modes.IsOriginMode} focus={modes.IsFocusEventReporting} bp={modes.IsBracketedPasteMode} " +
-        $"cv={modes.IsCursorVisible} cblink={modes.IsCursorBlinkEnabled} cstyle={modes.CursorStyle} " +
+        $"cv={modes.IsCursorVisible} cblink={modes.IsCursorBlinkEnabled} cstyle={modes.CursorStyle} cdefault={modes.CursorStyleIsDefault} " +
         $"irm={modes.IsInsertMode} lnm={modes.IsLineFeedNewLineMode} srm={modes.IsEchoEnabled}";
 
     private static string Describe(TerminalKittyKeyboardState kitty) =>

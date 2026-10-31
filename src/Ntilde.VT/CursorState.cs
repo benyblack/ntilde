@@ -9,6 +9,9 @@ namespace Ntilde.VT
     {
         public int Row { get; set; }
         public int Col { get; set; }
+        public bool? OriginMode { get; set; } = false;
+        public int[]? Charsets { get; set; } = [0, 0, 0, 0];
+        public int Gl { get; set; }
 
         // SGR attributes
         public TermColor Foreground { get; set; } = TermColor.LightGray;
@@ -36,6 +39,9 @@ namespace Ntilde.VT
             {
                 Row = this.Row,
                 Col = this.Col,
+                OriginMode = this.OriginMode,
+                Charsets = this.Charsets is null ? null : (int[])this.Charsets.Clone(),
+                Gl = this.Gl,
                 Foreground = this.Foreground,
                 Background = this.Background,
                 FgIndex = this.FgIndex,

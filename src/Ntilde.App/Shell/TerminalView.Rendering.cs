@@ -129,7 +129,7 @@ namespace Ntilde.Shell
                 cursorRow = buffer.InternalCursorRow;
                 cursorCol = buffer.InternalCursorCol;
                 cursorVisibleMode = buffer.Modes.IsCursorVisible;
-                cursorBlinkMode = buffer.Modes.IsCursorBlinkEnabled;
+                cursorBlinkMode = buffer.Modes.CursorStyleIsDefault ? _cursorBlinkEnabled : buffer.Modes.IsCursorBlinkEnabled;
                 cursorSuppressedTemporarily = buffer.CursorSuppressedUntilUtcTicks > nowTicks;
             }
             finally { buffer.Lock.ExitReadLock(); }
@@ -188,7 +188,8 @@ namespace Ntilde.Shell
                 isolatedSnapshot: offscreen,
                 minimumContrast: _minimumContrast,
                 cacheLease: cacheLease,
-                requestImageFrame: offscreen ? null : () => Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Render)
+                requestImageFrame: offscreen ? null : () => Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Render),
+                preferredCursorStyle: _preferredCursorStyle
             ));
 
             if (_hoveredLink != null)

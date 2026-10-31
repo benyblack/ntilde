@@ -72,6 +72,10 @@ namespace Ntilde.VT
 
     public class ReplaySnapshot
     {
+        /// <summary>Complete terminal/parser cut, with no scrollback; legacy readers use the fields below.</summary>
+        [JsonPropertyName("state"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TerminalStateSnapshot? State { get; set; }
+
         [JsonPropertyName("cols")] public int Cols { get; set; }
         [JsonPropertyName("rows")] public int Rows { get; set; }
         [JsonPropertyName("cx")] public int CursorCol { get; set; }

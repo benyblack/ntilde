@@ -136,6 +136,11 @@ namespace Ntilde.Replay
             TryEnqueue(new ReplayEvent { Type = "sixelCellSize", TimeOffsetMs = timeOffsetMs, SixelCellWidthPx = width, SixelCellHeightPx = height });
         }
 
+        /// <summary>
+        /// Captures viewport fields and, when a parser is supplied, a complete terminal/parser cut.
+        /// Buffer-only snapshots preserve the replay parser's existing continuation; callers
+        /// requiring a complete seek checkpoint must supply the parser.
+        /// </summary>
         public void RecordSnapshot(TerminalBuffer buffer, AnsiParser? parser = null)
         {
             if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
@@ -149,8 +154,17 @@ namespace Ntilde.Replay
                 int cols = buffer.Cols;
                 int rowCount = buffer.Rows;
 
+                // A complete cut needs the actual parser. Legacy buffer-only callers must
+                // not replace an in-progress replay parser with fabricated initial state.
+                TerminalStateSnapshot? state = null;
+                if (parser is not null)
+                {
+                    state = buffer.ExportState(maxScrollbackRows: 0);
+                    state.Parser = parser.ExportState();
+                }
                 snapshot = new ReplaySnapshot
                 {
+                    State = state,
                     Cols = cols,
                     Rows = rowCount,
                     CursorCol = buffer.InternalCursorCol,

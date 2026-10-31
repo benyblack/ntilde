@@ -347,6 +347,41 @@ namespace Ntilde.VT
             Invalidate();
         }
 
+        private void ResetCursorPresentationNoLock()
+        {
+            Modes.CursorStyle = CursorStyle.Underline;
+            Modes.IsCursorBlinkEnabled = true;
+            Modes.CursorStyleIsDefault = true;
+        }
+
+        /// <summary>
+        /// DECSTR, following xterm's soft-reset defaults. Content, current position, active screen,
+        /// tab stops and reporting modes survive; only the active DECSC bank is reinitialized.
+        /// </summary>
+        public void SoftReset()
+        {
+            bool lockTaken = EnterWriteLockIfNeeded();
+            try
+            {
+                int row = _cursorRow;
+                int col = _cursorCol;
+                ResetCursorStateToDefaultsNoLock();
+                _cursorRow = row;
+                _cursorCol = col;
+                ScrollTop = 0;
+                ScrollBottom = Rows - 1;
+                Modes.IsOriginMode = false;
+                Modes.IsAutoWrapMode = true;
+                Modes.IsApplicationCursorKeys = false;
+                Modes.IsInsertMode = false;
+                Modes.IsCursorVisible = true;
+                ResetCursorPresentationNoLock();
+                ResetSavedCursorStateToDefaultsNoLock(_isAltScreen ? _savedCursors.Alt : _savedCursors.Main);
+            }
+            finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+            Invalidate();
+        }
+
         public void Reset()
         {
             // Full Reset (RIS)
@@ -359,6 +394,7 @@ namespace Ntilde.VT
                 Modes.IsSixelDisplayMode = false;
                 Modes.IsAutoWrapMode = true;
                 Modes.IsApplicationCursorKeys = false;
+                ResetCursorPresentationNoLock();
 
                 // Reset Mouse Modes
                 Modes.MouseModeX10 = false;
