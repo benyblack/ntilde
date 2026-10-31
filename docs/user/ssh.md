@@ -93,6 +93,18 @@ credential store: Windows Credential Manager, the macOS login Keychain, or the S
 backup, and never saved for a jump host. The Connection Manager can show, clear or forget a saved
 password. Ntilde never types a password because of something the terminal printed.
 
+Older settings files containing a profile password are migrated to your OS credential store, including
+Ntilde's settings recovery copy. An existing credential in the store takes precedence. Ntilde verifies
+a new credential before removing the old file entry. If the store is locked or unavailable, the old
+file is kept and settings saves wait until migration can finish. Unlock the store (or install a credential
+store if none is available) and retry; Settings stays open with an error when a save fails. Legacy
+profiles without a valid identifier receive a stable identifier during successful migration.
+
+The native backend keeps credentials in pinned buffers and clears its owned copies after authentication,
+on replacement, and when their session or remote host closes. This reduces retention; it does not make
+passwords unrecoverable from process dumps or swap. Password dialogs, OpenSSH askpass, OS libraries and
+SSH protocol libraries can still hold transient copies.
+
 **Host keys.** The first connection to a host asks whether to trust its key ("The server host key
 is not trusted yet. Continue only if you trust this host."); a key that changed asks again, with a
 warning ("The server host key changed. Only continue if you trust this change."). Answering yes

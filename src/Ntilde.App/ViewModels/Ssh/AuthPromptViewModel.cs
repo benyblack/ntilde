@@ -23,13 +23,18 @@ public sealed class AuthPromptViewModel
 
     public SshInteractionResponse BuildResponse()
     {
-        if (Prompts.Count == 1 && !IsKeyboardInteractive)
+        try
         {
-            return SshInteractionResponse.FromSecret(Prompts[0].Value, RememberPassword);
-        }
+            if (Prompts.Count == 1 && !IsKeyboardInteractive)
+            {
+                return SshInteractionResponse.FromSecret(Prompts[0].Value, RememberPassword);
+            }
 
-        return SshInteractionResponse.FromKeyboardResponses(Prompts.Select(prompt => prompt.Value).ToArray());
+            return SshInteractionResponse.FromKeyboardResponses(Prompts.Select(prompt => prompt.Value).ToArray());
+        }
+        finally { Clear(); }
     }
+    public void Clear() { foreach (var prompt in Prompts) prompt.Value = string.Empty; }
 }
 
 public sealed class AuthPromptEntryViewModel : INotifyPropertyChanged

@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
 
@@ -8,12 +9,13 @@ public sealed class NativeSshRemotePathInteropTests
     [Fact]
     public void SerializeRemotePathListRequest_UsesGeneratedMetadataAndCamelCasePayload()
     {
+        using var passwordBuffer1 = SecretBuffer.FromText("secret");
         NativeSshConnectionOptions connectionOptions = new()
         {
             Host = "example.com",
             User = "nova",
             Port = 2222,
-            Password = "secret",
+            Password = passwordBuffer1,
             KnownHostsFilePath = @"C:\known-hosts.json",
             JumpHops =
             [

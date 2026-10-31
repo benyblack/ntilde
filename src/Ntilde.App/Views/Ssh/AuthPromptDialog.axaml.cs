@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using System.Linq;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
@@ -19,6 +20,13 @@ public partial class AuthPromptDialog : Window
     {
         DataContext = viewModel;
         ApplyViewModel(viewModel);
+        Closed += (_, _) =>
+        {
+            viewModel.Clear();
+            if (this.FindControl<StackPanel>("PromptHost") is { } prompts)
+                foreach (TextBox field in prompts.Children.OfType<TextBox>()) field.Text = string.Empty;
+            DataContext = null;
+        };
     }
 
     private AuthPromptViewModel? ViewModel => DataContext as AuthPromptViewModel;

@@ -75,7 +75,8 @@
                 BorderThickness="0,1,0,0"
                 Padding="16,10">
             <Grid ColumnDefinitions="*,Auto,Auto">
-                <TextBlock Grid.Column="0"
+                <TextBlock Name="SettingsSaveStatus" Grid.Column="0"
+                           AutomationProperties.LiveSetting="Polite" TextWrapping="Wrap" Margin="0,0,12,0"
                            Text="Changes apply live."
                            Foreground="{DynamicResource NtFg3}"
                            FontSize="12"

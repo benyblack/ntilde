@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,9 +17,10 @@ namespace Ntilde.Services.Ssh;
 /// <see cref="Guid.Empty"/> when it came from anywhere else (a plain session's own, the vault) or the chain has jump hops,
 /// where a refusal cannot be told apart from a hop's. What <see cref="ForgetRefusedTarget"/> forgets it from.
 /// </param>
-internal sealed record NativeHopPasswords(string? Target, IReadOnlyList<string?> JumpHops, Guid TargetScope = default)
+internal sealed record NativeHopPasswords(SecretBuffer? Target, IReadOnlyList<SecretBuffer?> JumpHops, Guid TargetScope = default) : IDisposable
 {
-    public static NativeHopPasswords None { get; } = new(null, Array.Empty<string?>());
+    public void Dispose() { Target?.Dispose(); foreach (var secret in JumpHops) secret?.Dispose(); }
+    public static NativeHopPasswords None { get; } = new(null, Array.Empty<SecretBuffer?>());
 
     /// <summary>
     /// Release hardening item 5: the connection was refused at sign-in (<see cref="NativeSshAuthenticationRefusedException"/>),
@@ -57,7 +59,7 @@ internal static class NativeHopPasswordResolver
         NativeSshConnectionOptions baseOptions,
         ActiveSshSessionRegistry? sessionRegistry,
         Guid sessionId,
-        Func<string?> savedTargetPassword)
+        Func<SecretBuffer?> savedTargetPassword)
     {
         ArgumentNullException.ThrowIfNull(baseOptions);
         ArgumentNullException.ThrowIfNull(savedTargetPassword);
@@ -71,9 +73,9 @@ internal static class NativeHopPasswordResolver
 
         // A persisted remote tab's session keeps its passwords under its host's scope (Phase 5 spec R8).
         Guid scope = sessionRegistry == null || sessionId == Guid.Empty ? Guid.Empty : sessionRegistry.PasswordScopeOf(sessionId);
-        string? fromSession = SessionPassword(sessionRegistry, scope, baseOptions.Host, baseOptions.Port, baseOptions.User);
-        string? target = fromSession ?? savedTargetPassword();
-        string?[] jumpHops = baseOptions.JumpHops
+        SecretBuffer? fromSession = SessionPassword(sessionRegistry, scope, baseOptions.Host, baseOptions.Port, baseOptions.User);
+        SecretBuffer? target = fromSession ?? savedTargetPassword();
+        SecretBuffer?[] jumpHops = baseOptions.JumpHops
             .Select(hop => SessionPassword(sessionRegistry, scope, hop.Host, hop.Port, hop.User))
             .ToArray();
         // Only a host's scope (a persisted remote tab's: not the session's own id), and only without jump hops.
@@ -82,7 +84,7 @@ internal static class NativeHopPasswordResolver
         return new NativeHopPasswords(NullIfBlank(target), jumpHops, targetFromHostScope ? scope : Guid.Empty);
     }
 
-    private static string? SessionPassword(
+    private static SecretBuffer? SessionPassword(
         ActiveSshSessionRegistry? sessionRegistry,
         Guid scope,
         string host,
@@ -94,10 +96,15 @@ internal static class NativeHopPasswordResolver
             return null;
         }
 
-        return sessionRegistry.TryGetRuntimePassword(scope, host, port, user, out string? password)
+        return sessionRegistry.TryGetRuntimePassword(scope, host, port, user, out SecretBuffer? password)
             ? NullIfBlank(password)
             : null;
     }
 
-    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+    private static SecretBuffer? NullIfBlank(SecretBuffer? value)
+    {
+        if (value is null || !value.IsWhiteSpace) return value;
+        value.Dispose();
+        return null;
+    }
 }

@@ -1,12 +1,22 @@
+using Ntilde.Platform.Security;
+
 namespace Ntilde.Platform.Ssh.Interactions;
 
-public sealed class SshInteractionResponse
+public sealed class SshInteractionResponse : IDisposable
 {
     public bool IsAccepted { get; init; }
     public bool IsCanceled { get; init; }
-    public string Secret { get; init; } = string.Empty;
+    private SecretBuffer? _secret;
+
+    // Secret factories assign their buffer directly. Host-key/cancel responses need no empty
+    // allocation unless a consumer actually asks for Secret.
+    public SecretBuffer Secret
+    {
+        get => _secret ??= SecretBuffer.FromText("");
+        init => _secret = value;
+    }
     public bool RememberPasswordInVault { get; init; }
-    public IReadOnlyList<string> KeyboardResponses { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<SecretBuffer> KeyboardResponses { get; init; } = Array.Empty<SecretBuffer>();
 
     /// <summary>
     /// The secret was filled from a store - the vault, or a password the session already holds - not typed by the user
@@ -22,18 +32,46 @@ public sealed class SshInteractionResponse
     public static SshInteractionResponse FromSecret(string secret, bool rememberPasswordInVault = false) =>
         new()
         {
-            Secret = secret ?? string.Empty,
+            Secret = SecretBuffer.FromText(secret ?? string.Empty),
             RememberPasswordInVault = rememberPasswordInVault
         };
+
+    /// <summary>Takes ownership of the buffer.</summary>
+    public static SshInteractionResponse FromSecret(SecretBuffer secret, bool rememberPasswordInVault = false) =>
+        new() { Secret = secret, RememberPasswordInVault = rememberPasswordInVault };
+
 
     /// <summary>A secret filled from a store rather than typed (<see cref="FilledFromStore"/>).</summary>
     public static SshInteractionResponse FromStoredSecret(string secret) =>
         new()
         {
-            Secret = secret ?? string.Empty,
+            Secret = SecretBuffer.FromText(secret ?? string.Empty),
             FilledFromStore = true
         };
 
-    public static SshInteractionResponse FromKeyboardResponses(params string[] responses) =>
-        new() { KeyboardResponses = responses ?? Array.Empty<string>() };
+    /// <summary>Takes ownership of the buffer returned by a store.</summary>
+    public static SshInteractionResponse FromStoredSecret(SecretBuffer secret) =>
+        new() { Secret = secret, FilledFromStore = true };
+
+
+    public static SshInteractionResponse FromKeyboardResponses(params string[] responses)
+    {
+        responses ??= Array.Empty<string>();
+        var buffers = new SecretBuffer[responses.Length];
+        try
+        {
+            for (int index = 0; index < buffers.Length; index++) buffers[index] = SecretBuffer.FromText(responses[index]);
+            return new() { KeyboardResponses = buffers };
+        }
+        catch
+        {
+            foreach (SecretBuffer? buffer in buffers) buffer?.Dispose();
+            throw;
+        }
+    }
+    public void Dispose()
+    {
+        _secret?.Dispose();
+        foreach (SecretBuffer answer in KeyboardResponses) answer.Dispose();
+    }
 }

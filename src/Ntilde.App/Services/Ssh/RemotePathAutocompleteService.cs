@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Shell;
 using System;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ public sealed class RemotePathAutocompleteService : IRemotePathAutocompleteServi
     private readonly INativeSshInterop _nativeInterop;
     private readonly ActiveSshSessionRegistry _sessionRegistry;
     private readonly Func<SshConnectionService> _sshServiceFactory;
-    private readonly Func<TerminalProfile, string?> _passwordResolver;
+    private readonly Func<TerminalProfile, SecretBuffer?> _passwordResolver;
     private readonly NativeSshConnectionPool _connectionPool;
 
     /// <param name="connectionPool">As for <see cref="RemoteDirectoryBrowserService"/>: where a shared connection is found.</param>
@@ -27,14 +28,14 @@ public sealed class RemotePathAutocompleteService : IRemotePathAutocompleteServi
         INativeSshInterop? nativeInterop = null,
         ActiveSshSessionRegistry? sessionRegistry = null,
         Func<SshConnectionService>? sshServiceFactory = null,
-        Func<TerminalProfile, string?>? passwordResolver = null,
+        Func<TerminalProfile, SecretBuffer?>? passwordResolver = null,
         NativeSshConnectionPool? connectionPool = null)
     {
         _connectionPool = connectionPool ?? NativeSshConnectionPool.Shared;
         _nativeInterop = nativeInterop ?? new NativeSshInterop();
         _sessionRegistry = sessionRegistry ?? ActiveSshSessionRegistry.Instance;
         _sshServiceFactory = sshServiceFactory ?? (() => new SshConnectionService());
-        _passwordResolver = passwordResolver ?? (profile => (MainWindow.Vault ?? new VaultService()).GetSshPasswordForProfile(profile));
+        _passwordResolver = passwordResolver ?? (profile => (MainWindow.Vault ?? new VaultService()).GetSshPasswordBufferForProfile(profile));
     }
 
     public async Task<IReadOnlyList<RemotePathSuggestion>> GetSuggestionsAsync(
@@ -66,6 +67,7 @@ public sealed class RemotePathAutocompleteService : IRemotePathAutocompleteServi
                 return [];
             }
 
+            using var passwordLifetime = passwords;
             RemotePathAutocompleteQuery query = RemotePathAutocompleteQuery.Parse(input);
 
             IReadOnlyList<NativeRemotePathEntry> entries;

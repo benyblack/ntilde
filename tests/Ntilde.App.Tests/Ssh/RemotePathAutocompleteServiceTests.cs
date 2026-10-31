@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Shell;
 using Ntilde.Platform;
 using Ntilde.VT;
@@ -73,7 +74,7 @@ public sealed class RemotePathAutocompleteServiceTests
             registry,
             interop,
             CreateSshService(profileId),
-            _ => "top-secret");
+            _ => SecretBuffer.FromText("top-secret"));
 
         await service.GetSuggestionsAsync(
             profileId,
@@ -82,7 +83,7 @@ public sealed class RemotePathAutocompleteServiceTests
             CancellationToken.None);
 
         Assert.NotNull(interop.LastConnectionOptions);
-        Assert.Equal("top-secret", interop.LastConnectionOptions!.Password);
+        Assert.Equal("top-secret", interop.LastConnectionOptions!.Password?.DangerousGetString());
     }
 
     [Fact]
@@ -111,7 +112,7 @@ public sealed class RemotePathAutocompleteServiceTests
             CancellationToken.None);
 
         Assert.NotNull(interop.LastConnectionOptions);
-        Assert.Equal("runtime-secret", interop.LastConnectionOptions!.Password);
+        Assert.Equal("runtime-secret", interop.LastConnectionOptions!.Password?.DangerousGetString());
     }
 
     [Fact]
@@ -241,7 +242,7 @@ public sealed class RemotePathAutocompleteServiceTests
         ActiveSshSessionRegistry registry,
         INativeSshInterop interop,
         SshConnectionService sshService,
-        Func<TerminalProfile, string?>? passwordResolver = null)
+        Func<TerminalProfile, SecretBuffer?>? passwordResolver = null)
     {
         return new RemotePathAutocompleteService(
             interop,
@@ -305,7 +306,7 @@ public sealed class RemotePathAutocompleteServiceTests
             string remotePath,
             CancellationToken cancellationToken)
         {
-            LastConnectionOptions = connectionOptions;
+            LastConnectionOptions = Ntilde.Tests.SecretTestSnapshot.Copy(connectionOptions);
             LastRemotePath = remotePath;
             return _entries;
         }

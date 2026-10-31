@@ -90,25 +90,32 @@ public sealed class NativeSshInteractionJsonTests
     [Fact]
     public void BuildResponsePayload_SerializesKeyboardInteractiveResponsesDeterministically()
     {
-        byte[] payload = NativeSshInteractionJson.BuildResponsePayload(
-            NativeSshResponseKind.KeyboardInteractive,
-            SshInteractionResponse.FromKeyboardResponses("code", "backup"));
-
-        Assert.Equal("""{"responses":["code","backup"]}""", Encoding.UTF8.GetString(payload));
+        using var response = SshInteractionResponse.FromKeyboardResponses("code", "backup");
+        using var payload = NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.KeyboardInteractive, response);
+        Assert.Equal("""{"responses":["code","backup"]}""", payload.DangerousGetString());
     }
 
     [Fact]
     public void BuildResponsePayload_ACancelledPasswordSaysSo()
-        => Assert.Equal("""{"text":"","canceled":true}""",
-            Encoding.UTF8.GetString(NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.Password, SshInteractionResponse.Cancel())));
+    {
+        using var response = SshInteractionResponse.Cancel();
+        using var payload = NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.Password, response);
+        Assert.Equal("""{"text":"","canceled":true}""", payload.DangerousGetString());
+    }
 
     [Fact]
     public void BuildResponsePayload_ATypedPasswordCarriesNoCancelField()
-        => Assert.Equal("""{"text":"hunter2"}""",
-            Encoding.UTF8.GetString(NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.Password, SshInteractionResponse.FromSecret("hunter2"))));
+    {
+        using var response = SshInteractionResponse.FromSecret("hunter2");
+        using var payload = NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.Password, response);
+        Assert.Equal("""{"text":"hunter2"}""", payload.DangerousGetString());
+    }
 
     [Fact]
     public void BuildResponsePayload_ACancelledKeyboardRoundSaysSo()
-        => Assert.Equal("""{"responses":[],"canceled":true}""",
-            Encoding.UTF8.GetString(NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.KeyboardInteractive, SshInteractionResponse.Cancel())));
+    {
+        using var response = SshInteractionResponse.Cancel();
+        using var payload = NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.KeyboardInteractive, response);
+        Assert.Equal("""{"responses":[],"canceled":true}""", payload.DangerousGetString());
+    }
 }

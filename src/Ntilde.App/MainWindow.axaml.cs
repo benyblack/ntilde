@@ -144,6 +144,11 @@ namespace Ntilde
             if (!_updateChecksStarted)
             {
                 _updateChecksStarted = true;
+                if (_settings.CredentialMigrationPending)
+                {
+                    _ = ShowSimpleMessageDialogAsync("Unlock credential storage",
+                        "Some older profiles still contain saved passwords. Unlock your OS credential storage, or install a credential store if this system has none, then restart Ntilde to move them safely. Settings changes cannot be saved until the move succeeds.");
+                }
 
                 var updateToastClose = this.FindControl<Button>("UpdateToastClose");
                 if (updateToastClose != null)

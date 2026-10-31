@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Shell;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -99,7 +100,7 @@ public sealed class SftpServiceTests
             service,
             allProfiles: null,
             interop: interop,
-            passwordResolver: static _ => "vault-pass",
+            passwordResolver: static _ => SecretBuffer.FromText("vault-pass"),
             knownHostsFilePath: @"C:\ssh\native_known_hosts.json", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(interop.ConnectionOptions);
@@ -107,7 +108,7 @@ public sealed class SftpServiceTests
         Assert.Equal("prod.internal", interop.ConnectionOptions!.Host);
         Assert.Equal("ops", interop.ConnectionOptions.User);
         Assert.Equal(2200, interop.ConnectionOptions.Port);
-        Assert.Equal("vault-pass", interop.ConnectionOptions.Password);
+        Assert.Equal("vault-pass", interop.ConnectionOptions.Password?.DangerousGetString());
         Assert.Equal(@"C:\ssh\native_known_hosts.json", interop.ConnectionOptions.KnownHostsFilePath);
         Assert.Equal(NativeSftpTransferDirection.Download, interop.TransferOptions!.Direction);
         Assert.Equal(NativeSftpTransferKind.File, interop.TransferOptions.Kind);
@@ -148,7 +149,7 @@ public sealed class SftpServiceTests
             service,
             allProfiles: null,
             interop: interop,
-            passwordResolver: static _ => "stale-vault-password",
+            passwordResolver: static _ => SecretBuffer.FromText("stale-vault-password"),
             knownHostsFilePath: @"C:\ssh\native_known_hosts.json", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(interop.ConnectionOptions);
@@ -202,13 +203,13 @@ public sealed class SftpServiceTests
             service,
             allProfiles: null,
             interop: interop,
-            passwordResolver: static _ => "target-vault-secret",
+            passwordResolver: static _ => SecretBuffer.FromText("target-vault-secret"),
             sessionRegistry: registry,
             knownHostsFilePath: @"C:\ssh\native_known_hosts.json", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(interop.ConnectionOptions);
-        Assert.Equal("target-vault-secret", interop.ConnectionOptions!.Password);
-        Assert.Equal(new string?[] { "bastion-one-secret", null }, interop.ConnectionOptions.JumpHopPasswords);
+        Assert.Equal("target-vault-secret", interop.ConnectionOptions!.Password?.DangerousGetString());
+        Assert.Equal(new string?[] { "bastion-one-secret", null }, interop.ConnectionOptions.JumpHopPasswords.Select(value => value?.DangerousGetString()));
     }
 
     [Fact]
@@ -247,11 +248,11 @@ public sealed class SftpServiceTests
             profile,
             service,
             interop: interop,
-            passwordResolver: static _ => "stale-vault-secret",
+            passwordResolver: static _ => SecretBuffer.FromText("stale-vault-secret"),
             sessionRegistry: registry,
             knownHostsFilePath: @"C:\ssh\native_known_hosts.json", cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal("typed-target-secret", interop.ConnectionOptions!.Password);
+        Assert.Equal("typed-target-secret", interop.ConnectionOptions!.Password?.DangerousGetString());
         Assert.Empty(interop.ConnectionOptions.JumpHopPasswords);
     }
 
@@ -297,11 +298,11 @@ public sealed class SftpServiceTests
             profile,
             service,
             interop: interop,
-            passwordResolver: static _ => "stale-vault-secret",
+            passwordResolver: static _ => SecretBuffer.FromText("stale-vault-secret"),
             sessionRegistry: registry,
             knownHostsFilePath: @"C:\ssh\native_known_hosts.json", cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal("typed-for-the-host", interop.ConnectionOptions!.Password);
+        Assert.Equal("typed-for-the-host", interop.ConnectionOptions!.Password?.DangerousGetString());
     }
 
     [Fact]
@@ -333,7 +334,7 @@ public sealed class SftpServiceTests
             service,
             allProfiles: null,
             interop: interop,
-            passwordResolver: static _ => "vault-pass",
+            passwordResolver: static _ => SecretBuffer.FromText("vault-pass"),
             knownHostsFilePath: @"C:\ssh\native_known_hosts.json",
             cancellationToken: cts.Token);
 
@@ -1039,24 +1040,27 @@ public sealed class SftpServiceTests
             profile,
             new SshConnectionService(new InMemorySshProfileStore()),
             interop: interop,
-            passwordResolver: static _ => "vault",
+            passwordResolver: static _ => SecretBuffer.FromText("vault"),
             sessionRegistry: registry, cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Equal("old", interop.OfferedPassword);
-        bool held = registry.TryGetRuntimePassword(scope, "prod.internal", 2200, "ops", out string? kept);
+        Assert.All(interop.BorrowedBytes!, value => Assert.Equal(0, value));
+        bool held = registry.TryGetRuntimePassword(scope, "prod.internal", 2200, "ops", out SecretBuffer? kept);
         Assert.Equal(typedMeanwhile, held);
-        if (typedMeanwhile) Assert.Equal("new", kept);
+        if (typedMeanwhile) Assert.Equal("new", kept?.DangerousGetString());
     }
 
     private sealed class RefusingTransferNativeSshInterop(Action? beforeRefusal) : INativeSshInterop
     {
+        public byte[]? BorrowedBytes { get; private set; }
         public string? OfferedPassword { get; private set; }
 
         public NovaSshSafeHandle Connect(NativeSshConnectionOptions options) => throw new NotSupportedException();
 
         public void RunSftpTransfer(NativeSshConnectionOptions connectionOptions, NativeSftpTransferOptions transferOptions, Action<NativeSftpTransferProgress>? progress, CancellationToken cancellationToken)
         {
-            OfferedPassword = connectionOptions.Password;
+            OfferedPassword = connectionOptions.Password?.DangerousGetString();
+            BorrowedBytes = SecretTestSnapshot.Bytes(connectionOptions.Password!);
             beforeRefusal?.Invoke();
             throw new NativeSshAuthenticationRefusedException("Native SFTP transfer failed with result -3. Authentication failed.");
         }
@@ -1088,7 +1092,7 @@ public sealed class SftpServiceTests
             Action<NativeSftpTransferProgress>? progress,
             CancellationToken cancellationToken)
         {
-            ConnectionOptions = connectionOptions;
+            ConnectionOptions = Ntilde.Tests.SecretTestSnapshot.Copy(connectionOptions);
             TransferOptions = transferOptions;
             CancellationToken = cancellationToken;
         }
@@ -1098,7 +1102,7 @@ public sealed class SftpServiceTests
             string remotePath,
             CancellationToken cancellationToken)
         {
-            ConnectionOptions = connectionOptions;
+            ConnectionOptions = Ntilde.Tests.SecretTestSnapshot.Copy(connectionOptions);
             ListedRemotePath = remotePath;
             CancellationToken = cancellationToken;
             return [];

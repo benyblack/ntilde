@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
@@ -64,7 +65,7 @@ public sealed class MuxRemotePaneTests : IDisposable
     {
         MuxConnectionHost local = Own(new MuxConnectionHost(_ => throw new InvalidOperationException("a remote pane never uses the local daemon"), "local", null));
         _hosts = Own(new MuxConnectionHosts(local, id => RemoteMuxHostFactory.Create(
-            id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock, savedPassword: _ => Volatile.Read(ref _savedPassword),
+            id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock, savedPassword: _ => Volatile.Read(ref _savedPassword) is { } value ? SecretBuffer.FromText(value) : null,
             askPassRecords: new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords))));
         _factory = new MuxTerminalSessionFactory(_hosts, _fallback, Resolve, log: null);
     }
@@ -449,7 +450,7 @@ public sealed class MuxRemotePaneTests : IDisposable
             native, ActiveSshSessionRegistry.Instance, () => new SshConnectionService(new OneProfileStore(_sshProfile)), passwordResolver: _ => null));
         owner.ToggleRemoteFilesSidebar();
         PumpUntil(() => owner.IsRemoteFilesSidebarVisibleForTest() && native.Listings == 1, "the owner's sidebar listed");
-        Assert.Equal("typed-in-the-owners-window", native.Listed!.Password);
+        Assert.Equal("typed-in-the-owners-window", native.Listed!.Password?.DangerousGetString());
     }
 
     [AvaloniaFact]

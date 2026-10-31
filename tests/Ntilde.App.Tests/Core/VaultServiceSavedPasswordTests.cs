@@ -18,6 +18,46 @@ public class VaultServiceSavedPasswordTests
         public bool Delete(string key) => throw new InvalidOperationException("must not delete");
     }
 
+    private sealed class PromotionRefusedStore(string key, string password) : ISecretStore
+    {
+        public bool IsAvailable => true;
+        public string? Read(string candidate) => candidate == key ? password : null;
+        public void Write(string key, string value) => throw new InvalidOperationException("read-only keyring");
+        public bool Delete(string key) => false;
+    }
+
+    [Fact]
+    public void A_readable_legacy_credential_survives_a_refused_canonical_promotion()
+    {
+        var profile = CreateProfile();
+        string legacyKey = $"SSH:{profile.Name}:{profile.SshUser}@{profile.SshHost}";
+        var vault = new VaultService(new PromotionRefusedStore(legacyKey, "usable-secret"));
+        using var secret = vault.GetSshPasswordBufferForProfile(profile);
+        Assert.Equal("usable-secret", secret?.DangerousGetString());
+    }
+
+    private sealed class CanonicalReadFailureStore(string canonical, string legacy) : ISecretStore
+    {
+        public int Writes { get; private set; }
+        public bool IsAvailable => true;
+        public string? Read(string key) => key == canonical ? throw new InvalidOperationException("canonical read refused") : key == legacy ? "stale" : null;
+        public void Write(string key, string value) => Writes++;
+        public bool Delete(string key) => false;
+    }
+
+    [Fact]
+    public void Canonical_read_failure_aborts_the_lookup_without_reading_or_promoting_a_stale_alias()
+    {
+        var profile = CreateProfile();
+        var store = new CanonicalReadFailureStore(VaultService.GetCanonicalSshProfileKey(profile.Id), $"SSH:{profile.Name}:{profile.SshUser}@{profile.SshHost}");
+        var vault = new VaultService(store);
+        using var secret = vault.GetSshPasswordBufferForProfile(profile);
+        Assert.Null(secret);
+        Assert.Null(vault.GetSshPasswordForProfile(profile));
+        Assert.False(vault.HasSavedPassword(profile));
+        Assert.Equal(0, store.Writes);
+    }
+
     private static TerminalProfile CreateProfile(string name = "Prod")
     {
         return new TerminalProfile

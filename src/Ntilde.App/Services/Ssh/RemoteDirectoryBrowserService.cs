@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +24,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
     private readonly INativeSshInterop _nativeInterop;
     private readonly ActiveSshSessionRegistry _sessionRegistry;
     private readonly Func<SshConnectionService> _sshServiceFactory;
-    private readonly Func<TerminalProfile, string?> _passwordResolver;
+    private readonly Func<TerminalProfile, SecretBuffer?> _passwordResolver;
     private readonly NativeSshConnectionPool _connectionPool;
 
     /// <param name="connectionPool">
@@ -34,14 +35,14 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
         INativeSshInterop? nativeInterop = null,
         ActiveSshSessionRegistry? sessionRegistry = null,
         Func<SshConnectionService>? sshServiceFactory = null,
-        Func<TerminalProfile, string?>? passwordResolver = null,
+        Func<TerminalProfile, SecretBuffer?>? passwordResolver = null,
         NativeSshConnectionPool? connectionPool = null)
     {
         _connectionPool = connectionPool ?? NativeSshConnectionPool.Shared;
         _nativeInterop = nativeInterop ?? new NativeSshInterop();
         _sessionRegistry = sessionRegistry ?? ActiveSshSessionRegistry.Instance;
         _sshServiceFactory = sshServiceFactory ?? (() => new SshConnectionService());
-        _passwordResolver = passwordResolver ?? (profile => (MainWindow.Vault ?? new VaultService()).GetSshPasswordForProfile(profile));
+        _passwordResolver = passwordResolver ?? (profile => (MainWindow.Vault ?? new VaultService()).GetSshPasswordBufferForProfile(profile));
     }
 
     public async Task<RemoteSidebarListingResult> ListDirectoryAsync(
@@ -66,6 +67,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
             return RemoteSidebarListingResult.Failure(resolvedPath, errorMessage);
         }
 
+        using var passwordLifetime = passwords;
         cancellationToken.ThrowIfCancellationRequested();
 
         try
@@ -106,7 +108,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
         Guid sessionId,
         ActiveSshSessionRegistry sessionRegistry,
         Func<SshConnectionService> sshServiceFactory,
-        Func<TerminalProfile, string?> passwordResolver,
+        Func<TerminalProfile, SecretBuffer?> passwordResolver,
         out NativeSshConnectionOptions? connectionOptions,
         out NativeHopPasswords? passwords,
         out SshProfile? storedProfile,
@@ -186,6 +188,9 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
         }
         catch (Exception ex)
         {
+            passwords?.Dispose();
+            passwords = null;
+            connectionOptions = null;
             errorMessage = GetErrorMessage(ex, ListingFailedErrorMessage);
             return false;
         }

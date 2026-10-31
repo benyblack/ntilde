@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Shell;
 using Ntilde.Platform;
 using Ntilde.VT;
@@ -237,7 +238,7 @@ public sealed class RemoteDirectoryBrowserServiceTests
         Assert.True(result.IsSuccess);
         Assert.NotNull(interop.LastConnectionOptions);
         Assert.Null(interop.LastConnectionOptions!.Password);
-        Assert.Equal(new string?[] { "bastion-secret" }, interop.LastConnectionOptions.JumpHopPasswords);
+        Assert.Equal(new string?[] { "bastion-secret" }, interop.LastConnectionOptions.JumpHopPasswords.Select(value => value?.DangerousGetString()));
     }
 
     [Fact]
@@ -261,12 +262,12 @@ public sealed class RemoteDirectoryBrowserServiceTests
             JumpHops = { new SshJumpHop { Host = "bastion.internal", User = "jump", Port = 22 } }
         });
         var interop = new RecordingNativeSshInterop(Array.Empty<NativeRemotePathEntry>());
-        var service = CreateService(registry, interop, new SshConnectionService(store), _ => "target-vault-secret");
+        var service = CreateService(registry, interop, new SshConnectionService(store), _ => SecretBuffer.FromText("target-vault-secret"));
 
         await service.ListDirectoryAsync(profileId, sessionId, "/srv", CancellationToken.None);
 
-        Assert.Equal("target-vault-secret", interop.LastConnectionOptions!.Password);
-        Assert.Equal(new string?[] { null }, interop.LastConnectionOptions.JumpHopPasswords);
+        Assert.Equal("target-vault-secret", interop.LastConnectionOptions!.Password?.DangerousGetString());
+        Assert.Equal(new string?[] { null }, interop.LastConnectionOptions.JumpHopPasswords.Select(value => value?.DangerousGetString()));
     }
 
     // ---- release hardening item 5: a refused listing drops the stale scope password it offered
@@ -281,7 +282,7 @@ public sealed class RemoteDirectoryBrowserServiceTests
         registry.Register(new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native, scope));
         registry.SetRuntimePassword(scope, "prod.internal", 2200, "ops", "rotated-away");
         var interop = new RefusingNativeSshInterop();
-        var service = CreateService(registry, interop, CreateSshService(profileId), _ => "vault");
+        var service = CreateService(registry, interop, CreateSshService(profileId), _ => SecretBuffer.FromText("vault"));
 
         RemoteSidebarListingResult result = await service.ListDirectoryAsync(profileId, sessionId, "/srv", CancellationToken.None);
 
@@ -309,8 +310,8 @@ public sealed class RemoteDirectoryBrowserServiceTests
 
         await service.ListDirectoryAsync(profileId, sessionId, "/srv", CancellationToken.None);
 
-        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 2200, "ops", out string? kept));
-        Assert.Equal("new", kept);
+        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 2200, "ops", out SecretBuffer? kept));
+        Assert.Equal("new", kept?.DangerousGetString());
     }
 
     [Fact]
@@ -353,7 +354,7 @@ public sealed class RemoteDirectoryBrowserServiceTests
 
         public IReadOnlyList<NativeRemotePathEntry> ListRemoteDirectory(NativeSshConnectionOptions connectionOptions, string remotePath, CancellationToken cancellationToken)
         {
-            OfferedPassword = connectionOptions.Password;
+            OfferedPassword = connectionOptions.Password?.DangerousGetString();
             beforeRefusal?.Invoke();
             throw new NativeSshAuthenticationRefusedException("Native remote path listing failed with result -3. Authentication failed.");
         }
@@ -374,7 +375,7 @@ public sealed class RemoteDirectoryBrowserServiceTests
         ActiveSshSessionRegistry registry,
         INativeSshInterop interop,
         SshConnectionService sshService,
-        Func<TerminalProfile, string?>? passwordResolver = null)
+        Func<TerminalProfile, SecretBuffer?>? passwordResolver = null)
     {
         return new RemoteDirectoryBrowserService(
             interop,
@@ -443,7 +444,7 @@ public sealed class RemoteDirectoryBrowserServiceTests
             string remotePath,
             CancellationToken cancellationToken)
         {
-            LastConnectionOptions = connectionOptions;
+            LastConnectionOptions = Ntilde.Tests.SecretTestSnapshot.Copy(connectionOptions);
             LastRemotePath = remotePath;
             return _entries;
         }

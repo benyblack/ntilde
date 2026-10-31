@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Shell;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
@@ -204,7 +205,7 @@ public sealed class SshInteractionServiceTests
         Assert.Single(capturedVm.Prompts);
         Assert.True(capturedVm.Prompts[0].IsSecret);
         Assert.Equal("Password:", capturedVm.Prompts[0].Prompt);
-        Assert.Equal("password", response.Secret);
+        Assert.Equal("password", response.Secret.DangerousGetString());
     }
 
     [AvaloniaFact]
@@ -278,7 +279,7 @@ public sealed class SshInteractionServiceTests
 
         var response = await service.HandleAsync(TargetPasswordRequest(profile), CancellationToken.None);
 
-        Assert.Equal("manual-secret", response.Secret);
+        Assert.Equal("manual-secret", response.Secret.DangerousGetString());
         Assert.Equal("manual-secret", vault.GetSshPasswordForProfile(profile));
     }
 
@@ -302,7 +303,7 @@ public sealed class SshInteractionServiceTests
 
         var response = await service.HandleAsync(TargetPasswordRequest(profile), CancellationToken.None);
 
-        Assert.Equal("manual-secret", response.Secret);
+        Assert.Equal("manual-secret", response.Secret.DangerousGetString());
         Assert.Null(vault.GetSshPasswordForProfile(profile));
     }
 
@@ -328,9 +329,9 @@ public sealed class SshInteractionServiceTests
             TargetPasswordRequest(profile, sessionId),
             CancellationToken.None);
 
-        Assert.Equal("manual-secret", response.Secret);
-        Assert.True(registry.TryGetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, out string? password));
-        Assert.Equal("manual-secret", password);
+        Assert.Equal("manual-secret", response.Secret.DangerousGetString());
+        Assert.True(registry.TryGetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, out SecretBuffer? password));
+        Assert.Equal("manual-secret", password?.DangerousGetString());
     }
 
     [AvaloniaFact]
@@ -354,7 +355,7 @@ public sealed class SshInteractionServiceTests
 
         var response = await service.HandleAsync(TargetPasswordRequest(profile), CancellationToken.None);
 
-        Assert.Equal("manual-secret", response.Secret);
+        Assert.Equal("manual-secret", response.Secret.DangerousGetString());
         Assert.Equal("vault-secret", vault.GetSshPasswordForProfile(profile));
     }
 
@@ -386,7 +387,7 @@ public sealed class SshInteractionServiceTests
             CancellationToken.None);
 
         Assert.Equal(0, promptCount);
-        Assert.Equal("vault-secret", response.Secret);
+        Assert.Equal("vault-secret", response.Secret.DangerousGetString());
         Assert.False(response.IsCanceled);
     }
 
@@ -412,9 +413,9 @@ public sealed class SshInteractionServiceTests
         SshInteractionResponse fromSession = await service.HandleAsync(TargetPasswordRequest(profile, sessionId), CancellationToken.None);
         SshInteractionResponse typed = await service.HandleAsync(TargetPasswordRequest(profile), CancellationToken.None);
 
-        Assert.Equal(("vault-secret", true), (fromVault.Secret, fromVault.FilledFromStore));
-        Assert.Equal(("remembered-secret", true), (fromSession.Secret, fromSession.FilledFromStore));
-        Assert.Equal(("typed-secret", false), (typed.Secret, typed.FilledFromStore));
+        Assert.Equal(("vault-secret", true), (fromVault.Secret.DangerousGetString(), fromVault.FilledFromStore));
+        Assert.Equal(("remembered-secret", true), (fromSession.Secret.DangerousGetString(), fromSession.FilledFromStore));
+        Assert.Equal(("typed-secret", false), (typed.Secret.DangerousGetString(), typed.FilledFromStore));
     }
 
     /// <summary>The server just refused the password it was sent: asking the stores again would send it a second time.</summary>
@@ -442,7 +443,7 @@ public sealed class SshInteractionServiceTests
             CancellationToken.None);
 
         Assert.Equal(1, promptCount);
-        Assert.Equal(("typed-secret", false), (response.Secret, response.FilledFromStore));
+        Assert.Equal(("typed-secret", false), (response.Secret.DangerousGetString(), response.FilledFromStore));
     }
 
     [AvaloniaFact]
@@ -471,8 +472,8 @@ public sealed class SshInteractionServiceTests
         Assert.NotNull(presented);
         Assert.True(presented!.CanRememberPassword);
         Assert.Equal("new-secret", vault.GetSshPasswordForProfile(profile));
-        Assert.True(registry.TryGetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, out string? runtime));
-        Assert.Equal("new-secret", runtime);
+        Assert.True(registry.TryGetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, out SecretBuffer? runtime));
+        Assert.Equal("new-secret", runtime?.DangerousGetString());
     }
 
     [AvaloniaFact]
@@ -525,7 +526,7 @@ public sealed class SshInteractionServiceTests
             CancellationToken.None);
 
         Assert.Equal(0, promptCount);
-        Assert.Equal("legacy-secret", response.Secret);
+        Assert.Equal("legacy-secret", response.Secret.DangerousGetString());
     }
 
     [AvaloniaFact]
@@ -553,7 +554,7 @@ public sealed class SshInteractionServiceTests
 
         SshInteractionResponse response = await service.HandleAsync(TargetPasswordRequest(profile), CancellationToken.None);
 
-        Assert.Equal("manual-secret", response.Secret);
+        Assert.Equal("manual-secret", response.Secret.DangerousGetString());
         Assert.Equal(1, promptCount);
     }
 
@@ -584,7 +585,7 @@ public sealed class SshInteractionServiceTests
             CancellationToken.None);
 
         Assert.Equal(1, promptCount);
-        Assert.Equal("bastion-secret", response.Secret);
+        Assert.Equal("bastion-secret", response.Secret.DangerousGetString());
     }
 
     [AvaloniaFact]
@@ -679,12 +680,12 @@ public sealed class SshInteractionServiceTests
             CancellationToken.None);
 
         Assert.Equal(2, promptCount);
-        Assert.Equal("bastion-secret", bastion.Secret);
-        Assert.Equal("target-secret", target.Secret);
-        Assert.True(registry.TryGetRuntimePassword(sessionId, "bastion.internal", 2200, "jump", out string? heldForBastion));
-        Assert.True(registry.TryGetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, out string? heldForTarget));
-        Assert.Equal("bastion-secret", heldForBastion);
-        Assert.Equal("target-secret", heldForTarget);
+        Assert.Equal("bastion-secret", bastion.Secret.DangerousGetString());
+        Assert.Equal("target-secret", target.Secret.DangerousGetString());
+        Assert.True(registry.TryGetRuntimePassword(sessionId, "bastion.internal", 2200, "jump", out SecretBuffer? heldForBastion));
+        Assert.True(registry.TryGetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, out SecretBuffer? heldForTarget));
+        Assert.Equal("bastion-secret", heldForBastion?.DangerousGetString());
+        Assert.Equal("target-secret", heldForTarget?.DangerousGetString());
     }
 
     [AvaloniaFact]
@@ -709,7 +710,7 @@ public sealed class SshInteractionServiceTests
             CancellationToken.None);
 
         Assert.Equal(0, promptCount);
-        Assert.Equal("bastion-secret", response.Secret);
+        Assert.Equal("bastion-secret", response.Secret.DangerousGetString());
     }
 
     [AvaloniaFact]
@@ -741,7 +742,7 @@ public sealed class SshInteractionServiceTests
         }, CancellationToken.None);
 
         Assert.Equal(1, promptCount);
-        Assert.Equal("manual-secret", response.Secret);
+        Assert.Equal("manual-secret", response.Secret.DangerousGetString());
     }
 
     private static TerminalProfile CreateProfile(string id)
@@ -839,7 +840,7 @@ public sealed class SshInteractionServiceTests
         }, CancellationToken.None);
 
         Assert.Equal(1, promptCount);
-        Assert.Equal("entered-passphrase", response.Secret);
+        Assert.Equal("entered-passphrase", response.Secret.DangerousGetString());
     }
 
     [AvaloniaFact]
@@ -863,7 +864,7 @@ public sealed class SshInteractionServiceTests
         Assert.Equal("Passphrase", capturedVm!.Title);
         Assert.Single(capturedVm.Prompts);
         Assert.True(capturedVm.Prompts[0].IsSecret);
-        Assert.Equal("hunter2", response.Secret);
+        Assert.Equal("hunter2", response.Secret.DangerousGetString());
     }
 
     [AvaloniaFact]
@@ -886,9 +887,9 @@ public sealed class SshInteractionServiceTests
             KeyboardPrompts = [new SshKeyboardPrompt("Password: ", false)]
         }, CancellationToken.None);
 
-        Assert.Equal(["typed-password"], response.KeyboardResponses);
-        byte[] payload = NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.KeyboardInteractive, response);
-        using var sent = System.Text.Json.JsonDocument.Parse(payload);
+        Assert.Equal(["typed-password"], response.KeyboardResponses.Select(value => value.DangerousGetString()));
+        using var payload = NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.KeyboardInteractive, response);
+        using var sent = System.Text.Json.JsonDocument.Parse(payload.Span.ToArray());
         Assert.Equal(1, sent.RootElement.GetProperty("responses").GetArrayLength());
     }
 
@@ -945,7 +946,7 @@ public sealed class SshInteractionServiceTests
         Assert.Equal(2, capturedVm.Prompts.Count);
         Assert.Equal("Passcode:", capturedVm.Prompts[0].Prompt);
         Assert.True(capturedVm.Prompts[0].IsSecret);
-        Assert.Equal(["code", "otp"], response.KeyboardResponses);
+        Assert.Equal(["code", "otp"], response.KeyboardResponses.Select(value => value.DangerousGetString()));
     }
 
     // #610: a connection an agent opened never raises a dialog over the user's shell. What can be answered without one
@@ -1043,7 +1044,7 @@ public sealed class SshInteractionServiceTests
         SshInteractionResponse response = await service.WithoutDialogs(needed.Add)
             .HandleAsync(TargetPasswordRequest(profile, allowVaultPasswordReuse: true), CancellationToken.None);
 
-        Assert.Equal("vault-secret", response.Secret);
+        Assert.Equal("vault-secret", response.Secret.DangerousGetString());
         Assert.False(response.IsCanceled);
         Assert.Empty(needed);
     }

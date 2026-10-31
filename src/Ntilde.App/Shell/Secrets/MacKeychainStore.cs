@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -71,17 +72,28 @@ namespace Ntilde.Shell.Secrets
                 // a present framework with nothing stored returns errSecItemNotFound,
                 // which ReadInternal maps to null without throwing. Call ReadInternal
                 // (not Read) because _available is not set yet.
-                _ = ReadInternal("__ntilde_probe__");
+                using var probe = ReadInternal("__ntilde_probe__");
                 _available = true;
             }
             catch (DllNotFoundException) { _available = false; }
             catch (EntryPointNotFoundException) { _available = false; }
             catch (BadImageFormatException) { _available = false; }
+            catch (InvalidOperationException) { _available = false; }
         }
 
         public bool IsAvailable => _available;
 
         public string? Read(string key)
+        {
+            try
+            {
+                using var secret = ReadBuffer(key);
+                return secret?.DangerousGetString();
+            }
+            catch (InvalidOperationException) { return null; }
+        }
+
+        public SecretBuffer? ReadBuffer(string key)
         {
             if (!_available)
             {
@@ -93,7 +105,7 @@ namespace Ntilde.Shell.Secrets
 
         // Performs the actual keychain lookup. Called by the constructor probe before
         // _available is set, so it must not be gated on _available.
-        private string? ReadInternal(string key)
+        private SecretBuffer? ReadInternal(string key)
         {
             IntPtr query = BuildQuery(key, forReturnData: true);
             try
@@ -106,7 +118,8 @@ namespace Ntilde.Shell.Secrets
 
                 if (status != errSecSuccess || dataRef == IntPtr.Zero)
                 {
-                    return null;
+                    SafeCFRelease(dataRef);
+                    throw new InvalidOperationException("The OS keychain could not read the credential.");
                 }
 
                 try
@@ -117,13 +130,11 @@ namespace Ntilde.Shell.Secrets
                     nint len = CFDataGetLength(dataRef);
                     if (bytes == IntPtr.Zero || len <= 0)
                     {
-                        return string.Empty;
+                        return SecretBuffer.FromText("");
                     }
 
-                    var buffer = new byte[(int)len];
-                    // bytes is a buffer borrowed from dataRef; copy it out, never free it.
-                    Marshal.Copy(bytes, buffer, 0, (int)len);
-                    return Encoding.UTF8.GetString(buffer);
+                    // Borrowed immutable OS memory: copy directly into our clearable buffer.
+                    return SecretBuffer.FromPointer(bytes, checked((int)len));
                 }
                 finally
                 {
@@ -138,17 +149,25 @@ namespace Ntilde.Shell.Secrets
 
         public void Write(string key, string value)
         {
+            using var secret = SecretBuffer.FromText(value);
+            WriteBuffer(key, secret);
+        }
+
+        public void WriteBuffer(string key, SecretBuffer value)
+        {
             if (!_available)
             {
                 return;
             }
 
-            byte[] valueBytes = Encoding.UTF8.GetBytes(value);
-            IntPtr matchQuery = BuildQuery(key, forReturnData: false);
-            IntPtr attrsToUpdate = CFDictionaryCreateMutable();
-            IntPtr valueData = CFDataCreate(IntPtr.Zero, valueBytes, valueBytes.Length);
+            IntPtr matchQuery = IntPtr.Zero;
+            IntPtr attrsToUpdate = IntPtr.Zero;
+            IntPtr valueData = IntPtr.Zero;
             try
             {
+                matchQuery = BuildQuery(key, forReturnData: false);
+                attrsToUpdate = CFDictionaryCreateMutable();
+                valueData = value.UsePointer(address => CFDataCreate(IntPtr.Zero, address, value.Length));
                 CFDictionaryAddValue(attrsToUpdate, _kSecValueData, valueData);
                 int status = SecItemUpdate(matchQuery, attrsToUpdate);
                 if (status == errSecItemNotFound)
@@ -159,13 +178,14 @@ namespace Ntilde.Shell.Secrets
                         // valueData is added (retained by the dictionary), NOT released
                         // here — it is released exactly once in the outer finally.
                         CFDictionaryAddValue(addQuery, _kSecValueData, valueData);
-                        _ = SecItemAdd(addQuery, IntPtr.Zero);
+                        status = SecItemAdd(addQuery, IntPtr.Zero);
                     }
                     finally
                     {
                         SafeCFRelease(addQuery);
                     }
                 }
+                if (status != errSecSuccess) throw new InvalidOperationException("The OS keychain could not save the credential.");
             }
             finally
             {
@@ -292,7 +312,7 @@ namespace Ntilde.Shell.Secrets
 
         // CFIndex is a pointer-sized signed integer (nint) — 64-bit on 64-bit macOS.
         [DllImport(CF)]
-        private static extern IntPtr CFDataCreate(IntPtr alloc, byte[] bytes, nint length);
+        private static extern IntPtr CFDataCreate(IntPtr alloc, IntPtr bytes, nint length);
 
         [DllImport(CF)]
         private static extern IntPtr CFDataGetBytePtr(IntPtr data);

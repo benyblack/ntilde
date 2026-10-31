@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Replay;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Models;
@@ -35,12 +36,13 @@ public sealed class NativeSshDockerE2eTests
             string localPath = Path.Combine(tempRoot, "downloaded.txt");
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer1 = SecretBuffer.FromText(fixture.Password);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = fixture.Password,
+                Password = passwordBuffer1,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -85,12 +87,13 @@ public sealed class NativeSshDockerE2eTests
             var progressUpdates = new List<NativeSftpTransferProgress>();
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer2 = SecretBuffer.FromText(fixture.Password);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = fixture.Password,
+                Password = passwordBuffer2,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -156,12 +159,13 @@ public sealed class NativeSshDockerE2eTests
             knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer3 = SecretBuffer.FromText(fixture.Password);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = fixture.Password,
+                Password = passwordBuffer3,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -203,12 +207,13 @@ public sealed class NativeSshDockerE2eTests
             knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer4 = SecretBuffer.FromText(fixture.Password);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = fixture.Password,
+                Password = passwordBuffer4,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -250,12 +255,13 @@ public sealed class NativeSshDockerE2eTests
             knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer5 = SecretBuffer.FromText(fixture.Password);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = fixture.Password,
+                Password = passwordBuffer5,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -298,12 +304,13 @@ public sealed class NativeSshDockerE2eTests
             knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer6 = SecretBuffer.FromText(fixture.Password);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = fixture.Password,
+                Password = passwordBuffer6,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -354,12 +361,13 @@ public sealed class NativeSshDockerE2eTests
 
             var progressUpdates = new List<NativeSftpTransferProgress>();
             var interop = new NativeSshInterop();
+            using var passwordBuffer7 = SecretBuffer.FromText(fixture.Password);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = fixture.Password,
+                Password = passwordBuffer7,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -455,12 +463,13 @@ public sealed class NativeSshDockerE2eTests
             knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer8 = SecretBuffer.FromText(fixture.Password);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = fixture.Password,
+                Password = passwordBuffer8,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -499,12 +508,13 @@ public sealed class NativeSshDockerE2eTests
             knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer9 = SecretBuffer.FromText(fixture.Password);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = fixture.Password,
+                Password = passwordBuffer9,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -543,12 +553,13 @@ public sealed class NativeSshDockerE2eTests
             knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer10 = SecretBuffer.FromText(fixture.Password);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = fixture.Password,
+                Password = passwordBuffer10,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -588,12 +599,13 @@ public sealed class NativeSshDockerE2eTests
             knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer11 = SecretBuffer.FromText("wrong-password");
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.UserName,
                 Port = fixture.Port,
-                Password = "wrong-password",
+                Password = passwordBuffer11,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -646,12 +658,13 @@ public sealed class NativeSshDockerE2eTests
             string localPath = Path.Combine(tempRoot, "downloaded.txt");
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer12 = SecretBuffer.FromText(fixture.KeyboardInteractivePassword);
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.KeyboardInteractiveUserName,
                 Port = fixture.Port,
-                Password = fixture.KeyboardInteractivePassword,
+                Password = passwordBuffer12,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions
@@ -690,12 +703,13 @@ public sealed class NativeSshDockerE2eTests
             knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
 
             var interop = new NativeSshInterop();
+            using var passwordBuffer13 = SecretBuffer.FromText("wrong-password");
             var connection = new NativeSshConnectionOptions
             {
                 Host = fixture.Host,
                 User = fixture.KeyboardInteractiveUserName,
                 Port = fixture.Port,
-                Password = "wrong-password",
+                Password = passwordBuffer13,
                 KnownHostsFilePath = knownHostsPath
             };
             var transfer = new NativeSftpTransferOptions

@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System.Security.Cryptography;
 using System.Text;
 using Ntilde.Platform.Ssh.Interactions;
@@ -70,12 +71,12 @@ internal sealed class RemoteMuxInteractionHandler
 {
     private readonly ISshInteractionHandler? _user;
     private readonly Func<SshInteractionRequest, bool> _isTrustedHostKey;
-    private readonly Func<SshProfile, string?>? _savedPassword;
+    private readonly Func<SshProfile, SecretBuffer?>? _savedPassword;
     private readonly SshAskPassSessionMarkers? _askPassRecords;
     private readonly Action<string>? _log;
     private readonly ActiveSshSessionRegistry? _passwordScopes;
     private readonly object _gate = new();
-    private readonly Dictionary<SshInteractionKind, string> _remembered = []; // guarded by _gate
+    private readonly Dictionary<SshInteractionKind, SecretBuffer> _remembered = []; // guarded by _gate
     private int _generation;                                                  // guarded by _gate; bumped by Forget
     private readonly List<byte[]> _refusedPasswords = [];                     // guarded by _gate; HashOf each refused password, newest last
     private bool _savedPasswordNotEnough;                                     // guarded by _gate; a second factor follows it
@@ -113,7 +114,7 @@ internal sealed class RemoteMuxInteractionHandler
     public RemoteMuxInteractionHandler(
         ISshInteractionHandler? user,
         Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
-        Func<SshProfile, string?>? savedPassword = null,
+        Func<SshProfile, SecretBuffer?>? savedPassword = null,
         SshAskPassSessionMarkers? askPassRecords = null,
         Action<string>? log = null,
         ActiveSshSessionRegistry? passwordScopes = null)
@@ -149,7 +150,7 @@ internal sealed class RemoteMuxInteractionHandler
     {
         lock (_gate)
         {
-            if (!passwordsReplayable) _remembered.Remove(SshInteractionKind.Password);
+            if (!passwordsReplayable && _remembered.Remove(SshInteractionKind.Password, out var dropped)) dropped.Dispose();
             bool mayUseSaved = !interactive && passwordsReplayable && !destinationMoved && !_savedPasswordNotEnough && _savedPassword is not null;
             return new Attempt(this, interactive, passwordsReplayable, _generation, savedPasswordProfile, mayUseSaved, destinationMoved);
         }
@@ -163,6 +164,7 @@ internal sealed class RemoteMuxInteractionHandler
     {
         lock (_gate)
         {
+            foreach (var secret in _remembered.Values) secret.Dispose();
             _remembered.Clear();
             _generation++;
             _refusedPasswords.Clear();
@@ -178,13 +180,13 @@ internal sealed class RemoteMuxInteractionHandler
     /// <see cref="PasswordScopeId"/>. Nothing once the host forgot everything since <paramref name="generation"/>: it is
     /// going away, and its scope with it.
     /// </summary>
-    private void KeepForTransfers(int generation, IEnumerable<(string Host, int Port, string User, string Secret)> typed)
+    private void KeepForTransfers(int generation, IEnumerable<(string Host, int Port, string User, SecretBuffer Secret)> typed)
     {
         if (_passwordScopes is not { } scopes) return;
         lock (_gate)
         {
             if (generation != _generation) return;
-            foreach ((string host, int port, string user, string secret) in typed) scopes.SetRuntimePassword(PasswordScopeId, host, port, user, secret);
+            foreach ((string host, int port, string user, SecretBuffer secret) in typed) scopes.SetRuntimePassword(PasswordScopeId, host, port, user, secret);
         }
     }
 
@@ -196,18 +198,24 @@ internal sealed class RemoteMuxInteractionHandler
     /// the gate and generation check as the write is, so a refusal from before <see cref="Forget"/> clears nothing written
     /// since.
     /// </summary>
-    private void DropFromTransfers(int generation, IEnumerable<(string Host, int Port, string User, string Secret)> refused)
+    private void DropFromTransfers(int generation, IEnumerable<(string Host, int Port, string User, SecretBuffer Secret)> refused)
     {
         if (_passwordScopes is not { } scopes) return;
         lock (_gate)
         {
             if (generation != _generation) return;
-            foreach ((string host, int port, string user, string secret) in refused) scopes.RemoveRuntimePassword(PasswordScopeId, host, port, user, secret);
+            foreach ((string host, int port, string user, SecretBuffer secret) in refused) scopes.RemoveRuntimePassword(PasswordScopeId, host, port, user, secret);
         }
     }
 
     /// <summary>The keyed hash the host keeps of a refused password instead of the value: HMAC-SHA256 under <see cref="HashKey"/>.</summary>
-    internal static byte[] HashOf(string secret) => HMACSHA256.HashData(HashKey, Encoding.UTF8.GetBytes(secret));
+    internal static byte[] HashOf(SecretBuffer secret) => HMACSHA256.HashData(HashKey, secret.Span);
+
+    internal static byte[] HashOf(string secret)
+    {
+        using var value = SecretBuffer.FromText(secret);
+        return HashOf(value);
+    }
 
     /// <summary>A password with this hash was refused on this host: its saved value is used no more.</summary>
     private void MarkPasswordRefused(int generation, byte[] hash)
@@ -253,11 +261,13 @@ internal sealed class RemoteMuxInteractionHandler
     /// The profile's saved password, or null for none - also when the vault cannot be read (review M6): a locked keyring or
     /// a broken store is logged and counts as nothing saved, so the attempt goes on as it would without one.
     /// </summary>
-    private string? ReadSavedPassword(SshProfile profile)
+    private SecretBuffer? ReadSavedPassword(SshProfile profile)
     {
         try
         {
-            return _savedPassword?.Invoke(profile) is { Length: > 0 } saved ? saved : null;
+            SecretBuffer? saved = _savedPassword?.Invoke(profile);
+            if (saved is { Length: 0 }) { saved.Dispose(); return null; }
+            return saved;
         }
         catch (Exception ex)
         {
@@ -310,26 +320,39 @@ internal sealed class RemoteMuxInteractionHandler
         lock (_gate) return _remembered.ContainsKey(kind);
     }
 
-    private bool TryRecall(SshInteractionKind kind, out string secret)
+    private bool TryRecall(SshInteractionKind kind, out SecretBuffer? secret)
     {
-        lock (_gate) return _remembered.TryGetValue(kind, out secret!);
+        lock (_gate)
+        {
+            secret = _remembered.TryGetValue(kind, out var stored) ? stored.Clone() : null;
+            return secret is not null;
+        }
     }
 
     /// <summary>
     /// Forgets each of <paramref name="forget"/> that is still what is remembered for its kind, then -
     /// unless the host forgot everything since <paramref name="generation"/> - remembers <paramref name="remember"/>.
     /// </summary>
-    private void Settle(int generation, IEnumerable<(SshInteractionKind Kind, string Secret)> forget, IEnumerable<(SshInteractionKind Kind, string Secret)> remember)
+    private void Settle(int generation, IEnumerable<(SshInteractionKind Kind, SecretBuffer Secret)> forget, IEnumerable<(SshInteractionKind Kind, SecretBuffer Secret)> remember)
     {
         lock (_gate)
         {
-            foreach ((SshInteractionKind kind, string secret) in forget)
+            foreach ((SshInteractionKind kind, SecretBuffer secret) in forget)
             {
-                if (_remembered.TryGetValue(kind, out string? current) && current == secret) _remembered.Remove(kind);
+                if (_remembered.TryGetValue(kind, out SecretBuffer? current) && current.ContentEquals(secret))
+                {
+                    _remembered.Remove(kind);
+                    current.Dispose();
+                }
             }
 
             if (generation != _generation) return; // forgotten meanwhile: the host is going away
-            foreach ((SshInteractionKind kind, string secret) in remember) _remembered[kind] = secret;
+            foreach ((SshInteractionKind kind, SecretBuffer secret) in remember)
+            {
+                SecretBuffer copy = secret.Clone();
+                if (_remembered.Remove(kind, out var previous)) previous.Dispose();
+                _remembered[kind] = copy;
+            }
         }
     }
 
@@ -382,7 +405,7 @@ internal sealed class RemoteMuxInteractionHandler
     /// what happened (<see cref="SecondFactorAfterSavedPassword"/>).
     /// </para>
     /// </remarks>
-    internal sealed class Attempt : ISshInteractionHandler
+    internal sealed class Attempt : ISshInteractionHandler, IDisposable
     {
         private readonly RemoteMuxInteractionHandler _owner;
         private readonly bool _passwordsReplayable;
@@ -393,6 +416,7 @@ internal sealed class RemoteMuxInteractionHandler
         private readonly Lazy<bool> _avoidance;
         private readonly object _gate = new();
         private readonly List<Answer> _answers = []; // guarded by _gate; in the order given
+        private bool _disposed;
         private bool _succeeded;                     // guarded by _gate
         private bool _authenticated;                 // guarded by _gate; the native transport said sign-in is over
         private SshInteractionKind? _abortedPrompt;  // guarded by _gate
@@ -470,10 +494,9 @@ internal sealed class RemoteMuxInteractionHandler
                 stored = _storedHash;
             }
 
-            return stored is not null
-                && _savedPasswordProfile is { } profile
-                && _owner.ReadSavedPassword(profile) is { } saved
-                && CryptographicOperations.FixedTimeEquals(HashOf(saved), stored);
+            if (stored is null || _savedPasswordProfile is not { } profile) return false;
+            using var saved = _owner.ReadSavedPassword(profile);
+            return saved is not null && CryptographicOperations.FixedTimeEquals(HashOf(saved), stored);
         }
 
         /// <summary>What the askpass helper did for this attempt's ssh (OpenSSH): filled the saved password, declined a second factor.</summary>
@@ -506,7 +529,8 @@ internal sealed class RemoteMuxInteractionHandler
             if (!Interactive) return false;
             if (_destinationMoved) return true;
             if (_savedPasswordProfile is not { } profile || !_owner.AnyRefused()) return false;
-            return _owner.ReadSavedPassword(profile) is { } saved && _owner.IsRefused(HashOf(saved));
+            using var saved = _owner.ReadSavedPassword(profile);
+            return saved is not null && _owner.IsRefused(HashOf(saved));
         }
 
         /// <summary>
@@ -527,6 +551,7 @@ internal sealed class RemoteMuxInteractionHandler
         public bool OfferSavedPassword()
         {
             if (!MaySignInWithSavedPassword || !_owner.CanRecordAskPass() || UnrefusedSavedPassword() is not { } offer) return false;
+            using var value = offer.Value;
             lock (_gate)
             {
                 _savedPasswordOffered = true;
@@ -548,11 +573,12 @@ internal sealed class RemoteMuxInteractionHandler
         }
 
         /// <summary>The saved password and its hash, unless the vault holds none or the value refused on this host.</summary>
-        private (string Value, byte[] Hash)? UnrefusedSavedPassword()
+        private (SecretBuffer Value, byte[] Hash)? UnrefusedSavedPassword()
         {
             if (_savedPasswordProfile is not { } profile || _owner.ReadSavedPassword(profile) is not { } saved) return null;
             byte[] hash = HashOf(saved);
-            return _owner.IsRefused(hash) ? null : (saved, hash);
+            if (_owner.IsRefused(hash)) { saved.Dispose(); return null; }
+            return (saved, hash);
         }
 
         /// <summary>
@@ -641,7 +667,7 @@ internal sealed class RemoteMuxInteractionHandler
                 {
                     Track(new Answer(kind, remembered, FromMemory: true, Typed: false, request));
                     if (kind == SshInteractionKind.Password && User is null) NoteStoredPassword(remembered, fromVault: false);
-                    return SshInteractionResponse.FromSecret(remembered);
+                    return SshInteractionResponse.FromSecret(remembered.Clone());
                 }
 
                 if (User is not { } user)
@@ -667,10 +693,10 @@ internal sealed class RemoteMuxInteractionHandler
                 lock (_gate) _lastUserPrompt = (kind, Declined: true); // until it is answered
                 SshInteractionResponse response = await user.HandleAsync(forUser, cancellationToken).ConfigureAwait(false);
                 lock (_gate) _lastUserPrompt = (kind, Declined: response.IsCanceled);
-                if (IsRememberable(kind) && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
+                if (IsRememberable(kind) && !response.IsCanceled && response.Secret.Length > 0)
                 {
                     // Typed, unless the window's handler filled it from the vault (or a session's memory) on its own.
-                    Track(new Answer(kind, response.Secret, FromMemory: false, Typed: !response.FilledFromStore, request));
+                    Track(new Answer(kind, response.Secret.Clone(), FromMemory: false, Typed: !response.FilledFromStore, request));
                 }
 
                 return response;
@@ -733,7 +759,7 @@ internal sealed class RemoteMuxInteractionHandler
             {
                 _owner.KeepForTransfers(_generation, answers
                     .Where(a => a.Kind == SshInteractionKind.Password && a.Typed && a.State != AnswerState.Superseded
-                        && !string.IsNullOrWhiteSpace(a.Secret) && a.Prompt.HasHostIdentity)
+                        && !a.Secret.IsWhiteSpace && a.Prompt.HasHostIdentity)
                     .Select(a => (a.Prompt.Host, a.Prompt.Port, a.Prompt.User, a.Secret)));
             }
         }
@@ -770,7 +796,7 @@ internal sealed class RemoteMuxInteractionHandler
         /// already answered a password prompt (from memory, or with the saved password: this prompt means that answer was
         /// refused), or when the vault holds none, or the value refused on this host.
         /// </summary>
-        private string? TakeSavedPassword()
+        private SecretBuffer? TakeSavedPassword()
         {
             if (!MaySignInWithSavedPassword) return null;
             lock (_gate)
@@ -781,7 +807,7 @@ internal sealed class RemoteMuxInteractionHandler
             if (UnrefusedSavedPassword() is not { } saved) return null;
             lock (_gate)
             {
-                if (_savedPasswordOffered) return null;
+                if (_savedPasswordOffered) { saved.Value.Dispose(); return null; }
                 _savedPasswordOffered = true;
                 _offeredHash = saved.Hash;
                 _storedPasswordAnswered = true;
@@ -812,7 +838,7 @@ internal sealed class RemoteMuxInteractionHandler
         }
 
         /// <summary>Records the stored password this attempt answered with nobody to ask, unless it already answered one.</summary>
-        private void NoteStoredPassword(string secret, bool fromVault)
+        private void NoteStoredPassword(SecretBuffer secret, bool fromVault)
         {
             lock (_gate)
             {
@@ -837,7 +863,7 @@ internal sealed class RemoteMuxInteractionHandler
         private bool IsRememberable(SshInteractionKind kind) => kind != SshInteractionKind.Password || _passwordsReplayable;
 
         /// <summary>The remembered secret for <paramref name="kind"/>, unless this hop already refused one.</summary>
-        private string? Recall(SshInteractionKind kind)
+        private SecretBuffer? Recall(SshInteractionKind kind)
         {
             if (!IsRememberable(kind)) return null;
             lock (_gate)
@@ -845,7 +871,7 @@ internal sealed class RemoteMuxInteractionHandler
                 if (_answers.Exists(a => a.Kind == kind && a.FromMemory && a.State == AnswerState.Superseded)) return null;
             }
 
-            return _owner.TryRecall(kind, out string secret) ? secret : null;
+            return _owner.TryRecall(kind, out SecretBuffer? secret) ? secret : null;
         }
 
         /// <summary>
@@ -873,14 +899,28 @@ internal sealed class RemoteMuxInteractionHandler
         }
 
         /// <summary>The password answers among <paramref name="answers"/> whose prompt named its server, keyed as the host's scope keys them.</summary>
-        private static IEnumerable<(string Host, int Port, string User, string Secret)> PasswordsByServer(IEnumerable<Answer> answers) =>
+        private static IEnumerable<(string Host, int Port, string User, SecretBuffer Secret)> PasswordsByServer(IEnumerable<Answer> answers) =>
             answers
                 .Where(a => a.Kind == SshInteractionKind.Password && a.Prompt.HasHostIdentity)
                 .Select(a => (a.Prompt.Host, a.Prompt.Port, a.Prompt.User, a.Secret));
 
         private void Track(Answer answer)
         {
-            lock (_gate) _answers.Add(answer);
+            lock (_gate)
+            {
+                if (_disposed) answer.Secret.Dispose();
+                else _answers.Add(answer);
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_gate)
+            {
+                _disposed = true;
+                foreach (var answer in _answers) answer.Secret.Dispose();
+                _answers.Clear();
+            }
         }
 
         private enum AnswerState
@@ -897,7 +937,7 @@ internal sealed class RemoteMuxInteractionHandler
 
         /// <param name="Typed">The user typed it at the window's prompt in this attempt: not recalled, and not filled from a store.</param>
         /// <param name="Prompt">The prompt it answered, which names the server (host, port, user) it is for.</param>
-        private sealed record Answer(SshInteractionKind Kind, string Secret, bool FromMemory, bool Typed, SshInteractionRequest Prompt)
+        private sealed record Answer(SshInteractionKind Kind, SecretBuffer Secret, bool FromMemory, bool Typed, SshInteractionRequest Prompt)
         {
             public AnswerState State { get; set; } = AnswerState.Open;
         }

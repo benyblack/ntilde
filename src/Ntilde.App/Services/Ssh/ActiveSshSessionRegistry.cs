@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -38,13 +39,8 @@ public sealed class ActiveSshSessionRegistry
     /// copy elsewhere in the heap that nothing has a reference to and nothing can clear.</item>
     /// </list>
     ///
-    /// What this does <em>not</em> do, stated plainly so nobody reads more into it: transient
-    /// <see cref="string"/> copies still exist. <see cref="TryGetRuntimePassword"/> has to return one
-    /// because every consumer needs one — <c>NativeSshConnectionOptions.Password</c> is a string and the
-    /// interop marshals it as <c>LPUTF8Str</c>. Those copies are short-lived and eligible for collection
-    /// immediately, which is a materially different exposure from one that persists for the session.
-    /// Removing them means changing the FFI signature to take a buffer; that is tracked on #121 and is
-    /// deliberately not bundled here.
+    /// Lookups return an independently owned pinned buffer, which the caller disposes after auth.
+    /// Teardown can clear the registry while an operation continues with its own copy.
     ///
     /// A plain dictionary under an explicit lock, not a <see cref="ConcurrentDictionary{TKey,TValue}"/>:
     /// zeroing a buffer that a concurrent reader is mid-decode would hand that reader a half-zeroed
@@ -170,14 +166,20 @@ public sealed class ActiveSshSessionRegistry
     /// <paramref name="host"/>:<paramref name="port"/>, for this session only. An empty password
     /// clears that one entry.
     /// </summary>
-    public void SetRuntimePassword(Guid sessionId, string host, int port, string user, string? password)
+    public void SetRuntimePassword(Guid sessionId, string host, int port, string user, ReadOnlySpan<char> password)
+    {
+        using var secret = SecretBuffer.FromText(password);
+        SetRuntimePassword(sessionId, host, port, user, secret);
+    }
+
+    public void SetRuntimePassword(Guid sessionId, string host, int port, string user, SecretBuffer? password)
     {
         if (sessionId == Guid.Empty || !RuntimePasswordKey.TryCreate(sessionId, host, port, user, out RuntimePasswordKey key))
         {
             return;
         }
 
-        if (string.IsNullOrEmpty(password))
+        if (password is null || password.Length == 0)
         {
             ClearRuntimePassword(key);
             return;
@@ -185,9 +187,9 @@ public sealed class ActiveSshSessionRegistry
 
         // Pinned so the GC cannot relocate it: a moved buffer leaves plaintext behind at the old
         // address with no reference to it, which is the one thing zeroing cannot fix afterwards.
-        int byteCount = Encoding.UTF8.GetByteCount(password);
+        int byteCount = password.Length;
         byte[] buffer = GC.AllocateArray<byte>(byteCount, pinned: true);
-        Encoding.UTF8.GetBytes(password, buffer);
+        password.Span.CopyTo(buffer);
 
         lock (_runtimePasswordGate)
         {
@@ -206,31 +208,26 @@ public sealed class ActiveSshSessionRegistry
     /// did: that server refused the value (Codex review of PR #511, P1), so nothing that reads this scope may offer it again.
     /// A different value - one written after the refused one was offered - stays, as does every other server's.
     /// </summary>
-    public bool RemoveRuntimePassword(Guid sessionId, string host, int port, string user, string refused)
+    public bool RemoveRuntimePassword(Guid sessionId, string host, int port, string user, ReadOnlySpan<char> refused)
     {
-        if (sessionId == Guid.Empty || string.IsNullOrEmpty(refused) || !RuntimePasswordKey.TryCreate(sessionId, host, port, user, out RuntimePasswordKey key))
+        using var secret = SecretBuffer.FromText(refused);
+        return RemoveRuntimePassword(sessionId, host, port, user, secret);
+    }
+
+    public bool RemoveRuntimePassword(Guid sessionId, string host, int port, string user, SecretBuffer refused)
+    {
+        if (sessionId == Guid.Empty || refused.Length == 0 || !RuntimePasswordKey.TryCreate(sessionId, host, port, user, out RuntimePasswordKey key))
         {
             return false;
         }
 
-        byte[] candidate = Encoding.UTF8.GetBytes(refused);
-        try
+        ReadOnlySpan<byte> candidate = refused.Span;
+        lock (_runtimePasswordGate)
         {
-            lock (_runtimePasswordGate)
-            {
-                if (!_runtimePasswords.TryGetValue(key, out byte[]? stored) || !CryptographicOperations.FixedTimeEquals(stored, candidate))
-                {
-                    return false;
-                }
-
-                _runtimePasswords.Remove(key);
-                CryptographicOperations.ZeroMemory(stored);
-                return true;
-            }
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(candidate);
+            if (!_runtimePasswords.TryGetValue(key, out byte[]? stored) || !CryptographicOperations.FixedTimeEquals(stored, candidate)) return false;
+            _runtimePasswords.Remove(key);
+            CryptographicOperations.ZeroMemory(stored);
+            return true;
         }
     }
 
@@ -240,10 +237,9 @@ public sealed class ActiveSshSessionRegistry
     /// returns a password entered for a different server of the same session.
     /// </summary>
     /// <remarks>
-    /// The returned string is a transient copy — see the note on <c>_runtimePasswords</c>. Callers should
-    /// use it and let it go rather than storing it anywhere with a longer life than the operation.
+    /// The caller owns the returned buffer and must dispose it after use.
     /// </remarks>
-    public bool TryGetRuntimePassword(Guid sessionId, string host, int port, string user, out string? password)
+    public bool TryGetRuntimePassword(Guid sessionId, string host, int port, string user, out SecretBuffer? password)
     {
         password = null;
         if (!RuntimePasswordKey.TryCreate(sessionId, host, port, user, out RuntimePasswordKey key))
@@ -258,9 +254,8 @@ public sealed class ActiveSshSessionRegistry
                 return false;
             }
 
-            // Decoded under the lock so a concurrent Unregister cannot zero the bytes mid-decode and
-            // hand back a truncated password that would fail auth for no discoverable reason.
-            password = Encoding.UTF8.GetString(stored);
+            // Clone under the lock so teardown cannot zero the bytes during the copy.
+            password = SecretBuffer.FromUtf8(stored);
             return true;
         }
     }

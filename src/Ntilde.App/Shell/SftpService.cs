@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -612,7 +613,7 @@ namespace Ntilde.Shell
                 sshService,
                 allProfiles,
                 interop: _nativeInterop,
-                passwordResolver: static transferProfile => (MainWindow.Vault ?? new VaultService()).GetSshPasswordForProfile(transferProfile),
+                passwordResolver: static transferProfile => (MainWindow.Vault ?? new VaultService()).GetSshPasswordBufferForProfile(transferProfile),
                 sessionRegistry: ActiveSshSessionRegistry.Instance,
                 knownHostsFilePath: AppPaths.NativeKnownHostsFilePath,
                 // Raised on the native library's callback thread.
@@ -642,7 +643,7 @@ namespace Ntilde.Shell
             SshConnectionService sshService,
             IReadOnlyList<TerminalProfile>? allProfiles = null,
             INativeSshInterop? interop = null,
-            Func<TerminalProfile, string?>? passwordResolver = null,
+            Func<TerminalProfile, SecretBuffer?>? passwordResolver = null,
             ActiveSshSessionRegistry? sessionRegistry = null,
             string? knownHostsFilePath = null,
             Action<NativeSftpTransferProgress>? progress = null,
@@ -661,7 +662,7 @@ namespace Ntilde.Shell
             }
 
             NativeSshConnectionOptions baseOptions = BuildNativeTransferConnectionOptions(sshService, profile, allProfiles);
-            NativeHopPasswords passwords = NativeHopPasswordResolver.Resolve(
+            using NativeHopPasswords passwords = NativeHopPasswordResolver.Resolve(
                 baseOptions,
                 sessionRegistry,
                 job.SessionId,
