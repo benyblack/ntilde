@@ -50,7 +50,14 @@ internal static class LegacyProfilePasswordMigration
         if (secret.Length == 0) return true;
         if (!Guid.TryParse(profile["Id"]?.GetValue<string>(), out Guid id) || id == Guid.Empty) return false;
         if (!vault.Value.PersistenceAvailable) return false;
-        var target = new TerminalProfile { Id = id };
+        var target = new TerminalProfile
+        {
+            Id = id,
+            Name = profile["Name"]?.GetValue<string>() ?? string.Empty,
+            SshUser = profile["SshUser"]?.GetValue<string>() ?? string.Empty,
+            SshHost = profile["SshHost"]?.GetValue<string>() ?? string.Empty,
+            Type = ConnectionType.SSH
+        };
         using var existing = vault.Value.GetSshPasswordBufferForProfile(target);
         if (existing is { Length: > 0 }) return true;
         vault.Value.SetSshPasswordBufferForProfile(target, secret);

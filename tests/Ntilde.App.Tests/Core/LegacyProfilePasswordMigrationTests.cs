@@ -15,7 +15,7 @@ public sealed class LegacyProfilePasswordMigrationTests : IDisposable
 
     private void WriteLegacy(string password)
     {
-        string json = JsonSerializer.Serialize(new { Profiles = new[] { new { Id = _profileId, Name = "old", Password = password } }, FontSize = 17 });
+        string json = JsonSerializer.Serialize(new { Profiles = new[] { new { Id = _profileId, Name = "old", SshUser = "ops", SshHost = "prod.internal", Password = password } }, FontSize = 17 });
         File.WriteAllText(SettingsPath, json);
         File.WriteAllText(SettingsPath + ".bak", json);
     }
@@ -89,6 +89,18 @@ public sealed class LegacyProfilePasswordMigrationTests : IDisposable
         vault.SetSecret(VaultService.GetCanonicalSshProfileKey(_profileId), "new");
         Assert.True(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
         Assert.Equal("new", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
+    }
+
+    [Theory]
+    [InlineData("SSH:old:ops@prod.internal")]
+    [InlineData("SSH:ops@prod.internal")]
+    public void Migration_preserves_a_newer_name_keyed_credential(string key)
+    {
+        WriteLegacy("stale-plaintext");
+        var vault = new VaultService(new InMemorySecretStore());
+        vault.SetSecret(key, "newer-keyring-value");
+        Assert.True(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        Assert.Equal("newer-keyring-value", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
     }
 
     private sealed class DiscardingStore(bool available) : ISecretStore
