@@ -163,15 +163,22 @@ jobs:
       #
       # v4: rusty_ssh joined the payload and the key. Before, it was in neither, so every
       # dotnet build compiled ring/russh/russh-sftp from scratch inside MSBuild - about 2
-      # minutes of the Windows build on every PR, with no cargo cache behind it. The rusty_pty
-      # input-hash stamp the v3 bump was for is still written whenever MSBuild does build.
+      # minutes of the Windows build on every PR, with no cargo cache behind it.
+      #
+      # v5: restore and save are separate steps, and the save runs right after the cargo
+      # builds. With a single actions/cache step the save ran in its post step, AFTER
+      # Swatinem's post step - post steps run in reverse order - and Swatinem's target-dir
+      # cleanup deletes the workspace crates' own outputs from target/release first. v4
+      # payloads therefore held no librusty_ssh.so / rusty_ssh.dll (and on Windows and macOS
+      # no rusty_pty either; only Linux's staged target_linux copy survived), which is also
+      # why every v3 hit rebuilt rusty_pty: its binary and stamp were gone.
       #
       # Paths and key MUST STAY IDENTICAL to those in `coverage`, `aot_gate` and nightly.yml,
       # which restore this payload rather than compile the crates again: actions/cache only
       # matches an entry saved with the same path list.
       - name: Cache native binary
         id: native-bin-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             src/Ntilde.App/native/target/release
@@ -179,7 +186,7 @@ jobs:
             src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
             src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
             src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
-          key: native-bin-v4-${{ matrix.os }}-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
+          key: native-bin-v5-${{ matrix.os }}-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
 
       - name: Install Rust
         if: steps.native-bin-cache.outputs.cache-hit != 'true'
@@ -232,6 +239,21 @@ jobs:
         id: native-libs
         shell: bash
         run: bash scripts/ci/native-libs-present.sh "$RUNNER_OS" >> "$GITHUB_OUTPUT"
+
+      # Saved here, in the main phase, not in a post step: see v5 on "Cache native binary".
+      # Only on a miss, and only when the check found every library, so an incomplete payload
+      # is never written under a key that a later hit would then trust.
+      - name: Save native binaries
+        if: steps.native-bin-cache.outputs.cache-hit != 'true' && steps.native-libs.outputs.skip == '1'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            src/Ntilde.App/native/target/release
+            src/Ntilde.App/native/target_linux/release
+            src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
+          key: ${{ steps.native-bin-cache.outputs.cache-primary-key }}
 
       # ── .NET ───────────────────────────────────────────────────────────────────
       - name: Cache .NET SDK
@@ -845,7 +867,7 @@ jobs:
             src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
             src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
             src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
-          key: native-bin-v4-ubuntu-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
+          key: native-bin-v5-ubuntu-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
 
       - name: Check the native libraries
         id: native-libs
@@ -1759,7 +1781,7 @@ jobs:
             src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
             src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
             src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
-          key: native-bin-v4-windows-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
+          key: native-bin-v5-windows-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
 
       - name: Check the native libraries
         id: native-libs

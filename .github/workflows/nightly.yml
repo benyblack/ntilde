@@ -35,11 +35,12 @@ jobs:
       - uses: actions/checkout@v4
 
       # Rust native libraries (rusty_pty and rusty_ssh) — mirrors ci.yml's build job, whose
-      # "Cache native binary" step explains the payload and the v4 key. Paths and key MUST STAY
-      # IDENTICAL to it: this job saves under the same key on main.
+      # "Cache native binary" step explains the payload, the v5 key and why restore and save
+      # are separate steps. Paths and key MUST STAY IDENTICAL to it: this job saves under the
+      # same key on main.
       - name: Cache native binary
         id: native-bin-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             src/Ntilde.App/native/target/release
@@ -47,7 +48,7 @@ jobs:
             src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
             src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
             src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
-          key: native-bin-v4-ubuntu-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
+          key: native-bin-v5-ubuntu-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
 
       - name: Install Rust
         if: steps.native-bin-cache.outputs.cache-hit != 'true'
@@ -74,6 +75,18 @@ jobs:
         id: native-libs
         shell: bash
         run: bash scripts/ci/native-libs-present.sh "$RUNNER_OS" >> "$GITHUB_OUTPUT"
+
+      - name: Save native binaries
+        if: steps.native-bin-cache.outputs.cache-hit != 'true' && steps.native-libs.outputs.skip == '1'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            src/Ntilde.App/native/target/release
+            src/Ntilde.App/native/target_linux/release
+            src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
+          key: ${{ steps.native-bin-cache.outputs.cache-primary-key }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
