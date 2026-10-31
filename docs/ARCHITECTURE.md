@@ -131,6 +131,10 @@ with legacy viewport fields retained for older readers.
 - Scrollback is immutable once flushed
 - Buffer state is renderer-agnostic — no Skia, no Avalonia in the type surface
 - All read access requires holding `TerminalBuffer.Lock` (`ReaderWriterLockSlim`); reads without the lock throw `AssertLockHeld`
+  Exception: `RuntimeForeground` and `RuntimeBackground` each read one immutable,
+  volatile-published color frame without the buffer lock, so UI preference queries
+  do not wait on terminal output. They return independent scalar values, not an
+  atomic pair or a coherent grid snapshot; compound buffer reads still require the lock.
 - Every write-lock acquisition goes through `AcquireWriteLock()`; one that has to block runs inside the host-supplied `TerminalBuffer.BlockingWriteWaitScope`. VT owns that routing; the wait policy and any native wait belong to the host (VT declares no P/Invoke — `Vt_declares_no_native_interop`)
 
 #### `TerminalRow` / `TerminalCell`

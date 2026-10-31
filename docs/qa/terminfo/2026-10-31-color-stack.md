@@ -110,9 +110,9 @@ Native SSH uses a separate best-effort reply command with a 64 KiB admission
 budget, including a 256-byte surcharge per command. Its reservation stays live
 through a stalled channel write and releases on completion, failure or teardown.
 Older native binaries decline the new entry point without using the unbounded
-keyboard path. All 179 native Rust library tests and 39 focused managed SSH tests pass,
+keyboard path. All 180 native Rust library tests and 39 focused managed SSH tests pass,
 including saturation, held reservations, empty packets, receiver teardown and
-keyboard independence. The full managed Platform suite passes 709 tests after merging the recording-privacy changes from main, with 43
+keyboard independence. The full managed Platform suite passes 711 tests after merging the recording-privacy changes from main, with 43
 expected skips. Both standalone and shared-shell regressions exhaust a real SSH
 server receive window, close without replenishing it, and verify bounded shutdown
 and reservation release. Disabling write cancellation makes both regressions fail.
@@ -121,6 +121,14 @@ virtual-time regression saturates a ten-slot protocol queue and verifies the
 shared-shell finish sweep and reservation release despite a stuck disconnect;
 disabling the cleanup timeout makes that regression fail.
 A third real-window case closes the shared connection with its shell still stalled.
+EOF and resize operations share the same close-cancellable operation helper as
+data writes. A saturated-queue regression checks cancellation, success and error
+propagation. Managed interop tests cover rejected handles/payloads and call the
+real export with a native session paused during SSH establishment: the first
+32 KiB reply is admitted and a second is rejected by the native budget. Rebinding
+to the ordinary-input export makes that test fail. Pane routing asserts the exact
+OSC reply bytes. Both ownership documents explicitly permit only the two
+immutable, volatile-published scalar color getters to avoid taking the buffer lock.
 The new raw-pointer FFI documents and declares its Rust safety boundary; the
 pre-existing Clippy raw-pointer baseline remains at 14 rather than growing. The final direct-desktop collector artifact remains the
 ff9abd15 build: it does not exercise native SSH or the CLI writer. The subsequent

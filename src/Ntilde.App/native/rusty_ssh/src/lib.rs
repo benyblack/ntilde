@@ -1868,17 +1868,16 @@ async fn run_shared_channel(
     shared.finish(error.as_deref());
 }
 
-// A remote with no receive-window space must not hold the worker join during disposal.
-// The caller retains its reply reservation until this write completes or is canceled.
-async fn write_main_channel(
+// A remote with no window/queue space must not hold the worker join during disposal.
+// The caller retains its reply reservation until its operation completes or is canceled.
+async fn run_main_channel_operation(
     shared: &SharedState,
-    channel: &russh::Channel<client::Msg>,
-    data: &[u8],
+    operation: impl Future<Output = Result<(), russh::Error>>,
 ) -> anyhow::Result<bool> {
     tokio::select! {
         biased;
         _ = shared.wait_closed() => Ok(false),
-        result = channel.data(data) => {
+        result = operation => {
             result?;
             Ok(true)
         }
@@ -1913,12 +1912,12 @@ async fn shared_channel_loop(
             command = next_worker_command(&mut pending_command, command_rx) => {
                 match command {
                     Some(WorkerCommand::Write(data)) => {
-                        if !eof_sent && !write_main_channel(shared, channel, &data).await? {
+                        if !eof_sent && !run_main_channel_operation(shared, channel.data(&data[..])).await? {
                             return Ok(());
                         }
                     }
                     Some(WorkerCommand::DeviceReply { data, reservation }) => {
-                        if !eof_sent && !write_main_channel(shared, channel, &data).await? {
+                        if !eof_sent && !run_main_channel_operation(shared, channel.data(&data[..])).await? {
                             return Ok(());
                         }
                         drop(reservation);
@@ -1928,13 +1927,17 @@ async fn shared_channel_loop(
                             coalesce_pending_resize_commands(command_rx, cols, rows);
                         pending_command = pending_resize_command;
                         if has_pty {
-                            channel.window_change(cols as u32, rows as u32, 0, 0).await?;
+                            if !run_main_channel_operation(shared, channel.window_change(cols as u32, rows as u32, 0, 0)).await? {
+                                return Ok(());
+                            }
                         }
                     }
                     Some(WorkerCommand::SendEof) => {
                         if !eof_sent {
                             eof_sent = true;
-                            channel.eof().await?;
+                            if !run_main_channel_operation(shared, channel.eof()).await? {
+                                return Ok(());
+                            }
                         }
                     }
                     // Forward calls on a shell's handle: the forwards are the connection's. A
@@ -4614,12 +4617,12 @@ fn run_session(
                 command = next_worker_command(&mut pending_command, &mut command_rx) => {
                     match command {
                         Some(WorkerCommand::Write(data)) => {
-                            if !eof_sent && !write_main_channel(&shared, &channel, &data).await? {
+                            if !eof_sent && !run_main_channel_operation(&shared, channel.data(&data[..])).await? {
                                 break;
                             }
                         }
                         Some(WorkerCommand::DeviceReply { data, reservation }) => {
-                            if !eof_sent && !write_main_channel(&shared, &channel, &data).await? {
+                            if !eof_sent && !run_main_channel_operation(&shared, channel.data(&data[..])).await? {
                                 break;
                             }
                             drop(reservation);
@@ -4627,7 +4630,9 @@ fn run_session(
                         Some(WorkerCommand::SendEof) => {
                             if !eof_sent {
                                 eof_sent = true;
-                                channel.eof().await?;
+                                if !run_main_channel_operation(&shared, channel.eof()).await? {
+                                    break;
+                                }
                             }
                         }
                         Some(WorkerCommand::Resize { cols, rows }) => {
@@ -4640,7 +4645,9 @@ fn run_session(
 
                             // An exec channel has no PTY, so there is nothing to resize.
                             if has_pty {
-                                channel.window_change(cols as u32, rows as u32, 0, 0).await?;
+                                if !run_main_channel_operation(&shared, channel.window_change(cols as u32, rows as u32, 0, 0)).await? {
+                                    break;
+                                }
                             }
                         }
                         Some(WorkerCommand::OpenDirectTcpIp {
@@ -6173,6 +6180,37 @@ mod tests {
             worker: Mutex::new(None),
         }) as usize;
         (handle, shared, rx)
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn channel_control_operations_cancel_on_close_and_preserve_errors() {
+        let shared = SharedState::new();
+        let (tx, _rx) = mpsc::channel::<()>(10);
+        for _ in 0..10 {
+            tx.send(()).await.unwrap();
+        }
+        // EOF and resize both wait on this bounded protocol queue, rather than the remote window.
+        let operation = async {
+            let _ = tx.send(()).await;
+            Ok(())
+        };
+        let close = async {
+            tokio::task::yield_now().await;
+            shared.mark_closed();
+        };
+        let (result, _) = tokio::time::timeout(Duration::from_secs(1), async {
+            tokio::join!(run_main_channel_operation(&shared, operation), close)
+        })
+        .await
+        .expect("control operation ignored session closure");
+        assert!(!result.unwrap());
+        let open = SharedState::new();
+        assert!(run_main_channel_operation(&open, async { Ok(()) })
+            .await
+            .unwrap());
+        assert!(run_main_channel_operation(&open, async { Err(russh::Error::Disconnect) })
+            .await
+            .is_err());
     }
 
     #[tokio::test(start_paused = true)]

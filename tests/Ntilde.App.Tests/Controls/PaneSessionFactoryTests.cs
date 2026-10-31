@@ -212,7 +212,7 @@ public class PaneCapabilityGatingTests
         pane.InitializeSessionCore("fake-shell", string.Empty, profile: null, cols: 80, rows: 24);
         Assert.Same(session.Object, pane.Session);
         pane.Parser!.OnResponse?.Invoke("\u001b]4;0;rgb:0000/0000/0000\u001b\\");
-        replies.Verify(x => x.TrySendDeviceReply(Moq.It.IsAny<string>()), Moq.Times.Once);
+        replies.Verify(x => x.TrySendDeviceReply("\u001b]4;0;rgb:0000/0000/0000\u001b\\"), Moq.Times.Once);
         session.Verify(x => x.SendInput(Moq.It.IsAny<string>()), Moq.Times.Never);
     }
 

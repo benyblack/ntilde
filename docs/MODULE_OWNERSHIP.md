@@ -85,6 +85,10 @@ invariant changes.
   retire fully covered prior SIXELs through the snapshot-session gate, without scanning history on
   the ordinary scrolling path.
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
+  Exception: `RuntimeForeground` and `RuntimeBackground` each read one immutable,
+  volatile-published color frame without the buffer lock, so UI preference queries
+  do not wait on terminal output. They return independent scalar values, not an
+  atomic pair or a coherent grid snapshot; compound buffer reads still require the lock.
 - **Lock re-entrancy contract:** `Lock` is a non-recursive `ReaderWriterLockSlim`. `EnterReadLockIfNeeded()` returns `false` (and acquires nothing) when a read *or* write lock is already held. `EnterWriteLockIfNeeded()` returns `false` only when a *write* lock is already held — calling it while holding a read lock throws `LockRecursionException` (upgrading is not supported), it does **not** return `false`. Both return `true` when they actually acquired the lock. The returned `bool` says *whether this call took the lock* — callers must pass it to the matching `Exit…IfNeeded(..., lockTaken)` and must **not** unlock when it is `false`. Treating a `false` return as "lock acquired" double-unlocks (or unlocks a caller's outer lock).
 - **`GetRowAbsolute()` null contract:** returns `null` for any absolute row that has no persistent `TerminalRow` — including **paged-out scrollback rows** (scrollback lives in `ScrollbackPages`, not as row objects), out-of-range rows, and negative indices. To read scrollback content use the cell/grapheme accessors (`GetCellAbsolute`, `GetGraphemeAbsolute`), which page it in; callers that assume a non-null row for scrollback indices will NRE.
 - **Blocking write waits go through the host's scope:** every write-lock acquisition goes through `AcquireWriteLock()`, and one that has to block runs inside `TerminalBuffer.BlockingWriteWaitScope` when the host has set it. VT owns the routing (`WriteLockReentrancyTests`); the policy - a UI thread's wait must not dispatch messages - and its native wait belong to App.
