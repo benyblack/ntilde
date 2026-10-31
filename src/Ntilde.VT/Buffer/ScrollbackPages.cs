@@ -72,9 +72,12 @@ namespace Ntilde.VT.Storage
         private static long s_nextGeneration;
         private long _generation = Interlocked.Increment(ref s_nextGeneration);
 
-        // Cache for O(1) sequential GetRow access during reflow
-        private TerminalPage? _lastAccessedPage;
-        private long _lastAccessedPageStartAbsRow;
+        // Readers share the buffer's read lock, so they may replace this cache concurrently.
+        // Publish the page and its coordinate together and capture that immutable pair once.
+        // Writers still require the owning buffer's exclusive lock, including page reuse.
+        internal sealed record PageAccess(TerminalPage Page, long StartAbsRow);
+        private PageAccess? _lastAccessedPage;
+        internal PageAccess? CachedPage => Volatile.Read(ref _lastAccessedPage);
 
         // ── Properties ───────────────────────────────────────────────────────────
 
@@ -195,6 +198,12 @@ namespace Ntilde.VT.Storage
         /// (0 = oldest retained row, Count-1 = newest row).
         /// </summary>
         public ReadOnlySpan<TerminalCell> GetRow(int logicalIndex)
+            => GetRow(logicalIndex, CachedPage);
+
+        // Accept the captured entry separately so an interleaving between capture and use
+        // can be exercised deterministically without callbacks on the read hot path.
+        // The caller must hold the owning read/write lock from capture through use.
+        internal ReadOnlySpan<TerminalCell> GetRow(int logicalIndex, PageAccess? cached)
         {
             if ((uint)logicalIndex >= (uint)Count)
                 throw new ArgumentOutOfRangeException(nameof(logicalIndex));
@@ -202,13 +211,13 @@ namespace Ntilde.VT.Storage
             long absRow = _totalRowsEvicted + logicalIndex;
 
             // Fast path: Sequential access cache
-            if (_lastAccessedPage != null && !_lastAccessedPage.IsReturned)
+            if (cached != null && !cached.Page.IsReturned)
             {
-                long pageEndAbs = _lastAccessedPageStartAbsRow + _lastAccessedPage.UsedRows;
-                if (absRow >= _lastAccessedPageStartAbsRow && absRow < pageEndAbs)
+                long pageEndAbs = cached.StartAbsRow + cached.Page.UsedRows;
+                if (absRow >= cached.StartAbsRow && absRow < pageEndAbs)
                 {
-                    int rowInPage = (int)(absRow - _lastAccessedPageStartAbsRow);
-                    return _lastAccessedPage.GetRowSpanReadOnly(rowInPage);
+                    int rowInPage = (int)(absRow - cached.StartAbsRow);
+                    return cached.Page.GetRowSpanReadOnly(rowInPage);
                 }
             }
 
@@ -220,8 +229,7 @@ namespace Ntilde.VT.Storage
                 if (absRow < pageEndAbs)
                 {
                     int rowInPage = (int)(absRow - pageStartAbs);
-                    _lastAccessedPage = page;
-                    _lastAccessedPageStartAbsRow = pageStartAbs;
+                    Volatile.Write(ref _lastAccessedPage, new PageAccess(page, pageStartAbs));
                     return page.GetRowSpanReadOnly(rowInPage);
                 }
                 pageStartAbs = pageEndAbs;
@@ -330,6 +338,7 @@ namespace Ntilde.VT.Storage
             {
                 _pages.RemoveLast();
                 _currentBytes -= page.ByteSize;
+                InvalidateCachedPage(page);
                 _pool.Return(page);
             }
 
@@ -355,7 +364,7 @@ namespace Ntilde.VT.Storage
             int rows = oldest.UsedRows;
             _totalRowsEvicted += rows;
             _currentBytes -= oldest.ByteSize;
-            if (ReferenceEquals(_lastAccessedPage, oldest)) _lastAccessedPage = null;
+            InvalidateCachedPage(oldest);
             _pool.Return(oldest);
             return rows;
         }
@@ -372,6 +381,7 @@ namespace Ntilde.VT.Storage
                 _pages.RemoveFirst();
                 _totalRowsEvicted += oldest.UsedRows;
                 _currentBytes -= oldest.ByteSize;
+                InvalidateCachedPage(oldest);
                 _pool.Return(oldest);
             }
         }
@@ -393,8 +403,14 @@ namespace Ntilde.VT.Storage
             _totalRowsEvicted = 0;
             Interlocked.Exchange(ref _generation, Interlocked.Increment(ref s_nextGeneration));
 
-            _lastAccessedPage = null;
-            _lastAccessedPageStartAbsRow = 0;
+            Volatile.Write(ref _lastAccessedPage, null);
+        }
+
+        private void InvalidateCachedPage(TerminalPage page)
+        {
+            // Called under the owning write lock: no reader can publish a new entry here.
+            if (ReferenceEquals(CachedPage?.Page, page))
+                Volatile.Write(ref _lastAccessedPage, null);
         }
 
         /// <summary>
