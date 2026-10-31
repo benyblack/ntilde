@@ -148,7 +148,10 @@ Legacy viewport-only snapshots and unknown state versions cannot establish parse
 continuation, inactive screens or saved cursor banks. For GUI seeks and playback
 restarts, replay begins at an earlier supported complete checkpoint, or from the
 initial paired state and the raw data prefix. The latter resets prior seek state
-without replacing the configured parser/decoder. The original recorded prefix must
+without replacing the configured parser/image decoder. Each run gets a fresh stateful
+UTF-8 decoder so a code point can span data records without inheriting bytes from a
+previous run. Playback publishes times at or after its requested start while rebuilding
+the earlier prefix. The original recorded prefix must
 be present for exact reconstruction; a standalone legacy viewport capture cannot
 provide a complete seek cut. Complete snapshots support independent checkpoints.
 This can make old recordings slower to seek, but avoids inventing parser state.

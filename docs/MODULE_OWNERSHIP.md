@@ -91,6 +91,8 @@ invariant changes.
   already supplied authoritative values.
 - Legacy sequential snapshots preserve parser continuation. App owns seek-session isolation: it
   restores a supported complete checkpoint or reconstructs from the initial state and raw prefix.
+  Each GUI run owns its UTF-8 decoder continuation; prefix reconstruction never publishes a
+  playback time earlier than the requested start.
 
 **Test authority**
 - `tests/Ntilde.Platform.Tests/Replay/`

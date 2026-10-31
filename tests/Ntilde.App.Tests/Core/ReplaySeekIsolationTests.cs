@@ -210,6 +210,66 @@ public sealed class ReplaySeekIsolationTests
         Assert.Equal(20, fixture.Model.CurrentTimeMs);
     }
 
+    public static IEnumerable<object[]> SplitUtf8Cases()
+    {
+        foreach (string text in new[] { "ñ", "€", "🙂" })
+            for (int cut = 1; cut < Encoding.UTF8.GetByteCount(text); cut++)
+                foreach (bool v1 in new[] { false, true })
+                    yield return new object[] { text, cut, v1 };
+    }
+
+    [AvaloniaTheory]
+    [MemberData(nameof(SplitUtf8Cases))]
+    public async Task Each_restart_preserves_split_utf8_without_inheriting_the_previous_runs_tail(string text, int cut, bool v1)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(text);
+        var prefix = new ReplayEvent { Type = "data", TimeOffsetMs = 10, Data = Convert.ToBase64String(bytes[..cut]) };
+        var tail = new ReplayEvent { Type = "data", TimeOffsetMs = 30, Data = Convert.ToBase64String(bytes[cut..]) };
+        ReplayEvent[] events = v1 ? [prefix, tail] : [prefix, Snapshot(20, CaptureLegacy(new TerminalBuffer(10, 5))), tail];
+        using var fixture = new SeekFixture(events, v1: v1);
+        await fixture.Ready(30);
+        var blank = new TerminalBuffer(v1 ? 80 : 10, v1 ? 24 : 5);
+        var blankParser = new AnsiParser(blank);
+        var expected = new TerminalBuffer(v1 ? 80 : 10, v1 ? 24 : 5);
+        var expectedParser = new AnsiParser(expected);
+        expectedParser.Process(text);
+        for (int run = 0; run < 2; run++)
+        {
+            await fixture.Seek(10);
+            AssertPair(blank, blankParser, fixture.Buffer, fixture.Parser);
+            await fixture.Seek(30);
+            AssertPair(expected, expectedParser, fixture.Buffer, fixture.Parser);
+        }
+        await fixture.PlayFrom(10);
+        AssertPair(expected, expectedParser, fixture.Buffer, fixture.Parser);
+        await fixture.PlayFrom(30);
+        AssertPair(expected, expectedParser, fixture.Buffer, fixture.Parser);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Prefix_reconstruction_does_not_publish_times_before_the_requested_playback_position(bool complete)
+    {
+        var source = new TerminalBuffer(10, 5);
+        var parser = new AnsiParser(source);
+        parser.Process("A");
+        ReplaySnapshot snapshot = complete ? Complete(Pair(source, parser)) : CaptureLegacy(source);
+        using var fixture = new SeekFixture([Data(10, "A"), Snapshot(20, snapshot), Data(30, "B")]);
+        await fixture.Ready(30);
+        var published = new List<long>();
+        fixture.Model.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ReplayViewModel.CurrentTimeMs)) published.Add(fixture.Model.CurrentTimeMs);
+        };
+        await fixture.PlayFrom(25);
+        Assert.NotEmpty(published);
+        Assert.All(published, time => Assert.True(time >= 25, $"Playback moved back to {time}."));
+        Assert.Equal(30, published[^1]);
+        parser.Process("B");
+        AssertPair(source, parser, fixture.Buffer, fixture.Parser);
+    }
+
     private static ReplayEvent Data(long time, string text) => new()
     {
         Type = "data",

@@ -162,7 +162,10 @@ snapshots remain sequential read material, not independent restart cuts. The rea
 can resume after an exact physical snapshot line so equal timestamps do not duplicate
 pre-checkpoint output. Header validation remains active; restored geometry/metrics
 remain authoritative. Session generation gates reject superseded and closed-window
-callbacks. The configured parser object and decoder survive rewinds.
+callbacks. The configured parser object and image decoder survive rewinds. Each run
+uses a fresh stateful UTF-8 decoder to preserve code points split across byte events
+without retaining a prior run's partial bytes. Playback keeps the displayed timeline
+at its requested start while reconstructing earlier prefix events.
 
 ---
 

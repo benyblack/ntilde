@@ -9,6 +9,7 @@ using Ntilde.Replay;
 using System;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -245,8 +246,13 @@ namespace Ntilde.UI.Replay
             try
             {
                 var runner = new ReplayReader(_filePath);
+                var decoder = Encoding.UTF8.GetDecoder();
                 var result = await runner.RunWithResultAsync(
-                    onDataCallback: data => ApplyInSessionAsync(sessionId, () => _parser.Process(System.Text.Encoding.UTF8.GetString(data))),
+                    onDataCallback: data =>
+                    {
+                        string text = DecodeChunk(decoder, data);
+                        return ApplyInSessionAsync(sessionId, () => _parser.Process(text));
+                    },
                     onHeaderCallback: header => ApplyHeaderMetricsAsync(sessionId, header, snapEntry is null),
                     onSixelCellSizeCallback: (w, h) => ApplyCellMetricsAsync(sessionId, w, h),
                     onResizeCallback: (w, h) => ApplyInSessionAsync(sessionId, () => _buffer.Resize(w, h)),
@@ -302,6 +308,7 @@ namespace Ntilde.UI.Replay
             try
             {
                 var runner = new ReplayReader(_filePath);
+                var decoder = Encoding.UTF8.GetDecoder();
                 long startTimeMs = _viewModel.CurrentTimeMs;
 
                 var nearest = _viewModel.GetNearestSnapshotEntry(startTimeMs);
@@ -312,12 +319,12 @@ namespace Ntilde.UI.Replay
                 }
                 var snapEntry = _viewModel.GetNearestSeekCheckpoint(startTimeMs);
                 long minTime = snapEntry?.TimeMs ?? 0;
-                if (!await ApplySeekSnapshotAsync(sessionId, snapEntry?.Snapshot, minTime)) return;
+                if (!await ApplySeekSnapshotAsync(sessionId, snapEntry?.Snapshot, startTimeMs)) return;
 
                 await runner.RunWithResultAsync(
                     onDataCallback: async (data) =>
                     {
-                        var text = System.Text.Encoding.UTF8.GetString(data);
+                        string text = DecodeChunk(decoder, data);
                         await ApplyInSessionAsync(sessionId, () => _parser.Process(text));
                     },
                     onHeaderCallback: header => ApplyHeaderMetricsAsync(sessionId, header, snapEntry is null),
@@ -337,8 +344,8 @@ namespace Ntilde.UI.Replay
                         {
                             if (!_isUserScrubbing && _playbackSessionGate.IsCurrent(sessionId))
                             {
-                                _displayedTimeMs = timeMs;
-                                _viewModel.CurrentTimeMs = timeMs;
+                                _displayedTimeMs = Math.Max(startTimeMs, timeMs);
+                                _viewModel.CurrentTimeMs = _displayedTimeMs;
                             }
                         });
                     },
@@ -358,6 +365,14 @@ namespace Ntilde.UI.Replay
             {
                 Dispatcher.UIThread.Post(() => StopPlaybackIfCurrent(sessionId));
             }
+        }
+
+        /// <summary>Retains incomplete UTF-8 characters within one replay pass, never across restarts.</summary>
+        private static string DecodeChunk(Decoder decoder, byte[] data)
+        {
+            var chars = new char[Encoding.UTF8.GetMaxCharCount(data.Length)];
+            int count = decoder.GetChars(data, 0, data.Length, chars, 0, flush: false);
+            return new string(chars, 0, count);
         }
 
         private void StopPlaybackIfCurrent(int sessionId)
