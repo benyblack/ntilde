@@ -6,7 +6,15 @@ public sealed class SshInteractionResponse : IDisposable
 {
     public bool IsAccepted { get; init; }
     public bool IsCanceled { get; init; }
-    public SecretBuffer Secret { get; init; } = SecretBuffer.FromText("");
+    private SecretBuffer? _secret;
+
+    // Secret factories assign their buffer directly. Host-key/cancel responses need no empty
+    // allocation unless a consumer actually asks for Secret.
+    public SecretBuffer Secret
+    {
+        get => _secret ??= SecretBuffer.FromText("");
+        init => _secret = value;
+    }
     public bool RememberPasswordInVault { get; init; }
     public IReadOnlyList<SecretBuffer> KeyboardResponses { get; init; } = Array.Empty<SecretBuffer>();
 
@@ -50,7 +58,7 @@ public sealed class SshInteractionResponse : IDisposable
         new() { KeyboardResponses = (responses ?? Array.Empty<string>()).Select(value => SecretBuffer.FromText(value)).ToArray() };
     public void Dispose()
     {
-        Secret.Dispose();
+        _secret?.Dispose();
         foreach (SecretBuffer answer in KeyboardResponses) answer.Dispose();
     }
 }
