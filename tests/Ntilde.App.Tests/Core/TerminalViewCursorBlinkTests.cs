@@ -1,4 +1,7 @@
 using System.Reflection;
+using Avalonia;
+using Avalonia.Media.Imaging;
+using SkiaSharp;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -103,6 +106,67 @@ public sealed class TerminalViewCursorBlinkTests
         fixture.AssertBlinkTimer(false);
     }
 
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_hidden_VT_cursor_never_blinks_and_showing_it_refreshes_the_override(bool hostBlink)
+    {
+        using var fixture = new ViewFixture(hostBlink);
+        fixture.Process("\u001b[5 q");
+        fixture.AssertBlinkTimer(true);
+        fixture.Process("\u001b[?25l");
+        fixture.AssertBlinkTimer(false);
+        Assert.True(fixture.BlinkPhase);
+        fixture.TickBlink();
+        fixture.AssertBlinkTimer(false);
+        fixture.View.ApplySettings(new TerminalSettings { CursorBlink = !hostBlink });
+        fixture.AssertBlinkTimer(false);
+        fixture.Process("\u001b[?25h");
+        fixture.AssertBlinkTimer(true);
+        fixture.Process("\u001b[?25l\u001b[6 q\u001b[?25h");
+        fixture.AssertBlinkTimer(false);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Input_clears_transient_suppression_and_redraws_a_steady_cursor(bool hostBlink)
+    {
+        using var fixture = new ViewFixture(hostBlink);
+        fixture.Process("\u001b[6 q");
+        fixture.Buffer.EnterBatchWrite();
+        try { fixture.Buffer.ExtendCursorSuppression_NoLock(TimeSpan.FromDays(1)); }
+        finally { fixture.Buffer.ExitBatchWrite(); }
+        Assert.NotEqual(0, fixture.SuppressedUntil);
+        Assert.False(fixture.Dirty);
+        fixture.ResetBlink();
+        Assert.Equal(0, fixture.SuppressedUntil);
+        Assert.True(fixture.Dirty);
+        fixture.AssertBlinkTimer(false);
+    }
+
+    [AvaloniaTheory]
+    [Trait("Lane", "PlatformBoot")]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(5)]
+    public void Application_blink_controls_the_rendered_cursor_when_the_host_default_is_steady(int style)
+    {
+        using var fixture = new ViewFixture(hostBlink: false);
+        fixture.View.ApplySettings(new TerminalSettings
+        {
+            CursorBlink = false,
+            WindowOpacity = 1,
+            FontFamily = "Cascadia Code, Consolas, Monospace"
+        });
+        fixture.Buffer.Theme.CursorColor = TermColor.FromRgb(255, 0, 0);
+        fixture.Process($"\u001b[{style} q");
+        fixture.TickBlink();
+        Assert.False(fixture.CursorIsRendered());
+        fixture.ResetBlink();
+        Assert.True(fixture.CursorIsRendered());
+    }
+
     private sealed class ViewFixture : IDisposable
     {
         public TerminalBuffer Buffer { get; } = new(80, 24);
@@ -128,6 +192,32 @@ public sealed class TerminalViewCursorBlinkTests
             TickRender();
         }
 
+        public long SuppressedUntil
+        {
+            get
+            {
+                Buffer.Lock.EnterReadLock();
+                try { return Buffer.CursorSuppressedUntilUtcTicks; }
+                finally { Buffer.Lock.ExitReadLock(); }
+            }
+        }
+        public bool Dirty => (bool)typeof(TerminalView).GetField("_isDirty", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(View)!;
+        public bool CursorIsRendered()
+        {
+            using var target = new RenderTargetBitmap(
+                new PixelSize((int)Math.Ceiling(View.Bounds.Width), (int)Math.Ceiling(View.Bounds.Height)), new Vector(96, 96));
+            View.RenderOffscreen(target);
+            using var stream = new MemoryStream();
+            target.Save(stream, PngBitmapEncoderOptions.Default);
+            using var bitmap = SKBitmap.Decode(stream.ToArray());
+            for (int y = 0; y < bitmap.Height; y++)
+                for (int x = 0; x < bitmap.Width; x++)
+                {
+                    SKColor pixel = bitmap.GetPixel(x, y);
+                    if (pixel.Red > 200 && pixel.Green < 50 && pixel.Blue < 50) return true;
+                }
+            return false;
+        }
         public bool BlinkPhase => (bool)typeof(TerminalView).GetField("_cursorBlinkPhase", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(View)!;
         public void AssertBlinkTimer(bool expected) => Assert.Equal(expected, View.RunningTimersForTest.Contains("cursor blink"));
         public void Process(string text) { _parser.Process(text); TickRender(); }
@@ -136,6 +226,6 @@ public sealed class TerminalViewCursorBlinkTests
         public void ResetBlink() => Invoke("ResetCursorBlink");
         private void Invoke(string method, params object?[] args) =>
             typeof(TerminalView).GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(View, args);
-        public void Dispose() { Window.Close(); Dispatcher.UIThread.RunJobs(); }
+        public void Dispose() { View.Retire(); Window.Close(); Dispatcher.UIThread.RunJobs(); }
     }
 }

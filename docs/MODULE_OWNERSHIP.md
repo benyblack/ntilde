@@ -46,7 +46,7 @@ invariant changes.
   Cursor default/override state travels with snapshots; App resolves a default appearance
   against its own configured cursor shape and blink preference. App uses that same effective
   blink policy for rendering and every timer/reset path, gated by attachment, visibility,
-  focus and retirement. Host settings preserve explicit application overrides; valid
+  focus, VT cursor visibility and retirement. Host settings preserve explicit application overrides; valid
   DECSCUSR changes publish normal batch-coalesced invalidation.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
   decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,

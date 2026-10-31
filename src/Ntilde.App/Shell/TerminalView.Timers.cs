@@ -93,8 +93,9 @@ namespace Ntilde.Shell
 
         private void ResetCursorBlink()
         {
-            if (!ShouldRunUiTimers() || !GetEffectiveCursorBlinkEnabled()) return;
+            if (!ShouldRunUiTimers()) return;
 
+            // Input makes a steady cursor visible too; only restarting the timer depends on blink.
             // Block transient cursor suppression for 200ms to allow smooth TUI navigation
             _buffer?.BlockCursorSuppression(TimeSpan.FromMilliseconds(200));
 
@@ -165,7 +166,7 @@ namespace Ntilde.Shell
         /// too, and stopping *that* on focus loss would freeze output from a background
         /// shell - a correctness bug, not a saving.
         private bool ResolveCursorBlinkEnabled(ModeState modes) =>
-            modes.CursorStyleIsDefault ? _cursorBlinkEnabled : modes.IsCursorBlinkEnabled;
+            modes.IsCursorVisible && (modes.CursorStyleIsDefault ? _cursorBlinkEnabled : modes.IsCursorBlinkEnabled);
 
         private bool GetEffectiveCursorBlinkEnabled()
         {
