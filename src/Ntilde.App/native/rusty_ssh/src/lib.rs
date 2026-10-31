@@ -1759,39 +1759,47 @@ fn run_connection(
 
         // Nothing may join a connection that is going away.
         fail_pending_shells(&mut command_rx, "the shared SSH connection was closed");
-        close_all_forward_channels(&forward_channels).await;
-        let _ = session
-            .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
-            .await;
-        for jump in jump_sessions.into_iter().rev() {
-            let _ = jump
+        let cleanup = async {
+            close_all_forward_channels(&forward_channels).await;
+            let _ = session
                 .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
                 .await;
-        }
-
-        // The disconnect ends every shell's channel, and their tasks finish on their own. Bounded,
-        // like the forward drain, because nova_ssh_close joins this thread (#155). A shell still
-        // running after that is dropped with the runtime, so it is finished here instead: whatever
-        // happens, every shell's handle sees Closed.
+            for jump in jump_sessions.into_iter().rev() {
+                let _ = jump
+                    .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
+                    .await;
+            }
+        };
         let message = lost
             .clone()
             .unwrap_or_else(|| "the shared SSH connection was closed".to_owned());
-        let drain = async {
-            for shell in &mut shells {
-                let _ = (&mut shell.task).await;
-            }
-        };
-        let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, drain).await;
-        for shell in shells {
-            shell.task.abort();
-            shell.shared.finish(Some(&message));
-        }
+        finish_shared_channels(shells, cleanup, &message).await;
 
         match lost {
             Some(message) => Err(anyhow::anyhow!(message)),
             None => Ok(()),
         }
     })
+}
+
+// A wedged protocol queue cannot prevent the shell abort/finish sweep. Bound network
+// cleanup and task draining separately, then release every shell even on timeout.
+async fn finish_shared_channels(
+    mut shells: Vec<SharedChannel>,
+    cleanup: impl Future<Output = ()>,
+    message: &str,
+) {
+    let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, cleanup).await;
+    let drain = async {
+        for shell in &mut shells {
+            let _ = (&mut shell.task).await;
+        }
+    };
+    let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, drain).await;
+    for shell in shells {
+        shell.task.abort();
+        shell.shared.finish(Some(message));
+    }
 }
 
 /// Fails every shell still waiting to be opened on a connection that will not serve it, and stops
@@ -2073,8 +2081,12 @@ pub extern "C" fn nova_ssh_write(
 
 /// Best-effort device reply: reserve bounded cost before copying or enqueueing payload bytes.
 /// WOULD_BLOCK is a dropped reply, never a reason to retry through nova_ssh_write.
+///
+/// # Safety
+/// A nonempty admitted payload must point to `data_len` readable bytes for this call.
+/// Null nonempty payloads and lengths beyond the admission budget are rejected before access.
 #[unsafe(no_mangle)]
-pub extern "C" fn nova_ssh_try_write_device_reply(
+pub unsafe extern "C" fn nova_ssh_try_write_device_reply(
     handle: usize,
     data: *const u8,
     data_len: usize,
@@ -6163,13 +6175,48 @@ mod tests {
         (handle, shared, rx)
     }
 
+    #[tokio::test(start_paused = true)]
+    async fn saturated_disconnect_queue_still_finishes_shells_and_releases_replies() {
+        let shared = Arc::new(SharedState::new());
+        let reservation = reserve_device_reply(&shared, 4096).unwrap();
+        let task = tokio::spawn(async move {
+            let _held_reply = reservation;
+            std::future::pending::<()>().await;
+        });
+        // Stand in for russh's ten-message protocol queue with a processor that stops reading.
+        let (tx, _rx) = mpsc::channel::<()>(10);
+        for _ in 0..10 {
+            tx.send(()).await.unwrap();
+        }
+        let cleanup = async { let _ = tx.send(()).await; };
+        tokio::time::timeout(
+            Duration::from_secs(5),
+            finish_shared_channels(
+                vec![SharedChannel { shared: shared.clone(), task }],
+                cleanup,
+                "closed",
+            ),
+        )
+        .await
+        .expect("saturated disconnect prevented the shell finish sweep");
+        tokio::task::yield_now().await; // Execute the task abort and its reservation destructor.
+        assert!(shared.finished.load(Ordering::Acquire));
+        assert!(shared.is_closed());
+        assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
+        let mut saw_closed = false;
+        while let EventRead::Ready(event) = shared.take_event_if_fits(usize::MAX) {
+            saw_closed |= event.kind == NovaSshEventKind::Closed;
+        }
+        assert!(saw_closed);
+    }
+
     #[test]
     fn device_reply_budget_stays_reserved_while_dequeued_write_is_stalled() {
         let (handle, shared, mut rx) = device_reply_test_session();
         let payload = b"x";
         let mut accepted = 0;
         loop {
-            let rc = nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len());
+            let rc = unsafe { nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len()) };
             if rc == NOVA_SSH_RESULT_WOULD_BLOCK {
                 break;
             }
@@ -6187,7 +6234,7 @@ mod tests {
         );
         assert_eq!(
             NOVA_SSH_RESULT_WOULD_BLOCK,
-            nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len())
+            unsafe { nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len()) }
         );
         // Ordinary keyboard input stays independent of the reply admission budget.
         assert_eq!(
@@ -6197,7 +6244,7 @@ mod tests {
         drop(held);
         assert_eq!(
             NOVA_SSH_RESULT_OK,
-            nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len())
+            unsafe { nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len()) }
         );
         let mut keyboard = 0;
         while let Ok(command) = rx.try_recv() {
@@ -6224,12 +6271,12 @@ mod tests {
         for _ in 0..MAX_QUEUED_DEVICE_REPLY_COST / DEVICE_REPLY_OVERHEAD {
             assert_eq!(
                 NOVA_SSH_RESULT_OK,
-                nova_ssh_try_write_device_reply(handle, ptr::null(), 0)
+                unsafe { nova_ssh_try_write_device_reply(handle, ptr::null(), 0) }
             );
         }
         assert_eq!(
             NOVA_SSH_RESULT_WOULD_BLOCK,
-            nova_ssh_try_write_device_reply(handle, ptr::null(), 0)
+            unsafe { nova_ssh_try_write_device_reply(handle, ptr::null(), 0) }
         );
         assert_eq!(
             MAX_QUEUED_DEVICE_REPLY_COST,
@@ -6239,7 +6286,7 @@ mod tests {
         assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
         assert_eq!(
             NOVA_SSH_RESULT_CLOSED,
-            nova_ssh_try_write_device_reply(handle, b"x".as_ptr(), 1)
+            unsafe { nova_ssh_try_write_device_reply(handle, b"x".as_ptr(), 1) }
         );
         assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
         assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
@@ -6251,15 +6298,15 @@ mod tests {
         let payload = vec![0; MAX_QUEUED_DEVICE_REPLY_COST];
         assert_eq!(
             NOVA_SSH_RESULT_WOULD_BLOCK,
-            nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len())
+            unsafe { nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len()) }
         );
         assert_eq!(
             NOVA_SSH_RESULT_INVALID_ARGUMENT,
-            nova_ssh_try_write_device_reply(handle, ptr::null(), 1)
+            unsafe { nova_ssh_try_write_device_reply(handle, ptr::null(), 1) }
         );
         assert_eq!(
             NOVA_SSH_RESULT_INVALID_ARGUMENT,
-            nova_ssh_try_write_device_reply(0, b"x".as_ptr(), 1)
+            unsafe { nova_ssh_try_write_device_reply(0, b"x".as_ptr(), 1) }
         );
         assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
         drop(rx);
@@ -10586,7 +10633,7 @@ mod shared_connection_e2e_tests {
         );
     }
 
-    fn assert_stalled_reply_close(shared_connection: bool) {
+    fn assert_stalled_reply_close(shared_connection: bool, close_connection: bool) {
         let (port, seen) = start_server_with_stalled_input(true);
         let strings = strings();
         let args = args(&strings, port);
@@ -10605,7 +10652,7 @@ mod shared_connection_e2e_tests {
         let reply = vec![b'x'; 4096];
         assert_eq!(
             NOVA_SSH_RESULT_OK,
-            nova_ssh_try_write_device_reply(shell, reply.as_ptr(), reply.len())
+            unsafe { nova_ssh_try_write_device_reply(shell, reply.as_ptr(), reply.len()) }
         );
         // A real server received the first byte, so the command has been dequeued and its
         // channel.data future is waiting for the rest of a window that is never replenished.
@@ -10619,9 +10666,10 @@ mod shared_connection_e2e_tests {
             reply.len() + DEVICE_REPLY_OVERHEAD,
             shared.queued_device_reply_cost.load(Ordering::Acquire)
         );
+        let close_handle = if close_connection { connection.unwrap() } else { shell };
         let (closed_tx, closed_rx) = std::sync::mpsc::channel();
         thread::spawn(move || {
-            let _ = closed_tx.send(nova_ssh_close(shell));
+            let _ = closed_tx.send(nova_ssh_close(close_handle));
         });
         assert_eq!(
             NOVA_SSH_RESULT_OK,
@@ -10634,19 +10682,27 @@ mod shared_connection_e2e_tests {
             assert!(Instant::now() < deadline, "canceled reply retained its reservation");
             thread::sleep(Duration::from_millis(2));
         }
-        if let Some(connection) = connection {
+        if close_connection {
+            drive(shell, NovaSshEventKind::Closed, |_| {});
+            assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(shell));
+        } else if let Some(connection) = connection {
             assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(connection));
         }
     }
 
     #[test]
+    fn closing_connection_cancels_its_real_stalled_device_reply() {
+        assert_stalled_reply_close(true, true);
+    }
+
+    #[test]
     fn closing_standalone_shell_cancels_a_real_stalled_device_reply() {
-        assert_stalled_reply_close(false);
+        assert_stalled_reply_close(false, false);
     }
 
     #[test]
     fn closing_shared_shell_cancels_a_real_stalled_device_reply() {
-        assert_stalled_reply_close(true);
+        assert_stalled_reply_close(true, false);
     }
 
     #[test]
