@@ -113,6 +113,7 @@ public sealed class WorkflowTools
         (new[] { "parser", "escape", "ansi", "csi", "osc", "dcs", "apc", "sequence" }, new[] {
             "src/Ntilde.VT/AnsiParser.cs",
             "src/Ntilde.VT/AnsiParser.Csi.cs",
+            "src/Ntilde.VT/AnsiParser.ColorScheme.cs",
             "src/Ntilde.VT/AnsiParser.Sgr.cs",
             "src/Ntilde.VT/AnsiParser.Reset.cs",
             "src/Ntilde.VT/AnsiParser.Osc.cs",

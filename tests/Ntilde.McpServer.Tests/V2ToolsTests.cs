@@ -205,6 +205,27 @@ public class ExplainEscapeSequenceTests
         Assert.Contains("not in the curated table", result, System.StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("CSI ?996n", "DSR color scheme")]
+    [InlineData("ESC[?996n", "DSR color scheme")]
+    [InlineData("DEC 2031", "Color-scheme reporting")]
+    public void ColorSchemeCatalogForms_Resolve(string sequence, string mnemonic)
+    {
+        Assert.Contains(mnemonic, VtTools.ExplainEscapeSequence(sequence), System.StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("CSI 996n")]
+    [InlineData("CSI >996n")]
+    [InlineData("CSI ?996;1n")]
+    [InlineData("CSI ?996:1n")]
+    [InlineData("CSI ?996$n")]
+    [InlineData("CSI ?997;1n")]
+    public void OtherDsrForms_DoNotClaimColorSchemeQuery(string sequence)
+    {
+        Assert.DoesNotContain("DSR color scheme", VtTools.ExplainEscapeSequence(sequence), System.StringComparison.Ordinal);
+    }
+
     [Fact]
     public void CatalogCapabilities_AgreeWithExplainerSupportClaims()
     {
