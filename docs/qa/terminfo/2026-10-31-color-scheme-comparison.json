@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "kind": "derived-pinned-suite-comparison",
+  "collectorVersion": "4.0.0",
+  "nodeVersion": "v24.22.1",
+  "suiteId": "16a690f34c0e",
+  "probeHash": "16a690f34c0e",
+  "collectorSourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+  "adapter": {
+    "id": "ntilde-owned-macos-v1",
+    "bundleSha256": "10f5db68f76ecdcdda27c7cd9ffc0b9b51bdbb71888d6e8fede333dea34be5ce",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "before": {
+    "artifactDirectory": "artifacts/terminfo/owned-mSQy5d",
+    "appVersion": "0.12.0+954a1b7a8e7be757a1477b1f0c16c58357eee8e4",
+    "identity": "unverified",
+    "appVersionSource": "operator supplied; not independently verified",
+    "measuredAt": "2026-10-31T19:06:13.732Z",
+    "collectorRunId": "f80fdb79b1a4b9ff40f80b882f5106fd",
+    "ownedRunId": "54f6c00d3365d5f48b03276fc011eb5e",
+    "rawSha256": "9081c34579642b5dd190d349428bef97aaa0ee6e36fbbcdfd8e3e623bf740a5f",
+    "assemblySha256": "107a02a4855b1614534a55e0f3ff8f2452823874d5614b6d7decf33df8e3fe9c",
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "counts": {
+      "inconclusive": 180,
+      "supported": 67,
+      "unsupported": 8
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 25,
+      "policy-refused": 3
+    },
+    "suiteComplete": false,
+    "geometry": {
+      "cols": 140,
+      "rows": 41
+    },
+    "cleanedUpAt": "2026-10-31T19:06:13.787Z"
+  },
+  "after": {
+    "artifactDirectory": "artifacts/terminfo/owned-3LSugv",
+    "appVersion": "0.12.0+d19d05648308d5d5e6da159bf1cff356820e0f54",
+    "identity": "unverified",
+    "appVersionSource": "operator supplied; not independently verified",
+    "measuredAt": "2026-10-31T19:26:51.608Z",
+    "collectorRunId": "6c84fcc8dd88fb3524d8ba7e9a637fd7",
+    "ownedRunId": "9e48f6987db0538d0dbb3c8d8470947b",
+    "rawSha256": "09e856a171220872201a708312a0df10f511263ad6ac02c6ed76871287ad4de1",
+    "assemblySha256": "79579c158e9b63ef2dd9e18bbb28e67ff4f22f61d843fdd09b82b125f9136f68",
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "counts": {
+      "inconclusive": 179,
+      "supported": 69,
+      "unsupported": 7
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 24,
+      "policy-refused": 3
+    },
+    "suiteComplete": false,
+    "geometry": {
+      "cols": 140,
+      "rows": 41
+    },
+    "cleanedUpAt": "2026-10-31T19:26:51.667Z"
+  },
+  "changedObservations": [
+    {
+      "featureId": "modes.color-scheme-reporting",
+      "before": {
+        "featureId": "modes.color-scheme-reporting",
+        "outcome": "unsupported",
+        "evidence": "query",
+        "note": "DECRPM 2031 explicitly unrecognized",
+        "rawReplyRef": "modes.color-scheme-reporting"
+      },
+      "after": {
+        "featureId": "modes.color-scheme-reporting",
+        "outcome": "supported",
+        "evidence": "query",
+        "note": "DECRPM 2031 recognized (reset); update events were not tested",
+        "rawReplyRef": "modes.color-scheme-reporting"
+      },
+      "beforeTrace": {
+        "writes": [],
+        "queries": [
+          {
+            "sequence": "\u001b[?2031$p\u001b[c",
+            "match": [
+              "\u001b[?2031;0$y",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?2031;0$y\u001b[?62;4;22c",
+            "rawBase64": "G1s/MjAzMTswJHkbWz82Mjs0OzIyYw=="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b[?2031$p\u001b[c",
+            "match": [
+              "\u001b[?2031;0$y",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?2031;0$y\u001b[?62;4;22c",
+            "rawBase64": "G1s/MjAzMTswJHkbWz82Mjs0OzIyYw=="
+          }
+        ]
+      },
+      "afterTrace": {
+        "writes": [],
+        "queries": [
+          {
+            "sequence": "\u001b[?2031$p\u001b[c",
+            "match": [
+              "\u001b[?2031;2$y",
+              "2"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?2031;2$y\u001b[?62;4;22c",
+            "rawBase64": "G1s/MjAzMTsyJHkbWz82Mjs0OzIyYw=="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b[?2031$p\u001b[c",
+            "match": [
+              "\u001b[?2031;2$y",
+              "2"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?2031;2$y\u001b[?62;4;22c",
+            "rawBase64": "G1s/MjAzMTsyJHkbWz82Mjs0OzIyYw=="
+          }
+        ]
+      }
+    },
+    {
+      "featureId": "device.dsr-996-color-scheme",
+      "before": {
+        "featureId": "device.dsr-996-color-scheme",
+        "outcome": "inconclusive",
+        "evidence": "query",
+        "reason": "no-response",
+        "rawReplyRef": "device.dsr-996-color-scheme"
+      },
+      "after": {
+        "featureId": "device.dsr-996-color-scheme",
+        "outcome": "supported",
+        "evidence": "query",
+        "note": "Current scheme queried; unsolicited change events were not tested",
+        "rawReplyRef": "device.dsr-996-color-scheme"
+      },
+      "beforeTrace": {
+        "writes": [],
+        "queries": [
+          {
+            "sequence": "\u001b[?996n\u001b[c",
+            "match": null,
+            "reason": "sentinel",
+            "raw": "\u001b[?62;4;22c",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b[?996n\u001b[c",
+            "match": null,
+            "reason": "sentinel",
+            "raw": "\u001b[?62;4;22c",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          }
+        ]
+      },
+      "afterTrace": {
+        "writes": [],
+        "queries": [
+          {
+            "sequence": "\u001b[?996n\u001b[c",
+            "match": [
+              "\u001b[?997;1n",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?997;1n\u001b[?62;4;22c",
+            "rawBase64": "G1s/OTk3OzFuG1s/NjI7NDsyMmM="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b[?996n\u001b[c",
+            "match": [
+              "\u001b[?997;1n",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?997;1n\u001b[?62;4;22c",
+            "rawBase64": "G1s/OTk3OzFuG1s/NjI7NDsyMmM="
+          }
+        ]
+      }
+    }
+  ],
+  "unchangedObservations": 253,
+  "ungradedDiagnostics": {
+    "cursor.reverse-wrap": {
+      "kind": "collector-error",
+      "name": "UndeclaredTerminalGeometry",
+      "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+    }
+  },
+  "limitations": [
+    "The original raw files and complete evidence directories remain local and Git ignored; this is a derived summary, not an edited raw run.",
+    "Collector identity is unverified. Supplied versions were read from the fresh sidecar assemblies.",
+    "Queries do not verify unsolicited theme notifications, keyboard events or pixels.",
+    "The unchanged collector geometry diagnostic leaves the suite incomplete."
+  ]
+}

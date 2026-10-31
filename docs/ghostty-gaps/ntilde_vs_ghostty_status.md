@@ -1,120 +1,45 @@
-Ntilde vs Ghostty --- refreshed status
-------------------------------------------
+# Ntilde compatibility comparison — 2026-10-31
 
-### The short version
+This refresh focuses on the gaps observed by the owned terminfo.dev collector.
+The [new baseline and before/after evidence](../qa/terminfo/2026-10-31-macos-owned.md)
+identify the measured Ntilde binaries. The [VT matrix](../vt_coverage_matrix.md)
+remains the implementation and test reference. The older April comparison is
+superseded; it was not a controlled measurement of other terminal emulators.
 
--   **Core VT correctness**: Ntilde has closed most of the high-impact gaps (parser recovery, scroll/margins, alt-screen, input modes, tabs).
--   **Unicode behavior**: now competitive thanks to a shared width model across storage + renderer.
--   **Verification story**: Ntilde is now ahead with an auditable matrix + CI validation.
--   **Remaining gaps**: some sequence families still **⚠ Partial** (e.g., full directional cursor family, OSC 1337 coverage breadth, deeper Unicode conformance tables).
+## Color preference reporting
 
-* * * * *
+| Feature | Ntilde on main before this change | Ntilde implementation in this change | Ghostty | Kitty | Contour |
+|---|---|---|---|---|---|
+| Dark/light query (`CSI ? 996 n`) | No matching response | Replies with dark/light from the effective terminal background | Documented adoption | Documented adoption | Reference implementation |
+| Opt-in updates (DEC mode 2031) | Explicitly unrecognized | Queryable subscription; reports dark/light background transitions | Documented adoption | Documented adoption | Reference implementation |
 
-### Where Ntilde clearly improved
+Other-terminal entries are adoption statements in the protocol maintainer's
+[current specification](https://contour-terminal.org/vt-extensions/color-palette-update-notifications/),
+read 2026-10-31. Those binaries were not measured in this refresh. The specification
+lists Ghostty since 1.0.0, Kitty since 0.38.1 and Contour since 0.4.0. This table
+compares the protocol surface, not total compatibility scores.
 
-**1) Parser robustness (PR1)**
+Ntilde reports its effective profile/shared-session background preference rather
+than raw OS appearance. Updates are off by default, enabling does not send an
+initial report, and only a change between dark and light sends a notification.
+Palette edits with unchanged classification and unrelated settings are silent.
+The explicit query works without subscribing. The [matrix](../vt_coverage_matrix.md)
+records reset, snapshot and shared-session scope.
 
--   Deterministic recovery from malformed ESC/CSI/OSC.
--   No more "print junk on error" class of bugs.
--   Evidence-backed and fuzz/regression covered.
+## Remaining observations on the pre-change main build
 
-**2) Scrolling, margins, wrap (PR3)**
+| Probe family | Observations | Measured result | What remains |
+|---|---:|---|---|
+| Kitty alternate keys / all keys / associated text | 3 | Requested flags are masked out | Extend keyboard encoding and routing, including text/IME/layout interactions; the [Kitty protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) defines flags 4, 8 and 16 |
+| OSC 66 text sizing | 1 | Unsupported by the cursor-advance probe | Grid geometry, rendering and evidence for the [text-sizing protocol](https://sw.kovidgoyal.net/kitty/text-sizing-protocol/) |
+| OSC 5522 clipboard | 1 | Mode explicitly unrecognized | Separate clipboard policy and fixture work |
+| OSC 30001 / 30101 color stacks | 2 | Foreground change or stack restoration was not observed | Mutable terminal colors and bounded stack behavior |
+| Color-scheme reporting | 1 | Mode 2031 explicitly unrecognized | Addressed by this change; see live before/after report |
 
--   Correct DECSTBM handling (including invalid-region preservation).
--   IND/RI scoped to active margins.
--   Right-edge + wide glyph + combining behavior fixed.
-
-**3) Alternate screen (PR4)**
-
--   Clean separation of main vs alt live state.
--   Correct semantics for `?47`, `?1047`, `?1049`.
--   Deterministic shell → app → shell transitions.
-
-**4) Input modes (PR5)**
-
--   Unified encoder for keys, paste, focus, mouse.
--   Bracketed paste (`?2004`), focus (`?1004`), app cursor (`?1`) behave consistently.
--   Modern mouse (SGR 1006) solid.
-
-**5) Cursor positioning (PR2)**
-
--   Correct defaults (omitted/0 → 1) for CUP/HVP/HPA/VPA/HPR/VPR.
--   Consistent clamping + DECOM interactions.
-
-**6) Tabs (PR6)**
-
--   Real tab-stop model (8-col defaults).
--   HT/CHT/CBT/HTS/TBC implemented.
--   Deterministic reset + resize behavior.
-
-**7) Unicode width model (PR7)**
-
--   **Single shared classifier** for buffer + renderer (no drift).
--   Correct handling for ZWJ families, emoji modifiers, RI flags, VS15/VS16.
--   Backspace operates on grapheme start, not continuation cells.
-
-**8) Conformance tooling (PR8 + PR8.1)**
-
--   Machine-readable JSON report with SHA and row-level metadata.
--   CI validation rules (no unsupported "✅").
--   **0 errors / 0 warnings** after evidence tightening.
-
-* * * * *
-
-### Where Ghostty still likely leads
-
-**Breadth and maturity**
-
--   Wider long-tail coverage of obscure CSI/OSC variants.
--   More exhaustive Unicode conformance (pinned tables, edge scripts).
-
-**Deep compatibility polish**
-
--   Fewer corner-case deviations across mixed sequences and legacy apps.
--   Likely stronger coverage for rarely used modes and historical quirks.
-
-**Ecosystem surface**
-
--   Embeddable core (`libghostty`) and broader integration story.
-
-* * * * *
-
-### Where Ntilde now leads
-
-**1) Auditable correctness**
-
--   Every "✅ Supported" has **traceable evidence** (tests/replays/paths).
--   Violations are caught automatically in CI.
-
-**2) Deterministic validation**
-
--   Replay + snapshot model + matrix → **provable behavior**, not claims.
-
-**3) Storage/renderer alignment**
-
--   Shared width model removes a classic class of terminal bugs.
-
-**4) Engineering clarity**
-
--   Explicit deviations documented per row.
--   Easier to reason about, maintain, and extend.
-
-* * * * *
-
-### Honest remaining gaps (from the matrix)
-
--   Some sequence families still **⚠ Partial** (e.g., full CUU/CUD/CUF/CUB coverage).
--   **OSC 1337**: parser support exists, but automated evidence breadth is limited.
--   Unicode:
-    -   No pinned UAX #11 / #29 tables yet.
-    -   No guaranteed retroactive reflow for late width-changing selectors.
--   Legacy mouse modes beyond SGR 1006 remain partial.
-
-* * * * *
-
-### Bottom line
-
--   **Ghostty**: broader, mature, battle-tested compatibility.
--   **Ntilde**: now *structurally correct*, test-driven, and **provably verifiable**.
-
-That's a credible position---and a strong foundation to surpass on correctness over time.
+The eight unsupported observations are not eight independent feature requests.
+The 180 inconclusive observations include missing pixel/input evidence, absent
+replies and deliberate clipboard-fixture refusal. In particular, cursor movement
+does not prove text styling, and a keyboard negotiation reply does not prove
+press/repeat/release delivery. No overall terminal ranking follows from these
+counts. The collector still has one ungraded geometry diagnostic and marks the
+suite incomplete.
