@@ -69,9 +69,9 @@ prior state intact and replies contain only validated numeric colors/indices.
 The original regression set failed 11 cases before implementation while six
 malformed-input guards passed. Final local validation: VT 1,189 passed, mux
 1,076 passed / 20 expected platform skips, MCP 223 passed, architecture 177 passed,
-the complete App main lane before reply hardening passed 7,130 / 51 expected
-skips. After hardening, seven focused queue/pane/allocation tests passed and the
-separate PlatformBoot lane passed 75 / 4 expected font skips. Latest-head full
+the complete App main lane after local reply hardening passed 7,133 / 51 expected
+skips. Seven focused queue/pane/allocation tests passed and the separate
+PlatformBoot lane passed 75 / 4 expected font skips. Latest-head full
 App lanes are also required in CI before merge. The focused App/profile/factory group passed 41 cases.
 The 74-row conformance report has zero errors or warnings; scoped formatting and
 whitespace checks pass.
@@ -105,6 +105,17 @@ quarter of its 1,024 slots from reply floods. Deterministic tests fill it withou
 consumer, verify keyboard room and drain/recovery, and verify pane routing never
 falls back to blocking input after a rejected device reply. User-input
 backpressure remains unchanged.
+
+Native SSH uses a separate best-effort reply command with a 64 KiB admission
+budget, including a 256-byte surcharge per command. Its reservation stays live
+through a stalled channel write and releases on completion, failure or teardown.
+Older native binaries decline the new entry point without using the unbounded
+keyboard path. All 175 native Rust tests and 39 focused managed SSH tests pass,
+including saturation, held reservations, empty packets, receiver teardown and
+keyboard independence. The final direct-desktop collector artifact remains the
+ff9abd15 build: it does not exercise native SSH or the CLI writer. The subsequent
+SSH hardening and ANSI-writer maintainability cleanup are covered separately by
+these tests and the full VT/mux suites; the collector evidence is not relabeled.
 
 ## Limits and cleanup
 

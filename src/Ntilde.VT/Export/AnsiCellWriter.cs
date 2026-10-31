@@ -52,31 +52,21 @@ namespace Ntilde.VT.Export
                     haveStyle = true;
                 }
 
-                // Append the char directly rather than via cell.Text ?? cell.Character.ToString():
-                // this is the text client's repaint hot path, and .ToString() would allocate a new
-                // string for every plain (non-grapheme) cell in the row.
-                if (clippedToSpace)
-                {
-                    sb.Append(' ');
-                }
-                else if (cell.Text is not null)
-                {
-                    sb.Append(cell.Text);
-                }
-                else if (cell.Character == '\0')
-                {
-                    sb.Append(' ');
-                }
-                else
-                {
-                    sb.Append(cell.Character);
-                }
+                AppendCellText(sb, cell, clippedToSpace);
 
                 col += width;
             }
 
             if (col > 0) sb.Append(Reset);
             return col;
+        }
+
+        private static void AppendCellText(StringBuilder sb, in RenderCellSnapshot cell, bool clippedToSpace)
+        {
+            // Avoid per-character strings on the text client's repaint path.
+            if (clippedToSpace || (cell.Text is null && cell.Character == '\0')) sb.Append(' ');
+            else if (cell.Text is not null) sb.Append(cell.Text);
+            else sb.Append(cell.Character);
         }
 
         /// <summary>The cell's complete style as one <c>ESC [ 0 ; … m</c>.</summary>
@@ -125,7 +115,8 @@ namespace Ntilde.VT.Export
             if (underline.HasColor)
             {
                 if (styled) sb.Append(';');
-                bool overridePalette = theme is { } colors && colors.PaletteOverrides.Contains(underline.ColorIndex);
+                RenderThemeSnapshot colors = theme.GetValueOrDefault();
+                bool overridePalette = colors.PaletteOverrides.Contains(underline.ColorIndex);
                 if (underline.ColorIndex >= 0 && !overridePalette)
                 {
                     sb.Append("58:5:").Append(underline.ColorIndex);
@@ -133,7 +124,7 @@ namespace Ntilde.VT.Export
                 else
                 {
                     // 58:2:<color space id>:r:g:b, the id left empty as xterm and kitty write it.
-                    TermColor rgb = overridePalette ? theme!.Value.AnsiPalette[underline.ColorIndex] : underline.Color.GetValueOrDefault();
+                    TermColor rgb = overridePalette ? colors.AnsiPalette[underline.ColorIndex] : underline.Color.GetValueOrDefault();
                     sb.Append("58:2:").Append(':').Append(rgb.R).Append(':').Append(rgb.G).Append(':').Append(rgb.B);
                 }
             }

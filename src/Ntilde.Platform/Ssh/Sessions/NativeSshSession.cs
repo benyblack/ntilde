@@ -9,7 +9,7 @@ using Ntilde.Pty;
 
 namespace Ntilde.Platform.Ssh.Sessions;
 
-public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary
+public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink
 {
 
     private readonly INativeSshInterop _interop;
@@ -330,6 +330,14 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
 
         _recorder?.RecordInput(input);
         _interop.Write(_sessionHandle, Encoding.UTF8.GetBytes(input));
+    }
+
+    public bool TrySendDeviceReply(string response)
+    {
+        if (_sessionHandle is null || _sessionHandle.IsInvalid || _sessionHandle.IsClosed || response.Length > 64 * 1024) return false;
+        if (!_interop.TryWriteDeviceReply(_sessionHandle, Encoding.UTF8.GetBytes(response))) return false;
+        _recorder?.RecordInput(response);
+        return true;
     }
 
     public void Resize(int cols, int rows)

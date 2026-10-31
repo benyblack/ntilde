@@ -69,7 +69,10 @@ invariant changes.
   cursor and selection remain outer-host policy. Palette replies are capped at 256 per OSC;
   updates after the cap still apply. Local PTY replies use a nonblocking best-effort sink
   with one quarter of the input queue reserved from reply floods; OpenSSH wrappers forward
-  that policy. Keyboard input retains its existing backpressure. App never writes overrides
+  that policy. Native SSH holds a bounded 64 KiB reply reservation (including a
+  per-command surcharge) through channel writes; saturation or an older native binary
+  declines without falling back to unbounded input. Keyboard input retains its existing
+  backpressure. App never writes overrides
   to theme files. Mux spawn
   and presentation metadata supply host defaults; only the authoritative parser replies.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no

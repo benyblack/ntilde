@@ -149,7 +149,8 @@ pub const NOVA_SSH_RESULT_CANCELED: c_int = -6;
 pub const NOVA_SSH_RESULT_PANIC: c_int = -7;
 /// A forward channel has more data queued toward the remote than its budget allows. Not an error:
 /// the caller is expected to retry, which is what applies backpressure to the local socket it is
-/// reading from. Only nova_ssh_channel_write returns this.
+/// reading from. Also returned for a saturated best-effort device-reply budget; those replies
+/// are dropped rather than retried through the ordinary input path.
 pub const NOVA_SSH_RESULT_WOULD_BLOCK: c_int = -8;
 
 /// The server refused a tcpip-forward request (or the request could not be sent). Distinct from
@@ -170,6 +171,11 @@ const MAX_EVENT_WAIT_MS: u32 = 1000;
 /// budget for the opposite direction. Reaching it makes nova_ssh_channel_write report
 /// NOVA_SSH_RESULT_WOULD_BLOCK rather than growing the queue without limit.
 const MAX_QUEUED_FORWARD_WRITE_BYTES: usize = 1024 * 1024;
+
+// Device replies cannot consume an unbounded number of commands or bytes while stdin stalls.
+// The surcharge also bounds empty replies. User input retains its existing delivery path.
+const MAX_QUEUED_DEVICE_REPLY_COST: usize = 64 * 1024;
+const DEVICE_REPLY_OVERHEAD: usize = 256;
 
 /// Ceiling on data-bearing payload bytes (Data, ExtendedData, ForwardChannelData) queued toward
 /// the managed poll loop. At the ceiling the channel readers park in `queue_data_event` instead
@@ -306,6 +312,7 @@ struct SharedState {
     // Data-bearing payload bytes currently in `events`, kept outside the queue's Mutex so the
     // async producers can check the budget without contending with the FFI poll thread's lock.
     queued_data_bytes: AtomicUsize,
+    queued_device_reply_cost: Arc<AtomicUsize>,
     // Wakes producers parked in `queue_data_event` when the poll loop drains below the budget,
     // or when the session closes (see mark_closed).
     event_space_notify: tokio::sync::Notify,
@@ -396,8 +403,41 @@ enum SftpOutcome {
     Listed(Vec<RemotePathListEntry>),
 }
 
+// The reservation travels with the command and stays live during a stalled channel write.
+// Drop also releases it on rejected sends, worker failure, EOF or connection teardown.
+struct DeviceReplyReservation {
+    budget: Arc<AtomicUsize>,
+    cost: usize,
+}
+
+impl Drop for DeviceReplyReservation {
+    fn drop(&mut self) {
+        self.budget.fetch_sub(self.cost, Ordering::AcqRel);
+    }
+}
+
+fn reserve_device_reply(
+    shared: &SharedState,
+    payload_len: usize,
+) -> Option<DeviceReplyReservation> {
+    let cost = payload_len.checked_add(DEVICE_REPLY_OVERHEAD)?;
+    let budget = shared.queued_device_reply_cost.clone();
+    budget
+        .fetch_update(Ordering::AcqRel, Ordering::Acquire, |queued| {
+            queued
+                .checked_add(cost)
+                .filter(|next| *next <= MAX_QUEUED_DEVICE_REPLY_COST)
+        })
+        .ok()?;
+    Some(DeviceReplyReservation { budget, cost })
+}
+
 enum WorkerCommand {
     Write(Vec<u8>),
+    DeviceReply {
+        data: Vec<u8>,
+        reservation: DeviceReplyReservation,
+    },
     /// EOF on the main channel: for an exec session, the remote command's stdin is finished.
     /// Sent at most once; the worker drops later Writes rather than putting data on the wire
     /// after an EOF.
@@ -921,6 +961,7 @@ impl SharedState {
             closed_notify: tokio::sync::Notify::new(),
             forward_write_budgets: Mutex::new(HashMap::new()),
             queued_data_bytes: AtomicUsize::new(0),
+            queued_device_reply_cost: Arc::new(AtomicUsize::new(0)),
             event_space_notify: tokio::sync::Notify::new(),
             remote_forward_requested: AtomicBool::new(false),
             finished: AtomicBool::new(false),
@@ -1699,6 +1740,7 @@ fn run_connection(
                         }
                         // No main channel to write to, resize, or end.
                         Some(WorkerCommand::Write(_))
+                        | Some(WorkerCommand::DeviceReply { .. })
                         | Some(WorkerCommand::SendEof)
                         | Some(WorkerCommand::Resize { .. }) => {}
                         Some(WorkerCommand::Close) | None => break,
@@ -1848,6 +1890,12 @@ async fn shared_channel_loop(
                         if !eof_sent {
                             channel.data(&data[..]).await?;
                         }
+                    }
+                    Some(WorkerCommand::DeviceReply { data, reservation }) => {
+                        if !eof_sent {
+                            channel.data(&data[..]).await?;
+                        }
+                        drop(reservation);
                     }
                     Some(WorkerCommand::Resize { cols, rows }) => {
                         let (cols, rows, pending_resize_command) =
@@ -2002,6 +2050,41 @@ pub extern "C" fn nova_ssh_write(
         };
 
         send_command(&session, WorkerCommand::Write(bytes))
+    })
+}
+
+/// Best-effort device reply: reserve bounded cost before copying or enqueueing payload bytes.
+/// WOULD_BLOCK is a dropped reply, never a reason to retry through nova_ssh_write.
+#[unsafe(no_mangle)]
+pub extern "C" fn nova_ssh_try_write_device_reply(
+    handle: usize,
+    data: *const u8,
+    data_len: usize,
+) -> c_int {
+    ffi_guard(NOVA_SSH_RESULT_PANIC, || {
+        if data.is_null() && data_len != 0 {
+            return NOVA_SSH_RESULT_INVALID_ARGUMENT;
+        }
+        let session = match registry_get(handle) {
+            Some(session) => session,
+            None => return NOVA_SSH_RESULT_INVALID_ARGUMENT,
+        };
+        let reservation = match reserve_device_reply(&session.shared, data_len) {
+            Some(reservation) => reservation,
+            None => return NOVA_SSH_RESULT_WOULD_BLOCK,
+        };
+        let bytes = if data_len == 0 {
+            Vec::new()
+        } else {
+            unsafe { std::slice::from_raw_parts(data, data_len) }.to_vec()
+        };
+        send_command(
+            &session,
+            WorkerCommand::DeviceReply {
+                data: bytes,
+                reservation,
+            },
+        )
     })
 }
 
@@ -4504,6 +4587,12 @@ fn run_session(
                                 channel.data(&data[..]).await?;
                             }
                         }
+                        Some(WorkerCommand::DeviceReply { data, reservation }) => {
+                            if !eof_sent {
+                                channel.data(&data[..]).await?;
+                            }
+                            drop(reservation);
+                        }
                         Some(WorkerCommand::SendEof) => {
                             if !eof_sent {
                                 eof_sent = true;
@@ -6034,6 +6123,124 @@ mod tests {
 
         let close = nova_ssh_close(session);
         assert_eq!(NOVA_SSH_RESULT_OK, close);
+    }
+
+    fn device_reply_test_session() -> (
+        usize,
+        Arc<SharedState>,
+        mpsc::UnboundedReceiver<WorkerCommand>,
+    ) {
+        let shared = Arc::new(SharedState::new());
+        let (tx, rx) = mpsc::unbounded_channel();
+        let handle = registry_insert(NovaSshSession {
+            shared: shared.clone(),
+            command_tx: Mutex::new(Some(tx)),
+            worker: Mutex::new(None),
+        }) as usize;
+        (handle, shared, rx)
+    }
+
+    #[test]
+    fn device_reply_budget_stays_reserved_while_dequeued_write_is_stalled() {
+        let (handle, shared, mut rx) = device_reply_test_session();
+        let payload = b"x";
+        let mut accepted = 0;
+        loop {
+            let rc = nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len());
+            if rc == NOVA_SSH_RESULT_WOULD_BLOCK {
+                break;
+            }
+            assert_eq!(NOVA_SSH_RESULT_OK, rc);
+            accepted += 1;
+            assert!(accepted <= 256);
+        }
+        assert!(accepted > 0);
+        let cost = shared.queued_device_reply_cost.load(Ordering::Acquire);
+        assert!(cost <= MAX_QUEUED_DEVICE_REPLY_COST);
+        let held = rx.try_recv().unwrap();
+        assert_eq!(
+            cost,
+            shared.queued_device_reply_cost.load(Ordering::Acquire)
+        );
+        assert_eq!(
+            NOVA_SSH_RESULT_WOULD_BLOCK,
+            nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len())
+        );
+        // Ordinary keyboard input stays independent of the reply admission budget.
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            nova_ssh_write(handle, b"typed".as_ptr(), 5)
+        );
+        drop(held);
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len())
+        );
+        let mut keyboard = 0;
+        while let Ok(command) = rx.try_recv() {
+            match command {
+                WorkerCommand::Write(data) => {
+                    assert_eq!(b"typed", data.as_slice());
+                    keyboard += 1;
+                }
+                WorkerCommand::DeviceReply { data, reservation } => {
+                    assert_eq!(payload, data.as_slice());
+                    drop(reservation);
+                }
+                _ => panic!("unexpected command"),
+            }
+        }
+        assert_eq!(1, keyboard);
+        assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+    }
+
+    #[test]
+    fn device_reply_budget_bounds_empty_packets_and_releases_on_receiver_drop() {
+        let (handle, shared, rx) = device_reply_test_session();
+        for _ in 0..MAX_QUEUED_DEVICE_REPLY_COST / DEVICE_REPLY_OVERHEAD {
+            assert_eq!(
+                NOVA_SSH_RESULT_OK,
+                nova_ssh_try_write_device_reply(handle, ptr::null(), 0)
+            );
+        }
+        assert_eq!(
+            NOVA_SSH_RESULT_WOULD_BLOCK,
+            nova_ssh_try_write_device_reply(handle, ptr::null(), 0)
+        );
+        assert_eq!(
+            MAX_QUEUED_DEVICE_REPLY_COST,
+            shared.queued_device_reply_cost.load(Ordering::Acquire)
+        );
+        drop(rx);
+        assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
+        assert_eq!(
+            NOVA_SSH_RESULT_CLOSED,
+            nova_ssh_try_write_device_reply(handle, b"x".as_ptr(), 1)
+        );
+        assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+    }
+
+    #[test]
+    fn device_reply_rejects_invalid_and_oversized_payloads_before_admission() {
+        let (handle, shared, rx) = device_reply_test_session();
+        let payload = vec![0; MAX_QUEUED_DEVICE_REPLY_COST];
+        assert_eq!(
+            NOVA_SSH_RESULT_WOULD_BLOCK,
+            nova_ssh_try_write_device_reply(handle, payload.as_ptr(), payload.len())
+        );
+        assert_eq!(
+            NOVA_SSH_RESULT_INVALID_ARGUMENT,
+            nova_ssh_try_write_device_reply(handle, ptr::null(), 1)
+        );
+        assert_eq!(
+            NOVA_SSH_RESULT_INVALID_ARGUMENT,
+            nova_ssh_try_write_device_reply(0, b"x".as_ptr(), 1)
+        );
+        assert_eq!(0, shared.queued_device_reply_cost.load(Ordering::Acquire));
+        drop(rx);
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
     }
 
     #[test]
