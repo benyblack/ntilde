@@ -124,12 +124,13 @@ public sealed class NativeSftpTransferInteropTests
     [Fact]
     public void SerializeSftpTransferRequest_UsesGeneratedMetadataAndCamelCasePayload()
     {
+        using var passwordBuffer1 = SecretBuffer.FromText("secret");
         NativeSshConnectionOptions connectionOptions = new()
         {
             Host = "example.com",
             User = "nova",
             Port = 2222,
-            Password = SecretBuffer.FromText("secret"),
+            Password = passwordBuffer1,
             KnownHostsFilePath = @"C:\known-hosts.json",
             JumpHops =
             [
@@ -185,19 +186,21 @@ public sealed class NativeSftpTransferInteropTests
     {
         // The native side offers the connection-level password to the target alone and each hop
         // only the password on that hop. A hop with no password must not carry the field at all.
+        using var passwordBuffer2 = SecretBuffer.FromText("target-secret");
+        using var passwordBuffer3 = SecretBuffer.FromText("bastion-secret");
         NativeSshConnectionOptions connectionOptions = new()
         {
             Host = "example.com",
             User = "nova",
             Port = 2222,
-            Password = SecretBuffer.FromText("target-secret"),
+            Password = passwordBuffer2,
             KnownHostsFilePath = @"C:\known-hosts.json",
             JumpHops =
             [
                 new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-one.internal", User = "jumper", Port = 2200 },
                 new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-two.internal", User = string.Empty, Port = 22 }
             ],
-            JumpHopPasswords = [SecretBuffer.FromText("bastion-secret"), null]
+            JumpHopPasswords = [passwordBuffer3, null]
         };
         NativeSftpTransferOptions transferOptions = new()
         {
@@ -223,6 +226,7 @@ public sealed class NativeSftpTransferInteropTests
     {
         // Pairing is by index; a short list would shift every later password onto the wrong server.
         var interop = new NativeSshInterop();
+        using var passwordBuffer4 = SecretBuffer.FromText("only-one");
         NativeSshConnectionOptions connectionOptions = new()
         {
             Host = "example.com",
@@ -233,7 +237,7 @@ public sealed class NativeSftpTransferInteropTests
                 new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-one.internal", User = "jumper", Port = 2200 },
                 new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-two.internal", User = "jumper", Port = 22 }
             ],
-            JumpHopPasswords = [SecretBuffer.FromText("only-one")]
+            JumpHopPasswords = [passwordBuffer4]
         };
         NativeSftpTransferOptions transferOptions = new()
         {
@@ -297,11 +301,12 @@ public sealed class NativeSftpTransferInteropTests
     public void RunSftpTransfer_ReturnsClearErrorForUnsupportedModes()
     {
         var interop = new NativeSshInterop();
+        using var passwordBuffer5 = SecretBuffer.FromText("secret");
         NativeSshConnectionOptions connectionOptions = new()
         {
             Host = "example.com",
             User = "nova",
-            Password = SecretBuffer.FromText("secret"),
+            Password = passwordBuffer5,
             KnownHostsFilePath = @"C:\known-hosts.json"
         };
         NativeSftpTransferOptions transferOptions = new()

@@ -809,6 +809,12 @@ namespace Ntilde
             _session.SnippetsChanged += () => OnCommandAssistSnippetsChanged?.Invoke();
         }
 
+        internal Func<TerminalSettings, (bool Saved, string Error)> PersistSettings { get; set; } = static settings =>
+        {
+            bool saved = settings.TrySave(out string error);
+            return (saved, error);
+        };
+
         /// <summary>
         /// Validates every page before anything is written, so a refused Save leaves the in-memory
         /// settings untouched (the old window wrote every field first and validated shortcuts last).
@@ -831,7 +837,12 @@ namespace Ntilde
             }
 
             _session.CommitDrafts(target);
-            target.Save();
+            (bool saved, string saveError) = PersistSettings(target);
+            if (!saved)
+            {
+                if (this.FindControl<TextBlock>("SettingsSaveStatus") is { } status) status.Text = saveError;
+                return;
+            }
             // R1: a changed persistence setting forgets the first-close answer; turned back on, the next close asks again.
             ForgetCloseChoiceIfPersistenceChanged(_sessionPersistenceLoaded, target.SessionPersistence);
 

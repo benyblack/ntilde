@@ -49,7 +49,13 @@ public sealed class LegacyProfilePasswordMigrationTests : IDisposable
         Assert.False(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
         Assert.Equal(original, File.ReadAllText(SettingsPath));
         Assert.Equal(original, File.ReadAllText(SettingsPath + ".bak"));
-        Assert.True(TerminalSettings.LoadFromPath(SettingsPath, vault).CredentialMigrationPending);
+        TerminalSettings settings = TerminalSettings.LoadFromPath(SettingsPath, vault);
+        Assert.True(settings.CredentialMigrationPending);
+        settings.FontSize = 25;
+        Assert.False(settings.TrySaveToPath(SettingsPath, () => vault, out string error));
+        Assert.NotEmpty(error);
+        Assert.Equal(original, File.ReadAllText(SettingsPath));
+        Assert.Equal(original, File.ReadAllText(SettingsPath + ".bak"));
     }
 
     [Fact]
@@ -89,6 +95,11 @@ public sealed class LegacyProfilePasswordMigrationTests : IDisposable
         vault.SetSecret(VaultService.GetCanonicalSshProfileKey(_profileId), "new");
         Assert.True(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
         Assert.Equal("new", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
+        foreach (string path in new[] { SettingsPath, SettingsPath + ".bak" })
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            Assert.False(document.RootElement.GetProperty("Profiles")[0].TryGetProperty("Password", out _));
+        }
     }
 
     [Theory]
@@ -101,6 +112,66 @@ public sealed class LegacyProfilePasswordMigrationTests : IDisposable
         vault.SetSecret(key, "newer-keyring-value");
         Assert.True(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
         Assert.Equal("newer-keyring-value", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("invalid-id")]
+    public void Migration_establishes_a_stable_id_for_legacy_profiles_without_a_valid_one(string? oldId)
+    {
+        WriteLegacy("saved-password");
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(SettingsPath))!;
+        var profile = root["Profiles"]![0]!.AsObject();
+        if (oldId is null) profile.Remove("Id"); else profile["Id"] = oldId;
+        File.WriteAllText(SettingsPath, root.ToJsonString());
+        var vault = new VaultService(new InMemorySecretStore());
+        Assert.True(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        using var sanitized = JsonDocument.Parse(File.ReadAllText(SettingsPath));
+        Guid id = sanitized.RootElement.GetProperty("Profiles")[0].GetProperty("Id").GetGuid();
+        Assert.NotEqual(Guid.Empty, id);
+        Assert.Equal("saved-password", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(id)));
+        Assert.True(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        using var repeated = JsonDocument.Parse(File.ReadAllText(SettingsPath));
+        Assert.Equal(id, repeated.RootElement.GetProperty("Profiles")[0].GetProperty("Id").GetGuid());
+    }
+
+    [Fact]
+    public void A_keyring_read_error_cannot_be_mistaken_for_a_missing_credential()
+    {
+        WriteLegacy("stale-plaintext");
+        string original = File.ReadAllText(SettingsPath);
+        var store = new ReadFailureStore();
+        var vault = new VaultService(store);
+        Assert.False(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        Assert.Equal(0, store.Writes);
+        Assert.Equal(original, File.ReadAllText(SettingsPath));
+        Assert.Null(vault.GetSshPasswordBufferForProfile(new TerminalProfile { Id = _profileId }));
+        Assert.False(vault.HasSavedPassword(new TerminalProfile { Id = _profileId }));
+    }
+
+    [Fact]
+    public void A_save_after_unlock_preserves_the_good_backup_of_a_malformed_primary()
+    {
+        WriteLegacy("in-backup");
+        File.WriteAllText(SettingsPath, "{broken");
+        var locked = new VaultService(new DiscardingStore(false));
+        TerminalSettings settings = TerminalSettings.LoadFromPath(SettingsPath, locked);
+        Assert.True(settings.CredentialMigrationPending);
+        var unlocked = new VaultService(new InMemorySecretStore());
+        Assert.True(settings.TrySaveToPath(SettingsPath, () => unlocked, out string error), error);
+        using var backup = JsonDocument.Parse(File.ReadAllText(SettingsPath + ".bak"));
+        Assert.Equal(17, backup.RootElement.GetProperty("FontSize").GetInt32());
+        Assert.False(backup.RootElement.GetProperty("Profiles")[0].TryGetProperty("Password", out _));
+    }
+
+    private sealed class ReadFailureStore : ISecretStore
+    {
+        public int Writes { get; private set; }
+        public bool IsAvailable => true;
+        public string? Read(string key) => throw new InvalidOperationException("keyring locked after availability probe");
+        public void Write(string key, string value) => Writes++;
+        public bool Delete(string key) => false;
     }
 
     private sealed class DiscardingStore(bool available) : ISecretStore

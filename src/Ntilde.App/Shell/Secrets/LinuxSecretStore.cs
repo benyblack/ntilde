@@ -125,8 +125,12 @@ namespace Ntilde.Shell.Secrets
 
         public string? Read(string key)
         {
-            using var secret = ReadBuffer(key);
-            return secret?.DangerousGetString();
+            try
+            {
+                using var secret = ReadBuffer(key);
+                return secret?.DangerousGetString();
+            }
+            catch (InvalidOperationException) { return null; }
         }
 
         public SecretBuffer? ReadBuffer(string key)
@@ -136,12 +140,14 @@ namespace Ntilde.Shell.Secrets
                 return null;
             }
 
-            SecretBuffer? result = LookupRaw(key, out _);
-            // Keep this instance alive past the native call: the finalizer frees
-            // _schema (and the name strings it points to), so it must not run while
-            // libsecret is still dereferencing the schema.
-            GC.KeepAlive(this);
-            return result;
+            try
+            {
+                SecretBuffer? result = LookupRaw(key, out bool serviceError);
+                if (!serviceError) return result;
+                result?.Dispose();
+                throw new InvalidOperationException("The OS keyring could not read the credential.");
+            }
+            finally { GC.KeepAlive(this); }
         }
 
         public void Write(string key, string value)

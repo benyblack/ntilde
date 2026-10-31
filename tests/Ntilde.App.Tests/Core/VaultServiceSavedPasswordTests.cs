@@ -18,6 +18,24 @@ public class VaultServiceSavedPasswordTests
         public bool Delete(string key) => throw new InvalidOperationException("must not delete");
     }
 
+    private sealed class PromotionRefusedStore(string key, string password) : ISecretStore
+    {
+        public bool IsAvailable => true;
+        public string? Read(string candidate) => candidate == key ? password : null;
+        public void Write(string key, string value) => throw new InvalidOperationException("read-only keyring");
+        public bool Delete(string key) => false;
+    }
+
+    [Fact]
+    public void A_readable_legacy_credential_survives_a_refused_canonical_promotion()
+    {
+        var profile = CreateProfile();
+        string legacyKey = $"SSH:{profile.Name}:{profile.SshUser}@{profile.SshHost}";
+        var vault = new VaultService(new PromotionRefusedStore(legacyKey, "usable-secret"));
+        using var secret = vault.GetSshPasswordBufferForProfile(profile);
+        Assert.Equal("usable-secret", secret?.DangerousGetString());
+    }
+
     private static TerminalProfile CreateProfile(string name = "Prod")
     {
         return new TerminalProfile

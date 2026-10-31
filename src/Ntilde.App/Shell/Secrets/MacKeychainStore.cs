@@ -78,14 +78,19 @@ namespace Ntilde.Shell.Secrets
             catch (DllNotFoundException) { _available = false; }
             catch (EntryPointNotFoundException) { _available = false; }
             catch (BadImageFormatException) { _available = false; }
+            catch (InvalidOperationException) { _available = false; }
         }
 
         public bool IsAvailable => _available;
 
         public string? Read(string key)
         {
-            using var secret = ReadBuffer(key);
-            return secret?.DangerousGetString();
+            try
+            {
+                using var secret = ReadBuffer(key);
+                return secret?.DangerousGetString();
+            }
+            catch (InvalidOperationException) { return null; }
         }
 
         public SecretBuffer? ReadBuffer(string key)
@@ -113,7 +118,8 @@ namespace Ntilde.Shell.Secrets
 
                 if (status != errSecSuccess || dataRef == IntPtr.Zero)
                 {
-                    return null;
+                    SafeCFRelease(dataRef);
+                    throw new InvalidOperationException("The OS keychain could not read the credential.");
                 }
 
                 try

@@ -96,7 +96,9 @@ password. Ntilde never types a password because of something the terminal printe
 Older settings files containing a profile password are migrated to your OS credential store, including
 Ntilde's settings recovery copy. An existing credential in the store takes precedence. Ntilde verifies
 a new credential before removing the old file entry. If the store is locked or unavailable, the old
-file is kept and settings saves wait until migration can finish; unlock the store and restart Ntilde.
+file is kept and settings saves wait until migration can finish. Unlock the store (or install a credential
+store if none is available) and retry; Settings stays open with an error when a save fails. Legacy
+profiles without a valid identifier receive a stable identifier during successful migration.
 
 The native backend keeps credentials in pinned buffers and clears its owned copies after authentication,
 on replacement, and when their session or remote host closes. This reduces retention; it does not make

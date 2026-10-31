@@ -23,6 +23,7 @@ namespace Ntilde.Shell.Secrets
 
         // String adapters remain for OpenSSH askpass and existing store implementations. Production
         // platform stores override these so native SSH never decodes a credential to a managed string.
+        /// <summary>Returns an owned buffer, or null if absent/unavailable; an available store must throw on lookup errors.</summary>
         SecretBuffer? ReadBuffer(string key)
         {
             string? value = Read(key);

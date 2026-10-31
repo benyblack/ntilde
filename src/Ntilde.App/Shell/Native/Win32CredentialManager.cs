@@ -86,15 +86,25 @@ namespace Ntilde.Shell.Native
 
         public static (string Username, string Password)? Read(string target)
         {
-            var result = ReadBuffer(target);
-            if (result is null) return null;
-            using var secret = result.Value.Password;
-            return (result.Value.Username, secret.DangerousGetString());
+            try
+            {
+                var result = ReadBuffer(target);
+                if (result is null) return null;
+                using var secret = result.Value.Password;
+                return (result.Value.Username, secret.DangerousGetString());
+            }
+            catch (System.ComponentModel.Win32Exception) { return null; }
         }
 
         public static (string Username, SecretBuffer Password)? ReadBuffer(string target)
         {
-            if (!CredRead(target, CREDENTIAL_TYPE.GENERIC, 0, out IntPtr pCred)) return null;
+            if (!CredRead(target, CREDENTIAL_TYPE.GENERIC, 0, out IntPtr pCred))
+            {
+                const int ErrorNotFound = 1168;
+                int error = Marshal.GetLastWin32Error();
+                if (error == ErrorNotFound) return null;
+                throw new System.ComponentModel.Win32Exception(error, "The OS credential store could not read the credential.");
+            }
             CREDENTIAL credential = default;
             try
             {

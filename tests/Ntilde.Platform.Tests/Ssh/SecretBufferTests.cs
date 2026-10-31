@@ -68,4 +68,17 @@ public sealed class SecretBufferTests
         response.Dispose();
         foreach (byte[] buffer in retained) Assert.All(buffer, value => Assert.Equal(0, value));
     }
+    [Fact]
+    public void Growing_the_json_writer_wipes_the_replaced_allocation()
+    {
+        Type writerType = typeof(SecretJson).GetNestedType("ClearingBufferWriter", BindingFlags.NonPublic)!;
+        using var owner = (IDisposable)Activator.CreateInstance(writerType, nonPublic: true)!;
+        var writer = (System.Buffers.IBufferWriter<byte>)owner;
+        byte[] first = (byte[])writerType.GetField("_bytes", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(owner)!;
+        writer.GetSpan(256).Fill(0x41);
+        writer.Advance(256);
+        writer.GetSpan(1024);
+        Assert.All(first, value => Assert.Equal(0, value));
+    }
+
 }

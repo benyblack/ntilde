@@ -114,18 +114,20 @@ public sealed class NativeSshDockerJumpChainE2eTests
             knownHosts.TrustHost("127.0.0.1", fixture.InContainerSshPort, hostKey.Algorithm, hostKey.Fingerprint);
 
             string localPath = Path.Combine(tempRoot, "downloaded.txt");
+            using var passwordBuffer1 = SecretBuffer.FromText(fixture.Password);
+            using var passwordBuffer2 = SecretBuffer.FromText(fixture.JumpPassword);
             var connection = new NativeSshConnectionOptions
             {
                 Host = "127.0.0.1",
                 User = fixture.UserName,
                 Port = fixture.InContainerSshPort,
-                Password = SecretBuffer.FromText(fixture.Password),
+                Password = passwordBuffer1,
                 KnownHostsFilePath = knownHostsPath,
                 JumpHops =
                 [
                     new SshJumpHop { Host = fixture.Host, User = fixture.JumpUserName, Port = fixture.Port }
                 ],
-                JumpHopPasswords = [SecretBuffer.FromText(fixture.JumpPassword)]
+                JumpHopPasswords = [passwordBuffer2]
             };
             var transfer = new NativeSftpTransferOptions
             {

@@ -78,7 +78,7 @@ namespace Ntilde.Shell
             // to the canonical key, and this runs on every selection change in the UI.
             foreach (string key in GetProfileScopedSshPasswordKeysForProfile(profile))
             {
-                using SecretBuffer? secret = _store.IsAvailable ? _store.ReadBuffer(key) : null;
+                using SecretBuffer? secret = _store.IsAvailable ? ReadSecretBuffer(key, strictRead: false) : null;
                 if (secret is { Length: > 0 })
                 {
                     return true;
@@ -256,23 +256,30 @@ namespace Ntilde.Shell
         }
 
         /// <summary>The caller owns the returned credential buffer.</summary>
-        public SecretBuffer? GetSshPasswordBufferForProfile(TerminalProfile profile)
+        public SecretBuffer? GetSshPasswordBufferForProfile(TerminalProfile profile, bool strictRead = false)
         {
             if (!_store.IsAvailable) return null;
             string canonicalKey = GetCanonicalSshProfileKey(profile.Id);
             foreach (string key in GetSshPasswordKeysForProfile(profile))
             {
-                SecretBuffer? secret = _store.ReadBuffer(key);
+                SecretBuffer? secret = ReadSecretBuffer(key, strictRead);
                 if (secret is null) continue;
                 if (secret.Length == 0) { secret.Dispose(); continue; }
-                try
+                if (key != canonicalKey)
                 {
-                    if (key != canonicalKey) _store.WriteBuffer(canonicalKey, secret);
-                    return secret;
+                    // A readable legacy credential remains usable even when promotion is refused.
+                    try { _store.WriteBuffer(canonicalKey, secret); }
+                    catch (Exception) { /* The original key still holds it. */ }
                 }
-                catch { secret.Dispose(); throw; }
+                return secret;
             }
             return null;
+        }
+
+        private SecretBuffer? ReadSecretBuffer(string key, bool strictRead)
+        {
+            try { return _store.ReadBuffer(key); }
+            catch (Exception) when (!strictRead) { return null; }
         }
 
         public void SetSshPasswordBufferForProfile(TerminalProfile profile, SecretBuffer password)

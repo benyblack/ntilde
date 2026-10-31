@@ -48,7 +48,11 @@ internal static class LegacyProfilePasswordMigration
         if (password is null) return true;
         using var secret = SecretBuffer.FromText(password.GetValue<string>());
         if (secret.Length == 0) return true;
-        if (!Guid.TryParse(profile["Id"]?.GetValue<string>(), out Guid id) || id == Guid.Empty) return false;
+        // Missing/invalid ids have no usable references; establish one stable id in the
+        // sanitized file, just as TerminalProfile's default initializer does on load.
+        string? storedId = profile["Id"] is JsonValue idValue && idValue.TryGetValue<string>(out var text) ? text : null;
+        if (!Guid.TryParse(storedId, out Guid id) || id == Guid.Empty) id = Guid.NewGuid();
+        profile["Id"] = id.ToString("D");
         if (!vault.Value.PersistenceAvailable) return false;
         var target = new TerminalProfile
         {
@@ -58,10 +62,10 @@ internal static class LegacyProfilePasswordMigration
             SshHost = profile["SshHost"]?.GetValue<string>() ?? string.Empty,
             Type = ConnectionType.SSH
         };
-        using var existing = vault.Value.GetSshPasswordBufferForProfile(target);
+        using var existing = vault.Value.GetSshPasswordBufferForProfile(target, strictRead: true);
         if (existing is { Length: > 0 }) return true;
         vault.Value.SetSshPasswordBufferForProfile(target, secret);
-        using var verified = vault.Value.GetSshPasswordBufferForProfile(target);
+        using var verified = vault.Value.GetSshPasswordBufferForProfile(target, strictRead: true);
         return verified is not null && verified.ContentEquals(secret);
     }
 }

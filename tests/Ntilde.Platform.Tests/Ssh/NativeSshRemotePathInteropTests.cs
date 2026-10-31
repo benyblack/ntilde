@@ -9,12 +9,13 @@ public sealed class NativeSshRemotePathInteropTests
     [Fact]
     public void SerializeRemotePathListRequest_UsesGeneratedMetadataAndCamelCasePayload()
     {
+        using var passwordBuffer1 = SecretBuffer.FromText("secret");
         NativeSshConnectionOptions connectionOptions = new()
         {
             Host = "example.com",
             User = "nova",
             Port = 2222,
-            Password = SecretBuffer.FromText("secret"),
+            Password = passwordBuffer1,
             KnownHostsFilePath = @"C:\known-hosts.json",
             JumpHops =
             [

@@ -490,25 +490,40 @@ namespace Ntilde.Shell
             }
         }
 
-        public void Save()
+        public void Save() => _ = TrySave(out _);
+
+        public bool TrySave(out string error)
+        {
+            try { AppPaths.EnsureInitialized(); }
+            catch (Exception ex) { error = ex.Message; return false; }
+            return TrySaveToPath(SettingsPath, () => new VaultService(), out error);
+        }
+
+        internal bool TrySaveToPath(string settingsPath, Func<VaultService> vaultFactory, out string error)
         {
             try
             {
-                AppPaths.EnsureInitialized();
-                if (!LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => new VaultService()))
+                if (!LegacyProfilePasswordMigration.TryMigrate(settingsPath, vaultFactory))
                 {
                     CredentialMigrationPending = true;
-                    throw new InvalidOperationException("Unlock OS credential storage before saving settings: a legacy password still needs migration.");
+                    error = $"A saved password could not be moved to OS credential storage. Unlock or install a credential store, then retry. The original files are preserved at {settingsPath} and its .bak recovery copy; you can correct or remove an invalid legacy entry there. Settings were not saved.";
+                    return false;
                 }
                 CredentialMigrationPending = false;
                 string json = JsonSerializer.Serialize(this, AppJsonContext.Default.TerminalSettings);
-                // Atomic write with .bak (#167): a crash mid-write previously corrupted
-                // settings.json, and the next start silently reset all configuration.
-                AtomicFile.WriteAllText(SettingsPath, json);
+                // A primary left malformed during locked-keyring recovery must not replace the good backup.
+                if (File.Exists(settingsPath) && TryLoadOrNull(settingsPath) is null)
+                    AtomicFile.WriteAllTextWithoutBackup(settingsPath, json);
+                else
+                    AtomicFile.WriteAllText(settingsPath, json);
+                error = string.Empty;
+                return true;
             }
             catch (Exception ex)
             {
+                error = $"Settings could not be saved: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine($"[Settings] Save failed: {ex.Message}");
+                return false;
             }
         }
     }
