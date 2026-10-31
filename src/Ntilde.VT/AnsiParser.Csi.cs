@@ -811,6 +811,7 @@ namespace Ntilde.VT
                     _buffer.Modes.IsCursorBlinkEnabled = false;
                     break;
             }
+            _buffer.Invalidate();
         }
 
         /// <summary>
