@@ -72,8 +72,9 @@ exactly.
   window.
 - **Without a window:** `ntilde --replay <file>` prints the final screen ([Command line](cli.md#ntilde---replay)).
 
-A recording holds the program's output and window resizes, not what you type. It can still contain
-anything that was shown on screen, passwords a program echoed included: check one before sharing it.
+New recordings hold the program's output and window resizes, not what you type, including passwords
+entered without echo. They can still contain anything shown on screen, including passwords a program
+echoed. Older recordings may also contain raw typed input: check any recording before sharing it.
 
 Recordings from NovaTerminal play unchanged.
 

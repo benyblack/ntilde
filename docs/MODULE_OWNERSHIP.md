@@ -113,6 +113,7 @@ invariant changes.
 **Invariants** (enforced by `Replay_only_depends_on_Vt` and behavioral tests)
 - Replay is a pure function of `(byte stream, optional snapshots) → buffer state`
 - Cannot reference Pty, Rendering, App, Avalonia, or SkiaSharp
+- New recordings persist output and terminal state, never typed input; legacy input events remain readable
 - Snapshot format is forward-compatible within v2
 - Restart positions can resume after a physical snapshot record, preserving output with equal timestamps.
   Header validation remains active; App suppresses header geometry/metrics when a checkpoint

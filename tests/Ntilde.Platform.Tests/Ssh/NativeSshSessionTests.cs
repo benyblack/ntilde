@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Ntilde.Pty;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
 using Ntilde.Platform.Ssh.Sessions;
@@ -29,6 +30,49 @@ public sealed class NativeSshSessionTests
         Assert.Equal("keyboard", Encoding.UTF8.GetString(Assert.Single(interop.Writes)));
         Assert.False(sink.TrySendDeviceReply(new string('x', 65537)));
         Assert.Single(interop.DeviceReplies);
+    }
+
+    [Fact]
+    [Trait("Category", "Regression")]
+    public async Task Manual_recording_excludes_typed_secrets_without_changing_input_delivery()
+    {
+        string path = Path.GetTempFileName();
+        const string secret = "synthetic-native-password-671\r";
+        byte[] output = Encoding.UTF8.GetBytes("Password: \r\nauthenticated\r\n");
+        try
+        {
+            var interop = new FakeNativeSshInterop();
+            using var session = new NativeSshSession(CreateProfile(), interop: interop);
+            var delivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            session.OnOutputReceived += text =>
+            {
+                if (text.Contains("authenticated", StringComparison.Ordinal)) delivered.TrySetResult();
+            };
+            session.StartRecording(path);
+            session.SendInput(secret);
+            Assert.Equal(Encoding.UTF8.GetBytes(secret), Assert.Single(interop.Writes));
+
+            // The fake sends no echo of the secret, as at a password prompt.
+            interop.Enqueue(NativeSshEvent.Data(output));
+            await delivered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            session.StopRecording();
+
+            string recording = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
+            Assert.DoesNotContain(secret.TrimEnd('\r'), recording, StringComparison.Ordinal);
+            Assert.DoesNotContain(Convert.ToBase64String(Encoding.UTF8.GetBytes(secret)), recording, StringComparison.Ordinal);
+            foreach (string line in File.ReadLines(path))
+            {
+                using JsonDocument document = JsonDocument.Parse(line);
+                Assert.NotEqual("input", document.RootElement.GetProperty("type").GetString());
+            }
+
+            var captured = new List<byte>();
+            await new Ntilde.Replay.ReplayRunner(path).RunAsync(
+                onDataCallback: data => { captured.AddRange(data); return Task.CompletedTask; },
+                ct: TestContext.Current.CancellationToken);
+            Assert.Equal(output, captured);
+        }
+        finally { File.Delete(path); }
     }
 
     [Fact]

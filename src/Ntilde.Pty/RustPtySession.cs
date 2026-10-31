@@ -1340,8 +1340,6 @@ namespace Ntilde.Pty
         {
             if (_handle.IsClosed || _handle.IsInvalid) return;
 
-            _recorder?.RecordInput(input);
-
             byte[] data = Encoding.UTF8.GetBytes(input);
             try
             {
@@ -1356,8 +1354,7 @@ namespace Ntilde.Pty
         public bool TrySendDeviceReply(string response)
         {
             if (_handle.IsClosed || _handle.IsInvalid || !TryEnqueueDeviceReply(_inputQueue, _deviceReplyGate, response)) return false;
-            _recorder?.RecordInput(response);
-            return true;
+                return true;
         }
 
         internal static bool TryEnqueueDeviceReply(BlockingCollection<byte[]> queue, object gate, string response)

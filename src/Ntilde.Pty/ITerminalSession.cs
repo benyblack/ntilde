@@ -48,7 +48,7 @@ namespace Ntilde.Pty
         void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output);
     }
 
-    /// <summary>Replay/recording control for a session's byte stream.</summary>
+    /// <summary>Output-only recording control. Typed input is never persisted.</summary>
     public interface ITerminalRecorder
     {
         bool IsRecording { get; }
@@ -60,7 +60,7 @@ namespace Ntilde.Pty
     /// Bounded in-memory "flight recorder" of a session's recent raw output and
     /// resizes, exportable on demand as a standard replay v2 file. Unlike
     /// <see cref="ITerminalRecorder"/>, nothing touches disk until an export is
-    /// requested, and the retained window never includes input events — exports can
+    /// requested. Like manual recordings, the retained window never includes input events — exports can
     /// be triggered by agents and must not exfiltrate typed secrets (see
     /// docs/plans/2026-07-07-agent-host-a4-replay-design.md).
     /// </summary>

@@ -328,7 +328,6 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
             return;
         }
 
-        _recorder?.RecordInput(input);
         _interop.Write(_sessionHandle, Encoding.UTF8.GetBytes(input));
     }
 
@@ -336,7 +335,6 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
     {
         if (_sessionHandle is null || _sessionHandle.IsInvalid || _sessionHandle.IsClosed || response.Length > 64 * 1024) return false;
         if (!_interop.TryWriteDeviceReply(_sessionHandle, Encoding.UTF8.GetBytes(response))) return false;
-        _recorder?.RecordInput(response);
         return true;
     }
 
