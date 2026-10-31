@@ -106,7 +106,13 @@ namespace Ntilde.Replay
 
             using var fs = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var reader = new StreamReader(fs);
+            long lineNumber = 1;
             string? line = await ReadLineOrEndAsync(reader, ct);
+            while (line is not null && string.IsNullOrWhiteSpace(line))
+            {
+                line = await ReadLineOrEndAsync(reader, ct);
+                lineNumber++;
+            }
             if (line == null) return result;
 
             ReplayHeader? header = ReadHeader(line);
@@ -144,7 +150,6 @@ namespace Ntilde.Replay
                 lastOffset = minTimeMs;
             }
 
-            long lineNumber = 1;
             string? nextLine = await ReadLineOrEndAsync(reader, ct);
             while (line != null && !ct.IsCancellationRequested)
             {
@@ -198,7 +203,6 @@ namespace Ntilde.Replay
         /// <summary>A line resume may skip v1 records, but cannot bypass an unsupported recording header.</summary>
         private static void ValidateLegacyRecordingStart(string line)
         {
-            if (string.IsNullOrWhiteSpace(line)) return;
             using var first = JsonDocument.Parse(line);
             var root = first.RootElement;
             if (root.ValueKind != JsonValueKind.Object ||

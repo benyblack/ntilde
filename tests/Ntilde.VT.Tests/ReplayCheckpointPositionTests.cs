@@ -6,16 +6,21 @@ namespace Ntilde.VT.Tests;
 public sealed class ReplayCheckpointPositionTests
 {
     [Theory]
-    [InlineData(false, "\n")]
-    [InlineData(false, "\r\n")]
-    [InlineData(true, "\n")]
-    [InlineData(true, "\r\n")]
-    public async Task Resume_line_excludes_checkpoint_prefix_but_keeps_same_timestamp_output(bool v1, string newline)
+    [InlineData(false, "\n", false)]
+    [InlineData(false, "\r\n", false)]
+    [InlineData(true, "\n", false)]
+    [InlineData(true, "\r\n", false)]
+    [InlineData(false, "\n", true)]
+    [InlineData(false, "\r\n", true)]
+    [InlineData(true, "\n", true)]
+    [InlineData(true, "\r\n", true)]
+    public async Task Resume_line_excludes_checkpoint_prefix_but_keeps_same_timestamp_output(bool v1, string newline, bool leadingBlank)
     {
         string path = Path.GetTempFileName();
         try
         {
             var lines = new List<string>();
+            if (leadingBlank) { lines.Add(""); lines.Add(" "); }
             if (!v1) lines.Add(Header());
             lines.Add(Data(0, "before", v1));
             lines.Add("");
@@ -133,19 +138,22 @@ public sealed class ReplayCheckpointPositionTests
     }
 
     [Theory]
-    [InlineData("{\"type\":\"ntilderec\",\"v\":3,\"cols\":10,\"rows\":5}")]
-    [InlineData("{\"type\":\"unknown-recording\",\"v\":2}")]
-    public async Task A_resume_line_cannot_bypass_an_unsupported_header(string header)
+    [InlineData("{\"type\":\"ntilderec\",\"v\":3,\"cols\":10,\"rows\":5}", false)]
+    [InlineData("{\"type\":\"unknown-recording\",\"v\":2}", false)]
+    [InlineData("{\"type\":\"ntilderec\",\"v\":3,\"cols\":10,\"rows\":5}", true)]
+    [InlineData("{\"type\":\"unknown-recording\",\"v\":2}", true)]
+    public async Task A_resume_line_cannot_bypass_an_unsupported_header(string header, bool leadingBlank)
     {
         string path = Path.GetTempFileName();
         try
         {
-            File.WriteAllText(path, header + "\n" + Data(0, "X", false));
+            string prefix = leadingBlank ? "\n \r\n" : "";
+            File.WriteAllText(path, prefix + header + "\n" + Data(0, "X", false));
             int callbacks = 0;
             await Assert.ThrowsAsync<JsonException>(() => new ReplayReader(path).RunWithResultAsync(
                 _ => { callbacks++; return Task.CompletedTask; },
                 onHeaderCallback: _ => { callbacks++; return Task.CompletedTask; },
-                options: new ReplayRunOptions { StartAfterLineNumber = 1 }, ct: TestContext.Current.CancellationToken));
+                options: new ReplayRunOptions { StartAfterLineNumber = leadingBlank ? 3 : 1 }, ct: TestContext.Current.CancellationToken));
             Assert.Equal(0, callbacks);
         }
         finally { File.Delete(path); }
