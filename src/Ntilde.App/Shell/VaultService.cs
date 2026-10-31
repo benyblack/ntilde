@@ -73,18 +73,17 @@ namespace Ntilde.Shell
         public bool HasSavedPassword(TerminalProfile profile)
         {
             ArgumentNullException.ThrowIfNull(profile);
-
-            // GetSecret, not ResolveSshPasswordForProfile: the latter migrates a legacy hit
-            // to the canonical key, and this runs on every selection change in the UI.
-            foreach (string key in GetProfileScopedSshPasswordKeysForProfile(profile))
+            if (!_store.IsAvailable) return false;
+            try
             {
-                using SecretBuffer? secret = _store.IsAvailable ? ReadSecretBuffer(key, strictRead: false) : null;
-                if (secret is { Length: > 0 })
+                // Selection checks read directly; they must not promote legacy keys.
+                foreach (string key in GetProfileScopedSshPasswordKeysForProfile(profile))
                 {
-                    return true;
+                    using SecretBuffer? secret = _store.ReadBuffer(key);
+                    if (secret is { Length: > 0 }) return true;
                 }
             }
-
+            catch (Exception) { return false; }
             return false;
         }
 
@@ -258,11 +257,19 @@ namespace Ntilde.Shell
         /// <summary>The caller owns the returned credential buffer.</summary>
         public SecretBuffer? GetSshPasswordBufferForProfile(TerminalProfile profile, bool strictRead = false)
         {
+            ArgumentNullException.ThrowIfNull(profile);
             if (!_store.IsAvailable) return null;
+            try { return FindSshPasswordBuffer(profile); }
+            // Abort the entire lookup. A failed canonical read must never fall through to a stale alias.
+            catch (Exception) when (!strictRead) { return null; }
+        }
+
+        private SecretBuffer? FindSshPasswordBuffer(TerminalProfile profile)
+        {
             string canonicalKey = GetCanonicalSshProfileKey(profile.Id);
             foreach (string key in GetSshPasswordKeysForProfile(profile))
             {
-                SecretBuffer? secret = ReadSecretBuffer(key, strictRead);
+                SecretBuffer? secret = _store.ReadBuffer(key);
                 if (secret is null) continue;
                 if (secret.Length == 0) { secret.Dispose(); continue; }
                 if (key != canonicalKey)
@@ -276,12 +283,6 @@ namespace Ntilde.Shell
             return null;
         }
 
-        private SecretBuffer? ReadSecretBuffer(string key, bool strictRead)
-        {
-            try { return _store.ReadBuffer(key); }
-            catch (Exception) when (!strictRead) { return null; }
-        }
-
         public void SetSshPasswordBufferForProfile(TerminalProfile profile, SecretBuffer password)
         {
             if (!_store.IsAvailable) return;
@@ -291,7 +292,8 @@ namespace Ntilde.Shell
 
         public string? GetSshPasswordForProfile(TerminalProfile profile)
         {
-            return ResolveSshPasswordForProfile(profile, GetSecret, SetSecret);
+            using var secret = GetSshPasswordBufferForProfile(profile);
+            return secret?.DangerousGetString();
         }
 
         public void SetSshPasswordForProfile(TerminalProfile profile, string? password)

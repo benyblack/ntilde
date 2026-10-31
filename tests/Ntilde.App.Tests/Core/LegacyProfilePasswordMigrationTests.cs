@@ -165,6 +165,96 @@ public sealed class LegacyProfilePasswordMigrationTests : IDisposable
         Assert.False(backup.RootElement.GetProperty("Profiles")[0].TryGetProperty("Password", out _));
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void Primary_and_backup_share_the_same_repaired_profile_identity(bool primaryValid, bool backupValid)
+    {
+        WriteLegacy("same-profile");
+        foreach ((string path, bool valid) in new[] { (SettingsPath, primaryValid), (SettingsPath + ".bak", backupValid) })
+        {
+            if (valid) continue;
+            var document = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!;
+            document["Profiles"]![0]!.AsObject().Remove("Id");
+            File.WriteAllText(path, document.ToJsonString());
+        }
+        var vault = new VaultService(new InMemorySecretStore());
+        Assert.True(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        using var primary = JsonDocument.Parse(File.ReadAllText(SettingsPath));
+        using var backup = JsonDocument.Parse(File.ReadAllText(SettingsPath + ".bak"));
+        Guid id = primary.RootElement.GetProperty("Profiles")[0].GetProperty("Id").GetGuid();
+        Assert.Equal(id, backup.RootElement.GetProperty("Profiles")[0].GetProperty("Id").GetGuid());
+        if (primaryValid || backupValid) Assert.Equal(_profileId, id);
+    }
+
+    [Fact]
+    public void A_primary_without_a_password_keeps_the_identity_used_to_migrate_its_backup()
+    {
+        WriteLegacy("backup-only");
+        foreach (string path in new[] { SettingsPath, SettingsPath + ".bak" })
+        {
+            var document = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!;
+            var profile = document["Profiles"]![0]!.AsObject();
+            profile.Remove("Id");
+            if (path == SettingsPath) profile.Remove("Password");
+            File.WriteAllText(path, document.ToJsonString());
+        }
+        var vault = new VaultService(new InMemorySecretStore());
+        Assert.True(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        using var primary = JsonDocument.Parse(File.ReadAllText(SettingsPath));
+        Guid id = primary.RootElement.GetProperty("Profiles")[0].GetProperty("Id").GetGuid();
+        Assert.Equal("backup-only", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(id)));
+    }
+
+    [Fact]
+    public void A_retry_after_keyring_verification_failure_reuses_the_same_credential_id()
+    {
+        WriteLegacy("retry-safe");
+        foreach (string path in new[] { SettingsPath, SettingsPath + ".bak" })
+        {
+            var document = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!;
+            document["Profiles"]![0]!.AsObject().Remove("Id");
+            File.WriteAllText(path, document.ToJsonString());
+        }
+        var store = new VerificationReadFailureStore();
+        var vault = new VaultService(store);
+        Assert.False(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        Assert.Single(store.Values);
+        store.RefuseVerification = false;
+        Assert.True(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        Assert.Single(store.Values);
+        using var documentAfterRetry = JsonDocument.Parse(File.ReadAllText(SettingsPath));
+        Guid id = documentAfterRetry.RootElement.GetProperty("Profiles")[0].GetProperty("Id").GetGuid();
+        Assert.Equal("retry-safe", store.Values[VaultService.GetCanonicalSshProfileKey(id)]);
+    }
+
+    [Fact]
+    public void Non_secret_schema_errors_do_not_block_recovery_from_a_backup_with_a_password()
+    {
+        WriteLegacy("recoverable");
+        File.WriteAllText(SettingsPath, """{"Profiles":[{"Name":"old","SshPort":"invalid"}]}""");
+        var vault = new VaultService(new InMemorySecretStore());
+        TerminalSettings settings = TerminalSettings.LoadFromPath(SettingsPath, vault);
+        Assert.False(settings.CredentialMigrationPending);
+        Assert.Equal(17, settings.FontSize);
+        Assert.Equal("recoverable", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
+    }
+
+    private sealed class VerificationReadFailureStore : ISecretStore
+    {
+        public Dictionary<string, string> Values { get; } = new();
+        public bool RefuseVerification { get; set; } = true;
+        public bool IsAvailable => true;
+        public string? Read(string key)
+        {
+            if (RefuseVerification && Values.Count > 0) throw new InvalidOperationException("verification read failed");
+            return Values.GetValueOrDefault(key);
+        }
+        public void Write(string key, string value) => Values[key] = value;
+        public bool Delete(string key) => Values.Remove(key);
+    }
+
     private sealed class ReadFailureStore : ISecretStore
     {
         public int Writes { get; private set; }
