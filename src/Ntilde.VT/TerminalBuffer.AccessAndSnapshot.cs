@@ -396,6 +396,10 @@ namespace Ntilde.VT
             state.IsStrikethrough = false;
             state.IsHidden = false;
             state.IsPendingWrap = false;
+            state.OriginMode = false;
+            state.AutoWrapMode = true;
+            state.Charsets = [0, 0, 0, 0];
+            state.Gl = 0;
         }
 
         private void SyncThemeDefaultsInCursorStateNoLock(CursorState state)
@@ -437,6 +441,20 @@ namespace Ntilde.VT
 
             return resized;
         }
+        // Parser-only access while its batch lock is held; no mutable slot escapes a host API.
+        internal CursorState ActiveSavedCursor
+        {
+            get { AssertLockHeld(); return _isAltScreen ? _savedCursors.Alt : _savedCursors.Main; }
+        }
+        internal bool RestoresMainCursorOnAltExit => _restoreMainCursorOnAltExit;
+
+        private void ApplySavedCursorNoLock(CursorState source)
+        {
+            ApplyCursorStateNoLock(source);
+            if (source.OriginMode is bool origin) Modes.IsOriginMode = origin;
+            if (source.AutoWrapMode is bool wrap) Modes.IsAutoWrapMode = wrap;
+        }
+
         // Saved Cursor State (DEC SC / DEC RC)
         public void SaveCursor()
         {
@@ -445,6 +463,8 @@ namespace Ntilde.VT
             {
                 var target = _isAltScreen ? _savedCursors.Alt : _savedCursors.Main;
                 CaptureCursorStateNoLock(target);
+                target.OriginMode = Modes.IsOriginMode;
+                target.AutoWrapMode = Modes.IsAutoWrapMode;
             }
             finally
             {
@@ -458,7 +478,7 @@ namespace Ntilde.VT
             try
             {
                 var source = _isAltScreen ? _savedCursors.Alt : _savedCursors.Main;
-                ApplyCursorStateNoLock(source);
+                ApplySavedCursorNoLock(source);
             }
             finally
             {
@@ -738,6 +758,8 @@ namespace Ntilde.VT
                 if (saveCursorForExit)
                 {
                     CaptureCursorStateNoLock(_savedCursors.Main);
+                    _savedCursors.Main.OriginMode = Modes.IsOriginMode;
+                    _savedCursors.Main.AutoWrapMode = Modes.IsAutoWrapMode;
                     _restoreMainCursorOnAltExit = true;
                 }
 
@@ -832,7 +854,7 @@ namespace Ntilde.VT
                 RestoreScreenStateNoLock(altScreen: false);
                 if (restoreSavedCursorIfArmed && _restoreMainCursorOnAltExit)
                 {
-                    ApplyCursorStateNoLock(_savedCursors.Main);
+                    ApplySavedCursorNoLock(_savedCursors.Main);
                 }
 
                 _restoreMainCursorOnAltExit = false;
@@ -1081,11 +1103,36 @@ namespace Ntilde.VT
             return list;
         }
 
+        /// <summary>Copies both saved-cursor banks without exposing the mutable live slots.</summary>
+        public (TerminalCursorState Main, TerminalCursorState Alt) ExportSavedCursors()
+        {
+            bool lockTaken = EnterReadLockIfNeeded();
+            try { return (ExportCursor(_savedCursors.Main), ExportCursor(_savedCursors.Alt)); }
+            finally { ExitReadLockIfNeeded(Lock, lockTaken); }
+        }
+
+        /// <summary>Rejects malformed disk payloads before resize or snapshot application mutates state.</summary>
+        public static void ValidateReplaySnapshot(ReplaySnapshot snapshot)
+        {
+            ArgumentNullException.ThrowIfNull(snapshot);
+            if (!string.IsNullOrEmpty(snapshot.CellsBase64)) _ = Convert.FromBase64String(snapshot.CellsBase64);
+            if (snapshot.SavedCursorMain is not null) ValidateCursorState(snapshot.SavedCursorMain, "replay saved cursor (main)");
+            if (snapshot.SavedCursorAlt is not null) ValidateCursorState(snapshot.SavedCursorAlt, "replay saved cursor (alternate)");
+        }
+
         public void ApplySnapshot(ReplaySnapshot snapshot)
         {
+            ValidateReplaySnapshot(snapshot);
             AcquireWriteLock();
             try
             {
+                // Legacy files cannot reconstruct a save from earlier chunks. Use deterministic defaults
+                // instead of retaining banks from a previous seek on this replay window.
+                ResetSavedCursorStateToDefaultsNoLock(_savedCursors.Main);
+                ResetSavedCursorStateToDefaultsNoLock(_savedCursors.Alt);
+                if (snapshot.SavedCursorMain is not null) ImportCursor(_savedCursors.Main, snapshot.SavedCursorMain);
+                if (snapshot.SavedCursorAlt is not null) ImportCursor(_savedCursors.Alt, snapshot.SavedCursorAlt);
+
                 // Core properties
                 _cursorCol = Math.Clamp(snapshot.CursorCol, 0, Math.Max(0, Cols - 1));
                 _cursorRow = Math.Clamp(snapshot.CursorRow, 0, Math.Max(0, Rows - 1));

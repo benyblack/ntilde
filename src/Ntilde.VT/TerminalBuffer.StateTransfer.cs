@@ -630,6 +630,10 @@ namespace Ntilde.VT
 
         private static TerminalCursorState ExportCursor(CursorState cursor) => new()
         {
+            OriginMode = cursor.OriginMode,
+            AutoWrapMode = cursor.AutoWrapMode,
+            Charsets = cursor.Charsets is null ? null : (int[])cursor.Charsets.Clone(),
+            Gl = cursor.Gl,
             Row = cursor.Row,
             Col = cursor.Col,
             IsPendingWrap = cursor.IsPendingWrap,
@@ -658,6 +662,10 @@ namespace Ntilde.VT
         private static void ImportCursor(CursorState target, TerminalCursorState source)
         {
             TerminalSgrState sgr = source.Sgr;
+            target.OriginMode = source.OriginMode;
+            target.AutoWrapMode = source.AutoWrapMode;
+            target.Charsets = source.Charsets is null ? null : (int[])source.Charsets.Clone();
+            target.Gl = source.Gl;
             target.Row = source.Row;
             target.Col = source.Col;
             target.IsPendingWrap = source.IsPendingWrap;
@@ -988,6 +996,13 @@ namespace Ntilde.VT
         {
             TerminalCursorState present = StateTransferValidation.RequirePresent(cursor, what);
             ValidateUnderlinePen(StateTransferValidation.RequirePresent(present.Sgr, $"{what} SGR"), what);
+            if (present.Charsets is { } charsets)
+            {
+                if (charsets.Length != 4) throw StateTransferValidation.Reject(what, "saved charset count must be four");
+                foreach (int charset in charsets)
+                    StateTransferValidation.RequireInRange(charset, 0, 1, $"{what} charset");
+                StateTransferValidation.RequireInRange(present.Gl, 0, 3, $"{what} GL slot");
+            }
         }
 
         /// <summary>

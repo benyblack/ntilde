@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "7645db3e0426fc1d0807dcba1c9e49ff6c33b0f26b13f026636c1ddef6996239",
+  "matrixSha256": "136ed06625da24c6feaa7a17d422df79598f64f1fd66ab70228aaf828855cc20",
   "summary": {
-    "totalRows": 65,
-    "supportedCount": 30,
+    "totalRows": 67,
+    "supportedCount": 32,
     "partialCount": 31,
     "experimentalCount": 1,
     "notSupportedCount": 2,
     "wontSupportCount": 1,
-    "rowsWithLinkedEvidence": 46,
-    "supportedRowsWithLinkedEvidence": 30,
+    "rowsWithLinkedEvidence": 48,
+    "supportedRowsWithLinkedEvidence": 32,
     "errorCount": 0,
     "warningCount": 0
   },
@@ -47,56 +47,56 @@
       "order": 4,
       "title": "5) Screen buffers \u0026 modes (DEC private modes)",
       "startLine": 109,
-      "endLine": 122,
-      "rowCount": 12
+      "endLine": 124,
+      "rowCount": 14
     },
     {
       "order": 5,
       "title": "6) SGR attributes \u0026 colors",
-      "startLine": 128,
-      "endLine": 134,
+      "startLine": 130,
+      "endLine": 136,
       "rowCount": 5
     },
     {
       "order": 6,
       "title": "7) Tabs",
-      "startLine": 140,
-      "endLine": 143,
+      "startLine": 142,
+      "endLine": 145,
       "rowCount": 2
     },
     {
       "order": 7,
       "title": "8) OSC sequences",
-      "startLine": 149,
-      "endLine": 159,
+      "startLine": 151,
+      "endLine": 161,
       "rowCount": 9
     },
     {
       "order": 8,
       "title": "9) Kitty graphics / APC",
-      "startLine": 165,
-      "endLine": 168,
+      "startLine": 167,
+      "endLine": 170,
       "rowCount": 2
     },
     {
       "order": 9,
       "title": "10) SIXEL",
-      "startLine": 174,
-      "endLine": 177,
+      "startLine": 176,
+      "endLine": 179,
       "rowCount": 2
     },
     {
       "order": 10,
       "title": "11) Clipboard, selection, and hyperlinking",
-      "startLine": 183,
-      "endLine": 187,
+      "startLine": 185,
+      "endLine": 189,
       "rowCount": 3
     },
     {
       "order": 11,
       "title": "12) Unicode width, graphemes, and font behavior",
-      "startLine": 193,
-      "endLine": 197,
+      "startLine": 195,
+      "endLine": 199,
       "rowCount": 3
     }
   ],
@@ -673,6 +673,66 @@
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
+      "feature": "DECSTR (soft reset)",
+      "status": "\u2705 Supported",
+      "specOrNotes": "Preserve contents, scrollback, active screen and current cursor position; reset margins, origin/insert/application-cursor modes, visibility, SGR and character sets; reset the active saved cursor to home",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
+      "evidenceKinds": [
+        "replay",
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer",
+      "knownDeviations": "Uses xterm-compatible autowrap-on defaults. Tabs, mouse/focus/paste/keyboard reporting, in-band resize and SIXEL display mode/metrics survive. Current pending wrap is cleared. Unsupported DEC hardware modes are outside the model.",
+      "sourceLine": 112
+    },
+    {
+      "section": "5) Screen buffers \u0026 modes (DEC private modes)",
+      "feature": "Cursor save/restore (1048)",
+      "status": "\u2705 Supported",
+      "specOrNotes": "Aliases DECSC/DECRC: per-screen position, rendition, pending wrap, origin/autowrap and G0-G3/GL; does not switch screens",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
+      "evidenceKinds": [
+        "replay",
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer\u002BReplay",
+      "knownDeviations": "Shares the existing ESC 7/8 and 1049 cursor banks. New replay snapshots carry both banks; legacy snapshots use default banks. Mode 1048 is an action without a persistent set/reset flag, so DECRQM continues reporting 0. Legacy mux cursor snapshots omit the added mode/charset context and retain legacy restore behavior for those fields.",
+      "sourceLine": 113
+    },
+    {
+      "section": "5) Screen buffers \u0026 modes (DEC private modes)",
       "feature": "Show cursor",
       "status": "\u2705 Supported",
       "specOrNotes": "",
@@ -695,7 +755,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "",
-      "sourceLine": 112
+      "sourceLine": 114
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -721,7 +781,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BInput",
       "knownDeviations": "Unmodified arrows and Home/End switch between CSI and SS3 with the mode; with a modifier held they always use xterm\u0027s \u0060CSI 1;m\u0060 form (e.g. Ctrl\u002BLeft \u0060CSI 1;5D\u0060), as xterm does, since SS3 has no parameter slot",
-      "sourceLine": 113
+      "sourceLine": 115
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -737,7 +797,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BInput",
       "knownDeviations": "Mode flag tested; focus emission covered by app path, not headless UI test",
-      "sourceLine": 114
+      "sourceLine": 116
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -753,7 +813,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Input layer",
       "knownDeviations": "",
-      "sourceLine": 115
+      "sourceLine": 117
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -778,7 +838,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Input layer",
       "knownDeviations": "\u0060?1001\u0060 (highlight tracking) and urxvt (\u0060?1015\u0060)/pixel-position (\u0060?1016\u0060) mouse coordinate encodings are not implemented; only X10 and SGR (\u0060?1006\u0060) coordinate encodings are supported. Coordinates are viewport-relative and 1-based on every report path (motion, press, release, wheel); the legacy X10 encoding clamps coordinates to its 223 ceiling rather than promoting the report to the SGR form the application never requested",
-      "sourceLine": 116
+      "sourceLine": 118
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -799,7 +859,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
       "knownDeviations": "",
-      "sourceLine": 117
+      "sourceLine": 119
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -844,7 +904,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BInput",
       "knownDeviations": "Scope: disambiguate escape codes (\u00600b1\u0060) and report event types (\u00600b10\u0060). Repeat/release events use modifier subparameters \u0060:2\u0060/\u0060:3\u0060; press is the default. Releases are paired with forwarded non-text presses and discarded on focus/session/buffer/keyboard-stack changes; repeats retain the pressed logical key across layout changes. Tracking starts after the input call returns, but the existing fire-and-forget transport has no child-delivery acknowledgement and saturated input queues can lose events. Enter/Tab/Backspace keep their unmodified initial recovery bytes, report negotiated repeats, and have no releases; ordinary text, IME and AltGr stay on TextInput. Bits \u00600b100\u0060/\u00600b1000\u0060/\u00600b10000\u0060 (alternate keys, all-keys, associated text) are accepted but masked out on push/set, so the \u0060CSI ? u\u0060 reply only advertises flags actually honored. Key encoding covers Esc, modified Enter/Tab/Backspace, and ctrl/alt/super combinations on the spec\u0027s legacy-text keys; keypad text remains text. Without event reporting, functional keys keep their legacy encodings, which for arrows/Home/End/Insert/Delete/PgUp/PgDn/F1-F12 carry modifiers in xterm\u0027s PC-style form (e.g. Ctrl\u002BLeft is \u0060CSI 1;5D\u0060, Ctrl\u002BDelete \u0060CSI 3;5~\u0060). With event reporting, supported functional keys use canonical CSI frames (F3 uses \u006013~\u0060 to avoid CPR collisions), independent of application cursor mode. AltGr on Windows non-US layouts is reported as Control\u002BAlt; the encoder carves that combination out (falls through to legacy/text) so composed characters are not swallowed - the accepted trade-off is that literal Ctrl\u002BAlt\u002B\u0026lt;key\u0026gt; shortcuts on US layouts also lose kitty encoding, same as the pre-existing Alt-sends-ESC carve-out. Gated end-to-end by \u0060TerminalSettings.EnableKittyKeyboardProtocol\u0060 (default on): when off, the App-side encoder is skipped unconditionally and the \u0060CSI ? u\u0060 reply always reports flags 0 regardless of the pushed stack state. Persistent spawn requests carry the host keyboard ceiling before startup output is parsed, including the disabled setting; absent launch capabilities default to flag 1. Persistent sessions intersect the supported flag masks of interactive clients; old daemons/clients without the optional mask stay at flag 1, and read-only observers do not reduce capabilities. An attaching GUI receives its negotiated mask before the snapshot is offered; the GUI applies later capability notifications before subsequent output; raw requested stacks survive a temporary ceiling reduction. The tab-broadcast path in \u0060MainWindow\u0060 builds its own input independently of this encoder and always sends legacy encoding to broadcast targets regardless of their own flag state.",
-      "sourceLine": 118
+      "sourceLine": 120
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -864,8 +924,8 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser",
-      "knownDeviations": "\u0060?9001\u0060 (ConPTY passthrough) is accepted by \u0060CSI ? Ps h/l\u0060 but has no tracked boolean state, so DECRQM reports it as \u0060Pm=0\u0060 (not recognized) rather than guessing. Dispatch keys on the \u0060$\u0060 intermediate exactly, so \u0060CSI ! p\u0060 (DECSTR, not implemented) and bare \u0060CSI p\u0060 are unaffected.",
-      "sourceLine": 119
+      "knownDeviations": "\u0060?9001\u0060 (ConPTY passthrough) is accepted by \u0060CSI ? Ps h/l\u0060 but has no tracked boolean state, so DECRQM reports it as \u0060Pm=0\u0060 (not recognized) rather than guessing. Dispatch keys on the \u0060$\u0060 intermediate exactly, so \u0060CSI ! p\u0060 performs DECSTR without a reply; bare \u0060CSI p\u0060 is ignored.",
+      "sourceLine": 121
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -886,7 +946,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "Shares the \u0060q\u0060 final byte with DECSCUSR (\u0060CSI Ps SP q\u0060); dispatch keys on the \u0060\u003E\u0060 leader with no intermediates, and Ps other than 0 stays silent.",
-      "sourceLine": 120
+      "sourceLine": 122
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -907,7 +967,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "Other xterm window ops (stack, iconify, resize-by-cells, title push/pop via \u0060t\u0060) are ignored rather than answered. The \u0060rows:1\u0060/\u0060rows:2\u0060 sub-parameter form of the start/end events is not emitted; plain numeric rows are, which in-band-resize clients parse identically.",
-      "sourceLine": 121
+      "sourceLine": 123
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -933,7 +993,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "DEC\u0027s page parameter is omitted from the DECXCPR reply (\u0060CSI ? r ; c R\u0060, not \u0060CSI ? r ; c ; p R\u0060), as xterm omits it. The other private status reports - \u0060?15\u0060 printer, \u0060?25\u0060 UDK, \u0060?26\u0060 keyboard, \u0060?53\u0060 locator - are not implemented and stay silent rather than guessing. \u0060CSI \u003E Ps n\u0060 (xterm disable-key-modifiers) is not a status request and is ignored",
-      "sourceLine": 122
+      "sourceLine": 124
     },
     {
       "section": "6) SGR attributes \u0026 colors",
@@ -955,7 +1015,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BRenderer",
       "knownDeviations": "Underline style/color tracked separately",
-      "sourceLine": 130
+      "sourceLine": 132
     },
     {
       "section": "6) SGR attributes \u0026 colors",
@@ -971,7 +1031,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 131
+      "sourceLine": 133
     },
     {
       "section": "6) SGR attributes \u0026 colors",
@@ -987,7 +1047,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 132
+      "sourceLine": 134
     },
     {
       "section": "6) SGR attributes \u0026 colors",
@@ -1003,7 +1063,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 133
+      "sourceLine": 135
     },
     {
       "section": "6) SGR attributes \u0026 colors",
@@ -1032,7 +1092,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BRenderer",
       "knownDeviations": "Straight/double/curly/dotted/dashed, own RGB or palette color (#270). The ANSI exporters (mux text client, export) write them in colon form, in a sequence of their own after the main SGR",
-      "sourceLine": 134
+      "sourceLine": 136
     },
     {
       "section": "7) Tabs",
@@ -1053,7 +1113,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Custom tab stops are clipped on width shrink; columns exposed by width growth start with default 8-column tab stops",
-      "sourceLine": 142
+      "sourceLine": 144
     },
     {
       "section": "7) Tabs",
@@ -1074,7 +1134,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "\u0060CSI g\u0060 supports current-stop clear (\u00600\u0060/default) and clear-all (\u00603\u0060); other parameters are ignored",
-      "sourceLine": 143
+      "sourceLine": 145
     },
     {
       "section": "8) OSC sequences",
@@ -1091,7 +1151,7 @@
       "hasLinkedEvidence": false,
       "ownership": "App/UI",
       "knownDeviations": "",
-      "sourceLine": 151
+      "sourceLine": 153
     },
     {
       "section": "8) OSC sequences",
@@ -1112,7 +1172,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "",
-      "sourceLine": 152
+      "sourceLine": 154
     },
     {
       "section": "8) OSC sequences",
@@ -1133,7 +1193,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "Query form (\u0060?\u0060) only; set form is ignored safely, no runtime palette change. Colors sourced from \u0060AnsiParser.DefaultForeground\u0060/\u0060DefaultBackground\u0060, wired from the active theme at parser creation and on \u0060TerminalPane.ApplySettings\u0060; falls back to fg C0C0C0 / bg 000000 when unset",
-      "sourceLine": 153
+      "sourceLine": 155
     },
     {
       "section": "8) OSC sequences",
@@ -1158,7 +1218,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "Write-only (issue #268): valid base64 decodes and raises \u0060AnsiParser.OnClipboardWrite\u0060, capped at 1 MiB decoded (rejected on encoded length before decoding, re-checked after); invalid base64 dropped silently; a sequence with no payload separator at all is ignored rather than clearing the clipboard. Targets \u0060c\u0060/\u0060p\u0060 both map to the system clipboard, other selection chars ignored. Query (\u0060?\u0060) always gets an empty-payload denial reply, never real clipboard contents \u2014 clipboard READ is unsupported by design (security). The echoed selection parameter is whitelisted to \u0060c p q s 0-7\u0060 and length-capped first: responses go to the child process\u0027s stdin, so an unsanitized echo was a command-injection primitive (PR #280 review). Gated by \u0060TerminalSettings.AllowOsc52ClipboardWrite\u0060 (default true, single global setting; per-profile/SSH-scoped opt-in is future work)",
-      "sourceLine": 154
+      "sourceLine": 156
     },
     {
       "section": "8) OSC sequences",
@@ -1179,7 +1239,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer\u002BUI",
       "knownDeviations": "Ctrl-click open path is app-level",
-      "sourceLine": 155
+      "sourceLine": 157
     },
     {
       "section": "8) OSC sequences",
@@ -1204,7 +1264,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "#271. \u00609;\u003Ctext\u003E\u0060 flattens/caps (200 chars) and raises \u0060OnDesktopNotification\u0060; \u00609;4;\u003Cstate\u003E[;\u003Cpct\u003E]\u0060 clamps pct 0-100 and raises \u0060OnProgressReported\u0060 (state 0-4, pct null when omitted; malformed payloads dropped; bare \u00604\u0060 without \u0060;\u0060 is notification text). App side: focus-gated in-app toast (\u0060Osc9NotificationsEnabled\u0060, default false, same policy as long-command notifications), per-tab progress \u2014 thin bar in vertical headers, trailing suffix in horizontal titles \u2014 and Windows taskbar progress mirroring the selected tab (\u0060Osc9ProgressReportingEnabled\u0060, default true). Progress withdraws on state 0, pane exit, and pane close",
-      "sourceLine": 156
+      "sourceLine": 158
     },
     {
       "section": "8) OSC sequences",
@@ -1225,7 +1285,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BCommand Assist",
       "knownDeviations": "Supports A/B/C/D markers; C\u0027s command from base64, plain text or kitty\u0027s \u0060cmdline_url\u0060 (fish 4); other semantic prompt extensions not audited",
-      "sourceLine": 157
+      "sourceLine": 159
     },
     {
       "section": "8) OSC sequences",
@@ -1251,7 +1311,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
       "knownDeviations": "Requires \u0060inline=1\u0060 and the \u0060File=\u0060 arg shape; no \u0060name=\u0060/\u0060size=\u0060 enforcement",
-      "sourceLine": 158
+      "sourceLine": 160
     },
     {
       "section": "8) OSC sequences",
@@ -1267,7 +1327,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BWin",
       "knownDeviations": "",
-      "sourceLine": 159
+      "sourceLine": 161
     },
     {
       "section": "9) Kitty graphics / APC",
@@ -1296,7 +1356,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
       "knownDeviations": "Native APC (non-tunneled) on Windows decodes behind \u0060TerminalSettings.AllowNativeKittyGraphics\u0060 (default on) \u2014 historically probes got \u0060ERR\u0060/images skipped; modern ConPTY passes APC through intact (live-verified 2026-09). Payload formats: container (PNG/...) plus raw \u0060f=24\u0060/\u0060f=32\u0060 sized by \u0060s=\u0060/\u0060v=\u0060, \u0060o=z\u0060 zlib inflation, and \u0060t=f\u0060 file transport read through the host-injected \u0060ReadFileBytes\u0060 delegate (App-side reader confined to \u0060%TEMP%\u0060, 64 MB cap). \u0060t=s\u0060 (shm) skips gracefully. Placement params (\u0060z\u0060, \u0060U=1\u0060, \u0060p=1\u0060, \u0060C=1\u0060) are accepted but only cursor-anchored placement is implemented.",
-      "sourceLine": 167
+      "sourceLine": 169
     },
     {
       "section": "9) Kitty graphics / APC",
@@ -1312,7 +1372,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Pruned images\u0027 bitmaps are retired by the buffer; the owning view disposes them once no in-flight snapshot session predates the retire (#166)",
-      "sourceLine": 168
+      "sourceLine": 170
     },
     {
       "section": "10) SIXEL",
@@ -1337,7 +1397,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Decoder\u002BRenderer",
       "knownDeviations": "",
-      "sourceLine": 176
+      "sourceLine": 178
     },
     {
       "section": "10) SIXEL",
@@ -1366,7 +1426,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BRenderer",
       "knownDeviations": "Default scrolling reserves rows without writing text cells or wrapping wide images. Set \u0060?80\u0060 places at page origin without moving the text cursor; reset restores scrolling. Regional and alternate-screen scrolling clip discarded pixels; right-edge clipping survives widening. Shared sessions receive initial pixel metrics at spawn and ordered updates afterward; GUI panes decode new SIXELs while the daemon measures geometry. Attach snapshots restore retained SIXEL source, placement and clipping for both screens without moving the cursor. Per pane/session, source retention is capped at 256 entries and 2 Mi UTF-16 characters; oldest or oversized sources are omitted when this budget is reached. Active captures share an additional bounded source-reference allowance of 256 entries and 2 Mi characters (at most 8 MiB retained payloads plus capture pins), preserving copied undecoded images through their final draw. Updated GUI/daemon required for shared layout parity. Existing below-image cursor and immediate trailing-newline policy is retained. Cursor-right extension \u0060?8452\u0060 is not implemented; placement remains cell-aligned.",
-      "sourceLine": 177
+      "sourceLine": 179
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1382,7 +1442,7 @@
       "hasLinkedEvidence": false,
       "ownership": "UI",
       "knownDeviations": "",
-      "sourceLine": 185
+      "sourceLine": 187
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1396,7 +1456,7 @@
       "hasLinkedEvidence": false,
       "ownership": "UI",
       "knownDeviations": "",
-      "sourceLine": 186
+      "sourceLine": 188
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1417,7 +1477,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BUI",
       "knownDeviations": "Ctrl-click open path is app-level",
-      "sourceLine": 187
+      "sourceLine": 189
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1447,7 +1507,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Deterministic 0/1/2-cell model for combining marks, emoji modifiers, ZWJ emoji, variation selectors, and regional-indicator flags. No Unicode-version pin or full UAX #11 conformance table is documented yet.",
-      "sourceLine": 195
+      "sourceLine": 197
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1480,7 +1540,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Combining/variation attachment is covered for common terminal cases, including pending-wrap boundaries. Full extended-grapheme-cluster conformance is not claimed.",
-      "sourceLine": 196
+      "sourceLine": 198
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1509,7 +1569,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Chunked ZWJ families, emoji modifiers, VS15/VS16, and chunked regional-indicator flag pairs are covered. Remaining gaps: cursor-addressing CSI remains cell-oriented, and width-changing selectors that arrive after a base glyph already placed at the last column are not guaranteed to retroactively reflow.",
-      "sourceLine": 197
+      "sourceLine": 199
     }
   ],
   "errors": [],

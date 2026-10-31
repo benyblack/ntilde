@@ -310,8 +310,7 @@ namespace Ntilde.Replay
         public static void ApplySnapshot(TerminalBuffer buffer, AnsiParser parser, ReplaySnapshot snapshot)
         {
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
-            // Validate the disk payload before Resize or ApplySnapshot can mutate any state.
-            if (!string.IsNullOrEmpty(snapshot.CellsBase64)) _ = Convert.FromBase64String(snapshot.CellsBase64);
+            TerminalBuffer.ValidateReplaySnapshot(snapshot);
             buffer.Resize(snapshot.Cols, snapshot.Rows);
             buffer.ApplySnapshot(snapshot);
             ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);

@@ -39,6 +39,10 @@ invariant changes.
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops content
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
+- **Cursor save state is shared by DECSC/DECRC and modes 1048/1049.** The per-screen banks
+  retain position, rendition, pending wrap, origin/autowrap and G0-G3/GL. Saved character sets
+  are copied into mux and replay snapshots, never shared as mutable arrays. DECSTR preserves
+  content/current position/active screen and resets only the active saved bank; RIS resets both.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
   decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,
   and owns DECSDM state, page/scroll-region clipping and retirement. Clip metadata is copied into

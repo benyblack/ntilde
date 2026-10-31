@@ -41,4 +41,18 @@ public sealed class TerminalStateAssertTests
         Assert.ThrowsAny<XunitException>(() =>
             TerminalStateAssert.AssertEquivalent("[parser]", a.Buffer, a.Parser, b.Buffer, b.Parser));
     }
+
+    [Theory]
+    [InlineData("\u001b[?7l\u001b[?1048h\u001b[?7h")]
+    [InlineData("\u001b[?6h\u001b[?1048h\u001b[?6l")]
+    [InlineData("\u001b(0\u001b[?1048h\u001b(B")]
+    [InlineData("\u001b[4:3m\u001b[?1048h\u001b[0m")]
+    public void Different_saved_cursor_context_is_caught_even_when_live_state_matches(string input)
+    {
+        var a = Terminal(input);
+        var b = Terminal("\u001b[?1048h");
+        Assert.ThrowsAny<XunitException>(() =>
+            TerminalStateAssert.AssertEquivalent("[saved context]", a.Buffer, a.Parser, b.Buffer, b.Parser));
+    }
+
 }

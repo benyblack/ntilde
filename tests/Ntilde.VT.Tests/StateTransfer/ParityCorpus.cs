@@ -182,6 +182,13 @@ internal static class ParityCorpus
             "\u001b[1;13H\u001b[g" +
             "\u001b[2;1Hx\ty\tz"));
 
+        yield return ("soft-reset-and-cursor-save", Utf8(
+            "main\u001b[?6h\u001b[?7l\u001b(0\u001b[3;8H\u001b[31;1;4:3m\u001b[?1048h" +
+            "\u001b[?6l\u001b[?7h\u001b(B\u001b[1;1H\u001b[0m\u001b[?1048lrestored" +
+            "\u001b[?47h\u001b[4;12H\u001b[32m\u001b[?1048h" +
+            "\u001b[2;20r\u001b[?6h\u001b[?7l\u001b[4h\u001b(0\u001b[!p" +
+            "\u001b[?1048lreset bank\u001b[?47l\u001b[?1048lmain bank"));
+
         yield return ("decsc-decrc", Utf8(
             "\u001b[8;20H\u001b[31;1m\u001b7" +
             "\u001b[1;1H\u001b[0mreset here" +
