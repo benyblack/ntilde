@@ -110,9 +110,13 @@ Native SSH uses a separate best-effort reply command with a 64 KiB admission
 budget, including a 256-byte surcharge per command. Its reservation stays live
 through a stalled channel write and releases on completion, failure or teardown.
 Older native binaries decline the new entry point without using the unbounded
-keyboard path. All 175 native Rust tests and 39 focused managed SSH tests pass,
+keyboard path. All 177 native Rust library tests and 39 focused managed SSH tests pass,
 including saturation, held reservations, empty packets, receiver teardown and
-keyboard independence. The final direct-desktop collector artifact remains the
+keyboard independence. The full managed Platform suite passes 704 tests with 43
+expected skips. Both standalone and shared-shell regressions exhaust a real SSH
+server receive window, close without replenishing it, and verify bounded shutdown
+and reservation release. Disabling write cancellation makes both regressions fail.
+Post-loop network cleanup is bounded as well. The final direct-desktop collector artifact remains the
 ff9abd15 build: it does not exercise native SSH or the CLI writer. The subsequent
 SSH hardening and ANSI-writer maintainability cleanup are covered separately by
 these tests and the full VT/mux suites; the collector evidence is not relabeled.

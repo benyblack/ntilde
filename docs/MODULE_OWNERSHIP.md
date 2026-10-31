@@ -71,7 +71,8 @@ invariant changes.
   with one quarter of the input queue reserved from reply floods; OpenSSH wrappers forward
   that policy. Native SSH holds a bounded 64 KiB reply reservation (including a
   per-command surcharge) through channel writes; saturation or an older native binary
-  declines without falling back to unbounded input. Keyboard input retains its existing
+  declines without falling back to unbounded input. Main-channel writes cancel on
+  session closure and subsequent network cleanup is bounded. Keyboard input retains its existing
   backpressure. App never writes overrides
   to theme files. Mux spawn
   and presentation metadata supply host defaults; only the authoritative parser replies.

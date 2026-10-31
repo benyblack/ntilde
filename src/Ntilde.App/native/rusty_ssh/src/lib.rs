@@ -1856,8 +1856,25 @@ async fn run_shared_channel(
         .await
         .err()
         .map(|error| error.to_string());
-    let _ = channel.close().await;
+    let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, channel.close()).await;
     shared.finish(error.as_deref());
+}
+
+// A remote with no receive-window space must not hold the worker join during disposal.
+// The caller retains its reply reservation until this write completes or is canceled.
+async fn write_main_channel(
+    shared: &SharedState,
+    channel: &russh::Channel<client::Msg>,
+    data: &[u8],
+) -> anyhow::Result<bool> {
+    tokio::select! {
+        biased;
+        _ = shared.wait_closed() => Ok(false),
+        result = channel.data(data) => {
+            result?;
+            Ok(true)
+        }
+    }
 }
 
 async fn shared_channel_loop(
@@ -1884,16 +1901,17 @@ async fn shared_channel_loop(
     let has_pty = *mode == SessionMode::Shell;
     loop {
         tokio::select! {
+            _ = shared.wait_closed() => return Ok(()),
             command = next_worker_command(&mut pending_command, command_rx) => {
                 match command {
                     Some(WorkerCommand::Write(data)) => {
-                        if !eof_sent {
-                            channel.data(&data[..]).await?;
+                        if !eof_sent && !write_main_channel(shared, channel, &data).await? {
+                            return Ok(());
                         }
                     }
                     Some(WorkerCommand::DeviceReply { data, reservation }) => {
-                        if !eof_sent {
-                            channel.data(&data[..]).await?;
+                        if !eof_sent && !write_main_channel(shared, channel, &data).await? {
+                            return Ok(());
                         }
                         drop(reservation);
                     }
@@ -1922,7 +1940,7 @@ async fn shared_channel_loop(
                     | Some(WorkerCommand::Sftp { .. }) => {}
                     Some(WorkerCommand::Close) | None => {
                         if !eof_sent {
-                            let _ = channel.eof().await;
+                            let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, channel.eof()).await;
                         }
                         return Ok(());
                     }
@@ -4580,16 +4598,17 @@ fn run_session(
         let has_pty = mode == SessionMode::Shell;
         loop {
             tokio::select! {
+                _ = shared.wait_closed() => break,
                 command = next_worker_command(&mut pending_command, &mut command_rx) => {
                     match command {
                         Some(WorkerCommand::Write(data)) => {
-                            if !eof_sent {
-                                channel.data(&data[..]).await?;
+                            if !eof_sent && !write_main_channel(&shared, &channel, &data).await? {
+                                break;
                             }
                         }
                         Some(WorkerCommand::DeviceReply { data, reservation }) => {
-                            if !eof_sent {
-                                channel.data(&data[..]).await?;
+                            if !eof_sent && !write_main_channel(&shared, &channel, &data).await? {
+                                break;
                             }
                             drop(reservation);
                         }
@@ -4664,11 +4683,6 @@ fn run_session(
                         // Dropping the reply reads as CLOSED: the caller connects on its own.
                         Some(WorkerCommand::Sftp { .. }) => {}
                         Some(WorkerCommand::Close) | None => {
-                            close_all_forward_channels(&forward_channels).await;
-                            if !eof_sent {
-                                let _ = channel.eof().await;
-                            }
-                            let _ = channel.close().await;
                             break;
                         }
                     }
@@ -4694,17 +4708,26 @@ fn run_session(
             }
         }
 
-        let _ = session
-            .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
-            .await;
-        // Tear the chain down innermost-first, mirroring how it was built: each hop's transport
-        // is a channel of the hop before it, so disconnecting an outer hop first would just drop
-        // the inner ones mid-conversation.
-        for jump in jump_sessions.into_iter().rev() {
-            let _ = jump
+        // Bound all post-loop network cleanup together, including a peer that stops reading.
+        let cleanup = async {
+            close_all_forward_channels(&forward_channels).await;
+            if !eof_sent {
+                let _ = channel.eof().await;
+            }
+            let _ = channel.close().await;
+            let _ = session
                 .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
                 .await;
-        }
+            // Tear the chain down innermost-first, mirroring how it was built: each hop's transport
+            // is a channel of the hop before it, so disconnecting an outer hop first would just drop
+            // the inner ones mid-conversation.
+            for jump in jump_sessions.into_iter().rev() {
+                let _ = jump
+                    .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
+                    .await;
+            }
+        };
+        let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, cleanup).await;
         Ok(())
     })
 }
@@ -10273,6 +10296,7 @@ mod shared_connection_e2e_tests {
         pty_requests: usize,
         shell_requests: usize,
         exec_requests: usize,
+        input_bytes: usize,
     }
 
     type SeenLog = Arc<Mutex<ServerSeen>>;
@@ -10283,6 +10307,7 @@ mod shared_connection_e2e_tests {
 
     struct TestServer {
         seen: SeenLog,
+        stall_input: bool,
     }
 
     impl russh::server::Handler for TestServer {
@@ -10352,12 +10377,24 @@ mod shared_connection_e2e_tests {
             session.data(channel, b"prompt$ ".to_vec())
         }
 
+        fn adjust_window(&mut self, _channel: ChannelId, current: u32) -> u32 {
+            if self.stall_input {
+                0
+            } else {
+                current
+            }
+        }
+
         async fn data(
             &mut self,
             channel: ChannelId,
             data: &[u8],
             session: &mut ServerSession,
         ) -> Result<(), Self::Error> {
+            lock(&self.seen).input_bytes += data.len();
+            if self.stall_input {
+                return Ok(());
+            }
             if data == b"drop\n" {
                 // The whole connection, not this channel: what a server restart looks like.
                 return session.disconnect(Disconnect::ByApplication, "going away", "en");
@@ -10377,6 +10414,10 @@ mod shared_connection_e2e_tests {
 
     /// Serves every connection to a loopback port on its own thread and runtime, counting them.
     fn start_server() -> (u16, SeenLog) {
+        start_server_with_stalled_input(false)
+    }
+
+    fn start_server_with_stalled_input(stall_input: bool) -> (u16, SeenLog) {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("loopback must bind");
         let port = listener.local_addr().expect("bound address").port();
         listener
@@ -10394,12 +10435,14 @@ mod shared_connection_e2e_tests {
                 let listener = tokio::net::TcpListener::from_std(listener).expect("tokio listener");
                 let config = Arc::new(russh::server::Config {
                     keys: vec![host_key()],
+                    window_size: if stall_input { 1 } else { 2 * 1024 * 1024 },
                     ..Default::default()
                 });
                 while let Ok((stream, _)) = listener.accept().await {
                     lock(&server_seen).connections += 1;
                     let handler = TestServer {
                         seen: server_seen.clone(),
+                        stall_input,
                     };
                     let config = config.clone();
                     tokio::spawn(async move {
@@ -10541,6 +10584,69 @@ mod shared_connection_e2e_tests {
             NOVA_SSH_RESULT_OK,
             nova_ssh_write(handle, data.as_ptr(), data.len())
         );
+    }
+
+    fn assert_stalled_reply_close(shared_connection: bool) {
+        let (port, seen) = start_server_with_stalled_input(true);
+        let strings = strings();
+        let args = args(&strings, port);
+        let (connection, shell) = if shared_connection {
+            let connection = nova_ssh_connect_shared(&args);
+            let shell = nova_ssh_open_shell(connection, &args);
+            drive_connection(connection, PASSWORD, NovaSshEventKind::Connected);
+            drive(shell, NovaSshEventKind::Data, |_| {});
+            (Some(connection), shell)
+        } else {
+            let shell = nova_ssh_connect(&args);
+            drive_connection(shell, PASSWORD, NovaSshEventKind::Data);
+            (None, shell)
+        };
+        let shared = registry_get(shell).unwrap().shared.clone();
+        let reply = vec![b'x'; 4096];
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            nova_ssh_try_write_device_reply(shell, reply.as_ptr(), reply.len())
+        );
+        // A real server received the first byte, so the command has been dequeued and its
+        // channel.data future is waiting for the rest of a window that is never replenished.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while lock(&seen).input_bytes == 0 {
+            assert!(Instant::now() < deadline, "reply never reached the remote window");
+            thread::sleep(Duration::from_millis(2));
+        }
+        assert_eq!(1, lock(&seen).input_bytes);
+        assert_eq!(
+            reply.len() + DEVICE_REPLY_OVERHEAD,
+            shared.queued_device_reply_cost.load(Ordering::Acquire)
+        );
+        let (closed_tx, closed_rx) = std::sync::mpsc::channel();
+        thread::spawn(move || {
+            let _ = closed_tx.send(nova_ssh_close(shell));
+        });
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            closed_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("close blocked on remote window")
+        );
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while shared.queued_device_reply_cost.load(Ordering::Acquire) != 0 {
+            assert!(Instant::now() < deadline, "canceled reply retained its reservation");
+            thread::sleep(Duration::from_millis(2));
+        }
+        if let Some(connection) = connection {
+            assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(connection));
+        }
+    }
+
+    #[test]
+    fn closing_standalone_shell_cancels_a_real_stalled_device_reply() {
+        assert_stalled_reply_close(false);
+    }
+
+    #[test]
+    fn closing_shared_shell_cancels_a_real_stalled_device_reply() {
+        assert_stalled_reply_close(true);
     }
 
     #[test]
