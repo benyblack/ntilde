@@ -39,8 +39,13 @@ namespace Ntilde.VT
             get => _maxHistory;
             set
             {
-                _maxHistory = Math.Max(1, value);
-                RecomputeScrollbackBudgetForCurrentWidth();
+                bool lockTaken = EnterWriteLockIfNeeded();
+                try
+                {
+                    _maxHistory = Math.Max(1, value);
+                    RecomputeScrollbackBudgetForCurrentWidth();
+                }
+                finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             }
         }
 
@@ -49,12 +54,17 @@ namespace Ntilde.VT
             get => _maxScrollbackBytes;
             set
             {
-                _maxScrollbackBytes = Math.Max(ComputeScrollbackBudgetBytes(Cols, 1), value);
-                if (_scrollback != null)
+                bool lockTaken = EnterWriteLockIfNeeded();
+                try
                 {
-                    _scrollback.MaxScrollbackBytes = _maxScrollbackBytes;
-                    _scrollback.TryEvictUntilWithinBudget();
+                    _maxScrollbackBytes = Math.Max(ComputeScrollbackBudgetBytes(Cols, 1), value);
+                    if (_scrollback != null)
+                    {
+                        _scrollback.MaxScrollbackBytes = _maxScrollbackBytes;
+                        _scrollback.TryEvictUntilWithinBudget();
+                    }
                 }
+                finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             }
         }
 
