@@ -631,7 +631,6 @@ namespace Ntilde.VT
         private static TerminalCursorState ExportCursor(CursorState cursor) => new()
         {
             OriginMode = cursor.OriginMode,
-            AutoWrapMode = cursor.AutoWrapMode,
             Charsets = cursor.Charsets is null ? null : (int[])cursor.Charsets.Clone(),
             Gl = cursor.Gl,
             Row = cursor.Row,
@@ -663,7 +662,6 @@ namespace Ntilde.VT
         {
             TerminalSgrState sgr = source.Sgr;
             target.OriginMode = source.OriginMode;
-            target.AutoWrapMode = source.AutoWrapMode;
             target.Charsets = source.Charsets is null ? null : (int[])source.Charsets.Clone();
             target.Gl = source.Gl;
             target.Row = source.Row;

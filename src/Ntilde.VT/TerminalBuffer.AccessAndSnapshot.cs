@@ -397,7 +397,6 @@ namespace Ntilde.VT
             state.IsHidden = false;
             state.IsPendingWrap = false;
             state.OriginMode = false;
-            state.AutoWrapMode = true;
             state.Charsets = [0, 0, 0, 0];
             state.Gl = 0;
         }
@@ -452,7 +451,7 @@ namespace Ntilde.VT
         {
             ApplyCursorStateNoLock(source);
             if (source.OriginMode is bool origin) Modes.IsOriginMode = origin;
-            if (source.AutoWrapMode is bool wrap) Modes.IsAutoWrapMode = wrap;
+            // DECSC restores pending wrap, not DECAWM; the current autowrap mode survives.
         }
 
         // Saved Cursor State (DEC SC / DEC RC)
@@ -464,7 +463,6 @@ namespace Ntilde.VT
                 var target = _isAltScreen ? _savedCursors.Alt : _savedCursors.Main;
                 CaptureCursorStateNoLock(target);
                 target.OriginMode = Modes.IsOriginMode;
-                target.AutoWrapMode = Modes.IsAutoWrapMode;
             }
             finally
             {
@@ -759,7 +757,6 @@ namespace Ntilde.VT
                 {
                     CaptureCursorStateNoLock(_savedCursors.Main);
                     _savedCursors.Main.OriginMode = Modes.IsOriginMode;
-                    _savedCursors.Main.AutoWrapMode = Modes.IsAutoWrapMode;
                     _restoreMainCursorOnAltExit = true;
                 }
 

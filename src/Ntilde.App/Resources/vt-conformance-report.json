@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "85b724491a526b51cf2d9bcb988bad53d1522e38d670bb8c0fd620311fd75cde",
+  "matrixSha256": "778f6109380c0a44dfa1e154f0bbcb81e5c00d7e7fd08350e5476b5b9585cf12",
   "summary": {
     "totalRows": 67,
     "supportedCount": 32,
@@ -709,7 +709,7 @@
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
       "feature": "Cursor save/restore (1048)",
       "status": "\u2705 Supported",
-      "specOrNotes": "Aliases DECSC/DECRC: per-screen position, rendition, pending wrap, origin/autowrap and G0-G3/GL; does not switch screens",
+      "specOrNotes": "Aliases DECSC/DECRC: per-screen position, rendition, pending wrap, origin mode and G0-G3/GL; does not switch screens",
       "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
       "evidenceKinds": [
         "replay",
@@ -732,7 +732,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BReplay",
-      "knownDeviations": "Shares the existing ESC 7/8 and 1049 cursor banks. New replay snapshots carry a complete terminal/parser cut including both screens and the armed 1049 restore; legacy snapshots use default banks. Mode 1048 is an action without a persistent set/reset flag, so DECRQM continues reporting 0. Legacy mux cursor snapshots omit the added mode/charset context and retain legacy restore behavior for those fields.",
+      "knownDeviations": "Shares the existing ESC 7/8 and 1049 cursor banks. Restores pending wrap while leaving the current DECAWM autowrap mode unchanged, matching xterm. New replay snapshots carry a complete terminal/parser cut including both screens and the armed 1049 restore; legacy snapshots use default banks. Mode 1048 is an action without a persistent set/reset flag, so DECRQM continues reporting 0. Legacy mux cursor snapshots omit the added mode/charset context and retain legacy restore behavior for those fields.",
       "sourceLine": 113
     },
     {

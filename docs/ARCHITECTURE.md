@@ -113,7 +113,7 @@ State machine for ESC, CSI, OSC, DEC-private modes. Emits **semantic operations*
 Applies semantic operations to terminal state. Maintains cursor, modes, tab stops, margins. Owns main + alternate screen buffers and scrollback.
 
 DECSC/DECRC and private modes 1048/1049 share per-screen saved cursor banks, including
-rendition, pending wrap, origin/autowrap and character-set context. Mux state transfer
+rendition, pending wrap, origin mode and character-set context. Mux state transfer
 and new replay snapshots copy those banks. DECSTR resets the active bank and soft
 terminal defaults while preserving screen contents, current position, tab stops and
 reporting modes; it does not switch screens or invoke the destructive RIS path.

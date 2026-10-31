@@ -198,7 +198,7 @@ internal static class TerminalStateAssert
     }
 
     private static string Describe(TerminalCursorState cursor) =>
-        $"row={cursor.Row} col={cursor.Col} pw={cursor.IsPendingWrap} origin={cursor.OriginMode} wrap={cursor.AutoWrapMode} " +
+        $"row={cursor.Row} col={cursor.Col} pw={cursor.IsPendingWrap} origin={cursor.OriginMode} " +
         $"gsets=[{(cursor.Charsets is null ? "legacy" : string.Join(',', cursor.Charsets))}] gl={cursor.Gl} sgr[{Describe(cursor.Sgr)}]";
 
     private static string Describe(TerminalSgrState sgr) =>

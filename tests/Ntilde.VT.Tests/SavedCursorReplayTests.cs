@@ -138,7 +138,7 @@ public sealed class SavedCursorReplayTests
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Replay")]
-    public async Task Snapshot_round_trip_keeps_origin_wrap_and_character_set_saved_before_the_snapshot(bool alternate)
+    public async Task Snapshot_round_trip_restores_saved_origin_and_charsets_but_keeps_current_autowrap(bool alternate)
     {
         string path = Path.GetTempFileName();
         try
@@ -156,7 +156,7 @@ public sealed class SavedCursorReplayTests
                 ct: TestContext.Current.CancellationToken);
             restoredParser.Process("\u001b[?1048lq");
             Assert.True(restored.Modes.IsOriginMode);
-            Assert.False(restored.Modes.IsAutoWrapMode);
+            Assert.True(restored.Modes.IsAutoWrapMode);
             Assert.Equal((2, 4), (restored.CursorRow, restored.CursorCol));
             Assert.Contains('─', BufferSnapshot.Capture(restored).Lines[2]);
         }
@@ -247,7 +247,7 @@ public sealed class SavedCursorReplayTests
             restoredParser.Process(tail);
             Assert.False(restored.IsAltScreenActive);
             Assert.True(restored.Modes.IsOriginMode);
-            Assert.False(restored.Modes.IsAutoWrapMode);
+            Assert.True(restored.Modes.IsAutoWrapMode);
             Assert.True(restored.IsBold);
             Assert.Equal(BufferSnapshot.Capture(live).ToFormattedString(), BufferSnapshot.Capture(restored).ToFormattedString());
             Assert.StartsWith("main", BufferSnapshot.Capture(restored).Lines[0]);

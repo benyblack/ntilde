@@ -26,7 +26,7 @@ public sealed class HeadlessSoftResetTests
         Assert.Equal(2, pane.Buffer.CursorRow);
         Assert.True(pane.Buffer.IsBold);
         Assert.True(pane.Buffer.Modes.IsOriginMode);
-        Assert.False(pane.Buffer.Modes.IsAutoWrapMode);
+        Assert.True(pane.Buffer.Modes.IsAutoWrapMode);
         pane.Session.Detach(userDetached: false);
         await client.PingAsync(TestContext.Current.CancellationToken);
         host.Fake(id).Emit("\u001b[2;20r\u001b[?6h\u001b[?7l\u001b[4h\u001b[!p");

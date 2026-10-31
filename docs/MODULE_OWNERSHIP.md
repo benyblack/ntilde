@@ -40,7 +40,7 @@ invariant changes.
 - Lossless reflow — resize never silently drops content
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
 - **Cursor save state is shared by DECSC/DECRC and modes 1048/1049.** The per-screen banks
-  retain position, rendition, pending wrap, origin/autowrap and G0-G3/GL. Saved character sets
+  retain position, rendition, pending wrap, origin mode and G0-G3/GL. Saved character sets
   are copied into mux and replay snapshots, never shared as mutable arrays. DECSTR preserves
   content/current position/active screen and resets only the active saved bank; RIS resets both.
   Cursor default/override state travels with snapshots; App resolves a default appearance

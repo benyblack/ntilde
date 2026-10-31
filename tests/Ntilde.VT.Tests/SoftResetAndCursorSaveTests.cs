@@ -154,14 +154,14 @@ public sealed class SoftResetAndCursorSaveTests
     [Theory]
     [InlineData("\u001b7", "\u001b[?1048l")]
     [InlineData("\u001b[?1048h", "\u001b8")]
-    public void Saved_cursor_restores_origin_wrap_and_character_set_context(string save, string restore)
+    public void Saved_cursor_restores_origin_and_character_sets_but_keeps_current_autowrap(string save, string restore)
     {
         var buffer = new TerminalBuffer(20, 8);
         var parser = new AnsiParser(buffer);
         parser.Process("\u001b[2;7r\u001b[?6h\u001b[2;3H\u001b[?7l\u001b(0" + save);
         parser.Process("\u001b[?6l\u001b[?7h\u001b(B\u001b[1;1H" + restore);
         Assert.True(buffer.Modes.IsOriginMode);
-        Assert.False(buffer.Modes.IsAutoWrapMode);
+        Assert.True(buffer.Modes.IsAutoWrapMode);
         Assert.Equal((2, 2), (buffer.CursorRow, buffer.CursorCol));
         parser.Process("q");
         Assert.Equal('─', Cell(buffer, 2, 2));
@@ -176,10 +176,39 @@ public sealed class SoftResetAndCursorSaveTests
             "\u001b[?6l\u001b[?7h\u001b(B\u001b[?1049l");
         Assert.False(buffer.IsAltScreenActive);
         Assert.True(buffer.Modes.IsOriginMode);
-        Assert.False(buffer.Modes.IsAutoWrapMode);
+        Assert.True(buffer.Modes.IsAutoWrapMode);
         Assert.Equal((2, 3), (buffer.CursorRow, buffer.CursorCol));
         parser.Process("q");
         Assert.Equal('─', Cell(buffer, 3, 2));
+    }
+
+    [Theory]
+    [InlineData("\u001b7", "\u001b8", false)]
+    [InlineData("\u001b7", "\u001b8", true)]
+    [InlineData("\u001b[s", "\u001b[u", false)]
+    [InlineData("\u001b[s", "\u001b[u", true)]
+    [InlineData("\u001b[?1048h", "\u001b[?1048l", false)]
+    [InlineData("\u001b[?1048h", "\u001b[?1048l", true)]
+    [InlineData("\u001b[?1049h", "\u001b[?1049l", false)]
+    [InlineData("\u001b[?1049h", "\u001b[?1049l", true)]
+    public void Cursor_restore_preserves_the_current_autowrap_mode(string save, string restore, bool savedWrap)
+    {
+        var buffer = new TerminalBuffer(8, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process($"\u001b[?7{(savedWrap ? 'h' : 'l')}\u001b[2;8H" + save);
+        parser.Process($"\u001b[?7{(savedWrap ? 'l' : 'h')}\u001b[1;1H" + restore);
+        Assert.Equal(!savedWrap, buffer.Modes.IsAutoWrapMode);
+        parser.Process("XY");
+        if (savedWrap)
+        {
+            Assert.Equal('Y', Cell(buffer, 7, 1));
+            Assert.Equal(' ', Cell(buffer, 0, 2));
+        }
+        else
+        {
+            Assert.Equal('X', Cell(buffer, 7, 1));
+            Assert.Equal('Y', Cell(buffer, 0, 2));
+        }
     }
 
     [Theory]

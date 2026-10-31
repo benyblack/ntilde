@@ -42,8 +42,15 @@ public sealed class TerminalStateAssertTests
             TerminalStateAssert.AssertEquivalent("[parser]", a.Buffer, a.Parser, b.Buffer, b.Parser));
     }
 
+    [Fact]
+    public void Saved_cursor_ignores_autowrap_history_when_current_state_matches()
+    {
+        var a = Terminal("\u001b[?7l\u001b[?1048h\u001b[?7h");
+        var b = Terminal("\u001b[?1048h");
+        TerminalStateAssert.AssertEquivalent("[autowrap history]", a.Buffer, a.Parser, b.Buffer, b.Parser);
+    }
+
     [Theory]
-    [InlineData("\u001b[?7l\u001b[?1048h\u001b[?7h")]
     [InlineData("\u001b[?6h\u001b[?1048h\u001b[?6l")]
     [InlineData("\u001b(0\u001b[?1048h\u001b(B")]
     [InlineData("\u001b[4:3m\u001b[?1048h\u001b[0m")]
