@@ -121,7 +121,8 @@ Snapshot fields:
   - On mismatch, reader throws `InvalidDataException` with a `cell layout mismatch` message and expected/actual values.
   - Legacy snapshots without these fields still load.
   - When `state` has the current supported state version, it is authoritative and uses the shared state-transfer
-    preflight: terminal and parser structure are validated before either is mutated.
+    preflight: a non-null parser half is required, and terminal and parser structure are
+    validated before either is mutated.
     Live and saved palette indices, saved charset indices and the underline pen are validated.
     SIXEL metrics in the complete parser state take precedence; outer metrics are a fallback when absent.
     Legacy snapshots require positive geometry before resize or content mutation.

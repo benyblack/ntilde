@@ -369,6 +369,22 @@ public sealed class SavedCursorReplayTests
     }
 
     [Fact]
+    public void Complete_snapshot_without_a_parser_is_rejected_before_mutation()
+    {
+        var buffer = new TerminalBuffer(20, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process("preserved\u001b[31;");
+        string before = parser.ExportState().ToDebugString();
+        var snapshot = StateSnapshot(10, 3);
+        snapshot.State!.Parser = null!; // malformed JSON can explicitly null the required parser half
+        var error = Assert.Throws<InvalidOperationException>(() => ReplayRunner.ApplySnapshot(buffer, parser, snapshot));
+        Assert.Contains("parser", error.Message);
+        Assert.Equal((20, 5), (buffer.Cols, buffer.Rows));
+        Assert.Equal("preserved", BufferSnapshot.Capture(buffer).Lines[0]);
+        Assert.Equal(before, parser.ExportState().ToDebugString());
+    }
+
+    [Fact]
     public void Unknown_optional_state_versions_use_the_legacy_viewport_fields()
     {
         var buffer = new TerminalBuffer(20, 5);

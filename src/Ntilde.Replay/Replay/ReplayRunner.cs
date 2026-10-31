@@ -312,6 +312,8 @@ namespace Ntilde.Replay
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
             if (snapshot.State is { Version: TerminalStateSnapshot.CurrentVersion })
             {
+                if (snapshot.State.Parser is null)
+                    throw new InvalidOperationException("Invalid replay parser state: a complete snapshot requires a parser.");
                 // Restore validates both halves before resizing or mutating either object.
                 TerminalStateTransfer.Restore(buffer, parser, snapshot.State);
                 if (snapshot.State.Parser.SixelCellWidthPx is null)
