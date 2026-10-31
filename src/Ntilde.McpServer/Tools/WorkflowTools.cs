@@ -114,6 +114,7 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/AnsiParser.cs",
             "src/Ntilde.VT/AnsiParser.Csi.cs",
             "src/Ntilde.VT/AnsiParser.Sgr.cs",
+            "src/Ntilde.VT/AnsiParser.Reset.cs",
             "src/Ntilde.VT/AnsiParser.Osc.cs",
             "src/Ntilde.VT/AnsiParser.ShellIntegration.cs",
             "src/Ntilde.VT/AnsiParser.Images.cs",
