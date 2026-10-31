@@ -43,13 +43,13 @@
     "cleanedUpAt": "2026-10-31T22:11:29.675Z"
   },
   "after": {
-    "sourceCommit": "b40702a1e25d403be9b8ece423abb714e9baabb5",
-    "appVersion": "0.12.0+b40702a1e25d403be9b8ece423abb714e9baabb5",
-    "artifactDirectory": "artifacts/terminfo/owned-RibI7Y",
-    "measuredAt": "2026-10-31T22:17:56.766Z",
-    "runId": "8c450e4a5655336264d937884df831e0",
-    "rawSha256": "429ef27c84f93c6fe6a612f7f61e0042fde33bde780c490e4f030880e12e3b9f",
-    "assemblySha256": "2c8d700ba3bc2c865fd711b07affaa3316a372af55b2c529449caa580d3d018f",
+    "sourceCommit": "ff9abd159d1ac53cddaea17d7bcfb71fa823ef50",
+    "appVersion": "0.12.0+ff9abd159d1ac53cddaea17d7bcfb71fa823ef50",
+    "artifactDirectory": "artifacts/terminfo/owned-WH1tzu",
+    "measuredAt": "2026-10-31T22:46:07.760Z",
+    "runId": "f7e06a492ea34376afda2594fdd8c2be",
+    "rawSha256": "bf51f1315aa111ded1fe905b0b825f61545b88e2d68f372b772b7a4b0c0dcfb7",
+    "assemblySha256": "ea22370a497fd5f65b3918408842435b9376de9c5dd2ce46c2dfc3ba3e1c5a44",
     "counts": {
       "inconclusive": 177,
       "supported": 73,
@@ -61,7 +61,7 @@
       "policy-refused": 3
     },
     "cleanupCompleted": true,
-    "cleanedUpAt": "2026-10-31T22:17:56.805Z"
+    "cleanedUpAt": "2026-10-31T22:46:07.786Z"
   },
   "baselineRuntimeSourceEquivalence": {
     "mergedMainCommit": "e91eb8169d93cf90c121ae8c2f848a0d56a9520d",
@@ -624,5 +624,28 @@
     "Numeric colors only; no X11 named colors, OSC 21 or clipboard fixture.",
     "The local adapter is an extension, not an upstream-approved collector result; upstream identity remains unverified.",
     "Raw JSON and full ownership/dependency/source receipts remain in ignored local directories and were not rewritten."
+  ],
+  "intermediateFeatureBuilds": [
+    {
+      "sourceCommit": "b40702a1e25d403be9b8ece423abb714e9baabb5",
+      "appVersion": "0.12.0+b40702a1e25d403be9b8ece423abb714e9baabb5",
+      "artifactDirectory": "artifacts/terminfo/owned-RibI7Y",
+      "measuredAt": "2026-10-31T22:17:56.766Z",
+      "runId": "8c450e4a5655336264d937884df831e0",
+      "rawSha256": "429ef27c84f93c6fe6a612f7f61e0042fde33bde780c490e4f030880e12e3b9f",
+      "assemblySha256": "2c8d700ba3bc2c865fd711b07affaa3316a372af55b2c529449caa580d3d018f",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 73,
+        "unsupported": 5
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "cleanupCompleted": true,
+      "cleanedUpAt": "2026-10-31T22:17:56.805Z"
+    }
   ]
 }

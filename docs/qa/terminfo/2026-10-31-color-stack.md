@@ -5,16 +5,20 @@ A fresh owned before/after collection measured the same pinned suite in private
 build from the previous report. Its runtime sources match merged main `e91eb816`
 exactly across App, VT, Pty, Mux, Rendering and Mux.Contracts (verified with Git);
 its embedded version still identifies `aa640ee`, not the later merge commit.
-The feature sidecar was rebuilt from committed source `b40702a1` in a separate
+The feature sidecar was rebuilt from committed source `ff9abd15` in a separate
 uninstalled output directory. Neither run used installed application profiles.
+An initial `b40702a1` feature collection had the same 73/5/177 outcomes before
+batched publication, reply hardening, cache and CLI-rendering follow-ups. Its
+metadata remains in the comparison as an intermediate build; the final after
+measurement identifies `ff9abd15` and includes those fixes.
 
 | Evidence | Before | After |
 |---|---|---|
-| Source | `aa640ee4384b963ddd9e156b78e0f8e0d532ee0f` | `b40702a1e25d403be9b8ece423abb714e9baabb5` |
-| Collected at UTC | `2026-10-31T22:11:29.621Z` | `2026-10-31T22:17:56.766Z` |
-| Retained local directory | `artifacts/terminfo/owned-qmH85E` | `artifacts/terminfo/owned-RibI7Y` |
-| Raw SHA-256 | `5887e6ecf3be2ded8a253d8eab9478e0b9311255ab22beacb287f8bbc168f645` | `429ef27c84f93c6fe6a612f7f61e0042fde33bde780c490e4f030880e12e3b9f` |
-| Assembly SHA-256 | `91ef82f942999f4acad9da89194cbc9112c99f836518ab8a9536c980003e7777` | `2c8d700ba3bc2c865fd711b07affaa3316a372af55b2c529449caa580d3d018f` |
+| Source | `aa640ee4384b963ddd9e156b78e0f8e0d532ee0f` | `ff9abd159d1ac53cddaea17d7bcfb71fa823ef50` |
+| Collected at UTC | `2026-10-31T22:11:29.621Z` | `2026-10-31T22:46:07.760Z` |
+| Retained local directory | `artifacts/terminfo/owned-qmH85E` | `artifacts/terminfo/owned-WH1tzu` |
+| Raw SHA-256 | `5887e6ecf3be2ded8a253d8eab9478e0b9311255ab22beacb287f8bbc168f645` | `bf51f1315aa111ded1fe905b0b825f61545b88e2d68f372b772b7a4b0c0dcfb7` |
+| Assembly SHA-256 | `91ef82f942999f4acad9da89194cbc9112c99f836518ab8a9536c980003e7777` | `ea22370a497fd5f65b3918408842435b9376de9c5dd2ce46c2dfc3ba3e1c5a44` |
 | Supported observations | 69 | 73 |
 | Unsupported observations | 7 | 5 |
 | Inconclusive observations | 179 | 177 |
@@ -117,6 +121,6 @@ or an overall terminal ranking; upstream identity remains unverified. Other
 terminal binaries were not measured. See the [comparison](../../ghostty-gaps/ntilde_vs_ghostty_status.md).
 
 Both app/worker pairs exited and cleanup completed. Their proofs record cleanup
-at `2026-10-31T22:11:29.675Z` and `2026-10-31T22:17:56.805Z`;
+at `2026-10-31T22:11:29.675Z` and `2026-10-31T22:46:07.786Z`;
 private app-data roots and sockets were removed. The prior baseline report remains
 available in the [macOS owned baseline report](2026-10-31-macos-owned.md).
