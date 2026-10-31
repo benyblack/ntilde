@@ -14,21 +14,13 @@ public partial class AnsiParser
         {
             case "30001" when data.Length == 0: _buffer.PushColors(); return true;
             case "30101" when data.Length == 0: _buffer.PopColors(); RefreshColorScheme(); return true;
-            case "104":
-                if (data.Length == 0) _buffer.ResetPalette();
-                else foreach (string item in data.Split(';'))
-                    if (TryPaletteIndex(item, out int index)) _buffer.SetPaletteColor(index, null);
-                return true;
+            case "104": ResetPaletteColors(data); return true;
             case "110":
             case "111":
             case "112":
             case "117":
             case "119":
-                if (data.Length == 0)
-                {
-                    _buffer.SetDynamicColor(int.Parse(code, CultureInfo.InvariantCulture) - 100, null);
-                    RefreshColorScheme();
-                }
+                ResetDynamicColor(code, data);
                 return true;
             case "4": HandlePaletteColors(data); return true;
             case "10":
@@ -45,37 +37,79 @@ public partial class AnsiParser
     private static bool TryPaletteIndex(string value, out int index)
         => int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out index) && index is >= 0 and < 256;
 
+    private void ResetPaletteColors(string data)
+    {
+        TerminalColorOverrides colors = _buffer.CopyColorOverrides();
+        if (data.Length == 0) Array.Clear(colors.Palette);
+        else
+        {
+            foreach (string item in data.Split(';'))
+            {
+                if (TryPaletteIndex(item, out int index)) colors.Palette[index] = null;
+            }
+        }
+        _buffer.ApplyColorOverrides(colors);
+    }
+
+    private void ResetDynamicColor(string code, string data)
+    {
+        if (data.Length != 0) return;
+        TerminalColorOverrides colors = _buffer.CopyColorOverrides();
+        SetDynamicOverride(colors, int.Parse(code, CultureInfo.InvariantCulture) - 100, null);
+        _buffer.ApplyColorOverrides(colors);
+        RefreshColorScheme();
+    }
+
     private void HandlePaletteColors(string data)
     {
+        TerminalColorOverrides colors = _buffer.CopyColorOverrides();
         string[] values = data.Split(';');
         for (int i = 0; i + 1 < values.Length; i += 2)
         {
             if (!TryPaletteIndex(values[i], out int index)) continue;
             if (values[i + 1] == "?")
-                OnResponse?.Invoke(FormatOscColorResponse("4;" + index.ToString(CultureInfo.InvariantCulture), _buffer.GetPaletteColor(index)));
-            else if (TryParseColor(values[i + 1], out TermColor color)) _buffer.SetPaletteColor(index, color);
+                OnResponse?.Invoke(FormatOscColorResponse("4;" + index.ToString(CultureInfo.InvariantCulture), _buffer.GetPaletteColor(index, colors)));
+            else if (TryParseColor(values[i + 1], out TermColor color)) colors.Palette[index] = color.ToUint();
         }
+        _buffer.ApplyColorOverrides(colors);
     }
 
     private void HandleDynamicColors(int code, string data)
     {
+        TerminalColorOverrides colors = _buffer.CopyColorOverrides();
         foreach (string value in data.Split(';'))
         {
-            if (value == "?")
-            {
-                TermColor? color = code switch
-                {
-                    10 => _buffer.RuntimeForeground ?? DefaultForeground ?? TermColor.FromRgb(0xc0, 0xc0, 0xc0),
-                    11 => _buffer.RuntimeBackground ?? DefaultBackground ?? TermColor.Black,
-                    _ => _buffer.GetDynamicColor(code)
-                };
-                if (color is TermColor result)
-                    OnResponse?.Invoke(FormatOscColorResponse(code.ToString(CultureInfo.InvariantCulture), result));
-            }
-            else if (TryParseColor(value, out TermColor color)) _buffer.SetDynamicColor(code, color);
+            if (value == "?") ReportDynamicColor(code, colors);
+            else if (TryParseColor(value, out TermColor color)) SetDynamicOverride(colors, code, color);
             code++;
         }
+        _buffer.ApplyColorOverrides(colors);
         RefreshColorScheme();
+    }
+
+    private void ReportDynamicColor(int code, TerminalColorOverrides colors)
+    {
+        TermColor? color = code switch
+        {
+            10 => colors.Foreground is uint fg ? TermColor.FromUint(fg) : DefaultForeground ?? TermColor.FromRgb(0xc0, 0xc0, 0xc0),
+            11 => colors.Background is uint bg ? TermColor.FromUint(bg) : DefaultBackground ?? TermColor.Black,
+            _ => _buffer.GetDynamicColor(code, colors)
+        };
+        if (color is TermColor result)
+            OnResponse?.Invoke(FormatOscColorResponse(code.ToString(CultureInfo.InvariantCulture), result));
+    }
+
+    private static void SetDynamicOverride(TerminalColorOverrides colors, int code, TermColor? color)
+    {
+        uint? value = color?.ToUint();
+        switch (code)
+        {
+            case 10: colors.Foreground = value; break;
+            case 11: colors.Background = value; break;
+            case 12: colors.Cursor = value; break;
+            case 17: colors.SelectionBackground = value; break;
+            case 19: colors.SelectionForeground = value; break;
+        }
     }
 
     // Deliberately numeric-only: #RGB/#RRGGBB/#RRRGGGBBB/#RRRRGGGGBBBB,

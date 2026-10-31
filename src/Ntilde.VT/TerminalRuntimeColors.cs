@@ -14,6 +14,11 @@ public sealed class TerminalColorOverrides
     [JsonPropertyName("selection_fg")] public uint? SelectionForeground { get; set; }
     [JsonPropertyName("palette")] public uint?[] Palette { get; set; } = new uint?[256];
 
+    internal bool HasSameColors(TerminalColorOverrides other) =>
+        Foreground == other.Foreground && Background == other.Background && Cursor == other.Cursor &&
+        SelectionBackground == other.SelectionBackground && SelectionForeground == other.SelectionForeground &&
+        Palette.AsSpan().SequenceEqual(other.Palette);
+
     internal TerminalColorOverrides Clone() => new()
     {
         Foreground = Foreground,

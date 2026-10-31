@@ -293,4 +293,75 @@ public sealed class RuntimeColorTests
         Assert.Empty(state.Stack);
     }
 
+
+    [Fact]
+    public void Render_palette_mask_tracks_all_boundary_indices_without_exposing_mutable_state()
+    {
+        var buffer = new TerminalBuffer(10, 3);
+        var parser = new AnsiParser(buffer);
+        int[] indices = [0, 63, 64, 127, 128, 191, 192, 255];
+        foreach (int i in indices) parser.Process(Osc($"4;{i};#123456"));
+        using var snapshot = buffer.CaptureRenderSnapshot(new RenderSnapshotRequest { ViewportCols = 10, ViewportRows = 3, Isolated = true }, out _);
+        for (int i = -1; i <= 256; i++) Assert.Equal(indices.Contains(i), snapshot.Theme.PaletteOverrides.Contains(i));
+        Assert.False(snapshot.Theme.HasForegroundOverride);
+        Assert.False(snapshot.Theme.HasBackgroundOverride);
+    }
+
+
+    [Theory]
+    [InlineData("4")]
+    [InlineData("104")]
+    public void A_near_limit_palette_command_allocates_bounded_memory_and_publishes_once(string code)
+    {
+        var buffer = new TerminalBuffer(100, 40);
+        var parser = new AnsiParser(buffer);
+        parser.Process(Osc("4;0;#123456"));
+        for (int i = 0; i < 16; i++) parser.Process(Osc("30001"));
+        var request = new RenderSnapshotRequest { ViewportCols = 100, ViewportRows = 40, Isolated = true };
+        using var before = buffer.CaptureRenderSnapshot(request, out _);
+        parser.Process(Osc("4;0;#abcdef"));
+        using var oneChange = buffer.CaptureRenderSnapshot(request, out _);
+        uint singlePublication = oneChange.RowsData.Array[0].Revision - before.RowsData.Array[0].Revision;
+        parser.Process(Osc("4;0;#123456"));
+        using var ready = buffer.CaptureRenderSnapshot(request, out _);
+        string payload = code == "104" ? string.Join(';', Enumerable.Repeat("0", 16000)) :
+            string.Join(';', Enumerable.Repeat("0;#abcdef;0;#123456", 1000)) + ";0;#abcdef";
+        string input = Osc(code + ";" + payload);
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        parser.Process(input);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        Assert.True(allocated < 4 * 1024 * 1024, $"One bounded OSC allocated {allocated} bytes");
+        using var after = buffer.CaptureRenderSnapshot(request, out _);
+        Assert.Equal(singlePublication, after.RowsData.Array[0].Revision - ready.RowsData.Array[0].Revision);
+        Assert.Equal(16, buffer.ExportState(0).Colors!.Stack.Length);
+        Assert.Equal(code == "104" ? (uint?)null : 0xffabcdefu, buffer.ExportState(0).Colors!.Current.Palette[0]);
+    }
+
+    [Fact]
+    public void Queries_inside_a_palette_batch_observe_prior_updates_in_order()
+    {
+        var parser = new AnsiParser(new TerminalBuffer(10, 3));
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        parser.Process(Osc("4;0;#123456;0;?;0;#abcdef;0;?"));
+        Assert.Equal(new[] { Osc("4;0;rgb:1212/3434/5656"), Osc("4;0;rgb:abab/cdcd/efef") }, replies);
+    }
+
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void In_place_host_color_edits_are_visible_even_after_a_render_warmed_the_cache(bool withOverride)
+    {
+        var buffer = new TerminalBuffer(10, 3);
+        if (withOverride) new AnsiParser(buffer).Process(Osc("10;#123456"));
+        var request = new RenderSnapshotRequest { ViewportCols = 10, ViewportRows = 3, Isolated = true };
+        using var before = buffer.CaptureRenderSnapshot(request, out _);
+        buffer.Theme.CursorColor = TermColor.FromRgb(255, 0, 0);
+        using var after = buffer.CaptureRenderSnapshot(request, out _);
+        Assert.Equal(0xffff0000u, after.Theme.CursorColor.ToUint());
+        Assert.Equal(0xffff0000u, after.Theme.Source!.CursorColor.ToUint());
+        if (withOverride) Assert.Equal(0xff123456u, after.Theme.Foreground.ToUint());
+    }
+
 }

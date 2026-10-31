@@ -32,12 +32,26 @@ namespace Ntilde.VT
         public int SnapshotSessionId { get; init; }
     }
 
+    /// <summary>A value-only mask: a render consumer cannot mutate the session's palette overrides.</summary>
+    public readonly record struct PaletteOverrideMask(ulong First, ulong Second, ulong Third, ulong Fourth)
+    {
+        public bool Contains(int index)
+        {
+            if ((uint)index >= 256) return false;
+            ulong bits = (index / 64) switch { 0 => First, 1 => Second, 2 => Third, _ => Fourth };
+            return (bits & (1UL << (index % 64))) != 0;
+        }
+    }
+
     public readonly struct RenderThemeSnapshot
     {
         public TermColor Foreground { get; init; }
         public TermColor Background { get; init; }
         public TermColor CursorColor { get; init; }
         public TermColor[] AnsiPalette { get; init; }
+        public bool HasForegroundOverride { get; init; }
+        public bool HasBackgroundOverride { get; init; }
+        public PaletteOverrideMask PaletteOverrides { get; init; }
 
         /// <summary>
         /// The theme these colors came from, for the colors the renderer derives from a whole theme

@@ -163,7 +163,12 @@ user theme after a host theme change. DECSTR preserves colors; RIS clears overri
 stack. The additive complete-state `colors` field carries bounded, validated deep copies
 through mux attach and new replay snapshots; legacy omission clears state on restore.
 Render theme/palette snapshots and row revisions change together, including extended
-palette entries and cached row pictures. Host defaults reach a persistent parser before
+palette entries and cached row pictures. The text client resolves overridden default/indexed
+cell colors and underlines into SGR RGB, preserving unmodified outer defaults/palette and
+never forwarding palette OSC. Its physical cursor/selection remain outer-host policy.
+Color commands stage one current-frame copy and publish once, with ordered query replies;
+internally shared saved frames stay immutable and deep copies remain at import/export.
+Host defaults reach a persistent parser before
 startup output and through later presentation updates; downstream views use their own
 host themes with the same stream overrides.
 

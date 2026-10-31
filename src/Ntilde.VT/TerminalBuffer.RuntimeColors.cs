@@ -10,6 +10,7 @@ public partial class TerminalBuffer
     // the parse thread publishes a replacement under the buffer's batch write lock.
     private TerminalRuntimeColors _runtimeColors = new();
     private TerminalTheme? _runtimeTheme;
+    private TerminalTheme? _runtimeHostTheme;
 
     internal TermColor? RuntimeForeground => Color(Volatile.Read(ref _runtimeColors).Current.Foreground);
     internal TermColor? RuntimeBackground => Color(Volatile.Read(ref _runtimeColors).Current.Background);
@@ -28,9 +29,9 @@ public partial class TerminalBuffer
     internal void ImportRuntimeColors(TerminalRuntimeColors? state)
         => PublishRuntimeColors(state?.Clone() ?? new());
 
-    internal TermColor GetPaletteColor(int index)
+    internal TermColor GetPaletteColor(int index, TerminalColorOverrides? overrides = null)
     {
-        uint? overridden = _runtimeColors.Current.Palette[index];
+        uint? overridden = (overrides ?? _runtimeColors.Current).Palette[index];
         return overridden is uint color ? TermColor.FromUint(color) : GetHostPaletteColor(index);
     }
 
@@ -47,67 +48,49 @@ public partial class TerminalBuffer
         return TermColor.FromRgb(gray, gray, gray);
     }
 
-    internal TermColor? GetDynamicColor(int code) => code switch
+    internal TerminalColorOverrides CopyColorOverrides() => _runtimeColors.Current.Clone();
+
+    internal void ApplyColorOverrides(TerminalColorOverrides colors)
     {
-        10 => RuntimeForeground ?? Theme.Foreground,
-        11 => RuntimeBackground ?? Theme.Background,
-        12 => Color(_runtimeColors.Current.Cursor) ?? Theme.CursorColor,
-        17 => Color(_runtimeColors.Current.SelectionBackground) ?? Theme.SelectionBackground,
-        19 => Color(_runtimeColors.Current.SelectionForeground) ?? Theme.SelectionForeground,
+        if (_runtimeColors.Current.HasSameColors(colors)) return;
+        PublishRuntimeColors(new TerminalRuntimeColors { Current = colors, Stack = _runtimeColors.Stack });
+    }
+
+    internal TermColor? GetDynamicColor(int code, TerminalColorOverrides overrides) => code switch
+    {
+        10 => Color(overrides.Foreground) ?? Theme.Foreground,
+        11 => Color(overrides.Background) ?? Theme.Background,
+        12 => Color(overrides.Cursor) ?? Theme.CursorColor,
+        17 => Color(overrides.SelectionBackground) ?? Theme.SelectionBackground,
+        19 => Color(overrides.SelectionForeground) ?? Theme.SelectionForeground,
         _ => null
     };
 
-    internal void SetDynamicColor(int code, TermColor? color)
-    {
-        TerminalRuntimeColors next = _runtimeColors.Clone();
-        uint? value = color?.ToUint();
-        switch (code)
-        {
-            case 10: next.Current.Foreground = value; break;
-            case 11: next.Current.Background = value; break;
-            case 12: next.Current.Cursor = value; break;
-            case 17: next.Current.SelectionBackground = value; break;
-            case 19: next.Current.SelectionForeground = value; break;
-            default: return;
-        }
-        PublishRuntimeColors(next);
-    }
-
-    internal void SetPaletteColor(int index, TermColor? color)
-    {
-        TerminalRuntimeColors next = _runtimeColors.Clone();
-        next.Current.Palette[index] = color?.ToUint();
-        PublishRuntimeColors(next);
-    }
-
-    internal void ResetPalette()
-    {
-        TerminalRuntimeColors next = _runtimeColors.Clone();
-        Array.Clear(next.Current.Palette);
-        PublishRuntimeColors(next);
-    }
-
     internal void PushColors()
     {
-        TerminalRuntimeColors next = _runtimeColors.Clone();
-        next.Stack = next.Stack.TakeLast(TerminalRuntimeColors.MaxStackDepth - 1)
-            .Append(next.Current.Clone()).ToArray();
-        // Saving changes neither rendering nor the effective background preference.
+        var state = _runtimeColors;
+        // Internal published frames are immutable. Only exports/imports need deep copies;
+        // later mutations always clone Current before changing it.
+        var next = new TerminalRuntimeColors
+        {
+            Current = state.Current,
+            Stack = state.Stack.TakeLast(TerminalRuntimeColors.MaxStackDepth - 1).Append(state.Current).ToArray()
+        };
         Volatile.Write(ref _runtimeColors, next);
     }
 
     internal void PopColors()
     {
-        if (_runtimeColors.Stack.Length == 0) return;
-        TerminalRuntimeColors next = _runtimeColors.Clone();
-        next.Current = next.Stack[^1];
-        next.Stack = next.Stack[..^1];
-        PublishRuntimeColors(next);
+        var state = _runtimeColors;
+        if (state.Stack.Length == 0) return;
+        PublishRuntimeColors(new TerminalRuntimeColors { Current = state.Stack[^1], Stack = state.Stack[..^1] });
     }
 
     private void PublishRuntimeColors(TerminalRuntimeColors next)
     {
+        bool changed = !_runtimeColors.Current.HasSameColors(next.Current);
         Volatile.Write(ref _runtimeColors, next);
+        if (!changed) return;
         _runtimeTheme = null;
         _renderThemeEpoch++;
         foreach (var row in _viewport) row.TouchRevision();
@@ -118,11 +101,14 @@ public partial class TerminalBuffer
 
     private TerminalTheme EffectiveRenderTheme()
     {
-        // Cache is derived only from the host theme and the published overrides. Host theme
-        // assignment and every color mutation clear it. Saved/user theme objects stay untouched.
-        if (_runtimeTheme is not null) return _runtimeTheme;
-        var theme = Theme.Clone();
+        // Preserve the original host-theme path when no override affects derived UI colors.
+        // Themes are mutable, so an effective-theme cache must detect in-place host edits too.
+        // Saved/user theme objects stay untouched.
         var colors = _runtimeColors.Current;
+        if (!HasThemeOverrides(colors)) return Theme;
+        if (_runtimeTheme is not null && _runtimeHostTheme?.HasSameColors(Theme) == true) return _runtimeTheme;
+        var theme = Theme.Clone();
+        _runtimeHostTheme = Theme.Clone();
         theme.Foreground = Color(colors.Foreground) ?? theme.Foreground;
         theme.Background = Color(colors.Background) ?? theme.Background;
         theme.CursorColor = Color(colors.Cursor) ?? theme.CursorColor;
@@ -132,4 +118,14 @@ public partial class TerminalBuffer
             if (colors.Palette[i] is uint value) theme.SetAnsiColor(i % 8, i >= 8, TermColor.FromUint(value));
         return _runtimeTheme = theme;
     }
+
+    private static bool HasThemeOverrides(TerminalColorOverrides colors)
+    {
+        if (colors.Foreground.HasValue || colors.Background.HasValue || colors.Cursor.HasValue ||
+            colors.SelectionForeground.HasValue || colors.SelectionBackground.HasValue) return true;
+        for (int i = 0; i < 16; i++)
+            if (colors.Palette[i].HasValue) return true;
+        return false;
+    }
+
 }

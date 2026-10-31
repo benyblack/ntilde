@@ -63,7 +63,10 @@ invariant changes.
   DECSTR preserves them and RIS clears overrides and stack. Complete snapshots deep-copy
   state and validate every frame before import/resize; absent legacy state clears it.
   Render snapshots resolve overrides against the host theme and invalidate row picture
-  revisions on color changes. App never writes these overrides to theme files. Mux spawn
+  revisions on color changes. Each OSC publishes once; internally shared stack frames are
+  immutable, while import/export deep-copy them. The mux text renderer resolves cell overrides
+  into SGR, including underlines, without changing the outer terminal palette. Its physical
+  cursor and selection remain outer-host policy. App never writes overrides to theme files. Mux spawn
   and presentation metadata supply host defaults; only the authoritative parser replies.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
   decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,

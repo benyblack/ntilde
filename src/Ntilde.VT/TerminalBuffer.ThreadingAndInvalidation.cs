@@ -640,13 +640,22 @@ namespace Ntilde.VT
         private RenderThemeSnapshot CreateRenderThemeSnapshot_NoLock(TermColor[] palette)
         {
             var theme = EffectiveRenderTheme();
-            for (int i = 0; i < palette.Length; i++) palette[i] = GetPaletteColor(i);
+            Span<ulong> masks = stackalloc ulong[4] { 0, 0, 0, 0 };
+            var overrides = _runtimeColors.Current;
+            for (int i = 0; i < palette.Length; i++)
+            {
+                palette[i] = GetPaletteColor(i);
+                if (overrides.Palette[i].HasValue) masks[i / 64] |= 1UL << (i % 64);
+            }
             return new RenderThemeSnapshot
             {
                 Foreground = theme.Foreground,
                 Background = theme.Background,
                 CursorColor = theme.CursorColor,
                 AnsiPalette = palette,
+                HasForegroundOverride = overrides.Foreground.HasValue,
+                HasBackgroundOverride = overrides.Background.HasValue,
+                PaletteOverrides = new PaletteOverrideMask(masks[0], masks[1], masks[2], masks[3]),
                 Source = theme
             };
         }

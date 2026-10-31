@@ -63,8 +63,8 @@ this change. Color requests are bounded before splitting; malformed values leave
 prior state intact and replies contain only validated numeric colors/indices.
 
 The original regression set failed 11 cases before implementation while six
-malformed-input guards passed. Final local validation: VT 1,182 passed, mux
-1,075 passed / 20 expected platform skips, MCP 223 passed, architecture 177 passed,
+malformed-input guards passed. Final local validation: VT 1,188 passed, mux
+1,076 passed / 20 expected platform skips, MCP 223 passed, architecture 177 passed,
 App main 7,130 passed / 51 expected skips, separate PlatformBoot 74 passed /
 4 expected font skips. The focused App/profile/factory group passed 41 cases.
 The 74-row conformance report has zero errors or warnings; scoped formatting and
@@ -76,6 +76,16 @@ and malformed snapshot rejection before resize. Serialized replay tests resume a
 partial SGR and restore palette/stack state. Mux tests exercise startup JSON-wire
 colors and attach continuation; local/remote factory tests verify forwarding.
 Real profile updates preserve overrides and pop returns to the current host theme.
+The CLI text client resolves overridden default/indexed cells and underline colors
+into SGR without forwarding palette OSC. A round-trip regression verifies changed
+colors, stable frames, untouched outer palette/default semantics, and restoration.
+Two near-limit palette regressions fail against the reviewed pre-batching source;
+the fixed implementation stays below a 4 MiB allocation ceiling and publishes once
+per OSC while retaining ordered query replies. Internally shared saved frames are
+immutable; snapshot import/export still deep-copy them. Two additional regressions cover
+in-place host-theme edits after cache warmup, with and without application overrides;
+the existing cursor-render Boot regression also passes after the cache fix.
+
 Three live Skia tests reuse row caches: palette index 200, default colors and
 cursor color visibly change, unchanged frames remain stable, and pop restores
 identical pixels. Existing truecolor cells keep their literal values.

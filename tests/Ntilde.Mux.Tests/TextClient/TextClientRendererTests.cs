@@ -46,6 +46,38 @@ public sealed class TextClientRendererTests
     }
 
     [Fact]
+    public void Runtime_colors_are_rendered_as_SGR_and_pop_restores_outer_default_and_palette_semantics()
+    {
+        var s = new Session(10, 3);
+        s.Feed("D\u001b[38;5;200mP\u001b[38;2;1;2;3mT\u001b[31mR\u001b[0m\u001b[4;58:5:200mU\u001b[0m");
+        var renderer = new TextClientRenderer(s.Buffer);
+        var outer = new TerminalBuffer(10, 3);
+        var parser = new AnsiParser(outer);
+        parser.Process(renderer.Render(10, 3));
+        s.Feed("\u001b]30001\a\u001b]10;#123456;#789abc\a\u001b]4;200;#abcdef\a");
+        string changed = renderer.Render(10, 3);
+        Assert.DoesNotContain("\u001b]", changed, StringComparison.Ordinal);
+        Assert.Contains("58:2::171:205:239", changed, StringComparison.Ordinal);
+        parser.Process(changed);
+        Assert.Equal(0xff123456u, Cell(outer, 0, 0).Foreground.ToUint());
+        Assert.Equal(0xff789abcu, Cell(outer, 0, 0).Background.ToUint());
+        Assert.Equal(0xffabcdefu, Cell(outer, 1, 0).Foreground.ToUint());
+        Assert.Equal(0xff010203u, Cell(outer, 2, 0).Foreground.ToUint());
+        Assert.Equal(1, Cell(outer, 3, 0).FgIndex); // An unmodified index keeps the outer terminal's palette.
+        Assert.Null(outer.ExportState(0).Colors);
+        Assert.Empty(renderer.Render(10, 3));
+        s.Feed("\u001b]30101\a");
+        string restored = renderer.Render(10, 3);
+        Assert.Contains("58:5:200", restored, StringComparison.Ordinal);
+        parser.Process(restored);
+        Assert.True(Cell(outer, 0, 0).IsDefaultForeground);
+        Assert.True(Cell(outer, 0, 0).IsDefaultBackground);
+        Assert.Equal(200, Cell(outer, 1, 0).FgIndex);
+        Assert.Equal(0xff010203u, Cell(outer, 2, 0).Foreground.ToUint());
+        Assert.Null(outer.ExportState(0).Colors);
+    }
+
+    [Fact]
     public void The_first_frame_reproduces_the_screen()
     {
         var s = new Session(80, 24);
