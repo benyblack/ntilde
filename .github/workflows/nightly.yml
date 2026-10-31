@@ -34,7 +34,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Rust native PTY — mirrors ci.yml so dotnet build can copy librusty_pty.so.
+      # Rust native libraries (rusty_pty and rusty_ssh) — mirrors ci.yml's build job, whose
+      # "Cache native binary" step explains the payload and the v4 key. Paths and key MUST STAY
+      # IDENTICAL to it: this job saves under the same key on main.
       - name: Cache native binary
         id: native-bin-cache
         uses: actions/cache@v4
@@ -42,14 +44,10 @@ jobs:
           path: |
             src/Ntilde.App/native/target/release
             src/Ntilde.App/native/target_linux/release
-          # Key version bumped to v3 for the rusty_pty input-hash stamp
-          # (native/target/release/.nova-rust-inputs.sha256). A v2 payload predates the stamp,
-          # so restoring one would make BuildRustNative call the binary stale and invoke cargo -
-          # on a runner where this same cache hit skipped the toolchain install and the cargo
-          # registry cache. Worse, actions/cache does not re-save on an exact key hit, so the
-          # stamp would never enter the v2 payload and every hit would pay that rebuild forever.
-          # Bumping forces one miss, whose save captures the stamp.
-          key: native-bin-v3-ubuntu-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock') }}
+            src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
+          key: native-bin-v4-ubuntu-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
 
       - name: Install Rust
         if: steps.native-bin-cache.outputs.cache-hit != 'true'
@@ -59,7 +57,9 @@ jobs:
         if: steps.native-bin-cache.outputs.cache-hit != 'true'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
-          workspaces: src/Ntilde.App/native
+          workspaces: |
+            src/Ntilde.App/native
+            src/Ntilde.App/native/rusty_ssh
 
       - name: Build Rust (Linux)
         if: steps.native-bin-cache.outputs.cache-hit != 'true'
@@ -68,6 +68,12 @@ jobs:
           cargo build --release --locked
           mkdir -p target_linux/release
           cp target/release/librusty_pty.so target_linux/release/
+          cd rusty_ssh && cargo build --release --locked
+
+      - name: Check the native libraries
+        id: native-libs
+        shell: bash
+        run: bash scripts/ci/native-libs-present.sh "$RUNNER_OS" >> "$GITHUB_OUTPUT"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -78,6 +84,8 @@ jobs:
         run: dotnet restore
 
       - name: Build
+        env:
+          SKIP_RUST_NATIVE_BUILD: ${{ steps.native-libs.outputs.skip }}
         run: dotnet build -c ${{ env.CONFIGURATION }} --no-restore
 
       - name: Run Stress and Performance Tests
