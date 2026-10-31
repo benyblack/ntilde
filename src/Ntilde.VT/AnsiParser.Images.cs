@@ -33,7 +33,7 @@ namespace Ntilde.VT
 
         // DECSIXEL is "DCS Ps ; Ps ; Ps q <data> ST": only digits and ';' may precede
         // the 'q' final byte. Anything else is a different DCS function.
-        private static bool IsSixel(string dcs)
+        internal static bool IsSixel(string dcs)
         {
             for (int i = 0; i < dcs.Length; i++)
             {
@@ -110,38 +110,43 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>Retain bounded source/placement state for persistent-session attach snapshots.</summary>
+        public bool RetainSixelSources { get; set; }
+
         private void HandleSixel(string dcs)
         {
+            var (pixelWidth, pixelHeight) = SixelGeometry.Measure(dcs);
+            SixelSource? source = RetainSixelSources && pixelWidth > 0 && pixelHeight > 0 ? _buffer.SixelSources.Retain(dcs) : null;
+            object? handle = null;
             try
             {
-                if (ImageDecoder == null) return;
-
-                object? imageHandle = ImageDecoder.DecodeSixel(dcs, out int pixelWidth, out int pixelHeight);
-                if (imageHandle != null)
+                if (ImageDecoder is not null)
                 {
-                    // Calculate cell dimensions (rough estimate based on current font metrics)
-                    int widthCells = (int)Math.Max(1, Math.Ceiling(pixelWidth / (CellWidth > 0 ? CellWidth : 10f)));
-                    int heightCells = (int)Math.Max(1, Math.Ceiling(pixelHeight / (CellHeight > 0 ? CellHeight : 20f)));
-
-                    int absRow = ImageAnchorRow();
-
-                    var img = new TerminalImage(imageHandle, _buffer.CursorCol, absRow, widthCells, heightCells);
-                    _buffer.AddImage(img);
-
-                    // Position cursor past the image
-                    // We move the cursor relative to current position, but try to avoid redundant newlines
-                    // Tools like 'viu' usually handle their own layout. 
-                    // We just need to ensure the buffer knows we've "used" these cells.
-                    ReserveImageCells(img, widthCells, heightCells);
+                    int decodedWidth, decodedHeight;
+                    handle = source is null
+                        ? ImageDecoder.DecodeSixel(dcs, out decodedWidth, out decodedHeight)
+                        : ImageDecoder.DecodeSixel(source, out decodedWidth, out decodedHeight);
+                    if (handle is not null)
+                    {
+                        pixelWidth = Math.Clamp(decodedWidth, 0, SixelGeometry.DefaultMaxPixelDimension);
+                        pixelHeight = Math.Clamp(decodedHeight, 0, SixelGeometry.DefaultMaxPixelDimension);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 TerminalLogger.Debug($"[ANSI_PARSER] Sixel decode failed: {ex.Message}");
             }
+            if (pixelWidth <= 0 || pixelHeight <= 0) { source?.Dispose(); return; }
+            SixelCellSize? size = SixelCellSizeOverride;
+            float cellWidth = size?.WidthPx ?? CellWidth;
+            float cellHeight = size?.HeightPx ?? CellHeight;
+            float cw = float.IsFinite(cellWidth) && cellWidth > 0 ? Math.Max(1, cellWidth) : 10;
+            float ch = float.IsFinite(cellHeight) && cellHeight > 0 ? Math.Max(1, cellHeight) : 20;
+            _buffer.PlaceSixelImage(handle ?? source, (int)Math.Ceiling(pixelWidth / cw), (int)Math.Ceiling(pixelHeight / ch), source);
+            _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
         }
 
-        // OSC 1339: an image tunneled through an OSC, which ConPTY passes on where it filters DCS and
         // APC: kitty graphics after a "Kitty:" or "K:" prefix, Sixel otherwise.
         private void HandleTunneledImage(string content)
         {
@@ -151,7 +156,7 @@ namespace Ntilde.VT
                 content = content.Substring(skip);
                 HandleKittyGraphics(content, isTunneled: true);
             }
-            else
+            else if (IsSixel(content))
             {
                 HandleSixel(content);
             }
@@ -159,6 +164,7 @@ namespace Ntilde.VT
 
         private void HandleITerm2Image(string osc)
         {
+            if (!AllowNonSixelImages) return;
             // The payload is the bulk of an image sequence (megabytes), so it is read in place as a
             // span: Split(':', 2) used to copy all of it once more just to separate the header.
             int colon = osc.IndexOf(':');

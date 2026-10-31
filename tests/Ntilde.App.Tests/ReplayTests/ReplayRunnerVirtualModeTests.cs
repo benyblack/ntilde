@@ -11,6 +11,30 @@ namespace Ntilde.Tests.ReplayTests
 {
     public class ReplayRunnerVirtualModeTests
     {
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task A_seek_boundary_includes_the_target_event_and_excludes_later_events(bool legacy)
+        {
+            string path = Path.GetTempFileName();
+            try
+            {
+                var lines = new List<string>();
+                if (!legacy) lines.Add(System.Text.Json.JsonSerializer.Serialize(new ReplayHeader { Type = ReplayHeader.TypeToken, Cols = 10, Rows = 5 }, Ntilde.VT.ReplayJsonContext.Default.ReplayHeader));
+                lines.Add("{\"t\":10,\"type\":\"data\",\"d\":\"QQ==\"}");
+                lines.Add("{\"t\":20,\"type\":\"data\",\"d\":\"Qg==\"}");
+                File.WriteAllLines(path, lines);
+                var output = new List<byte>();
+                var result = await new ReplayRunner(path).RunWithResultAsync(data => { output.AddRange(data); return Task.CompletedTask; },
+                    options: new ReplayRunOptions { StopAtTimeMs = 10 }, ct: TestContext.Current.CancellationToken);
+                Assert.Equal("A", Encoding.UTF8.GetString(output.ToArray()));
+                Assert.Equal(10, result.LastGoodOffset);
+                Assert.Equal(1, result.EventsProcessed);
+                Assert.False(result.Truncated);
+            }
+            finally { File.Delete(path); }
+        }
+
         [Fact]
         public async Task ReplayRunner_VirtualMode_ProcessesEventsAndMatchesSnapshot()
         {

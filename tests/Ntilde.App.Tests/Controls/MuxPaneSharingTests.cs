@@ -81,7 +81,10 @@ public sealed class MuxPaneSharingTests : IDisposable
     public void Spawn_carries_the_panes_keyboard_setting_before_attach(bool enabled, int flags)
     {
         StartHostedPane(new Ntilde.Shell.TerminalSettings { EnableKittyKeyboardProtocol = enabled });
-        Assert.Equal(flags, Assert.Single(_mux.Factory.Requests).KittyKeyboardSupportedFlags);
+        var request = Assert.Single(_mux.Factory.Requests);
+        Assert.Equal(flags, request.KittyKeyboardSupportedFlags);
+        Assert.True(request.CellWidthPx > 0);
+        Assert.True(request.CellHeightPx > 0);
     }
 
     [AvaloniaFact]
@@ -199,4 +202,50 @@ public sealed class MuxPaneSharingTests : IDisposable
         session.DeliverSessionChanged(new Ntilde.Mux.Contracts.SessionChangedNotification { SessionId = session.Id });
         Assert.Equal(3, _pane.Buffer.Modes.KittyKeyboard.Flags);
     }
+    [AvaloniaFact]
+    public void Hidden_mux_panes_release_replaced_source_and_keep_the_latest_frame_for_later_display()
+    {
+        MuxClientSession session = StartHostedPane();
+        _pane!.IsVisible = false;
+        int applied = 0;
+        _pane.OutputReceived += _ => applied++;
+        _mux.Fake(session.Id).Emit("\x1b[?80h\x1bPq#1;2;100;0;0#1!30~\x1b\\");
+        PumpUntil(() => applied > 0, "the hidden pane applied its first frame");
+        var first = Assert.IsType<Ntilde.Rendering.DeferredSixelImage>(Assert.Single(_pane.Buffer!.Images).ImageHandle);
+        int before = applied;
+        _mux.Fake(session.Id).Emit(string.Concat(Enumerable.Repeat("\x1bPq#1;2;0;0;100#1!30~\x1b\\", 50)));
+        PumpUntil(() => applied > before, "hidden output refreshed and drained retired source without a render");
+        Assert.Null(first.GetBitmap());
+        var latest = Assert.IsType<Ntilde.Rendering.DeferredSixelImage>(Assert.Single(_pane.Buffer.Images).ImageHandle);
+        var bitmap = Assert.IsType<SkiaSharp.SKBitmap>(latest.GetBitmap());
+        Assert.Equal(SkiaSharp.SKColors.Blue, bitmap.GetPixel(5, 3));
+    }
+
+    [AvaloniaFact]
+    public void Sixel_scrolling_uses_the_daemons_pixel_metrics_before_following_output()
+    {
+        MuxClientSession session = StartHostedPane();
+        int cols = _pane!.Buffer!.Cols, rows = _pane.Buffer.Rows;
+        var other = AttachOther(session.Id, MuxTestHost.DefaultPresentation with
+        {
+            Cols = cols,
+            Rows = rows,
+            CellWidthPx = 12,
+            CellHeightPx = 6,
+            SupportsSixelScrolling = true,
+        });
+        PumpUntil(() => _pane.Parser!.SixelCellHeightPx == 6, "the pane adopted the ordered authoritative pixel size");
+        int total = _pane.Buffer.TotalLines;
+        _mux.Fake(session.Id).Emit($"\x1b[{rows};1H\x1bPq!35~-~\x1b\\");
+        PumpUntil(() => _pane.Buffer.TotalLines == total + 2, "the real decoder advances two rows using the daemon's metrics");
+        Assert.Equal(_mux.Mux(session.Id).Buffer.TotalLines, _pane.Buffer.TotalLines);
+        Assert.Equal(rows - 1, _pane.Buffer.CursorRow);
+        var image = Assert.Single(_pane.Buffer.Images);
+        var deferred = Assert.IsType<Ntilde.Rendering.DeferredSixelImage>(image.ImageHandle);
+        var bitmap = Assert.IsType<SkiaSharp.SKBitmap>(deferred.GetBitmap());
+        Assert.Equal((35, 12), (bitmap.Width, bitmap.Height));
+        Assert.Equal(3, image.CellWidth);
+        other.Session.Dispose();
+    }
+
 }

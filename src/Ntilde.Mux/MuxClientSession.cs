@@ -53,6 +53,27 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private int _killedElsewhere;
     private int _kittyKeyboardSupportedFlags = 1;
 
+    /// <summary>Delivery thread, before subsequent output: the daemon changed its SIXEL layout metrics.</summary>
+    public event Action<float, float>? SixelCellSizeChanged;
+
+    internal void DeliverSixelCellSize(float width, float height)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        if (!float.IsFinite(width) || !float.IsFinite(height) || width <= 0 || height <= 0)
+            throw new InvalidDataException("Invalid SIXEL cell metrics in mux notification.");
+        if (Volatile.Read(ref _faulted) != 0) return;
+        try { SixelCellSizeChanged?.Invoke(width, height); }
+        catch (Exception ex)
+        {
+            // Geometry is stream-critical: continuing after a failed application would silently
+            // desynchronise this pane. Stop this session, while leaving sibling sessions connected.
+            _client.SafeLog($"[MuxClient] SIXEL metric delivery for session {Id} failed: {ex}");
+            try { DeliverFaulted("SIXEL metric delivery failed."); }
+            catch (Exception fault) { _client.SafeLog($"[MuxClient] a Faulted handler of session {Id} threw: {fault}"); }
+            finally { Detach(userDetached: false); }
+        }
+    }
+
     public int KittyKeyboardSupportedFlags => Volatile.Read(ref _kittyKeyboardSupportedFlags);
 
     internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared)
@@ -308,7 +329,9 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
     public void DisableFlightRecording()
     {
-        Volatile.Write(ref _flightRecording, 0);
+        // An unowned/disabled recorder needs no server action. In particular, closing a
+        // not-yet-attached share must not wait behind its parser or clear another view's ring.
+        if (Interlocked.Exchange(ref _flightRecording, 0) == 0) return;
         _client.PostRequest(MuxMethods.DisableFlightRecording, new SessionIdParams { SessionId = Id }, MuxJsonContext.Default.SessionIdParams);
     }
 

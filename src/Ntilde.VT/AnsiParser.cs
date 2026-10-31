@@ -136,6 +136,19 @@ namespace Ntilde.VT
         private char? _lastGraphicChar;
         private static readonly TimeSpan CursorTransientSuppressionWindow = TimeSpan.FromMilliseconds(60);
 
+        /// <summary>Optional authoritative device-pixel metrics for SIXEL layout (mux stream or local host).</summary>
+        private SixelCellSize? _sixelCellSizeOverride;
+        /// <summary>Host policy for image protocols without headless geometry support. SIXEL remains independent.</summary>
+        public bool AllowNonSixelImages { get; set; } = true;
+
+        public SixelCellSize? SixelCellSizeOverride
+        {
+            get => System.Threading.Volatile.Read(ref _sixelCellSizeOverride);
+            set => System.Threading.Volatile.Write(ref _sixelCellSizeOverride, value);
+        }
+        public float? SixelCellWidthPx => SixelCellSizeOverride?.WidthPx;
+        public float? SixelCellHeightPx => SixelCellSizeOverride?.HeightPx;
+
         public float CellWidth { get; set; } = 10.0f;  // Default fallback
         public float CellHeight { get; set; } = 20.0f; // Default fallback
 

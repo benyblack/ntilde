@@ -7,9 +7,8 @@ namespace Ntilde.Rendering
 {
     /// <summary>
     /// Decodes inline image payloads (DCS sixel bodies, Kitty/iTerm2 image bytes) into the
-    /// bitmap handles the terminal draws. The draw operation pattern-matches the handle as
-    /// <see cref="SKBitmap"/> exactly, so an <see cref="IImageDecoder"/> implementation is
-    /// only reachable to the renderer when it produces that type.
+    /// bitmap handles the terminal draws. Handles are <see cref="SKBitmap"/> or, when explicitly
+    /// requested for SIXEL, <see cref="DeferredSixelImage"/> materialized by the renderer.
     /// </summary>
     public sealed class SkiaImageDecoder : IImageDecoder
     {
@@ -23,6 +22,10 @@ namespace Ntilde.Rendering
         /// (<see cref="SixelDecoder.MaxPixelDimension"/>).
         /// </summary>
         public int MaxPixelDimension { get; set; } = SixelDecoder.DefaultMaxPixelDimension;
+
+        /// <summary>Retain SIXEL source and allocate its bitmap only when a renderer first needs it.</summary>
+        public bool DeferSixelDecoding { get; init; }
+        public SixelSourceBudget SixelSources { get; init; } = new();
 
         public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight)
         {
@@ -81,6 +84,14 @@ namespace Ntilde.Rendering
                 return null;
             }
 
+            if (DeferSixelDecoding)
+            {
+                (pixelWidth, pixelHeight) = SixelGeometry.Measure(sixelData, MaxPixelDimension);
+                if (pixelWidth <= 0 || pixelHeight <= 0) return null;
+                var source = SixelSources.Retain(sixelData);
+                return source.Data is null ? null : new DeferredSixelImage(source, MaxPixelDimension);
+            }
+
             SKBitmap? bitmap = new SixelDecoder { MaxPixelDimension = MaxPixelDimension }.Decode(sixelData);
             if (bitmap == null)
             {
@@ -90,6 +101,15 @@ namespace Ntilde.Rendering
             pixelWidth = bitmap.Width;
             pixelHeight = bitmap.Height;
             return bitmap;
+        }
+
+        public object? DecodeSixel(SixelSource source, out int pixelWidth, out int pixelHeight)
+        {
+            pixelWidth = pixelHeight = 0;
+            if (source.DecodeData is not { } data) return null;
+            if (!DeferSixelDecoding) return DecodeSixel(data, out pixelWidth, out pixelHeight);
+            (pixelWidth, pixelHeight) = SixelGeometry.Measure(data, MaxPixelDimension);
+            return pixelWidth > 0 && pixelHeight > 0 ? new DeferredSixelImage(source, MaxPixelDimension) : null;
         }
 
         public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)

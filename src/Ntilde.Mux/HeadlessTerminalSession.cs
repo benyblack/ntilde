@@ -56,6 +56,8 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly Dictionary<IMuxFrameSink, MuxPresentation> _kittyBySink = new();
     private readonly HashSet<IMuxFrameSink> _keyboardCapabilitySinks = new(); // opt-in includes read-only observers
     private bool _keyboardCapabilitiesPending;
+    private readonly HashSet<IMuxFrameSink> _sixelLayoutSinks = new();
+    private bool _sixelCellSizePending;
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private long _rawOffset;
     private long _lastOutputUnixMs; // 0 until the first chunk; written by the parse thread only, once per chunk
@@ -135,12 +137,21 @@ public sealed class HeadlessTerminalSession : IDisposable
         _maxQueuedInputBytes = options.MaxQueuedInputBytes;
         _buffer = new TerminalBuffer(options.Cols, options.Rows);
         _buffer.Modes.KittyKeyboard.SetSupportedFlags(options.KittyKeyboardSupportedFlags ?? KittyKeyboardState.FlagDisambiguateEscapeCodes);
+        float cellWidth = InitialCellMetric(options.CellWidthPx, 10);
+        float cellHeight = InitialCellMetric(options.CellHeightPx, 20);
         _parser = new AnsiParser(_buffer, options.ForceConPtyFiltering)
         {
             ImageDecoder = null,
+            RetainSixelSources = true,
+            AllowNonSixelImages = false,
+            CellWidth = cellWidth,
+            CellHeight = cellHeight,
+            SixelCellSizeOverride = new SixelCellSize(cellWidth, cellHeight),
             AllowNativeKittyGraphics = false,
             KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
         };
+        (_session as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
+        (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(cellWidth, cellHeight);
         _parser.OnResponse = EnqueueInput; // through the writer too: the parse thread must never block on stdin
         _sessionChangedIntervalMs = (long)Math.Max(0, options.SessionChangedInterval.TotalMilliseconds);
         _parser.OnTitleChanged = title =>
@@ -463,17 +474,20 @@ public sealed class HeadlessTerminalSession : IDisposable
             PublishAttachedCount();
         });
 
-    internal Task<T> InvokeAsync<T>(Func<T> func)
+    internal Task<T> InvokeAsync<T>(Func<T> func) => InvokeAsync(_control, func);
+
+    private Task<T> InvokeAsync<T>(BlockingCollection<WorkItem> queue, Func<T> func)
     {
         var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Action onDropped = () => tcs.TrySetException(new ObjectDisposedException(nameof(HeadlessTerminalSession)));
         var item = WorkItem.ForAction(
             () =>
             {
                 try { tcs.TrySetResult(func()); }
                 catch (Exception ex) { tcs.TrySetException(ex); }
             },
-            onDropped: () => tcs.TrySetException(new ObjectDisposedException(nameof(HeadlessTerminalSession))));
-        if (!TryEnqueue(_control, item)) item.OnDropped!();
+            onDropped: onDropped);
+        if (!TryEnqueue(queue, item)) onDropped();
         return tcs.Task;
     }
 
@@ -528,15 +542,79 @@ public sealed class HeadlessTerminalSession : IDisposable
         return snapshot;
     }
 
-    internal ExportFlightResult ExportFlight()
+    private readonly object _flightOwnersGate = new();
+    private readonly HashSet<Guid> _flightOwners = new();
+
+    // Admit synchronously to preserve order relative to later output and requests; completion is asynchronous.
+    private Task<T> AtRecordingBoundaryAsync<T>(Func<T> operation, bool allowStopped = true)
+    {
+        if (Thread.CurrentThread == _parseThread) return Task.FromResult(operation());
+        return CompleteRecordingBoundaryAsync(InvokeAsync(_data, operation), operation, allowStopped);
+    }
+
+    private async Task<T> CompleteRecordingBoundaryAsync<T>(Task<T> pending, Func<T> operation, bool allowStopped)
+    {
+        try { return await pending.ConfigureAwait(false); }
+        catch (ObjectDisposedException ex) when (allowStopped && ex.ObjectName == nameof(HeadlessTerminalSession))
+        {
+            return await Task.Run(() =>
+            {
+                ObjectDisposedException.ThrowIf(!_parseThread.Join(TimeSpan.FromSeconds(5)), this);
+                return operation();
+            }, CancellationToken.None).ConfigureAwait(false);
+        }
+    }
+
+    internal Task StartRecordingAsync(string path) => AtRecordingBoundaryAsync(() =>
+    {
+        SetRecordingMetrics();
+        _session.StartRecording(path);
+        return 0;
+    }, allowStopped: false);
+
+    internal Task EnableFlightRecordingAsync(Guid owner, long maxBytes) => AtRecordingBoundaryAsync(() =>
+    {
+        lock (_flightOwnersGate)
+        {
+            if (!_flightOwners.Contains(owner))
+            {
+                SetRecordingMetrics();
+                _session.EnableFlightRecording(maxBytes);
+                _flightOwners.Add(owner);
+            }
+        }
+        return 0;
+    }, allowStopped: false);
+
+    internal Task DisableFlightRecordingAsync(Guid owner) => AtRecordingBoundaryAsync(() =>
+    {
+        lock (_flightOwnersGate)
+        {
+            if (_flightOwners.Remove(owner) && _flightOwners.Count == 0) _session.DisableFlightRecording();
+        }
+        return 0;
+    });
+
+    private void SetRecordingMetrics() => (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(
+        _parser.SixelCellWidthPx ?? 10, _parser.SixelCellHeightPx ?? 20);
+
+    internal Task StopRecordingAsync() => AtRecordingBoundaryAsync(() => { _session.StopRecording(); return 0; });
+
+    internal ExportFlightResult ExportFlight() => ExportFlightAsync().GetAwaiter().GetResult();
+
+    internal async Task<ExportFlightResult> ExportFlightAsync()
+    {
+        var write = await AtRecordingBoundaryAsync(() => _session.CaptureFlightRecording()).ConfigureAwait(false);
+        if (write is null) return new ExportFlightResult { Exported = false };
+        return await Task.Run(() => WriteFlightExport(write), CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private static ExportFlightResult WriteFlightExport(Func<string, FlightExportInfo> write)
     {
         string path = Path.Combine(Path.GetTempPath(), $"ntilde-mux-flight-{Guid.NewGuid():N}.rec");
         try
         {
-            if (!_session.TryExportFlightRecording(path, out FlightExportInfo info))
-            {
-                return new ExportFlightResult { Exported = false };
-            }
+            FlightExportInfo info = write(path);
 
             return new ExportFlightResult
             {
@@ -547,6 +625,10 @@ public sealed class HeadlessTerminalSession : IDisposable
                 LastEventMs = info.LastEventMs,
                 TruncatedAtStart = info.TruncatedAtStart,
             };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return new ExportFlightResult { Exported = false };
         }
         finally
         {
@@ -662,6 +744,7 @@ public sealed class HeadlessTerminalSession : IDisposable
                 Execute(item);
                 if (item.Kind == WorkKind.Exit && item.Terminal) break;
                 FlushKeyboardCapabilities();
+                FlushSixelCellSize();
                 if (_sessionChangePending && SessionChangeWaitMs() == 0) FlushSessionChanged();
             }
         }
@@ -715,6 +798,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         // vouch for would only make them diverge from something that is itself wrong.
         if (IsFaulted) return;
 
+        (_session as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(data);
         int maxChars = Utf8ChunkDecoder.GetMaxCharCount(data.Length);
         if (_chars.Length < maxChars) _chars = new char[maxChars];
         int charCount = _decoder.Decode(data, _chars);
@@ -886,6 +970,8 @@ public sealed class HeadlessTerminalSession : IDisposable
 
         if (!_subscribers.Contains(sink)) _subscribers.Add(sink);
         _attachRequestIds[sink] = requestId;
+        if (presentation.SupportsSixelScrolling) _sixelLayoutSinks.Add(sink);
+        else _sixelLayoutSinks.Remove(sink);
         if (presentation.KittyKeyboardSupportedFlags.HasValue) _keyboardCapabilitySinks.Add(sink);
 
         // The kitty flag is recorded only once the subscription has taken effect: a refused or failed
@@ -982,6 +1068,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         _readOnlySinks.Remove(sink);
         _keyboardCapabilitySinks.Remove(sink);
+        _sixelLayoutSinks.Remove(sink);
         _attachRequestIds.Remove(sink);
         if (_kittyBySink.Remove(sink)) RecomputeKitty();
         ReportSubscription(sink, subscribed: false, readOnly: false);
@@ -1032,6 +1119,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         _attachRequestIds.Clear();
         _kittyBySink.Clear();
         _keyboardCapabilitySinks.Clear();
+        _sixelLayoutSinks.Clear();
     }
 
     private void ReportSubscription(IMuxFrameSink sink, bool subscribed, bool readOnly)
@@ -1042,14 +1130,28 @@ public sealed class HeadlessTerminalSession : IDisposable
         catch (Exception ex) { Log($"[Mux] session {Id}: reporting a subscription failed: {ex.Message}"); }
     }
 
+    private static float InitialCellMetric(float? value, float fallback) =>
+        value is float metric && float.IsFinite(metric) && metric > 0 ? metric : fallback;
+
     /// <summary>
     /// The session-wide fields: the latest client wins. Not <see cref="MuxPresentation.KittyKeyboardEnabled"/>,
     /// which is each interactive client's own (<see cref="RecordKitty"/>, <see cref="RecomputeKitty"/>).
     /// </summary>
     private void ApplyPresentation(MuxPresentation presentation)
     {
-        if (presentation.CellWidthPx > 0) _parser.CellWidth = presentation.CellWidthPx;
-        if (presentation.CellHeightPx > 0) _parser.CellHeight = presentation.CellHeightPx;
+        float width = float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0 ? presentation.CellWidthPx : _parser.CellWidth;
+        float height = float.IsFinite(presentation.CellHeightPx) && presentation.CellHeightPx > 0 ? presentation.CellHeightPx : _parser.CellHeight;
+        // Compare the immutable value pair exactly: subpixel changes can cross a cell-count ceiling.
+        var size = new SixelCellSize(width, height);
+        if (_parser.SixelCellSizeOverride != size)
+        {
+            _parser.SixelCellSizeOverride = size;
+            _sixelCellSizePending = true;
+            try { (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(width, height); }
+            catch (Exception ex) { Log($"[Mux] session {Id}: recording cell metrics failed: {ex.Message}"); }
+        }
+        if (float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0) _parser.CellWidth = presentation.CellWidthPx;
+        if (float.IsFinite(presentation.CellHeightPx) && presentation.CellHeightPx > 0) _parser.CellHeight = presentation.CellHeightPx;
         _parser.DefaultForeground = presentation.DefaultFg is uint fg ? TermColor.FromUint(fg) : null;
         _parser.DefaultBackground = presentation.DefaultBg is uint bg ? TermColor.FromUint(bg) : null;
     }
@@ -1064,6 +1166,8 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         if (!_subscribers.Contains(sink) || _readOnlySinks.Contains(sink)) return;
         _kittyBySink[sink] = presentation;
+        if (!presentation.SupportsSixelScrolling) _sixelLayoutSinks.Remove(sink);
+        else if (_sixelLayoutSinks.Add(sink)) _sixelCellSizePending = true;
         if (presentation.KittyKeyboardSupportedFlags.HasValue && _keyboardCapabilitySinks.Add(sink))
             _keyboardCapabilitiesPending = true; // The first opt-in resize also needs the current ceiling.
     }
@@ -1138,10 +1242,28 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
+    private void FlushSixelCellSize()
+    {
+        if (!_sixelCellSizePending) return;
+        _sixelCellSizePending = false;
+        if (IsFaulted || _sixelLayoutSinks.Count == 0) return;
+        Broadcast(MuxFrames.Notification(new MuxNotification
+        {
+            Method = MuxMethods.SixelCellSize,
+            Params = MuxFrames.ToElement(new SixelCellSizeNotification
+            {
+                SessionId = Id,
+                CellWidthPx = _parser.SixelCellWidthPx ?? 10,
+                CellHeightPx = _parser.SixelCellHeightPx ?? 20,
+            }, MuxJsonContext.Default.SixelCellSizeNotification),
+        }), _sixelLayoutSinks.Contains);
+    }
+
     private void ApplyResize(int cols, int rows)
     {
         if (cols <= 0 || rows <= 0 || (cols == _buffer.Cols && rows == _buffer.Rows)) return;
         FlushKeyboardCapabilities();
+        FlushSixelCellSize();
 
         // Buffer, then event, then child: bytes the child writes after learning the new size sort
         // after the event every client applies it at.

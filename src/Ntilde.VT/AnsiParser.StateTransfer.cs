@@ -12,8 +12,11 @@ namespace Ntilde.VT
         /// </summary>
         public AnsiParserState ExportState()
         {
+            SixelCellSize? size = SixelCellSizeOverride;
             var state = new AnsiParserState
             {
+                SixelCellWidthPx = size?.WidthPx,
+                SixelCellHeightPx = size?.HeightPx,
                 State = (int)_state,
                 CsiParams = new string(_paramBuffer, 0, _paramLen),
                 CsiTruncated = _csiTruncated,
@@ -95,6 +98,7 @@ namespace Ntilde.VT
                 _charsets[i] = (Charset)state.Charsets[i];
             }
 
+            SixelCellSizeOverride = state.SixelCellWidthPx is float width && state.SixelCellHeightPx is float height ? new SixelCellSize(width, height) : null;
             _gl = state.Gl;
             _pendingCharsetSlot = state.PendingCharsetSlot;
             _swallowNextNewline = state.SwallowNextNewline;
@@ -169,6 +173,10 @@ namespace Ntilde.VT
         /// </remarks>
         internal void ValidateParserState(AnsiParserState state)
         {
+            if (state.SixelCellWidthPx.HasValue != state.SixelCellHeightPx.HasValue ||
+                (state.SixelCellWidthPx is float width && (!float.IsFinite(width) || width <= 0)) ||
+                (state.SixelCellHeightPx is float height && (!float.IsFinite(height) || height <= 0)))
+                throw StateTransferValidation.Reject("SIXEL cell metrics", "must be an absent pair or two finite positive values");
             StateTransferValidation.RequirePresent(state.CsiParams, "parser CSI run");
             StateTransferValidation.RequirePresent(state.OscBuffer, "parser OSC accumulator");
             StateTransferValidation.RequirePresent(state.ApcBuffer, "parser APC accumulator");

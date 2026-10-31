@@ -10,7 +10,7 @@ namespace Ntilde.Mux.Tests.Support;
 /// it, synchronously on the caller's thread, and records SendInput / Resize. Flight recording is a
 /// real FlightRecordingBuffer so exports replay through the real ReplayRunner.
 /// </summary>
-internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteOutput
+internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary
 {
     private readonly object _gate = new();
     private readonly RawOutputTap _rawTap = new();
@@ -71,7 +71,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         // deadlock a real subscriber could hit against RawOutputTap.
         lock (_gate)
         {
-            _flight?.RecordChunk(chunk, chunk.Length);
+            if (!_hostRecords) _flight?.RecordChunk(chunk, chunk.Length);
             _rawTap.Publish(chunk);
         }
     }
@@ -115,7 +115,34 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         lock (_gate) _flight?.RecordResize(cols, rows);
     }
 
+    public bool ThrowOnRecordingCellMetrics { get; set; }
+    public RecordingCellMetrics? CurrentRecordingCellMetrics { get; private set; }
+    public RecordingCellMetrics? RecordingCellMetricsAtStart { get; private set; }
+    private volatile bool _hostRecords;
+    public void UseHostRecordingBoundary() => _hostRecords = true;
+    public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler) =>
+        throw new NotSupportedException("The scripted daemon fixture exposes raw output only.");
+    public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output)
+    {
+        if (IsRecording) RecordedOutput.Enqueue(output.ToArray());
+        if (_flight is not { } flight) return;
+        if (CurrentRecordingCellMetrics is { } size) flight.RecordSixelCellSize(size);
+        flight.RecordChunk(output.ToArray(), output.Length);
+    }
+    public void SetRecordingCellMetrics(float width, float height)
+    {
+        if (ThrowOnRecordingCellMetrics) throw new IOException("scripted recording metric failure");
+        var size = RecordingCellMetrics.FromOptional(width, height);
+        if (CurrentRecordingCellMetrics == size) return;
+        CurrentRecordingCellMetrics = size;
+        _flight?.RecordSixelCellSize(size!);
+    }
+
     public bool IsRecording { get; private set; }
+    public ConcurrentQueue<byte[]> RecordedOutput { get; } = new();
+    public Action? OnStartRecording { get; set; }
+    public Action? OnEnableFlightRecording { get; set; }
+    public Action? OnDisableFlightRecording { get; set; }
     public string? RecordingPath { get; private set; }
     /// <summary>Makes StartRecording fail the way RustPtySession's does on an unwritable path.</summary>
     public bool ThrowOnStartRecording { get; set; }
@@ -123,10 +150,20 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     public void StartRecording(string filePath)
     {
         if (ThrowOnStartRecording) throw new UnauthorizedAccessException($"Access to the path '{filePath}' is denied.");
+        OnStartRecording?.Invoke();
+        RecordedOutput.Clear();
         IsRecording = true;
         RecordingPath = filePath;
+        RecordingCellMetricsAtStart = CurrentRecordingCellMetrics;
     }
-    public void StopRecording() => IsRecording = false;
+    public Action? OnStopRecording { get; set; }
+    public Action? OnFlightExport { get; set; }
+    public Action? OnFlightCapture { get; set; }
+    public void StopRecording()
+    {
+        OnStopRecording?.Invoke();
+        IsRecording = false;
+    }
 
     public bool IsFlightRecording { get { lock (_gate) return _flight is not null; } }
     /// <summary>The budget the mux actually passed to the last EnableFlightRecording call.</summary>
@@ -134,20 +171,30 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
 
     public void EnableFlightRecording(long maxTotalBytes)
     {
+        OnEnableFlightRecording?.Invoke();
         lock (_gate)
         {
             LastFlightBudget = maxTotalBytes;
-            _flight ??= new FlightRecordingBuffer(maxTotalBytes, Cols, Rows);
+            _flight ??= new FlightRecordingBuffer(maxTotalBytes, Cols, Rows, initialSixelCellSize: CurrentRecordingCellMetrics);
         }
     }
-    public void DisableFlightRecording() { lock (_gate) _flight = null; }
+    public void DisableFlightRecording() { OnDisableFlightRecording?.Invoke(); lock (_gate) _flight = null; }
+
+    public Func<string, FlightExportInfo>? CaptureFlightRecording()
+    {
+        OnFlightCapture?.Invoke();
+        FlightRecordingBuffer? flight;
+        lock (_gate) flight = _flight;
+        if (flight is null) return null;
+        var write = flight.CaptureExport(ShellCommand);
+        return path => { OnFlightExport?.Invoke(); return write(path); };
+    }
 
     public bool TryExportFlightRecording(string filePath, out FlightExportInfo info)
     {
-        FlightRecordingBuffer? flight;
-        lock (_gate) flight = _flight;
-        if (flight is null) { info = default; return false; }
-        info = flight.ExportTo(filePath, ShellCommand);
+        var write = CaptureFlightRecording();
+        if (write is null) { info = default; return false; }
+        info = write(filePath);
         return true;
     }
 

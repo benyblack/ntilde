@@ -156,6 +156,19 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
         Assert.Equal($"\x1b[?{flags}u", Assert.Single(child.SentInput));
     }
 
+
+    [Fact]
+    public async Task Remote_spawn_carries_pixel_metrics_before_the_childs_first_image()
+    {
+        _remote.Shells.StartupOutput = "\x1b[2;1H\x1bPq!30~-~\x1b\\\x1b[6n";
+        var result = _factory.CreatePersistent(Ssh() with { CellWidthPx = 20, CellHeightPx = 6 });
+        var session = Assert.IsType<MuxClientSession>(result.Session);
+        Assert.False(session.IsAttached);
+        var child = Assert.Single(_remote.Shells.Sessions);
+        await TestWait.UntilAsync(() => !child.SentInput.IsEmpty, "remote startup SIXEL used the launch metrics");
+        Assert.Equal("\x1b[4;1R", Assert.Single(child.SentInput));
+    }
+
     [Fact]
     public void New_persisted_ssh_tab_spawns_on_the_remote_daemon()
     {

@@ -123,10 +123,11 @@ public sealed class MuxPaneTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void The_mux_parser_is_built_without_image_support()
+    public void Mux_panes_decode_SIXEL_only_and_keep_other_transports_disabled()
     {
         StartPane();
-        Assert.Null(_pane!.Parser!.ImageDecoder);
+        Assert.True(Assert.IsType<Ntilde.Rendering.SkiaImageDecoder>(_pane!.Parser!.ImageDecoder).DeferSixelDecoding);
+        Assert.False(_pane.Parser.AllowNonSixelImages);
         Assert.False(_pane.Parser.AllowNativeKittyGraphics);
         Assert.Null(_pane.Parser.ReadFileBytes);
         Assert.True(_pane.TermView.DefersBufferResizeToSession);
@@ -185,6 +186,27 @@ public sealed class MuxPaneTests : IDisposable
         PumpUntil(() => BufferText(_pane.Buffer!).Contains("[Multiplexer disconnected]"), "the banner is shown");
         Assert.Equal(0, exited);
         Assert.True(TerminalPane.ShouldReconnectOnEnter(_pane.Session));
+    }
+
+    [AvaloniaFact]
+    public void Reattaching_a_GUI_pane_restores_the_retained_image_without_new_image_output()
+    {
+        MuxClientSession first = StartHostedPane();
+        _mux.Fake(first.Id).Emit("before\r\n\x1b[?80h\x1bPq#1;2;100;0;0#1!30~\x1b\\");
+        Settle(first.Id);
+        var oldImage = Assert.Single(_pane!.Buffer!.Images);
+        Assert.IsType<Ntilde.Rendering.DeferredSixelImage>(oldImage.ImageHandle);
+        _host.CurrentClient!.Dispose();
+        PumpUntil(() => BufferText(_pane.Buffer!).Contains("[Multiplexer disconnected]"), "the disconnect banner appeared");
+        PressEnter();
+        var again = Assert.IsType<MuxClientSession>(_pane.Session);
+        Assert.Equal(first.Id, again.Id);
+        PumpUntil(() => again.IsAttached && !BufferText(_pane.Buffer!).Contains("[Multiplexer disconnected]"), "the reattach snapshot replaced the pane");
+        SettleAndAssertEqual(first.Id, "the GUI restored source and placement before any later image output");
+        var restored = Assert.Single(_pane.Buffer!.Images);
+        Assert.IsType<Ntilde.Rendering.DeferredSixelImage>(restored.ImageHandle);
+        Assert.NotSame(oldImage.ImageHandle, restored.ImageHandle);
+        Assert.Equal("q#1;2;100;0;0#1!30~", restored.SixelSource?.Data);
     }
 
     [AvaloniaFact]

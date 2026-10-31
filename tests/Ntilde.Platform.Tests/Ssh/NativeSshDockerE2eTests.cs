@@ -873,6 +873,7 @@ public sealed class NativeSshDockerE2eTests
         var handler = new NativeSshTestInteractionHandler(fixture.Password);
         var logs = new List<string>();
         const string altMarker = "ALT SCREEN LIVE";
+        const string completedMarker = "ALT SCREEN RETURNED";
 
         using var session = new NativeSshSession(
             CreateProfile(fixture),
@@ -885,10 +886,14 @@ public sealed class NativeSshDockerE2eTests
 
         await WaitUntilAsync(() => SnapshotContainsExactLine(buffer, "nova$"), TimeSpan.FromSeconds(20), "initial prompt");
 
-        session.SendInput($"printf '{BuildAltScreenPayload(altMarker)}'\n");
+        session.SendInput($"printf '{BuildAltScreenPayload(altMarker)}'; printf '\\n{completedMarker}\\n'\n");
 
         await WaitUntilAsync(
-            () => SnapshotContainsExactLine(buffer, "nova$"),
+            () =>
+            {
+                var lines = BufferSnapshot.Capture(buffer).Lines;
+                return lines.Zip(lines.Skip(1)).Any(pair => pair.First == completedMarker && pair.Second == "nova$");
+            },
             TimeSpan.FromSeconds(20),
             "prompt after alternate screen exit");
 

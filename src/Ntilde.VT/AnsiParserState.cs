@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -11,11 +12,15 @@ namespace Ntilde.VT
     /// stream the same way.
     /// </summary>
     /// <remarks>
-    /// Read-only configuration is deliberately absent: the image decoder, cell metrics, default
-    /// colours, the kitty kill switch, the string-sequence cap, and the ConPTY-filtering flag are
+    /// Read-only configuration is deliberately absent: the image decoder, general cell metrics, default
+    /// colours, the image-protocol policy, the kitty kill switch, the string-sequence cap, and the ConPTY-filtering flag are
     /// host settings, not stream position. Two parsers exchanging state must be constructed with
     /// the same <c>forceConPtyFiltering</c>, because that one changes how a sequence is
     /// interpreted rather than what has been seen.
+    ///
+    /// The authoritative SIXEL cell-size override is included: shared-session layout must use
+    /// the daemon's pixel metrics after attach, rather than a receiving view's local font size.
+    /// Native/raw-only replay hosts still choose their own general cell metrics.
     ///
     /// The hyperlink registry is also absent by design: link identity is reference equality, so
     /// it travels with the buffer's hyperlink table (<see cref="TerminalStateSnapshot"/>) where
@@ -24,6 +29,12 @@ namespace Ntilde.VT
     /// </remarks>
     public sealed class AnsiParserState
     {
+        /// <summary>Authoritative SIXEL layout metrics; absent in legacy snapshots.</summary>
+        [JsonPropertyName("sixel_cw"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? SixelCellWidthPx { get; set; }
+        [JsonPropertyName("sixel_ch"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? SixelCellHeightPx { get; set; }
+
         /// <summary>Escape state-machine position, as the ordinal of <c>AnsiParser.State</c>.</summary>
         [JsonPropertyName("state")] public int State { get; set; }
 
@@ -111,6 +122,8 @@ namespace Ntilde.VT
             sb.Append(" voff=").Append(VerticalOffset);
             sb.Append(" lastgfx=").Append(LastGraphicChar ?? "<null>");
             sb.Append(" inband=").Append(InBandResizeReportsEnabled);
+            sb.Append(" sixel_cw=").Append(SixelCellWidthPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");
+            sb.Append(" sixel_ch=").Append(SixelCellHeightPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");
             return sb.ToString();
         }
     }

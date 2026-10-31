@@ -66,6 +66,7 @@ namespace Ntilde.Shell
         /// live row-diff baseline alone. See <see cref="RenderSnapshotRequest.Isolated"/>.
         /// </summary>
         private readonly bool _isolatedSnapshot;
+        private readonly Action? _requestImageFrame;
         private bool _wasAltScreenLastFrame;
 
         private static readonly bool GlyphDiagnosticsEnabled = IsEnvFlagEnabled("NTILDE_DIAG_GLYPH");
@@ -223,7 +224,8 @@ namespace Ntilde.Shell
             bool showRenderHud = false,
             bool isolatedSnapshot = false,
             double minimumContrast = 1.0,
-            IDisposable? cacheLease = null)
+            IDisposable? cacheLease = null,
+            Action? requestImageFrame = null)
         {
             _bounds = bounds;
             _cacheLease = cacheLease;
@@ -254,6 +256,7 @@ namespace Ntilde.Shell
             _glyphCache = glyphCache;
             _showRenderHud = showRenderHud;
             _isolatedSnapshot = isolatedSnapshot;
+            _requestImageFrame = requestImageFrame;
             _cellWidthDevicePx = Math.Max(1, ToDevicePx(_metrics.CellWidth));
             _cellHeightDevicePx = Math.Max(1, ToDevicePx(_metrics.CellHeight));
             int baselineOffsetPx = ToDevicePx(_metrics.Baseline);
@@ -336,7 +339,7 @@ namespace Ntilde.Shell
             int snapshotSession = _buffer.BeginSnapshotSession();
             try
             {
-                return DrawTerminalInternalCore(canvas);
+                return DrawTerminalInternalCore(canvas, snapshotSession);
             }
             finally
             {
@@ -344,7 +347,8 @@ namespace Ntilde.Shell
             }
         }
 
-        private TerminalRenderSnapshot? DrawTerminalInternalCore(SKCanvas canvas)
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "S3776", Justification = "Pre-existing rendering pipeline; this change only passes the snapshot session through to capture without adding branches. Splitting the frame pipeline is outside this lifetime fix.")]
+        private TerminalRenderSnapshot? DrawTerminalInternalCore(SKCanvas canvas, int snapshotSession)
         {
             try
             {
@@ -371,7 +375,8 @@ namespace Ntilde.Shell
                     Selection = _selection,
                     SearchMatches = _searchMatches,
                     ActiveSearchIndex = _activeSearchIndex,
-                    Isolated = _isolatedSnapshot
+                    Isolated = _isolatedSnapshot,
+                    SnapshotSessionId = snapshotSession,
                 };
                 TerminalRenderSnapshot renderSnapshot = _buffer.CaptureRenderSnapshot(snapshotRequest, out long readLockMs);
                 RendererStatistics.RecordBufferReadLockTimeMs(readLockMs);
@@ -721,6 +726,9 @@ namespace Ntilde.Shell
                     }
                 }
 
+                // Bound first-frame work for live panes; exports still materialize every image.
+                int remainingImageDecodes = _requestImageFrame is null || _isolatedSnapshot ? int.MaxValue : 1;
+                bool pendingImageDecode = false;
                 // Pass 2: Images
                 using (var imagePaint = new SKPaint { Color = new SKColor(255, 255, 255, alpha) })
                 using (var imageBgPaint = new SKPaint { Color = frame.ThemeBg, Style = SKPaintStyle.Fill, IsAntialias = false })
@@ -741,11 +749,24 @@ namespace Ntilde.Shell
 
                             canvas.Save();
                             canvas.ClipRect(new SKRect(paddingLeft, 0, (float)Bounds.Width, (float)Bounds.Height));
+                            if (img.ClipTopRows > 0 || img.ClipBottomRows > 0 || img.ClipRightColumns > 0)
+                            {
+                                canvas.ClipRect(new SKRect(x,
+                                    GetRowEdge(rowEdges, visualY + img.ClipTopRows, paddingTop),
+                                    GetColEdge(colEdges, img.CellX + img.CellWidth - img.ClipRightColumns, paddingLeft),
+                                    GetRowEdge(rowEdges, visualY + img.CellHeight - img.ClipBottomRows, paddingTop)));
+                            }
                             // Clear image target region first so transparent/semi-transparent
                             // image pixels do not reveal previously drawn text layers.
                             canvas.DrawRect(rect, imageBgPaint);
                             IncrementRectDrawCall();
-                            if (img.ImageHandle is SKBitmap bmp)
+                            SKBitmap? bitmap = img.ImageHandle as SKBitmap;
+                            if (img.ImageHandle is DeferredSixelImage deferred)
+                            {
+                                bitmap = deferred.GetBitmap(ref remainingImageDecodes, out bool pending);
+                                pendingImageDecode |= pending;
+                            }
+                            if (bitmap is { } bmp)
                             {
                                 canvas.DrawBitmap(bmp, rect, imagePaint);
                                 IncrementOtherDrawCall();
@@ -754,6 +775,8 @@ namespace Ntilde.Shell
                         }
                     }
                 }
+
+                if (pendingImageDecode) _requestImageFrame?.Invoke();
 
                 // Redraws the text of [colStart, colEndExclusive) on visual row r over an overlay
                 // just drawn on top of it, so a selection, search match or block cursor is a fill

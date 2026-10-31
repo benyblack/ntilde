@@ -21,8 +21,8 @@ namespace Ntilde.VT
     /// Two things are deliberately excluded, and a reader who finds them missing should read
     /// this rather than assume an oversight.
     ///
-    /// <b>Inline images</b>: the handles are decoder-owned and not transferable, and carrying the
-    /// pixels would dominate the payload.
+    /// <b>Bitmap handles and non-SIXEL images</b>: handles are decoder-owned and not transferable.
+    /// Opted-in persistent sessions carry bounded SIXEL source and placement instead of pixels.
     ///
     /// <b>The OSC 133 shell-integration marks</b> (<c>TerminalBuffer</c>'s tracked command-start
     /// and command-output-start marks, and the accepting-input flag). A mark is anchored by a
@@ -116,6 +116,24 @@ namespace Ntilde.VT
         /// <c>StreamSeq + (DecoderTail?.Length ?? 0)</c>.
         /// </summary>
         [JsonPropertyName("seq")] public long StreamSeq { get; set; }
+
+        /// <summary>Bounded SIXEL source and placement; absent on legacy or graphics-free snapshots.</summary>
+        [JsonPropertyName("sixels"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<TerminalSixelImageState>? Sixels { get; set; }
+
+    }
+
+    public sealed class TerminalSixelImageState
+    {
+        [JsonPropertyName("source")] public string Source { get; set; } = string.Empty;
+        [JsonPropertyName("x")] public int X { get; set; }
+        [JsonPropertyName("y")] public int Y { get; set; }
+        [JsonPropertyName("w")] public int Width { get; set; }
+        [JsonPropertyName("h")] public int Height { get; set; }
+        [JsonPropertyName("alt")] public bool Alt { get; set; }
+        [JsonPropertyName("top")] public int ClipTop { get; set; }
+        [JsonPropertyName("bottom")] public int ClipBottom { get; set; }
+        [JsonPropertyName("right")] public int ClipRight { get; set; }
     }
 
     /// <summary>One screen's (or the scrollback's) cells and per-row side tables.</summary>
@@ -188,6 +206,7 @@ namespace Ntilde.VT
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; } = true;
         [JsonPropertyName("decom")] public bool IsOriginMode { get; set; }
+        [JsonPropertyName("sixel_display")] public bool IsSixelDisplayMode { get; set; }
         [JsonPropertyName("focus")] public bool IsFocusEventReporting { get; set; }
         [JsonPropertyName("bp")] public bool IsBracketedPasteMode { get; set; }
         [JsonPropertyName("cv")] public bool IsCursorVisible { get; set; } = true;

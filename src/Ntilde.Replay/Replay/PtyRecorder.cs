@@ -19,21 +19,38 @@ namespace Ntilde.Replay
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly DateTime _startTime;
         private readonly ReplayHeader _header;
+        private RecordingCellMetrics? _sixelCellSize;
 
-        public PtyRecorder(string filePath, int cols, int rows, string shell = "")
+        public PtyRecorder(string filePath, int cols, int rows, string shell = "", RecordingCellMetrics? sixelCellSize = null)
         {
             _filePath = filePath;
             _startTime = DateTime.UtcNow;
 
+            _sixelCellSize = RecordingCellMetrics.FromOptional(sixelCellSize?.WidthPx, sixelCellSize?.HeightPx);
             _header = new ReplayHeader
             {
                 Type = ReplayHeader.TypeToken,
                 Cols = cols,
                 Rows = rows,
+                SixelCellWidthPx = sixelCellSize?.WidthPx,
+                SixelCellHeightPx = sixelCellSize?.HeightPx,
                 Shell = shell
             };
 
             _writeTask = Task.Run(WriteLoop);
+        }
+
+        /// <summary>Writes original bytes and their metric context at the parser host's ordering boundary.</summary>
+        public static void RecordOutputAtBoundary(PtyRecorder? recorder, FlightRecordingBuffer? flight,
+            RecordingCellMetrics size, ReadOnlyMemory<byte> output)
+        {
+            if (output.IsEmpty || (recorder is null && flight is null)) return;
+            byte[] data = MemoryMarshal.TryGetArray(output, out var segment) && segment.Offset == 0 && segment.Array is { } array
+                ? array : output.ToArray();
+            recorder?.RecordSixelCellSize(size);
+            recorder?.RecordChunk(data, output.Length);
+            flight?.RecordSixelCellSize(size);
+            flight?.RecordChunk(data, output.Length);
         }
 
         public void RecordChunk(byte[] data, int length)
@@ -102,10 +119,28 @@ namespace Ntilde.Replay
             });
         }
 
-        public void RecordSnapshot(TerminalBuffer buffer)
+        public void RecordSixelCellSize(float width, float height) => RecordSixelCellSize(new RecordingCellMetrics(width, height));
+
+        public void RecordSixelCellSize(RecordingCellMetrics size)
+        {
+            if (Volatile.Read(ref _sixelCellSize) == size) return;
+            RecordSixelCellSizeAt(GetTimestamp(), size.WidthPx, size.HeightPx);
+        }
+
+        public void RecordSixelCellSizeAt(long timeOffsetMs, float width, float height)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(timeOffsetMs);
+            var cellSize = RecordingCellMetrics.FromOptional(width, height);
+            Volatile.Write(ref _sixelCellSize, cellSize);
+            if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
+            TryEnqueue(new ReplayEvent { Type = "sixelCellSize", TimeOffsetMs = timeOffsetMs, SixelCellWidthPx = width, SixelCellHeightPx = height });
+        }
+
+        public void RecordSnapshot(TerminalBuffer buffer, AnsiParser? parser = null)
         {
             if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
 
+            var cellSize = SnapshotCellMetrics(parser);
             ReplaySnapshot snapshot;
             buffer.Lock.EnterReadLock();
             try
@@ -127,6 +162,9 @@ namespace Ntilde.Replay
                     IsAutoWrapMode = buffer.Modes.IsAutoWrapMode,
                     IsApplicationCursorKeys = buffer.Modes.IsApplicationCursorKeys,
                     IsOriginMode = buffer.Modes.IsOriginMode,
+                    IsSixelDisplayMode = buffer.Modes.IsSixelDisplayMode,
+                    SixelCellWidthPx = cellSize?.WidthPx,
+                    SixelCellHeightPx = cellSize?.HeightPx,
                     IsBracketedPasteMode = buffer.Modes.IsBracketedPasteMode,
                     IsCursorVisible = buffer.Modes.IsCursorVisible,
                     IsPendingWrap = buffer.IsPendingWrap,
@@ -166,14 +204,8 @@ namespace Ntilde.Replay
                     // Capture extended text
                     for (int c = 0; c < cols; c++)
                     {
-                        if (row.Cells[c].HasExtendedText)
-                        {
-                            string? text = row.GetExtendedText(c);
-                            if (text != null)
-                            {
-                                snapshot.ExtendedText[r * cols + c] = text;
-                            }
-                        }
+                        if (row.Cells[c].HasExtendedText && row.GetExtendedText(c) is { } text)
+                            snapshot.ExtendedText[r * cols + c] = text;
 
                         // Underline style and color (#270)
                         if (row.Cells[c].IsUnderline && row.GetUnderline(c) is { } underline)
@@ -205,6 +237,13 @@ namespace Ntilde.Replay
                 Type = "snapshot",
                 Snapshot = snapshot
             });
+        }
+
+        private RecordingCellMetrics? SnapshotCellMetrics(AnsiParser? parser)
+        {
+            if (parser is null) return Volatile.Read(ref _sixelCellSize);
+            SixelCellSize? size = parser.SixelCellSizeOverride;
+            return new RecordingCellMetrics(size?.WidthPx ?? parser.CellWidth, size?.HeightPx ?? parser.CellHeight);
         }
 
         public void RecordMarker(string name)

@@ -24,6 +24,27 @@ public class RetiredImageDisposalTests
     }
 
     [AvaloniaFact]
+    public void Deferred_source_disposal_preserves_an_in_flight_snapshot_then_releases_it()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var view = new TerminalView();
+        view.SetBuffer(buffer);
+        var parser = new AnsiParser(buffer)
+        {
+            ImageDecoder = new Ntilde.Rendering.SkiaImageDecoder { DeferSixelDecoding = true },
+        };
+        parser.Process("\x1b[?80h\x1bPq!30~\x1b\\");
+        var first = Assert.IsType<Ntilde.Rendering.DeferredSixelImage>(Assert.Single(buffer.Images).ImageHandle);
+        int session = buffer.BeginSnapshotSession();
+        parser.Process("\x1bPq!30~\x1b\\");
+        view.DisposeRetiredImageBitmaps();
+        Assert.NotNull(first.GetBitmap()); // The old snapshot may still need its source.
+        buffer.EndSnapshotSession(session);
+        view.DisposeRetiredImageBitmaps();
+        Assert.Null(first.GetBitmap());
+    }
+
+    [AvaloniaFact]
     public void PrunedImageBitmap_IsDisposedOnlyAfterTheAgeGrace()
     {
         var buffer = new TerminalBuffer(80, 24);

@@ -1,3 +1,4 @@
+using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Mux.TextClient;
 
@@ -5,6 +6,34 @@ namespace Ntilde.Mux.Tests.TextClient;
 
 public sealed class TextClientModelTests
 {
+    [Fact]
+    public async Task GUI_metric_changes_reach_the_text_model_before_later_SIXEL_output()
+    {
+        using var host = new MuxTestHost();
+        MuxClient gui = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(gui);
+        MuxClientSession owner = gui.OpenSession(id, "scripted");
+        var presentation = MuxTestHost.DefaultPresentation with { SupportsSixelScrolling = true };
+        await owner.AttachAsync(0, presentation, TestContext.Current.CancellationToken);
+        MuxClient text = await host.ConnectClientAsync();
+        MuxClientSession session = text.OpenSession(id, "scripted");
+        using var model = new TextClientModel(session);
+        await session.AttachAsync(MuxAttachMode.ReadOnly, 0, presentation, TestContext.Current.CancellationToken);
+
+        owner.UpdatePresentation(presentation with { CellHeightPx = 6 });
+        await TestWait.UntilAsync(() => model.Parser.SixelCellHeightPx == 6, "the text client received the new geometry");
+        host.Fake(id).Emit("\x1b[24;5H\x1bPq!30~-~\x1b\\tail");
+        await host.SettleAsync(id, gui, text);
+
+        Assert.Equal(26, model.Buffer.TotalLines);
+        Ntilde.VT.Tests.StateTransfer.TerminalStateAssert.AssertEquivalent("[text SIXEL after font change]",
+            host.Mux(id).Buffer, host.Mux(id).Parser, model.Buffer, model.Parser);
+        model.Dispose();
+        owner.UpdatePresentation(presentation with { CellHeightPx = 12 });
+        await host.SettleAsync(id, gui, text);
+        Assert.Equal(6, model.Parser.SixelCellHeightPx);
+    }
+
     [Fact]
     public async Task The_model_equals_the_mux_after_snapshot_output_and_resize()
     {

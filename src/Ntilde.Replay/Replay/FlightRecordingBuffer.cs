@@ -15,7 +15,7 @@ namespace Ntilde.Replay
             TruncatedAtStart = truncatedAtStart;
         }
 
-        /// <summary>Number of events written to the export file (output chunks + resizes).</summary>
+        /// <summary>Number of events written to the export file (output chunks + resizes + cell metrics).</summary>
         public int EventCount { get; }
 
         /// <summary>
@@ -65,6 +65,8 @@ namespace Ntilde.Replay
         private int _windowStartCols;
         private int _windowStartRows;
         private bool _truncatedAtStart;
+        private RecordingCellMetrics? _windowStartCellSize;
+        private RecordingCellMetrics? _currentCellSize;
 
         /// <param name="maxTotalBytes">
         /// Retention budget: sum of payload bytes plus <see cref="EntryOverheadBytes"/>
@@ -77,12 +79,14 @@ namespace Ntilde.Replay
         /// Monotonic millisecond clock (tests inject a fake). Defaults to
         /// <see cref="Environment.TickCount64"/>.
         /// </param>
-        public FlightRecordingBuffer(long maxTotalBytes, int initialCols, int initialRows, Func<long>? clock = null)
+        public FlightRecordingBuffer(long maxTotalBytes, int initialCols, int initialRows, Func<long>? clock = null, RecordingCellMetrics? initialSixelCellSize = null)
         {
             if (maxTotalBytes <= 0) throw new ArgumentOutOfRangeException(nameof(maxTotalBytes), maxTotalBytes, "Retention budget must be positive.");
             if (initialCols <= 0) throw new ArgumentOutOfRangeException(nameof(initialCols), initialCols, "Columns must be positive.");
             if (initialRows <= 0) throw new ArgumentOutOfRangeException(nameof(initialRows), initialRows, "Rows must be positive.");
 
+            _windowStartCellSize = RecordingCellMetrics.FromOptional(initialSixelCellSize?.WidthPx, initialSixelCellSize?.HeightPx);
+            _currentCellSize = _windowStartCellSize;
             _maxTotalBytes = maxTotalBytes;
             _windowStartCols = initialCols;
             _windowStartRows = initialRows;
@@ -103,6 +107,20 @@ namespace Ntilde.Replay
             {
                 _entries.Enqueue(Entry.Chunk(NowMs(), copy));
                 _retainedBytes += copy.Length + EntryOverheadBytes;
+                TrimLocked();
+            }
+        }
+
+        public void RecordSixelCellSize(float width, float height) => RecordSixelCellSize(new RecordingCellMetrics(width, height));
+
+        public void RecordSixelCellSize(RecordingCellMetrics size)
+        {
+            lock (_gate)
+            {
+                if (_currentCellSize == size) return;
+                _currentCellSize = size;
+                _entries.Enqueue(Entry.Metrics(NowMs(), size));
+                _retainedBytes += EntryOverheadBytes;
                 TrimLocked();
             }
         }
@@ -128,31 +146,35 @@ namespace Ntilde.Replay
         /// Throws (IOException, UnauthorizedAccessException, …) when the target path
         /// is not writable.
         /// </summary>
-        public FlightExportInfo ExportTo(string filePath, string shell)
+        public FlightExportInfo ExportTo(string filePath, string shell) => CaptureExport(shell)(filePath);
+
+        /// <summary>Freezes the retained window without I/O; the returned writer may run on another thread.</summary>
+        public Func<string, FlightExportInfo> CaptureExport(string shell)
         {
-            ArgumentNullException.ThrowIfNull(filePath);
-
-            // Surface path errors synchronously. PtyRecorder's writer task swallows
-            // I/O failures (best-effort semantics for live recording), so without
-            // this probe an export to an unwritable path would "succeed" while
-            // writing nothing — the Try* session surface could never report false.
-            using (File.Create(filePath))
-            {
-            }
-
             Entry[] entries;
             int cols;
             int rows;
             bool truncated;
+            RecordingCellMetrics? cellSize;
             lock (_gate)
             {
+                cellSize = _windowStartCellSize;
                 entries = _entries.ToArray();
                 cols = _windowStartCols;
                 rows = _windowStartRows;
                 truncated = _truncatedAtStart;
             }
 
-            using var recorder = new PtyRecorder(filePath, cols, rows, shell ?? string.Empty);
+            return filePath => WriteCapturedWindow(filePath, shell, entries, cols, rows, truncated, cellSize);
+        }
+
+        private static FlightExportInfo WriteCapturedWindow(string filePath, string shell, Entry[] entries,
+            int cols, int rows, bool truncated, RecordingCellMetrics? cellSize)
+        {
+            ArgumentNullException.ThrowIfNull(filePath);
+            // Surface path errors before PtyRecorder's best-effort asynchronous writer starts.
+            using (File.Create(filePath)) { /* Close the writable-path probe before starting the writer. */ }
+            using var recorder = new PtyRecorder(filePath, cols, rows, shell ?? string.Empty, cellSize);
 
             if (entries.Length == 0)
             {
@@ -163,7 +185,11 @@ namespace Ntilde.Replay
             foreach (Entry entry in entries)
             {
                 long rebased = entry.TimeMs - baseMs;
-                if (entry.Payload != null)
+                if (entry.CellSize is { } size)
+                {
+                    recorder.RecordSixelCellSizeAt(rebased, size.WidthPx, size.HeightPx);
+                }
+                else if (entry.Payload != null)
                 {
                     recorder.RecordChunkAt(rebased, entry.Payload, entry.Payload.Length);
                 }
@@ -210,7 +236,8 @@ namespace Ntilde.Replay
                 _retainedBytes -= (evicted.Payload?.Length ?? 0) + EntryOverheadBytes;
                 _truncatedAtStart = true;
 
-                if (evicted.Payload == null)
+                if (evicted.CellSize is { } size) _windowStartCellSize = size;
+                else if (evicted.Payload == null)
                 {
                     // Evicting a resize advances the geometry at the window start.
                     _windowStartCols = evicted.Cols;
@@ -221,8 +248,9 @@ namespace Ntilde.Replay
 
         private readonly struct Entry
         {
-            private Entry(long timeMs, byte[]? payload, int cols, int rows)
+            private Entry(long timeMs, byte[]? payload, int cols, int rows, RecordingCellMetrics? cellSize = null)
             {
+                CellSize = cellSize;
                 TimeMs = timeMs;
                 Payload = payload;
                 Cols = cols;
@@ -232,6 +260,10 @@ namespace Ntilde.Replay
             public static Entry Chunk(long timeMs, byte[] payload) => new Entry(timeMs, payload, 0, 0);
 
             public static Entry Resize(long timeMs, int cols, int rows) => new Entry(timeMs, null, cols, rows);
+
+            public RecordingCellMetrics? CellSize { get; }
+
+            public static Entry Metrics(long timeMs, RecordingCellMetrics size) => new(timeMs, null, 0, 0, size);
 
             public long TimeMs { get; }
 

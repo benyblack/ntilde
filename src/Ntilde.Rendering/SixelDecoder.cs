@@ -13,7 +13,7 @@ namespace Ntilde.Rendering
         /// 2000 pixels AnsiParser enforces on kitty and iTerm2 images, so no image protocol can
         /// produce a larger bitmap than the others.
         /// </summary>
-        public const int DefaultMaxPixelDimension = 2000;
+        public const int DefaultMaxPixelDimension = Ntilde.VT.SixelGeometry.DefaultMaxPixelDimension;
 
         /// <summary>
         /// Largest width and height, in pixels, of a decoded image. Sixel is remote-controlled

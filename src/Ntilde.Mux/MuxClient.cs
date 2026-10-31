@@ -640,33 +640,46 @@ public sealed class MuxClient : IDisposable
 
     private void OnNotification(MuxNotification notification)
     {
-        if (notification.Method == MuxMethods.Exited)
+        switch (notification.Method)
         {
-            ExitedNotification exited = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.ExitedNotification);
-            if (_sessions.TryGetValue(exited.SessionId, out MuxClientSession? session)) session.DeliverExited(exited.ExitCode);
+            case MuxMethods.Exited:
+                {
+                    ExitedNotification exited = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.ExitedNotification);
+                    if (_sessions.TryGetValue(exited.SessionId, out MuxClientSession? session)) session.DeliverExited(exited.ExitCode);
+                    break;
+                }
+            case MuxMethods.Faulted:
+                {
+                    // Session-level, never connection-level: only that session's stream ends.
+                    FaultedNotification faulted = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.FaultedNotification);
+                    if (_sessions.TryGetValue(faulted.SessionId, out MuxClientSession? session)) session.DeliverFaulted(faulted.Message ?? "The mux session faulted.");
+                    break;
+                }
+            case MuxMethods.SixelCellSize:
+                {
+                    SixelCellSizeNotification size = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.SixelCellSizeNotification);
+                    if (_sessions.TryGetValue(size.SessionId, out MuxClientSession? session)) session.DeliverSixelCellSize(size.CellWidthPx, size.CellHeightPx);
+                    break;
+                }
+            case MuxMethods.KeyboardCapabilities:
+                {
+                    KeyboardCapabilitiesNotification capabilities = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.KeyboardCapabilitiesNotification);
+                    if (_sessions.TryGetValue(capabilities.SessionId, out MuxClientSession? session)) session.DeliverKeyboardCapabilities(capabilities.SupportedFlags);
+                    break;
+                }
+            case MuxMethods.SessionChanged:
+                {
+                    SessionChangedNotification changed = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.SessionChangedNotification);
+                    if (_sessions.TryGetValue(changed.SessionId, out MuxClientSession? session)) session.DeliverSessionChanged(changed);
+                    break;
+                }
+            case MuxMethods.Killed:
+                {
+                    KilledNotification killed = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.KilledNotification);
+                    if (_sessions.TryGetValue(killed.SessionId, out MuxClientSession? session)) session.DeliverKilled(killed.ByClientKind);
+                    break;
+                }
         }
-        else if (notification.Method == MuxMethods.Faulted)
-        {
-            // Session-level, never connection-level: only that session's stream ends.
-            FaultedNotification faulted = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.FaultedNotification);
-            if (_sessions.TryGetValue(faulted.SessionId, out MuxClientSession? session)) session.DeliverFaulted(faulted.Message ?? "The mux session faulted.");
-        }
-        else if (notification.Method == MuxMethods.KeyboardCapabilities)
-        {
-            KeyboardCapabilitiesNotification capabilities = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.KeyboardCapabilitiesNotification);
-            if (_sessions.TryGetValue(capabilities.SessionId, out MuxClientSession? session)) session.DeliverKeyboardCapabilities(capabilities.SupportedFlags);
-        }
-        else if (notification.Method == MuxMethods.SessionChanged)
-        {
-            SessionChangedNotification changed = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.SessionChangedNotification);
-            if (_sessions.TryGetValue(changed.SessionId, out MuxClientSession? session)) session.DeliverSessionChanged(changed);
-        }
-        else if (notification.Method == MuxMethods.Killed)
-        {
-            KilledNotification killed = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.KilledNotification);
-            if (_sessions.TryGetValue(killed.SessionId, out MuxClientSession? session)) session.DeliverKilled(killed.ByClientKind);
-        }
-
         // Unknown notifications are ignored: a newer server may send more than this client knows.
     }
 

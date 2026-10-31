@@ -87,6 +87,9 @@ namespace Ntilde.VT
         /// </summary>
         private void RetireImage(TerminalImage image, bool disposeImmediately = false)
         {
+            // A headless source handle has no renderer resources or in-flight bitmap users.
+            if (image.ImageHandle is SixelSource source) { source.Dispose(); return; }
+            (image.SixelSource ?? (image.ImageHandle as IDeferredSixelImage)?.Source)?.Retire();
             _retiredImageHandles.Enqueue((image.ImageHandle, Environment.TickCount64, disposeImmediately));
         }
 
@@ -107,7 +110,13 @@ namespace Ntilde.VT
 
         public void EndSnapshotSession(int sessionId)
         {
-            _activeSnapshotSessions.TryRemove(sessionId, out _);
+            List<IDisposable>? leases;
+            lock (_sixelSnapshotGate)
+            {
+                _activeSnapshotSessions.TryRemove(sessionId, out _);
+                _sixelSnapshotLeases.Remove(sessionId, out leases);
+            }
+            if (leases is not null) foreach (var lease in leases) lease.Dispose();
         }
 
         private long MinActiveSessionStartTick()
@@ -347,6 +356,7 @@ namespace Ntilde.VT
             {
                 ScrollTop = 0;
                 ScrollBottom = Rows - 1;
+                Modes.IsSixelDisplayMode = false;
                 Modes.IsAutoWrapMode = true;
                 Modes.IsApplicationCursorKeys = false;
 

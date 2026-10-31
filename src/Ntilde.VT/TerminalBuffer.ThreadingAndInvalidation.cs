@@ -344,73 +344,92 @@ namespace Ntilde.VT
             int absDisplayStart = 0;
             int cursorRow = 0;
             int cursorCol = 0;
-            CursorStyle cursorStyle = CursorStyle.Block;
+            CursorStyle cursorStyle;
             RenderThemeSnapshot theme = default;
             var rowsData = viewportRows > 0 ? new PooledArray<RenderRowSnapshot>(System.Buffers.ArrayPool<RenderRowSnapshot>.Shared.Rent(viewportRows), viewportRows) : PooledArray<RenderRowSnapshot>.Empty;
             PooledArray<RenderImageSnapshot> images = PooledArray<RenderImageSnapshot>.Empty;
             PooledArray<DirtySpan> dirtySpans = PooledArray<DirtySpan>.Empty;
 
-            var lockSw = Stopwatch.StartNew();
-            Lock.EnterReadLock();
+            IDisposable? imageSourceLease = null;
+            PooledArray<SelectionRowSnapshot> selectionRows = PooledArray<SelectionRowSnapshot>.Empty;
+            PooledArray<SearchHighlightSnapshot> searchHighlights = PooledArray<SearchHighlightSnapshot>.Empty;
             try
             {
-                totalLines = InternalTotalLines;
-                absDisplayStart = Math.Max(0, totalLines - viewportRows - req.ScrollOffset);
-                cursorRow = _cursorRow;
-                cursorCol = _cursorCol;
-                cursorStyle = Modes.CursorStyle;
+                var lockSw = Stopwatch.StartNew();
+                Lock.EnterReadLock();
+                try
+                {
+                    totalLines = InternalTotalLines;
+                    absDisplayStart = Math.Max(0, totalLines - viewportRows - req.ScrollOffset);
+                    cursorRow = _cursorRow;
+                    cursorCol = _cursorCol;
+                    cursorStyle = Modes.CursorStyle;
 
-                if (req.Isolated)
-                {
-                    // A palette of its own: the shared one belongs to the live path, and a live
-                    // frame keeps drawing with it after releasing the read lock.
-                    theme = CreateRenderThemeSnapshot_NoLock(new TermColor[16]);
-                    dirtySpans = CaptureIsolatedRows_NoLock(rowsData, absDisplayStart, viewportRows, viewportCols);
-                }
-                else
-                {
-                    lock (_liveSnapshotStateGate)
+                    var visibleImages = GetVisibleImagesSnapshot(absDisplayStart, viewportRows);
+                    if (visibleImages.Count > 0)
                     {
-                        theme = CreateRenderThemeSnapshot_NoLock(_cachedAnsiPalette ??= new TermColor[16]);
-                        dirtySpans = CaptureLiveRows_NoLock(rowsData, absDisplayStart, viewportRows, viewportCols);
+                        imageSourceLease = PinSnapshotImageSources(visibleImages, req.SnapshotSessionId);
+                        var imgArray = System.Buffers.ArrayPool<RenderImageSnapshot>.Shared.Rent(visibleImages.Count);
+                        visibleImages.CopyTo(imgArray, 0);
+                        images = new PooledArray<RenderImageSnapshot>(imgArray, visibleImages.Count);
                     }
-                }
 
-                var visibleImages = GetVisibleImagesSnapshot(absDisplayStart, viewportRows);
-                if (visibleImages.Count > 0)
+                    if (req.Isolated)
+                    {
+                        // A palette of its own: the shared one belongs to the live path, and a live
+                        // frame keeps drawing with it after releasing the read lock.
+                        theme = CreateRenderThemeSnapshot_NoLock(new TermColor[16]);
+                        dirtySpans = CaptureIsolatedRows_NoLock(rowsData, absDisplayStart, viewportRows, viewportCols);
+                    }
+                    else
+                    {
+                        lock (_liveSnapshotStateGate)
+                        {
+                            theme = CreateRenderThemeSnapshot_NoLock(_cachedAnsiPalette ??= new TermColor[16]);
+                            dirtySpans = CaptureLiveRows_NoLock(rowsData, absDisplayStart, viewportRows, viewportCols);
+                        }
+                    }
+
+                }
+                finally
                 {
-                    var imgArray = System.Buffers.ArrayPool<RenderImageSnapshot>.Shared.Rent(visibleImages.Count);
-                    visibleImages.CopyTo(imgArray, 0);
-                    images = new PooledArray<RenderImageSnapshot>(imgArray, visibleImages.Count);
+                    Lock.ExitReadLock();
+                    lockSw.Stop();
+                    readLockMs = lockSw.ElapsedMilliseconds;
                 }
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-                lockSw.Stop();
-                readLockMs = lockSw.ElapsedMilliseconds;
-            }
 
-            PooledArray<SelectionRowSnapshot> selectionRows = BuildSelectionRows(req.Selection, absDisplayStart, viewportRows, viewportCols);
-            PooledArray<SearchHighlightSnapshot> searchHighlights = BuildSearchHighlights(req.SearchMatches, req.ActiveSearchIndex, absDisplayStart, viewportRows);
+                selectionRows = BuildSelectionRows(req.Selection, absDisplayStart, viewportRows, viewportCols);
+                searchHighlights = BuildSearchHighlights(req.SearchMatches, req.ActiveSearchIndex, absDisplayStart, viewportRows);
 
-            return new TerminalRenderSnapshot
+                return new TerminalRenderSnapshot
+                {
+                    ViewportRows = viewportRows,
+                    ViewportCols = viewportCols,
+                    TotalLines = totalLines,
+                    AbsDisplayStart = absDisplayStart,
+                    ScrollOffset = req.ScrollOffset,
+                    CursorRow = cursorRow,
+                    CursorCol = cursorCol,
+                    CursorStyle = cursorStyle,
+                    Theme = theme,
+                    DirtySpans = dirtySpans,
+                    RowsData = rowsData,
+                    Images = images,
+                    ImageSourceLease = imageSourceLease,
+                    SelectionRows = selectionRows,
+                    SearchHighlights = searchHighlights
+                };
+            }
+            catch
             {
-                ViewportRows = viewportRows,
-                ViewportCols = viewportCols,
-                TotalLines = totalLines,
-                AbsDisplayStart = absDisplayStart,
-                ScrollOffset = req.ScrollOffset,
-                CursorRow = cursorRow,
-                CursorCol = cursorCol,
-                CursorStyle = cursorStyle,
-                Theme = theme,
-                DirtySpans = dirtySpans,
-                RowsData = rowsData,
-                Images = images,
-                SelectionRows = selectionRows,
-                SearchHighlights = searchHighlights
-            };
+                imageSourceLease?.Dispose();
+                rowsData.Dispose();
+                images.Dispose();
+                dirtySpans.Dispose();
+                selectionRows.Dispose();
+                searchHighlights.Dispose();
+                throw;
+            }
         }
 
         /// <summary>

@@ -1,9 +1,25 @@
 namespace Ntilde.VT
 {
+    /// <summary>Lets buffer retention retire an expired source without discarding materialized pixels.</summary>
+    public interface IDeferredSixelImage
+    {
+        bool IsMaterialized { get; }
+        /// <summary>False once decoding has captured its input; reads must not wait for decoding.</summary>
+        bool NeedsSource { get; }
+        SixelSource Source { get; }
+    }
+
     public interface IImageDecoder
     {
         object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight);
         object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight);
+        object? DecodeSixel(SixelSource source, out int pixelWidth, out int pixelHeight)
+        {
+            if (source.DecodeData is { } data) return DecodeSixel(data, out pixelWidth, out pixelHeight);
+            pixelWidth = pixelHeight = 0;
+            return null;
+        }
+
 
         /// <summary>
         /// Decodes raw pixel data (kitty graphics <c>f=24</c> RGB / <c>f=32</c> RGBA, e.g. the

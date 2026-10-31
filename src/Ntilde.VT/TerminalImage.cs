@@ -11,7 +11,14 @@ namespace Ntilde.VT
         public int CellHeight { get; }
         public int ZIndex { get; set; }
 
-        public object ImageHandle { get; }
+        public bool IsSixelImage { get; internal set; }
+        /// <summary>Rows irreversibly clipped from the bitmap at scrolling/page boundaries.</summary>
+        public int ClipTopRows { get; internal set; }
+        public int ClipBottomRows { get; internal set; }
+        public int ClipRightColumns { get; internal set; }
+
+        public SixelSource? SixelSource { get; internal set; }
+        public object ImageHandle { get; internal set; }
 
         public bool IsSticky { get; set; } = true;
 

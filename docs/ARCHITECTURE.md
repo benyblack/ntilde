@@ -146,6 +146,27 @@ A focused module that owns the record/replay file format and the snapshot/byte-s
 
 ## 5. Renderer Primitives — `Ntilde.Rendering`
 
+SIXEL cursor advancement and clipping belong to VT and run without a bitmap decoder. `SixelGeometry`
+measures bounded raster extents for headless parsing; `TerminalBuffer` owns placement, scroll-region
+clipping and image retirement. The renderer applies the snapshot's clipping metadata without deciding
+scrolling semantics. DECSDM follows xterm polarity: `?80h` disables SIXEL-driven scrolling and draws
+at page origin; reset restores inline scrolling. Shared clients use the daemon's ordered pixel cell
+size rather than their own font/DIP metrics. That size is supplied at spawn before startup output,
+then updated in stream order. GUI panes retain bounded SIXEL source and decode at most one new image
+per live frame, requesting further frames until complete. Each pane/session retains at most 256 sources
+and 2 Mi UTF-16 characters (about 4 MiB), evicting retired sources before oldest live sources and refusing oversized ones.
+Expired undecoded placements are retired through the snapshot-session gate; materialized bitmaps remain intact.
+Render snapshots pin only the copied undecoded sources. Overlapping captures share references, with a separate
+allowance of at most 256 sources and 2 Mi UTF-16 characters (about 4 MiB), keeping retained payloads plus
+capture pins within 8 MiB per pane/session. Capture refuses an exhausted allowance before advancing the
+live row-diff baseline, and releases retry a pending render. Source leases last through the final draw. Attach
+snapshots carry retained source, placement and irreversible clipping for both screens; clients restore
+images without replaying placement or cursor movement. The daemon retains no bitmap resources;
+other image protocols remain disabled for persistent sessions. Page-origin frames retire older,
+fully covered SIXELs through the existing snapshot-session disposal gate. Recording headers, ordered cell-size events and replay snapshots preserve SIXEL metrics; raw PTY writers receive only primitive values from the parser host. Flight exports retain the metric pair at the start of their bounded window. Parser snapshots preserve
+that override; legacy raw-only
+recordings still rely on the replay host's configured cell metrics.
+
 Skia-only helpers: glyph atlas (`GlyphAtlas`), glyph cache (`GlyphCache`), pixel grid math (`PixelGrid`), font wrappers (`SharedSKFont`, `SharedSKTypeface`), image registry, sixel decoder, render performance metrics.
 
 This module is intentionally **Avalonia-agnostic**. The actual Avalonia `DrawOperation` and viewport (`TerminalDrawOperation`, `TerminalView`) live in `src/Ntilde.App/Shell/` today — see Known Tech Debt below for the planned extraction.
@@ -408,6 +429,7 @@ keeps a v1 peer's wire shape exactly the v1 shape.
 | `DetachParams.UserDetached` | `bool?`: true on a deliberate detach ("Pane: Detach", the shared-close prompt's Detach, the text client's `Ctrl+\ d` chord); absent/null is an ordinary detach |
 | Notification `sessionChanged` | attached-count, title or cwd changed; coalesced to at most one per session per 100 ms (§4 below); sent to v2 clients only |
 | Notification `keyboardCapabilities` | Ordered keyboard ceiling for clients opting in with an explicit presentation mask, on either negotiated version; before the attach snapshot and subsequent output, independent of sharing-event coalescing |
+| Notification `sixelCellSize` | Authoritative device-pixel cell size, ordered before resize/output for peers opting in with `SupportsSixelScrolling`; initial values travel in the parser snapshot |
 | Notification `killed` | sent to every v2 subscriber except the killer, before that session's `exited` |
 | Error `session_attached` | `MuxErrorCodes.SessionAttached`: an `IfUnattached` attach refused because another interactive client is already attached |
 
@@ -923,7 +945,7 @@ These are tracked in follow-up plans under `docs/plans/`:
 - **Buffer-snapshot recording.** Phase 5 removed `ITerminalSession.AttachBuffer` / `TakeSnapshot`. The byte-stream is still recorded; buffer snapshots at recording start/stop are gone. Re-introducing them as an orchestration helper (likely in `Replay` or `Platform`) is a small follow-up.
 - **`MainWindow.axaml.cs` is 8,755 LOC, `TerminalPane.axaml.cs` 5,029 LOC, `SettingsWindow.axaml.cs` 3,312 LOC** (measured 2026-09-03; each has grown 60-95% since this item was written, so the trend is the finding as much as the number). These code-behinds contain business logic that should live in services and view-models.
 - **`TerminalBuffer` is split across 10 partial files (~5K LOC).** Several of the partials (`WritePath`, `ReflowEngine`, `ThreadingAndInvalidation`, `TabStops`) want to be collaborators rather than partials.
-- **Mux snapshot capture holds the buffer read lock (~27 ms at 10k rows);** the mux parser has no image decoder, so Phase 2 turns inline images off in mux-backed panes (no image decoder, no native kitty graphics) rather than show images a reattach would lose.
+- **Mux snapshot capture holds the buffer read lock (~27 ms at 10k rows).** The daemon retains bounded SIXEL source and placement without a bitmap decoder; attach snapshots restore these sources in GUI panes for deferred decoding. Other image transports remain disabled in persistent sessions.
 
 The 2026-05-28 architecture review (`docs/plans/2026-05-28-architecture-module-boundaries-review.md`) catalogs all of the above and ranks them by leverage.
 

@@ -39,6 +39,14 @@ invariant changes.
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops content
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
+- **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
+  decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,
+  and owns DECSDM state, page/scroll-region clipping and retirement. Clip metadata is copied into
+  render snapshots; the renderer only applies it. Discarded pixels never reappear after scrolling
+  or widening. An immutable cell-size override is authoritative for shared sessions and travels
+  in parser snapshots; bitmap handles remain host-owned and are not serialized. Page-origin frames
+  retire fully covered prior SIXELs through the snapshot-session gate, without scanning history on
+  the ordinary scrolling path.
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
 - **Lock re-entrancy contract:** `Lock` is a non-recursive `ReaderWriterLockSlim`. `EnterReadLockIfNeeded()` returns `false` (and acquires nothing) when a read *or* write lock is already held. `EnterWriteLockIfNeeded()` returns `false` only when a *write* lock is already held — calling it while holding a read lock throws `LockRecursionException` (upgrading is not supported), it does **not** return `false`. Both return `true` when they actually acquired the lock. The returned `bool` says *whether this call took the lock* — callers must pass it to the matching `Exit…IfNeeded(..., lockTaken)` and must **not** unlock when it is `false`. Treating a `false` return as "lock acquired" double-unlocks (or unlocks a caller's outer lock).
 - **`GetRowAbsolute()` null contract:** returns `null` for any absolute row that has no persistent `TerminalRow` — including **paged-out scrollback rows** (scrollback lives in `ScrollbackPages`, not as row objects), out-of-range rows, and negative indices. To read scrollback content use the cell/grapheme accessors (`GetCellAbsolute`, `GetGraphemeAbsolute`), which page it in; callers that assume a non-null row for scrollback indices will NRE.
@@ -81,7 +89,7 @@ invariant changes.
 
 **Namespace:** `Ntilde.Rendering`
 **Depends on:** VT, SkiaSharp 3.119.4
-**Public surface:** `PixelGrid`, `GlyphAtlas`, `GlyphCache`, `RowCache`, `ImageRegistry`, `SixelDecoder`, `RenderPerfMetrics`, `RenderPerfWriter`, `RendererStatistics`, `SharedSKFont`, `SharedSKTypeface`
+**Public surface:** `PixelGrid`, `GlyphAtlas`, `GlyphCache`, `RowCache`, `ImageRegistry`, `SixelDecoder`, `DeferredSixelImage`, `RenderPerfMetrics`, `RenderPerfWriter`, `RendererStatistics`, `SharedSKFont`, `SharedSKTypeface`
 
 **Owns**
 - Skia glyph atlas / cache (dual-atlas system)
@@ -270,6 +278,38 @@ invariant changes.
   the advisory `sessionChanged` interval. Refusing sinks are dropped under the existing bounded
   transport policy; the parse thread never waits for a reader. Capability frames contain no sharing
   counts, and v1 sharing counts remain unknown.
+- **Recordings retain SIXEL geometry without coupling PTY to VT.** Parser hosts supply physical
+  cell metrics through `ITerminalRecordingCellMetrics`; raw writers store the initial pair and
+  later changes, and flight-ring eviction advances the exported initial pair. Parser hosts claim
+  `ITerminalRecordingBoundary` before recording starts: daemon bytes are recorded on its parse
+  thread; local hosts receive original bytes paired with decoded delivery and serialize recording
+  with font metrics and parsing. Recording start/stop and flight lifecycle changes share the
+  output FIFO for queued decoded hosts; synchronous SSH delivery uses its invocation gate.
+  Flight export freezes its window at that boundary and writes the file outside it. Raw mux
+  hosts use the daemon's data queue instead, avoiding a second transport-queue boundary.
+  The connection reader admits recording actions in FIFO order and completes their replies
+  asynchronously; waiting for a parser or writing an export must leave unrelated requests live.
+  Flight recording belongs to its enabling connections: only the final owner release disables
+  the ring, and disconnect releases that connection's ownership.
+  Agent lifecycle publication (which can enable recording) follows
+  output ownership installation. Replay headers and
+  snapshots restore those metrics before subsequent image output; legacy files retain defaults.
+- **SIXEL-aware peers opt into ordered pixel metrics.** `SupportsSixelScrolling` in a presentation
+  opts into `sixelCellSize` notifications on either negotiated version, before subsequent resize/output.
+  Initial spawn metrics are validated before starting a child and forwarded through both local and
+  remote factories; absent legacy metrics retain 10x20 defaults. Initial cell metrics travel in the
+  attach snapshot. GUI panes retain bounded SIXEL source and materialize at most one fresh bitmap per
+  live frame. One shared per-pane/session source budget caps retention at 256 sources and 2 Mi UTF-16
+  characters (about 4 MiB); retired sources are evicted before oldest live sources, and oversized sources are omitted.
+  Expired undecoded placements retire through the snapshot-session gate; materialized pixels remain intact.
+  Copied undecoded sources are pinned through the final draw; overlapping captures share references. Pins
+  have a separate 256-source/2 Mi-character allowance, so retained payloads plus capture pins stay within
+  8 MiB per pane/session. Snapshot sessions own renderer leases; standalone render snapshots own theirs
+  until disposal. Quota refusal happens before updating the live row-diff baseline and retries on release. Attach
+  snapshots restore retained source/placement/clipping for both screens without replaying cursor motion.
+  The daemon remains free of Skia, and other
+  image protocols remain disabled there with truthful capability replies. Pending resizes coalesce per sender; observers
+  follow the authoritative geometry without changing it. Legacy peers receive no new notification.
 - **The text client never relays raw output.** It renders every frame from its own
   `CaptureRenderSnapshot`, so a device query (DA, CPR, XTGETTCAP) the shell emits is answered by
   the model's parser and never reaches the terminal the client draws on

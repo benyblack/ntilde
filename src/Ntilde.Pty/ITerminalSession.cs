@@ -28,6 +28,20 @@ namespace Ntilde.Pty
         string? ShellArguments { get; }
     }
 
+    /// <summary>Optional primitive-only recording context supplied by the parser host.</summary>
+    public interface ITerminalRecordingCellMetrics
+    {
+        void SetRecordingCellMetrics(float widthPx, float heightPx);
+    }
+
+    /// <summary>Optional parser-host ownership of recording order. Install before recording starts.</summary>
+    public interface ITerminalRecordingBoundary : ITerminalRecordingCellMetrics
+    {
+        void UseHostRecordingBoundary();
+        void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler);
+        void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output);
+    }
+
     /// <summary>Replay/recording control for a session's byte stream.</summary>
     public interface ITerminalRecorder
     {
@@ -64,6 +78,9 @@ namespace Ntilde.Pty
         /// enabled.
         /// </summary>
         bool TryExportFlightRecording(string filePath, out FlightExportInfo info);
+
+        /// <summary>Freezes recent output without I/O; invoke the returned file writer outside the parser queue.</summary>
+        Func<string, FlightExportInfo>? CaptureFlightRecording() => null;
     }
 
     /// <summary>
