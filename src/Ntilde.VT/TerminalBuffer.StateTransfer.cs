@@ -934,7 +934,10 @@ namespace Ntilde.VT
             ValidateCursorState(snapshot.ScreenCursorMain, "screen cursor (main screen)");
             ValidateCursorState(snapshot.ScreenCursorAlt, "screen cursor (alternate screen)");
 
-            ValidateUnderlinePen(StateTransferValidation.RequirePresent(snapshot.Sgr, "live SGR state"), "live SGR state");
+            var liveSgr = StateTransferValidation.RequirePresent(snapshot.Sgr, "live SGR state");
+            ValidateUnderlinePen(liveSgr, "live SGR state");
+            StateTransferValidation.RequireInRange(liveSgr.FgIndex, -1, 255, "live SGR state foreground palette color");
+            StateTransferValidation.RequireInRange(liveSgr.BgIndex, -1, 255, "live SGR state background palette color");
 
             TerminalModeState modes = StateTransferValidation.RequirePresent(
                 snapshot.Modes, "mode state");

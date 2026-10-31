@@ -314,7 +314,8 @@ namespace Ntilde.Replay
             {
                 // Restore validates both halves before resizing or mutating either object.
                 TerminalStateTransfer.Restore(buffer, parser, snapshot.State);
-                ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
+                if (snapshot.State.Parser.SixelCellWidthPx is null)
+                    ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
                 return;
             }
             TerminalBuffer.ValidateReplaySnapshot(snapshot);

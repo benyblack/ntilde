@@ -1104,6 +1104,8 @@ namespace Ntilde.VT
         public static void ValidateReplaySnapshot(ReplaySnapshot snapshot)
         {
             ArgumentNullException.ThrowIfNull(snapshot);
+            if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
+                throw new InvalidOperationException("Invalid replay geometry: columns and rows must be positive.");
             if (!string.IsNullOrEmpty(snapshot.CellsBase64)) _ = Convert.FromBase64String(snapshot.CellsBase64);
         }
 

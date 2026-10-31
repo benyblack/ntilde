@@ -122,7 +122,9 @@ Snapshot fields:
   - Legacy snapshots without these fields still load.
   - When `state` has the current supported state version, it is authoritative and uses the shared state-transfer
     preflight: terminal and parser structure are validated before either is mutated.
-    Saved palette/charset indices are validated along with the underline pen.
+    Live and saved palette indices, saved charset indices and the underline pen are validated.
+    SIXEL metrics in the complete parser state take precedence; outer metrics are a fallback when absent.
+    Legacy snapshots require positive geometry before resize or content mutation.
     An unknown future state version falls back to the legacy viewport fields.
   - Legacy snapshots without `state` reset both saved banks to default home positions,
     preventing a previous seek's saved cursor from leaking into the new position.

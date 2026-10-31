@@ -50,6 +50,8 @@ public sealed class CursorResetRenderTests
         Assert.True(AgentSessionRegistration.TryRenderPng(buffer, parameters, 100, 1, out var capture, out var error), error.ToString());
         using var bitmap = SKBitmap.Decode(capture.Png);
         Assert.Equal(SKColors.Red, bitmap.GetPixel(sampleX, 10));
+        if (preference == CursorStyle.Beam)
+            Assert.NotEqual(SKColors.Red, bitmap.GetPixel(9, 10)); // outside the beam; blocks must fail
     }
 
     private static SKBitmap Draw(TerminalBuffer buffer, CursorStyle preference)

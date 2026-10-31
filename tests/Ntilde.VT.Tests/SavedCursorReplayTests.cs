@@ -300,6 +300,74 @@ public sealed class SavedCursorReplayTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(10f, 20f)]
+    public void Complete_snapshot_keeps_parser_SIXEL_metrics_over_outer_fallback(float? width, float? height)
+    {
+        var source = new TerminalBuffer(10, 5);
+        var parser = new AnsiParser(source) { SixelCellSizeOverride = new SixelCellSize(20, 6) };
+        parser.Process("\u001b[?80h\u001b[4;3H\u001bPq!30~");
+        var state = source.ExportState(0);
+        state.Parser = parser.ExportState();
+        var snapshot = new ReplaySnapshot { State = state, Cols = 10, Rows = 5, SixelCellWidthPx = width, SixelCellHeightPx = height };
+        var restored = new TerminalBuffer(10, 5);
+        var resumed = new AnsiParser(restored);
+        ReplayRunner.ApplySnapshot(restored, resumed, snapshot);
+        Assert.Equal(new SixelCellSize(20, 6), resumed.SixelCellSizeOverride);
+        resumed.Process("-~\u001b\\\u001b[?80l\u001bPq!30~-~\u001b\\");
+        Assert.Equal((0, 4), (restored.CursorCol, restored.CursorRow));
+        Assert.Equal(6, restored.TotalLines);
+    }
+
+    [Fact]
+    public void Complete_snapshot_without_parser_SIXEL_metrics_uses_outer_fallback()
+    {
+        var snapshot = StateSnapshot(10, 5);
+        snapshot.SixelCellWidthPx = 20;
+        snapshot.SixelCellHeightPx = 6;
+        var buffer = new TerminalBuffer(10, 5);
+        var parser = new AnsiParser(buffer);
+        ReplayRunner.ApplySnapshot(buffer, parser, snapshot);
+        Assert.Equal(new SixelCellSize(20, 6), parser.SixelCellSizeOverride);
+    }
+
+    [Theory]
+    [InlineData(true, -2)]
+    [InlineData(false, -2)]
+    [InlineData(true, 256)]
+    [InlineData(false, 256)]
+    public void Invalid_live_palette_is_rejected_before_resize_or_mutation(bool foreground, short index)
+    {
+        var buffer = new TerminalBuffer(20, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process("preserved");
+        var snapshot = StateSnapshot(10, 3);
+        if (foreground) snapshot.State!.Sgr.FgIndex = index;
+        else snapshot.State!.Sgr.BgIndex = index;
+        var error = Assert.Throws<InvalidOperationException>(() => ReplayRunner.ApplySnapshot(buffer, parser, snapshot));
+        Assert.Contains("palette", error.Message);
+        Assert.Equal((20, 5), (buffer.Cols, buffer.Rows));
+        Assert.Equal("preserved", BufferSnapshot.Capture(buffer).Lines[0]);
+    }
+
+    [Theory]
+    [InlineData(0, 3)]
+    [InlineData(-1, 3)]
+    [InlineData(10, 0)]
+    [InlineData(10, -1)]
+    public void Invalid_legacy_geometry_with_extended_text_is_rejected_before_mutation(int cols, int rows)
+    {
+        var buffer = new TerminalBuffer(20, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process("preserved");
+        var snapshot = new ReplaySnapshot { Cols = cols, Rows = rows, ExtendedText = new() { [0] = "wide" } };
+        var error = Assert.Throws<InvalidOperationException>(() => ReplayRunner.ApplySnapshot(buffer, parser, snapshot));
+        Assert.Contains("geometry", error.Message);
+        Assert.Equal((20, 5), (buffer.Cols, buffer.Rows));
+        Assert.Equal("preserved", BufferSnapshot.Capture(buffer).Lines[0]);
+    }
+
     [Fact]
     public void Unknown_optional_state_versions_use_the_legacy_viewport_fields()
     {
