@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
 
@@ -13,7 +14,7 @@ public sealed class NativeSshRemotePathInteropTests
             Host = "example.com",
             User = "nova",
             Port = 2222,
-            Password = "secret",
+            Password = SecretBuffer.FromText("secret"),
             KnownHostsFilePath = @"C:\known-hosts.json",
             JumpHops =
             [

@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System;
 using Ntilde.Shell.Native;
 
@@ -21,6 +22,15 @@ namespace Ntilde.Shell.Secrets
         {
             string target = ToTarget(key);
             Win32CredentialManager.Write(target, ExtractUsername(target), value);
+        }
+
+        public SecretBuffer? ReadBuffer(string key) => Win32CredentialManager.ReadBuffer(ToTarget(key))?.Password;
+
+        public void WriteBuffer(string key, SecretBuffer value)
+        {
+            string target = ToTarget(key);
+            if (!Win32CredentialManager.WriteBuffer(target, ExtractUsername(target), value))
+                throw new InvalidOperationException("The OS credential store could not save the credential.");
         }
 
         public bool Delete(string key) => Win32CredentialManager.Delete(ToTarget(key));

@@ -923,7 +923,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
 
         PumpUntil(() => pane.IsRemoteFilesSidebarVisibleForTest() && native.Listed is not null, "the sidebar opened and listed");
         Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions listed = native.Listed!;
-        Assert.Equal(("fake-host", "nova", "typed-for-fake-host"), (listed.Host, listed.User, listed.Password));
+        Assert.Equal(("fake-host", "nova", "typed-for-fake-host"), (listed.Host, listed.User, listed.Password?.DangerousGetString()));
         Assert.Empty(notices);
     }
 
@@ -960,7 +960,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
             interop: native,
             passwordResolver: _ => null,
             sessionRegistry: ActiveSshSessionRegistry.Instance);
-        Assert.Equal(("fake-host", "typed-for-fake-host"), (native.Transferred!.Host, native.Transferred.Password));
+        Assert.Equal(("fake-host", "typed-for-fake-host"), (native.Transferred!.Host, native.Transferred.Password?.DangerousGetString()));
     }
 
     /// <summary>

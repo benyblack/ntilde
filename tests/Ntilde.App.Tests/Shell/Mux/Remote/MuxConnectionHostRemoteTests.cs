@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Ntilde.Mux;
@@ -54,7 +55,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     private MuxConnectionHost Create(
         Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport>? transportFor = null,
         ISshInteractionHandler? user = null,
-        Func<SshProfile, string?>? savedPassword = null,
+        Func<SshProfile, SecretBuffer?>? savedPassword = null,
         Func<SshInteractionRequest, bool>? isTrustedHostKey = null) =>
         Own(RemoteMuxHostFactory.Create(
                 MuxEndpointId.ForSsh(_profile.Id), _ => _profile, transportFor ?? ((_, _) => _remote), _log.Enqueue, user, _clock,
@@ -1038,7 +1039,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
             if (request.Interactive) return;
             try
             {
-                string answer = request.Prompts.HandleAsync(RemoteMuxConnectorTests.PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret;
+                string answer = request.Prompts.HandleAsync(RemoteMuxConnectorTests.PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret.DangerousGetString();
                 answered.Enqueue(answer);
                 if (answer != serverPassword) _remote.Script = FakeRemoteScript.NativeFailure("Authentication failed: no authentication method succeeded");
             }
@@ -1061,7 +1062,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     public async Task A_refused_saved_password_stops_the_loop_at_once_and_is_not_sent_again()
     {
         var answered = new ConcurrentQueue<string>();
-        MuxConnectionHost host = Create(PasswordServer("right", answered), new ScriptedUser(), savedPassword: _ => "wrong");
+        MuxConnectionHost host = Create(PasswordServer("right", answered), new ScriptedUser(), savedPassword: _ => SecretBuffer.FromText("wrong"));
         var events = new HostEvents(host);
         Guid closed = await MuxTestHost.SpawnAsync(host.GetClient(Patient)!);
         _remote.CutLink();
@@ -1089,7 +1090,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     public async Task A_good_saved_password_reconnects_with_no_NeedsUser()
     {
         var answered = new ConcurrentQueue<string>();
-        MuxConnectionHost host = Create(PasswordServer("right", answered), new ScriptedUser(), savedPassword: _ => "right");
+        MuxConnectionHost host = Create(PasswordServer("right", answered), new ScriptedUser(), savedPassword: _ => SecretBuffer.FromText("right"));
         var events = new HostEvents(host);
         Assert.NotNull(host.GetClient(Patient));
         _remote.CutLink();
@@ -1145,7 +1146,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
                 return _remote;
             },
             new ScriptedUser(SshInteractionResponse.FromSecret("stale")),
-            savedPassword: _ => "stale");
+            savedPassword: _ => SecretBuffer.FromText("stale"));
         var events = new HostEvents(host);
         Assert.NotNull(host.GetClient(Patient));
         _remote.CutLink();
@@ -1201,7 +1202,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
                 _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
                 return _remote;
             },
-            savedPassword: _ => "stale");
+            savedPassword: _ => SecretBuffer.FromText("stale"));
         var events = new HostEvents(host);
         Assert.NotNull(host.GetClient(Patient));
         _remote.CutLink();
@@ -1240,7 +1241,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
                 return _remote;
             },
             new ScriptedUser(),
-            savedPassword: _ => "s3cret",
+            savedPassword: _ => SecretBuffer.FromText("s3cret"),
             isTrustedHostKey: _ => false);
         var events = new HostEvents(host);
         Assert.NotNull(host.GetClient(Patient));

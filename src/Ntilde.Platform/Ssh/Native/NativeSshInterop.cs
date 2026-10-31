@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -275,7 +276,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
         SftpTransferRequestBody body = SftpTransferRequestBody.From(transferOptions);
         return RunSftpTransferCore(
-            cancellationMarkerPath => JsonSerializer.Serialize(
+            cancellationMarkerPath => SecretJson.Serialize(
                 body with { CancellationMarkerPath = cancellationMarkerPath },
                 NativeSshJsonContext.Default.SftpTransferRequestBody),
             (IntPtr requestPtr, IntPtr callback, IntPtr context, out IntPtr responsePtr) =>
@@ -293,13 +294,12 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     /// the shared connection closed: the caller then transfers over a connection of its own.
     /// </summary>
     private static bool RunSftpTransferCore(
-        Func<string, string> serializeRequest,
+        Func<string, SecretBuffer> serializeRequest,
         SftpTransferCall call,
         Action<NativeSftpTransferProgress>? progress,
         bool closedMeansRetry,
         CancellationToken cancellationToken)
     {
-        IntPtr requestPtr = IntPtr.Zero;
         IntPtr responsePtr = IntPtr.Zero;
         GCHandle progressStateHandle = default;
         string cancellationMarkerPath = Path.Combine(
@@ -319,7 +319,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                 {
                 }
             });
-            requestPtr = Marshal.StringToCoTaskMemUTF8(serializeRequest(cancellationMarkerPath));
+            using SecretBuffer requestPayload = serializeRequest(cancellationMarkerPath);
             if (progress is not null)
             {
                 // Native SFTP transfer callbacks are expected to stay synchronous within the
@@ -327,11 +327,11 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                 progressStateHandle = GCHandle.Alloc(new NativeSftpTransferProgressCallbackState(progress));
             }
 
-            int rc = call(
+            int rc = requestPayload.UsePointer(requestPtr => call(
                 requestPtr,
                 progressStateHandle.IsAllocated ? SftpTransferProgressCallbackPointer : IntPtr.Zero,
                 progressStateHandle.IsAllocated ? GCHandle.ToIntPtr(progressStateHandle) : IntPtr.Zero,
-                out responsePtr);
+                out responsePtr));
             string? responseJson = TakeNativeUtf8AndFree(ref responsePtr);
             if (rc == ResultClosed && closedMeansRetry)
             {
@@ -362,7 +362,6 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                 progressStateHandle.Free();
             }
 
-            FreeUtf8(requestPtr);
             if (responsePtr != IntPtr.Zero)
             {
                 NativeMethods.nova_ssh_string_free(responsePtr);
@@ -431,7 +430,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         }
 
         return ListRemoteDirectoryCore(
-            JsonSerializer.Serialize(new SharedRemotePathListRequest(remotePath), NativeSshJsonContext.Default.SharedRemotePathListRequest),
+            SecretJson.Serialize(new SharedRemotePathListRequest(remotePath), NativeSshJsonContext.Default.SharedRemotePathListRequest),
             (IntPtr requestPtr, out IntPtr responsePtr) => NativeMethods.nova_ssh_sftp_list_directory_shared(connection, requestPtr, out responsePtr),
             closedMeansRetry: true,
             cancellationToken);
@@ -444,18 +443,17 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     /// connection is closed, as in <see cref="RunSftpTransferCore"/>.
     /// </summary>
     private static List<NativeRemotePathEntry>? ListRemoteDirectoryCore(
-        string requestJson,
+        SecretBuffer requestPayload,
         RemotePathListCall call,
         bool closedMeansRetry,
         CancellationToken cancellationToken)
     {
-        IntPtr requestPtr = IntPtr.Zero;
         IntPtr responsePtr = IntPtr.Zero;
 
         try
         {
-            requestPtr = Marshal.StringToCoTaskMemUTF8(requestJson);
-            int rc = call(requestPtr, out responsePtr);
+            using SecretBuffer payload = requestPayload;
+            int rc = payload.UsePointer(requestPtr => call(requestPtr, out responsePtr));
             string? responseJson = TakeNativeUtf8AndFree(ref responsePtr);
             if (rc == ResultClosed && closedMeansRetry)
             {
@@ -486,7 +484,6 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         }
         finally
         {
-            FreeUtf8(requestPtr);
             if (responsePtr != IntPtr.Zero)
             {
                 NativeMethods.nova_ssh_string_free(responsePtr);
@@ -1061,7 +1058,8 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         ArgumentNullException.ThrowIfNull(connectionOptions);
         ArgumentNullException.ThrowIfNull(transferOptions);
 
-        return SerializeSftpTransferRequest(SftpTransferRequest.From(connectionOptions, transferOptions));
+        using var payload = SerializeSftpTransferRequest(SftpTransferRequest.From(connectionOptions, transferOptions));
+        return payload.DangerousGetString();
     }
 
     internal static string SerializeRemotePathListRequestForTests(
@@ -1071,7 +1069,8 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         ArgumentNullException.ThrowIfNull(connectionOptions);
         ArgumentException.ThrowIfNullOrWhiteSpace(remotePath);
 
-        return SerializeRemotePathListRequest(RemotePathListRequest.From(connectionOptions, remotePath));
+        using var payload = SerializeRemotePathListRequest(RemotePathListRequest.From(connectionOptions, remotePath));
+        return payload.DangerousGetString();
     }
 
     internal static string? DeserializeSftpTransferResponseMessageForTests(string responseJson)
@@ -1090,20 +1089,20 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         return DeserializeRemotePathListResponse(responseJson);
     }
 
-    private static string SerializeSftpTransferRequest(SftpTransferRequest request)
+    private static SecretBuffer SerializeSftpTransferRequest(SftpTransferRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return JsonSerializer.Serialize(
+        return SecretJson.Serialize(
             request,
             NativeSshJsonContext.Default.SftpTransferRequest);
     }
 
-    private static string SerializeRemotePathListRequest(RemotePathListRequest request)
+    private static SecretBuffer SerializeRemotePathListRequest(RemotePathListRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return JsonSerializer.Serialize(
+        return SecretJson.Serialize(
             request,
             NativeSshJsonContext.Default.RemotePathListRequest);
     }
@@ -1214,7 +1213,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         string Host,
         string User,
         int Port,
-        string? Password,
+        SecretBuffer? Password,
         string? IdentityFilePath,
         bool UseAgent,
         string KnownHostsFilePath,
@@ -1261,14 +1260,16 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         string Host,
         string? User,
         int Port,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Password)
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SecretBuffer? Password)
     {
-        public static SftpJumpHopRequest From(SshJumpHop hop, string? password) => new(
+        public static SftpJumpHopRequest From(SshJumpHop hop, SecretBuffer? password) => new(
             hop.Host,
             string.IsNullOrWhiteSpace(hop.User) ? null : hop.User,
             hop.Port,
             NullIfBlank(password));
     }
+
+    private static SecretBuffer? NullIfBlank(SecretBuffer? value) => value is null || value.IsWhiteSpace ? null : value;
 
     private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 

@@ -21,7 +21,7 @@ internal sealed class ConnectionRecordingNativeInterop : INativeSshInterop
 
     public IReadOnlyList<NativeRemotePathEntry> ListRemoteDirectory(NativeSshConnectionOptions connectionOptions, string remotePath, CancellationToken cancellationToken)
     {
-        Listed = connectionOptions;
+        Listed = Ntilde.Tests.SecretTestSnapshot.Copy(connectionOptions);
         Interlocked.Increment(ref _listings);
         return [new NativeRemotePathEntry("notes.txt", "/home/nova/notes.txt", false)];
     }
@@ -30,7 +30,7 @@ internal sealed class ConnectionRecordingNativeInterop : INativeSshInterop
         NativeSshConnectionOptions connectionOptions,
         NativeSftpTransferOptions transferOptions,
         Action<NativeSftpTransferProgress>? progress,
-        CancellationToken cancellationToken) => Transferred = connectionOptions;
+        CancellationToken cancellationToken) => Transferred = Ntilde.Tests.SecretTestSnapshot.Copy(connectionOptions);
 
     public NovaSshSafeHandle Connect(NativeSshConnectionOptions options) => throw new NotSupportedException();
     public NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();

@@ -17,7 +17,10 @@ namespace Ntilde.Shell
         public static void WriteAllBytes(string path, byte[] bytes)
             => Write(path, tmp => File.WriteAllBytes(tmp, bytes));
 
-        private static void Write(string path, Action<string> writeTemp)
+        internal static void WriteAllTextWithoutBackup(string path, string contents)
+            => Write(path, tmp => File.WriteAllText(tmp, contents), keepBackup: false);
+
+        private static void Write(string path, Action<string> writeTemp, bool keepBackup = true)
         {
             // Unique temp sibling: concurrent savers of the same destination (e.g. two
             // VaultService instances over the same vault.dat) must not collide on a
@@ -27,7 +30,7 @@ namespace Ntilde.Shell
             {
                 writeTemp(tmp);
 
-                if (File.Exists(path))
+                if (keepBackup && File.Exists(path))
                 {
                     // Best-effort backup of the previous good content; the atomic move
                     // below must not be blocked by a backup failure of any kind.

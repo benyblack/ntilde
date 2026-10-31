@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Mux;
 using Ntilde.Mux.Cli;
 using Ntilde.Platform.Ssh.Exec;
@@ -490,7 +491,7 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         MuxConnectionHost host = Create(RemoteMuxConnectorTests.Profile(), user);
         RemoteMuxConnector connector = Assert.IsType<RemoteMuxConnector>(host.Connector);
         RemoteMuxInteractionHandler.Attempt attempt = connector.Prompts.BeginAttempt(interactive: true);
-        Assert.Equal("pw", (await attempt.HandleAsync(RemoteMuxConnectorTests.PasswordPrompt, Ct)).Secret);
+        Assert.Equal("pw", (await attempt.HandleAsync(RemoteMuxConnectorTests.PasswordPrompt, Ct)).Secret.DangerousGetString());
         attempt.Succeeded();
         Assert.True(connector.Prompts.Remembers(SshInteractionKind.Password));
 
@@ -530,8 +531,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
 
         Assert.NotNull(first.GetClient(Patient));
 
-        Assert.True(scopes.TryGetRuntimePassword(scope, "fake-host", 22, "nova", out string? typed));
-        Assert.Equal("typed", typed);
+        Assert.True(scopes.TryGetRuntimePassword(scope, "fake-host", 22, "nova", out SecretBuffer? typed));
+        Assert.Equal("typed", typed?.DangerousGetString());
 
         first.Dispose();
 
@@ -589,8 +590,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         vault.SetSecret(Ntilde.Shell.VaultService.GetCanonicalSshProfileKey(profile.Id), "s3cret");
         legacy.SetSecret("SSH:nova@fake-host", "shared");
 
-        Assert.Equal("s3cret", RemoteMuxHostFactory.ReadSavedPassword(vault, profile));
-        Assert.Equal("shared", RemoteMuxHostFactory.ReadSavedPassword(legacy, profile));
+        Assert.Equal("s3cret", RemoteMuxHostFactory.ReadSavedPassword(vault, profile)?.DangerousGetString());
+        Assert.Equal("shared", RemoteMuxHostFactory.ReadSavedPassword(legacy, profile)?.DangerousGetString());
     }
 
     /// <summary>

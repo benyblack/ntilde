@@ -156,6 +156,10 @@ invariant changes.
 **Invariants**
 - This is NOT the terminal engine (that's VT). Renamed from `Ntilde.Core` in #76 to end the three-way "Core" name overload.
 - No Avalonia or Skia in the dependency closure
+- Native SSH credentials use owned, pinned UTF-8 `Security/SecretBuffer` values. Prompt responses and serialized
+  request buffers are disposed after submission/call, including on failure. Connection-option credentials are
+  borrowed for the synchronous operation; its caller owns their disposal. The boundary never serializes a
+  credential through a managed JSON string. A consumer that retains a credential clones it.
 - SSH transports must satisfy `IRemoteTerminalTransport` so all SSH session implementations are interchangeable
 - **An exec channel's stdout is a clean byte stream.** The OpenSSH exec always runs `-T` with
   `ClearAllForwardings=yes` and `ControlMaster=no`, and drops `-t`/`-tt`/`-T` from the profile's
@@ -603,6 +607,11 @@ requires public test classes.
 - Startup orchestration (seven `Startup*.cs` files in `Shell/`)
 - Workspace and session lifecycle
 - SSH UI: connection manager, transfer center, remote files sidebar, vault, sftp service, ssh-askpass
+- Credential lifetime composition: the session registry clones passwords under its lock, callers dispose operation
+  copies, and remote mux hosts wipe cached credentials on replacement, refusal and teardown. Keyring adapters
+  read/write buffers; string adapters remain for UI and OpenSSH askpass. `LegacyProfilePasswordMigration`
+  verifies OS storage before removing old plaintext profile fields from settings and its recovery copy;
+  a failed migration preserves the file and pauses settings writes.
 - Persistent sessions (`Shell/Mux/`, namespace `Ntilde.Shell.Mux`):
   - `MuxCommand.cs`: the `ntilde mux serve|ls|kill|kill-server|attach|probe-console` adapter, dispatched from `Program.cs` before `AppLogger` and Avalonia. It strips `mux` and calls `Ntilde.Mux.Cli.MuxCli.Execute` with the App's `MuxCliHost`: the app-data root (`MuxDiscovery.GetRootDirectory()`, or a test's root override), `mux serve` as the serve arguments, `DefaultTerminalSessionFactory`, and `CliConsoleBindings.Prepare`. The daemon process (`MuxServeHost`), the launcher/spawner and the startup probe moved to `Ntilde.Mux.Daemon` in Phase 4, the verb bodies to `Ntilde.Mux.Cli`
   - `MuxConnectionHosts.cs` / `MuxConnectionHost.cs` / `MuxHostPolicy.cs`: one connection host per endpoint, created lazily; each keeps one shared `MuxClient` (warm-up, reconnect, detach on teardown, tracked and queued kills). `local` backs off 30 s after a failed connect; a remote host has the remote policy, the liveness ping and the reconnect loop (Phase 4 spec §5, §7.2-§7.3)

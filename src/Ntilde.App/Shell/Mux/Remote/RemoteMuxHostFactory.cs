@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Mux;
 using Ntilde.Mux.Cli;
 using Ntilde.Platform.Ssh.Exec;
@@ -120,7 +121,7 @@ internal static class RemoteMuxHostFactory
         ISshInteractionHandler? userPrompts = null,
         IMuxTimerScheduler? scheduler = null,
         Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
-        Func<SshProfile, string?>? savedPassword = null,
+        Func<SshProfile, SecretBuffer?>? savedPassword = null,
         SshAskPassSessionMarkers? askPassRecords = null,
         TimeSpan? rpcTimeout = null,
         ActiveSshSessionRegistry? passwordScopes = null)
@@ -178,11 +179,11 @@ internal static class RemoteMuxHostFactory
     /// save it and the askpass helper reads it (<see cref="VaultService.GetSshPasswordForProfile"/>, by the profile's id,
     /// then its older name-based keys), so an automatic attempt and the helper agree on whether there is one.
     /// </summary>
-    internal static string? ReadSavedPassword(VaultService vault, SshProfile profile)
+    internal static SecretBuffer? ReadSavedPassword(VaultService vault, SshProfile profile)
     {
         ArgumentNullException.ThrowIfNull(vault);
         ArgumentNullException.ThrowIfNull(profile);
-        string? saved = vault.GetSshPasswordForProfile(new TerminalProfile
+        SecretBuffer? saved = vault.GetSshPasswordBufferForProfile(new TerminalProfile
         {
             Type = ConnectionType.SSH,
             Id = profile.Id,
@@ -191,7 +192,7 @@ internal static class RemoteMuxHostFactory
             SshHost = profile.Host ?? string.Empty,
             SshPort = profile.Port,
         });
-        return string.IsNullOrEmpty(saved) ? null : saved;
+        return saved;
     }
 
     /// <summary>

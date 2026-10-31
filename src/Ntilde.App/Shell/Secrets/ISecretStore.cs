@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 namespace Ntilde.Shell.Secrets
 {
     /// <summary>
@@ -19,5 +20,14 @@ namespace Ntilde.Shell.Secrets
 
         /// <summary>Removes the value; returns true if something was removed.</summary>
         bool Delete(string key);
+
+        // String adapters remain for OpenSSH askpass and existing store implementations. Production
+        // platform stores override these so native SSH never decodes a credential to a managed string.
+        SecretBuffer? ReadBuffer(string key)
+        {
+            string? value = Read(key);
+            return value is null ? null : SecretBuffer.FromText(value);
+        }
+        void WriteBuffer(string key, SecretBuffer value) => Write(key, value.DangerousGetString());
     }
 }

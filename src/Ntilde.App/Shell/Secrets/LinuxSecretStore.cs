@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System;
 using System.Runtime.InteropServices;
 
@@ -82,7 +83,7 @@ namespace Ntilde.Shell.Secrets
                 // Probe the Secret Service. A missing native lib throws (caught);
                 // a present lib with no running keyring sets a GError, which we treat
                 // as "unavailable" rather than throwing.
-                _ = LookupRaw("__ntilde_probe__", out bool serviceError);
+                using var probe = LookupRaw("__ntilde_probe__", out bool serviceError);
                 _available = !serviceError;
             }
             catch (DllNotFoundException) { _available = false; }
@@ -124,12 +125,18 @@ namespace Ntilde.Shell.Secrets
 
         public string? Read(string key)
         {
+            using var secret = ReadBuffer(key);
+            return secret?.DangerousGetString();
+        }
+
+        public SecretBuffer? ReadBuffer(string key)
+        {
             if (!_available)
             {
                 return null;
             }
 
-            string? result = LookupRaw(key, out _);
+            SecretBuffer? result = LookupRaw(key, out _);
             // Keep this instance alive past the native call: the finalizer frees
             // _schema (and the name strings it points to), so it must not run while
             // libsecret is still dereferencing the schema.
@@ -139,6 +146,12 @@ namespace Ntilde.Shell.Secrets
 
         public void Write(string key, string value)
         {
+            using var secret = SecretBuffer.FromText(value);
+            WriteBuffer(key, secret);
+        }
+
+        public void WriteBuffer(string key, SecretBuffer value)
+        {
             if (!_available)
             {
                 return;
@@ -147,14 +160,18 @@ namespace Ntilde.Shell.Secrets
             IntPtr attrs = BuildAttributes(key);
             try
             {
-                // libsecret copies the label and password synchronously; the
-                // marshalled UTF-8 strings only need to live for the duration of
-                // the call, so default LPUTF8Str marshalling is safe here.
-                _ = secret_password_storev_sync(
-                    _schema, attrs, IntPtr.Zero,
-                    label: $"Ntilde: {key}", password: value,
-                    cancellable: IntPtr.Zero, error: out IntPtr error);
-                FreeError(error);
+                if (value.Span.Contains((byte)0)) throw new ArgumentException("The keyring cannot store an embedded NUL.");
+                value.UsePointer(pointer =>
+                {
+                    int stored = secret_password_storev_sync(
+                        _schema, attrs, IntPtr.Zero,
+                        label: $"Ntilde: {key}", password: pointer,
+                        cancellable: IntPtr.Zero, error: out IntPtr error);
+                    bool failed = stored == 0 || error != IntPtr.Zero;
+                    FreeError(error);
+                    if (failed) throw new InvalidOperationException("The OS keyring could not save the credential.");
+                    return stored;
+                });
             }
             finally
             {
@@ -192,7 +209,7 @@ namespace Ntilde.Shell.Secrets
             return removed;
         }
 
-        private string? LookupRaw(string key, out bool serviceError)
+        private SecretBuffer? LookupRaw(string key, out bool serviceError)
         {
             IntPtr attrs = BuildAttributes(key);
             try
@@ -207,7 +224,7 @@ namespace Ntilde.Shell.Secrets
 
                 try
                 {
-                    return Marshal.PtrToStringUTF8(result);
+                    return SecretBuffer.FromNullTerminatedPointer(result);
                 }
                 finally
                 {
@@ -365,7 +382,7 @@ namespace Ntilde.Shell.Secrets
         private static extern int secret_password_storev_sync(
             IntPtr schema, IntPtr attributes, IntPtr collection,
             [MarshalAs(UnmanagedType.LPUTF8Str)] string label,
-            [MarshalAs(UnmanagedType.LPUTF8Str)] string password,
+            IntPtr password,
             IntPtr cancellable, out IntPtr error);
 
         [DllImport(Lib)]

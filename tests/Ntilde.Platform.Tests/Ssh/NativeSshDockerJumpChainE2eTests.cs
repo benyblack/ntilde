@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System.Net;
 using System.Net.Sockets;
 using Ntilde.Platform.Ssh.Interactions;
@@ -118,13 +119,13 @@ public sealed class NativeSshDockerJumpChainE2eTests
                 Host = "127.0.0.1",
                 User = fixture.UserName,
                 Port = fixture.InContainerSshPort,
-                Password = fixture.Password,
+                Password = SecretBuffer.FromText(fixture.Password),
                 KnownHostsFilePath = knownHostsPath,
                 JumpHops =
                 [
                     new SshJumpHop { Host = fixture.Host, User = fixture.JumpUserName, Port = fixture.Port }
                 ],
-                JumpHopPasswords = [fixture.JumpPassword]
+                JumpHopPasswords = [SecretBuffer.FromText(fixture.JumpPassword)]
             };
             var transfer = new NativeSftpTransferOptions
             {

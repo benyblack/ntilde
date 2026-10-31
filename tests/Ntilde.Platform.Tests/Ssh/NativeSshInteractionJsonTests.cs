@@ -90,25 +90,25 @@ public sealed class NativeSshInteractionJsonTests
     [Fact]
     public void BuildResponsePayload_SerializesKeyboardInteractiveResponsesDeterministically()
     {
-        byte[] payload = NativeSshInteractionJson.BuildResponsePayload(
+        using var payload = NativeSshInteractionJson.BuildResponsePayload(
             NativeSshResponseKind.KeyboardInteractive,
             SshInteractionResponse.FromKeyboardResponses("code", "backup"));
 
-        Assert.Equal("""{"responses":["code","backup"]}""", Encoding.UTF8.GetString(payload));
+        Assert.Equal("""{"responses":["code","backup"]}""", payload.DangerousGetString());
     }
 
     [Fact]
     public void BuildResponsePayload_ACancelledPasswordSaysSo()
         => Assert.Equal("""{"text":"","canceled":true}""",
-            Encoding.UTF8.GetString(NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.Password, SshInteractionResponse.Cancel())));
+            (NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.Password, SshInteractionResponse.Cancel())).DangerousGetString());
 
     [Fact]
     public void BuildResponsePayload_ATypedPasswordCarriesNoCancelField()
         => Assert.Equal("""{"text":"hunter2"}""",
-            Encoding.UTF8.GetString(NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.Password, SshInteractionResponse.FromSecret("hunter2"))));
+            (NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.Password, SshInteractionResponse.FromSecret("hunter2"))).DangerousGetString());
 
     [Fact]
     public void BuildResponsePayload_ACancelledKeyboardRoundSaysSo()
         => Assert.Equal("""{"responses":[],"canceled":true}""",
-            Encoding.UTF8.GetString(NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.KeyboardInteractive, SshInteractionResponse.Cancel())));
+            (NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.KeyboardInteractive, SshInteractionResponse.Cancel())).DangerousGetString());
 }

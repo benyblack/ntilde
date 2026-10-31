@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System;
 using System.Collections;
 using System.Linq;
@@ -53,6 +54,20 @@ public sealed class ActiveSshSessionSecretHygieneTests
     }
 
     [Fact]
+    public void An_operation_owns_its_copy_even_when_the_session_is_unregistered()
+    {
+        Guid session = Guid.NewGuid();
+        var registry = RegistryWithSession(session);
+        registry.SetRuntimePassword(session, Host, Port, User, Secret);
+        Assert.True(registry.TryGetRuntimePassword(session, Host, Port, User, out SecretBuffer? copy));
+        byte[] retained = SecretTestSnapshot.Bytes(copy!);
+        registry.Unregister(session);
+        Assert.Equal(Secret, copy!.DangerousGetString());
+        copy.Dispose();
+        Assert.All(retained, value => Assert.Equal(0, value));
+    }
+
+    [Fact]
     public void Unregister_WipesTheRetainedBytes_NotJustTheReference()
     {
         Guid sessionId = Guid.NewGuid();
@@ -83,8 +98,8 @@ public sealed class ActiveSshSessionSecretHygieneTests
         registry.SetRuntimePassword(sessionId, Host, Port, User, "a different secret entirely");
 
         Assert.All(first, b => Assert.Equal(0, b));
-        Assert.True(registry.TryGetRuntimePassword(sessionId, Host, Port, User, out string? current));
-        Assert.Equal("a different secret entirely", current);
+        Assert.True(registry.TryGetRuntimePassword(sessionId, Host, Port, User, out SecretBuffer? current));
+        Assert.Equal("a different secret entirely", current?.DangerousGetString());
     }
 
     [Fact]
@@ -95,7 +110,7 @@ public sealed class ActiveSshSessionSecretHygieneTests
         registry.SetRuntimePassword(sessionId, Host, Port, User, Secret);
         byte[] retained = SingleRetainedBuffer(registry);
 
-        registry.SetRuntimePassword(sessionId, Host, Port, User, null);
+        registry.SetRuntimePassword(sessionId, Host, Port, User, (SecretBuffer?)null);
 
         Assert.All(retained, b => Assert.Equal(0, b));
         Assert.False(registry.TryGetRuntimePassword(sessionId, Host, Port, User, out _));
@@ -120,8 +135,8 @@ public sealed class ActiveSshSessionSecretHygieneTests
 
         registry.SetRuntimePassword(sessionId, Host, Port, User, password);
 
-        Assert.True(registry.TryGetRuntimePassword(sessionId, Host, Port, User, out string? roundTripped));
-        Assert.Equal(password, roundTripped);
+        Assert.True(registry.TryGetRuntimePassword(sessionId, Host, Port, User, out SecretBuffer? roundTripped));
+        Assert.Equal(password, roundTripped?.DangerousGetString());
     }
 
     // NOT TESTED, deliberately: that the lock prevents a torn read.

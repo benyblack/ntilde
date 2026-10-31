@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Platform.Ssh.Native;
 using System.IO;
 using System.Reflection;
@@ -128,7 +129,7 @@ public sealed class NativeSftpTransferInteropTests
             Host = "example.com",
             User = "nova",
             Port = 2222,
-            Password = "secret",
+            Password = SecretBuffer.FromText("secret"),
             KnownHostsFilePath = @"C:\known-hosts.json",
             JumpHops =
             [
@@ -189,14 +190,14 @@ public sealed class NativeSftpTransferInteropTests
             Host = "example.com",
             User = "nova",
             Port = 2222,
-            Password = "target-secret",
+            Password = SecretBuffer.FromText("target-secret"),
             KnownHostsFilePath = @"C:\known-hosts.json",
             JumpHops =
             [
                 new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-one.internal", User = "jumper", Port = 2200 },
                 new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-two.internal", User = string.Empty, Port = 22 }
             ],
-            JumpHopPasswords = ["bastion-secret", null]
+            JumpHopPasswords = [SecretBuffer.FromText("bastion-secret"), null]
         };
         NativeSftpTransferOptions transferOptions = new()
         {
@@ -232,7 +233,7 @@ public sealed class NativeSftpTransferInteropTests
                 new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-one.internal", User = "jumper", Port = 2200 },
                 new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-two.internal", User = "jumper", Port = 22 }
             ],
-            JumpHopPasswords = ["only-one"]
+            JumpHopPasswords = [SecretBuffer.FromText("only-one")]
         };
         NativeSftpTransferOptions transferOptions = new()
         {
@@ -300,7 +301,7 @@ public sealed class NativeSftpTransferInteropTests
         {
             Host = "example.com",
             User = "nova",
-            Password = "secret",
+            Password = SecretBuffer.FromText("secret"),
             KnownHostsFilePath = @"C:\known-hosts.json"
         };
         NativeSftpTransferOptions transferOptions = new()

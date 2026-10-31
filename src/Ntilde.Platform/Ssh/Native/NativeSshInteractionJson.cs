@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Ntilde.Platform.Ssh.Interactions;
@@ -18,26 +19,27 @@ public static class NativeSshInteractionJson
         };
     }
 
-    public static byte[] BuildResponsePayload(NativeSshResponseKind responseKind, SshInteractionResponse response)
+    public static SecretBuffer BuildResponsePayload(NativeSshResponseKind responseKind, SshInteractionResponse response)
     {
         ArgumentNullException.ThrowIfNull(response);
 
+        using var empty = SecretBuffer.FromText("");
         return responseKind switch
         {
-            NativeSshResponseKind.HostKeyDecision => JsonSerializer.SerializeToUtf8Bytes(
+            NativeSshResponseKind.HostKeyDecision => SecretJson.Serialize(
                 new NativeHostKeyDecisionPayload { Accept = response.IsAccepted && !response.IsCanceled },
                 NativeSshInteractionJsonContext.Default.NativeHostKeyDecisionPayload),
-            NativeSshResponseKind.Password or NativeSshResponseKind.Passphrase => JsonSerializer.SerializeToUtf8Bytes(
+            NativeSshResponseKind.Password or NativeSshResponseKind.Passphrase => SecretJson.Serialize(
                 new NativeTextResponsePayload
                 {
-                    Text = response.IsCanceled ? string.Empty : response.Secret ?? string.Empty,
+                    Text = response.IsCanceled ? empty : response.Secret,
                     Canceled = response.IsCanceled
                 },
                 NativeSshInteractionJsonContext.Default.NativeTextResponsePayload),
-            NativeSshResponseKind.KeyboardInteractive => JsonSerializer.SerializeToUtf8Bytes(
+            NativeSshResponseKind.KeyboardInteractive => SecretJson.Serialize(
                 new NativeKeyboardInteractiveResponsePayload
                 {
-                    Responses = response.IsCanceled ? Array.Empty<string>() : response.KeyboardResponses.ToArray(),
+                    Responses = response.IsCanceled ? Array.Empty<SecretBuffer>() : response.KeyboardResponses.ToArray(),
                     Canceled = response.IsCanceled
                 },
                 NativeSshInteractionJsonContext.Default.NativeKeyboardInteractiveResponsePayload),
@@ -170,7 +172,7 @@ internal sealed class NativeHostKeyDecisionPayload
 
 internal sealed class NativeTextResponsePayload
 {
-    public string Text { get; set; } = string.Empty;
+    public SecretBuffer? Text { get; set; }
 
     // Omitted when false so an ordinary answer stays byte-identical. rusty_ssh stops sign-in on true
     // instead of treating the empty text as a password.
@@ -180,7 +182,7 @@ internal sealed class NativeTextResponsePayload
 
 internal sealed class NativeKeyboardInteractiveResponsePayload
 {
-    public string[] Responses { get; set; } = Array.Empty<string>();
+    public SecretBuffer[] Responses { get; set; } = Array.Empty<SecretBuffer>();
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Canceled { get; set; }

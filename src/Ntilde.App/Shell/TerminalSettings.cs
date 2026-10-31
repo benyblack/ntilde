@@ -347,8 +347,12 @@ namespace Ntilde.Shell
             return LoadFromPath(SettingsPath);
         }
 
-        internal static TerminalSettings LoadFromPath(string settingsPath)
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool CredentialMigrationPending { get; private set; }
+
+        internal static TerminalSettings LoadFromPath(string settingsPath, VaultService? migrationVault = null)
         {
+            bool migrationReady = LegacyProfilePasswordMigration.TryMigrate(settingsPath, () => migrationVault ?? new VaultService());
             TerminalSettings settings;
             if (File.Exists(settingsPath))
             {
@@ -462,6 +466,7 @@ namespace Ntilde.Shell
                 }
             }
 
+            settings.CredentialMigrationPending = !migrationReady;
             return settings;
         }
 
@@ -484,6 +489,12 @@ namespace Ntilde.Shell
             try
             {
                 AppPaths.EnsureInitialized();
+                if (!LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => new VaultService()))
+                {
+                    CredentialMigrationPending = true;
+                    throw new InvalidOperationException("Unlock OS credential storage before saving settings: a legacy password still needs migration.");
+                }
+                CredentialMigrationPending = false;
                 string json = JsonSerializer.Serialize(this, AppJsonContext.Default.TerminalSettings);
                 // Atomic write with .bak (#167): a crash mid-write previously corrupted
                 // settings.json, and the next start silently reset all configuration.

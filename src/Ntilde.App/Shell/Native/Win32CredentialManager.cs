@@ -1,3 +1,5 @@
+using Ntilde.Platform.Security;
+using System.Security.Cryptography;
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -9,7 +11,7 @@ namespace Ntilde.Shell.Native
         private const string DllName = "advapi32.dll";
 
         [DllImport(DllName, EntryPoint = "CredWriteW", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern bool CredWrite(ref CREDENTIAL userCredential, uint target, uint flags);
+        private static extern bool CredWrite(ref CREDENTIAL userCredential, uint flags);
 
         [DllImport(DllName, EntryPoint = "CredReadW", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern bool CredRead(string target, CREDENTIAL_TYPE type, int reservedFlag, out IntPtr credentialPtr);
@@ -18,7 +20,7 @@ namespace Ntilde.Shell.Native
         private static extern bool CredDelete(string target, CREDENTIAL_TYPE type, int flags);
 
         [DllImport(DllName, SetLastError = true)]
-        private static extern bool CredFree(IntPtr buffer);
+        private static extern void CredFree(IntPtr buffer);
 
         private enum CREDENTIAL_TYPE : uint
         {
@@ -53,58 +55,65 @@ namespace Ntilde.Shell.Native
 
         public static bool Write(string target, string username, string password)
         {
-            var credential = new CREDENTIAL
-            {
-                Type = (uint)CREDENTIAL_TYPE.GENERIC,
-                TargetName = Marshal.StringToCoTaskMemUni(target),
-                UserName = Marshal.StringToCoTaskMemUni(username),
-                Persist = (uint)CREDENTIAL_PERSIST.LOCAL_MACHINE,
-                AttributeCount = 0,
-                Attributes = IntPtr.Zero
-            };
+            using var secret = SecretBuffer.FromText(password);
+            return WriteBuffer(target, username, secret);
+        }
 
-            byte[] blob = Encoding.Unicode.GetBytes(password);
-            credential.CredentialBlobSize = (uint)blob.Length;
-            credential.CredentialBlob = Marshal.AllocCoTaskMem(blob.Length);
-            Marshal.Copy(blob, 0, credential.CredentialBlob, blob.Length);
-
+        public static bool WriteBuffer(string target, string username, SecretBuffer password)
+        {
+            CREDENTIAL credential = default;
+            int charCount = Encoding.UTF8.GetCharCount(password.Span);
+            char[] blob = GC.AllocateArray<char>(charCount + 1, pinned: true);
             try
             {
-                return CredWrite(ref credential, 0, 0);
+                Encoding.UTF8.GetChars(password.Span, blob);
+                credential.Type = (uint)CREDENTIAL_TYPE.GENERIC;
+                credential.TargetName = Marshal.StringToCoTaskMemUni(target);
+                credential.UserName = Marshal.StringToCoTaskMemUni(username);
+                credential.Persist = (uint)CREDENTIAL_PERSIST.LOCAL_MACHINE;
+                credential.CredentialBlobSize = checked((uint)(charCount * sizeof(char)));
+                credential.CredentialBlob = Marshal.UnsafeAddrOfPinnedArrayElement(blob, 0);
+                return CredWrite(ref credential, 0);
             }
             finally
             {
                 Marshal.FreeCoTaskMem(credential.TargetName);
                 Marshal.FreeCoTaskMem(credential.UserName);
-                Marshal.FreeCoTaskMem(credential.CredentialBlob);
+                CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(blob.AsSpan()));
+                GC.KeepAlive(blob);
             }
         }
 
         public static (string Username, string Password)? Read(string target)
         {
-            IntPtr pCred;
-            if (!CredRead(target, CREDENTIAL_TYPE.GENERIC, 0, out pCred))
-            {
-                return null;
-            }
+            var result = ReadBuffer(target);
+            if (result is null) return null;
+            using var secret = result.Value.Password;
+            return (result.Value.Username, secret.DangerousGetString());
+        }
 
+        public static (string Username, SecretBuffer Password)? ReadBuffer(string target)
+        {
+            if (!CredRead(target, CREDENTIAL_TYPE.GENERIC, 0, out IntPtr pCred)) return null;
+            CREDENTIAL credential = default;
             try
             {
-                var credential = Marshal.PtrToStructure<CREDENTIAL>(pCred);
+                credential = Marshal.PtrToStructure<CREDENTIAL>(pCred);
                 string username = Marshal.PtrToStringUni(credential.UserName) ?? "";
-
-                string password = "";
-                if (credential.CredentialBlobSize > 0 && credential.CredentialBlob != IntPtr.Zero)
+                if (credential.CredentialBlobSize % sizeof(char) != 0) throw new InvalidOperationException("Invalid credential encoding.");
+                char[] chars = GC.AllocateArray<char>(checked((int)credential.CredentialBlobSize / sizeof(char)), pinned: true);
+                try
                 {
-                    byte[] blob = new byte[credential.CredentialBlobSize];
-                    Marshal.Copy(credential.CredentialBlob, blob, 0, (int)credential.CredentialBlobSize);
-                    password = Encoding.Unicode.GetString(blob);
+                    if (chars.Length > 0) Marshal.Copy(credential.CredentialBlob, chars, 0, chars.Length);
+                    return (username, SecretBuffer.FromText(chars));
                 }
-
-                return (username, password);
+                finally { CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(chars.AsSpan())); }
             }
             finally
             {
+                // CredRead allocated this process-local copy; CredFree alone does not promise a wipe.
+                if (credential.CredentialBlob != IntPtr.Zero)
+                    for (int index = 0; index < credential.CredentialBlobSize; index++) Marshal.WriteByte(credential.CredentialBlob, index, 0);
                 CredFree(pCred);
             }
         }

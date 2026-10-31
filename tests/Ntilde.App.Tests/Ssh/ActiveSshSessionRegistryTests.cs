@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Services.Ssh;
 
@@ -50,8 +51,8 @@ public sealed class ActiveSshSessionRegistryTests
             SshBackendKind.Native));
         registry.SetRuntimePassword(sessionId, "prod.internal", 22, "ops", "session-secret");
 
-        Assert.True(registry.TryGetRuntimePassword(sessionId, "prod.internal", 22, "ops", out string? password));
-        Assert.Equal("session-secret", password);
+        Assert.True(registry.TryGetRuntimePassword(sessionId, "prod.internal", 22, "ops", out SecretBuffer? password));
+        Assert.Equal("session-secret", password?.DangerousGetString());
     }
 
     [Fact]
@@ -84,7 +85,7 @@ public sealed class ActiveSshSessionRegistryTests
         Guid sessionId = Guid.NewGuid();
         registry.SetRuntimePassword(sessionId, "prod.internal", 22, "ops", "target-secret");
 
-        Assert.False(registry.TryGetRuntimePassword(sessionId, host, port, user, out string? password));
+        Assert.False(registry.TryGetRuntimePassword(sessionId, host, port, user, out SecretBuffer? password));
         Assert.Null(password);
     }
 
@@ -97,10 +98,10 @@ public sealed class ActiveSshSessionRegistryTests
         registry.SetRuntimePassword(sessionId, "bastion.internal", 2200, "jump", "bastion-secret");
         registry.SetRuntimePassword(sessionId, "prod.internal", 22, "ops", "target-secret");
 
-        Assert.True(registry.TryGetRuntimePassword(sessionId, "bastion.internal", 2200, "jump", out string? bastion));
-        Assert.True(registry.TryGetRuntimePassword(sessionId, "prod.internal", 22, "ops", out string? target));
-        Assert.Equal("bastion-secret", bastion);
-        Assert.Equal("target-secret", target);
+        Assert.True(registry.TryGetRuntimePassword(sessionId, "bastion.internal", 2200, "jump", out SecretBuffer? bastion));
+        Assert.True(registry.TryGetRuntimePassword(sessionId, "prod.internal", 22, "ops", out SecretBuffer? target));
+        Assert.Equal("bastion-secret", bastion?.DangerousGetString());
+        Assert.Equal("target-secret", target?.DangerousGetString());
     }
 
     [Fact]
@@ -112,8 +113,8 @@ public sealed class ActiveSshSessionRegistryTests
         Guid sessionId = Guid.NewGuid();
         registry.SetRuntimePassword(sessionId, "Prod.Internal", 0, "ops", "target-secret");
 
-        Assert.True(registry.TryGetRuntimePassword(sessionId, "prod.internal", 22, "ops", out string? password));
-        Assert.Equal("target-secret", password);
+        Assert.True(registry.TryGetRuntimePassword(sessionId, "prod.internal", 22, "ops", out SecretBuffer? password));
+        Assert.Equal("target-secret", password?.DangerousGetString());
     }
 
     [Fact]
@@ -163,8 +164,8 @@ public sealed class ActiveSshSessionRegistryTests
         registry.SetRuntimePassword(scope, "prod.internal", 22, "ops", "typed-secret");
 
         Assert.Equal(scope, registry.PasswordScopeOf(sessionId));
-        Assert.True(registry.TryGetRuntimePassword(registry.PasswordScopeOf(sessionId), "prod.internal", 22, "ops", out string? password));
-        Assert.Equal("typed-secret", password);
+        Assert.True(registry.TryGetRuntimePassword(registry.PasswordScopeOf(sessionId), "prod.internal", 22, "ops", out SecretBuffer? password));
+        Assert.Equal("typed-secret", password?.DangerousGetString());
         Assert.False(registry.TryGetRuntimePassword(sessionId, "prod.internal", 22, "ops", out _));
     }
 
@@ -184,10 +185,10 @@ public sealed class ActiveSshSessionRegistryTests
 
         Assert.False(registry.TryGetRuntimePassword(gone, "prod.internal", 22, "ops", out _));
         Assert.False(registry.TryGetRuntimePassword(gone, "other.internal", 22, "ops", out _));
-        Assert.True(registry.TryGetRuntimePassword(kept, "prod.internal", 22, "ops", out string? keptPassword));
-        Assert.Equal("kept-secret", keptPassword);
-        Assert.True(registry.TryGetRuntimePassword(session, "prod.internal", 22, "ops", out string? sessionPassword));
-        Assert.Equal("session-secret", sessionPassword);
+        Assert.True(registry.TryGetRuntimePassword(kept, "prod.internal", 22, "ops", out SecretBuffer? keptPassword));
+        Assert.Equal("kept-secret", keptPassword?.DangerousGetString());
+        Assert.True(registry.TryGetRuntimePassword(session, "prod.internal", 22, "ops", out SecretBuffer? sessionPassword));
+        Assert.Equal("session-secret", sessionPassword?.DangerousGetString());
     }
 
     /// <summary>
@@ -228,8 +229,8 @@ public sealed class ActiveSshSessionRegistryTests
 
         Assert.False(registry.RemoveRuntimePassword(scope, "prod.internal", 22, "ops", "stale"));
 
-        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 22, "ops", out string? password));
-        Assert.Equal(held, password);
+        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 22, "ops", out SecretBuffer? password));
+        Assert.Equal(held, password?.DangerousGetString());
     }
 
     [Theory]
@@ -261,8 +262,8 @@ public sealed class ActiveSshSessionRegistryTests
 
         Assert.Equal(registered, registry.PasswordScopeOf(registered));
         Assert.Equal(unregistered, registry.PasswordScopeOf(unregistered));
-        Assert.True(registry.TryGetRuntimePassword(registry.PasswordScopeOf(registered), "prod.internal", 22, "ops", out string? password));
-        Assert.Equal("session-secret", password);
+        Assert.True(registry.TryGetRuntimePassword(registry.PasswordScopeOf(registered), "prod.internal", 22, "ops", out SecretBuffer? password));
+        Assert.Equal("session-secret", password?.DangerousGetString());
 
         registry.Unregister(registered);
 

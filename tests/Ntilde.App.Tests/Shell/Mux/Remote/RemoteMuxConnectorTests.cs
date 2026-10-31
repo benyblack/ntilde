@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Mux;
 using Ntilde.Mux.Cli;
 using Ntilde.Mux.Contracts;
@@ -488,7 +489,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Own(await connector.ConnectAsync(Ct));
         Own(await connector.ConnectAsync(interactive: false, Ct));
 
-        Assert.Equal(new[] { "hunter2", "hunter2" }, answers.Select(a => a.Secret));
+        Assert.Equal(new[] { "hunter2", "hunter2" }, answers.Select(a => a.Secret.DangerousGetString()));
         Assert.Single(user.Asked);
     }
 
@@ -527,8 +528,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 _remote.OnStart = _ =>
                 {
                     SshInteractionResponse password = request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult();
-                    lock (offered) offered.Add(password.IsCanceled ? "<cancelled>" : password.Secret);
-                    if (password.Secret == serverPassword)
+                    lock (offered) offered.Add(password.IsCanceled ? "<cancelled>" : password.Secret.DangerousGetString());
+                    if (password.Secret.DangerousGetString() == serverPassword)
                     {
                         _remote.Script = null;
                         return;
@@ -607,7 +608,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 {
                     try
                     {
-                        answers.Add(request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret);
+                        answers.Add(request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret.DangerousGetString());
                         _remote.Script = null;
                     }
                     catch (RemoteMuxPromptAbortedException ex)
@@ -769,7 +770,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Own(await connector.ConnectAsync(Ct));
         Own(await connector.ConnectAsync(interactive: false, Ct));
 
-        Assert.Equal(new[] { "correct horse", "correct horse" }, answers.Select(a => a.Secret));
+        Assert.Equal(new[] { "correct horse", "correct horse" }, answers.Select(a => a.Secret.DangerousGetString()));
         Assert.Single(user.Asked);
     }
 
@@ -819,10 +820,10 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         public int Reads => Volatile.Read(ref _reads);
 
-        public string? Read(SshProfile profile)
+        public SecretBuffer? Read(SshProfile profile)
         {
             Interlocked.Increment(ref _reads);
-            return Value;
+            return Value is null ? null : SecretBuffer.FromText(Value);
         }
     }
 
@@ -858,7 +859,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         List<OpenSshExecTransport> built,
         Func<OpenSshExecTransport, RemoteMuxTransportRequest, FakeRemoteScript?>? script = null,
         Ntilde.Services.Ssh.SshLaunchDetails? launch = null,
-        Func<SshProfile, string?>? vault = null,
+        Func<SshProfile, SecretBuffer?>? vault = null,
         Ntilde.SshAskPassSessionMarkers? records = null,
         OpenSshClientVersionCache? versions = null,
         List<string>? logged = null)
@@ -1032,7 +1033,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 lock (offers) offers.Add((request.Retargeted, request.OfferSavedPassword is not null, request.WithoutSavedPassword));
                 return _remote;
             },
-            new RemoteMuxInteractionHandler(user: null, _ => false, _ => "s3cret"),
+            new RemoteMuxInteractionHandler(user: null, _ => false, _ => SecretBuffer.FromText("s3cret")),
             "i",
             null));
         MuxClient pinned = Own(await connector.ConnectAsync(interactive: true, Ct));
@@ -1194,7 +1195,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
             {
                 _remote.OnStart = _ =>
                 {
-                    string answer = request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret;
+                    string answer = request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret.DangerousGetString();
                     lock (answers) answers.Add(answer);
                     _remote.Script = new FakeRemoteScript(Stdout: Greeting, TransportError: "the connection was lost");
                 };
@@ -1227,7 +1228,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
             {
                 _remote.OnStart = _ =>
                 {
-                    string answer = request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret;
+                    string answer = request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret.DangerousGetString();
                     lock (answers) answers.Add(answer);
                     request.Prompts.Authenticated();
                     _remote.Script = FakeRemoteScript.NativeFailure("SSH authentication failed");
@@ -1666,7 +1667,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
             {
                 _remote.OnStart = _ =>
                 {
-                    string answer = request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret;
+                    string answer = request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret.DangerousGetString();
                     lock (answers) answers.Add(answer);
                     _remote.Script = answer == "s3cret" ? null : FakeRemoteScript.NativeFailure("Authentication failed");
                 };
@@ -1738,7 +1739,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Equal(0, saved.Reads);
         Assert.False(connector.Prompts.BeginAttempt(interactive: true, savedPasswordProfile: NativeProfile()).AvoidsSavedPassword);
         RemoteMuxInteractionHandler.Attempt next = connector.Prompts.BeginAttempt(interactive: false, savedPasswordProfile: NativeProfile());
-        Assert.Equal("s3cret", (await next.HandleAsync(PasswordPrompt, Ct)).Secret);
+        Assert.Equal("s3cret", (await next.HandleAsync(PasswordPrompt, Ct)).Secret.DangerousGetString());
     }
 
     /// <summary>

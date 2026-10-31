@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Shell;
 using System;
 using System.Threading;
@@ -117,19 +118,23 @@ public sealed class SshInteractionService : ISshInteractionService
     {
         SshInteractionResponse response = await AskUserAsync(needsUser, request.Kind,
             () => _authPresenter(owner, CreatePasswordViewModel(request), cancellationToken));
-        // Held under the server that asked for it, so the password is only ever replayed to that
-        // server — never to the next hop of the chain, and never to a transfer's other hops.
-        if (request.SessionId.HasValue && request.HasHostIdentity && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
+        try
         {
-            _sessionRegistry.SetRuntimePassword(request.SessionId.Value, request.Host, request.Port, request.User, response.Secret);
-        }
+            // Held under the server that asked for it, so the password is only ever replayed to that
+            // server — never to the next hop of the chain, and never to a transfer's other hops.
+            if (request.SessionId.HasValue && request.HasHostIdentity && !response.IsCanceled && response.Secret.Length > 0)
+            {
+                _sessionRegistry.SetRuntimePassword(request.SessionId.Value, request.Host, request.Port, request.User, response.Secret);
+            }
 
-        if (ShouldStorePasswordInVault(request, response))
-        {
-            _vaultService.SetSshPasswordForProfile(CreateVaultProfile(request), response.Secret);
-        }
+            if (ShouldStorePasswordInVault(request, response))
+            {
+                _vaultService.SetSshPasswordBufferForProfile(CreateVaultProfile(request), response.Secret);
+            }
 
-        return response;
+            return response;
+        }
+        catch { response.Dispose(); throw; }
     }
 
     private bool TryHandlePasswordFromVault(SshInteractionRequest request, out SshInteractionResponse response)
@@ -146,8 +151,8 @@ public sealed class SshInteractionService : ISshInteractionService
 
         if (request.SessionId.HasValue &&
             request.HasHostIdentity &&
-            _sessionRegistry.TryGetRuntimePassword(request.SessionId.Value, request.Host, request.Port, request.User, out string? runtimePassword) &&
-            !string.IsNullOrEmpty(runtimePassword))
+            _sessionRegistry.TryGetRuntimePassword(request.SessionId.Value, request.Host, request.Port, request.User, out SecretBuffer? runtimePassword) &&
+            runtimePassword is { Length: > 0 })
         {
             response = SshInteractionResponse.FromStoredSecret(runtimePassword);
             return true;
@@ -159,8 +164,8 @@ public sealed class SshInteractionService : ISshInteractionService
             return false;
         }
 
-        string? password = _vaultService.GetSshPasswordForProfile(CreateVaultProfile(request));
-        if (string.IsNullOrEmpty(password))
+        SecretBuffer? password = _vaultService.GetSshPasswordBufferForProfile(CreateVaultProfile(request));
+        if (password is null || password.Length == 0)
         {
             response = SshInteractionResponse.Cancel();
             return false;
@@ -314,7 +319,7 @@ public sealed class SshInteractionService : ISshInteractionService
             IsProfileTargetPrompt(request) &&
             !response.IsCanceled &&
             response.RememberPasswordInVault &&
-            !string.IsNullOrEmpty(response.Secret);
+            response.Secret.Length > 0;
     }
 
     private static AuthPromptViewModel CreatePassphraseViewModel(SshInteractionRequest request)

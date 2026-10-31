@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System;
 using System.Collections.Generic;
 using Ntilde.Shell.Secrets;
@@ -77,7 +78,8 @@ namespace Ntilde.Shell
             // to the canonical key, and this runs on every selection change in the UI.
             foreach (string key in GetProfileScopedSshPasswordKeysForProfile(profile))
             {
-                if (!string.IsNullOrEmpty(GetSecret(key)))
+                using SecretBuffer? secret = _store.IsAvailable ? _store.ReadBuffer(key) : null;
+                if (secret is { Length: > 0 })
                 {
                     return true;
                 }
@@ -251,6 +253,33 @@ namespace Ntilde.Shell
             }
 
             return null;
+        }
+
+        /// <summary>The caller owns the returned credential buffer.</summary>
+        public SecretBuffer? GetSshPasswordBufferForProfile(TerminalProfile profile)
+        {
+            if (!_store.IsAvailable) return null;
+            string canonicalKey = GetCanonicalSshProfileKey(profile.Id);
+            foreach (string key in GetSshPasswordKeysForProfile(profile))
+            {
+                SecretBuffer? secret = _store.ReadBuffer(key);
+                if (secret is null) continue;
+                if (secret.Length == 0) { secret.Dispose(); continue; }
+                try
+                {
+                    if (key != canonicalKey) _store.WriteBuffer(canonicalKey, secret);
+                    return secret;
+                }
+                catch { secret.Dispose(); throw; }
+            }
+            return null;
+        }
+
+        public void SetSshPasswordBufferForProfile(TerminalProfile profile, SecretBuffer password)
+        {
+            if (!_store.IsAvailable) return;
+            if (password.Length == 0) _store.Delete(GetCanonicalSshProfileKey(profile.Id));
+            else _store.WriteBuffer(GetCanonicalSshProfileKey(profile.Id), password);
         }
 
         public string? GetSshPasswordForProfile(TerminalProfile profile)

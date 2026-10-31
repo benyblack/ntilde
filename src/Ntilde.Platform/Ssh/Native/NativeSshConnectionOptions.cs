@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Platform.Ssh.Models;
 
 namespace Ntilde.Platform.Ssh.Native;
@@ -17,17 +18,17 @@ public sealed class NativeSshConnectionOptions
     /// <summary>
     /// The target's password, for the non-interactive transfer and listing paths. Never offered
     /// to a jump hop — see <see cref="JumpHopPasswords"/>. An interactive session ignores it and
-    /// prompts instead.
+    /// prompts instead. The caller owns this buffer and keeps it alive until the operation returns.
     /// </summary>
-    public string? Password { get; init; }
+    public SecretBuffer? Password { get; init; }
 
     /// <summary>
     /// Each jump hop's own password, index-aligned with <see cref="JumpHops"/>; null entries (or an
     /// empty list) mean "offer that hop no password". Read only by the non-interactive transfer and
     /// listing paths, which cannot prompt. A password is only ever sent to the server it belongs
-    /// to, so a hop never falls back to <see cref="Password"/>.
+    /// to. The caller owns these buffers, as it owns Password. A hop never falls back to <see cref="Password"/>.
     /// </summary>
-    public IReadOnlyList<string?> JumpHopPasswords { get; init; } = Array.Empty<string?>();
+    public IReadOnlyList<SecretBuffer?> JumpHopPasswords { get; init; } = Array.Empty<SecretBuffer?>();
     public string? IdentityFilePath { get; init; }
 
     /// <summary>

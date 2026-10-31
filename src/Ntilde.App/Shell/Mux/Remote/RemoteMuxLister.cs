@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using System.Runtime.CompilerServices;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
@@ -141,7 +142,7 @@ internal static class RemoteMuxLister
     public static RemoteMuxConnector CreateConnector(
         SshProfile profile,
         Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport> transportFor,
-        Func<SshProfile, string?>? savedPassword,
+        Func<SshProfile, SecretBuffer?>? savedPassword,
         SshAskPassSessionMarkers? askPassRecords,
         Action<string>? log)
     {

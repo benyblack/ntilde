@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Native;
 using Ntilde.Services.Ssh;
@@ -66,12 +67,12 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         var user = new ScriptedUser(SshInteractionResponse.FromSecret("hunter2"));
         RemoteMuxInteractionHandler handler = Handler(user);
         RemoteMuxInteractionHandler.Attempt first = handler.BeginAttempt(interactive: true);
-        Assert.Equal("hunter2", (await first.HandleAsync(Secret(kind), Ct)).Secret);
+        Assert.Equal("hunter2", (await first.HandleAsync(Secret(kind), Ct)).Secret.DangerousGetString());
         first.Succeeded();
 
         SshInteractionResponse replayed = await handler.BeginAttempt(interactive: false).HandleAsync(Secret(kind), Ct);
 
-        Assert.Equal("hunter2", replayed.Secret);
+        Assert.Equal("hunter2", replayed.Secret.DangerousGetString());
         Assert.False(replayed.IsCanceled);
         Assert.False(replayed.RememberPasswordInVault);   // memory only: never written anywhere
         Assert.Single(user.Asked);
@@ -100,7 +101,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => handler.BeginAttempt(interactive: false).HandleAsync(retry, Ct));
         SshInteractionResponse answered = await handler.BeginAttempt(interactive: true).HandleAsync(retry, Ct);
 
-        Assert.Equal("typed-again", answered.Secret);
+        Assert.Equal("typed-again", answered.Secret.DangerousGetString());
         Assert.Equal(2, user.Asked.Count);
     }
 
@@ -156,8 +157,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         Assert.True(passphrase.IsCanceled);
         Assert.Empty(keyboard.KeyboardResponses);
         Assert.False(keyboard.IsCanceled);
-        Assert.Equal("""{"accept":false}""", System.Text.Encoding.UTF8.GetString(
-            NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.HostKeyDecision, hostKey)));
+        Assert.Equal("""{"accept":false}""", NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.HostKeyDecision, hostKey).DangerousGetString());
         Assert.Null(automatic.AbortedPrompt);
     }
 
@@ -216,7 +216,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler.Attempt attempt = handler.BeginAttempt(interactive: true);
 
         Assert.True((await attempt.HandleAsync(HostKey("SHA256:new"), Ct)).IsAccepted);
-        Assert.Equal(new[] { "123456" }, (await attempt.HandleAsync(Keyboard, Ct)).KeyboardResponses);
+        Assert.Equal(new[] { "123456" }, (await attempt.HandleAsync(Keyboard, Ct)).KeyboardResponses.Select(value => value.DangerousGetString()));
         attempt.Succeeded();
 
         Assert.Equal(2, user.Asked.Count);
@@ -240,12 +240,12 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         await RememberAsync(handler, Secret(kind));
 
         RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false);
-        Assert.Equal("old", (await automatic.HandleAsync(Secret(kind), Ct)).Secret);
+        Assert.Equal("old", (await automatic.HandleAsync(Secret(kind), Ct)).Secret.DangerousGetString());
         await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Keyboard, Ct));
         automatic.Refused();
 
         Assert.False(handler.Remembers(Secret(kind).Kind));
-        Assert.Equal("new", (await handler.BeginAttempt(interactive: true).HandleAsync(Secret(kind), Ct)).Secret);
+        Assert.Equal("new", (await handler.BeginAttempt(interactive: true).HandleAsync(Secret(kind), Ct)).Secret.DangerousGetString());
         Assert.Equal(2, user.Asked.Count);
     }
 
@@ -263,8 +263,8 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         await RememberAsync(handler, Secret(kind));
 
         RemoteMuxInteractionHandler.Attempt retry = handler.BeginAttempt(interactive: true);
-        Assert.Equal("old", (await retry.HandleAsync(Secret(kind), Ct)).Secret);   // no dialog
-        Assert.Equal(new[] { "new" }, (await retry.HandleAsync(Keyboard, Ct)).KeyboardResponses);
+        Assert.Equal("old", (await retry.HandleAsync(Secret(kind), Ct)).Secret.DangerousGetString());   // no dialog
+        Assert.Equal(new[] { "new" }, (await retry.HandleAsync(Keyboard, Ct)).KeyboardResponses.Select(value => value.DangerousGetString()));
         retry.Succeeded();
 
         Assert.False(handler.Remembers(Secret(kind).Kind));
@@ -292,12 +292,12 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         await RememberAsync(handler, Password);
 
         RemoteMuxInteractionHandler.Attempt retry = handler.BeginAttempt(interactive: true);
-        Assert.Equal("old", (await retry.HandleAsync(Password, Ct)).Secret);
-        Assert.Equal("new", (await retry.HandleAsync(Password, Ct)).Secret);   // asked again: the user, not "old" again
+        Assert.Equal("old", (await retry.HandleAsync(Password, Ct)).Secret.DangerousGetString());
+        Assert.Equal("new", (await retry.HandleAsync(Password, Ct)).Secret.DangerousGetString());   // asked again: the user, not "old" again
         retry.Succeeded();
 
         Assert.Equal(2, user.Asked.Count);
-        Assert.Equal("new", (await handler.BeginAttempt(interactive: false).HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("new", (await handler.BeginAttempt(interactive: false).HandleAsync(Password, Ct)).Secret.DangerousGetString());
     }
 
     /// <summary>
@@ -313,9 +313,9 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
         RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, passwordsReplayable: false);
         Assert.True((await automatic.HandleAsync(HostKey("SHA256:trusted"), Ct)).IsAccepted);   // the jump host
-        Assert.Equal("key-pass", (await automatic.HandleAsync(Passphrase, Ct)).Secret);
+        Assert.Equal("key-pass", (await automatic.HandleAsync(Passphrase, Ct)).Secret.DangerousGetString());
         Assert.True((await automatic.HandleAsync(HostKey("SHA256:trusted"), Ct)).IsAccepted);   // the target
-        Assert.Equal("key-pass", (await automatic.HandleAsync(Passphrase, Ct)).Secret);
+        Assert.Equal("key-pass", (await automatic.HandleAsync(Passphrase, Ct)).Secret.DangerousGetString());
         automatic.Succeeded();
 
         Assert.True(handler.Remembers(SshInteractionKind.Passphrase));
@@ -336,7 +336,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
         RemoteMuxInteractionHandler.Attempt viaJumpHost = handler.BeginAttempt(interactive: true, passwordsReplayable: false);
         Assert.False(handler.Remembers(SshInteractionKind.Password));   // dropped as soon as hops appear
-        Assert.Equal("other", (await viaJumpHost.HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("other", (await viaJumpHost.HandleAsync(Password, Ct)).Secret.DangerousGetString());
         viaJumpHost.Succeeded();
 
         Assert.False(handler.Remembers(SshInteractionKind.Password));
@@ -366,7 +366,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler.Attempt late = handler.BeginAttempt(interactive: true);
 
         handler.Forget();
-        Assert.Equal("late", (await late.HandleAsync(Password, Ct)).Secret);   // memory is empty: the user
+        Assert.Equal("late", (await late.HandleAsync(Password, Ct)).Secret.DangerousGetString());   // memory is empty: the user
         late.Succeeded();
 
         Assert.False(handler.Remembers(SshInteractionKind.Password));
@@ -395,7 +395,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler handler = Handler(user);
         await RememberAsync(handler, Password);
         RemoteMuxInteractionHandler.Attempt attempt = handler.BeginAttempt(interactive: true);
-        Assert.Equal("old", (await attempt.HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("old", (await attempt.HandleAsync(Password, Ct)).Secret.DangerousGetString());
 
         await attempt.HandleAsync(Keyboard, Ct);
 
@@ -409,7 +409,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("pw")));
         await RememberAsync(handler, Password);
         RemoteMuxInteractionHandler.Attempt attempt = handler.BeginAttempt(interactive: false);
-        Assert.Equal("pw", (await attempt.HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("pw", (await attempt.HandleAsync(Password, Ct)).Secret.DangerousGetString());
         attempt.Succeeded();
 
         attempt.Refused();
@@ -426,10 +426,10 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
         public int Reads => Volatile.Read(ref _reads);
 
-        public string? Read(Ntilde.Platform.Ssh.Models.SshProfile profile)
+        public SecretBuffer? Read(Ntilde.Platform.Ssh.Models.SshProfile profile)
         {
             Interlocked.Increment(ref _reads);
-            return Value;
+            return Value is null ? null : SecretBuffer.FromText(Value);
         }
     }
 
@@ -454,7 +454,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
         SshInteractionResponse first = await automatic.HandleAsync(Password, Ct);
 
-        Assert.Equal("s3cret", first.Secret);
+        Assert.Equal("s3cret", first.Secret.DangerousGetString());
         Assert.False(first.IsCanceled);
         Assert.False(first.RememberPasswordInVault);   // it came from there
         Assert.True(automatic.SavedPasswordOffered);
@@ -523,7 +523,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         var user = new ScriptedUser(SshInteractionResponse.FromSecret("typed"));
         RemoteMuxInteractionHandler.Attempt attempt = Handler(user, saved).BeginAttempt(interactive: true, savedPasswordProfile: Box);
 
-        Assert.Equal("typed", (await attempt.HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("typed", (await attempt.HandleAsync(Password, Ct)).Secret.DangerousGetString());
 
         Assert.False(attempt.MaySignInWithSavedPassword);
         Assert.False(attempt.OfferSavedPassword());
@@ -543,7 +543,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         await RememberAsync(handler, Password);
         RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
 
-        Assert.Equal("remembered", (await automatic.HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("remembered", (await automatic.HandleAsync(Password, Ct)).Secret.DangerousGetString());
         await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Password, Ct));
 
         Assert.False(automatic.SavedPasswordOffered);
@@ -608,7 +608,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         refusedSaved.SavedPasswordRefused();
         await RememberAsync(handler, Password);   // the user signed in with "typed", not saved
         RemoteMuxInteractionHandler.Attempt refusedTyped = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
-        Assert.Equal("typed", (await refusedTyped.HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("typed", (await refusedTyped.HandleAsync(Password, Ct)).Secret.DangerousGetString());
 
         refusedTyped.Refused();   // the server's password changed again
 
@@ -629,8 +629,8 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         await refused.HandleAsync(Password, Ct);
         refused.SavedPasswordRefused();
         RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
-        Assert.Equal("stale", (await enter.HandleAsync(Password, Ct)).Secret);   // refused again: the server asks once more
-        Assert.Equal("new", (await enter.HandleAsync(Password, Ct)).Secret);     // this one gets in
+        Assert.Equal("stale", (await enter.HandleAsync(Password, Ct)).Secret.DangerousGetString());   // refused again: the server asks once more
+        Assert.Equal("new", (await enter.HandleAsync(Password, Ct)).Secret.DangerousGetString());     // this one gets in
 
         enter.Succeeded();
 
@@ -681,7 +681,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
         saved.Value = "fresh";
 
-        Assert.Equal("fresh", (await handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("fresh", (await handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).HandleAsync(Password, Ct)).Secret.DangerousGetString());
         Assert.False(handler.BeginAttempt(interactive: true, savedPasswordProfile: Box).AvoidsSavedPassword);
     }
 
@@ -736,7 +736,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("old")), saved);
         await RememberAsync(handler, Password);
         RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
-        Assert.Equal("old", (await automatic.HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("old", (await automatic.HandleAsync(Password, Ct)).Secret.DangerousGetString());
 
         automatic.Refused();
 
@@ -755,7 +755,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("old")), saved);
         await RememberAsync(handler, Password);
         RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
-        Assert.Equal("old", (await automatic.HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("old", (await automatic.HandleAsync(Password, Ct)).Secret.DangerousGetString());
         automatic.Authenticated();
 
         automatic.Refused();
@@ -795,7 +795,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         SshInteractionResponse answer = await enter.HandleAsync(VaultReusablePassword, Ct);
 
         Assert.True(enter.AvoidsSavedPassword);
-        Assert.Equal("typed", answer.Secret);
+        Assert.Equal("typed", answer.Secret.DangerousGetString());
         SshInteractionRequest asked = Assert.Single(user.Asked);
         Assert.False(asked.AllowVaultPasswordReuse);
         Assert.True(asked.RememberPasswordInVault);
@@ -870,7 +870,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         await RememberAsync(handler, Password);
         RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
 
-        Assert.Equal("stale", (await automatic.HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("stale", (await automatic.HandleAsync(Password, Ct)).Secret.DangerousGetString());
 
         Assert.True(automatic.StoredPasswordAnswered);
         Assert.True(automatic.StoredPasswordIsTheSavedOne());
@@ -1051,7 +1051,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
     /// <summary>What the host's scope holds for <paramref name="host"/>:<paramref name="port"/> as <paramref name="user"/>, or null.</summary>
     private static string? InScope(ActiveSshSessionRegistry scopes, RemoteMuxInteractionHandler handler, string host = "fake-host", int port = 22, string user = "nova") =>
-        scopes.TryGetRuntimePassword(handler.PasswordScopeId, host, port, user, out string? password) ? password : null;
+        scopes.TryGetRuntimePassword(handler.PasswordScopeId, host, port, user, out SecretBuffer? password) ? password?.DangerousGetString() : null;
 
     [Fact]
     public async Task A_typed_target_password_that_got_in_is_kept_in_the_hosts_scope_under_its_server()
@@ -1111,7 +1111,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler handler = Scoped(user, scopes);
         RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
         await enter.HandleAsync(TargetPassword(), Ct);
-        Assert.Equal("123456", Assert.Single((await enter.HandleAsync(Keyboard, Ct)).KeyboardResponses));
+        Assert.Equal("123456", Assert.Single((await enter.HandleAsync(Keyboard, Ct)).KeyboardResponses.Select(value => value.DangerousGetString())));
 
         enter.Succeeded();
 
@@ -1128,22 +1128,22 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     {
         var scopes = new ActiveSshSessionRegistry();
         var saved = new SavedPasswords("s3cret");
-        var filled = new SshInteractionResponse { Secret = "s3cret", FilledFromStore = true };
+        var filled = new SshInteractionResponse { Secret = SecretBuffer.FromText("s3cret"), FilledFromStore = true };
         RemoteMuxInteractionHandler handler = Scoped(new ScriptedUser(filled), scopes, saved);
         RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
-        Assert.Equal("s3cret", (await enter.HandleAsync(TargetPassword(), Ct)).Secret);
+        Assert.Equal("s3cret", (await enter.HandleAsync(TargetPassword(), Ct)).Secret.DangerousGetString());
         enter.Succeeded();
         Assert.True(handler.Remembers(SshInteractionKind.Password));
         Assert.Null(InScope(scopes, handler));
 
         RemoteMuxInteractionHandler.Attempt replay = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
-        Assert.Equal("s3cret", (await replay.HandleAsync(TargetPassword(), Ct)).Secret); // from memory
+        Assert.Equal("s3cret", (await replay.HandleAsync(TargetPassword(), Ct)).Secret.DangerousGetString()); // from memory
         replay.Succeeded();
         Assert.Null(InScope(scopes, handler));
 
         RemoteMuxInteractionHandler automatic = Scoped(user: null, scopes, saved);
         RemoteMuxInteractionHandler.Attempt fromVault = automatic.BeginAttempt(interactive: false, savedPasswordProfile: Box);
-        Assert.Equal("s3cret", (await fromVault.HandleAsync(TargetPassword(), Ct)).Secret); // the saved password, with no UI
+        Assert.Equal("s3cret", (await fromVault.HandleAsync(TargetPassword(), Ct)).Secret.DangerousGetString()); // the saved password, with no UI
         fromVault.Succeeded();
         Assert.Null(InScope(scopes, automatic));
     }
@@ -1219,7 +1219,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     private static async Task KeepTypedAsync(RemoteMuxInteractionHandler handler, ActiveSshSessionRegistry scopes, string typed, int port = 22)
     {
         RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
-        Assert.Equal(typed, (await enter.HandleAsync(TargetPassword(port), Ct)).Secret);
+        Assert.Equal(typed, (await enter.HandleAsync(TargetPassword(port), Ct)).Secret.DangerousGetString());
         enter.Succeeded();
         Assert.Equal(typed, InScope(scopes, handler, port: port));
     }
@@ -1230,7 +1230,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         Guid session = Guid.NewGuid();
         scopes.Register(new ActiveSshSessionDescriptor(session, Box.Id, Ntilde.Platform.Ssh.Models.SshBackendKind.Native, handler.PasswordScopeId));
         var options = new NativeSshConnectionOptions { Host = "fake-host", Port = 22, User = "nova" };
-        return NativeHopPasswordResolver.Resolve(options, scopes, session, savedTargetPassword: () => null).Target;
+        return NativeHopPasswordResolver.Resolve(options, scopes, session, savedTargetPassword: () => null).Target?.DangerousGetString();
     }
 
     [Fact]
@@ -1243,7 +1243,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
         // The automatic reconnect after the password changed: memory answers, and the server drops the connection.
         RemoteMuxInteractionHandler.Attempt reconnect = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
-        Assert.Equal("rotated-away", (await reconnect.HandleAsync(TargetPassword(), Ct)).Secret);
+        Assert.Equal("rotated-away", (await reconnect.HandleAsync(TargetPassword(), Ct)).Secret.DangerousGetString());
         reconnect.Refused();
 
         Assert.False(handler.Remembers(SshInteractionKind.Password));
@@ -1264,7 +1264,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         await KeepTypedAsync(handler, scopes, "rotated-away");
 
         RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
-        Assert.Equal("rotated-away", (await enter.HandleAsync(TargetPassword(), Ct)).Secret); // from memory
+        Assert.Equal("rotated-away", (await enter.HandleAsync(TargetPassword(), Ct)).Secret.DangerousGetString()); // from memory
         await enter.HandleAsync(Keyboard, Ct);
         enter.Succeeded();
 
@@ -1281,7 +1281,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
         // Memory is per prompt kind, so the remembered value is offered to whatever server asks; port 2222 refuses it.
         RemoteMuxInteractionHandler.Attempt other = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
-        Assert.Equal("typed", (await other.HandleAsync(TargetPassword(port: 2222), Ct)).Secret);
+        Assert.Equal("typed", (await other.HandleAsync(TargetPassword(port: 2222), Ct)).Secret.DangerousGetString());
         other.Refused();
 
         Assert.Equal("typed", InScope(scopes, handler));
@@ -1293,12 +1293,12 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     public async Task A_vault_filled_refusal_leaves_a_typed_password_kept_for_another_user()
     {
         var scopes = new ActiveSshSessionRegistry();
-        var filled = new SshInteractionResponse { Secret = "vault-value", FilledFromStore = true };
+        var filled = new SshInteractionResponse { Secret = SecretBuffer.FromText("vault-value"), FilledFromStore = true };
         RemoteMuxInteractionHandler handler = Scoped(new ScriptedUser(filled), scopes, new SavedPasswords("vault-value"));
         scopes.SetRuntimePassword(handler.PasswordScopeId, "fake-host", 22, "root", "typed-for-root");
 
         RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
-        Assert.Equal("vault-value", (await enter.HandleAsync(TargetPassword(), Ct)).Secret);
+        Assert.Equal("vault-value", (await enter.HandleAsync(TargetPassword(), Ct)).Secret.DangerousGetString());
         enter.Refused();
 
         Assert.Equal("typed-for-root", InScope(scopes, handler, user: "root"));
@@ -1316,11 +1316,11 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler handler = Scoped(user, scopes);
         await KeepTypedAsync(handler, scopes, "old");
         RemoteMuxInteractionHandler.Attempt late = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
-        Assert.Equal("old", (await late.HandleAsync(TargetPassword(), Ct)).Secret);
+        Assert.Equal("old", (await late.HandleAsync(TargetPassword(), Ct)).Secret.DangerousGetString());
 
         RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
-        Assert.Equal("old", (await enter.HandleAsync(TargetPassword(), Ct)).Secret); // from memory, refused:
-        Assert.Equal("new", (await enter.HandleAsync(TargetPassword(), Ct)).Secret); // the user types the new one
+        Assert.Equal("old", (await enter.HandleAsync(TargetPassword(), Ct)).Secret.DangerousGetString()); // from memory, refused:
+        Assert.Equal("new", (await enter.HandleAsync(TargetPassword(), Ct)).Secret.DangerousGetString()); // the user types the new one
         enter.Succeeded();
         Assert.Equal("new", InScope(scopes, handler));
 
@@ -1341,7 +1341,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler handler = Scoped(user, scopes);
         await KeepTypedAsync(handler, scopes, "same");
         RemoteMuxInteractionHandler.Attempt stale = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
-        Assert.Equal("same", (await stale.HandleAsync(TargetPassword(), Ct)).Secret);
+        Assert.Equal("same", (await stale.HandleAsync(TargetPassword(), Ct)).Secret.DangerousGetString());
 
         handler.Forget();
         await KeepTypedAsync(handler, scopes, "same");

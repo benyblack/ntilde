@@ -1,3 +1,4 @@
+using Ntilde.Platform.Security;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
@@ -47,12 +48,34 @@ public sealed class NativeSshPromptResponderTests
     }
 
     [Fact]
+    public async Task A_failure_before_submit_wipes_both_response_and_serialized_payload()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        var responder = new NativeSshPromptResponder(new SshProfile(), sessionId: null);
+        using var response = SshInteractionResponse.FromSecret("café-🔑");
+        byte[] secretBytes = SecretBufferTests.RetainedBytes(response.Secret);
+        byte[]? payloadBytes = null;
+        responder.PayloadObserver = payload =>
+        {
+            payloadBytes = SecretBufferTests.RetainedBytes(payload);
+            throw new InvalidOperationException("submit interrupted");
+        };
+        await Assert.ThrowsAsync<InvalidOperationException>(() => responder.RespondAsync(
+            ScriptedNativeSshInterop.PasswordPrompt(), interop, interop.Handle,
+            new FixedHandler(response), CancellationToken.None));
+        Assert.All(secretBytes, value => Assert.Equal(0, value));
+        Assert.NotNull(payloadBytes);
+        Assert.All(payloadBytes, value => Assert.Equal(0, value));
+        Assert.Empty(interop.Submissions);
+    }
+
+    [Fact]
     public async Task The_response_payload_is_cleared_after_submit()
     {
         var interop = new ScriptedNativeSshInterop();
         var responder = new NativeSshPromptResponder(new SshProfile(), sessionId: null);
         byte[]? observed = null;
-        responder.PayloadObserver = payload => observed = payload;
+        responder.PayloadObserver = payload => observed = (byte[])typeof(SecretBuffer).GetField("_bytes", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(payload)!;
 
         await responder.RespondAsync(
             ScriptedNativeSshInterop.PasswordPrompt(),

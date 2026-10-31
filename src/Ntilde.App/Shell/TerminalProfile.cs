@@ -76,9 +76,6 @@ namespace Ntilde.Shell
         public bool UseSshAgent { get; set; } = true;
         public string? IdentityFilePath { get; set; }
 
-        [System.Text.Json.Serialization.JsonIgnore]
-        public string? Password { get; set; }
-
         // Overrides (null means use global settings)
         public string? ThemeName { get; set; }
         public string? FontFamily { get; set; }

@@ -222,7 +222,7 @@ internal sealed class RemoteMuxConnector : IDisposable
         // could reach the jump host, so none is remembered or replayed - nor the saved one offered. Nor is the saved
         // password offered to a destination the profile no longer names (retargeted): it is the profile's, for where
         // the profile points now.
-        RemoteMuxInteractionHandler.Attempt prompts = Prompts.BeginAttempt(
+        using RemoteMuxInteractionHandler.Attempt prompts = Prompts.BeginAttempt(
             interactive,
             passwordsReplayable: profile.JumpHops is not { Count: > 0 },
             savedPasswordProfile: profile,
