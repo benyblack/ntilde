@@ -66,7 +66,11 @@ invariant changes.
   revisions on color changes. Each OSC publishes once; internally shared stack frames are
   immutable, while import/export deep-copy them. The mux text renderer resolves cell overrides
   into SGR, including underlines, without changing the outer terminal palette. Its physical
-  cursor and selection remain outer-host policy. App never writes overrides to theme files. Mux spawn
+  cursor and selection remain outer-host policy. Palette replies are capped at 256 per OSC;
+  updates after the cap still apply. Local PTY replies use a nonblocking best-effort sink
+  with one quarter of the input queue reserved from reply floods; OpenSSH wrappers forward
+  that policy. Keyboard input retains its existing backpressure. App never writes overrides
+  to theme files. Mux spawn
   and presentation metadata supply host defaults; only the authoritative parser replies.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
   decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,

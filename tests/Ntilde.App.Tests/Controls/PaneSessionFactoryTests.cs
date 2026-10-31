@@ -197,6 +197,25 @@ public class PaneCapabilityGatingTests
         Assert.Empty(session.SentInput);
     }
 
+    [AvaloniaFact]
+    public void A_nonblocking_reply_sink_is_used_without_falling_back_to_keyboard_input()
+    {
+        var session = new Moq.Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        session.SetupGet(x => x.ShellCommand).Returns("fake-shell");
+        var replies = session.As<ITerminalDeviceReplySink>();
+        replies.Setup(x => x.TrySendDeviceReply(Moq.It.IsAny<string>())).Returns(false);
+        using var pane = new TerminalPane();
+        PaneSpawnTestHelpers.DisableShellIntegration(pane);
+        pane.SessionFactory = new RecordingSessionFactory(session.Object);
+        pane.CreateAndWireParser();
+        pane.InitializeSessionCore("fake-shell", string.Empty, profile: null, cols: 80, rows: 24);
+        Assert.Same(session.Object, pane.Session);
+        pane.Parser!.OnResponse?.Invoke("\u001b]4;0;rgb:0000/0000/0000\u001b\\");
+        replies.Verify(x => x.TrySendDeviceReply(Moq.It.IsAny<string>()), Moq.Times.Once);
+        session.Verify(x => x.SendInput(Moq.It.IsAny<string>()), Moq.Times.Never);
+    }
+
     /// <summary>
     /// The default - every session in the app today - still gets the reply, or DA1 goes
     /// unanswered and TUIs stall on their capability probe.

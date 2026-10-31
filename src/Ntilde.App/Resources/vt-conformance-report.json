@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "ebe77b917d20d16d47364b961f256b3dee639f36dc047f32b141a4ccadac25d2",
+  "matrixSha256": "df318d3c4c2b10efd51198606ecb99892e2f009a9d0e5b3e27a3aa60176610d9",
   "summary": {
     "totalRows": 74,
     "supportedCount": 36,
@@ -1295,7 +1295,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BRenderer",
-      "knownDeviations": "All 256 indexed colors; numeric values only; multiple index/value pairs and per-index/all reset. Explicit RGB cells stay unchanged; X11 names and special palette indices above 255 are not implemented",
+      "knownDeviations": "All 256 indexed colors; numeric values only; multiple index/value pairs and per-index/all reset. At most 256 query replies per OSC; later mutations still apply after the reply cap. Explicit RGB cells stay unchanged; X11 names and special palette indices above 255 are not implemented",
       "sourceLine": 158
     },
     {

@@ -63,10 +63,12 @@ this change. Color requests are bounded before splitting; malformed values leave
 prior state intact and replies contain only validated numeric colors/indices.
 
 The original regression set failed 11 cases before implementation while six
-malformed-input guards passed. Final local validation: VT 1,188 passed, mux
+malformed-input guards passed. Final local validation: VT 1,189 passed, mux
 1,076 passed / 20 expected platform skips, MCP 223 passed, architecture 177 passed,
-App main 7,130 passed / 51 expected skips, separate PlatformBoot 74 passed /
-4 expected font skips. The focused App/profile/factory group passed 41 cases.
+the complete App main lane before reply hardening passed 7,130 / 51 expected
+skips. After hardening, seven focused queue/pane/allocation tests passed and the
+separate PlatformBoot lane passed 75 / 4 expected font skips. Latest-head full
+App lanes are also required in CI before merge. The focused App/profile/factory group passed 41 cases.
 The 74-row conformance report has zero errors or warnings; scoped formatting and
 whitespace checks pass.
 
@@ -86,9 +88,19 @@ immutable; snapshot import/export still deep-copy them. Two additional regressio
 in-place host-theme edits after cache warmup, with and without application overrides;
 the existing cursor-render Boot regression also passes after the cache fix.
 
-Three live Skia tests reuse row caches: palette index 200, default colors and
+Four live Skia cases reuse row caches: palette index 200, default colors and
 cursor color visibly change, unchanged frames remain stable, and pop restores
-identical pixels. Existing truecolor cells keep their literal values.
+identical pixels. The foreground-only case keeps the canvas background unchanged,
+so it specifically verifies text foreground rendering. Existing truecolor cells
+keep their literal values.
+
+Palette queries send at most 256 replies per OSC, while subsequent mutations still
+apply. A near-limit query regression verifies the cap. The local PTY and OpenSSH
+wrapper reply path uses a nonblocking best-effort queue operation, reserving one
+quarter of its 1,024 slots from reply floods. Deterministic tests fill it without a
+consumer, verify keyboard room and drain/recovery, and verify pane routing never
+falls back to blocking input after a rejected device reply. User-input
+backpressure remains unchanged.
 
 ## Limits and cleanup
 
@@ -107,4 +119,4 @@ terminal binaries were not measured. See the [comparison](../../ghostty-gaps/nti
 Both app/worker pairs exited and cleanup completed. Their proofs record cleanup
 at `2026-10-31T22:11:29.675Z` and `2026-10-31T22:17:56.805Z`;
 private app-data roots and sockets were removed. The prior baseline report remains
-available [here](2026-10-31-macos-owned.md).
+available in the [macOS owned baseline report](2026-10-31-macos-owned.md).

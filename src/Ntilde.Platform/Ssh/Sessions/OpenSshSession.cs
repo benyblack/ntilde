@@ -6,7 +6,7 @@ using Ntilde.Pty;
 
 namespace Ntilde.Platform.Ssh.Sessions;
 
-public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary
+public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink
 {
     private readonly ITerminalSession _inner;
 
@@ -83,6 +83,12 @@ public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITer
         ?? throw new InvalidOperationException($"{_inner.GetType().Name} does not expose raw output.");
 
     public void SendInput(string input) => _inner.SendInput(input);
+    public bool TrySendDeviceReply(string response)
+    {
+        if (_inner is ITerminalDeviceReplySink replies) return replies.TrySendDeviceReply(response);
+        _inner.SendInput(response);
+        return true;
+    }
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);
     public void UseHostRecordingBoundary() => (_inner as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
     public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler)

@@ -64,11 +64,16 @@ public partial class AnsiParser
     {
         TerminalColorOverrides colors = _buffer.CopyColorOverrides();
         string[] values = data.Split(';');
+        int replies = 0;
         for (int i = 0; i + 1 < values.Length; i += 2)
         {
             if (!TryPaletteIndex(values[i], out int index)) continue;
             if (values[i + 1] == "?")
-                OnResponse?.Invoke(FormatOscColorResponse("4;" + index.ToString(CultureInfo.InvariantCulture), _buffer.GetPaletteColor(index, colors)));
+            {
+                // One complete 256-color palette per command; later updates still apply.
+                if (replies++ < 256)
+                    OnResponse?.Invoke(FormatOscColorResponse("4;" + index.ToString(CultureInfo.InvariantCulture), _buffer.GetPaletteColor(index, colors)));
+            }
             else if (TryParseColor(values[i + 1], out TermColor color)) colors.Palette[index] = color.ToUint();
         }
         _buffer.ApplyColorOverrides(colors);

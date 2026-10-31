@@ -364,4 +364,21 @@ public sealed class RuntimeColorTests
         if (withOverride) Assert.Equal(0xff123456u, after.Theme.Foreground.ToUint());
     }
 
+
+    [Fact]
+    public void Palette_query_flood_is_capped_but_later_mutations_still_apply()
+    {
+        var parser = new AnsiParser(new TerminalBuffer(10, 3));
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        parser.Process(Osc("4;" + string.Join(';', Enumerable.Repeat("0;?", 8192))));
+        Assert.Equal(256, replies.Count);
+        replies.Clear();
+        parser.Process(Osc("4;" + string.Join(';', Enumerable.Repeat("0;?", 256)) + ";0;#123456;0;?"));
+        Assert.Equal(256, replies.Count);
+        replies.Clear();
+        parser.Process(Osc("4;0;?"));
+        Assert.Equal(new[] { Osc("4;0;rgb:1212/3434/5656") }, replies);
+    }
+
 }

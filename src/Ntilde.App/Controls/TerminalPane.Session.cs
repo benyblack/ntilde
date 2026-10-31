@@ -714,7 +714,8 @@ namespace Ntilde.Controls
             {
                 Parser!.OnResponse += response =>
                 {
-                    Session?.SendInput(response);
+                    if (Session is ITerminalDeviceReplySink replies) replies.TrySendDeviceReply(response);
+                    else Session?.SendInput(response);
                 };
             }
 

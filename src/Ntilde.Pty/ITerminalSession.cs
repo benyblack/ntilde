@@ -10,6 +10,12 @@ namespace Ntilde.Pty
         event Action<string>? OnOutputReceived;
     }
 
+    /// <summary>Optional nonblocking, best-effort terminal device replies; never apply user-input backpressure.</summary>
+    public interface ITerminalDeviceReplySink
+    {
+        bool TrySendDeviceReply(string response);
+    }
+
     /// <summary>Session lifetime: identity, resize, process state.</summary>
     public interface ITerminalLifecycle : IDisposable
     {

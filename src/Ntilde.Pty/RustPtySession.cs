@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Ntilde.Pty
 {
-    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary
+    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink
     {
         public Guid Id { get; } = Guid.NewGuid();
         private readonly PtySafeHandle _handle;
@@ -249,6 +249,7 @@ namespace Ntilde.Pty
         // without unbounded memory growth.
         private readonly BlockingCollection<byte[]> _inputQueue = new BlockingCollection<byte[]>(boundedCapacity: 1024);
         private Thread? _writeLoopThread;
+        private readonly object _deviceReplyGate = new();
 
         // UTF-8 decoder with state - handles partial multi-byte sequences across reads.
         // Utf8ChunkDecoder rather than Encoding.UTF8.GetDecoder(): byte-identical output
@@ -1350,6 +1351,32 @@ namespace Ntilde.Pty
             }
             catch (OperationCanceledException) { /* session disposing — drop the write */ }
             catch (InvalidOperationException) { /* adding completed — session closing */ }
+        }
+
+        public bool TrySendDeviceReply(string response)
+        {
+            if (_handle.IsClosed || _handle.IsInvalid || !TryEnqueueDeviceReply(_inputQueue, _deviceReplyGate, response)) return false;
+            _recorder?.RecordInput(response);
+            return true;
+        }
+
+        internal static bool TryEnqueueDeviceReply(BlockingCollection<byte[]> queue, object gate, string response)
+        {
+            // Device output must not fill the queue that UI keyboard/paste input uses. The
+            // single writer still preserves ordering, but replies stop at 3/4 capacity.
+            // Serialize reply producers (parser and host preference notifications) around the
+            // watermark check. The consumer never takes this gate and can remain blocked in native I/O.
+            if (response.Length > 65536) return false;
+            lock (gate)
+            {
+                try
+                {
+                    int reserve = Math.Max(1, queue.BoundedCapacity / 4);
+                    if (queue.Count >= queue.BoundedCapacity - reserve) return false;
+                    return queue.TryAdd(Encoding.UTF8.GetBytes(response));
+                }
+                catch (InvalidOperationException) { return false; } // completed/disposed during shutdown
+            }
         }
 
         private void WriteLoop()

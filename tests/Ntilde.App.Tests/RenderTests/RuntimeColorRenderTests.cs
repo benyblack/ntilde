@@ -10,6 +10,7 @@ public sealed class RuntimeColorRenderTests
     [AvaloniaTheory]
     [InlineData("\u001b[?25l\u001b[48;5;200m \u001b[0m", "4;200;#123456")]
     [InlineData("\u001b[?25lText", "10;#123456;#789abc")]
+    [InlineData("\u001b[?25lText", "10;#123456")]
     [InlineData("", "12;#123456")]
     public void Live_row_cache_draws_runtime_colors_and_pop_restores_identical_pixels(string content, string change)
     {
