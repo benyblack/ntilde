@@ -56,6 +56,15 @@ invariant changes.
   dark/light background transitions. DECSTR preserves the subscription, RIS clears it, and
   complete parser snapshots carry it without replacing the receiving host's colors. The mux
   alone writes shared-session device replies; downstream GUI parsers never duplicate them.
+- **Runtime colors belong to the terminal session, not saved theme settings.** VT parses numeric
+  OSC colors and owns foreground/background/cursor/selection overrides, the 256-entry palette,
+  and a newest-16-frame color stack. Null entries follow host defaults, including across a
+  theme change while a frame is saved. Colors are global across main/alternate screens;
+  DECSTR preserves them and RIS clears overrides and stack. Complete snapshots deep-copy
+  state and validate every frame before import/resize; absent legacy state clears it.
+  Render snapshots resolve overrides against the host theme and invalidate row picture
+  revisions on color changes. App never writes these overrides to theme files. Mux spawn
+  and presentation metadata supply host defaults; only the authoritative parser replies.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
   decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,
   and owns DECSDM state, page/scroll-region clipping and retirement. Clip metadata is copied into

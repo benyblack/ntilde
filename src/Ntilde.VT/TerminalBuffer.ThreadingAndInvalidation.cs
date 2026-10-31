@@ -380,14 +380,14 @@ namespace Ntilde.VT
                     {
                         // A palette of its own: the shared one belongs to the live path, and a live
                         // frame keeps drawing with it after releasing the read lock.
-                        theme = CreateRenderThemeSnapshot_NoLock(new TermColor[16]);
+                        theme = CreateRenderThemeSnapshot_NoLock(new TermColor[256]);
                         dirtySpans = CaptureIsolatedRows_NoLock(rowsData, absDisplayStart, viewportRows, viewportCols);
                     }
                     else
                     {
                         lock (_liveSnapshotStateGate)
                         {
-                            theme = CreateRenderThemeSnapshot_NoLock(_cachedAnsiPalette ??= new TermColor[16]);
+                            theme = CreateRenderThemeSnapshot_NoLock(_cachedAnsiPalette ??= new TermColor[256]);
                             dirtySpans = CaptureLiveRows_NoLock(rowsData, absDisplayStart, viewportRows, viewportCols);
                         }
                     }
@@ -633,35 +633,21 @@ namespace Ntilde.VT
         }
 
         /// <summary>
-        /// Fills <paramref name="palette"/> (16 entries) from the current theme and wraps it. The
+        /// Fills <paramref name="palette"/> (256 entries) from the current theme and wraps it. The
         /// live path passes its one reused array, to avoid a per-frame allocation; isolated
         /// captures pass a fresh one.
         /// </summary>
         private RenderThemeSnapshot CreateRenderThemeSnapshot_NoLock(TermColor[] palette)
         {
-            palette[0] = Theme.Black;
-            palette[1] = Theme.Red;
-            palette[2] = Theme.Green;
-            palette[3] = Theme.Yellow;
-            palette[4] = Theme.Blue;
-            palette[5] = Theme.Magenta;
-            palette[6] = Theme.Cyan;
-            palette[7] = Theme.White;
-            palette[8] = Theme.BrightBlack;
-            palette[9] = Theme.BrightRed;
-            palette[10] = Theme.BrightGreen;
-            palette[11] = Theme.BrightYellow;
-            palette[12] = Theme.BrightBlue;
-            palette[13] = Theme.BrightMagenta;
-            palette[14] = Theme.BrightCyan;
-            palette[15] = Theme.BrightWhite;
+            var theme = EffectiveRenderTheme();
+            for (int i = 0; i < palette.Length; i++) palette[i] = GetPaletteColor(i);
             return new RenderThemeSnapshot
             {
-                Foreground = Theme.Foreground,
-                Background = Theme.Background,
-                CursorColor = Theme.CursorColor,
+                Foreground = theme.Foreground,
+                Background = theme.Background,
+                CursorColor = theme.CursorColor,
                 AnsiPalette = palette,
-                Source = Theme
+                Source = theme
             };
         }
 

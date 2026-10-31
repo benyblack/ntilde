@@ -52,11 +52,11 @@ public sealed class MuxTerminalSessionFactoryTests
         var (mux, factory, _) = Build();
         using (mux) using (factory.Host)
         {
-            mux.Factory.StartupOutput = "\u001b[?996n";
-            var session = Assert.IsType<MuxClientSession>(factory.CreatePersistent(Local() with { DefaultBg = uint.MaxValue }).Session);
+            mux.Factory.StartupOutput = "\u001b[?996n\u001b]10;?\a\u001b]12;?\a\u001b]4;1;?\a";
+            var session = Assert.IsType<MuxClientSession>(factory.CreatePersistent(Local() with { DefaultBg = uint.MaxValue, DefaultFg = 0xff112233, CursorColor = 0xff445566, AnsiPalette = Enumerable.Repeat(0xffabcdefu, 16).ToArray() }).Session);
             Assert.False(session.IsAttached);
-            await TestWait.UntilAsync(() => !mux.Fake(session.Id).SentInput.IsEmpty, "local startup color preference used the host background");
-            Assert.Equal("\u001b[?997;2n", Assert.Single(mux.Fake(session.Id).SentInput));
+            await TestWait.UntilAsync(() => mux.Fake(session.Id).SentInput.Count >= 4, "local startup color preference used the host background");
+            Assert.Equal(new[] { "\u001b[?997;2n", "\u001b]10;rgb:1111/2222/3333\u001b\\", "\u001b]12;rgb:4444/5555/6666\u001b\\", "\u001b]4;1;rgb:abab/cdcd/efef\u001b\\" }, mux.Fake(session.Id).SentInput.ToArray());
         }
     }
 

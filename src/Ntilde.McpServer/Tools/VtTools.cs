@@ -290,7 +290,7 @@ public sealed class VtTools
             while (i < body.Length && char.IsDigit(body[i])) i++;
             string code = body[..i];
             string key = "OSC:" + code;
-            return SequenceTable.TryGetValue(key, out var desc)
+            return (ContractSequenceTable.TryGetValue(key, out var desc) || SequenceTable.TryGetValue(key, out desc))
                 ? $"OSC {code}: {desc}"
                 : $"OSC sequence (code '{code}'): not in the curated table.";
         }

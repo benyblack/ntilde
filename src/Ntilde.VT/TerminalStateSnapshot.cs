@@ -74,6 +74,10 @@ namespace Ntilde.VT
         [JsonPropertyName("screen_alt")] public TerminalCursorState ScreenCursorAlt { get; set; } = new();
         [JsonPropertyName("restore_main_on_alt_exit")] public bool RestoreMainCursorOnAltExit { get; set; }
 
+        /// <summary>Stream-owned color overrides and bounded stack; absent legacy state resets both.</summary>
+        [JsonPropertyName("colors"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TerminalRuntimeColors? Colors { get; set; }
+
         [JsonPropertyName("sgr")] public TerminalSgrState Sgr { get; set; } = new();
         [JsonPropertyName("modes")] public TerminalModeState Modes { get; set; } = new();
         [JsonPropertyName("kitty_kbd")] public TerminalKittyKeyboardState KittyKeyboard { get; set; } = new();

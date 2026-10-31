@@ -160,13 +160,13 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
     [Fact]
     public async Task Remote_spawn_carries_the_background_before_the_first_color_query()
     {
-        _remote.Shells.StartupOutput = "\u001b[?996n";
-        var result = _factory.CreatePersistent(Ssh() with { DefaultBg = uint.MaxValue });
+        _remote.Shells.StartupOutput = "\u001b[?996n\u001b]10;?\a\u001b]12;?\a\u001b]4;1;?\a";
+        var result = _factory.CreatePersistent(Ssh() with { DefaultBg = uint.MaxValue, DefaultFg = 0xff112233, CursorColor = 0xff445566, AnsiPalette = Enumerable.Repeat(0xffabcdefu, 16).ToArray() });
         var session = Assert.IsType<MuxClientSession>(result.Session);
         Assert.False(session.IsAttached);
         var child = Assert.Single(_remote.Shells.Sessions);
-        await TestWait.UntilAsync(() => !child.SentInput.IsEmpty, "remote startup color preference used the host background");
-        Assert.Equal("\u001b[?997;2n", Assert.Single(child.SentInput));
+        await TestWait.UntilAsync(() => child.SentInput.Count >= 4, "remote startup color preference used the host background");
+        Assert.Equal(new[] { "\u001b[?997;2n", "\u001b]10;rgb:1111/2222/3333\u001b\\", "\u001b]12;rgb:4444/5555/6666\u001b\\", "\u001b]4;1;rgb:abab/cdcd/efef\u001b\\" }, child.SentInput.ToArray());
     }
 
     [Fact]

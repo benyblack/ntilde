@@ -148,10 +148,30 @@ The VT engine is **purely deterministic**:
 
 This enables deterministic replay, cross-platform parity testing, and safe refactoring.
 
-### 3.4 Color preference
+### 3.4 Runtime terminal colors
+
+`TerminalBuffer` owns stream color overrides separately from its host `Theme`. Numeric
+OSC 4, 10/11/12/17/19 mutations update effective render snapshots and queries; explicit
+truecolor cells stay literal, while default and indexed cells follow current overrides.
+OSC 104 and 110/111/112/117/119 reset overrides to current host defaults. X11 named colors,
+other dynamic slots and the separate OSC 21 protocol are outside this implementation.
+
+OSC 30001/30101 save/restore overrides for the five dynamic colors and 256 palette slots.
+The stack is session-wide, with the newest 16 frames retained and silent empty pops.
+Unset entries retain host-following semantics, so popping cannot restore a stale saved
+user theme after a host theme change. DECSTR preserves colors; RIS clears overrides and
+stack. The additive complete-state `colors` field carries bounded, validated deep copies
+through mux attach and new replay snapshots; legacy omission clears state on restore.
+Render theme/palette snapshots and row revisions change together, including extended
+palette entries and cached row pictures. Host defaults reach a persistent parser before
+startup output and through later presentation updates; downstream views use their own
+host themes with the same stream overrides.
+
+### 3.5 Color preference
 
 Color preference queries (`CSI ? 996 n`) and opt-in updates (mode 2031) use the
-host-provided effective default background. The pure RGB luma classifier is shared
+effective background: a stream override takes precedence over the host-provided default.
+The pure RGB luma classifier is shared
 with UI theming; VT performs no OS/theme lookup. Only dark/light transitions emit
 updates. The subscription travels with parser state while host colors remain local
 configuration. Existing profile-theme wiring supplies local panes; mux presentation

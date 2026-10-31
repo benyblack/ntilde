@@ -58,10 +58,10 @@ namespace Ntilde.VT
             }
 
             int split = osc.IndexOf(';');
+            string code = split < 0 ? osc : osc.Substring(0, split);
+            string data = split < 0 ? string.Empty : osc.Substring(split + 1);
+            if (HandleColorOsc(code, data)) return;
             if (split <= 0) return;
-
-            string code = osc.Substring(0, split);
-            string data = osc.Substring(split + 1);
 
             switch (code)
             {
@@ -88,14 +88,6 @@ namespace Ntilde.VT
 
                 case "9":
                     HandleOscNotificationOrProgress(data);
-                    break;
-
-                case "10":
-                    HandleOscColorQuery(10, data);
-                    break;
-
-                case "11":
-                    HandleOscColorQuery(11, data);
                     break;
 
                 // OSC 52: clipboard write (issue #268). See HandleOscClipboard for the format
@@ -194,54 +186,6 @@ namespace Ntilde.VT
                 }
 
                 OnDesktopNotification?.Invoke(text);
-            }
-        }
-
-        // OSC 10/11: dynamic foreground/background color queries.
-        // Query form is "10;?" / "11;?" (BEL and ST termination are both already
-        // normalized away by the caller before HandleOsc ever sees this string).
-        // xterm answers with "OSC 1x ; rgb:RRRR/GGGG/BBBB ST", 16 bits per channel
-        // (8-bit channel replicated: value * 0x101). OpenCode and vim/nvim send this
-        // at startup with a ~1s timeout to detect a dark/light theme; never responding
-        // was the bug (#265), so an unset provider still answers with a sane default
-        // instead of staying silent.
-        //
-        // xterm's "rgb:RRRR/GGGG/BBBB" dynamic-color-response format: each 8-bit channel is
-        // widened to 16 bits by replicating the byte (0xRR -> 0xRRRR, i.e. value * 0x101).
-        // xterm's dynamic-color OSC accepts multiple values chained in one sequence, each
-        // advancing to the next color slot: "OSC 10;?;?" queries fg (slot 10) then bg
-        // (slot 11), and xterm sends two separate replies for it. A trailing ';' is also
-        // legal (e.g. "OSC 11;?;") and simply yields one extra, ignored slot. Treating the
-        // whole payload as a single "is it exactly \"?\"" check — as the original code did —
-        // means either of those legal, in-the-wild spellings produces silence: the same
-        // stall #265 fixed, just for a different query shape. Splitting on ';' and walking
-        // an incrementing slot code answers every "?" we understand (10, 11) and silently
-        // skips slots we don't (e.g. 12, the cursor color) instead of dropping the request.
-        private void HandleOscColorQuery(int startCode, string data)
-        {
-            string[] slots = data.Split(';');
-            int slotCode = startCode;
-            foreach (string slot in slots)
-            {
-                if (slot == "?")
-                {
-                    TermColor? color = slotCode switch
-                    {
-                        10 => DefaultForeground ?? TermColor.FromRgb(0xC0, 0xC0, 0xC0),
-                        11 => DefaultBackground ?? TermColor.FromRgb(0x00, 0x00, 0x00),
-                        _ => null
-                    };
-
-                    if (color != null)
-                    {
-                        OnResponse?.Invoke(FormatOscColorResponse(slotCode.ToString(System.Globalization.CultureInfo.InvariantCulture), color.Value));
-                    }
-                }
-                // Non-"?" slots (e.g. "#ff0000" to *set* a color, or an empty slot from a
-                // trailing ';') are not supported for runtime palette changes; ignore them
-                // safely rather than attempting to parse/apply an unsupported request.
-
-                slotCode++;
             }
         }
 

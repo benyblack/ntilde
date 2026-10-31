@@ -107,6 +107,7 @@ namespace Ntilde.VT
             _lastGraphicChar = string.IsNullOrEmpty(state.LastGraphicChar) ? null : state.LastGraphicChar[0];
             _inBandResizeReportsEnabled = state.InBandResizeReportsEnabled;
             _colorSchemeReportsEnabled = state.ColorSchemeReportsEnabled;
+            RefreshColorScheme(notify: false);
 
             // Deliberately not restored: the text-batching buffer (always empty between Process()
             // calls - AnsiParserStateTests asserts it) and the per-batch cursor-visibility flags

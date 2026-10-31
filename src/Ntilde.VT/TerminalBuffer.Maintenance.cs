@@ -419,6 +419,8 @@ namespace Ntilde.VT
                 ResetSavedCursorStateToDefaultsNoLock(_screenCursorStates.Main);
                 ResetSavedCursorStateToDefaultsNoLock(_screenCursorStates.Alt);
 
+                ImportRuntimeColors(null);
+
                 // Kitty keyboard protocol: RIS clears both per-screen flag stacks so the
                 // terminal comes back up in legacy key encoding.
                 Modes.KittyKeyboard.Reset();
@@ -441,6 +443,7 @@ namespace Ntilde.VT
                 // snapshots and everything derived from them). Must happen under the write lock
                 // so a snapshot captured after this call always observes the new epoch.
                 _renderThemeEpoch++;
+                _runtimeTheme = null;
 
                 // Sync current buffer defaults to new theme. SyncDefault*ToTheme keeps the
                 // default flag - a bare CurrentForeground assignment would clear the very flag

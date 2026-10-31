@@ -31,6 +31,66 @@ public sealed class HeadlessColorSchemeTests
     }
 
     [Fact]
+    public async Task Startup_color_queries_use_the_wire_defaults_before_attach()
+    {
+        using var host = new MuxTestHost();
+        host.Factory.StartupOutput = "\u001b]10;?;?;?\a\u001b]17;?\a\u001b]19;?\a\u001b]4;1;?\a";
+        using var client = await host.ConnectClientAsync();
+        var request = new SpawnParams
+        {
+            Command = "scripted",
+            DefaultFg = 0xff112233,
+            DefaultBg = 0xff445566,
+            CursorColor = 0xff778899,
+            SelectionFg = 0xff123456,
+            SelectionBg = 0xffabcdef,
+            AnsiPalette = Enumerable.Repeat(0xffaabbccu, 16).ToArray()
+        };
+        request = JsonSerializer.Deserialize(JsonSerializer.Serialize(request, MuxJsonContext.Default.SpawnParams), MuxJsonContext.Default.SpawnParams)!;
+        Guid id = await client.SpawnAsync(request, TestContext.Current.CancellationToken);
+        await host.Mux(id).FlushAsync();
+        await TestWait.UntilAsync(() => host.Fake(id).SentInput.Count >= 6, "all startup color replies reached the child");
+        Assert.Equal(new[]
+        {
+            "\u001b]10;rgb:1111/2222/3333\u001b\\", "\u001b]11;rgb:4444/5555/6666\u001b\\",
+            "\u001b]12;rgb:7777/8888/9999\u001b\\", "\u001b]17;rgb:abab/cdcd/efef\u001b\\",
+            "\u001b]19;rgb:1212/3434/5656\u001b\\", "\u001b]4;1;rgb:aaaa/bbbb/cccc\u001b\\"
+        }, host.Fake(id).SentInput.ToArray());
+    }
+
+    [Fact]
+    public async Task Attach_snapshot_and_presentation_changes_preserve_the_application_color_stack()
+    {
+        var fake = new ScriptedTerminalSession(new TerminalSessionRequest("scripted", "", "", 80, 24, null, false, null));
+        using var mux = new HeadlessTerminalSession(Guid.NewGuid(), fake, new HeadlessSessionOptions { ForceConPtyFiltering = false });
+        var sink = new RecordingFrameSink();
+        var dark = new MuxPresentation { Cols = 80, Rows = 24, DefaultFg = 0xff112233, DefaultBg = 0xff000000 };
+        mux.PostAttach(sink, 1, 0, dark, MuxProtocol.MaxFrameBytes);
+        await mux.FlushAsync();
+        fake.Emit("\u001b]30001\a\u001b]10;#abcdef\a");
+        await mux.FlushAsync();
+        mux.PostResize(sink, 80, 24, dark with { DefaultFg = 0xff445566 });
+        await mux.FlushAsync();
+        var snapshot = await mux.InvokeAsync(() =>
+        {
+            var state = mux.Buffer.ExportState(0);
+            state.Parser = mux.Parser.ExportState();
+            return TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(state));
+        });
+        var target = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(target) { DefaultForeground = TermColor.FromUint(0xff445566) };
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        TerminalStateTransfer.Restore(target, parser, snapshot);
+        parser.Process("\u001b]10;?\a\u001b]30101\a\u001b]10;?\a");
+        Assert.Equal(new[] { "\u001b]10;rgb:abab/cdcd/efef\u001b\\", "\u001b]10;rgb:4444/5555/6666\u001b\\" }, replies);
+        fake.Emit("\u001b]10;?\a\u001b]30101\a\u001b]10;?\a");
+        await mux.FlushAsync();
+        await TestWait.UntilAsync(() => fake.SentInput.Count >= 2, "the authoritative runtime color replies reached the child");
+        Assert.Equal(replies, fake.SentInput.ToArray());
+    }
+
+    [Fact]
     public async Task Presentation_updates_and_reattach_preserve_the_color_scheme_subscription()
     {
         var fake = new ScriptedTerminalSession(new TerminalSessionRequest("scripted", "", "", 80, 24, null, false, null));

@@ -19,10 +19,15 @@ namespace Ntilde.VT
             set
             {
                 _defaultBackground = value;
-                int scheme = TermColor.IsDark(value ?? TermColor.Black) ? 1 : 2;
-                int previous = Interlocked.Exchange(ref _colorScheme, scheme);
-                if (previous != scheme && Volatile.Read(ref _colorSchemeReportsEnabled)) SendColorSchemeReport(scheme);
+                RefreshColorScheme();
             }
+        }
+
+        private void RefreshColorScheme(bool notify = true)
+        {
+            int scheme = TermColor.IsDark(_buffer.RuntimeBackground ?? _defaultBackground ?? TermColor.Black) ? 1 : 2;
+            int previous = Interlocked.Exchange(ref _colorScheme, scheme);
+            if (notify && previous != scheme && Volatile.Read(ref _colorSchemeReportsEnabled)) SendColorSchemeReport(scheme);
         }
 
         /// <summary>Fixed, numeric-only Contour DSR: 1 is dark and 2 is light.</summary>

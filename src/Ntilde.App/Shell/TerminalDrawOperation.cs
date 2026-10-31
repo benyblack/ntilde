@@ -3195,16 +3195,10 @@ namespace Ntilde.Shell
 
         private static TermColor ResolvePaletteIndex(int index, RenderThemeSnapshot themeSnapshot)
         {
-            // 0-15 come from the active theme palette.
-            if (index < 16)
-            {
-                if (themeSnapshot.AnsiPalette != null && (uint)index < (uint)themeSnapshot.AnsiPalette.Length)
-                {
-                    return themeSnapshot.AnsiPalette[index];
-                }
-
-                return themeSnapshot.Foreground;
-            }
+            if (themeSnapshot.AnsiPalette != null && (uint)index < (uint)themeSnapshot.AnsiPalette.Length)
+                return themeSnapshot.AnsiPalette[index];
+            // Legacy/hand-built snapshots may carry only sixteen palette entries.
+            if (index < 16) return themeSnapshot.Foreground;
 
             // 16-231: xterm 6x6x6 cube.
             if (index < 232)

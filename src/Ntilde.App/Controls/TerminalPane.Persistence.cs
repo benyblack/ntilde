@@ -720,6 +720,11 @@ namespace Ntilde.Controls
                 SupportsSixelScrolling = true,
                 DefaultFg = theme?.Foreground.ToUint(),
                 DefaultBg = theme?.Background.ToUint(),
+                CursorColor = theme?.CursorColor.ToUint(),
+                SelectionFg = theme?.SelectionForeground?.ToUint(),
+                SelectionBg = theme?.SelectionBackground?.ToUint(),
+                AnsiPalette = theme is null ? null : Enumerable.Range(0, 16)
+                    .Select(i => theme.GetAnsiColor(i % 8, i >= 8).ToUint()).ToArray(),
                 KittyKeyboardEnabled = _settings?.EnableKittyKeyboardProtocol ?? true,
                 KittyKeyboardSupportedFlags = KittyKeyboardState.SupportedFlags,
             };

@@ -120,7 +120,7 @@ namespace Ntilde.Tests
         }
 
         [Fact]
-        public void Osc11_SetForm_IsIgnoredSafely()
+        public void Osc11_SetForm_IsSilentAndChangesTheSubsequentQuery()
         {
             var buffer = new TerminalBuffer(80, 24);
             var parser = new AnsiParser(buffer)
@@ -135,10 +135,10 @@ namespace Ntilde.Tests
 
             Assert.Empty(responses);
 
-            // Parser state must not be corrupted: a subsequent query still works.
+            // Setting is silent but the next query sees the runtime override.
             parser.Process("\u001b]11;?\u0007");
             var response2 = Assert.Single(responses);
-            Assert.Equal("\u001b]11;rgb:1111/2222/3333\u001b\\", response2);
+            Assert.Equal("\u001b]11;rgb:ffff/0000/0000\u001b\\", response2);
         }
 
         [Fact]
