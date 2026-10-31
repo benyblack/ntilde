@@ -350,18 +350,23 @@ namespace Ntilde.Shell
         [System.Text.Json.Serialization.JsonIgnore]
         public bool CredentialMigrationPending { get; private set; }
 
+        private bool _credentialMigrationRequiresReload;
+
         internal static TerminalSettings LoadFromPath(string settingsPath, VaultService? migrationVault = null)
         {
             bool migrationReady = LegacyProfilePasswordMigration.TryMigrate(settingsPath, () => migrationVault ?? new VaultService());
-            TerminalSettings settings = ReadSettingsOrRecover(settingsPath, allowRepair: migrationReady);
+            TerminalSettings settings = ReadSettingsOrRecover(settingsPath, allowRepair: migrationReady, out string loadedPath);
+            if (!migrationReady)
+                settings._credentialMigrationRequiresReload = !LegacyProfilePasswordMigration.ReconcileLoadedIds(settingsPath, loadedPath, settings);
             ValidateLoadedProfiles(settings);
             ValidateDefaultProfile(settings);
             settings.CredentialMigrationPending = !migrationReady;
             return settings;
         }
 
-        private static TerminalSettings ReadSettingsOrRecover(string settingsPath, bool allowRepair)
+        private static TerminalSettings ReadSettingsOrRecover(string settingsPath, bool allowRepair, out string loadedPath)
         {
+            loadedPath = settingsPath;
             if (!File.Exists(settingsPath)) return new TerminalSettings();
             try
             {
@@ -371,12 +376,13 @@ namespace Ntilde.Shell
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[Settings] '{settingsPath}' is unreadable ({ex.Message}); trying backup.");
-                return RecoverSettings(settingsPath, allowRepair);
+                return RecoverSettings(settingsPath, allowRepair, out loadedPath);
             }
         }
 
-        private static TerminalSettings RecoverSettings(string settingsPath, bool allowRepair)
+        private static TerminalSettings RecoverSettings(string settingsPath, bool allowRepair, out string loadedPath)
         {
+            loadedPath = string.Empty;
             // Quarantine the evidence before recovering from the last good copy (#167).
             try { File.Copy(settingsPath, settingsPath + ".corrupt", overwrite: true); }
             catch { /* best effort */ }
@@ -386,6 +392,7 @@ namespace Ntilde.Shell
                 System.Diagnostics.Debug.WriteLine($"[Settings] Backup '{settingsPath}.bak' is also unreadable; falling back to defaults.");
                 return new TerminalSettings();
             }
+            loadedPath = settingsPath + ".bak";
             // A locked keyring may have left the only legacy credential in the backup. Repairing
             // with the deserialized (credential-free) settings would destroy that source copy.
             if (!allowRepair) return fromBackup;
@@ -503,6 +510,11 @@ namespace Ntilde.Shell
         {
             try
             {
+                if (_credentialMigrationRequiresReload)
+                {
+                    error = "Legacy profile identities could not be loaded safely. Unlock credential storage and restart Ntilde before saving settings. The original files are preserved.";
+                    return false;
+                }
                 if (!LegacyProfilePasswordMigration.TryMigrate(settingsPath, vaultFactory))
                 {
                     CredentialMigrationPending = true;

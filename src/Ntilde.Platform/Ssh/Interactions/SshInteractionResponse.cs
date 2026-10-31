@@ -54,8 +54,21 @@ public sealed class SshInteractionResponse : IDisposable
         new() { Secret = secret, FilledFromStore = true };
 
 
-    public static SshInteractionResponse FromKeyboardResponses(params string[] responses) =>
-        new() { KeyboardResponses = (responses ?? Array.Empty<string>()).Select(value => SecretBuffer.FromText(value)).ToArray() };
+    public static SshInteractionResponse FromKeyboardResponses(params string[] responses)
+    {
+        responses ??= Array.Empty<string>();
+        var buffers = new SecretBuffer[responses.Length];
+        try
+        {
+            for (int index = 0; index < buffers.Length; index++) buffers[index] = SecretBuffer.FromText(responses[index]);
+            return new() { KeyboardResponses = buffers };
+        }
+        catch
+        {
+            foreach (SecretBuffer? buffer in buffers) buffer?.Dispose();
+            throw;
+        }
+    }
     public void Dispose()
     {
         _secret?.Dispose();

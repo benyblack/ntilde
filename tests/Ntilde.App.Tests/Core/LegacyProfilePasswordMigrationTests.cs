@@ -277,6 +277,101 @@ public sealed class LegacyProfilePasswordMigrationTests : IDisposable
         Assert.Equal("recoverable", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Duplicate_identity_repair_is_rejected_but_valid_duplicate_ids_are_preserved(bool allValid)
+    {
+        Guid secondId = Guid.NewGuid();
+        var first = new { Id = (Guid?)_profileId, Name = "same", SshHost = "host", SshUser = "ops", Password = "first" };
+        var second = new { Id = allValid ? (Guid?)secondId : null, Name = "same", SshHost = "host", SshUser = "ops", Password = "second" };
+        string primary = JsonSerializer.Serialize(new { Profiles = new[] { first, second } });
+        string backup = JsonSerializer.Serialize(new { Profiles = new[] { second, first } });
+        File.WriteAllText(SettingsPath, primary);
+        File.WriteAllText(SettingsPath + ".bak", backup);
+        var store = new InMemorySecretStore();
+        var vault = new VaultService(store);
+
+        vault.SetSecret("SSH:same:ops@host", "ambiguous-name-alias");
+
+        Assert.Equal(allValid, LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        if (allValid)
+        {
+            Assert.Equal("first", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
+            Assert.Equal("second", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(secondId)));
+        }
+        else
+        {
+            Assert.Equal(primary, File.ReadAllText(SettingsPath));
+            Assert.Equal(backup, File.ReadAllText(SettingsPath + ".bak"));
+            Assert.Null(vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
+        }
+    }
+
+    [Fact]
+    public void Saving_after_unlock_keeps_the_repaired_id_even_when_profile_metadata_was_edited()
+    {
+        File.WriteAllText(SettingsPath, """{"Profiles":[{"Name":"old","SshHost":"host","Password":"saved"}]}""");
+        var locked = new VaultService(new DiscardingStore(false));
+        TerminalSettings settings = TerminalSettings.LoadFromPath(SettingsPath, locked);
+        TerminalProfile profile = settings.Profiles[0];
+        profile.Name = "edited while locked";
+        Guid loadedId = profile.Id;
+        var vault = new VaultService(new InMemorySecretStore());
+
+        Assert.True(settings.TrySaveToPath(SettingsPath, () => vault, out string error), error);
+        Assert.Equal(loadedId, profile.Id);
+        Assert.Equal("saved", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(profile.Id)));
+        TerminalSettings reloaded = TerminalSettings.LoadFromPath(SettingsPath, vault);
+        Assert.Equal(profile.Id, reloaded.Profiles[0].Id);
+        Assert.Equal("edited while locked", reloaded.Profiles[0].Name);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Unverified_legacy_promotion_keeps_plaintext_sources(bool throwOnWrite)
+    {
+        WriteLegacy("plaintext");
+        string original = File.ReadAllText(SettingsPath);
+        var vault = new VaultService(new LegacyOnlyStore(throwOnWrite));
+        Assert.False(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        Assert.Equal(original, File.ReadAllText(SettingsPath));
+        Assert.Equal(original, File.ReadAllText(SettingsPath + ".bak"));
+        using var usable = vault.GetSshPasswordBufferForProfile(new TerminalProfile { Id = _profileId, Name = "old", SshUser = "ops", SshHost = "prod.internal" });
+        Assert.Equal("newer-legacy", usable?.DangerousGetString());
+    }
+
+    [Fact]
+    public void Sibling_profiles_do_not_consume_each_others_shared_alias_during_migration()
+    {
+        Guid siblingId = Guid.NewGuid();
+        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(new
+        {
+            Profiles = new[]
+            {
+                new { Id = _profileId, Name = "one", SshUser = "ops", SshHost = "host", Password = "first" },
+                new { Id = siblingId, Name = "two", SshUser = "ops", SshHost = "host", Password = "second" }
+            }
+        }));
+        var vault = new VaultService(new InMemorySecretStore());
+        vault.SetSecret("SSH:ops@host", "unscoped");
+        Assert.True(LegacyProfilePasswordMigration.TryMigrate(SettingsPath, () => vault));
+        Assert.Equal("first", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
+        Assert.Equal("second", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(siblingId)));
+    }
+
+    private sealed class LegacyOnlyStore(bool throwOnWrite) : ISecretStore
+    {
+        public bool IsAvailable => true;
+        public string? Read(string key) => key == "SSH:old:ops@prod.internal" ? "newer-legacy" : null;
+        public void Write(string key, string value)
+        {
+            if (throwOnWrite) throw new InvalidOperationException("write refused");
+        }
+        public bool Delete(string key) => false;
+    }
+
     private sealed class VerificationReadFailureStore : ISecretStore
     {
         public Dictionary<string, string> Values { get; } = new();

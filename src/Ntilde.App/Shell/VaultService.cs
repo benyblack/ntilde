@@ -203,12 +203,12 @@ namespace Ntilde.Shell
             yield return $"profile_{profile.Id}_password";
         }
 
-        public static IEnumerable<string> GetSshPasswordKeysForProfile(TerminalProfile profile)
+        public static IEnumerable<string> GetSshPasswordKeysForProfile(TerminalProfile profile, bool includeSharedAlias = true)
         {
             ArgumentNullException.ThrowIfNull(profile);
 
             yield return GetCanonicalSshProfileKey(profile.Id);
-            foreach (string legacyKey in GetLegacySshKeys(profile))
+            foreach (string legacyKey in GetLegacySshKeys(profile, includeSharedAlias))
             {
                 yield return legacyKey;
             }
@@ -255,32 +255,44 @@ namespace Ntilde.Shell
         }
 
         /// <summary>The caller owns the returned credential buffer.</summary>
-        public SecretBuffer? GetSshPasswordBufferForProfile(TerminalProfile profile, bool strictRead = false)
+        public SecretBuffer? GetSshPasswordBufferForProfile(TerminalProfile profile, bool strictRead = false, bool includeSharedAlias = true)
         {
             ArgumentNullException.ThrowIfNull(profile);
             if (!_store.IsAvailable) return null;
-            try { return FindSshPasswordBuffer(profile); }
+            try { return FindSshPasswordBuffer(profile, strictRead, includeSharedAlias); }
             // Abort the entire lookup. A failed canonical read must never fall through to a stale alias.
             catch (Exception) when (!strictRead) { return null; }
         }
 
-        private SecretBuffer? FindSshPasswordBuffer(TerminalProfile profile)
+        private SecretBuffer? FindSshPasswordBuffer(TerminalProfile profile, bool strictRead, bool includeSharedAlias)
         {
             string canonicalKey = GetCanonicalSshProfileKey(profile.Id);
-            foreach (string key in GetSshPasswordKeysForProfile(profile))
+            foreach (string key in GetSshPasswordKeysForProfile(profile, includeSharedAlias))
             {
                 SecretBuffer? secret = _store.ReadBuffer(key);
                 if (secret is null) continue;
                 if (secret.Length == 0) { secret.Dispose(); continue; }
                 if (key != canonicalKey)
                 {
-                    // A readable legacy credential remains usable even when promotion is refused.
-                    try { _store.WriteBuffer(canonicalKey, secret); }
-                    catch (Exception) { /* The original key still holds it. */ }
+                    try { PromoteSshPassword(canonicalKey, secret, strictRead); }
+                    catch (Exception)
+                    {
+                        if (strictRead) { secret.Dispose(); throw; }
+                        // A readable legacy credential remains usable for a connection.
+                    }
                 }
                 return secret;
             }
             return null;
+        }
+
+        private void PromoteSshPassword(string key, SecretBuffer secret, bool verify)
+        {
+            _store.WriteBuffer(key, secret);
+            if (!verify) return;
+            using var stored = _store.ReadBuffer(key);
+            if (stored is null || !stored.ContentEquals(secret))
+                throw new InvalidOperationException("Credential promotion could not be verified.");
         }
 
         public void SetSshPasswordBufferForProfile(TerminalProfile profile, SecretBuffer password)

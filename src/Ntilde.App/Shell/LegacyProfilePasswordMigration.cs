@@ -18,7 +18,7 @@ internal static class LegacyProfilePasswordMigration
         try
         {
             MigrationFile[] files = [ReadFile(path), ReadFile(path + ".bak")];
-            var context = new MigrationContext(files.SelectMany(file => file.Profiles), vaultFactory);
+            var context = new MigrationContext(files, vaultFactory);
             foreach (MigrationFile file in files)
             {
                 if (!MigratePasswords(file, context)) return false;
@@ -37,6 +37,30 @@ internal static class LegacyProfilePasswordMigration
             // Never log credential-bearing JSON or native error text during migration.
             return false;
         }
+    }
+
+    // Deserialization invents random IDs for ID-less profiles. Repair only the loaded objects,
+    // before edits, so a later unlocked save uses the same IDs as the untouched source files.
+    internal static bool ReconcileLoadedIds(string path, string loadedPath, TerminalSettings settings)
+    {
+        try
+        {
+            MigrationFile[] files = [ReadFile(path), ReadFile(path + ".bak")];
+            var context = new MigrationContext(files, () => throw new InvalidOperationException("No credential access during identity repair."));
+            MigrationFile? source = files.FirstOrDefault(file => file.Path == loadedPath);
+            if (source is null) return context.NeedsIdentity.Count == 0;
+            if (source.Profiles.Count != settings.Profiles.Count) return false;
+            for (int index = 0; index < source.Profiles.Count; index++)
+            {
+                ProfileEntry entry = source.Profiles[index];
+                if (!context.NeedsIdentity.Contains(entry.Identity) || TryReadId(entry.Profile, out _)) continue;
+                TerminalProfile profile = settings.Profiles[index];
+                if (settings.DefaultProfileId == profile.Id) settings.DefaultProfileId = context.Ids[entry.Identity];
+                profile.Id = context.Ids[entry.Identity];
+            }
+            return true;
+        }
+        catch (Exception) { return false; }
     }
 
     private static MigrationFile ReadFile(string path)
@@ -100,15 +124,17 @@ internal static class LegacyProfilePasswordMigration
         var target = new TerminalProfile
         {
             Id = id,
-            Name = Text(entry.Profile, "Name"),
+            // Name-scoped legacy keys can also be ambiguous between otherwise identical profiles.
+            Name = context.CanUseAlias(entry, id, nameScoped: true) ? Text(entry.Profile, "Name") : string.Empty,
             SshUser = Text(entry.Profile, "SshUser"),
             SshHost = Text(entry.Profile, "SshHost"),
             Type = ConnectionType.SSH
         };
-        using var existing = vault.GetSshPasswordBufferForProfile(target, strictRead: true);
+        bool sharedAliasIsOwned = context.CanUseAlias(entry, id, nameScoped: false);
+        using var existing = vault.GetSshPasswordBufferForProfile(target, strictRead: true, includeSharedAlias: sharedAliasIsOwned);
         if (existing is { Length: > 0 }) return true;
         vault.SetSshPasswordBufferForProfile(target, secret);
-        using var verified = vault.GetSshPasswordBufferForProfile(target, strictRead: true);
+        using var verified = vault.GetSshPasswordBufferForProfile(target, strictRead: true, includeSharedAlias: false);
         return verified is not null && verified.ContentEquals(secret);
     }
 
@@ -127,17 +153,44 @@ internal static class LegacyProfilePasswordMigration
 
     private sealed class MigrationContext
     {
+        private readonly ProfileEntry[] _profiles;
         public Dictionary<ProfileIdentity, Guid> Ids { get; } = new();
         public HashSet<ProfileIdentity> NeedsIdentity { get; } = new();
         public Lazy<VaultService> Vault { get; }
 
-        public MigrationContext(IEnumerable<ProfileEntry> profiles, Func<VaultService> vaultFactory)
+        public MigrationContext(MigrationFile[] files, Func<VaultService> vaultFactory)
         {
             Vault = new Lazy<VaultService>(vaultFactory);
+            _profiles = files.SelectMany(file => file.Profiles).ToArray();
+            ValidateIdentityRepair(files);
             // A valid identity in either copy wins before any missing identity is generated.
-            foreach (ProfileEntry entry in profiles)
+            foreach (ProfileEntry entry in _profiles)
                 if (TryReadId(entry.Profile, out Guid id)) Ids.TryAdd(entry.Identity, id);
+            foreach (ProfileEntry entry in _profiles.Where(RequiresIdentity)) IdFor(entry);
         }
+
+        private static bool RequiresIdentity(ProfileEntry entry) =>
+            entry.Profile["Password"] is JsonValue value && value.TryGetValue<string>(out var text) && !string.IsNullOrEmpty(text);
+
+        private static void ValidateIdentityRepair(MigrationFile[] files)
+        {
+            ProfileEntry[] entries = files.SelectMany(file => file.Profiles).ToArray();
+            var duplicateIdentities = files.SelectMany(file => file.Profiles
+                .GroupBy(entry => entry.Identity with { Occurrence = 0 })
+                .Where(group => group.Count() > 1).Select(group => group.Key)).ToHashSet();
+            foreach (var group in entries.GroupBy(entry => entry.Identity with { Occurrence = 0 }))
+            {
+                if (duplicateIdentities.Contains(group.Key) && group.Any(RequiresIdentity) &&
+                    group.Any(entry => !TryReadId(entry.Profile, out _)))
+                    throw new InvalidOperationException("Ambiguous legacy profile identity.");
+            }
+        }
+
+        public bool CanUseAlias(ProfileEntry target, Guid targetId, bool nameScoped) => !_profiles.Any(entry =>
+            string.Equals(IdentityText(entry.Profile, "SshUser").Trim(), IdentityText(target.Profile, "SshUser").Trim(), StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(IdentityText(entry.Profile, "SshHost").Trim(), IdentityText(target.Profile, "SshHost").Trim(), StringComparison.OrdinalIgnoreCase) &&
+            (!nameScoped || string.Equals(IdentityText(entry.Profile, "Name").Trim(), IdentityText(target.Profile, "Name").Trim(), StringComparison.OrdinalIgnoreCase)) &&
+            (TryReadId(entry.Profile, out Guid id) ? id != targetId : entry.Identity != target.Identity));
 
         public Guid IdFor(ProfileEntry entry)
         {
