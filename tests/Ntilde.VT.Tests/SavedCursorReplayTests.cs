@@ -58,6 +58,49 @@ public sealed class SavedCursorReplayTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData("\u001b[31;", "1mX")]
+    [InlineData("\u001b]2;", "title\u0007X")]
+    [InlineData("\u001bP$q", "m\u001b\\X")]
+    [InlineData("\u001b(", "0q")]
+    [Trait("Category", "Replay")]
+    public async Task Buffer_only_snapshot_preserves_parser_continuation_from_preceding_data(string prefix, string tail)
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            var live = new TerminalBuffer(20, 8);
+            var parser = new AnsiParser(live);
+            parser.Process(prefix);
+            using (var recorder = new PtyRecorder(path, 20, 8))
+            {
+                byte[] before = Encoding.UTF8.GetBytes(prefix);
+                recorder.RecordChunkAt(0, before, before.Length);
+                recorder.RecordSnapshot(live);
+                byte[] after = Encoding.UTF8.GetBytes(tail);
+                recorder.RecordChunkAt(100, after, after.Length);
+            }
+            parser.Process(tail);
+            var restored = new TerminalBuffer(20, 8);
+            var restoredParser = new AnsiParser(restored);
+            bool legacy = false;
+            await new ReplayRunner(path).RunAsync(
+                data => { restoredParser.Process(Encoding.UTF8.GetString(data)); return Task.CompletedTask; },
+                onSnapshotCallback: snapshot =>
+                {
+                    legacy = snapshot.State is null;
+                    ReplayRunner.ApplySnapshot(restored, restoredParser, snapshot);
+                    return Task.CompletedTask;
+                }, ct: TestContext.Current.CancellationToken);
+            Assert.Equal(BufferSnapshot.Capture(live).ToFormattedString(), BufferSnapshot.Capture(restored).ToFormattedString());
+            Assert.Equal(parser.ExportState().ToDebugString(), restoredParser.ExportState().ToDebugString());
+            Assert.Equal(live.IsBold, restored.IsBold);
+            Assert.Equal(live.CurrentFgIndex, restored.CurrentFgIndex);
+            Assert.True(legacy);
+        }
+        finally { File.Delete(path); }
+    }
+
     [Fact]
     public void Legacy_snapshot_uses_default_banks_instead_of_a_previous_seek_saved_cursor()
     {

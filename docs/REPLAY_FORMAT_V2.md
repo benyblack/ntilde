@@ -99,7 +99,8 @@ Snapshot fields:
   model (both screens, mode state, saved cursor banks, pending 1049 restoration,
   and parser continuation). Recorders omit scrollback from this cut. Pass the
   parser to `RecordSnapshot` to retain its current character sets and partial
-  sequence state; the buffer-only overload assumes an initial parser state.
+  sequence state; the buffer-only overload emits legacy viewport fields and leaves
+  the replay parser continuation untouched. It cannot provide a complete seek cut.
   The legacy fields remain populated for older readers.
 - Cell payload:
   - `cells`: base64 `TerminalCell[]` bytes

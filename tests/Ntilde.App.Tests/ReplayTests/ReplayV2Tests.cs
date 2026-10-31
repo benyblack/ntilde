@@ -280,10 +280,11 @@ namespace Ntilde.Tests.ReplayTests
             try
             {
                 var liveBuffer = new TerminalBuffer(10, 3);
-                new AnsiParser(liveBuffer).Process("\x1b[4:3mA");
+                var liveParser = new AnsiParser(liveBuffer);
+                liveParser.Process("\x1b[4:3mA");
                 using (var recorder = new PtyRecorder(tempFile, 10, 3))
                 {
-                    recorder.RecordSnapshot(liveBuffer);
+                    recorder.RecordSnapshot(liveBuffer, legacy ? null : liveParser);
                 }
 
                 var replayBuffer = new TerminalBuffer(10, 3);
