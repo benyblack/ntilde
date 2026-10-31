@@ -556,6 +556,7 @@ namespace Ntilde.Controls
                     KittyKeyboardSupportedFlags = (_settings?.EnableKittyKeyboardProtocol ?? true) ? KittyKeyboardState.SupportedFlags : 0,
                     CellWidthPx = initialCellSize.Width,
                     CellHeightPx = initialCellSize.Height,
+                    DefaultBg = BuildMuxPresentation().DefaultBg,
                 };
 
                 // Phase 4 spec §7.4: an SSH pane whose profile persists its remote sessions goes to that

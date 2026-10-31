@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "11544d8328765f7542a5526db3adcc7bb509bd9a779e681d9df5f206421e33a2",
+  "matrixSha256": "ef5d5dc643396a3f25aab422bf769e5bc4c53b9f61dfebd5fe1040ed39c89533",
   "summary": {
     "totalRows": 69,
     "supportedCount": 34,
@@ -47,29 +47,29 @@
       "order": 4,
       "title": "5) Screen buffers \u0026 modes (DEC private modes)",
       "startLine": 109,
-      "endLine": 124,
-      "rowCount": 14
+      "endLine": 126,
+      "rowCount": 16
     },
     {
       "order": 5,
       "title": "6) SGR attributes \u0026 colors",
-      "startLine": 130,
-      "endLine": 136,
+      "startLine": 132,
+      "endLine": 138,
       "rowCount": 5
     },
     {
       "order": 6,
       "title": "7) Tabs",
-      "startLine": 142,
-      "endLine": 145,
+      "startLine": 144,
+      "endLine": 147,
       "rowCount": 2
     },
     {
       "order": 7,
       "title": "8) OSC sequences",
-      "startLine": 151,
+      "startLine": 153,
       "endLine": 163,
-      "rowCount": 11
+      "rowCount": 9
     },
     {
       "order": 8,
@@ -875,6 +875,68 @@
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
+      "feature": "Color-scheme query",
+      "status": "\u2705 Supported",
+      "specOrNotes": "Contour dark/light preference",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BApp",
+      "knownDeviations": "Reports CSI ? 997 ; 1 n for dark or 2 for light, derived from the effective terminal background, including profile overrides. Uses the same perceived RGB luma threshold as UI theme classification; alpha is ignored and an unset background uses black. It reports the terminal preference, not the raw OS appearance. Persistent spawns carry an optional initial background before startup output; absent legacy values retain the dark fallback until presentation arrives. An updated daemon is needed for launch-time color replies.",
+      "sourceLine": 120
+    },
+    {
+      "section": "5) Screen buffers \u0026 modes (DEC private modes)",
+      "feature": "Color-scheme notifications",
+      "status": "\u2705 Supported",
+      "specOrNotes": "Opt-in background preference updates",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessColorSchemeTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.Mux.Tests/Headless/HeadlessColorSchemeTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BApp\u002BMux",
+      "knownDeviations": "Off by default. Only effective-background transitions between dark and light send a report; enabling, unchanged classification and unrelated settings are silent. DECRQM reports live subscription state. DECSTR preserves it, RIS clears it; complete parser snapshots retain it while host colors remain configuration. Shared-session replies originate in the daemon. Palette edits that do not change dark/light classification do not send updates.",
+      "sourceLine": 121
+    },
+    {
+      "section": "5) Screen buffers \u0026 modes (DEC private modes)",
       "feature": "Kitty keyboard protocol",
       "status": "\u26A0 Partial",
       "specOrNotes": "Progressive-enhancement flags: query, push, pop, set. Per-screen-buffer flag stacks (depth 32, oldest evicted on overflow); RIS clears both",
@@ -916,7 +978,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BInput",
       "knownDeviations": "Scope: disambiguate escape codes (\u00600b1\u0060) and report event types (\u00600b10\u0060). Repeat/release events use modifier subparameters \u0060:2\u0060/\u0060:3\u0060; press is the default. Releases are paired with forwarded non-text presses and discarded on focus/session/buffer/keyboard-stack changes; repeats retain the pressed logical key across layout changes. Tracking starts after the input call returns, but the existing fire-and-forget transport has no child-delivery acknowledgement and saturated input queues can lose events. Enter/Tab/Backspace keep their unmodified initial recovery bytes, report negotiated repeats, and have no releases; ordinary text, IME and AltGr stay on TextInput. Bits \u00600b100\u0060/\u00600b1000\u0060/\u00600b10000\u0060 (alternate keys, all-keys, associated text) are accepted but masked out on push/set, so the \u0060CSI ? u\u0060 reply only advertises flags actually honored. Key encoding covers Esc, modified Enter/Tab/Backspace, and ctrl/alt/super combinations on the spec\u0027s legacy-text keys; keypad text remains text. Without event reporting, functional keys keep their legacy encodings, which for arrows/Home/End/Insert/Delete/PgUp/PgDn/F1-F12 carry modifiers in xterm\u0027s PC-style form (e.g. Ctrl\u002BLeft is \u0060CSI 1;5D\u0060, Ctrl\u002BDelete \u0060CSI 3;5~\u0060). With event reporting, supported functional keys use canonical CSI frames (F3 uses \u006013~\u0060 to avoid CPR collisions), independent of application cursor mode. AltGr on Windows non-US layouts is reported as Control\u002BAlt; the encoder carves that combination out (falls through to legacy/text) so composed characters are not swallowed - the accepted trade-off is that literal Ctrl\u002BAlt\u002B\u0026lt;key\u0026gt; shortcuts on US layouts also lose kitty encoding, same as the pre-existing Alt-sends-ESC carve-out. Gated end-to-end by \u0060TerminalSettings.EnableKittyKeyboardProtocol\u0060 (default on): when off, the App-side encoder is skipped unconditionally and the \u0060CSI ? u\u0060 reply always reports flags 0 regardless of the pushed stack state. Persistent spawn requests carry the host keyboard ceiling before startup output is parsed, including the disabled setting; absent launch capabilities default to flag 1. Persistent sessions intersect the supported flag masks of interactive clients; old daemons/clients without the optional mask stay at flag 1, and read-only observers do not reduce capabilities. An attaching GUI receives its negotiated mask before the snapshot is offered; the GUI applies later capability notifications before subsequent output; raw requested stacks survive a temporary ceiling reduction. The tab-broadcast path in \u0060MainWindow\u0060 builds its own input independently of this encoder and always sends legacy encoding to broadcast targets regardless of their own flag state.",
-      "sourceLine": 120
+      "sourceLine": 122
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -937,7 +999,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "\u0060?9001\u0060 (ConPTY passthrough) is accepted by \u0060CSI ? Ps h/l\u0060 but has no tracked boolean state, so DECRQM reports it as \u0060Pm=0\u0060 (not recognized) rather than guessing. Dispatch keys on the \u0060$\u0060 intermediate exactly, so \u0060CSI ! p\u0060 performs DECSTR without a reply; bare \u0060CSI p\u0060 is ignored.",
-      "sourceLine": 121
+      "sourceLine": 123
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -958,7 +1020,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "Shares the \u0060q\u0060 final byte with DECSCUSR (\u0060CSI Ps SP q\u0060); dispatch keys on the \u0060\u003E\u0060 leader with no intermediates, and Ps other than 0 stays silent.",
-      "sourceLine": 122
+      "sourceLine": 124
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -979,7 +1041,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "Other xterm window ops (stack, iconify, resize-by-cells, title push/pop via \u0060t\u0060) are ignored rather than answered. The \u0060rows:1\u0060/\u0060rows:2\u0060 sub-parameter form of the start/end events is not emitted; plain numeric rows are, which in-band-resize clients parse identically.",
-      "sourceLine": 123
+      "sourceLine": 125
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -1005,7 +1067,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "DEC\u0027s page parameter is omitted from the DECXCPR reply (\u0060CSI ? r ; c R\u0060, not \u0060CSI ? r ; c ; p R\u0060), as xterm omits it. The other private status reports - \u0060?15\u0060 printer, \u0060?25\u0060 UDK, \u0060?26\u0060 keyboard, \u0060?53\u0060 locator - are not implemented and stay silent rather than guessing. \u0060CSI \u003E Ps n\u0060 (xterm disable-key-modifiers) is not a status request and is ignored",
-      "sourceLine": 124
+      "sourceLine": 126
     },
     {
       "section": "6) SGR attributes \u0026 colors",
@@ -1027,7 +1089,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BRenderer",
       "knownDeviations": "Underline style/color tracked separately",
-      "sourceLine": 132
+      "sourceLine": 134
     },
     {
       "section": "6) SGR attributes \u0026 colors",
@@ -1043,7 +1105,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 133
+      "sourceLine": 135
     },
     {
       "section": "6) SGR attributes \u0026 colors",
@@ -1059,7 +1121,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 134
+      "sourceLine": 136
     },
     {
       "section": "6) SGR attributes \u0026 colors",
@@ -1075,7 +1137,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 135
+      "sourceLine": 137
     },
     {
       "section": "6) SGR attributes \u0026 colors",
@@ -1104,7 +1166,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BRenderer",
       "knownDeviations": "Straight/double/curly/dotted/dashed, own RGB or palette color (#270). The ANSI exporters (mux text client, export) write them in colon form, in a sequence of their own after the main SGR",
-      "sourceLine": 136
+      "sourceLine": 138
     },
     {
       "section": "7) Tabs",
@@ -1125,7 +1187,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Custom tab stops are clipped on width shrink; columns exposed by width growth start with default 8-column tab stops",
-      "sourceLine": 144
+      "sourceLine": 146
     },
     {
       "section": "7) Tabs",
@@ -1146,7 +1208,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "\u0060CSI g\u0060 supports current-stop clear (\u00600\u0060/default) and clear-all (\u00603\u0060); other parameters are ignored",
-      "sourceLine": 145
+      "sourceLine": 147
     },
     {
       "section": "8) OSC sequences",
@@ -1163,7 +1225,7 @@
       "hasLinkedEvidence": false,
       "ownership": "App/UI",
       "knownDeviations": "",
-      "sourceLine": 153
+      "sourceLine": 155
     },
     {
       "section": "8) OSC sequences",
@@ -1184,7 +1246,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "",
-      "sourceLine": 154
+      "sourceLine": 156
     },
     {
       "section": "8) OSC sequences",
@@ -1205,68 +1267,6 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "Query form (\u0060?\u0060) only; set form is ignored safely, no runtime palette change. Colors sourced from \u0060AnsiParser.DefaultForeground\u0060/\u0060DefaultBackground\u0060, wired from the active theme at parser creation and on \u0060TerminalPane.ApplySettings\u0060; falls back to fg C0C0C0 / bg 000000 when unset",
-      "sourceLine": 155
-    },
-    {
-      "section": "8) OSC sequences",
-      "feature": "Color-scheme query",
-      "status": "\u2705 Supported",
-      "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060",
-      "evidenceKinds": [
-        "unit"
-      ],
-      "evidenceLinks": [
-        {
-          "path": "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs",
-          "exists": true
-        },
-        {
-          "path": "tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs",
-          "exists": true
-        },
-        {
-          "path": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
-          "exists": true
-        }
-      ],
-      "hasAutomatedEvidenceSignal": true,
-      "hasLinkedEvidence": true,
-      "ownership": "Parser\u002BApp",
-      "knownDeviations": "Reports CSI ? 997 ; 1 n for dark or 2 for light, derived from the effective terminal background, including profile overrides. Uses the same perceived RGB luma threshold as UI theme classification; alpha is ignored and an unset background uses black. It reports the terminal preference, not the raw OS appearance.",
-      "sourceLine": 156
-    },
-    {
-      "section": "8) OSC sequences",
-      "feature": "Color-scheme notifications",
-      "status": "\u2705 Supported",
-      "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessColorSchemeTests.cs\u0060",
-      "evidenceKinds": [
-        "unit"
-      ],
-      "evidenceLinks": [
-        {
-          "path": "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs",
-          "exists": true
-        },
-        {
-          "path": "tests/Ntilde.Mux.Tests/Headless/HeadlessColorSchemeTests.cs",
-          "exists": true
-        },
-        {
-          "path": "tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs",
-          "exists": true
-        },
-        {
-          "path": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
-          "exists": true
-        }
-      ],
-      "hasAutomatedEvidenceSignal": true,
-      "hasLinkedEvidence": true,
-      "ownership": "Parser\u002BApp\u002BMux",
-      "knownDeviations": "Off by default. Only effective-background transitions between dark and light send a report; enabling, unchanged classification and unrelated settings are silent. DECRQM reports live subscription state. DECSTR preserves it, RIS clears it; complete parser snapshots retain it while host colors remain configuration. Shared-session replies originate in the daemon. Palette edits that do not change dark/light classification do not send updates.",
       "sourceLine": 157
     },
     {

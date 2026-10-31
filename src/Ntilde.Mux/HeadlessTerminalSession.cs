@@ -149,6 +149,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             SixelCellSizeOverride = new SixelCellSize(cellWidth, cellHeight),
             AllowNativeKittyGraphics = false,
             KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
+            DefaultBackground = options.DefaultBg is uint background ? TermColor.FromUint(background) : null,
         };
         (_session as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
         (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(cellWidth, cellHeight);

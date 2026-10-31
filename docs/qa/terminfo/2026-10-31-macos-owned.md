@@ -68,7 +68,9 @@ overrides and shared-session presentation. Querying does not require subscribing
 Notifications are off by default, are silent on enable, and occur only when the
 background crosses the shared perceived-luma dark/light threshold. Same-class
 palette edits and unrelated settings are silent. DECSTR preserves the
-subscription; RIS clears it. Parser snapshots preserve it while the receiving
+subscription; RIS clears it. Local/remote persistent spawns carry the initial
+background before startup queries; omitted legacy metadata keeps the dark
+fallback until presentation arrives. Parser snapshots preserve it while the receiving
 host retains its own colors. Shared-session replies originate only in the daemon.
 
 `ColorSchemeReportingTests` covers replies, strict query forms, opt-in/disable,
@@ -76,7 +78,9 @@ chunk boundaries, resets, paired state, serialized recording snapshots and
 legacy state. Twelve original cases failed before implementation. Executable
 catalog contracts and the 69-row conformance report were updated. Pane tests
 exercise profile overrides and settings changes; mux tests exercise shared
-presentation, read-only attach and reattach. These tests provide notification
+presentation, read-only attach, reattach and pre-attach startup queries. The
+light-background startup regression failed before spawn metadata was propagated.
+These tests provide notification
 and lifecycle evidence beyond the collector's query observations.
 
 ## Remaining evidence gaps

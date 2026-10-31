@@ -156,6 +156,9 @@ with UI theming; VT performs no OS/theme lookup. Only dark/light transitions emi
 updates. The subscription travels with parser state while host colors remain local
 configuration. Existing profile-theme wiring supplies local panes; mux presentation
 updates supply the daemon, which is the sole device-reply source for shared sessions.
+An optional background ARGB value travels with local/remote spawn requests and is
+installed before startup output is parsed, so the first query need not wait for
+attach. Legacy callers omit it and retain the dark fallback until presentation arrives.
 
 ---
 

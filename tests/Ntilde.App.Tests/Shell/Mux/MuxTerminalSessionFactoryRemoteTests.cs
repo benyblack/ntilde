@@ -158,6 +158,18 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
 
 
     [Fact]
+    public async Task Remote_spawn_carries_the_background_before_the_first_color_query()
+    {
+        _remote.Shells.StartupOutput = "\u001b[?996n";
+        var result = _factory.CreatePersistent(Ssh() with { DefaultBg = uint.MaxValue });
+        var session = Assert.IsType<MuxClientSession>(result.Session);
+        Assert.False(session.IsAttached);
+        var child = Assert.Single(_remote.Shells.Sessions);
+        await TestWait.UntilAsync(() => !child.SentInput.IsEmpty, "remote startup color preference used the host background");
+        Assert.Equal("\u001b[?997;2n", Assert.Single(child.SentInput));
+    }
+
+    [Fact]
     public async Task Remote_spawn_carries_pixel_metrics_before_the_childs_first_image()
     {
         _remote.Shells.StartupOutput = "\x1b[2;1H\x1bPq!30~-~\x1b\\\x1b[6n";

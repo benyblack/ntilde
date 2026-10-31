@@ -49,7 +49,9 @@ invariant changes.
   focus, VT cursor visibility and retirement. Host settings preserve explicit application overrides; valid
   DECSCUSR changes publish normal batch-coalesced invalidation.
 - **Color-scheme reports describe the effective terminal palette.** Hosts keep parser default
-  colors in sync with the profile/shared presentation. VT uses the same pure perceived-luma
+  colors in sync with the profile/shared presentation. Persistent spawn metadata supplies the
+  initial background before startup output; absent legacy values retain the dark fallback.
+  VT uses the same pure perceived-luma
   classifier as UI theming. DSR 996 answers independently of the opt-in; mode 2031 reports only
   dark/light background transitions. DECSTR preserves the subscription, RIS clears it, and
   complete parser snapshots carry it without replacing the receiving host's colors. The mux

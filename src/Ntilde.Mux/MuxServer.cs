@@ -273,6 +273,7 @@ public sealed class MuxServer : IDisposable
             environment, p.SkipPowerShellPostLaunchInit, Ssh: null)
         {
             KittyKeyboardSupportedFlags = p.KittyKeyboardSupportedFlags,
+            DefaultBg = p.DefaultBg,
             CellWidthPx = p.CellWidthPx,
             CellHeightPx = p.CellHeightPx,
         };
@@ -305,6 +306,7 @@ public sealed class MuxServer : IDisposable
                 Cols = p.Cols,
                 Rows = p.Rows,
                 KittyKeyboardSupportedFlags = p.KittyKeyboardSupportedFlags,
+                DefaultBg = p.DefaultBg,
                 CellWidthPx = p.CellWidthPx,
                 CellHeightPx = p.CellHeightPx,
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,
