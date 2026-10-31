@@ -117,6 +117,10 @@ namespace Ntilde.Replay
                 if ((options?.ApplyHeaderResize ?? true) && onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
                 if (onHeaderCallback is not null) await onHeaderCallback(header);
             }
+            else if (startAfterLine > 0)
+            {
+                ValidateLegacyRecordingStart(line);
+            }
 
             long lastOffset = -1;
             // If it's V2, we skip the first line (header).
@@ -189,6 +193,18 @@ namespace Ntilde.Replay
             if (stopAtTimeMs is not { } end) return false;
             using var document = JsonDocument.Parse(line);
             return document.RootElement.TryGetProperty("t", out var time) && time.TryGetInt64(out long offset) && offset > end;
+        }
+
+        /// <summary>A line resume may skip v1 records, but cannot bypass an unsupported recording header.</summary>
+        private static void ValidateLegacyRecordingStart(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line)) return;
+            using var first = JsonDocument.Parse(line);
+            var root = first.RootElement;
+            if (root.ValueKind != JsonValueKind.Object ||
+                !root.TryGetProperty("t", out var time) || !time.TryGetInt64(out _) ||
+                !root.TryGetProperty("d", out var data) || data.ValueKind != JsonValueKind.String)
+                throw new JsonException("Unrecognized replay header or malformed legacy first record.");
         }
 
         private static ReplayHeader? ReadHeader(string line)

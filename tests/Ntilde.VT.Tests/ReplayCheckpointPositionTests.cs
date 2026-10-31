@@ -106,6 +106,25 @@ public sealed class ReplayCheckpointPositionTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData("{\"type\":\"ntilderec\",\"v\":3,\"cols\":10,\"rows\":5}")]
+    [InlineData("{\"type\":\"unknown-recording\",\"v\":2}")]
+    public async Task A_resume_line_cannot_bypass_an_unsupported_header(string header)
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(path, header + "\n" + Data(0, "X", false));
+            int callbacks = 0;
+            await Assert.ThrowsAsync<JsonException>(() => new ReplayReader(path).RunWithResultAsync(
+                _ => { callbacks++; return Task.CompletedTask; },
+                onHeaderCallback: _ => { callbacks++; return Task.CompletedTask; },
+                options: new ReplayRunOptions { StartAfterLineNumber = 1 }, ct: TestContext.Current.CancellationToken));
+            Assert.Equal(0, callbacks);
+        }
+        finally { File.Delete(path); }
+    }
+
     private static string Header() => JsonSerializer.Serialize(
         new ReplayHeader { Type = ReplayHeader.TypeToken, Cols = 10, Rows = 5 }, ReplayJsonContext.Default.ReplayHeader);
     private static string Data(long time, string text, bool v1)

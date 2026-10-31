@@ -141,10 +141,13 @@ namespace Ntilde.UI.Replay
                              .FirstOrDefault(s => s.TimeMs <= targetTimeMs);
         }
         /// <summary>Select a claimed complete checkpoint; restoration validates it before mutation.</summary>
-        public SnapshotIndexEntry? GetNearestSeekCheckpoint(long targetTimeMs) =>
-            _snapshots.Where(s => s.TimeMs <= targetTimeMs && s.Snapshot.State is { Version: TerminalStateSnapshot.CurrentVersion })
-                      .OrderByDescending(s => s.TimeMs)
-                      .ThenByDescending(s => s.LineNumber)
-                      .FirstOrDefault();
+        public SnapshotIndexEntry? GetNearestSeekCheckpoint(long targetTimeMs)
+        {
+            if (_header is not { Version: 2 } || !ReplayHeader.IsKnownType(_header.Type)) return null;
+            return _snapshots.Where(s => s.TimeMs <= targetTimeMs && s.Snapshot.State is { Version: TerminalStateSnapshot.CurrentVersion })
+                             .OrderByDescending(s => s.TimeMs)
+                             .ThenByDescending(s => s.LineNumber)
+                             .FirstOrDefault();
+        }
     }
 }
