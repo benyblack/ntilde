@@ -1354,7 +1354,7 @@ namespace Ntilde.Pty
         public bool TrySendDeviceReply(string response)
         {
             if (_handle.IsClosed || _handle.IsInvalid || !TryEnqueueDeviceReply(_inputQueue, _deviceReplyGate, response)) return false;
-                return true;
+            return true;
         }
 
         internal static bool TryEnqueueDeviceReply(BlockingCollection<byte[]> queue, object gate, string response)

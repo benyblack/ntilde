@@ -112,13 +112,14 @@ through a stalled channel write and releases on completion, failure or teardown.
 Older native binaries decline the new entry point without using the unbounded
 keyboard path. All 179 native Rust library tests and 39 focused managed SSH tests pass,
 including saturation, held reservations, empty packets, receiver teardown and
-keyboard independence. The full managed Platform suite passes 704 tests with 43
+keyboard independence. The full managed Platform suite passes 709 tests after merging the recording-privacy changes from main, with 43
 expected skips. Both standalone and shared-shell regressions exhaust a real SSH
 server receive window, close without replenishing it, and verify bounded shutdown
 and reservation release. Disabling write cancellation makes both regressions fail.
 Post-loop network cleanup is bounded for standalone and shared connections. A
 virtual-time regression saturates a ten-slot protocol queue and verifies the
-shared-shell finish sweep and reservation release despite a stuck disconnect.
+shared-shell finish sweep and reservation release despite a stuck disconnect;
+disabling the cleanup timeout makes that regression fail.
 A third real-window case closes the shared connection with its shell still stalled.
 The new raw-pointer FFI documents and declares its Rust safety boundary; the
 pre-existing Clippy raw-pointer baseline remains at 14 rather than growing. The final direct-desktop collector artifact remains the
