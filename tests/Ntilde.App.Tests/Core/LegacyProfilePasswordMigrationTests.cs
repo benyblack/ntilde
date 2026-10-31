@@ -1,6 +1,10 @@
 using System.Text.Json;
 using Ntilde.Shell;
 using Ntilde.Shell.Secrets;
+using Ntilde.Platform;
+using Ntilde.Platform.Ssh.Models;
+using Ntilde.Platform.Ssh.Storage;
+using Ntilde.Services.Ssh;
 
 namespace Ntilde.Tests.Core;
 
@@ -72,6 +76,38 @@ public sealed class LegacyProfilePasswordMigrationTests : IDisposable
             Assert.False(document.RootElement.GetProperty("Profiles")[0].TryGetProperty("Password", out _));
         }
         Assert.Equal("from-backup", vault.GetSecret(VaultService.GetCanonicalSshProfileKey(_profileId)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Pending_password_migration_does_not_overwrite_or_resurrect_connections(bool existing)
+    {
+        string original = JsonSerializer.Serialize(new
+        {
+            Profiles = new[] { new { Id = _profileId, Type = ConnectionType.SSH, Name = "old", SshHost = "old.example", Password = "keep-me" } },
+            DefaultProfileId = _profileId
+        });
+        File.WriteAllText(SettingsPath, original);
+        var vault = new VaultService(new DiscardingStore(available: false));
+        var store = new JsonSshProfileStore(Path.Combine(_directory, "profiles.json"));
+        if (existing) store.SaveProfile(new SshProfile { Id = _profileId, Name = "edited", Host = "new.example" });
+        var migration = new SshLegacyProfileMigrationService(store);
+
+        // Repeated launches must leave the persisted connection edits/deletion and source intact.
+        for (int launch = 0; launch < 2; launch++)
+        {
+            TerminalSettings settings = TerminalSettings.LoadFromPath(SettingsPath, vault);
+            Assert.True(settings.CredentialMigrationPending);
+            TerminalProfile[] loadedProfiles = settings.Profiles.ToArray();
+            Assert.False(migration.MigrateLegacyProfiles(settings));
+            Assert.Equal(loadedProfiles, settings.Profiles);
+            Assert.Equal(_profileId, Assert.Single(settings.Profiles, profile => profile.Type == ConnectionType.SSH).Id);
+            Assert.Equal(_profileId, settings.DefaultProfileId);
+            Assert.Equal(original, File.ReadAllText(SettingsPath));
+            if (existing) Assert.Equal("new.example", store.GetProfile(_profileId)?.Host);
+            else Assert.Empty(store.GetProfiles());
+        }
     }
 
     [Fact]

@@ -26,6 +26,10 @@ public sealed class SshLegacyProfileMigrationService
     {
         ArgumentNullException.ThrowIfNull(settings);
 
+        // The legacy source cannot be removed while credentials still need migration. Importing
+        // it on every launch would overwrite connection edits or resurrect deleted connections.
+        if (settings.CredentialMigrationPending) return false;
+
         settings.Profiles ??= new List<TerminalProfile>();
         List<TerminalProfile> legacySsh = settings.Profiles
             .Where(profile => profile.Type == ConnectionType.SSH)
