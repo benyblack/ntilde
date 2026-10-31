@@ -51,19 +51,24 @@ namespace Ntilde.Shell
                     wheelLinesPerNotch = 3.0;
                 }
                 _wheelLinesPerNotch = Math.Min(wheelLinesPerNotch, 100.0);
-                if (!_cursorBlinkEnabled) _cursorBlinkPhase = true;
-                // _cursorBlinkEnabled was just reassigned from settings, and it is half of
-                // ShouldRunCursorBlinkTimer - so the timer has to be re-evaluated here or
-                // toggling the setting would not take effect until the next focus change.
+                // Re-evaluate the effective default/override policy immediately when the host
+                // setting changes, rather than waiting for focus or terminal output.
                 RefreshCursorBlinkTimerState();
                 EnsureFallbackChain();
 
                 if (_buffer != null)
                 {
                     _buffer.MaxHistory = settings.MaxHistory;
-                    _buffer.Modes.CursorStyle = _preferredCursorStyle;
-                    _buffer.Modes.CursorStyleIsDefault = true;
-                    _buffer.Modes.IsCursorBlinkEnabled = settings.CursorBlink;
+                    _buffer.EnterBatchWrite();
+                    try
+                    {
+                        if (_buffer.Modes.CursorStyleIsDefault)
+                        {
+                            _buffer.Modes.CursorStyle = _preferredCursorStyle;
+                            _buffer.Modes.IsCursorBlinkEnabled = settings.CursorBlink;
+                        }
+                    }
+                    finally { _buffer.ExitBatchWrite(); }
 
                     // Every settings save lands here, most of them with the theme unchanged; re-applying
                     // it anyway remaps every cell and repaints every row in every pane. The copy catches

@@ -38,14 +38,18 @@ namespace Ntilde.Shell
                 {
                     int cursorRow, cursorCol;
                     long cursorSuppressedUntil;
+                    bool blinkEnabled;
                     _buffer.Lock.EnterReadLock();
                     try
                     {
                         cursorRow = _buffer.InternalCursorRow;
                         cursorCol = _buffer.InternalCursorCol;
                         cursorSuppressedUntil = _buffer.CursorSuppressedUntilUtcTicks;
+                        blinkEnabled = ResolveCursorBlinkEnabled(_buffer.Modes);
                     }
                     finally { _buffer.Lock.ExitReadLock(); }
+
+                    RefreshCursorBlinkTimerState(blinkEnabled);
 
                     if (cursorRow != _lastCursorRow || cursorCol != _lastCursorCol)
                     {
@@ -56,7 +60,7 @@ namespace Ntilde.Shell
                         // Reset blink timer on VT cursor movement (like in Vim)
                         // Ensure we don't override the transient cursor suppression (used by AnsiParser for animated text)
                         long now = DateTime.UtcNow.Ticks;
-                        if (_cursorBlinkEnabled && _cursorBlinkTimer.IsEnabled && cursorSuppressedUntil <= now)
+                        if (blinkEnabled && _cursorBlinkTimer.IsEnabled && cursorSuppressedUntil <= now)
                         {
                             TerminalLogger.Debug($"[TerminalView] OnRenderTimerTick: VT cursor moved ({_lastCursorRow},{_lastCursorCol}). Resetting blink phase.");
                             _cursorBlinkPhase = true;
@@ -77,13 +81,9 @@ namespace Ntilde.Shell
 
         private void OnCursorBlinkTick(object? sender, EventArgs e)
         {
-            if (!_cursorBlinkEnabled)
+            if (!ShouldRunCursorBlinkTimer())
             {
-                if (!_cursorBlinkPhase)
-                {
-                    _cursorBlinkPhase = true;
-                    _isDirty = true;
-                }
+                RefreshCursorBlinkTimerState();
                 return;
             }
 
@@ -93,7 +93,7 @@ namespace Ntilde.Shell
 
         private void ResetCursorBlink()
         {
-            if (!_cursorBlinkEnabled) return;
+            if (!ShouldRunUiTimers() || !GetEffectiveCursorBlinkEnabled()) return;
 
             // Block transient cursor suppression for 200ms to allow smooth TUI navigation
             _buffer?.BlockCursorSuppression(TimeSpan.FromMilliseconds(200));
@@ -164,8 +164,20 @@ namespace Ntilde.Shell
         /// Deliberately not folded into ShouldRunUiTimers(): that gates the render timer
         /// too, and stopping *that* on focus loss would freeze output from a background
         /// shell - a correctness bug, not a saving.
+        private bool ResolveCursorBlinkEnabled(ModeState modes) =>
+            modes.CursorStyleIsDefault ? _cursorBlinkEnabled : modes.IsCursorBlinkEnabled;
+
+        private bool GetEffectiveCursorBlinkEnabled()
+        {
+            var buffer = _buffer;
+            if (buffer is null) return _cursorBlinkEnabled;
+            buffer.Lock.EnterReadLock();
+            try { return ResolveCursorBlinkEnabled(buffer.Modes); }
+            finally { buffer.Lock.ExitReadLock(); }
+        }
+
         private bool ShouldRunCursorBlinkTimer() =>
-            !_retired && ShouldRunCursorBlinkTimer(_cursorBlinkEnabled, IsKeyboardFocusWithin);
+            ShouldRunUiTimers() && ShouldRunCursorBlinkTimer(GetEffectiveCursorBlinkEnabled(), IsKeyboardFocusWithin);
 
         /// The rule itself, as a pure function so it can be tested without a visual tree or
         /// a focus manager. `focused` is the caller's IsKeyboardFocusWithin - the same input
@@ -173,9 +185,11 @@ namespace Ntilde.Shell
         internal static bool ShouldRunCursorBlinkTimer(bool blinkEnabled, bool focused) =>
             blinkEnabled && focused;
 
-        private void RefreshCursorBlinkTimerState()
+        private void RefreshCursorBlinkTimerState() => RefreshCursorBlinkTimerState(GetEffectiveCursorBlinkEnabled());
+
+        private void RefreshCursorBlinkTimerState(bool blinkEnabled)
         {
-            bool shouldBlink = ShouldRunCursorBlinkTimer();
+            bool shouldBlink = ShouldRunUiTimers() && ShouldRunCursorBlinkTimer(blinkEnabled, IsKeyboardFocusWithin);
             if (shouldBlink == _cursorBlinkTimer.IsEnabled)
             {
                 return;

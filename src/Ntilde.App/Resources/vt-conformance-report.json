@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "778f6109380c0a44dfa1e154f0bbcb81e5c00d7e7fd08350e5476b5b9585cf12",
+  "matrixSha256": "9c74c88816989b90f23efd25bf9a70e74d86457d02aba2bece429b5b91a5a6eb",
   "summary": {
     "totalRows": 67,
     "supportedCount": 32,
@@ -849,20 +849,28 @@
       "feature": "Cursor style",
       "status": "\u2705 Supported",
       "specOrNotes": "DECSCUSR block/beam/underline \u002B blink state",
-      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/OscUxTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/OscUxTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/CursorStyleInvalidationTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/Core/TerminalViewCursorBlinkTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
       "evidenceLinks": [
         {
+          "path": "tests/Ntilde.App.Tests/Core/TerminalViewCursorBlinkTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.App.Tests/OscUxTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/CursorStyleInvalidationTests.cs",
           "exists": true
         }
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
-      "knownDeviations": "",
+      "knownDeviations": "Style-only changes invalidate once per batch. App timers honor explicit blinking/steady choices over host defaults until reset, while preserving focus/visibility/lifetime gates.",
       "sourceLine": 119
     },
     {

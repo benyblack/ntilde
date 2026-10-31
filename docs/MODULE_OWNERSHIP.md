@@ -44,7 +44,10 @@ invariant changes.
   are copied into mux and replay snapshots, never shared as mutable arrays. DECSTR preserves
   content/current position/active screen and resets only the active saved bank; RIS resets both.
   Cursor default/override state travels with snapshots; App resolves a default appearance
-  against its own configured cursor shape and blink preference.
+  against its own configured cursor shape and blink preference. App uses that same effective
+  blink policy for rendering and every timer/reset path, gated by attachment, visibility,
+  focus and retirement. Host settings preserve explicit application overrides; valid
+  DECSCUSR changes publish normal batch-coalesced invalidation.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
   decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,
   and owns DECSDM state, page/scroll-region clipping and retirement. Clip metadata is copied into

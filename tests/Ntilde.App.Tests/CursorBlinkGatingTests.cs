@@ -9,18 +9,16 @@ namespace Ntilde.Tests
     /// a blink tick on an unfocused pane produced a pixel-identical frame - a full render
     /// pass every 530 ms, per pane, indefinitely.
     ///
-    /// The rule is tested as a pure function rather than by driving a real control: the
-    /// timer only starts once the view is attached, visible and sized, and
-    /// IsKeyboardFocusWithin is set by Avalonia's focus manager rather than by a test. A
-    /// headless test would therefore pass without the visual tree ever being in the state
-    /// the assertion claims to cover - see the PR for what is consequently not covered.
+    /// These pure tests pin the focus/effective-policy gate. TerminalViewCursorBlinkTests
+    /// additionally drives attached, focused views and timer callbacks, checking application
+    /// overrides, host defaults and lifecycle changes without waiting on wall-clock ticks.
     /// </summary>
     public class CursorBlinkGatingTests
     {
         [Theory]
-        // blink setting on, focused: the only combination that should tick.
+        // Effective blink on, focused: the only combination that should tick.
         [InlineData(true, true, true)]
-        // Focused but the user turned blinking off.
+        // Focused but the effective policy selects a steady cursor.
         [InlineData(true, false, false)]
         // The #126 case: blink enabled, pane unfocused - cursor is not drawn, so no ticks.
         [InlineData(false, true, false)]

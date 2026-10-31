@@ -280,6 +280,7 @@ namespace Ntilde.Shell
             ResetMouseMotionTracking();
 
             MeasureCharSize();
+            RefreshCursorBlinkTimerState();
             InvalidateVisual();
         }
 

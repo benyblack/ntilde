@@ -129,7 +129,7 @@ namespace Ntilde.Shell
                 cursorRow = buffer.InternalCursorRow;
                 cursorCol = buffer.InternalCursorCol;
                 cursorVisibleMode = buffer.Modes.IsCursorVisible;
-                cursorBlinkMode = buffer.Modes.CursorStyleIsDefault ? _cursorBlinkEnabled : buffer.Modes.IsCursorBlinkEnabled;
+                cursorBlinkMode = ResolveCursorBlinkEnabled(buffer.Modes);
                 cursorSuppressedTemporarily = buffer.CursorSuppressedUntilUtcTicks > nowTicks;
             }
             finally { buffer.Lock.ExitReadLock(); }

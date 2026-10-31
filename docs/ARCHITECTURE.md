@@ -119,6 +119,10 @@ terminal defaults while preserving screen contents, current position, tab stops 
 reporting modes; it does not switch screens or invoke the destructive RIS path.
 Cursor presentation distinguishes application overrides from host defaults. VT carries
 that marker; App selects the preferred shape and blink policy when the marker is set.
+App uses the same resolved blink policy for drawing, timer startup, ticks and input/movement
+resets; timers require an attached, visible, focused, non-retired view. Valid DECSCUSR
+changes publish normal batch-coalesced invalidation, including style-only output.
+Settings update host defaults while preserving an explicit application cursor override.
 New replay snapshots embed the existing complete terminal/parser model without scrollback,
 with legacy viewport fields retained for older readers.
 
