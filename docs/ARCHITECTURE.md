@@ -156,6 +156,19 @@ A focused module that owns the record/replay file format and the snapshot/byte-s
 
 `PtyRecorder`, `ReplayWriter`, `ReplayReader`, `ReplayRunner` live here. Goldens and regression suites consume `ReplayRunner`.
 
+The replay window restarts from a supported complete terminal/parser checkpoint, or
+reconstructs from its initial paired state and recorded raw prefix. Legacy viewport
+snapshots remain sequential read material, not independent restart cuts. The reader
+can resume after an exact physical snapshot line so equal timestamps do not duplicate
+pre-checkpoint output. Header validation remains active; restored geometry/metrics
+remain authoritative. Session generation gates reject superseded and closed-window
+callbacks. The configured parser object and image decoder survive rewinds. Each run
+uses a fresh stateful UTF-8 decoder to preserve code points split across byte events
+without retaining a prior run's partial bytes. On a checkpoint resume, skipped raw
+data primes only the UTF-8 decoder; the terminal/parser checkpoint stays authoritative.
+Playback keeps the displayed timeline
+at its requested start while reconstructing earlier prefix events.
+
 ---
 
 ## 5. Renderer Primitives — `Ntilde.Rendering`

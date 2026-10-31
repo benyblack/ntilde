@@ -23,6 +23,13 @@ namespace Ntilde.Replay
         public long? StopAtTimeMs { get; init; }
         /// <summary>False when the caller has restored a snapshot with authoritative geometry.</summary>
         public bool ApplyHeaderResize { get; init; } = true;
+        /// <summary>Resume strictly after this physical, one-based file line; zero reads from the start.</summary>
+        public long StartAfterLineNumber { get; init; }
+        /// <summary>
+        /// Observes only data records skipped by a line checkpoint, to rebuild a caller-owned byte decoder.
+        /// This does not apply terminal state, advance the clock, or count replayed events.
+        /// </summary>
+        public Action<byte[]>? OnSkippedData { get; init; }
     }
 
     public sealed class ReplayRunResult
@@ -91,6 +98,11 @@ namespace Ntilde.Replay
             Func<float, float, Task>? onSixelCellSizeCallback = null,
             CancellationToken ct = default)
         {
+            long startAfterLine = options?.StartAfterLineNumber ?? 0;
+            ArgumentOutOfRangeException.ThrowIfNegative(startAfterLine);
+            if (startAfterLine > 0 && startOffsetBytes > 0)
+                throw new ArgumentException("A checkpoint line cannot be combined with a byte offset.", nameof(startOffsetBytes));
+
             if (!File.Exists(_filePath))
                 throw new FileNotFoundException("Replay file not found", _filePath);
 
@@ -99,7 +111,13 @@ namespace Ntilde.Replay
 
             using var fs = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var reader = new StreamReader(fs);
+            long lineNumber = 1;
             string? line = await ReadLineOrEndAsync(reader, ct);
+            while (line is not null && string.IsNullOrWhiteSpace(line))
+            {
+                line = await ReadLineOrEndAsync(reader, ct);
+                lineNumber++;
+            }
             if (line == null) return result;
 
             ReplayHeader? header = ReadHeader(line);
@@ -109,6 +127,10 @@ namespace Ntilde.Replay
                 _ = RecordingCellMetrics.FromOptional(header.SixelCellWidthPx, header.SixelCellHeightPx);
                 if ((options?.ApplyHeaderResize ?? true) && onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
                 if (onHeaderCallback is not null) await onHeaderCallback(header);
+            }
+            else if (startAfterLine > 0)
+            {
+                ValidateLegacyRecordingStart(line);
             }
 
             long lastOffset = -1;
@@ -124,8 +146,8 @@ namespace Ntilde.Replay
                 skipCurrentLine = false; // We already skipped what we needed to via Seek
             }
 
-            // Use MinTimeMs if > 0, otherwise start from 0
-            if (minTimeMs > 0 && startOffsetBytes == 0)
+            // A line checkpoint has an established clock even when its timestamp is zero.
+            if ((minTimeMs > 0 || startAfterLine > 0) && startOffsetBytes == 0)
             {
                 // If we have a minTime, we assume the caller has already set the state 
                 // to what it was at minTimeMs (e.g. via snapshot).
@@ -136,7 +158,10 @@ namespace Ntilde.Replay
             string? nextLine = await ReadLineOrEndAsync(reader, ct);
             while (line != null && !ct.IsCancellationRequested)
             {
-                if (!skipCurrentLine)
+                if (!skipCurrentLine && lineNumber <= startAfterLine &&
+                    !string.IsNullOrWhiteSpace(line) && options?.OnSkippedData is { } onSkippedData)
+                    ObserveSkippedData(line, isV2, onSkippedData);
+                if (!skipCurrentLine && lineNumber > startAfterLine)
                 {
                     if (!string.IsNullOrWhiteSpace(line))
                     {
@@ -168,6 +193,7 @@ namespace Ntilde.Replay
                     }
                 }
                 skipCurrentLine = false;
+                lineNumber++;
                 line = nextLine;
                 nextLine = await ReadLineOrEndAsync(reader, ct);
             }
@@ -175,11 +201,33 @@ namespace Ntilde.Replay
             return result;
         }
 
+        /// <summary>Supplies prefix bytes without replaying input, snapshots or other terminal events.</summary>
+        private static void ObserveSkippedData(string line, bool isV2, Action<byte[]> onSkippedData)
+        {
+            using var document = JsonDocument.Parse(line);
+            var root = document.RootElement;
+            if (isV2 && (!root.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String || type.GetString() != "data"))
+                return;
+            if (root.TryGetProperty("d", out var data) && data.ValueKind == JsonValueKind.String && data.GetString() is { } encoded)
+                onSkippedData(Convert.FromBase64String(encoded));
+        }
+
         private static bool IsPastStopTime(string line, long? stopAtTimeMs)
         {
             if (stopAtTimeMs is not { } end) return false;
             using var document = JsonDocument.Parse(line);
             return document.RootElement.TryGetProperty("t", out var time) && time.TryGetInt64(out long offset) && offset > end;
+        }
+
+        /// <summary>A line resume may skip v1 records, but cannot bypass an unsupported recording header.</summary>
+        private static void ValidateLegacyRecordingStart(string line)
+        {
+            using var first = JsonDocument.Parse(line);
+            var root = first.RootElement;
+            if (root.ValueKind != JsonValueKind.Object ||
+                !root.TryGetProperty("t", out var time) || !time.TryGetInt64(out _) ||
+                !root.TryGetProperty("d", out var data) || data.ValueKind != JsonValueKind.String)
+                throw new JsonException("Unrecognized replay header or malformed legacy first record.");
         }
 
         private static ReplayHeader? ReadHeader(string line)
@@ -332,7 +380,8 @@ namespace Ntilde.Replay
             parser.SixelCellSizeOverride = size is null ? null : new SixelCellSize(size.WidthPx, size.HeightPx);
         }
 
-        private static void ValidateSnapshotCellLayout(ReplaySnapshot snapshot)
+        /// <summary>Validates optional cell metrics and layout metadata before a snapshot is used.</summary>
+        public static void ValidateSnapshotCellLayout(ReplaySnapshot snapshot)
         {
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
             bool hasAnyLayoutMetadata = snapshot.CellsSizeOf.HasValue || snapshot.CellsLayoutId != null;

@@ -130,3 +130,39 @@ Snapshot fields:
   - Legacy snapshots without `state` reset both saved banks to default home positions,
     preventing a previous seek's saved cursor from leaking into the new position.
 
+
+
+## Seek and playback restart boundaries
+
+A complete snapshot with a supported state version is a restart checkpoint. The GUI
+restores its paired terminal/parser state and resumes **after its physical record**,
+including when output before and after the snapshot shares the same timestamp.
+Among equal-time complete snapshots, the last physical record wins. Blank lines,
+LF/CRLF endings and a final record without a newline do not change the boundary.
+`ReplayRunOptions.StartAfterLineNumber` is a reader option, not a recording field;
+zero retains normal from-start behavior. It cannot be combined with a byte offset.
+`OnSkippedData` optionally observes skipped data records to prime a byte decoder;
+it does not apply terminal events, publish timestamps or count replayed events.
+Input payloads and snapshot records are not delivered to this observer.
+Header validation still runs; header geometry/metrics are gated when a checkpoint
+already supplied authoritative values.
+
+Legacy viewport-only snapshots and unknown state versions cannot establish parser
+continuation, inactive screens or saved cursor banks. For GUI seeks and playback
+restarts, replay begins at an earlier supported complete checkpoint, or from the
+initial paired state and the raw data prefix. The latter resets prior seek state
+without replacing the configured parser/image decoder. Each run gets a fresh stateful
+UTF-8 decoder so a code point can span data records without inheriting bytes from a
+previous run. Playback publishes times at or after its requested start while rebuilding
+the earlier prefix. The original recorded prefix must
+be present for exact reconstruction; a standalone legacy viewport capture cannot
+provide a complete seek cut. Complete snapshots establish the terminal/parser cut;
+preceding raw data primes the UTF-8 decoder when a code point straddles that cut.
+Decoded prefix text is discarded, so the checkpoint's terminal state stays authoritative.
+This can make old recordings slower to seek, but avoids inventing parser state.
+Malformed nearest snapshots are rejected before resetting the displayed state.
+
+Sequential snapshot restoration is unchanged: `ReplayRunner.ApplySnapshot` leaves
+an active parser continuation intact for legacy snapshots. Rewind/reset belongs to
+the GUI session restart boundary, not each snapshot in a sequential stream. Closing
+the replay window cancels playback and invalidates queued callbacks.
