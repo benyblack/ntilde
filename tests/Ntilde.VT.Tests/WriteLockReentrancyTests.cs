@@ -35,6 +35,8 @@ public class WriteLockReentrancyTests
         ["Resize"] = b => b.Resize(100, 30),
         ["Write"] = b => b.Write("x"),
         ["WriteChar"] = b => b.WriteChar('x'),
+        ["MaxHistory"] = b => b.MaxHistory = 1,
+        ["MaxScrollbackBytes"] = b => b.MaxScrollbackBytes = 1,
         // Reached on the UI thread by the "Debug: Box Drawing Test Screen" command.
         ["WriteContent"] = b => b.WriteContent("x"),
         ["BlockCursorSuppression"] = b => b.BlockCursorSuppression(TimeSpan.FromMilliseconds(10)),
