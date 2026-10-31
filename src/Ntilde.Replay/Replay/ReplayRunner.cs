@@ -310,6 +310,13 @@ namespace Ntilde.Replay
         public static void ApplySnapshot(TerminalBuffer buffer, AnsiParser parser, ReplaySnapshot snapshot)
         {
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
+            if (snapshot.State is { Version: TerminalStateSnapshot.CurrentVersion })
+            {
+                // Restore validates both halves before resizing or mutating either object.
+                TerminalStateTransfer.Restore(buffer, parser, snapshot.State);
+                ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
+                return;
+            }
             TerminalBuffer.ValidateReplaySnapshot(snapshot);
             buffer.Resize(snapshot.Cols, snapshot.Rows);
             buffer.ApplySnapshot(snapshot);

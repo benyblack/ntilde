@@ -149,11 +149,11 @@ namespace Ntilde.Replay
                 int cols = buffer.Cols;
                 int rowCount = buffer.Rows;
 
-                var saved = buffer.ExportSavedCursors();
+                var state = buffer.ExportState(maxScrollbackRows: 0);
+                if (parser is not null) state.Parser = parser.ExportState();
                 snapshot = new ReplaySnapshot
                 {
-                    SavedCursorMain = saved.Main,
-                    SavedCursorAlt = saved.Alt,
+                    State = state,
                     Cols = cols,
                     Rows = rowCount,
                     CursorCol = buffer.InternalCursorCol,

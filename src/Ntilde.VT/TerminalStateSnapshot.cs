@@ -216,6 +216,7 @@ namespace Ntilde.VT
         [JsonPropertyName("cv")] public bool IsCursorVisible { get; set; } = true;
         [JsonPropertyName("cblink")] public bool IsCursorBlinkEnabled { get; set; } = true;
         [JsonPropertyName("cstyle")] public int CursorStyle { get; set; }
+        [JsonPropertyName("cdefault"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? CursorStyleIsDefault { get; set; }
         [JsonPropertyName("irm")] public bool IsInsertMode { get; set; }
         [JsonPropertyName("lnm")] public bool IsLineFeedNewLineMode { get; set; }
         [JsonPropertyName("srm")] public bool IsEchoEnabled { get; set; } = true;

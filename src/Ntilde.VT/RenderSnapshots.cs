@@ -103,6 +103,7 @@ namespace Ntilde.VT
         public int CursorRow { get; init; }
         public int CursorCol { get; init; }
         public CursorStyle CursorStyle { get; init; }
+        public bool CursorStyleIsDefault { get; init; }
         public RenderThemeSnapshot Theme { get; init; }
         public PooledArray<DirtySpan> DirtySpans { get; init; }
         public PooledArray<RenderRowSnapshot> RowsData { get; init; }

@@ -182,4 +182,26 @@ public sealed class SoftResetAndCursorSaveTests
         Assert.Equal('─', Cell(buffer, 3, 2));
     }
 
+    [Theory]
+    [InlineData("\u001b[!p")]
+    [InlineData("\u001bc")]
+    public void Reset_returns_cursor_shape_and_blink_to_the_hosts_default_presentation(string reset)
+    {
+        var buffer = new TerminalBuffer(20, 8);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\u001b[6 q");
+        Assert.Equal(CursorStyle.Beam, buffer.Modes.CursorStyle);
+        Assert.False(buffer.Modes.IsCursorBlinkEnabled);
+        Assert.False(buffer.Modes.CursorStyleIsDefault);
+        parser.Process(reset);
+        Assert.Equal(CursorStyle.Underline, buffer.Modes.CursorStyle);
+        Assert.True(buffer.Modes.IsCursorBlinkEnabled);
+        Assert.True(buffer.Modes.CursorStyleIsDefault);
+        Assert.True(buffer.Modes.Clone().CursorStyleIsDefault);
+        var snapshot = buffer.ExportState(0);
+        var other = new TerminalBuffer(20, 8);
+        other.ImportState(snapshot);
+        Assert.True(other.Modes.CursorStyleIsDefault);
+    }
+
 }

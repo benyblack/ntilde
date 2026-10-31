@@ -117,6 +117,10 @@ rendition, pending wrap, origin/autowrap and character-set context. Mux state tr
 and new replay snapshots copy those banks. DECSTR resets the active bank and soft
 terminal defaults while preserving screen contents, current position, tab stops and
 reporting modes; it does not switch screens or invoke the destructive RIS path.
+Cursor presentation distinguishes application overrides from host defaults. VT carries
+that marker; App selects the preferred shape and blink policy when the marker is set.
+New replay snapshots embed the existing complete terminal/parser model without scrollback,
+with legacy viewport fields retained for older readers.
 
 **Key invariants**
 - Alternate screen is fully isolated from main screen

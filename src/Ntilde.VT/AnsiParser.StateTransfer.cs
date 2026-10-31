@@ -165,7 +165,7 @@ namespace Ntilde.VT
         /// would surface as a <see cref="NullReferenceException"/> from inside the import.
         /// </para>
         /// <para>
-        /// Internal rather than private so <see cref="TerminalStateTransfer.Restore"/> can run it
+        /// Internal so <see cref="TerminalStateTransfer.Restore"/> can preflight it
         /// on <see cref="TerminalStateSnapshot.Parser"/> before the buffer is resized or imported.
         /// <see cref="ImportState"/> still calls it too - that is deliberate belt-and-braces, since
         /// <see cref="ImportState"/> is public and independently callable.
@@ -173,6 +173,7 @@ namespace Ntilde.VT
         /// </remarks>
         internal void ValidateParserState(AnsiParserState state)
         {
+            ArgumentNullException.ThrowIfNull(state);
             if (state.SixelCellWidthPx.HasValue != state.SixelCellHeightPx.HasValue ||
                 (state.SixelCellWidthPx is float width && (!float.IsFinite(width) || width <= 0)) ||
                 (state.SixelCellHeightPx is float height && (!float.IsFinite(height) || height <= 0)))

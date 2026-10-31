@@ -1103,25 +1103,21 @@ namespace Ntilde.VT
             return list;
         }
 
-        /// <summary>Copies both saved-cursor banks without exposing the mutable live slots.</summary>
-        public (TerminalCursorState Main, TerminalCursorState Alt) ExportSavedCursors()
-        {
-            bool lockTaken = EnterReadLockIfNeeded();
-            try { return (ExportCursor(_savedCursors.Main), ExportCursor(_savedCursors.Alt)); }
-            finally { ExitReadLockIfNeeded(Lock, lockTaken); }
-        }
-
         /// <summary>Rejects malformed disk payloads before resize or snapshot application mutates state.</summary>
         public static void ValidateReplaySnapshot(ReplaySnapshot snapshot)
         {
             ArgumentNullException.ThrowIfNull(snapshot);
             if (!string.IsNullOrEmpty(snapshot.CellsBase64)) _ = Convert.FromBase64String(snapshot.CellsBase64);
-            if (snapshot.SavedCursorMain is not null) ValidateCursorState(snapshot.SavedCursorMain, "replay saved cursor (main)");
-            if (snapshot.SavedCursorAlt is not null) ValidateCursorState(snapshot.SavedCursorAlt, "replay saved cursor (alternate)");
         }
 
         public void ApplySnapshot(ReplaySnapshot snapshot)
         {
+            ArgumentNullException.ThrowIfNull(snapshot);
+            if (snapshot.State is { Version: TerminalStateSnapshot.CurrentVersion })
+            {
+                ImportState(snapshot.State);
+                return;
+            }
             ValidateReplaySnapshot(snapshot);
             AcquireWriteLock();
             try
@@ -1130,8 +1126,8 @@ namespace Ntilde.VT
                 // instead of retaining banks from a previous seek on this replay window.
                 ResetSavedCursorStateToDefaultsNoLock(_savedCursors.Main);
                 ResetSavedCursorStateToDefaultsNoLock(_savedCursors.Alt);
-                if (snapshot.SavedCursorMain is not null) ImportCursor(_savedCursors.Main, snapshot.SavedCursorMain);
-                if (snapshot.SavedCursorAlt is not null) ImportCursor(_savedCursors.Alt, snapshot.SavedCursorAlt);
+                _restoreMainCursorOnAltExit = false;
+                ResetCursorPresentationNoLock();
 
                 // Core properties
                 _cursorCol = Math.Clamp(snapshot.CursorCol, 0, Math.Max(0, Cols - 1));

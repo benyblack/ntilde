@@ -779,6 +779,8 @@ namespace Ntilde.VT
 
         private void ApplyCursorStyle(int value)
         {
+            if (value is < 0 or > 6) return;
+            _buffer.Modes.CursorStyleIsDefault = false;
             // DECSCUSR:
             // 0/1 blinking block, 2 steady block, 3 blinking underline, 4 steady underline, 5 blinking bar, 6 steady bar
             switch (value)

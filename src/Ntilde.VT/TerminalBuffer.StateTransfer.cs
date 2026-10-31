@@ -20,7 +20,7 @@ namespace Ntilde.VT
         /// </summary>
         public TerminalStateSnapshot ExportState(int maxScrollbackRows)
         {
-            Lock.EnterReadLock();
+            bool lockTaken = EnterReadLockIfNeeded();
             try
             {
                 var links = new HyperlinkTableBuilder();
@@ -90,7 +90,7 @@ namespace Ntilde.VT
             }
             finally
             {
-                Lock.ExitReadLock();
+                ExitReadLockIfNeeded(Lock, lockTaken);
             }
         }
 
@@ -752,6 +752,7 @@ namespace Ntilde.VT
             IsCursorVisible = modes.IsCursorVisible,
             IsCursorBlinkEnabled = modes.IsCursorBlinkEnabled,
             CursorStyle = (int)modes.CursorStyle,
+            CursorStyleIsDefault = modes.CursorStyleIsDefault,
             IsInsertMode = modes.IsInsertMode,
             IsLineFeedNewLineMode = modes.IsLineFeedNewLineMode,
             IsEchoEnabled = modes.IsEchoEnabled,
@@ -772,6 +773,7 @@ namespace Ntilde.VT
             target.IsCursorVisible = source.IsCursorVisible;
             target.IsCursorBlinkEnabled = source.IsCursorBlinkEnabled;
             target.CursorStyle = (CursorStyle)source.CursorStyle;
+            target.CursorStyleIsDefault = source.CursorStyleIsDefault ?? false; // legacy peers sent an explicit style only
             target.IsInsertMode = source.IsInsertMode;
             target.IsLineFeedNewLineMode = source.IsLineFeedNewLineMode;
             target.IsEchoEnabled = source.IsEchoEnabled;
@@ -995,7 +997,10 @@ namespace Ntilde.VT
         private static void ValidateCursorState(TerminalCursorState? cursor, string what)
         {
             TerminalCursorState present = StateTransferValidation.RequirePresent(cursor, what);
-            ValidateUnderlinePen(StateTransferValidation.RequirePresent(present.Sgr, $"{what} SGR"), what);
+            var sgr = StateTransferValidation.RequirePresent(present.Sgr, $"{what} SGR");
+            ValidateUnderlinePen(sgr, what);
+            StateTransferValidation.RequireInRange(sgr.FgIndex, -1, 255, $"{what} foreground palette color");
+            StateTransferValidation.RequireInRange(sgr.BgIndex, -1, 255, $"{what} background palette color");
             if (present.Charsets is { } charsets)
             {
                 if (charsets.Length != 4) throw StateTransferValidation.Reject(what, "saved charset count must be four");

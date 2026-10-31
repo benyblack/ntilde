@@ -72,11 +72,9 @@ namespace Ntilde.VT
 
     public class ReplaySnapshot
     {
-        /// <summary>DECSC/DECRC banks, also used by mode 1048; absent in legacy recordings.</summary>
-        [JsonPropertyName("saved_main"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public TerminalCursorState? SavedCursorMain { get; set; }
-        [JsonPropertyName("saved_alt"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public TerminalCursorState? SavedCursorAlt { get; set; }
+        /// <summary>Complete terminal/parser cut, with no scrollback; legacy readers use the fields below.</summary>
+        [JsonPropertyName("state"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TerminalStateSnapshot? State { get; set; }
 
         [JsonPropertyName("cols")] public int Cols { get; set; }
         [JsonPropertyName("rows")] public int Rows { get; set; }

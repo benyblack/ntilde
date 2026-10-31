@@ -95,9 +95,12 @@ Snapshot fields:
 - Scroll region: `st`, `sb`
 - Mode flags: `awm`, `ckm`, `decom`, `bp`, `cv`
 - Current style state: `fg`, `bg`, `fgi`, `bgi`, defaults and style booleans
-- Saved cursors: optional `saved_main` and `saved_alt`, each with position, SGR,
-  pending wrap, origin/autowrap and G0-G3/GL context. These are the DECSC/DECRC
-  banks also used by private modes 1048/1049. New recorders include both banks.
+- Complete cut: optional `state` contains the existing `TerminalStateSnapshot`
+  model (both screens, mode state, saved cursor banks, pending 1049 restoration,
+  and parser continuation). Recorders omit scrollback from this cut. Pass the
+  parser to `RecordSnapshot` to retain its current character sets and partial
+  sequence state; the buffer-only overload assumes an initial parser state.
+  The legacy fields remain populated for older readers.
 - Cell payload:
   - `cells`: base64 `TerminalCell[]` bytes
   - `cells_sizeof`: serialized `sizeof(TerminalCell)` from the recorder runtime
@@ -116,8 +119,10 @@ Snapshot fields:
   - If `cells_sizeof` and/or `cells_layout_id` are present, reader validates against the current runtime layout.
   - On mismatch, reader throws `InvalidDataException` with a `cell layout mismatch` message and expected/actual values.
   - Legacy snapshots without these fields still load.
-  - Saved cursor structure (including charset indices and underline pen) is validated
-    before resize or mutation. Geometry is clamped when the cursor is restored.
-  - Legacy snapshots without saved banks reset both to default home positions,
+  - When `state` has the current supported state version, it is authoritative and uses the shared state-transfer
+    preflight: terminal and parser structure are validated before either is mutated.
+    Saved palette/charset indices are validated along with the underline pen.
+    An unknown future state version falls back to the legacy viewport fields.
+  - Legacy snapshots without `state` reset both saved banks to default home positions,
     preventing a previous seek's saved cursor from leaking into the new position.
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "136ed06625da24c6feaa7a17d422df79598f64f1fd66ab70228aaf828855cc20",
+  "matrixSha256": "85b724491a526b51cf2d9bcb988bad53d1522e38d670bb8c0fd620311fd75cde",
   "summary": {
     "totalRows": 67,
     "supportedCount": 32,
@@ -675,13 +675,17 @@
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
       "feature": "DECSTR (soft reset)",
       "status": "\u2705 Supported",
-      "specOrNotes": "Preserve contents, scrollback, active screen and current cursor position; reset margins, origin/insert/application-cursor modes, visibility, SGR and character sets; reset the active saved cursor to home",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
+      "specOrNotes": "Preserve contents, scrollback, active screen and current cursor position; reset margins, origin/insert/application-cursor modes, visibility, cursor presentation, SGR and character sets; reset the active saved cursor to home",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/CursorResetRenderTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
       "evidenceKinds": [
         "replay",
         "unit"
       ],
       "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/CursorResetRenderTests.cs",
+          "exists": true
+        },
         {
           "path": "tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs",
           "exists": true
@@ -697,8 +701,8 @@
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
-      "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "Uses xterm-compatible autowrap-on defaults. Tabs, mouse/focus/paste/keyboard reporting, in-band resize and SIXEL display mode/metrics survive. Current pending wrap is cleared. Unsupported DEC hardware modes are outside the model.",
+      "ownership": "Parser\u002BBuffer\u002BApp",
+      "knownDeviations": "Uses xterm-compatible autowrap-on defaults. Tabs, mouse/focus/paste/keyboard reporting, in-band resize and SIXEL display mode/metrics survive. Current pending wrap is cleared. Cursor shape/blink return to the presenting host preference through an optional default-appearance marker. Unsupported DEC hardware modes are outside the model.",
       "sourceLine": 112
     },
     {
@@ -728,7 +732,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BReplay",
-      "knownDeviations": "Shares the existing ESC 7/8 and 1049 cursor banks. New replay snapshots carry both banks; legacy snapshots use default banks. Mode 1048 is an action without a persistent set/reset flag, so DECRQM continues reporting 0. Legacy mux cursor snapshots omit the added mode/charset context and retain legacy restore behavior for those fields.",
+      "knownDeviations": "Shares the existing ESC 7/8 and 1049 cursor banks. New replay snapshots carry a complete terminal/parser cut including both screens and the armed 1049 restore; legacy snapshots use default banks. Mode 1048 is an action without a persistent set/reset flag, so DECRQM continues reporting 0. Legacy mux cursor snapshots omit the added mode/charset context and retain legacy restore behavior for those fields.",
       "sourceLine": 113
     },
     {

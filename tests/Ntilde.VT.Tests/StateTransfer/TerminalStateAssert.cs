@@ -212,7 +212,7 @@ internal static class TerminalStateAssert
         $"x10={modes.MouseModeX10} btn={modes.MouseModeButtonEvent} any={modes.MouseModeAnyEvent} " +
         $"sgrMouse={modes.MouseModeSGR} ckm={modes.IsApplicationCursorKeys} awm={modes.IsAutoWrapMode} " +
         $"sixelDisplay={modes.IsSixelDisplayMode} decom={modes.IsOriginMode} focus={modes.IsFocusEventReporting} bp={modes.IsBracketedPasteMode} " +
-        $"cv={modes.IsCursorVisible} cblink={modes.IsCursorBlinkEnabled} cstyle={modes.CursorStyle} " +
+        $"cv={modes.IsCursorVisible} cblink={modes.IsCursorBlinkEnabled} cstyle={modes.CursorStyle} cdefault={modes.CursorStyleIsDefault} " +
         $"irm={modes.IsInsertMode} lnm={modes.IsLineFeedNewLineMode} srm={modes.IsEchoEnabled}";
 
     private static string Describe(TerminalKittyKeyboardState kitty) =>

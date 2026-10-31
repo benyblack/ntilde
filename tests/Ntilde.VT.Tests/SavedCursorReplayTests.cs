@@ -5,6 +5,13 @@ namespace Ntilde.VT.Tests;
 
 public sealed class SavedCursorReplayTests
 {
+    private static ReplaySnapshot StateSnapshot(int cols, int rows) => new()
+    {
+        Cols = cols,
+        Rows = rows,
+        State = new TerminalBuffer(cols, rows).ExportState(0)
+    };
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -33,8 +40,9 @@ public sealed class SavedCursorReplayTests
                 data => { restoredParser.Process(Encoding.UTF8.GetString(data)); return Task.CompletedTask; },
                 onSnapshotCallback: snapshot =>
                 {
-                    Assert.NotNull(snapshot.SavedCursorMain);
-                    Assert.NotNull(snapshot.SavedCursorAlt);
+                    Assert.NotNull(snapshot.State);
+                    Assert.NotNull(snapshot.State.SavedCursorMain);
+                    Assert.NotNull(snapshot.State.SavedCursorAlt);
                     ReplayRunner.ApplySnapshot(restored, restoredParser, snapshot);
                     applied = true;
                     return Task.CompletedTask;
@@ -72,10 +80,10 @@ public sealed class SavedCursorReplayTests
         var parser = new AnsiParser(buffer);
         parser.Process("preserved\u001b[2;3H\u001b[?1048h");
         var before = BufferSnapshot.Capture(buffer).ToFormattedString();
-        var snapshot = new ReplaySnapshot { Cols = 10, Rows = 3, CursorRow = 1 };
+        var snapshot = StateSnapshot(10, 3);
         var invalid = new TerminalCursorState { Sgr = new TerminalSgrState { UnderlineStyle = 99 } };
-        if (alternate) snapshot.SavedCursorAlt = invalid;
-        else snapshot.SavedCursorMain = invalid;
+        if (alternate) snapshot.State!.SavedCursorAlt = invalid;
+        else snapshot.State!.SavedCursorMain = invalid;
         Assert.Throws<InvalidOperationException>(() => ReplayRunner.ApplySnapshot(buffer, parser, snapshot));
         Assert.Equal((20, 5), (buffer.Cols, buffer.Rows));
         Assert.Equal(before, BufferSnapshot.Capture(buffer).ToFormattedString());
@@ -89,11 +97,11 @@ public sealed class SavedCursorReplayTests
         var buffer = new TerminalBuffer(20, 5);
         var parser = new AnsiParser(buffer);
         parser.Process("\u001b[2;3H\u001b[1m\u001b[?1048h");
-        var saved = buffer.ExportSavedCursors();
-        saved.Main.Row = 4;
-        saved.Main.Sgr.IsBold = false;
-        Assert.NotNull(saved.Main.Charsets);
-        saved.Main.Charsets[0] = 1;
+        var saved = buffer.ExportState(0);
+        saved.SavedCursorMain.Row = 4;
+        saved.SavedCursorMain.Sgr.IsBold = false;
+        Assert.NotNull(saved.SavedCursorMain.Charsets);
+        saved.SavedCursorMain.Charsets[0] = 1;
         parser.Process("\u001b[1;1H\u001b[0m\u001b[?1048l");
         Assert.Equal((1, 2), (buffer.CursorRow, buffer.CursorCol));
         Assert.True(buffer.IsBold);
@@ -113,11 +121,11 @@ public sealed class SavedCursorReplayTests
         if (corruption == 0) invalid.Charsets = [0, 0, 0];
         else if (corruption == 1) invalid.Charsets[0] = 99;
         else invalid.Gl = 4;
-        var replay = new ReplaySnapshot { Cols = 10, Rows = 3, SavedCursorMain = invalid };
+        var replay = StateSnapshot(10, 3);
+        replay.State!.SavedCursorMain = invalid;
         var replayError = Assert.Throws<InvalidOperationException>(() => ReplayRunner.ApplySnapshot(buffer, parser, replay));
         Assert.Contains("saved cursor", replayError.Message);
-        var state = buffer.ExportState(0);
-        state.Cols = 10;
+        var state = new TerminalBuffer(10, 3).ExportState(0);
         state.SavedCursorMain = invalid;
         state.Parser = parser.ExportState();
         var transferError = Assert.Throws<InvalidOperationException>(() => TerminalStateTransfer.Restore(buffer, parser, state));
@@ -153,6 +161,121 @@ public sealed class SavedCursorReplayTests
             Assert.Contains('─', BufferSnapshot.Capture(restored).Lines[2]);
         }
         finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("Category", "Replay")]
+    public async Task A_snapshot_after_restore_retains_current_parser_context_for_later_data(bool partialCsi)
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            var live = new TerminalBuffer(20, 8);
+            var parser = new AnsiParser(live) { SixelCellSizeOverride = new SixelCellSize(10, 20) };
+            parser.Process("\u001b(0\u001b[3;4H\u001b[?1048h\u001b(B\u001b[?1048l");
+            if (partialCsi) parser.Process("\u001b[31;");
+            string tail = partialCsi ? "1mq" : "q";
+            using (var recorder = new PtyRecorder(path, 20, 8)) recorder.RecordSnapshot(live, parser);
+            parser.Process(tail);
+            var restored = new TerminalBuffer(20, 8);
+            var restoredParser = new AnsiParser(restored);
+            await new ReplayRunner(path).RunAsync(_ => Task.CompletedTask,
+                onSnapshotCallback: snapshot => { ReplayRunner.ApplySnapshot(restored, restoredParser, snapshot); return Task.CompletedTask; },
+                ct: TestContext.Current.CancellationToken);
+            restoredParser.Process(tail);
+            Assert.Equal(BufferSnapshot.Capture(live).ToFormattedString(), BufferSnapshot.Capture(restored).ToFormattedString());
+            Assert.Equal(parser.ExportState().ToDebugString(), restoredParser.ExportState().ToDebugString());
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void Invalid_parser_snapshot_is_rejected_before_buffer_resize_or_mutation()
+    {
+        var buffer = new TerminalBuffer(20, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process("preserved");
+        var snapshot = StateSnapshot(10, 3);
+        snapshot.State!.Parser = new AnsiParserState { State = 999 };
+        var ex = Assert.Throws<InvalidOperationException>(() => ReplayRunner.ApplySnapshot(buffer, parser, snapshot));
+        Assert.Contains("parser state", ex.Message);
+        Assert.Equal((20, 5), (buffer.Cols, buffer.Rows));
+        Assert.Equal("preserved", BufferSnapshot.Capture(buffer).Lines[0]);
+    }
+
+    [Theory]
+    [InlineData(true, -2)]
+    [InlineData(true, 256)]
+    [InlineData(false, -2)]
+    [InlineData(false, 256)]
+    public void Saved_palette_indices_are_rejected_before_replay_mutation(bool foreground, short index)
+    {
+        var buffer = new TerminalBuffer(20, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process("preserved");
+        var snapshot = StateSnapshot(10, 3);
+        var state = snapshot.State!;
+        if (foreground) state.SavedCursorMain.Sgr.FgIndex = index;
+        else state.SavedCursorMain.Sgr.BgIndex = index;
+        var ex = Assert.Throws<InvalidOperationException>(() => ReplayRunner.ApplySnapshot(buffer, parser, snapshot));
+        Assert.Contains(foreground ? "foreground palette" : "background palette", ex.Message);
+        Assert.Equal((20, 5), (buffer.Cols, buffer.Rows));
+        Assert.Equal("preserved", BufferSnapshot.Capture(buffer).Lines[0]);
+    }
+
+    [Fact]
+    [Trait("Category", "Replay")]
+    public async Task Snapshot_inside_1049_restores_the_armed_main_cursor_its_context_and_both_screens()
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            var live = new TerminalBuffer(20, 8);
+            var parser = new AnsiParser(live);
+            parser.Process("main\u001b[?6h\u001b[?7l\u001b(0\u001b[3;4H\u001b[31;1m" +
+                "\u001b[?1049h\u001b[?6l\u001b[?7h\u001b(Balt");
+            using (var recorder = new PtyRecorder(path, 20, 8)) recorder.RecordSnapshot(live, parser);
+            const string tail = "\u001b[?1049lq";
+            parser.Process(tail);
+            var restored = new TerminalBuffer(20, 8);
+            var restoredParser = new AnsiParser(restored);
+            await new ReplayRunner(path).RunAsync(_ => Task.CompletedTask,
+                onSnapshotCallback: snapshot => { ReplayRunner.ApplySnapshot(restored, restoredParser, snapshot); return Task.CompletedTask; },
+                ct: TestContext.Current.CancellationToken);
+            restoredParser.Process(tail);
+            Assert.False(restored.IsAltScreenActive);
+            Assert.True(restored.Modes.IsOriginMode);
+            Assert.False(restored.Modes.IsAutoWrapMode);
+            Assert.True(restored.IsBold);
+            Assert.Equal(BufferSnapshot.Capture(live).ToFormattedString(), BufferSnapshot.Capture(restored).ToFormattedString());
+            Assert.StartsWith("main", BufferSnapshot.Capture(restored).Lines[0]);
+            restoredParser.Process("\u001b[?47h");
+            Assert.StartsWith("alt", BufferSnapshot.Capture(restored).Lines[0]);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void Unknown_optional_state_versions_use_the_legacy_viewport_fields()
+    {
+        var buffer = new TerminalBuffer(20, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process("preserved\u001b[6 q");
+        var snapshot = StateSnapshot(10, 3);
+        snapshot.Cols = 20;
+        snapshot.Rows = 5;
+        snapshot.CursorRow = 2;
+        snapshot.CursorCol = 7;
+        snapshot.State!.Version = int.MaxValue;
+        snapshot.State.Parser = new AnsiParserState { State = 999 };
+        ReplayRunner.ApplySnapshot(buffer, parser, snapshot);
+        Assert.Equal((20, 5), (buffer.Cols, buffer.Rows));
+        Assert.Equal((2, 7), (buffer.CursorRow, buffer.CursorCol));
+        Assert.Equal("preserved", BufferSnapshot.Capture(buffer).Lines[0]);
+        Assert.Equal(0, parser.ExportState().State);
+        Assert.True(buffer.Modes.CursorStyleIsDefault);
     }
 
 }
