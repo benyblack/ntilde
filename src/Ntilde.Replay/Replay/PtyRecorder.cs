@@ -113,6 +113,7 @@ namespace Ntilde.Replay
             Justification = "The instance method is retained for source compatibility; recordings no longer persist input.")]
         public void RecordInput(string input)
         {
+            // Intentionally ignored: retaining this API must not persist typed secrets.
         }
 
         public void RecordSixelCellSize(float width, float height) => RecordSixelCellSize(new RecordingCellMetrics(width, height));
