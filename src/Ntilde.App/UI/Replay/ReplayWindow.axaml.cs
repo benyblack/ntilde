@@ -257,21 +257,25 @@ namespace Ntilde.UI.Replay
 
         private async Task<bool> ApplySeekSnapshotAsync(int sessionId, ReplaySnapshot? snapshot, long appliedTime)
         {
+            var buffer = _buffer;
+            var parser = _parser;
+            var viewModel = _viewModel;
+            if (buffer is null || parser is null || viewModel is null) return false;
             try
             {
                 await ApplyInSessionAsync(sessionId, () =>
                 {
-                    if (snapshot is not null) ReplayRunner.ApplySnapshot(_buffer!, _parser!, snapshot);
-                    else _buffer!.Clear();
+                    if (snapshot is not null) ReplayRunner.ApplySnapshot(buffer, parser, snapshot);
+                    else buffer.Clear();
                     _displayedTimeMs = appliedTime;
-                    _viewModel!.CurrentTimeMs = appliedTime;
+                    viewModel.CurrentTimeMs = appliedTime;
                 });
                 return true;
             }
             catch (Exception ex)
             {
                 TerminalLogger.Error($"[ReplayWindow] Snapshot Error: {ex.Message}");
-                await ApplyInSessionAsync(sessionId, () => _viewModel!.CurrentTimeMs = _displayedTimeMs);
+                await ApplyInSessionAsync(sessionId, () => viewModel.CurrentTimeMs = _displayedTimeMs);
                 return false;
             }
         }
