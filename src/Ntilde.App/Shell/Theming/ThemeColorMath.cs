@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Avalonia.Media;
+using Ntilde.VT;
 
 namespace Ntilde.Shell.Theming;
 
@@ -18,7 +19,7 @@ public static class ThemeColorMath
     /// pre-v2 rule, kept so no shipped theme changes sides.
     /// </summary>
     public static bool IsDark(Color color)
-        => (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255.0 < 0.5;
+        => TermColor.IsDark(new TermColor(color.R, color.G, color.B, color.A));
 
     /// <summary>WCAG 2.x relative luminance of the RGB channels (alpha ignored).</summary>
     public static double RelativeLuminance(Color color)

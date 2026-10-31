@@ -83,6 +83,7 @@ public sealed class MuxPaneSharingTests : IDisposable
         StartHostedPane(new Ntilde.Shell.TerminalSettings { EnableKittyKeyboardProtocol = enabled });
         var request = Assert.Single(_mux.Factory.Requests);
         Assert.Equal(flags, request.KittyKeyboardSupportedFlags);
+        Assert.Equal(_pane!.Parser!.DefaultBackground?.ToUint(), request.DefaultBg);
         Assert.True(request.CellWidthPx > 0);
         Assert.True(request.CellHeightPx > 0);
     }

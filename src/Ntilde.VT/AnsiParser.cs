@@ -159,7 +159,6 @@ namespace Ntilde.VT
         /// vim/nvim's startup theme probes stall for their ~1s timeout on every launch).
         /// </summary>
         public TermColor? DefaultForeground { get; set; }
-        public TermColor? DefaultBackground { get; set; }
 
         /// <summary>
         /// Host-settable kill switch for the kitty keyboard protocol (issue #266 / PR #277
@@ -617,6 +616,7 @@ namespace Ntilde.VT
                                     // mode 2048 must not keep receiving resize reports on its
                                     // stdin, and DECRQM must not report the mode as set.
                                     _inBandResizeReportsEnabled = false;
+                                    _colorSchemeReportsEnabled = false;
                                     _state = State.Normal;
                                 }
                                 else if (c == '=' || c == '>') // DECKPAM / DECKPNM

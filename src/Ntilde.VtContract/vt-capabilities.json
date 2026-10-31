@@ -27,6 +27,24 @@
       "matrixFeature": "CHA (G)",
       "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
       "contractCase": "cursor-horizontal-absolute"
+    },
+    {
+      "key": "CSI:?996n",
+      "mnemonic": "DSR color scheme",
+      "support": "supported",
+      "description": "Query the effective terminal background preference: dark (1) or light (2).",
+      "matrixFeature": "Color-scheme query",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "color-scheme-query"
+    },
+    {
+      "key": "DEC:2031",
+      "mnemonic": "Color-scheme reporting",
+      "support": "supported",
+      "description": "Opt in to dark/light background-preference transitions; subscription is queryable with DECRQM.",
+      "matrixFeature": "Color-scheme notifications",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "color-scheme-notifications"
     }
   ]
 }

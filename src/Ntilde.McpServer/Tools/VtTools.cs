@@ -262,10 +262,19 @@ public sealed class VtTools
                      + "form is not in the curated table. Ntilde's parser ignores it.";
             }
 
-            return ((ContractSequenceTable.TryGetValue(key, out var desc))
+            return ((ContractSequenceTable.TryGetValue("CSI:" + body, out var desc))
+                    || ContractSequenceTable.TryGetValue(key, out desc)
                     || SequenceTable.TryGetValue(key, out desc))
                 ? $"CSI sequence, final byte '{finalByte}'{note}: {desc}"
                 : $"CSI sequence with final byte '{finalByte}'{note}: not in the curated table. Params/intermediates: '{prefix}'.";
+        }
+
+        // DEC mode names are catalog identifiers rather than literal escape sequences.
+        if (upper.StartsWith("DEC ", StringComparison.Ordinal))
+        {
+            string mode = s.Substring(4).Trim();
+            if (ContractSequenceTable.TryGetValue("DEC:" + mode, out var description))
+                return $"DEC mode {mode}: {description}";
         }
 
         // OSC: "ESC]", "ESC ]" or "OSC"

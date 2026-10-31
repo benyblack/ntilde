@@ -47,6 +47,20 @@ public sealed class MuxTerminalSessionFactoryTests
 
 
     [Fact]
+    public async Task Local_spawn_carries_the_background_before_the_first_color_query()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            mux.Factory.StartupOutput = "\u001b[?996n";
+            var session = Assert.IsType<MuxClientSession>(factory.CreatePersistent(Local() with { DefaultBg = uint.MaxValue }).Session);
+            Assert.False(session.IsAttached);
+            await TestWait.UntilAsync(() => !mux.Fake(session.Id).SentInput.IsEmpty, "local startup color preference used the host background");
+            Assert.Equal("\u001b[?997;2n", Assert.Single(mux.Fake(session.Id).SentInput));
+        }
+    }
+
+    [Fact]
     public async Task Local_spawn_carries_pixel_metrics_before_the_childs_first_image()
     {
         var (mux, factory, _) = Build();

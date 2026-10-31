@@ -520,7 +520,7 @@ namespace Ntilde.VT
                           // (xterm's disable-key-modifiers) is not a status request at all.
                     if (intermediates.Length == 0 && (leader == '\0' || leader == '?'))
                     {
-                        ReportDeviceStatus(arg0, isPrivate);
+                        ReportDeviceStatus(arg0, isPrivate, argCount);
                     }
                     break;
                 case 'q':
@@ -680,9 +680,9 @@ namespace Ntilde.VT
 
         /// <summary>
         /// DSR: the operating-status report (5) and the cursor position report (6), the latter in the private
-        /// DECXCPR form when it was asked privately.
+        /// DECXCPR form when it was asked privately. Private 996 requests the terminal color preference.
         /// </summary>
-        private void ReportDeviceStatus(int arg0, bool isPrivate)
+        private void ReportDeviceStatus(int arg0, bool isPrivate, int argCount)
         {
             if (arg0 == 5 && !isPrivate) // DSR - operating status
             {
@@ -692,6 +692,11 @@ namespace Ntilde.VT
             {
                 string cprLeader = isPrivate ? "?" : string.Empty;
                 OnResponse?.Invoke($"\x1b[{cprLeader}{ReportedCursorRow()};{_buffer.CursorCol + 1}R");
+            }
+
+            else if (arg0 == 996 && isPrivate && argCount == 1)
+            {
+                ReportColorScheme();
             }
 
             // arg0 == 0 is a DSR *response* arriving on the input stream: ignored.
@@ -901,6 +906,7 @@ namespace Ntilde.VT
                 case 1049: return _buffer.IsAltScreenActive ? 1 : 2;             // Alt screen + save cursor
                 case 2004: return _buffer.Modes.IsBracketedPasteMode ? 1 : 2;
                 case 2026: return _buffer.IsSynchronizedOutput ? 1 : 2;          // Synchronized Output
+                case 2031: return _colorSchemeReportsEnabled ? 1 : 2;          // Dark/light theme updates
                 case 2048: return _inBandResizeReportsEnabled ? 1 : 2;           // Kitty in-band resize
                 default: return 0; // Not recognized
             }
@@ -1005,6 +1011,9 @@ namespace Ntilde.VT
                     case 2026: // Synchronized Output (Batch Rendering)
                         if (enable) _buffer.BeginSync();
                         else _buffer.EndSync();
+                        break;
+                    case 2031: // Contour dark/light theme updates: opt-in, no initial notification
+                        _colorSchemeReportsEnabled = enable;
                         break;
                     case 2048: // Kitty in-band resize: resize reports on while set
                         _inBandResizeReportsEnabled = enable;

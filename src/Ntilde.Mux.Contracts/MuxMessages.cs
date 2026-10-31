@@ -103,6 +103,10 @@ public sealed record SpawnParams
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? KittyKeyboardSupportedFlags { get; init; }
 
+    /// <summary>Spawning host background ARGB before startup output; absent retains the dark fallback.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint? DefaultBg { get; init; }
+
 
     /// <summary>
     /// Phase 4 (spec §3, codex E1; additive): the id the new session takes, in the "D" form, chosen by the

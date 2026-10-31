@@ -148,6 +148,18 @@ The VT engine is **purely deterministic**:
 
 This enables deterministic replay, cross-platform parity testing, and safe refactoring.
 
+### 3.4 Color preference
+
+Color preference queries (`CSI ? 996 n`) and opt-in updates (mode 2031) use the
+host-provided effective default background. The pure RGB luma classifier is shared
+with UI theming; VT performs no OS/theme lookup. Only dark/light transitions emit
+updates. The subscription travels with parser state while host colors remain local
+configuration. Existing profile-theme wiring supplies local panes; mux presentation
+updates supply the daemon, which is the sole device-reply source for shared sessions.
+An optional background ARGB value travels with local/remote spawn requests and is
+installed before startup output is parsed, so the first query need not wait for
+attach. Legacy callers omit it and retain the dark fallback until presentation arrives.
+
 ---
 
 ## 4. Recording / Playback — `Ntilde.Replay`

@@ -73,6 +73,9 @@ namespace Ntilde.VT
         /// <summary>What <c>CSI Ps b</c> would repeat, or null.</summary>
         [JsonPropertyName("last_graphic")] public string? LastGraphicChar { get; set; }
 
+        /// <summary>DECSET 2031 - dark/light theme-change reports. Absent legacy state defaults off.</summary>
+        [JsonPropertyName("color_scheme_reports")] public bool ColorSchemeReportsEnabled { get; set; }
+
         /// <summary>DECSET 2048 - kitty in-band resize reports.</summary>
         [JsonPropertyName("inband_resize")] public bool InBandResizeReportsEnabled { get; set; }
 
@@ -121,6 +124,7 @@ namespace Ntilde.VT
             sb.Append(" swallow=").Append(SwallowNextNewline);
             sb.Append(" voff=").Append(VerticalOffset);
             sb.Append(" lastgfx=").Append(LastGraphicChar ?? "<null>");
+            sb.Append(" color_scheme_reports=").Append(ColorSchemeReportsEnabled);
             sb.Append(" inband=").Append(InBandResizeReportsEnabled);
             sb.Append(" sixel_cw=").Append(SixelCellWidthPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");
             sb.Append(" sixel_ch=").Append(SixelCellHeightPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");

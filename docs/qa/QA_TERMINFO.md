@@ -156,7 +156,8 @@ These copies support auditing archived runs after the checkout changes.
 There is no screenshot or clipboard fixture yet.
 Keep their checks inconclusive where evidence is unavailable. A collector
 diagnostic or `suiteComplete: false` must remain visible; it is not a terminal
-failure. See the [first owned run](terminfo/2026-10-30-macos-owned.md).
+failure. See the [first owned run](terminfo/2026-10-30-macos-owned.md) and the
+[refreshed before/after run](terminfo/2026-10-31-macos-owned.md).
 
 Adapter tests use Node's built-in test runner:
 

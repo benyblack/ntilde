@@ -453,6 +453,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
             Arguments = string.Empty,
             StartingDirectory = profile.WorkingDirectory ?? string.Empty, // a profile file may leave it out
             KittyKeyboardSupportedFlags = r.KittyKeyboardSupportedFlags,
+            DefaultBg = r.DefaultBg,
             CellWidthPx = r.CellWidthPx,
             CellHeightPx = r.CellHeightPx,
             Cols = r.Cols,
@@ -467,6 +468,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
             Arguments = r.Arguments,
             StartingDirectory = r.StartingDirectory,
             KittyKeyboardSupportedFlags = r.KittyKeyboardSupportedFlags,
+            DefaultBg = r.DefaultBg,
             CellWidthPx = r.CellWidthPx,
             CellHeightPx = r.CellHeightPx,
             Cols = r.Cols,

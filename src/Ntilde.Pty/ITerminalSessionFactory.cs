@@ -69,6 +69,9 @@ namespace Ntilde.Pty
         /// </summary>
         public int? KittyKeyboardSupportedFlags { get; init; }
 
+        /// <summary>Initial effective background ARGB for persistent query replies; opaque to the process layer.</summary>
+        public uint? DefaultBg { get; init; }
+
         /// <summary>Initial device-pixel cell size for persistent-session layout; opaque to the process layer.</summary>
         public float? CellWidthPx { get; init; }
         public float? CellHeightPx { get; init; }
