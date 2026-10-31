@@ -105,18 +105,14 @@ namespace Ntilde.Replay
             });
         }
 
+        /// <summary>
+        /// Kept for source compatibility. New recordings never persist typed input, including
+        /// passwords entered without echo. Legacy input events remain readable by ReplayRunner.
+        /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+            Justification = "The instance method is retained for source compatibility; recordings no longer persist input.")]
         public void RecordInput(string input)
         {
-            if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
-            byte[] utf8 = System.Text.Encoding.UTF8.GetBytes(input);
-
-            TryEnqueue(new ReplayEvent
-            {
-                TimeOffsetMs = GetTimestamp(),
-                Type = "input",
-                Data = Convert.ToBase64String(utf8),
-                Input = input // Legacy fallback for old readers
-            });
         }
 
         public void RecordSixelCellSize(float width, float height) => RecordSixelCellSize(new RecordingCellMetrics(width, height));

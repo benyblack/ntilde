@@ -65,52 +65,45 @@ namespace Ntilde.Tests
 
         [Fact]
         [Trait("Category", "PtySmoke")]
-        public async Task AgentSentInput_IsByteFaithful_AndReplayRecordedLikeKeystrokes()
+        public async Task AgentSentInput_ReachesShell_WithoutRecordingInputEvents()
         {
-            // A3 acceptance: input an agent injects through the registration is
-            // (a) byte-faithful and (b) recorded to a manual replay exactly like
-            // a human keystroke — the session records it via the same
-            // _recorder.RecordInput path SendInput always uses.
             string shell = ShellHelper.GetDefaultShell();
             string recPath = Path.Combine(Path.GetTempPath(), $"ntilde_a3_{Guid.NewGuid():N}.rec");
             try
             {
-                // skipPowerShellPostLaunchInit: the init injection calls SendInput on a
-                // 300 ms timer, which is exactly this test's start-up delay, so whether the
-                // injected `& '<script>'` was recorded before the payload below came down to
-                // a coin flip. This test is about agent input fidelity, not the PowerShell
-                // banner, so the injection is pure noise here - and it flipped that coin
-                // twice while PTY timing was being changed elsewhere (#214, #215).
                 using var session = new RustPtySession(
                     shell, 80, 24, args: null, cwd: null, skipPowerShellPostLaunchInit: true);
                 var registration = new Ntilde.AgentHost.AgentSessionRegistration(
                     Guid.NewGuid(), new TerminalBuffer(80, 24), "t", "P", "local", isActive: true);
                 registration.SetLifecycle(session);
-
-                await Task.Delay(300, TestContext.Current.CancellationToken); // let the shell come up
+                var output = new StringBuilder();
+                var delivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                session.OnOutputReceived += text =>
+                {
+                    lock (output)
+                    {
+                        output.Append(text);
+                        if (output.ToString().Contains("ntilde-a3-marker", StringComparison.Ordinal)) delivered.TrySetResult();
+                    }
+                };
                 session.StartRecording(recPath);
-
-                const string payload = "echo ntilde-a3-marker\r";
-                Assert.True(registration.TrySendInput(payload));
-
-                await Task.Delay(400, TestContext.Current.CancellationToken);
+                Assert.True(registration.TrySendInput("echo ntilde-a3-marker\r"));
+                await delivered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
                 session.StopRecording();
 
-                string[] lines = File.ReadAllLines(recPath);
-                // Search every input event rather than only the first. The assertion is
-                // "the payload was recorded byte-faithfully", which says nothing about it
-                // being the only - or first - input in the recording.
-                byte[] expected = System.Text.Encoding.UTF8.GetBytes(payload);
-                string expectedBase64 = Convert.ToBase64String(expected);
-                string[] inputLines = lines.Where(l => l.Contains("\"type\":\"input\"")).ToArray();
-
-                Assert.NotEmpty(inputLines);
-                Assert.Contains(inputLines, line => line.Contains(expectedBase64));
+                // Echoed output can contain the command, but raw typed input must not be stored.
+                foreach (string line in File.ReadLines(recPath))
+                {
+                    using var document = System.Text.Json.JsonDocument.Parse(line);
+                    Assert.NotEqual("input", document.RootElement.GetProperty("type").GetString());
+                }
+                var replayOutput = new StringBuilder();
+                await new Ntilde.Replay.ReplayRunner(recPath).RunAsync(
+                    onDataCallback: data => { replayOutput.Append(Encoding.UTF8.GetString(data)); return Task.CompletedTask; },
+                    ct: TestContext.Current.CancellationToken);
+                Assert.Contains("ntilde-a3-marker", replayOutput.ToString(), StringComparison.Ordinal);
             }
-            finally
-            {
-                if (File.Exists(recPath)) File.Delete(recPath);
-            }
+            finally { File.Delete(recPath); }
         }
 
         [Fact]

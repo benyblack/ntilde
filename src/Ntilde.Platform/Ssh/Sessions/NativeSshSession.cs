@@ -328,7 +328,6 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
             return;
         }
 
-        _recorder?.RecordInput(input);
         _interop.Write(_sessionHandle, Encoding.UTF8.GetBytes(input));
     }
 

@@ -1339,8 +1339,6 @@ namespace Ntilde.Pty
         {
             if (_handle.IsClosed || _handle.IsInvalid) return;
 
-            _recorder?.RecordInput(input);
-
             byte[] data = Encoding.UTF8.GetBytes(input);
             try
             {

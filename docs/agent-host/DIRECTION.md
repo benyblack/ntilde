@@ -184,9 +184,10 @@ Each milestone is independently shippable and announceable. Estimates assume
 **Acceptance criteria**
 - [x] Acting tools hard-fail when only observe permission is granted (tested:
       `actDisabled`; SSH also `profileNotAllowed`)
-- [x] Input injection is byte-faithful and replay-recorded like any PTY input
-      (goes through the session's normal `SendInput`; PtySmoke asserts the recorded
-      input event)
+- [x] Input injection is byte-faithful. New manual and flight recordings retain
+      output only, never typed input (#671); legacy input events remain readable.
+      (goes through the session's normal `SendInput`; PtySmoke verifies delivery
+      and the absence of input events in the recording)
 
 **Milestone A3 complete.** Design: `docs/plans/2026-07-12-agent-host-a3-act-design.md`.
 

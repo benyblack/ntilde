@@ -5,6 +5,11 @@ separate permission — type into, spawn, and close terminal sessions. Follows
 A1 (observe), A2 (status), A4 (replay export); the protocol stays additive on
 version 1.
 
+**Recording privacy update (#671):** the input-recording behavior described in this
+original design has been superseded. New manual recordings, like flight exports,
+retain output and terminal state only. Typed input is never persisted; existing
+recordings containing input events remain readable.
+
 ## Goal
 
 - **`ntilde.send_input`** — inject input into a live session, byte-faithful

@@ -73,57 +73,27 @@ namespace Ntilde.Tests.ReplayTests
         }
 
         [Fact]
-        public async Task ReplayV2_RoundTrip_WithInput_Works()
+        public async Task ReplayV2_LegacyInput_RemainsReadable()
         {
             string tempFile = Path.GetTempFileName();
             try
             {
-                // 1. Record v2 with Input
-                using (var recorder = new PtyRecorder(tempFile, 80, 24, "pwsh.exe"))
-                {
-                    byte[] data1 = Encoding.UTF8.GetBytes("Prompt> ");
-                    recorder.RecordChunk(data1, data1.Length);
-
-                    recorder.RecordInput("ls\r");
-
-                    byte[] data2 = Encoding.UTF8.GetBytes("\r\nfile1.txt  file2.txt\r\nPrompt> ");
-                    recorder.RecordChunk(data2, data2.Length);
-                }
-
-                // 2. Replay v2
+                // Historical v2 recordings contain input; new writers are output-only.
+                await File.WriteAllLinesAsync(tempFile,
+                    ["{\"type\":\"novarec\",\"v\":2,\"cols\":80,\"rows\":24}",
+                     "{\"t\":0,\"type\":\"data\",\"d\":\"UHJvbXB0PiA=\"}",
+                     "{\"t\":0,\"type\":\"input\",\"d\":\"bHMN\",\"i\":\"ls\\r\"}"],
+                    TestContext.Current.CancellationToken);
                 var gatheredData = new StringBuilder();
                 var gatheredInput = new StringBuilder();
-
-                var runner = new ReplayRunner(tempFile);
-                await runner.RunAsync(
-                    onDataCallback: async (data) =>
-                    {
-                        gatheredData.Append(Encoding.UTF8.GetString(data));
-                        await Task.CompletedTask;
-                    },
-                    onInputCallback: async (input) =>
-                    {
-                        gatheredInput.Append(input);
-                        await Task.CompletedTask;
-                    }
-                , ct: TestContext.Current.CancellationToken);
-
-                // 3. Assert
-                Assert.Contains("Prompt> ", gatheredData.ToString());
-                Assert.Contains("file1.txt", gatheredData.ToString());
+                await new ReplayRunner(tempFile).RunAsync(
+                    onDataCallback: data => { gatheredData.Append(Encoding.UTF8.GetString(data)); return Task.CompletedTask; },
+                    onInputCallback: input => { gatheredInput.Append(input); return Task.CompletedTask; },
+                    ct: TestContext.Current.CancellationToken);
+                Assert.Equal("Prompt> ", gatheredData.ToString());
                 Assert.Equal("ls\r", gatheredInput.ToString());
-
-                // Input event should carry raw bytes in d (base64), with legacy i present.
-                var lines = File.ReadAllLines(tempFile);
-                string? inputLine = lines.FirstOrDefault(l => l.Contains("\"type\":\"input\""));
-                Assert.NotNull(inputLine);
-                Assert.Contains("\"d\":\"", inputLine);
-                Assert.Contains("\"i\":\"ls\\r\"", inputLine);
             }
-            finally
-            {
-                if (File.Exists(tempFile)) File.Delete(tempFile);
-            }
+            finally { File.Delete(tempFile); }
         }
 
         [Fact]
