@@ -141,6 +141,9 @@ Among equal-time complete snapshots, the last physical record wins. Blank lines,
 LF/CRLF endings and a final record without a newline do not change the boundary.
 `ReplayRunOptions.StartAfterLineNumber` is a reader option, not a recording field;
 zero retains normal from-start behavior. It cannot be combined with a byte offset.
+`OnSkippedData` optionally observes skipped data records to prime a byte decoder;
+it does not apply terminal events, publish timestamps or count replayed events.
+Input payloads and snapshot records are not delivered to this observer.
 Header validation still runs; header geometry/metrics are gated when a checkpoint
 already supplied authoritative values.
 
@@ -153,7 +156,9 @@ UTF-8 decoder so a code point can span data records without inheriting bytes fro
 previous run. Playback publishes times at or after its requested start while rebuilding
 the earlier prefix. The original recorded prefix must
 be present for exact reconstruction; a standalone legacy viewport capture cannot
-provide a complete seek cut. Complete snapshots support independent checkpoints.
+provide a complete seek cut. Complete snapshots establish the terminal/parser cut;
+preceding raw data primes the UTF-8 decoder when a code point straddles that cut.
+Decoded prefix text is discarded, so the checkpoint's terminal state stays authoritative.
 This can make old recordings slower to seek, but avoids inventing parser state.
 Malformed nearest snapshots are rejected before resetting the displayed state.
 

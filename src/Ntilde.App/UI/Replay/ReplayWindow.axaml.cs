@@ -257,7 +257,13 @@ namespace Ntilde.UI.Replay
                     onSixelCellSizeCallback: (w, h) => ApplyCellMetricsAsync(sessionId, w, h),
                     onResizeCallback: (w, h) => ApplyInSessionAsync(sessionId, () => _buffer.Resize(w, h)),
                     onTimeUpdate: time => { appliedTime = Math.Max(appliedTime, time); return Task.CompletedTask; },
-                    options: new ReplayRunOptions { StopAtTimeMs = targetTimeMs, ApplyHeaderResize = snapEntry is null, StartAfterLineNumber = snapEntry?.LineNumber ?? 0 },
+                    options: new ReplayRunOptions
+                    {
+                        StopAtTimeMs = targetTimeMs,
+                        ApplyHeaderResize = snapEntry is null,
+                        StartAfterLineNumber = snapEntry?.LineNumber ?? 0,
+                        OnSkippedData = data => { _ = DecodeChunk(decoder, data); }
+                    },
                     minTimeMs: snapEntry?.TimeMs ?? 0,
                     ct: seekCts.Token);
                 appliedTime = Math.Max(appliedTime, result.LastGoodOffset);
@@ -349,7 +355,13 @@ namespace Ntilde.UI.Replay
                             }
                         });
                     },
-                    options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Realtime, ApplyHeaderResize = snapEntry is null, StartAfterLineNumber = snapEntry?.LineNumber ?? 0 },
+                    options: new ReplayRunOptions
+                    {
+                        PlaybackMode = ReplayPlaybackMode.Realtime,
+                        ApplyHeaderResize = snapEntry is null,
+                        StartAfterLineNumber = snapEntry?.LineNumber ?? 0,
+                        OnSkippedData = data => { _ = DecodeChunk(decoder, data); }
+                    },
                     minTimeMs: minTime,
                     fastForwardToMs: startTimeMs,
                     playbackSpeed: _viewModel.PlaybackSpeed,

@@ -246,6 +246,43 @@ public sealed class ReplaySeekIsolationTests
         AssertPair(expected, expectedParser, fixture.Buffer, fixture.Parser);
     }
 
+    public static IEnumerable<object[]> CompleteCheckpointUtf8Cases()
+    {
+        foreach (var row in SplitUtf8Cases().Where(row => !(bool)row[2]))
+            foreach (string newline in new[] { "\n", "\r\n" })
+                yield return new[] { row[0], row[1], newline };
+    }
+
+    [AvaloniaTheory]
+    [MemberData(nameof(CompleteCheckpointUtf8Cases))]
+    public async Task A_complete_checkpoint_primes_only_utf8_continuation_from_the_skipped_prefix(string text, int cut, string newline)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(text);
+        var prefixBytes = Encoding.UTF8.GetBytes("raw-prefix").Concat(bytes[..cut]).ToArray();
+        var source = new TerminalBuffer(20, 6);
+        var parser = new AnsiParser(source);
+        parser.Process("checkpoint");
+        var checkpoint = Pair(source, parser);
+        ReplayEvent[] events = [
+            new() { Type = "data", TimeOffsetMs = 10, Data = Convert.ToBase64String(prefixBytes) },
+            Snapshot(20, Complete(checkpoint)),
+            new() { Type = "data", TimeOffsetMs = 30, Data = Convert.ToBase64String(bytes[cut..]) },
+            Data(40, "Z")];
+        using var fixture = new SeekFixture(events, newline: newline, blankLines: true);
+        await fixture.Ready(40);
+        parser.Process(text + "Z");
+        foreach (long target in new[] { 40L, 20L, 40L })
+        {
+            await fixture.Seek(target);
+            if (target == 20) Assert.Equivalent(checkpoint, Pair(fixture.Buffer, fixture.Parser), strict: true);
+            else AssertPair(source, parser, fixture.Buffer, fixture.Parser);
+        }
+        await fixture.PlayFrom(20);
+        AssertPair(source, parser, fixture.Buffer, fixture.Parser);
+        await fixture.PlayFrom(40);
+        AssertPair(source, parser, fixture.Buffer, fixture.Parser);
+    }
+
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]

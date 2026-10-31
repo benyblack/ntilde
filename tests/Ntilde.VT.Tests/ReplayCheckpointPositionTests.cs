@@ -23,6 +23,12 @@ public sealed class ReplayCheckpointPositionTests
             if (leadingBlank) { lines.Add(""); lines.Add(" "); }
             if (!v1) lines.Add(Header());
             lines.Add(Data(0, "before", v1));
+            if (!v1) lines.Add(JsonSerializer.Serialize(new ReplayEvent
+            {
+                Type = "input",
+                TimeOffsetMs = 0,
+                Data = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("not output"))
+            }, ReplayJsonContext.Default.ReplayEvent));
             lines.Add("");
             if (!v1) lines.Add(JsonSerializer.Serialize(new ReplayEvent
             {
@@ -35,6 +41,7 @@ public sealed class ReplayCheckpointPositionTests
             lines.Add(Data(10, "end", v1));
             File.WriteAllText(path, string.Join(newline, lines)); // final record has no newline
             var output = new List<string>();
+            var skipped = new List<string>();
             var times = new List<long>();
             int headers = 0, resizes = 0, snapshots = 0;
             var result = await new ReplayReader(path).RunWithResultAsync(
@@ -43,9 +50,10 @@ public sealed class ReplayCheckpointPositionTests
                 onResizeCallback: (_, _) => { resizes++; return Task.CompletedTask; },
                 onSnapshotCallback: _ => { snapshots++; return Task.CompletedTask; },
                 onTimeUpdate: time => { times.Add(time); return Task.CompletedTask; },
-                options: new ReplayRunOptions { StartAfterLineNumber = checkpointLine, ApplyHeaderResize = false },
+                options: new ReplayRunOptions { StartAfterLineNumber = checkpointLine, ApplyHeaderResize = false, OnSkippedData = bytes => skipped.Add(System.Text.Encoding.UTF8.GetString(bytes)) },
                 ct: TestContext.Current.CancellationToken);
             Assert.Equal(new[] { "after", "end" }, output);
+            Assert.Equal(new[] { "before" }, skipped);
             Assert.Equal(new[] { 0L, 10L }, times);
             Assert.Equal(v1 ? 0 : 1, headers);
             Assert.Equal(0, resizes);

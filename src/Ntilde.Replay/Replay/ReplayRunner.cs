@@ -25,6 +25,11 @@ namespace Ntilde.Replay
         public bool ApplyHeaderResize { get; init; } = true;
         /// <summary>Resume strictly after this physical, one-based file line; zero reads from the start.</summary>
         public long StartAfterLineNumber { get; init; }
+        /// <summary>
+        /// Observes only data records skipped by a line checkpoint, to rebuild a caller-owned byte decoder.
+        /// This does not apply terminal state, advance the clock, or count replayed events.
+        /// </summary>
+        public Action<byte[]>? OnSkippedData { get; init; }
     }
 
     public sealed class ReplayRunResult
@@ -153,6 +158,9 @@ namespace Ntilde.Replay
             string? nextLine = await ReadLineOrEndAsync(reader, ct);
             while (line != null && !ct.IsCancellationRequested)
             {
+                if (!skipCurrentLine && lineNumber <= startAfterLine &&
+                    !string.IsNullOrWhiteSpace(line) && options?.OnSkippedData is { } onSkippedData)
+                    ObserveSkippedData(line, isV2, onSkippedData);
                 if (!skipCurrentLine && lineNumber > startAfterLine)
                 {
                     if (!string.IsNullOrWhiteSpace(line))
@@ -191,6 +199,17 @@ namespace Ntilde.Replay
             }
 
             return result;
+        }
+
+        /// <summary>Supplies prefix bytes without replaying input, snapshots or other terminal events.</summary>
+        private static void ObserveSkippedData(string line, bool isV2, Action<byte[]> onSkippedData)
+        {
+            using var document = JsonDocument.Parse(line);
+            var root = document.RootElement;
+            if (isV2 && (!root.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String || type.GetString() != "data"))
+                return;
+            if (root.TryGetProperty("d", out var data) && data.ValueKind == JsonValueKind.String && data.GetString() is { } encoded)
+                onSkippedData(Convert.FromBase64String(encoded));
         }
 
         private static bool IsPastStopTime(string line, long? stopAtTimeMs)
