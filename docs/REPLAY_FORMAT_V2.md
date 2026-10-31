@@ -50,7 +50,10 @@ Each subsequent line is a JSON event with:
 - `cols` (`int`)
 - `rows` (`int`)
 
-### `type: "input"`
+### `type: "input"` (legacy read support only)
+
+New manual and flight recordings never write input events, including passwords entered without
+terminal echo. The reader continues accepting both forms below in existing recordings.
 
 ```json
 {"t":420,"type":"input","d":"BASE64_BYTES","i":"legacy-string"}
