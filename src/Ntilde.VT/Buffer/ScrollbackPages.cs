@@ -277,6 +277,15 @@ namespace Ntilde.VT.Storage
                 throw new ArgumentOutOfRangeException(nameof(logicalIndex));
 
             long absRow = _totalRowsEvicted + logicalIndex;
+            // Metadata readers share the same immutable page/coordinate cache as cell readers.
+            // Capture once: another reader may publish a different page while this one runs.
+            var cached = CachedPage;
+            if (cached != null && !cached.Page.IsReturned)
+            {
+                long offset = absRow - cached.StartAbsRow;
+                if (offset >= 0 && offset < cached.Page.UsedRows)
+                    return (cached.Page, (int)offset);
+            }
             long pageStartAbs = _totalRowsEvicted;
 
             foreach (var page in _pages)
@@ -285,6 +294,7 @@ namespace Ntilde.VT.Storage
                 if (absRow < pageEndAbs)
                 {
                     int rowInPage = (int)(absRow - pageStartAbs);
+                    Volatile.Write(ref _lastAccessedPage, new PageAccess(page, pageStartAbs));
                     return (page, rowInPage);
                 }
                 pageStartAbs = pageEndAbs;
