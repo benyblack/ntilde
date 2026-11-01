@@ -53,6 +53,11 @@ public sealed class SecretsFilterTests
     [InlineData("tool --password synth\u00a0677 --verbose", "tool --password [REDACTED] --verbose")]
     [InlineData("sshpass -p synth\u00a0677 ssh host", "sshpass -p [REDACTED] ssh host")]
     [InlineData("Authorization: Bearer abc+def/ghi~jkl==", "Authorization: Bearer [REDACTED]")]
+    [InlineData("tool --token \"`printf '%s' \"synth 677\"`\" --verbose", "tool --token [REDACTED] --verbose")]
+    [InlineData("tool \"--token=synth 677\" --verbose", "tool \"--token=[REDACTED]\" --verbose")]
+    [InlineData("tool '--token=synth 677' --verbose", "tool '--token=[REDACTED]' --verbose")]
+    [InlineData("env \"GITHUB_TOKEN=synth 677\" tool", "env \"GITHUB_TOKEN=[REDACTED]\" tool")]
+    [InlineData("tool \"--token=synth \"677 --verbose", "tool \"--token=[REDACTED]\" --verbose")]
     public void Redact_SupportedCredentials_RemovesEntireValueAndPreservesArguments(string command, string expected)
     {
         RedactionResult result = new SecretsFilter().Redact(command);

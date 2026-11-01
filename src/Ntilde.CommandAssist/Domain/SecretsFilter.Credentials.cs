@@ -13,7 +13,8 @@ public sealed partial class SecretsFilter
     private const int MaxCredentialNesting = 32;
     private static readonly Regex CredentialPrefixRegex = CredentialPrefix();
 
-    [GeneratedRegex(@"(?<![\w-])(?:sshpass[ \t]+-p[ \t]+|(?<cmdQuoted>set[ \t]+"")" + CredentialNames + @"[ \t]*=|" +
+    [GeneratedRegex(@"(?<![\w-])(?:sshpass[ \t]+-p[ \t]+|(?<argQuote>[""'])(?:--" + CredentialFlags + "|" + CredentialNames + @")=|" +
+        @"(?<cmdQuoted>set[ \t]+"")" + CredentialNames + @"[ \t]*=|" +
         @"(?<cmd>set[ \t]+)" + CredentialNames + @"=|" +
         @"\$env:" + CredentialNames + @"[ \t]*=[ \t]*|" + CredentialNames + @"=|" +
         @"(?:""--" + CredentialFlags + @"""|'--" + CredentialFlags + @"'|--" + CredentialFlags + @")(?:=|[ \t]+))",
@@ -28,14 +29,18 @@ public sealed partial class SecretsFilter
         {
             if (prefix.Index < copiedThrough) continue;
             int start = prefix.Index + prefix.Length;
-            bool quotedAssignment = prefix.Groups["cmdQuoted"].Success;
-            int end = quotedAssignment ? CredentialQuotedEnd(text, start, '"', 0)
-                : CredentialWordEnd(text, start, prefix.Groups["cmd"].Success);
+            string argumentQuote = prefix.Groups["argQuote"].Value;
+            char quote = argumentQuote.Length > 0 ? argumentQuote[0] : '"';
+            bool quotedValue = argumentQuote.Length > 0 || prefix.Groups["cmdQuoted"].Success;
+            int quotedEnd = quotedValue ? CredentialQuotedEnd(text, start, quote, 0) : start;
+            int end = quotedValue ? quotedEnd : CredentialWordEnd(text, start, prefix.Groups["cmd"].Success);
+            // Whole-argument quotes can be followed by more fragments of the same shell word.
+            if (argumentQuote.Length > 0) end = CredentialWordEnd(text, end, cmdAssignment: false);
             if (end == start) continue;
             output ??= new StringBuilder(text.Length);
             output.Append(text, copiedThrough, start - copiedThrough);
             output.Append("[REDACTED]");
-            if (quotedAssignment && end > start && text[end - 1] == '"') output.Append('"');
+            if (quotedValue && quotedEnd > start && text[quotedEnd - 1] == quote) output.Append(quote);
             copiedThrough = end;
         }
         return output is null ? text : output.Append(text, copiedThrough, text.Length - copiedThrough).ToString();
@@ -94,6 +99,13 @@ public sealed partial class SecretsFilter
             {
                 if (quote != '`' && index + 1 < text.Length && text[index + 1] == quote) { index += 2; continue; }
                 return index + 1;
+            }
+            // Bash substitutions may contain quotes that do not close the surrounding double quote.
+            // PowerShell backtick escapes with a later backtick are hidden conservatively as a unit.
+            if (quote == '"' && c == '`' && text.IndexOf('`', index + 1) >= 0)
+            {
+                index = CredentialQuotedEnd(text, index + 1, '`', depth + 1);
+                continue;
             }
             if (quote != '\'' && c is '\\' or '`' or '^') { index = Math.Min(text.Length, index + 2); continue; }
             if (IsCredentialExpansion(text, index, quote))
