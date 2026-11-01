@@ -888,6 +888,9 @@ namespace Ntilde.VT
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         }
+        private static int SearchCellEnd(ReadOnlySpan<TerminalCell> cells, int column) =>
+            column + 1 < cells.Length && cells[column + 1].IsWideContinuation ? column + 1 : column;
+
         public List<SearchMatch> FindMatches(string query, bool useRegex, bool caseSensitive)
         {
             if (string.IsNullOrEmpty(query)) return new List<SearchMatch>();
@@ -919,29 +922,31 @@ namespace Ntilde.VT
                 {
                     // Build row string
                     ReadOnlySpan<TerminalCell> cells;
-                    TerminalRow? rowObj = null;
+                    SmallMap<string>? extendedText;
                     if (r < _scrollback.Count)
                     {
                         cells = _scrollback.GetRow(r);
+                        extendedText = _scrollback.GetExtendedTextMap(r);
                     }
                     else
                     {
-                        rowObj = _viewport[r - _scrollback.Count];
-                        cells = rowObj.Cells;
+                        var row = _viewport[r - _scrollback.Count];
+                        cells = row.Cells;
+                        extendedText = row.GetExtendedTextMap();
                     }
 
                     // Build row string with mapping for wide/complex characters
                     var sb = new StringBuilder();
-                    var colMapping = new List<int>(); // Maps string char index to buffer column
+                    var colMapping = new List<int>(); // Maps each UTF-16 unit to its leading cell
 
                     for (int c = 0; c < Cols; c++)
                     {
                         var cell = cells[c];
                         if (cell.IsWideContinuation) continue;
 
-                        string? text = (rowObj != null && cell.HasExtendedText) ? rowObj.GetExtendedText(c) : null;
+                        string? text = cell.HasExtendedText && extendedText != null
+                            && extendedText.TryGet(c, out string? graphemeText) ? graphemeText : null;
                         text ??= cell.Character.ToString();
-                        int startIdx = sb.Length;
                         sb.Append(text);
                         for (int k = 0; k < text.Length; k++) colMapping.Add(c);
                     }
@@ -960,7 +965,7 @@ namespace Ntilde.VT
                                 if (m.Length == 0) continue;
 
                                 int startCol = colMapping[m.Index];
-                                int endCol = colMapping[m.Index + m.Length - 1];
+                                int endCol = SearchCellEnd(cells, colMapping[m.Index + m.Length - 1]);
                                 matches.Add(new SearchMatch(r, startCol, endCol));
                             }
                         }
@@ -981,7 +986,7 @@ namespace Ntilde.VT
                         while (index != -1)
                         {
                             int startCol = colMapping[index];
-                            int endCol = colMapping[index + query.Length - 1];
+                            int endCol = SearchCellEnd(cells, colMapping[index + query.Length - 1]);
                             matches.Add(new SearchMatch(r, startCol, endCol));
                             index = lineText.IndexOf(query, index + 1, comparison);
                         }
