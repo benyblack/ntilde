@@ -35,7 +35,7 @@ env:
   # GitHub Actions runner's redirected stdout/stderr pipes open. Without these,
   # Linux Unit Tests has historically hung after tests completed because the
   # MSBuild worker pool spawned by `dotnet test` (and any nested `dotnet build`
-  # inside tests like VtReportCliTests) kept the pipe alive past the step
+  # inside tests like VtReportCliBuildTests) kept the pipe alive past the step
   # timeout. UseSharedCompilation is also disabled globally via
   # Directory.Build.props, but these env vars cover the driver-level daemons
   # (MSBuild build server, MSBuild worker node reuse) that project files
@@ -315,6 +315,29 @@ jobs:
           SKIP_RUST_NATIVE_BUILD: ${{ steps.native-libs.outputs.skip }}
         run: dotnet build -c ${{ env.CONFIGURATION }} --no-restore
 
+      # VtReportCliBuildTests (Category=SdkBuild): the App and CLI binaries answer --vt-report, and
+      # the App's output carries the CLI shim as a named sidecar. They check what a real
+      # `dotnet build` produces, and the step above is one, so the variable has them check its
+      # output instead of building again. They used to run in a Unit Tests shard, which has only
+      # the uploaded test assemblies: there each restored the NuGet cache and compiled the App and
+      # its references from scratch, ~76 s of test step plus ~35 s of restore on windows. Here
+      # they take seconds. The gate's floor of 3 is so a filter that matched nothing - which
+      # `dotnet test` reports as a warning and exit 0 - cannot pass for three passing tests.
+      - name: Test (SDK build checks, against this build)
+        shell: bash
+        env:
+          NTILDE_SDK_BUILD_TESTS_USE_EXISTING_BUILD: '1'
+        run: |
+          set -o pipefail
+          dotnet test "tests/Ntilde.App.Tests/bin/$CONFIGURATION/net10.0/Ntilde.App.Tests.dll" \
+            --filter "Category=SdkBuild" \
+            --results-directory tests/Ntilde.App.Tests/TestResults/sdkbuild \
+            --logger "trx;LogFileName=sdk_build.trx"
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/check-app-tests-baseline.py \
+            tests/Ntilde.App.Tests/TestResults/sdkbuild/sdk_build.trx tests/app-tests-known-flaky.txt 3
+
       # Before the upload, drop what no test job on this OS can load: other platforms' runtimes/
       # folders and the native .pdb files the Windows Skia/HarfBuzz packages ship beside their
       # DLLs (84 + 23 MB per architecture). Every consumer of this artifact runs on this same OS
@@ -331,9 +354,8 @@ jobs:
 
       # Upload only the test output directories. src/*/bin/ is 100% duplicated inside
       # tests/Ntilde.App.Tests/bin/ (MSBuild copies all referenced DLLs + executables),
-      # so including it would double the artifact size for no benefit.
-      # VtReportCliTests needs src/Ntilde.App/bin/ at runtime — the unit test
-      # job restores it from the test output via a symlink/junction (see below).
+      # so including it would double the artifact size for no benefit. The only tests that
+      # need src/*/bin/ themselves (VtReportCliBuildTests) run in this job, above.
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -369,7 +391,7 @@ jobs:
       matrix:
         # MUST MATCH `python scripts/ci/app-tests-shard.py --list`; the "Select the App.Tests
         # shard" step fails on a name the script does not know.
-        shard: [assist-cli, core-shell, rest]
+        shard: [assist-shell, core, rest]
         # Same dispatch-conditional shape as `build` above, and for the same reason: macOS is
         # not worth the minutes on every PR, but it must be reachable WITHOUT cutting a
         # release. Until now `build` compiled on macOS while nothing ever ran the tests there,
@@ -435,10 +457,10 @@ jobs:
           key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
           restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
-      # The NuGet package cache (~1 GB, about 20 s to restore on windows) only on the shard
-      # whose tests run `dotnet build` (steps.shard.outputs.restore). Every other test here runs
-      # an assembly the build job already compiled, straight from its output folder, which
-      # holds every dependency it loads - so it never reads the package cache.
+      # The NuGet package cache (~1 GB, about 20 s to restore on windows) only on a shard whose
+      # tests run `dotnet build` (steps.shard.outputs.restore; none today, see the Restore step).
+      # Every test here runs an assembly the build job already compiled, straight from its
+      # output folder, which holds every dependency it loads - so it never reads the cache.
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         env:
@@ -473,35 +495,12 @@ jobs:
             ! -name "*.so" ! -name "*.dylib" ! -name "*.a" ! -name "*.txt" \
             -exec chmod +x {} +
 
-      # VtReportCliTests.cs looks for app/CLI binaries in src/*/bin/Release/net10.0/.
-      # Every file there is already present in the test output (MSBuild copies all
-      # referenced DLLs and the host executable), so we mirror it locally with
-      # hardlinks (Linux) or robocopy (Windows) instead of duplicating 1.1 GB in
-      # the artifact. Local disk copy is fast; network upload/download is not.
-      - name: Reconstruct src bin dirs from test output (POSIX)
-        if: runner.os != 'Windows'
-        run: |
-          mkdir -p src/Ntilde.App/bin/Release src/Ntilde.Cli/bin/Release
-          cp -rl tests/Ntilde.App.Tests/bin/Release/net10.0 src/Ntilde.App/bin/Release/net10.0
-          cp -rl tests/Ntilde.App.Tests/bin/Release/net10.0 src/Ntilde.Cli/bin/Release/net10.0
-
-      - name: Reconstruct src bin dirs from test output (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $src = "tests\Ntilde.App.Tests\bin\Release\net10.0"
-          # robocopy exits 0 (nothing to copy) or 1 (files copied) on success; >=8 is an error
-          foreach ($dst in @("src\Ntilde.App\bin\Release\net10.0", "src\Ntilde.Cli\bin\Release\net10.0")) {
-            robocopy $src $dst /E /NJH /NJS /NFL /NDL /NC /NS | Out-Null
-            if ($LASTEXITCODE -ge 8) { exit $LASTEXITCODE }
-          }
-          exit 0
-
-      # For VtReportCliTests, which `dotnet build` the App and the CLI with --no-restore, so
-      # only on the shard that runs them (see the Setup .NET step). The test steps themselves
-      # no longer need it: they hand `dotnet test` the compiled test assembly rather than the
-      # project, which runs it through VSTest without evaluating the project (the project form,
-      # even with --no-build --no-restore, fails without obj/project.assets.json).
+      # Only for a shard whose tests run `dotnet build` on the source tree (see the Setup .NET
+      # step) - none today: VtReportCliBuildTests, the only such tests, run in the build job.
+      # The test steps themselves never need it: they hand `dotnet test` the compiled test
+      # assembly rather than the project, which runs it through VSTest without evaluating the
+      # project (the project form, even with --no-build --no-restore, fails without
+      # obj/project.assets.json).
       - name: Restore
         if: steps.shard.outputs.restore == '1'
         run: dotnet restore
@@ -566,7 +565,6 @@ jobs:
         id: app_tests_main
         continue-on-error: true
         env:
-          SKIP_RUST_NATIVE_BUILD: '1'
           SHARD_FILTER: ${{ steps.shard.outputs.filter }}
         shell: bash
         run: |
@@ -576,7 +574,7 @@ jobs:
           # the gate has to read the log to see them at all.
           set -o pipefail
           dotnet test "tests/Ntilde.App.Tests/bin/$CONFIGURATION/net10.0/Ntilde.App.Tests.dll" \
-            --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot&$SHARD_FILTER" \
+            --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Category!=SdkBuild&Lane!=PlatformBoot&$SHARD_FILTER" \
             --blame-hang-timeout 5m --blame-hang-dump-type mini \
             --results-directory tests/Ntilde.App.Tests/TestResults/main \
             --logger "trx;LogFileName=unit_app.trx" \
@@ -599,8 +597,6 @@ jobs:
         id: app_tests_platformboot
         if: matrix.shard == 'rest'
         continue-on-error: true
-        env:
-          SKIP_RUST_NATIVE_BUILD: '1'
         shell: bash
         run: |
           mkdir -p tests/Ntilde.App.Tests/TestResults/platformboot
@@ -2421,8 +2417,8 @@ jobs:
   #     link and a changed host key, with PR #512's rulings (a listing starts no remote multiplexer).
   # The GUI cells (steps 4 and 44, under Xvfb) stay manual scripts beside them.
   #
-  # The App is the build job's Release output, which the test artifact carries whole (see
-  # build_and_unit_tests' "Reconstruct src bin dirs"), and ntilde-mux is mux_daemon_aot's
+  # The App is the build job's Release output, which the test artifact carries whole (App.Tests'
+  # output holds the App's executable and everything it loads), and ntilde-mux is mux_daemon_aot's
   # linux-x64 binary, as native_ssh_docker_e2e takes it and for its reasons (`!cancelled()`, the
   # download allowed to fail): without one, the CLI cells skip their ntilde-mux checks and the
   # ls --all cells are skipped with a notice.

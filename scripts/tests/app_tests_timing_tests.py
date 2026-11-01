@@ -47,8 +47,9 @@ def main():
         out = proc.stdout
         check(proc.returncode == 0, "exit 0 on a good trx")
         check("3 results" in out and "64 s" in out, "counts results and sums seconds")
-        check("| 60.0 | `Ntilde.Tests.Core` |" in out, "groups by namespace")
-        check("| 3.5 | `Ntilde.Tests.Shell.Mux` |" in out, "a nested class counts toward its namespace")
+        check("| 60.0 | 1 | `Ntilde.Tests.Core` |" in out, "groups by namespace, with its result count")
+        check("| 3.5 | 2 | `Ntilde.Tests.Shell.Mux` |" in out, "a nested class counts toward its namespace")
+        check("| 2.5 | 1 | `Ntilde.Tests.Shell.Mux.FooTests` |" in out, "classes carry their own count")
         check(out.index("Ntilde.Tests.Core") < out.index("Ntilde.Tests.Shell.Mux"), "slowest first")
 
         proc = subprocess.run(

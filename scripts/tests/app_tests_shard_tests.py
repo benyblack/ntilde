@@ -24,6 +24,11 @@ NON_HEADLESS = ["VT", "Rendering", "Architecture", "Platform", "McpServer", "Mux
 
 # A test that drives the SDK on the source tree - `dotnet build ...` and the like - rather than
 # running an already-built assembly with `dotnet <dll>`. Those need a restored tree.
+# The category of the tests CI runs in the build job instead (see VtReportCliBuildTests), and the
+# variable that build job sets so they use the build it has just made.
+SDK_BUILD_TRAIT = '[Trait("Category", "SdkBuild")]'
+USE_EXISTING_BUILD = "NTILDE_SDK_BUILD_TESTS_USE_EXISTING_BUILD"
+WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 SDK_COMMAND = re.compile(r'\$?"(build|publish|restore|pack|test|run)\s')
 
 EDGE_CASES = [
@@ -37,6 +42,7 @@ EDGE_CASES = [
     "Some.Brand.New.Namespace.Tests",
     "Ntilde.Tests.Shell.Outer+Nested",
     "Ntilde.Tests.VtReportCliTests",  # one class claimed out of the top-level namespace
+    "Ntilde.Tests.VtReportCliBuildTests",  # must not ride that class prefix either
     "Ntilde.Tests.VtReportCliTestsHelpers",  # must not ride that class prefix
 ]
 
@@ -157,16 +163,34 @@ def main():
     def drives_sdk(text):
         return '"dotnet"' in text and SDK_COMMAND.search(text) is not None
 
+    def in_build_job(text):
+        return SDK_BUILD_TRAIT in text
+
+    # A test that drives `dotnet build` runs either in CI's build job (Category=SdkBuild, which
+    # the shards' lane excludes) or on a shard that restores the tree.
     sdk = declared_classes(only=drives_sdk)
-    check("Ntilde.Tests.VtReportCliTests" in sdk,
-          f"the detector finds VtReportCliTests' `dotnet build` ({sorted(sdk)})")
-    missing = [f"{c} -> {o}" for c in sdk for o in owners_of(c) if needs[o].get("restore") != "1"]
-    check(not missing, "every shard running a test that drives `dotnet build` restores the tree "
-                       f"(add the class to NEEDS['restore'] in app-tests-shard.py: {missing[:3]})")
+    check("Ntilde.Tests.VtReportCliBuildTests" in sdk,
+          f"the detector finds VtReportCliBuildTests' `dotnet build` ({sorted(sdk)})")
+    in_build = declared_classes(only=lambda t: drives_sdk(t) and in_build_job(t))
+    check("Ntilde.Tests.VtReportCliBuildTests" in in_build,
+          "VtReportCliBuildTests carries Category=SdkBuild")
+    missing = [f"{c} -> {o}" for c in sorted(set(sdk) - set(in_build)) for o in owners_of(c)
+               if needs[o].get("restore") != "1"]
+    check(not missing, "every test that drives `dotnet build` takes Category=SdkBuild or runs on a "
+                       f"shard that restores (NEEDS['restore'] in app-tests-shard.py): {missing[:3]}")
     others = sorted(c for proj in NON_HEADLESS
                     for c in declared_classes(ROOT / "tests" / f"Ntilde.{proj}.Tests", drives_sdk))
     check(not others or needs["rest"].get("restore") == "1",
           f"no non-headless test drives `dotnet build`, or rest restores the tree ({others[:3]})")
+
+    # ...and the workflow does its half: the shards' lane leaves SdkBuild out, and the build job
+    # runs it - with the variable that has the tests use the build that job just made.
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    shard_job = workflow.split("\n  build_and_unit_tests:", 1)[-1].split("\n  unit_tests:", 1)[0]
+    build_job = workflow.split("\n  build:", 1)[-1].split("\n  build_and_unit_tests:", 1)[0]
+    check("Category!=SdkBuild" in shard_job, "the shards' App.Tests lane excludes Category=SdkBuild")
+    check('--filter "Category=SdkBuild"' in build_job and USE_EXISTING_BUILD in build_job,
+          "the build job runs Category=SdkBuild against its own build")
 
     for bad in ([], ["nope"], ["shell", "extra"]):
         proc = run(*bad)
