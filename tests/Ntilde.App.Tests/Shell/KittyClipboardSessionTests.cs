@@ -16,12 +16,12 @@ public class KittyClipboardSessionTests
     {
         public bool Available { get; set; } = true;
         public bool AllowRead;
-        public int Prompts, Reads, Lists, Writes;
+        public int Prompts, Reads, Lists, Writes, ReadThread;
         public Exception? Failure;
         public Func<CancellationToken, Task<bool>>? Confirmation;
         public Dictionary<string, byte[]> Values = new() { ["text/plain"] = Encoding.UTF8.GetBytes("private text"), ["image/png"] = new byte[8193] };
         public Task<string[]> GetTypesAsync() { Lists++; return Task.FromResult(Values.Keys.ToArray()); }
-        public Task<byte[]?> ReadAsync(string mime) { Reads++; if (Failure != null) throw Failure; return Task.FromResult(Values.GetValueOrDefault(mime)); }
+        public Task<byte[]?> ReadAsync(string mime) { ReadThread = Environment.CurrentManagedThreadId; Reads++; if (Failure != null) throw Failure; return Task.FromResult(Values.GetValueOrDefault(mime)); }
         public Task WriteAsync(IReadOnlyDictionary<string, byte[]> data) { if (Failure != null) throw Failure; Writes++; Values = data.ToDictionary(p => p.Key, p => p.Value); return Task.CompletedTask; }
         public Task<bool> ConfirmReadAsync(string name, CancellationToken cancellation) { Prompts++; return Confirmation?.Invoke(cancellation) ?? Task.FromResult(AllowRead); }
     }
@@ -30,10 +30,11 @@ public class KittyClipboardSessionTests
         public readonly FakeClipboard Clipboard = new();
         public readonly Clock Clock = new();
         public readonly List<string> Replies = [];
+        public readonly List<int> ReplyThreads = [];
         public readonly Queue<Func<Task>> Work = new();
         public bool WriteAllowed = true, Alive = true;
         public readonly KittyClipboardSession Session;
-        public Harness() => Session = new(Clipboard, Replies.Add, work => { Work.Enqueue(work); return Task.CompletedTask; }, () => WriteAllowed, () => Alive, Clock);
+        public Harness() => Session = new(Clipboard, reply => { Replies.Add(reply); ReplyThreads.Add(Environment.CurrentManagedThreadId); }, work => { Work.Enqueue(work); return Task.CompletedTask; }, () => WriteAllowed, () => Alive, Clock);
         public void Send(string packet) => Session.Accept(packet);
         public async Task Drain() { while (Work.TryDequeue(out var work)) await work(); }
         public void Dispose() => Session.Dispose();
@@ -111,6 +112,21 @@ public class KittyClipboardSessionTests
         byte[] output = h.Replies.Skip(1).Take(3).SelectMany(r => Convert.FromBase64String(r[(r.LastIndexOf(';') + 1)..^2])).ToArray();
         Assert.Equal(h.Clipboard.Values["image/png"], output);
         Assert.All(h.Replies.Skip(1).SkipLast(1), r => Assert.InRange(Convert.FromBase64String(r[(r.LastIndexOf(';') + 1)..^2]).Length, 0, 4096));
+    }
+
+    [Fact]
+    public void Read_response_encoding_and_transmission_leave_the_clipboard_thread()
+    {
+        using var h = new Harness();
+        h.Clipboard.AllowRead = true;
+        h.Send(Read("image/png"));
+        // Model a UI dispatcher with a dedicated thread; synchronous fake APIs
+        // make their thread identity deterministic without touching the system clipboard.
+        var clipboardThread = new Thread(() => h.Drain().GetAwaiter().GetResult());
+        clipboardThread.Start();
+        clipboardThread.Join();
+        Assert.Equal(5, h.Replies.Count);
+        Assert.All(h.ReplyThreads, thread => Assert.NotEqual(h.Clipboard.ReadThread, thread));
     }
 
     [Fact]

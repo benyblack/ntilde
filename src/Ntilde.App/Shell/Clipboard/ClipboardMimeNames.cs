@@ -6,7 +6,11 @@ namespace Ntilde.Shell.Clipboard;
 internal static class ClipboardMimeNames
 {
     public static string ToPlatform(string mime) => OperatingSystem.IsMacOS() ? ConvertMac(mime, toMime: false) ?? mime : mime;
-    public static string? ToMime(string platform) => platform.Contains('/') ? platform : OperatingSystem.IsMacOS() ? ConvertMac(platform, toMime: true) : null;
+    public static string? ToMime(string platform)
+    {
+        if (platform.Contains('/')) return platform;
+        return OperatingSystem.IsMacOS() ? ConvertMac(platform, toMime: true) : null;
+    }
 
     private static string? ConvertMac(string value, bool toMime)
     {

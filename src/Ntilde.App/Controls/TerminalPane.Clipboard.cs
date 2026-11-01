@@ -14,6 +14,7 @@ public partial class TerminalPane
     {
         _kittyClipboard?.Dispose();
         _kittyClipboard = null;
+        if (Buffer != null) Buffer.Modes.IsClipboardPasteMode = false;
         if (muxBacked || Parser == null) return; // the authoritative daemon cannot perform desktop I/O
         var parser = Parser;
         parser.KittyClipboardEnabled = true;

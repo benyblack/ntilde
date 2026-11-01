@@ -60,6 +60,21 @@ public class PaneParserWiringTests
     }
 
     [AvaloniaFact]
+    public async System.Threading.Tasks.Task Session_exit_and_replacement_clear_MIME_paste_mode()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        pane.Parser!.Process("\x1b[?5522h");
+        Assert.True(pane.Buffer!.Modes.IsClipboardPasteMode);
+        pane.HandleSessionExitForTesting(0);
+        Assert.False(pane.Buffer.Modes.IsClipboardPasteMode);
+        Assert.False(await pane.TryNotifyClipboardPasteAsync());
+        pane.Parser.Process("\x1b[?5522h");
+        pane.CreateAndWireParser();
+        Assert.False(pane.Buffer.Modes.IsClipboardPasteMode);
+    }
+
+    [AvaloniaFact]
     public void RewiringTheParser_ReplacesItRatherThanReusingIt()
     {
         using var pane = new TerminalPane();

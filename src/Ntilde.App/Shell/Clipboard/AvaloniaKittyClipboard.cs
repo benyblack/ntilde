@@ -59,21 +59,18 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
         return null;
     }
 
-    public async Task WriteAsync(IReadOnlyDictionary<string, byte[]> values)
+    public async Task WriteAsync(IReadOnlyDictionary<string, byte[]> data)
     {
+        if (data.Count == 0) { await _clear(); return; }
         var transfer = new DataTransfer();
         var item = new DataTransferItem();
-        foreach (var (mime, bytes) in values)
+        foreach (var (mime, bytes) in data)
         {
             item.Set(DataFormat.CreateBytesPlatformFormat(ClipboardMimeNames.ToPlatform(mime)), bytes);
             if (mime == "text/plain") item.SetText(Encoding.UTF8.GetString(bytes));
         }
         transfer.Add(item);
-        try
-        {
-            if (values.Count == 0) { ((IDisposable)transfer).Dispose(); await _clear(); }
-            else await _write(transfer);
-        }
+        try { await _write(transfer); }
         catch { ((IDisposable)transfer).Dispose(); throw; } // ownership passes to Avalonia only on success
     }
 

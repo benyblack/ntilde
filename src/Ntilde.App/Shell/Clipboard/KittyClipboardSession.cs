@@ -18,6 +18,14 @@ internal interface IKittyClipboard
 /// </summary>
 internal sealed class KittyClipboardSession : IDisposable
 {
+    private const string WriteOperation = "write";
+    private const string ReadOperation = "read";
+    private const string InvalidPacket = "EINVAL";
+    private const string Busy = "EBUSY";
+    private const string NotImplemented = "ENOSYS";
+    private const string PermissionDenied = "EPERM";
+    private const string TooLarge = "EFBIG";
+
     private static readonly SemaphoreSlim ClipboardGate = new(1, 1);
     private readonly object _sync = new();
     private readonly IKittyClipboard _clipboard;
@@ -52,14 +60,14 @@ internal sealed class KittyClipboardSession : IDisposable
             var packet = KittyClipboardPacket.Parse(data);
             if (packet == null)
             {
-                if (_write != null) Abort("EINVAL");
-                else if (data.StartsWith("type=write", StringComparison.Ordinal)) Reply("write", "EINVAL", "");
+                if (_write != null) Abort(InvalidPacket);
+                else if (data.StartsWith("type=write", StringComparison.Ordinal)) Reply(WriteOperation, InvalidPacket, "");
                 return;
             }
-            if (packet.Type == "read") { Read(packet); return; }
-            if (packet.Type == "write") { StartWrite(packet); return; }
+            if (packet.Type == ReadOperation) { Read(packet); return; }
+            if (packet.Type == WriteOperation) { StartWrite(packet); return; }
             if (_write == null) return; // after error, ignore until the next start
-            if (_clock.GetUtcNow() - _write.Started > TimeSpan.FromMinutes(1)) { Abort("EBUSY"); return; }
+            if (_clock.GetUtcNow() - _write.Started > TimeSpan.FromMinutes(1)) { Abort(Busy); return; }
             try
             {
                 switch (packet.Type)
@@ -71,7 +79,7 @@ internal sealed class KittyClipboardSession : IDisposable
                     case "walias": _write.Alias(packet); break;
                 }
             }
-            catch (ClipboardPacketException error) { Abort(error.Status); }
+            catch (InvalidDataException error) { Abort(error.Message); }
         }
     }
 
@@ -79,10 +87,11 @@ internal sealed class KittyClipboardSession : IDisposable
     {
         _write?.Dispose();
         _write = null;
-        string? error = packet.Primary || !_clipboard.Available ? "ENOSYS" : _busy ? "EBUSY" : !_writeAllowed() ? "EPERM" : null;
-        if (error != null) { Reply("write", error, packet.Id); return; }
+        string? error = Unavailable(packet.Primary, includeWrite: false);
+        if (error == null && !_writeAllowed()) error = PermissionDenied;
+        if (error != null) { Reply(WriteOperation, error, packet.Id); return; }
         if (packet.Payload.Length != 0 || !KittyClipboardPacket.TryDecodeText(packet.Password, out _) ||
-            !KittyClipboardPacket.TryDecodeText(packet.Name, out _)) { Reply("write", "EINVAL", packet.Id); return; }
+            !KittyClipboardPacket.TryDecodeText(packet.Name, out _)) { Reply(WriteOperation, InvalidPacket, packet.Id); return; }
         _write = new WriteTransfer(packet.Id, _clock.GetUtcNow());
     }
 
@@ -92,35 +101,66 @@ internal sealed class KittyClipboardSession : IDisposable
         string id = _write.Id;
         _write.Dispose();
         _write = null;
-        Reply("write", status, id);
+        Reply(WriteOperation, status, id);
     }
 
     private void FinishWrite()
     {
-        var transfer = _write!;
+        if (_write is not WriteTransfer transfer) return;
         var values = transfer.Finish();
         string id = transfer.Id;
         transfer.Dispose();
         _write = null;
         _busy = true;
         int generation = _generation;
-        _ = _schedule(async () =>
+        _ = _schedule(() => PerformAsync(WriteOperation, id, generation, async () =>
         {
-            bool gate = false;
-            try
-            {
-                if (!IsAlive(generation)) return;
-                if (!_writeAllowed()) { Reply("write", "EPERM", id); return; }
-                gate = ClipboardGate.Wait(0);
-                if (!gate) { Reply("write", "EBUSY", id); return; }
-                await _clipboard.WriteAsync(values);
-                if (IsAlive(generation)) Reply("write", "DONE", id);
-            }
-            catch (NotSupportedException) { if (IsAlive(generation)) Reply("write", "ENOSYS", id); }
-            catch (UnauthorizedAccessException) { if (IsAlive(generation)) Reply("write", "EPERM", id); }
-            catch (Exception) { if (IsAlive(generation)) Reply("write", "EIO", id); }
-            finally { if (gate) ClipboardGate.Release(); Complete(generation); }
-        });
+            if (!_writeAllowed()) { Reply(WriteOperation, PermissionDenied, id); return; }
+            await _clipboard.WriteAsync(values);
+            ReplyIfAlive(WriteOperation, "DONE", id, generation);
+        }));
+    }
+
+    private string? Unavailable(bool primary, bool includeWrite)
+    {
+        if (primary || !_clipboard.Available) return NotImplemented;
+        if (_busy || (includeWrite && _write != null)) return Busy;
+        return null;
+    }
+
+    private async Task PerformAsync(string type, string id, int generation, Func<Task> action)
+    {
+        bool gate = false;
+        try
+        {
+            if (!IsAlive(generation)) return;
+            // An immediate try, with no queued waiter to outlive this request.
+            gate = await ClipboardGate.WaitAsync(0, CancellationToken.None);
+            if (!gate) { Reply(type, Busy, id); return; }
+            await action();
+        }
+        catch (Exception error)
+        {
+            string status = ErrorStatus(type, error);
+            ReplyIfAlive(type, status, id, generation);
+        }
+        finally
+        {
+            if (gate) ClipboardGate.Release();
+            Complete();
+        }
+    }
+
+    private static string ErrorStatus(string type, Exception error)
+    {
+        if (error is NotSupportedException) return NotImplemented;
+        if (error is UnauthorizedAccessException) return PermissionDenied;
+        return type == WriteOperation ? "EIO" : Busy;
+    }
+
+    private void ReplyIfAlive(string type, string status, string id, int generation)
+    {
+        if (IsAlive(generation)) Reply(type, status, id);
     }
 
     private void Read(KittyClipboardPacket packet)
@@ -130,48 +170,57 @@ internal sealed class KittyClipboardSession : IDisposable
         bool listing = requested == ".";
         if (types.Length == 0 || types.Length > KittyClipboardPacket.MaxTypes || (!listing && types.Any(t => !KittyClipboardPacket.IsMime(t)))) return;
         if (!KittyClipboardPacket.TryDecodeText(packet.Name, out string name) || !KittyClipboardPacket.TryDecodeText(packet.Password, out string password)) return;
-        string? error = packet.Primary || !_clipboard.Available ? "ENOSYS" : _busy || _write != null ? "EBUSY" : null;
-        if (error != null) { Reply("read", error, packet.Id); return; }
+        string? error = Unavailable(packet.Primary, includeWrite: true);
+        if (error != null) { Reply(ReadOperation, error, packet.Id); return; }
         bool granted = !listing && name.Length > 0 && password.Length > 0 && password == _pastePassword && _clock.GetUtcNow() < _pasteExpiry;
         if (granted) _pastePassword = null; // consume before any await, once on this TTY and location
         _busy = true;
         int generation = _generation;
-        _ = _schedule(() => ReadAsync(packet.Id, types, listing, name, granted, generation));
+        CancellationToken cancellation = _cancellation.Token;
+        _ = _schedule(() => ReadAsync(packet.Id, types, listing, name, granted, generation, cancellation));
     }
 
-    private async Task ReadAsync(string id, string[] types, bool listing, string name, bool granted, int generation)
+    private Task ReadAsync(string id, string[] types, bool listing, string name, bool granted, int generation, CancellationToken cancellation)
     {
-        bool gate = false;
-        try
+        return PerformAsync(ReadOperation, id, generation, async () =>
         {
-            if (!IsAlive(generation)) return;
-            gate = ClipboardGate.Wait(0);
-            if (!gate) { Reply("read", "EBUSY", id); return; }
-            if (!listing && !granted && !await _clipboard.ConfirmReadAsync(SafeName(name), _cancellation.Token))
-            { if (IsAlive(generation)) Reply("read", "EPERM", id); return; }
-            if (!IsAlive(generation)) return;
-            var available = (await _clipboard.GetTypesAsync()).Where(KittyClipboardPacket.IsMime).Distinct(StringComparer.Ordinal).Take(KittyClipboardPacket.MaxTypes).ToArray();
-            var values = new Dictionary<string, byte[]>(StringComparer.Ordinal);
-            if (listing) values["."] = Encoding.UTF8.GetBytes(string.Join(' ', available));
-            else
+            if (!listing && !granted && !await _clipboard.ConfirmReadAsync(SafeName(name), cancellation))
             {
-                long total = 0;
-                foreach (string mime in types.Where(available.Contains))
-                {
-                    if (!IsAlive(generation)) return;
-                    byte[]? bytes = await _clipboard.ReadAsync(mime);
-                    if (bytes == null) continue;
-                    total += bytes.Length;
-                    if (total > KittyClipboardPacket.MaxDataBytes) { Reply("read", "EBUSY", id); return; }
-                    values[mime] = bytes;
-                }
+                ReplyIfAlive(ReadOperation, PermissionDenied, id, generation);
+                return;
             }
-            if (IsAlive(generation)) SendData(id, values, generation: generation);
+            if (!IsAlive(generation)) return;
+            var values = await CollectReadValuesAsync(id, types, listing, generation);
+            if (values == null) return;
+            // Clipboard API calls stay UI-affine; encoding and PTY transmission do not.
+            await Task.Run(() => SendData(id, values, generation: generation), CancellationToken.None);
+        });
+    }
+
+    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(string id, string[] types, bool listing, int generation)
+    {
+        var available = (await _clipboard.GetTypesAsync()).Where(KittyClipboardPacket.IsMime).Distinct(StringComparer.Ordinal).Take(KittyClipboardPacket.MaxTypes).ToArray();
+        var values = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        if (listing)
+        {
+            values["."] = Encoding.UTF8.GetBytes(string.Join(' ', available));
+            return values;
         }
-        catch (NotSupportedException) { if (IsAlive(generation)) Reply("read", "ENOSYS", id); }
-        catch (UnauthorizedAccessException) { if (IsAlive(generation)) Reply("read", "EPERM", id); }
-        catch (Exception) { if (IsAlive(generation)) Reply("read", "EBUSY", id); }
-        finally { if (gate) ClipboardGate.Release(); Complete(generation); }
+        long total = 0;
+        foreach (string mime in types.Where(available.Contains))
+        {
+            if (!IsAlive(generation)) return null;
+            byte[]? bytes = await _clipboard.ReadAsync(mime);
+            if (bytes == null) continue;
+            total += bytes.Length;
+            if (total > KittyClipboardPacket.MaxDataBytes)
+            {
+                ReplyIfAlive(ReadOperation, Busy, id, generation);
+                return null;
+            }
+            values[mime] = bytes;
+        }
+        return values;
     }
 
     public async Task NotifyPasteAsync()
@@ -180,7 +229,7 @@ internal sealed class KittyClipboardSession : IDisposable
         lock (_sync)
         {
             if (_disposed) return;
-            if (_busy || _write != null) { Reply("read", "EBUSY", ""); return; }
+            if (_busy || _write != null) { Reply(ReadOperation, Busy, ""); return; }
             _busy = true;
             generation = _generation;
         }
@@ -196,29 +245,33 @@ internal sealed class KittyClipboardSession : IDisposable
                 SendData("", new Dictionary<string, byte[]> { ["."] = Encoding.UTF8.GetBytes(string.Join(' ', types.Where(KittyClipboardPacket.IsMime).Distinct().Take(KittyClipboardPacket.MaxTypes))) }, ":pw=" + KittyClipboardPacket.Encode(password));
             }
         }
-        catch (Exception) { if (IsAlive(generation)) Reply("read", "EBUSY", ""); }
-        finally { Complete(generation); }
+        catch (Exception) { if (IsAlive(generation)) Reply(ReadOperation, Busy, ""); }
+        finally
+        {
+            Complete();
+        }
     }
 
     private void SendData(string id, IReadOnlyDictionary<string, byte[]> data, string metadata = "", int? generation = null)
     {
-        _reply(KittyClipboardPacket.Response("read", "OK", id, metadata));
+        if (generation is int initial && !IsAlive(initial)) return;
+        _reply(KittyClipboardPacket.Response(ReadOperation, "OK", id, metadata));
         foreach (var (mime, bytes) in data)
         {
             for (int offset = 0; offset < bytes.Length || offset == 0; offset += 4096)
             {
                 if (generation is int expected && !IsAlive(expected)) return;
                 int count = Math.Min(4096, bytes.Length - offset);
-                _reply(KittyClipboardPacket.Response("read", "DATA", id, ":mime=" + KittyClipboardPacket.Encode(mime), Convert.ToBase64String(bytes, offset, count)));
+                _reply(KittyClipboardPacket.Response(ReadOperation, "DATA", id, ":mime=" + KittyClipboardPacket.Encode(mime), Convert.ToBase64String(bytes, offset, count)));
             }
         }
-        if (generation is not int current || IsAlive(current)) Reply("read", "DONE", id);
+        if (generation is not int current || IsAlive(current)) Reply(ReadOperation, "DONE", id);
     }
 
     private static string SafeName(string name) => new(name.Where(c => !char.IsControl(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).Take(80).ToArray());
     private void Reply(string type, string status, string id) => _reply(KittyClipboardPacket.Response(type, status, id));
     private bool IsAlive(int generation) { lock (_sync) return !_disposed && generation == _generation && _alive(); }
-    private void Complete(int generation) { lock (_sync) _busy = false; }
+    private void Complete() { lock (_sync) _busy = false; }
     public void Reset()
     {
         lock (_sync)
@@ -233,11 +286,15 @@ internal sealed class KittyClipboardSession : IDisposable
             _pastePassword = null;
         }
     }
-    public void Dispose() { lock (_sync) { if (_disposed) return; Reset(); _disposed = true; _cancellation.Dispose(); } }
-
-    private sealed class ClipboardPacketException(string status) : Exception
+    public void Dispose()
     {
-        public string Status { get; } = status;
+        lock (_sync)
+        {
+            if (_disposed) return;
+            Reset();
+            _disposed = true;
+            _cancellation.Dispose();
+        }
     }
 
     private sealed class WriteTransfer(string id, DateTimeOffset started) : IDisposable
@@ -253,39 +310,41 @@ internal sealed class KittyClipboardSession : IDisposable
 
         public void Add(KittyClipboardPacket packet)
         {
-            if (!KittyClipboardPacket.TryDecodeText(packet.Mime, out string mime) || !KittyClipboardPacket.IsMime(mime)) throw new ClipboardPacketException("EINVAL");
-            if (mime != _current)
-            {
-                FinishType();
-                if (_values.ContainsKey(mime) || _aliases.ContainsKey(mime)) throw new ClipboardPacketException("EINVAL");
-                if (_values.Count + _aliases.Count >= KittyClipboardPacket.MaxTypes) throw new ClipboardPacketException("EFBIG");
-                _values[mime] = new MemoryStream();
-                _current = mime;
-                _padded = false;
-            }
-            if (_padded && packet.Payload.Length > 0) throw new ClipboardPacketException("EINVAL");
+            if (!KittyClipboardPacket.TryDecodeText(packet.Mime, out string mime) || !KittyClipboardPacket.IsMime(mime)) throw new InvalidDataException(InvalidPacket);
+            if (mime != _current) StartMime(mime);
+            if (_padded && packet.Payload.Length > 0) throw new InvalidDataException(InvalidPacket);
             string encoded = _carry + packet.Payload;
-            if (encoded.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '+' or '/' or '='))) throw new ClipboardPacketException("EINVAL");
+            if (encoded.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '+' or '/' or '='))) throw new InvalidDataException(InvalidPacket);
             int full = encoded.Length / 4 * 4;
-            if (!KittyClipboardPacket.TryDecode(encoded[..full], out byte[] bytes)) throw new ClipboardPacketException("EINVAL");
-            if (bytes.Length > KittyClipboardPacket.MaxDataBytes - _size) throw new ClipboardPacketException("EFBIG");
+            if (!KittyClipboardPacket.TryDecode(encoded[..full], out byte[] bytes)) throw new InvalidDataException(InvalidPacket);
+            if (bytes.Length > KittyClipboardPacket.MaxDataBytes - _size) throw new InvalidDataException(TooLarge);
             _values[mime].Write(bytes);
             _size += bytes.Length;
             _padded = encoded.AsSpan(0, full).Contains('=');
             _carry = encoded[full..];
-            if (_padded && _carry.Length != 0) throw new ClipboardPacketException("EINVAL");
+            if (_padded && _carry.Length != 0) throw new InvalidDataException(InvalidPacket);
         }
 
-        private void FinishType() { if (_carry.Length != 0) throw new ClipboardPacketException("EINVAL"); }
+        private void StartMime(string mime)
+        {
+            FinishType();
+            if (_values.ContainsKey(mime) || _aliases.ContainsKey(mime)) throw new InvalidDataException(InvalidPacket);
+            if (_values.Count + _aliases.Count >= KittyClipboardPacket.MaxTypes) throw new InvalidDataException(TooLarge);
+            _values[mime] = new MemoryStream();
+            _current = mime;
+            _padded = false;
+        }
+
+        private void FinishType() { if (_carry.Length != 0) throw new InvalidDataException(InvalidPacket); }
 
         public void Alias(KittyClipboardPacket packet)
         {
             if (!KittyClipboardPacket.TryDecodeText(packet.Mime, out string target) || !KittyClipboardPacket.IsMime(target) ||
-                !KittyClipboardPacket.TryDecodeText(packet.Payload, out string aliases) || string.IsNullOrWhiteSpace(aliases)) throw new ClipboardPacketException("EINVAL");
+                !KittyClipboardPacket.TryDecodeText(packet.Payload, out string aliases) || string.IsNullOrWhiteSpace(aliases)) throw new InvalidDataException(InvalidPacket);
             foreach (string alias in aliases.Split(' ', StringSplitOptions.RemoveEmptyEntries))
             {
-                if (!KittyClipboardPacket.IsMime(alias) || alias == target || _values.ContainsKey(alias) || !_aliases.TryAdd(alias, target)) throw new ClipboardPacketException("EINVAL");
-                if (_values.Count + _aliases.Count > KittyClipboardPacket.MaxTypes) throw new ClipboardPacketException("EFBIG");
+                if (!KittyClipboardPacket.IsMime(alias) || alias == target || _values.ContainsKey(alias) || !_aliases.TryAdd(alias, target)) throw new InvalidDataException(InvalidPacket);
+                if (_values.Count + _aliases.Count > KittyClipboardPacket.MaxTypes) throw new InvalidDataException(TooLarge);
             }
         }
 
@@ -298,14 +357,18 @@ internal sealed class KittyClipboardSession : IDisposable
             long materialized = _size;
             foreach (string target in _aliases.Values)
             {
-                if (!_values.TryGetValue(target, out var stream)) throw new ClipboardPacketException("EINVAL");
+                if (!_values.TryGetValue(target, out var stream)) throw new InvalidDataException(InvalidPacket);
                 materialized += stream.Length;
-                if (materialized > 2L * KittyClipboardPacket.MaxDataBytes) throw new ClipboardPacketException("EFBIG");
+                if (materialized > 2L * KittyClipboardPacket.MaxDataBytes) throw new InvalidDataException(TooLarge);
             }
             var values = _values.ToDictionary(p => p.Key, p => p.Value.ToArray(), StringComparer.Ordinal);
             foreach (var (alias, target) in _aliases) values[alias] = values[target];
             return values;
         }
-        public void Dispose() { foreach (var stream in _values.Values) stream.Dispose(); _values.Clear(); }
+        public void Dispose()
+        {
+            foreach (var stream in _values.Values) stream.Dispose();
+            _values.Clear();
+        }
     }
 }
