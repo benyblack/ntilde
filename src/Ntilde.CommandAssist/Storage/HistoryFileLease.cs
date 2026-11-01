@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Ntilde.CommandAssist.Storage;
 
 /// <summary>
@@ -8,7 +6,6 @@ namespace Ntilde.CommandAssist.Storage;
 /// </summary>
 internal sealed class HistoryFileLease : IDisposable
 {
-    private static readonly TimeSpan WaitLimit = TimeSpan.FromSeconds(10);
     private readonly FileStream _stream;
 
     private HistoryFileLease(FileStream stream)
@@ -26,7 +23,6 @@ internal sealed class HistoryFileLease : IDisposable
 
     internal static async Task<HistoryFileLease> AcquireAsync(string path, CancellationToken cancellationToken)
     {
-        long started = Stopwatch.GetTimestamp();
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -37,7 +33,7 @@ internal sealed class HistoryFileLease : IDisposable
                 // exclusive on Windows and Unix; other share modes are not an exclusive gate.
                 stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, bufferSize: 1);
             }
-            catch (IOException) when (Stopwatch.GetElapsedTime(started) < WaitLimit)
+            catch (IOException error) when (IsSharingViolation(error))
             {
                 await Task.Delay(20, cancellationToken);
                 continue;
@@ -66,6 +62,16 @@ internal sealed class HistoryFileLease : IDisposable
         _stream.Flush();
         Revision = revision;
         return revision;
+    }
+
+    private static bool IsSharingViolation(IOException error)
+    {
+        // .NET reports Win32 sharing/lock violations on Windows and the native
+        // EWOULDBLOCK errno on Unix: EAGAIN=11 on Linux, EWOULDBLOCK=35 on macOS.
+        // Permanent I/O errors must surface instead of being retried indefinitely.
+        return OperatingSystem.IsWindows()
+            ? (error.HResult & 0xffff) is 32 or 33
+            : error.HResult is 11 or 35;
     }
 
     public void Dispose() => _stream.Dispose();

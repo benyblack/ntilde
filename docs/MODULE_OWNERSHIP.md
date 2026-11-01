@@ -591,7 +591,10 @@ requires public test classes.
   before trusting its cache. Failed writes discard local cache state. The lock file is never moved
   or deleted, and contains no commands. Compaction uses unique temporary files; clear also removes
   known orphaned compaction files. The App's per-process singleton preserves cache/settings
-  consistency but is not the cross-process exclusion mechanism.
+  consistency but is not the cross-process exclusion mechanism. Contention waits until caller
+  cancellation, without a data-dropping deadline. If coordination metadata is not writable,
+  query methods may read uncached snapshots; this mode never migrates, retires, repairs,
+  compacts or writes history and never supplies the cache for a later mutation.
 - All types in `Ntilde.CommandAssist.*` (`Leaf_assembly_types_reside_in_its_own_namespace`);
   the App may only use that prefix for Views
   (`App_may_only_use_the_CommandAssist_prefix_for_Views`).

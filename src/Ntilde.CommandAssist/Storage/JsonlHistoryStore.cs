@@ -41,11 +41,14 @@ namespace Ntilde.CommandAssist.Storage;
 /// <see cref="ReadFileUnsafeAsync"/>.
 /// </para>
 /// <para>
-/// <b>Cooperating processes share a stable sibling lock file.</b> Every operation holds its
+/// <b>Cooperating processes share a stable sibling lock file.</b> Normal operations hold its
 /// exclusive lease through cache refresh, migration, append, compaction, or clear. A random
 /// revision in that file changes before every mutation, so another instance reloads its index
 /// before using it. Unchanged revisions retain the cached read and append paths. The OS releases
 /// the lease if a process exits; the lock file itself is never deleted (and contains no commands).
+/// If the coordination file cannot be opened for writing, queries read an uncached, read-only
+/// snapshot instead. That path never migrates, retires, repairs or compacts any file. Mutations
+/// always require a writable lease; sharing contention waits until released or cancelled.
 /// </para>
 /// </remarks>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
@@ -165,7 +168,7 @@ public sealed class JsonlHistoryStore : IHistoryStore
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            using var fileLease = await EnterFileLeaseUnsafeAsync(cancellationToken);
+            using var fileLease = await EnterFileLeaseUnsafeAsync(cancellationToken, allowReadOnlySnapshot: true);
             Dictionary<string, CommandHistoryEntry> index = await EnsureLoadedUnsafeAsync(cancellationToken);
             string normalized = query.Trim();
 
@@ -195,7 +198,7 @@ public sealed class JsonlHistoryStore : IHistoryStore
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            using var fileLease = await EnterFileLeaseUnsafeAsync(cancellationToken);
+            using var fileLease = await EnterFileLeaseUnsafeAsync(cancellationToken, allowReadOnlySnapshot: true);
             Dictionary<string, CommandHistoryEntry> index = await EnsureLoadedUnsafeAsync(cancellationToken);
             return index.Values
                 .OrderByDescending(entry => entry.ExecutedAt)
@@ -472,6 +475,7 @@ public sealed class JsonlHistoryStore : IHistoryStore
 
     private async Task<Dictionary<string, CommandHistoryEntry>> EnsureLoadedUnsafeAsync(CancellationToken cancellationToken)
     {
+        if (_activeLease is null) return await ReadOnlySnapshotUnsafeAsync(cancellationToken);
         // A partial view is never cached as the truth: re-read until the file comes back whole, so
         // a transient lock (antivirus, a backup agent) heals itself on the next operation.
         if (_index != null && !_loadIncomplete)
@@ -628,7 +632,7 @@ public sealed class JsonlHistoryStore : IHistoryStore
     /// </para>
     /// </remarks>
     private async Task<(Dictionary<string, CommandHistoryEntry> Index, int LineCount, bool SawCorruptLine, bool ReadFailed)> ReadFileUnsafeAsync(
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool shareWithWriters = false)
     {
         var index = new Dictionary<string, CommandHistoryEntry>(StringComparer.Ordinal);
         int lineCount = 0;
@@ -641,7 +645,9 @@ public sealed class JsonlHistoryStore : IHistoryStore
 
         try
         {
-            using var reader = new StreamReader(_filePath, Encoding.UTF8);
+            using var stream = new FileStream(_filePath, FileMode.Open, FileAccess.Read,
+                shareWithWriters ? FileShare.ReadWrite | FileShare.Delete : FileShare.Read);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
             while (await reader.ReadLineAsync(cancellationToken) is { } line)
             {
                 if (string.IsNullOrWhiteSpace(line))
@@ -809,14 +815,56 @@ public sealed class JsonlHistoryStore : IHistoryStore
         }
     }
 
-    private async Task<HistoryFileLease> EnterFileLeaseUnsafeAsync(CancellationToken cancellationToken)
+    private async Task<HistoryFileLease?> EnterFileLeaseUnsafeAsync(CancellationToken cancellationToken, bool allowReadOnlySnapshot = false)
     {
-        EnsureDirectory();
-        var lease = await HistoryFileLease.AcquireAsync(_filePath + ".lock", cancellationToken);
-        _activeLease = lease;
-        if (_cachedRevision != lease.Revision) InvalidateLocalCache();
-        _cachedRevision = lease.Revision;
-        return lease;
+        try
+        {
+            EnsureDirectory();
+            var lease = await HistoryFileLease.AcquireAsync(_filePath + ".lock", cancellationToken);
+            _activeLease = lease;
+            if (_cachedRevision != lease.Revision) InvalidateLocalCache();
+            _cachedRevision = lease.Revision;
+            return lease;
+        }
+        catch (Exception error) when (allowReadOnlySnapshot && (error is IOException or UnauthorizedAccessException))
+        {
+            // Only query entry points opt in. No stale or uncoordinated view can become
+            // the basis of a later write, even when permissions recover on this instance.
+            InvalidateLocalCache();
+            _cachedRevision = null;
+            _activeLease = null;
+            return null;
+        }
+    }
+
+    private async Task<Dictionary<string, CommandHistoryEntry>> ReadOnlySnapshotUnsafeAsync(CancellationToken cancellationToken)
+    {
+        // No cache, migration, retirement, repair or compaction in this mode. A concurrent
+        // append/atomic replacement may change the next query's snapshot, never cause a write.
+        if (File.Exists(_filePath))
+        {
+            var (index, _, _, _) = await ReadFileUnsafeAsync(cancellationToken, shareWithWriters: true);
+            return index;
+        }
+
+        var legacyIndex = new Dictionary<string, CommandHistoryEntry>(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(_legacyFilePath)) return legacyIndex;
+        try
+        {
+            await using var stream = new FileStream(_legacyFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            var entries = await JsonSerializer.DeserializeAsync(stream,
+                CommandAssistJsonContext.Default.ListCommandHistoryEntry, cancellationToken);
+            if (entries is null) return legacyIndex;
+            foreach (CommandHistoryEntry? entry in entries)
+            {
+                if (entry is not null && !string.IsNullOrEmpty(entry.Id)) legacyIndex[entry.Id] = BackfillInvalidCommand(entry);
+            }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // Read-only best effort; the source and any backup stay untouched.
+        }
+        return legacyIndex;
     }
 
     private Guid PublishMutationUnsafe()

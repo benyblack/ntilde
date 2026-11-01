@@ -71,6 +71,26 @@ public sealed class JsonlHistoryProcessTests : IDisposable
         Assert.DoesNotContain(await store.GetRecentAsync(10, Ct), entry => entry.Id == "cancelled");
     }
 
+    [Fact]
+    public async Task Append_WaitsPastTheFormerDeadline_AndPersistsAfterThePeerReleases()
+    {
+        var store = new JsonlHistoryStore(HistoryPath, 50);
+        await store.AppendAsync(Entry("first"), Ct);
+        await using var holder = await Worker.StartAsync(HistoryPath, holdLock: true);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        deadline.CancelAfter(TimeSpan.FromSeconds(30));
+        Task pending = store.AppendAsync(Entry("waited"), deadline.Token);
+        // Intentionally cross the removed 10-second cutoff. The holder releases only
+        // explicitly, so elapsed time is the test condition, not a scheduling guess.
+        await Task.Delay(TimeSpan.FromMilliseconds(10_200), Ct);
+        bool completedBeforeRelease = pending.IsCompleted;
+        await holder.DisposeAsync();
+        try { await pending.WaitAsync(TimeSpan.FromSeconds(10), Ct); }
+        finally { deadline.Cancel(); }
+        Assert.False(completedBeforeRelease);
+        Assert.Contains(await store.GetRecentAsync(10, Ct), entry => entry.Id == "waited");
+    }
+
     private static CommandHistoryEntry Entry(string id) => new(
         id, "echo " + id, DateTimeOffset.UtcNow, "bash", null, null, null, null, null,
         false, false, CommandCaptureSource.ShellIntegration, null);
