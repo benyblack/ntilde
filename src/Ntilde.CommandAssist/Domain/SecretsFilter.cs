@@ -19,32 +19,40 @@ public sealed partial class SecretsFilter : ISecretsFilter
             return new RedactionResult(commandText, false);
         }
 
-        string redacted = commandText;
-        redacted = PasswordFlagRegex.Replace(redacted, "$1[REDACTED]");
-        redacted = TokenQueryRegex.Replace(redacted, "$1[REDACTED]");
-        redacted = SshPassRegex.Replace(redacted, "$1[REDACTED]");
-        redacted = BearerRegex.Replace(redacted, "$1[REDACTED]");
-        redacted = JwtAssignmentRegex.Replace(redacted, "$1[REDACTED]");
-        redacted = ConnectionStringPasswordRegex.Replace(redacted, "$1[REDACTED]$3");
+        try
+        {
+            string redacted = RedactCredentialArguments(commandText);
+            redacted = PasswordFlagRegex.Replace(redacted, "$1[REDACTED]");
+            redacted = TokenQueryRegex.Replace(redacted, "$1[REDACTED]");
+            redacted = SshPassRegex.Replace(redacted, "$1[REDACTED]");
+            redacted = BearerRegex.Replace(redacted, "$1[REDACTED]");
+            redacted = JwtAssignmentRegex.Replace(redacted, "$1[REDACTED]");
+            redacted = ConnectionStringPasswordRegex.Replace(redacted, "$1[REDACTED]$3");
 
-        return new RedactionResult(redacted, !string.Equals(commandText, redacted, StringComparison.Ordinal));
+            return new RedactionResult(redacted, !string.Equals(commandText, redacted, StringComparison.Ordinal));
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            // Never persist the original when bounded pattern matching cannot finish safely.
+            return new RedactionResult("[REDACTED]", true);
+        }
     }
 
-    [GeneratedRegex(@"(--password\s+)(?:""[^""]*""|'[^']*'|\S+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(--password\s+)(?:""[^""]*""|'[^']*'|\S+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
     private static partial Regex PasswordFlag();
 
-    [GeneratedRegex(@"([?&]token=)([^&\s]+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"([?&]token=)([^&\s]+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
     private static partial Regex TokenQuery();
 
-    [GeneratedRegex(@"(sshpass\s+-p\s+)(?:""[^""]*""|'[^']*'|\S+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(sshpass\s+-p\s+)(?:""[^""]*""|'[^']*'|\S+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
     private static partial Regex SshPass();
 
-    [GeneratedRegex(@"(Authorization:\s+Bearer\s+)([A-Za-z0-9\-_\.=]+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(Authorization:\s+Bearer\s+)([A-Za-z0-9\-_\.~+/=]+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
     private static partial Regex BearerToken();
 
-    [GeneratedRegex(@"(\bJWT=)([A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(\bJWT=)([A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
     private static partial Regex JwtAssignment();
 
-    [GeneratedRegex(@"(\bPassword=)([^;]+)(;?)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?<![\w-])(\bPassword=)([^;]+)(;?)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
     private static partial Regex ConnectionStringPassword();
 }

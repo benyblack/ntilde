@@ -1084,3 +1084,44 @@ The best version of this for Ntilde is:
 **a bottom docked command assist bar, backed by history/snippets/context ranking, with a command palette for search and an optional side panel for help/AI.**
 
 That gives you the Warp-like UX direction while still keeping Ntilde serious, modular, and monetizable.
+
+
+### Supported secret patterns
+
+Command history's heuristic and shell-integration capture paths both run `SecretsFilter`
+before appending or updating JSONL entries. The same filter protects the provider seam.
+It replaces supported credential values with `[REDACTED]` and marks changed history
+entries as redacted. It does not evaluate a command or guarantee that arbitrary text is secret-free.
+
+Supported long flags are `--password`, `--token`, `--api-key`, `--api_key`, `--apikey`,
+`--access-token`, `--auth-token`, `--client-secret` and `--secret-key`. Values may follow
+space/tab or `=`, including quoted flag names, quoted values, adjacent quoted fragments,
+and escaped values. `sshpass -p` and the legacy single-hyphen `-Password` option remain supported. Backslash, backtick and caret
+escapes outside single quotes have incompatible meanings across shells; encountering
+any of them in a credential value conservatively hides the remaining command tail. Balanced substitutions are
+hidden as text; they are never executed. Unclosed quotes/groups, excessive nesting,
+or ambiguous continued values conservatively hide the remaining value/command tail.
+Pattern matching has a finite timeout; if it cannot complete, the entire text is redacted.
+
+Credential environment names are explicitly limited to:
+
+- `GITHUB_TOKEN`, `GH_TOKEN`, `GITLAB_TOKEN`, `GITLAB_PRIVATE_TOKEN`, `CI_JOB_TOKEN`, `NPM_TOKEN`
+- `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `AZURE_OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY`
+- `HF_TOKEN`, `HUGGING_FACE_HUB_TOKEN`
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`
+- `API_KEY`, `ACCESS_TOKEN`, `AUTH_TOKEN`, `DOCKER_PASSWORD`, `DATABASE_PASSWORD`, `JWT`
+
+Names/flags are matched without case sensitivity. Supported assignment shapes are
+`NAME=value` (including `export`/`env` prefixes), PowerShell `$env:NAME = value`,
+and Windows `set NAME=value` or `set "NAME=value"`. Unquoted `set` values extend to
+the next command separator, so spaces in the value are hidden too. Unrelated names
+such as `GITHUB_TOKEN_FILE` are left alone.
+
+A shared scan-work budget bounds processing of overlapping credential patterns.
+Exhausting it hides the entire command, just like a pattern-matching timeout.
+
+Existing token-query, bearer-header and connection-string password patterns remain.
+Unlisted credential names, unrelated positional arguments, script contents, shell
+expansion semantics and other encodings are not a universal detection contract.
+Avoid putting secrets in visible command lines; clear history if sensitive content
+was previously captured. This filter does not rewrite existing history retroactively.
