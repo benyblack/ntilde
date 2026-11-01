@@ -17,16 +17,27 @@ both host and launcher require `CI=true`, and the host also requires the explici
    would allow an unchanged old clipboard to produce a false pass.
 3. A data read with consent denied emits EPERM and no DATA.
 
-The host sends a real `walias` packet. Text/HTML/binary results must match exact
-bytes. PNG results from the native peer must decode to the expected dimensions
-and pixel; lossless PNG compression and metadata can change during native bitmap
-conversion. The independent peer checks the original write's PNG bytes exactly.
+The host sends a real `walias` packet. Text and HTML results match exact bytes.
+Binary fixtures carry a four-byte big-endian length and compare exactly that
+payload, excluding Win32 HGLOBAL allocation padding. Native PNG containers are
+validated through IEND and checked by dimensions/pixel: compression and metadata
+can change during lossless bitmap conversion. Supplementary-plane Unicode is
+included in both directional text fixtures.
 
 Windows uses registered `PNG` and `HTML Format` formats. The adapter constructs
 and validates [CF_HTML byte offsets](https://learn.microsoft.com/en-us/windows/win32/dataxchg/html-clipboard-format) and returns only the HTML fragment to OSC 5522
-clients. Arbitrary MIME aliases remain custom formats. macOS maps MIME names to
+clients. Long headers and contextless fragments are supported; malformed native
+HTML falls through to another format, while budget violations still fail.
+Arbitrary MIME aliases remain custom formats. macOS maps MIME names to
 UTIs; Linux advertises MIME targets. A bitmap fallback is preferred only when no
-raw platform representation supplies the requested PNG.
+raw platform representation supplies the requested PNG. Avalonia's Win32 OLE
+provider requires a bitmap behind PNG: the writer checks dimensions before
+creating it, includes its pixel budget in the native representation limit, and
+owns/disposes it with the transferred clipboard object. An extra native-only
+format retains original encoded PNG bytes for Ntilde MIME reads and aliases;
+its name cannot be supplied as an OSC MIME type. Native size refusal reports
+EFBIG. The owned transfer implements both synchronous and asynchronous contracts
+so Win32 does not block on an asynchronous provider.
 
 ## Run on an isolated CI desktop
 
@@ -34,7 +45,9 @@ Build through `scripts/build.sh build tests/Ntilde.Clipboard.NativeHost -c Relea
 (or the PowerShell wrapper). The project references the production App and its
 CLI build dependency. The workflow compiles the AppKit peer with `swiftc`, or
 installs GTK4/PyGObject for the Linux peer. Win32 uses Python's standard library.
-The workflow is the authoritative invocation for each OS.
+The workflow is the authoritative invocation for each OS. The host's 55-second
+peer-write handoff covers the runner's 25-second peer-read plus 25-second writer
+allowances; native reply waits retain their separate 20-second deadline.
 
 The Python launcher creates a private temporary fixture, uses only generated
 data, supervises its own child processes and terminates them on success/failure.

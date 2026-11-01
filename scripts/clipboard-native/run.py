@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 import zlib
+from frames import frame_binary
 
 
 def fixture(peer=False):
@@ -19,8 +20,8 @@ def fixture(peer=False):
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
     png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0))
     png += chunk(b"IDAT", zlib.compress(b"\0\x65\x43\x21\xff" if peer else b"\0\x12\x34\x56\xff")) + chunk(b"IEND", b"")
-    binary = bytes(reversed(range(256)) if peer else range(256)) * 3 + b"\0\xff"
-    return {"text/plain": ("native peer héllo U0001f9ea" if peer else "Ntilde héllo U0001f9ea").encode(), "image/png": png,
+    binary = frame_binary(bytes(reversed(range(256)) if peer else range(256)) * 3 + b"\0\xff")
+    return {"text/plain": ("native peer héllo 🧪" if peer else "Ntilde héllo 🧪").encode(), "image/png": png,
             "text/html": ("<i>native peer héllo</i>" if peer else "<b>Ntilde héllo</b>").encode(),
             "application/x-ntilde-qa": binary, "application/x-ntilde-qa-alias": binary}
 
@@ -63,6 +64,8 @@ def main():
               "workflowRun": os.environ.get("GITHUB_RUN_ID"),
               "fixtureSha256": {k: hashlib.sha256(v).hexdigest() for k, v in values.items()},
               "peerFixtureSha256": {k: hashlib.sha256(v).hexdigest() for k, v in peer_values.items()},
+              "binaryFraming": "uint32 big-endian payload length followed by payload; Win32 allocation padding excluded",
+              "pngComparison": "validated container and decoded pixel; native compression/metadata may differ",
               "scope": "Production OSC 5522 service and Avalonia native adapter versus an independent OS clipboard peer; no PTY or manual application UI qualification."}
     with tempfile.TemporaryDirectory(prefix="ntilde-native-clipboard-") as temporary:
         root = Path(temporary)
@@ -93,6 +96,7 @@ def main():
                 if path.exists():
                     # Only generated fixture bytes enter this CI-only sandbox.
                     report[filename] = path.read_text(errors="replace")[-12000:]
+            print(json.dumps(report, indent=2), file=sys.stderr)
             raise
         finally:
             for process in reversed(processes):

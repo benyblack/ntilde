@@ -5,12 +5,15 @@ from ctypes import wintypes
 import json
 import os
 from pathlib import Path
-import re
 import sys
 import time
+from frames import binary_payload, png_pixel, html_fragment
 
 if os.environ.get("CI") != "true" or len(sys.argv) != 3:
     raise SystemExit("Requires an isolated CI desktop")
+
+TEXT = "text/plain"
+HTML = "text/html"
 
 user = ctypes.WinDLL("user32", use_last_error=True)
 kernel = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -50,9 +53,9 @@ def html_format(fragment):
 
 
 def format_id(mime):
-    if mime == "text/plain":
+    if mime == TEXT:
         return 13  # CF_UNICODETEXT: the standard Win32 text representation.
-    return user.RegisterClipboardFormatW({"image/png": "PNG", "text/html": "HTML Format"}.get(mime, mime))
+    return user.RegisterClipboardFormatW({"image/png": "PNG", HTML: "HTML Format"}.get(mime, mime))
 
 
 def fetch(format_number):
@@ -105,24 +108,32 @@ while not user.OpenClipboard(owner):
 try:
     if sys.argv[1] == "read":
         for mime, expected in values.items():
-            actual = fetch(format_id(mime))
-            if mime == "text/plain":
-                actual = actual.decode("utf-16-le").split("\0", 1)[0].encode()
-            elif mime == "text/html":
-                start = re.search(rb"StartFragment:(\d+)", actual)
-                end = re.search(rb"EndFragment:(\d+)", actual)
-                if not start or not end:
-                    raise RuntimeError("Missing native HTML fragment offsets")
-                actual = actual[int(start[1]):int(end[1])]
-            if actual != expected:
+            try:
+                actual = fetch(format_id(mime))
+            except OSError as error:
+                raise RuntimeError("Native clipboard format unavailable: " + mime) from error
+            if mime == TEXT:
+                text, terminator, _ = actual.decode("utf-16-le").partition("\0")
+                if not terminator:
+                    raise RuntimeError("Native Unicode text lacks a terminating NUL")
+                actual = text.encode()
+            elif mime == HTML:
+                actual = html_fragment(actual)
+            if mime == "image/png":
+                if png_pixel(actual) != png_pixel(expected):
+                    raise RuntimeError("Native Win32 clipboard PNG pixels differ")
+            elif mime.startswith("application/x-ntilde-qa"):
+                if binary_payload(actual, allow_padding=True) != binary_payload(expected):
+                    raise RuntimeError("Native Win32 binary clipboard mismatch: " + mime)
+            elif actual != expected:
                 raise RuntimeError("Native Win32 clipboard mismatch: " + mime)
     elif sys.argv[1] == "write":
         if not user.EmptyClipboard():
             raise ctypes.WinError(ctypes.get_last_error())
         for mime, value in values.items():
-            if mime == "text/plain":
+            if mime == TEXT:
                 value = value.decode().encode("utf-16-le") + b"\0\0"
-            elif mime == "text/html":
+            elif mime == HTML:
                 value = html_format(value)
             put(format_id(mime), value)
     else:

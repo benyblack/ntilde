@@ -49,6 +49,24 @@ public class AvaloniaKittyClipboardTests
         Assert.Equal(new byte[] { 1, 2, 3 }, stream.ToArray());
     }
 
+    [Fact]
+    public async Task Malformed_native_HTML_does_not_hide_a_valid_MIME_fallback_or_plain_text()
+    {
+        using var clipboard = new Clipboard();
+        var data = new DataTransfer();
+        var item = new DataTransferItem();
+        item.Set(DataFormat.CreateBytesPlatformFormat(WindowsClipboardFormats.Html), new byte[] { 1, 2, 3 });
+        byte[] html = System.Text.Encoding.UTF8.GetBytes("<b>fallback</b>");
+        item.Set(DataFormat.CreateBytesPlatformFormat("text/html"), html);
+        item.SetText("plain fallback"); data.Add(item);
+        await clipboard.SetDataAsync(data);
+        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(false));
+        using var snapshot = await adapter.OpenReadAsync();
+        Assert.Equal(html, await snapshot.ReadAsync("text/html"));
+        Assert.Equal("plain fallback", System.Text.Encoding.UTF8.GetString((await snapshot.ReadAsync("text/plain"))!));
+        await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("text/html", maxBytes: 1));
+    }
+
     [AvaloniaTheory]
     [InlineData(3)]
     [InlineData(4096)]
@@ -84,18 +102,18 @@ public class AvaloniaKittyClipboardTests
         await adapter.WriteAsync(new Dictionary<string, byte[]>
         {
             ["text/plain"] = System.Text.Encoding.UTF8.GetBytes("héllo"),
-            ["image/png"] = binary,
+            ["application/octet-stream"] = binary,
             ["application/x-ntilde-alias"] = binary
         });
         using var snapshot = await adapter.OpenReadAsync();
         var types = snapshot.Types;
         Assert.Equal(3, types.Count);
         Assert.Contains("text/plain", types);
-        Assert.Contains("image/png", types);
+        Assert.Contains("application/octet-stream", types);
         Assert.Contains("application/x-ntilde-alias", types);
-        Assert.Equal(binary, await snapshot.ReadAsync("image/png"));
+        Assert.Equal(binary, await snapshot.ReadAsync("application/octet-stream"));
         Assert.Equal(binary, await snapshot.ReadAsync("application/x-ntilde-alias"));
-        await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("image/png", maxBytes: 3));
+        await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("application/octet-stream", maxBytes: 3));
         await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("text/plain", maxBytes: 5));
         Assert.Equal("héllo", System.Text.Encoding.UTF8.GetString((await snapshot.ReadAsync("text/plain"))!));
         Assert.Equal(1, clipboard.Acquisitions);
@@ -105,8 +123,8 @@ public class AvaloniaKittyClipboardTests
         using var empty = await adapter.OpenReadAsync();
         Assert.Empty(empty.Types);
         // The read handle retains its original data even after the clipboard is replaced.
-        Assert.Equal(binary, await snapshot.ReadAsync("image/png"));
+        Assert.Equal(binary, await snapshot.ReadAsync("application/octet-stream"));
         snapshot.Dispose();
-        Assert.Null(await snapshot.ReadAsync("image/png"));
+        Assert.Null(await snapshot.ReadAsync("application/octet-stream"));
     }
 }

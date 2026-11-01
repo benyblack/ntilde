@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Buffers.Binary;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Avalonia;
@@ -60,7 +61,8 @@ internal sealed class ClipboardScenario(Window window, string root)
 
     public async Task RunAsync()
     {
-        var fixture = JsonSerializer.Deserialize(File.ReadAllText(Path.Combine(root, "fixture.json")), QaJson.Default.DictionaryStringString)
+        string fixtureJson = await File.ReadAllTextAsync(Path.Combine(root, "fixture.json"), CancellationToken.None);
+        var fixture = JsonSerializer.Deserialize(fixtureJson, QaJson.Default.DictionaryStringString)
             ?? throw new InvalidDataException("Missing fixture.");
         var values = fixture.ToDictionary(p => p.Key, p => Convert.FromBase64String(p.Value));
         var adapter = new AvaloniaKittyClipboard(() => window.Clipboard, (_, _) => Task.FromResult(false));
@@ -80,7 +82,8 @@ internal sealed class ClipboardScenario(Window window, string root)
         session.Accept("type=wdata");
         await WaitUntilAsync(() => _replies.Any(r => r.Contains("status=DONE:id=qa-write", StringComparison.Ordinal)));
         Signal("host-write.ready");
-        await WaitUntilAsync(() => File.Exists(Path.Combine(root, "peer-write.ready")));
+        // Runner allows 25 s for peer read + 25 s for peer write; this handoff covers both.
+        await WaitUntilAsync(() => File.Exists(Path.Combine(root, "peer-write.ready")), TimeSpan.FromSeconds(55));
 
         _replies.Clear();
         session.Accept("type=read:id=denied;" + KittyClipboardPacket.Encode("text/plain"));
@@ -94,7 +97,8 @@ internal sealed class ClipboardScenario(Window window, string root)
         _replies.Clear();
         session.Accept("type=read:id=qa-read:pw=" + password + ":name=" + KittyClipboardPacket.Encode("Paste event") + ";" + KittyClipboardPacket.Encode(string.Join(' ', values.Keys)));
         await WaitUntilAsync(() => _replies.Any(r => r.Contains("status=DONE:id=qa-read", StringComparison.Ordinal)));
-        var peerFixture = JsonSerializer.Deserialize(File.ReadAllText(Path.Combine(root, "peer-fixture.json")), QaJson.Default.DictionaryStringString)
+        string peerJson = await File.ReadAllTextAsync(Path.Combine(root, "peer-fixture.json"), CancellationToken.None);
+        var peerFixture = JsonSerializer.Deserialize(peerJson, QaJson.Default.DictionaryStringString)
             ?? throw new InvalidDataException("Missing native peer fixture.");
         VerifyRead(peerFixture.ToDictionary(p => p.Key, p => Convert.FromBase64String(p.Value)));
         Signal("host-read.verified");
@@ -115,13 +119,25 @@ internal sealed class ClipboardScenario(Window window, string root)
                 if (actualImage == null || expectedImage == null || actualImage.Width != 1 || actualImage.Height != 1 ||
                     actualImage.GetPixel(0, 0) != expectedImage.GetPixel(0, 0)) throw new InvalidDataException("Native PNG pixels differ.");
             }
+            else if (mime.StartsWith("application/x-ntilde-qa", StringComparison.Ordinal))
+            {
+                if (!BinaryPayload(actual, OperatingSystem.IsWindows()).SequenceEqual(BinaryPayload(bytes, false))) throw new InvalidDataException("Native binary payload differs.");
+            }
             else if (!actual.SequenceEqual(bytes)) throw new InvalidDataException("Native read mismatch: " + mime);
         }
     }
 
-    private static async Task WaitUntilAsync(Func<bool> ready)
+    private static ReadOnlySpan<byte> BinaryPayload(byte[] data, bool allowPadding)
     {
-        using var timeout = new CancellationTokenSource(Deadline);
+        if (data.Length < 4) throw new InvalidDataException("Missing binary fixture length.");
+        uint length = BinaryPrimitives.ReadUInt32BigEndian(data);
+        if (length > data.Length - 4 || (!allowPadding && length != data.Length - 4)) throw new InvalidDataException("Invalid binary fixture length.");
+        return data.AsSpan(4, (int)length);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> ready, TimeSpan? deadline = null)
+    {
+        using var timeout = new CancellationTokenSource(deadline ?? Deadline);
         while (!ready()) await Task.Delay(10, timeout.Token);
     }
 

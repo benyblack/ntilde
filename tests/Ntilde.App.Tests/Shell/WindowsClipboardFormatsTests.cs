@@ -5,6 +5,17 @@ namespace Ntilde.Tests.Shell;
 
 public class WindowsClipboardFormatsTests
 {
+    [Fact]
+    public void Header_offsets_beyond_4096_bytes_are_not_truncated()
+    {
+        string template = "Version:1.0\r\nStartHTML:{0:D6000}\r\nEndHTML:{1:D6000}\r\nStartFragment:{0:D6000}\r\nEndFragment:{1:D6000}\r\n";
+        var format = System.Text.CompositeFormat.Parse(template);
+        string empty = string.Format(System.Globalization.CultureInfo.InvariantCulture, format, 0, 0);
+        byte[] fragment = Encoding.UTF8.GetBytes("<b>long native header</b>");
+        string header = string.Format(System.Globalization.CultureInfo.InvariantCulture, format, empty.Length, empty.Length + fragment.Length);
+        Assert.Equal(fragment, WindowsClipboardFormats.DecodeHtml(Encoding.ASCII.GetBytes(header).Concat(fragment).ToArray(), fragment.Length));
+    }
+
     [Theory]
     [InlineData("\n")]
     [InlineData("\r")]
@@ -36,10 +47,10 @@ public class WindowsClipboardFormatsTests
     }
 
     [Theory]
-    [InlineData("StartFragment:0000001000\r\nEndFragment:0000001001\r\n")]
-    [InlineData("StartFragment:0000000020\r\nEndFragment:0000000010\r\n")]
-    [InlineData("StartFragment:-1\r\nEndFragment:0000000010\r\n")]
-    [InlineData("StartFragment:99999999999999\r\nEndFragment:99999999999999\r\n")]
+    [InlineData("StartHTML:-1\r\nEndHTML:-1\r\nStartFragment:0000001000\r\nEndFragment:0000001001\r\n")]
+    [InlineData("StartHTML:-1\r\nEndHTML:-1\r\nStartFragment:0000000020\r\nEndFragment:0000000010\r\n")]
+    [InlineData("StartHTML:-1\r\nEndHTML:-1\r\nStartFragment:-1\r\nEndFragment:0000000010\r\n")]
+    [InlineData("StartHTML:-1\r\nEndHTML:-1\r\nStartFragment:99999999999999\r\nEndFragment:99999999999999\r\n")]
     [InlineData("<b>missing header</b>")]
     public void Malformed_native_HTML_never_returns_an_arbitrary_slice(string input)
     {

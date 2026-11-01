@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
+    <IsTestProject>false</IsTestProject>
     <PublishAot>false</PublishAot>
   </PropertyGroup>
   <ItemGroup>

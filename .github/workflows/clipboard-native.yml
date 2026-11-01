@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/clipboard-native.yml'
       - 'scripts/clipboard-native/**'
+      - 'scripts/build.sh'
       - 'tests/Ntilde.Clipboard.NativeHost/**'
       - 'src/Ntilde.App/Shell/Clipboard/**'
       - 'src/Ntilde.App/AssemblyInfo.cs'

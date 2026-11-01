@@ -15,8 +15,11 @@ internal static class WindowsClipboardFormats
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
     public static string ToNative(string mime) => mime switch { "text/html" => Html, "image/png" => Png, _ => mime };
-    public static string? ToMime(string format) => format.Equals(Html, StringComparison.OrdinalIgnoreCase) ? "text/html"
-        : format.Equals(Png, StringComparison.OrdinalIgnoreCase) ? "image/png" : null;
+    public static string? ToMime(string format)
+    {
+        if (format.Equals(Html, StringComparison.OrdinalIgnoreCase)) return "text/html";
+        return format.Equals(Png, StringComparison.OrdinalIgnoreCase) ? "image/png" : null;
+    }
 
     public static byte[] EncodeHtml(byte[] fragment)
     {
@@ -33,6 +36,8 @@ internal static class WindowsClipboardFormats
 
     public static byte[] DecodeHtml(byte[] data, int maxBytes)
     {
+        if (data.Length > 2L * Ntilde.VT.KittyClipboardPacket.MaxDataBytes)
+            throw new ClipboardSizeLimitException("Native HTML exceeds the encoded representation budget.");
         var start = Offset(data, "StartFragment:"u8);
         var end = Offset(data, "EndFragment:"u8);
         var htmlStart = Offset(data, "StartHTML:"u8);
@@ -50,7 +55,7 @@ internal static class WindowsClipboardFormats
 
     private static (int Value, int End) Offset(byte[] data, ReadOnlySpan<byte> key)
     {
-        ReadOnlySpan<byte> header = data.AsSpan(0, Math.Min(data.Length, 4096));
+        ReadOnlySpan<byte> header = data;
         int field = header.IndexOf(key);
         if (field < 0) return (-2, 0);
         ReadOnlySpan<byte> tail = header[(field + key.Length)..];

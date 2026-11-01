@@ -16,16 +16,29 @@ func nativeType(_ mime: String) -> NSPasteboard.PasteboardType {
     let identifier = value.takeRetainedValue() as String
     return NSPasteboard.PasteboardType(identifier)
 }
+func binaryPayload(_ data: Data) -> Data {
+    guard data.count >= 4 else { fatalError("Missing binary fixture length") }
+    let length = data.prefix(4).reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+    guard Int(length) + 4 == data.count else { fatalError("Invalid binary fixture length") }
+    return data.subdata(in: 4..<data.count)
+}
 if operation == "read" {
     for (mime, value) in encoded {
-        guard let expected = Data(base64Encoded: value), let actual = clipboard.data(forType: nativeType(mime)), expected == actual else {
+        let actual = mime == "text/plain" ? clipboard.string(forType: .string)?.data(using: .utf8) : clipboard.data(forType: nativeType(mime))
+        guard let expected = Data(base64Encoded: value), let actual = actual else {
             fatalError("Native AppKit clipboard mismatch: \(mime)")
         }
+        if mime.hasPrefix("application/x-ntilde-qa") {
+            guard binaryPayload(actual) == binaryPayload(expected) else { fatalError("Native binary clipboard mismatch") }
+        } else if expected != actual { fatalError("Native clipboard mismatch: \(mime)") }
     }
 } else if operation == "write" {
     let item = NSPasteboardItem()
     for (mime, value) in encoded {
-        guard let data = Data(base64Encoded: value), item.setData(data, forType: nativeType(mime)) else { fatalError("Invalid fixture") }
+        guard let data = Data(base64Encoded: value) else { fatalError("Invalid fixture") }
+        if mime == "text/plain" {
+            guard let text = String(data: data, encoding: .utf8), item.setString(text, forType: .string) else { fatalError("Invalid Unicode fixture") }
+        } else if !item.setData(data, forType: nativeType(mime)) { fatalError("Invalid fixture") }
     }
     clipboard.clearContents()
     guard clipboard.writeObjects([item]) else { fatalError("Native clipboard write refused") }
