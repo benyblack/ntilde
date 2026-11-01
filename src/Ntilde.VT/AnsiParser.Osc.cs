@@ -96,6 +96,10 @@ namespace Ntilde.VT
                     HandleOscClipboard(data);
                     break;
 
+                case "5522":
+                    OnKittyClipboardPacket?.Invoke(data);
+                    break;
+
                 case "66":
                     HandleTextSizing(data);
                     break;

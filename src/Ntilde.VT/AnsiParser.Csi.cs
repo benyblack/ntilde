@@ -904,6 +904,9 @@ namespace Ntilde.VT
                 case 1006: return _buffer.Modes.MouseModeSGR ? 1 : 2;
                 case 1047: return _buffer.IsAltScreenActive ? 1 : 2;             // Alt screen
                 case 1049: return _buffer.IsAltScreenActive ? 1 : 2;             // Alt screen + save cursor
+                case 5522:
+                    if (!KittyClipboardEnabled) return 0;
+                    return _buffer.Modes.IsClipboardPasteMode ? 1 : 2;
                 case 2004: return _buffer.Modes.IsBracketedPasteMode ? 1 : 2;
                 case 2026: return _buffer.IsSynchronizedOutput ? 1 : 2;          // Synchronized Output
                 case 2031: return _colorSchemeReportsEnabled ? 1 : 2;          // Dark/light theme updates
@@ -1004,6 +1007,9 @@ namespace Ntilde.VT
                         {
                             SwitchToMainScreen();
                         }
+                        break;
+                    case 5522:
+                        _buffer.Modes.IsClipboardPasteMode = enable && KittyClipboardEnabled;
                         break;
                     case 2004:  // Bracketed Paste Mode
                         _buffer.Modes.IsBracketedPasteMode = enable;

@@ -786,6 +786,7 @@ namespace Ntilde.VT
             IsSixelDisplayMode = modes.IsSixelDisplayMode,
             IsFocusEventReporting = modes.IsFocusEventReporting,
             IsBracketedPasteMode = modes.IsBracketedPasteMode,
+            IsClipboardPasteMode = modes.IsClipboardPasteMode,
             IsCursorVisible = modes.IsCursorVisible,
             IsCursorBlinkEnabled = modes.IsCursorBlinkEnabled,
             CursorStyle = (int)modes.CursorStyle,
@@ -807,6 +808,7 @@ namespace Ntilde.VT
             target.IsSixelDisplayMode = source.IsSixelDisplayMode;
             target.IsFocusEventReporting = source.IsFocusEventReporting;
             target.IsBracketedPasteMode = source.IsBracketedPasteMode;
+            target.IsClipboardPasteMode = source.IsClipboardPasteMode;
             target.IsCursorVisible = source.IsCursorVisible;
             target.IsCursorBlinkEnabled = source.IsCursorBlinkEnabled;
             target.CursorStyle = (CursorStyle)source.CursorStyle;

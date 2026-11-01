@@ -20,6 +20,7 @@ invariant changes.
 
 **Owns**
 - VT/ANSI state machine and parser
+- OSC 5522 framing/strict base64 and the host-enabled DEC 5522 mode. Clipboard payloads, permission grants, transfer budgets and OS I/O belong to App; headless VT does not advertise a desktop service.
 - Main + alternate screen buffers
 - Scrollback (`Buffer/ScrollbackPages.cs`) and lossless reflow (`TerminalBuffer.ReflowEngine.cs`)
 - Cell/row semantics, grapheme cluster handling, Unicode width

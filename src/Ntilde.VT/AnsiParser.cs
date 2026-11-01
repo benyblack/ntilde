@@ -230,6 +230,13 @@ namespace Ntilde.VT
         /// <see cref="OnResponse"/>, never this event.
         /// </summary>
         public Action<string, byte[]>? OnClipboardWrite { get; set; }
+
+        /// <summary>OSC 5522 packets. The presenting host owns permissions, transfers and clipboard I/O.</summary>
+        public Action<string>? OnKittyClipboardPacket { get; set; }
+        /// <summary>Host opt-in; headless and mux parsers must not advertise unavailable clipboard services.</summary>
+        public bool KittyClipboardEnabled { get; set; }
+        /// <summary>Invalidates host clipboard grants and in-progress transfers on RIS.</summary>
+        public Action? OnKittyClipboardReset { get; set; }
         public Action? OnPromptReady { get; set; }
 
         /// <summary>
@@ -609,6 +616,7 @@ namespace Ntilde.VT
                                 else if (c == 'c') // RIS - Reset to Initial State
                                 {
                                     _buffer.Reset();
+                                    OnKittyClipboardReset?.Invoke();
                                     ResetCharsets();
                                     _verticalOffset = 0;
                                     // Parser-local mode state does not live in the buffer, so RIS

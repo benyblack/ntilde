@@ -1,0 +1,315 @@
+{
+  "schemaVersion": 1,
+  "evidenceScope": "Owned macOS DECRQM recognition only; clipboard data access is disabled in this collection. Binary transfers, permission boundaries and paste tokens have separate fake-backend regression evidence, not a native cross-app qualification.",
+  "startingMainCommit": "04019dbacf1c02aa7ccd85c39fcd2670ec2905eb",
+  "suiteId": "16a690f34c0e",
+  "probeHash": "16a690f34c0e",
+  "collectorSourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+  "adapter": {
+    "id": "ntilde-owned-macos-v1",
+    "bundleSha256": "1be0fb24d6cbb719a3a701ae7244beb7de4241e23a127be1af183d5e0d730c54",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "nodeVersion": "v24.22.1",
+  "inputPins": {
+    "collectorManifestSha256": "56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e",
+    "collectorLockSha256": "837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "adapterBundleSha256": "1be0fb24d6cbb719a3a701ae7244beb7de4241e23a127be1af183d5e0d730c54"
+  },
+  "sourcePins": {
+    "runnerSourceSha256": "a322ad12a62101e28f465275a7c6d6cd993ef9792e40c4aeeadb56113794fda5",
+    "adapterSourceSha256": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
+    "ownershipSourceSha256": "1bf16d996f4d4dfdb98cc2ec7011e64c6567de1515271bb2a4244ae48996d50f",
+    "workerSourceSha256": "00ed37f2cb00ce11268be08b4a69fc65e4a88236378fa35f032b4fde8976b83e",
+    "runtimeSourceSha256": "8199c0373ae9f423c2f2333f9166ce0f301dd6e5df238b78d1bdb317e3abfdd4"
+  },
+  "before": {
+    "sourceCommit": "04019dbacf1c02aa7ccd85c39fcd2670ec2905eb",
+    "appVersion": "0.12.0+04019dbacf1c02aa7ccd85c39fcd2670ec2905eb",
+    "measuredAt": "2026-11-01T16:56:20.405Z",
+    "localDirectory": "artifacts/terminfo/owned-WTxDq5",
+    "rawSha256": "5291400dfd56c2b67ef7011cbd275cba9a9dd261fb3664b0fed2e9fd1b159144",
+    "assemblySha256": "ca00450691c5225e2188ba713683b463c7dacee2f3848343cdfda2338a1a0e79",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 77,
+      "unsupported": 1
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "runId": "8948fc2b965efa416ffb0cafbc16ce1b",
+    "ownerRunId": "4a3ab7cc991875f59fdebb99611fea32",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "cleanedUpAt": "2026-11-01T16:56:20.438Z"
+  },
+  "after": {
+    "sourceCommit": "5aa7481b2d3187325378168f68c0548111322ac3",
+    "appVersion": "0.12.0+5aa7481b2d3187325378168f68c0548111322ac3",
+    "measuredAt": "2026-11-01T18:58:01.465Z",
+    "localDirectory": "artifacts/terminfo/owned-lZP2Uv",
+    "rawSha256": "2ad91173e34040c19bd4ee4a97833d724d609e3cf7a2bc99a5fa1b9a99edc018",
+    "assemblySha256": "bccfa3f29e23216d3f7c4c3808ccd7377512da07ca280cc6153eff3922147073",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 78
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "runId": "adfac1d2e99733df2c8a10b3fd0e0899",
+    "ownerRunId": "a43d74b8ae2104bd627d01d5bbfeda43",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "cleanedUpAt": "2026-11-01T18:58:01.493Z"
+  },
+  "unchangedOutcomeAndReasonCount": 254,
+  "changes": [
+    {
+      "featureId": "extensions.osc5522-clipboard",
+      "before": {
+        "featureId": "extensions.osc5522-clipboard",
+        "outcome": "unsupported",
+        "evidence": "query",
+        "note": "Mode 5522 not supported",
+        "rawReplyRef": "extensions.osc5522-clipboard"
+      },
+      "after": {
+        "featureId": "extensions.osc5522-clipboard",
+        "outcome": "supported",
+        "evidence": "query",
+        "note": "Protocol recognized; clipboard access permissions not tested",
+        "rawReplyRef": "extensions.osc5522-clipboard"
+      },
+      "beforeTrace": {
+        "writes": [],
+        "queries": [
+          {
+            "sequence": "\u001b[?5522$p\u001b[c",
+            "match": [
+              "\u001b[?5522;0$y",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?5522;0$y\u001b[?62;4;22c",
+            "rawBase64": "G1s/NTUyMjswJHkbWz82Mjs0OzIyYw=="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b[?5522$p\u001b[c",
+            "match": [
+              "\u001b[?5522;0$y",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?5522;0$y\u001b[?62;4;22c",
+            "rawBase64": "G1s/NTUyMjswJHkbWz82Mjs0OzIyYw=="
+          }
+        ]
+      },
+      "afterTrace": {
+        "writes": [],
+        "queries": [
+          {
+            "sequence": "\u001b[?5522$p\u001b[c",
+            "match": [
+              "\u001b[?5522;2$y",
+              "2"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?5522;2$y\u001b[?62;4;22c",
+            "rawBase64": "G1s/NTUyMjsyJHkbWz82Mjs0OzIyYw=="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b[?5522$p\u001b[c",
+            "match": [
+              "\u001b[?5522;2$y",
+              "2"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?5522;2$y\u001b[?62;4;22c",
+            "rawBase64": "G1s/NTUyMjsyJHkbWz82Mjs0OzIyYw=="
+          }
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "Raw identity remains unverified; appVersion is operator supplied. The selected sidecars have matching DLL informational-version bytes and recorded assembly SHA-256 hashes.",
+    "The probe establishes recognition of mode 5522; it does not read or write clipboard data. All three OSC 52 probes remain policy-refused.",
+    "No clipboard transfer between native applications was measured on macOS, Windows or Linux. Test-owned Avalonia DataTransfer values and fake clipboard services cover transport and permission behavior.",
+    "Paste tokens authorize only immutable MIME values captured at the paste gesture under the same 64 MiB aggregate read budget; redemption never reads the current clipboard.",
+    "Primary selection returns ENOSYS. Mux/headless hosts do not advertise. Persistent password grants are not stored.",
+    "Write wire-data budget is 64 MiB; materialized MIME/alias expansion is capped at 128 MiB. Packets/metadata/MIME counts are also bounded.",
+    "Avalonia exposes no native-operation cancellation. A stalled provider keeps the shared OSC 5522 gate until actual completion; reset suppresses stale replies but cannot abort the native call.",
+    "Avalonia first native value materialization has no size/stream preflight API; its allocation is not capped by the managed conversion/retention budget.",
+    "Host-assembled transfers and grants are excluded from snapshots. Raw client OSC packets can occur in recorded PTY output and incomplete parser accumulators.",
+    "Immediate error replies retry with a five-second admission deadline through one background pump, with at most 64 queued packets per TTY; excess error-flood requests can be refused.",
+    "177 inconclusive observations, an ungraded geometry diagnostic and suiteComplete=false remain. Zero unsupported observations is not a complete compatibility score."
+  ],
+  "intermediateAfters": [
+    {
+      "sourceCommit": "ba2b1ebeba2e539e3e795df28e20b95a54419701",
+      "appVersion": "0.12.0+ba2b1ebeba2e539e3e795df28e20b95a54419701",
+      "measuredAt": "2026-11-01T17:15:35.296Z",
+      "localDirectory": "artifacts/terminfo/owned-q6V63U",
+      "rawSha256": "f0eb57d4702abbbfb237fd700c2b8e1f44a0470f016103ee895232131a947fa7",
+      "assemblySha256": "9d3c691392342ef77457977a4921d07f7c7067e6c96e56124cb14f315ffe4fe9",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 78
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "f05bbf38adf15a4defcc0e1d89de5a3c",
+      "ownerRunId": "db05af0df1da9b3cc2f251c2887495d0",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T17:15:35.322Z"
+    },
+    {
+      "sourceCommit": "190eab1575087f3c5cd95ac5770ebd08b4e9ebb9",
+      "appVersion": "0.12.0+190eab1575087f3c5cd95ac5770ebd08b4e9ebb9",
+      "measuredAt": "2026-11-01T17:28:46.011Z",
+      "localDirectory": "artifacts/terminfo/owned-IlHkZI",
+      "rawSha256": "704fc0babb01c107d0b072213ce2e78fc2c3fd17dbeefaeb39440f9d7ebaf858",
+      "assemblySha256": "bfa237837abe6e62a0a770cbf9121baa50771cc1ab306efca99f8525a0e1ba16",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 78
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "d53bbd21e4f83239e11e26a1024de866",
+      "ownerRunId": "844e0923ed62d652cb18a444ff877c42",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T17:28:46.037Z"
+    },
+    {
+      "sourceCommit": "98a80a9a8d06280081854d5d26185fbb81374810",
+      "appVersion": "0.12.0+98a80a9a8d06280081854d5d26185fbb81374810",
+      "measuredAt": "2026-11-01T18:08:55.545Z",
+      "localDirectory": "artifacts/terminfo/owned-EA6IpC",
+      "rawSha256": "52d75356645aada057be68d76332bd8d4974b23b9211d05c7fba018e911686ab",
+      "assemblySha256": "b4dba1bc4a1c80de2c2b12da8323d05cd97d35fefa1b7b7c535bf6650cfdc225",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 78
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "17a3a26709078180f43b8dc9174430e0",
+      "ownerRunId": "e2382da95aae28d6731b893c34150673",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T18:08:55.578Z"
+    },
+    {
+      "sourceCommit": "44f4aea9dcb0bed4dc5051693849cc61d7af6011",
+      "appVersion": "0.12.0+44f4aea9dcb0bed4dc5051693849cc61d7af6011",
+      "measuredAt": "2026-11-01T18:37:27.779Z",
+      "localDirectory": "artifacts/terminfo/owned-6KQmVL",
+      "rawSha256": "c4b8d406dc8c98b2fe20aa8450323a063e1ac3ff20ba83ead4e9b4cb9f0c9550",
+      "assemblySha256": "7e11f2b5722b3b9189886a60c22caea0e0ad1a3394de9fd431ee7e2e76783483",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 78
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "72655f4d5b1cfd598fd9fd4eabd70a9e",
+      "ownerRunId": "e72bdba73674592526169937afd3d1ba",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T18:37:27.808Z"
+    },
+    {
+      "sourceCommit": "be9b04c273ad6224fa26843edadd571a41ac36c4",
+      "appVersion": "0.12.0+be9b04c273ad6224fa26843edadd571a41ac36c4",
+      "measuredAt": "2026-11-01T18:47:09.200Z",
+      "localDirectory": "artifacts/terminfo/owned-4A4NGw",
+      "rawSha256": "f0267f129a612e5dc4c35eb766675c68b896b64775fb5d756cd73a56e0c8c59c",
+      "assemblySha256": "924584fba9755296d3ab3d9059c16fde99a1f8212041c6235882e7ffe6ca9e00",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 78
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "258462cbdeb8a2e15dd0ae60ebacab66",
+      "ownerRunId": "41e4472be09652d77ffe05a7ab1bc5c0",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T18:47:09.228Z"
+    }
+  ]
+}

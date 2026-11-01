@@ -230,6 +230,7 @@ namespace Ntilde.VT
         [JsonPropertyName("sixel_display")] public bool IsSixelDisplayMode { get; set; }
         [JsonPropertyName("focus")] public bool IsFocusEventReporting { get; set; }
         [JsonPropertyName("bp")] public bool IsBracketedPasteMode { get; set; }
+        [JsonPropertyName("mime_paste")] public bool IsClipboardPasteMode { get; set; }
         [JsonPropertyName("cv")] public bool IsCursorVisible { get; set; } = true;
         [JsonPropertyName("cblink")] public bool IsCursorBlinkEnabled { get; set; } = true;
         [JsonPropertyName("cstyle")] public int CursorStyle { get; set; }

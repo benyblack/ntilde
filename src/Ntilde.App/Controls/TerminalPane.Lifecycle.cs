@@ -77,6 +77,8 @@ namespace Ntilde.Controls
 
             if (session is MuxClientSession) UnregisterRemoteMuxSession(); // its shell ended: nothing left to browse
             LastExitCode = code;
+            _kittyClipboard?.Reset();
+            if (Buffer != null) Buffer.Modes.IsClipboardPasteMode = false;
 
             if (Profile?.Type == ConnectionType.SSH)
             {
@@ -197,11 +199,17 @@ namespace Ntilde.Controls
 
         public void Dispose()
         {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposing) return;
             // Synchronous teardown for UI-thread callers. MainWindow.DisposeControlTree
             // splits the two phases instead, so the (potentially blocking) session
             // teardown runs off the UI thread while the UI-affine detach stays on it.
             DetachFromUiThread()?.Dispose();
-            GC.SuppressFinalize(this);
         }
 
         /// <summary>
@@ -223,6 +231,7 @@ namespace Ntilde.Controls
 
             if (_disposed) return null;
             _disposed = true;
+            _kittyClipboard?.Dispose();
             UnsubscribeRecordingFailure(forgetAttempts: true);
 
             (_agentRegistry ?? Ntilde.AgentHost.AgentSessionRegistry.Instance).Unregister(PaneId);

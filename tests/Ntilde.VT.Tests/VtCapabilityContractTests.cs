@@ -39,6 +39,7 @@ public sealed class VtCapabilityContractTests
             ["color-stack-pop"] = AssertRuntimeColorStack,
             ["color-scheme-query"] = AssertColorSchemeQuery,
             ["color-scheme-notifications"] = AssertColorSchemeNotifications,
+            ["mime-clipboard-paste"] = AssertMimeClipboardPaste,
         };
 
     private static readonly Dictionary<string, string> ContractSequences =
@@ -51,6 +52,7 @@ public sealed class VtCapabilityContractTests
             ["color-stack-pop"] = "\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a",
             ["color-scheme-query"] = "\x1b[?996n",
             ["color-scheme-notifications"] = "\x1b[?2031h\x1b[?2031$p",
+            ["mime-clipboard-paste"] = "\x1b[?5522h\x1b[?5522$p",
         };
 
     public static IEnumerable<object[]> SupportedCapabilities()
@@ -87,6 +89,15 @@ public sealed class VtCapabilityContractTests
             Assert.Equal(expectedRow, actualRow);
             Assert.Equal(expectedCol, actualCol);
         }
+    }
+
+    private static void AssertMimeClipboardPaste()
+    {
+        var parser = new AnsiParser(new TerminalBuffer(12, 8)) { KittyClipboardEnabled = true };
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        parser.Process("\x1b[?5522$p\x1b[?5522h\x1b[?5522$p\x1b[?5522l\x1b[?5522$p");
+        Assert.Equal(new[] { "\x1b[?5522;2$y", "\x1b[?5522;1$y", "\x1b[?5522;2$y" }, replies);
     }
 
     private static void AssertCursorNextLine()

@@ -141,6 +141,7 @@ namespace Ntilde.Controls
             // A mux-backed pane shares the daemon's SIXEL geometry even though only the GUI
             // decodes the bitmap. Other image protocols keep their existing mux restriction.
             Parser = new AnsiParser(Buffer, forceConPtyFiltering);
+            WireKittyClipboard(muxBacked);
 
             // The GUI decodes SIXEL pixels while the headless parser applies the same geometry.
             // Other bitmap protocols retain their existing mux restriction.

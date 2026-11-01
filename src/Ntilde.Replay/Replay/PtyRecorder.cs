@@ -238,6 +238,7 @@ namespace Ntilde.Replay
                         SixelCellWidthPx = cellSize?.WidthPx,
                         SixelCellHeightPx = cellSize?.HeightPx,
                         IsBracketedPasteMode = buffer.Modes.IsBracketedPasteMode,
+                        IsClipboardPasteMode = buffer.Modes.IsClipboardPasteMode,
                         IsCursorVisible = buffer.Modes.IsCursorVisible,
                         IsPendingWrap = buffer.IsPendingWrap,
 

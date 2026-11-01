@@ -44,6 +44,47 @@ public class PaneParserWiringTests
     ];
 
     [AvaloniaFact]
+    public void Clipboard_protocol_is_wired_only_for_a_presenting_direct_pane()
+    {
+        using var control = new TerminalPane();
+        int controlScheduled = 0;
+        control.ClipboardSchedulerForTest = _ => { controlScheduled++; return System.Threading.Tasks.Task.CompletedTask; };
+        control.CreateAndWireParser();
+        control.Parser!.Process("\x1b]5522;type=read;dGV4dC9wbGFpbg==\a");
+        Assert.Equal(1, controlScheduled);
+
+        using var pane = new TerminalPane();
+        int scheduled = 0;
+        pane.ClipboardSchedulerForTest = _ => { scheduled++; return System.Threading.Tasks.Task.CompletedTask; };
+        pane.CreateAndWireParser();
+        Assert.True(pane.Parser!.KittyClipboardEnabled);
+        Assert.NotNull(pane.Parser.OnKittyClipboardPacket);
+        Assert.NotNull(pane.Parser.OnKittyClipboardReset);
+        var retired = pane.Parser;
+        pane.CreateAndWireParser(muxBacked: true);
+        Assert.False(pane.Parser!.KittyClipboardEnabled);
+        Assert.Null(pane.Parser.OnKittyClipboardPacket);
+        // The retired service is disposed, so stale output cannot initiate clipboard I/O.
+        retired.Process("\x1b]5522;type=read;dGV4dC9wbGFpbg==\a");
+        Assert.Equal(0, scheduled);
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task Session_exit_and_replacement_clear_MIME_paste_mode()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        pane.Parser!.Process("\x1b[?5522h");
+        Assert.True(pane.Buffer!.Modes.IsClipboardPasteMode);
+        pane.HandleSessionExitForTesting(0);
+        Assert.False(pane.Buffer.Modes.IsClipboardPasteMode);
+        Assert.False(await pane.TryNotifyClipboardPasteAsync());
+        pane.Parser.Process("\x1b[?5522h");
+        pane.CreateAndWireParser();
+        Assert.False(pane.Buffer.Modes.IsClipboardPasteMode);
+    }
+
+    [AvaloniaFact]
     public void RewiringTheParser_ReplacesItRatherThanReusingIt()
     {
         using var pane = new TerminalPane();

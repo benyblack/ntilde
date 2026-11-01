@@ -1174,3 +1174,47 @@ Ntilde is:
 > UI attracts users. Correctness keeps them.
 
 Read this before making architectural changes. Add an arch test before reaching for documentation as the enforcement mechanism — docs rot, tests don't.
+
+### OSC 5522 clipboard boundary
+
+VT parses bounded clipboard framing and stores the paste-notification mode only.
+The App owns binary transfer assembly, permission prompts, one-use expiring
+paste grants and Avalonia clipboard I/O; macOS MIME/UTI conversion stays in App.
+Host-assembled clipboard transactions and permission grants are excluded from
+terminal snapshots. Raw client OSC packets can still occur in recorded PTY output
+and an in-progress parser accumulator, like any other output. Replay/headless
+parsers have no clipboard callback. Mux and
+headless parsers do not advertise the desktop service. Clipboard writes use the
+existing AllowOsc52ClipboardWrite setting.
+
+An OSC 5522 read owns one disposable Avalonia data-transfer snapshot. A remaining
+byte budget is checked before Ntilde copies/encodes values; PNG output is bounded
+while encoding. Avalonia 12.1.3 exposes only value retrieval, with no length or
+stream preflight, so its initial native value materialization cannot be capped
+through that interface. This is a provider limit, not a hard process-memory bound.
+Clipboard DATA and terminal replies wait for bounded device-queue admission off
+the UI thread. The request slot and global gate are released atomically with
+terminal-packet admission; retries do not bypass the queue's keyboard reserve.
+
+Synchronous protocol errors use the same bounded admission retry. One background
+pump owns at most 64 queued error packets per TTY; overflow during an error flood
+is refused. Cancellation is rechecked inside the admission lock, so reset cannot
+be followed by admission of an old packet. Unknown packet types abort active
+write transactions with EINVAL.
+
+Paste tokens authorize immutable copies of MIME values captured from one native
+clipboard snapshot at the user's paste gesture, under the 64 MiB aggregate read
+budget. Redemption never opens the current clipboard. A grant is one-use, named,
+TTY-scoped and valid for 15 seconds; reset and a later paste discard it. Only one
+bounded grant is retained per TTY; expired content is released on the next packet,
+paste or reset. The native snapshot is disposed before notification transmission.
+
+Avalonia's native clipboard tasks expose no cancellation/abort API. Once a native
+call begins, reset invalidates its result/replies but retains the shared gate
+until actual completion. A stalled provider therefore keeps OSC 5522 requests
+busy, including in other panes. Releasing the gate on a wait timeout would allow
+an abandoned write to overwrite a newer acknowledged write and allow repeated
+resets to accumulate uncancellable provider operations. This is an explicit
+availability limitation; it does not imply cancellation of the native call.
+User paste checks the one-minute expiry of an unfinished wire write even when
+the child sends no further packet; its abort reply uses the bounded error pump.
