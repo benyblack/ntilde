@@ -66,25 +66,26 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
                 foreach (var item in _data.Items)
                 {
                     object? value = await item.TryGetRawAsync(format);
-                    if (OperatingSystem.IsWindows() && format.Kind == DataFormatKind.Platform &&
-                        format.Identifier.Equals(WindowsClipboardFormats.Html, StringComparison.OrdinalIgnoreCase) && value is byte[] html)
-                    {
-                        if (TryDecodeHtml(html, maxBytes, out byte[]? decoded)) return decoded;
-                        continue;
-                    }
-                    byte[]? bytes = ToBytes(value, maxBytes);
+                    byte[]? bytes = TryReadValue(format, value, maxBytes);
                     if (bytes != null) return bytes;
                 }
             }
             return null;
         }
 
-        private static bool TryDecodeHtml(byte[] html, int maxBytes, out byte[]? decoded)
+        private static byte[]? TryReadValue(DataFormat format, object? value, int maxBytes)
         {
-            decoded = null;
-            try { decoded = WindowsClipboardFormats.DecodeHtml(html, maxBytes); return true; }
-            catch (InvalidDataException) { return false; }
-            catch (DecoderFallbackException) { return false; }
+            try
+            {
+                if (format.Identifier.Equals(ClipboardPng.OriginalFormat, StringComparison.OrdinalIgnoreCase) && value is byte[] framed)
+                    return ClipboardPng.ReadOriginal(framed, maxBytes);
+                if (OperatingSystem.IsWindows() && format.Kind == DataFormatKind.Platform &&
+                    format.Identifier.Equals(WindowsClipboardFormats.Html, StringComparison.OrdinalIgnoreCase) && value is byte[] html)
+                    return WindowsClipboardFormats.DecodeHtml(html, maxBytes);
+                return ToBytes(value, maxBytes);
+            }
+            catch (InvalidDataException) { return null; }
+            catch (DecoderFallbackException) { return null; }
         }
 
         private static byte[]? ToBytes(object? value, int maxBytes)
@@ -134,18 +135,19 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
             foreach (var (mime, bytes) in data)
             {
                 byte[] encoded = OperatingSystem.IsWindows() && mime == "text/html" ? WindowsClipboardFormats.EncodeHtml(bytes) : bytes;
-                nativeBytes += encoded.Length;
+                bool originalPng = OperatingSystem.IsWindows() && mime == "image/png";
+                nativeBytes += encoded.Length + (originalPng ? sizeof(uint) : 0);
                 int budget = (int)Math.Max(0, 2L * Ntilde.VT.KittyClipboardPacket.MaxDataBytes - nativeBytes);
                 if (nativeBytes > 2L * Ntilde.VT.KittyClipboardPacket.MaxDataBytes)
                     throw new ClipboardSizeLimitException("Native clipboard data exceeds the expansion budget.");
-                if (OperatingSystem.IsWindows() && mime == "image/png")
+                if (originalPng)
                 {
                     int pixels = ClipboardPng.PixelBytes(bytes, budget);
                     var bitmap = ClipboardPng.Decode(bytes, budget);
                     resources.Add(bitmap);
                     nativeBytes += pixels;
                     item.SetBitmap(bitmap);
-                    item.Set(DataFormat.CreateBytesPlatformFormat(ClipboardPng.OriginalFormat), bytes);
+                    item.Set(DataFormat.CreateBytesPlatformFormat(ClipboardPng.OriginalFormat), ClipboardPng.FrameOriginal(bytes));
                 }
                 else item.Set(DataFormat.CreateBytesPlatformFormat(ClipboardMimeNames.ToPlatform(mime)), encoded);
                 if (mime == "text/plain") item.SetText(Encoding.UTF8.GetString(bytes));

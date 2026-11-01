@@ -67,6 +67,39 @@ public class AvaloniaKittyClipboardTests
         await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("text/html", maxBytes: 1));
     }
 
+    [Fact]
+    public async Task Original_PNG_frame_preserves_payload_and_exact_budget_despite_native_padding()
+    {
+        using var clipboard = new Clipboard();
+        byte[] original = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==").Concat(new byte[] { 0, 0, 42, 0 }).ToArray();
+        byte[] native = ClipboardPng.FrameOriginal(original).Concat(new byte[] { 0, 0, 99, 0 }).ToArray();
+        var data = new DataTransfer();
+        var item = new DataTransferItem();
+        item.Set(DataFormat.CreateBytesPlatformFormat(ClipboardPng.OriginalFormat), native);
+        item.Set(DataFormat.CreateBytesPlatformFormat("image/png"), new byte[] { 9 });
+        data.Add(item); await clipboard.SetDataAsync(data);
+        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(false));
+        using var snapshot = await adapter.OpenReadAsync();
+        Assert.Equal(original, await snapshot.ReadAsync("image/png", original.Length));
+        await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("image/png", original.Length - 1));
+    }
+
+    [Theory]
+    [InlineData(new byte[] { 0, 1, 2 })]
+    [InlineData(new byte[] { 255, 255, 255, 255, 1 })]
+    public async Task Malformed_original_PNG_frame_uses_an_available_native_fallback(byte[] malformed)
+    {
+        using var clipboard = new Clipboard();
+        var data = new DataTransfer();
+        var item = new DataTransferItem();
+        item.Set(DataFormat.CreateBytesPlatformFormat(ClipboardPng.OriginalFormat), malformed);
+        item.Set(DataFormat.CreateBytesPlatformFormat("image/png"), new byte[] { 1, 2 });
+        data.Add(item); await clipboard.SetDataAsync(data);
+        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(false));
+        using var snapshot = await adapter.OpenReadAsync();
+        Assert.Equal(new byte[] { 1, 2 }, await snapshot.ReadAsync("image/png", 2));
+    }
+
     [AvaloniaTheory]
     [InlineData(3)]
     [InlineData(4096)]

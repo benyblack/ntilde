@@ -34,7 +34,9 @@ raw platform representation supplies the requested PNG. Avalonia's Win32 OLE
 provider requires a bitmap behind PNG: the writer checks dimensions before
 creating it, includes its pixel budget in the native representation limit, and
 owns/disposes it with the transferred clipboard object. An extra native-only
-format retains original encoded PNG bytes for Ntilde MIME reads and aliases;
+format retains a length-framed copy of the original encoded PNG bytes for Ntilde
+MIME reads and aliases. The validated logical length excludes HGLOBAL padding
+before applying the public read budget; legitimate trailing payload bytes remain;
 its name cannot be supplied as an OSC MIME type. Native size refusal reports
 EFBIG. The owned transfer implements both synchronous and asynchronous contracts
 so Win32 does not block on an asynchronous provider.

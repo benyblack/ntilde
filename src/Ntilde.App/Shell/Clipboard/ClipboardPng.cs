@@ -11,6 +11,24 @@ internal static class ClipboardPng
     internal const string OriginalFormat = "Ntilde Original PNG";
     private static ReadOnlySpan<byte> Signature => [137, 80, 78, 71, 13, 10, 26, 10];
 
+    public static byte[] FrameOriginal(byte[] data)
+    {
+        byte[] framed = new byte[checked(data.Length + sizeof(uint))];
+        BinaryPrimitives.WriteUInt32BigEndian(framed, checked((uint)data.Length));
+        data.CopyTo(framed, sizeof(uint));
+        return framed;
+    }
+
+    public static byte[] ReadOriginal(byte[] framed, int budget)
+    {
+        if (framed.Length < sizeof(uint)) throw new InvalidDataException("Missing original PNG length.");
+        uint length = BinaryPrimitives.ReadUInt32BigEndian(framed);
+        if (length > framed.Length - sizeof(uint)) throw new InvalidDataException("Truncated original PNG.");
+        if (length > Math.Max(0, budget)) throw new IOException("Clipboard item exceeds the remaining read budget.");
+        // HGLOBAL may include allocation padding. Only the declared payload belongs to this MIME value.
+        return framed.AsSpan(sizeof(uint), checked((int)length)).ToArray();
+    }
+
     public static int PixelBytes(byte[] data, int budget)
     {
         if (data.Length < 33 || !data.AsSpan(0, 8).SequenceEqual(Signature) ||
