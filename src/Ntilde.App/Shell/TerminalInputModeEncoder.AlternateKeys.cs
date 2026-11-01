@@ -23,7 +23,7 @@ internal static partial class TerminalInputModeEncoder
 {
     /// <summary>
     /// Uses the framework's scalar key symbol and layout-independent physical position. Missing,
-    /// control, multi-scalar and malformed UTF-16 symbols are never treated as a key character.
+    /// control, combining, format, multi-scalar and malformed UTF-16 symbols retain the known key.
     /// Alt-produced symbols are not primary keys. Shifted punctuation retains the legacy
     /// logical primary: Avalonia does not expose its
     /// unshifted layout glyph. No native layout lookup or composition-state mutation occurs here.
@@ -43,10 +43,13 @@ internal static partial class TerminalInputModeEncoder
         return new(primary, shifted, baseline);
     }
 
+    /// <summary>Accepts one standalone scalar; composition marks and format controls cannot identify a key.</summary>
     private static bool TryKeyScalar(string? value, out Rune rune)
     {
         rune = default;
         return value is { Length: > 0 and <= 2 } && Rune.TryGetRuneAt(value, 0, out rune)
-            && rune.Utf16SequenceLength == value.Length && !Rune.IsControl(rune);
+            && rune.Utf16SequenceLength == value.Length && !Rune.IsControl(rune)
+            && Rune.GetUnicodeCategory(rune) is not (UnicodeCategory.NonSpacingMark
+                or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark or UnicodeCategory.Format);
     }
 }

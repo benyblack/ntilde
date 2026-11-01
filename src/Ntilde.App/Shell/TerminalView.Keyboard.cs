@@ -185,7 +185,7 @@ namespace Ntilde.Shell
                 string? altSequence = TerminalInputModeEncoder.EncodeAltKey(key, keyModifiers);
                 if (altSequence != null)
                 {
-                    SendKeyInput(key, keyModifiers, physicalKey, altSequence);
+                    SendKeyInput(key, keyModifiers, physicalKey, altSequence, identity);
                     return true;
                 }
             }

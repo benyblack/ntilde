@@ -212,10 +212,10 @@ namespace Ntilde.Shell
                 && !(reportEvents && IsKittyControlKey(key))
                 && (modifiers & (KeyModifiers.Control | KeyModifiers.Alt)) == (KeyModifiers.Control | KeyModifiers.Alt)) return null;
 
+            if ((flags & KittyKeyboardState.FlagReportAlternateKeys) == 0) identity = default;
             return IsKittyControlKey(key)
                 ? EncodeKittyControlKey(key, bits, disambiguate, eventKind)
-                : EncodeKittyTextKey(key, bits, disambiguate, eventKind,
-                    (flags & KittyKeyboardState.FlagReportAlternateKeys) != 0 ? identity : default);
+                : EncodeKittyTextKey(key, bits, disambiguate, eventKind, identity);
         }
 
         private static bool IsKittyControlKey(Key key) => key is Key.Enter or Key.Tab or Key.Back or Key.Escape;

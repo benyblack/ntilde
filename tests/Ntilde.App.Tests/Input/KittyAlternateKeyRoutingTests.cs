@@ -68,6 +68,16 @@ public sealed class KittyAlternateKeyRoutingTests
     }
 
     [AvaloniaFact]
+    public void Legacy_Alt_press_preserves_alternate_identity_for_negotiated_repeat_and_release()
+    {
+        var (view, _, sent) = Create(6);
+        view.Down(Key.A, KeyModifiers.Alt, PhysicalKey.Q, "a");
+        view.Down(Key.Y, KeyModifiers.Alt, PhysicalKey.Q, "y");
+        Assert.True(view.Up(Key.Y, KeyModifiers.Alt, PhysicalKey.Q).Handled);
+        Assert.Equal(new[] { "\u001ba", "\x1b[97::113;3:2u", "\x1b[97::113;3:3u" }, sent);
+    }
+
+    [AvaloniaFact]
     public void Repeat_and_release_retain_the_pressed_identity_across_layout_changes()
     {
         var (view, _, sent) = Create();
@@ -83,7 +93,11 @@ public sealed class KittyAlternateKeyRoutingTests
     [InlineData("\u001b")]
     [InlineData("\ud800")]
     [InlineData("e\u0301")]
-    public void Missing_or_non_scalar_symbols_keep_the_known_primary_and_physical_key(string? symbol)
+    [InlineData("\u0301")]
+    [InlineData("\u0903")]
+    [InlineData("\u20dd")]
+    [InlineData("\u200d")]
+    public void Missing_or_unusable_symbols_keep_the_known_primary_and_physical_key(string? symbol)
     {
         var (view, _, sent) = Create();
         view.Down(Key.A, KeyModifiers.Control, PhysicalKey.Q, symbol);
