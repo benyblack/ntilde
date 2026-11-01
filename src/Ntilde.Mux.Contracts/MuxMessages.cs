@@ -59,11 +59,18 @@ public sealed record WelcomeResult
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ServerVersion { get; init; }
+
+    /// <summary>Absent on older daemons, whose retention cannot be configured by a client.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MuxHistoryLimits? HistoryLimits { get; init; }
 }
 
 /// <summary>What the client looks like: applied to the mux parser so its replies describe it.</summary>
 public sealed record MuxPresentation
 {
+    /// <summary>Requested retained rows. Interactive requests raise the session high-water limit; null preserves policy.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? MaxHistory { get; init; }
     public int Cols { get; init; }
     public int Rows { get; init; }
     public float CellWidthPx { get; init; }
@@ -92,6 +99,9 @@ public sealed record MuxPresentation
 /// <summary>The local fields of <c>TerminalSessionRequest</c>; SSH is not spawnable through the mux (spec §9.2).</summary>
 public sealed record SpawnParams
 {
+    /// <summary>Initial retained rows, capped by the daemon. Absent retains the legacy 10,000-row default.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? MaxHistory { get; init; }
     public required string Command { get; init; }
     public string Arguments { get; init; } = string.Empty;
     public string StartingDirectory { get; init; } = string.Empty;

@@ -24,6 +24,7 @@ invariant changes.
 - Scrollback (`Buffer/ScrollbackPages.cs`) and lossless reflow (`TerminalBuffer.ReflowEngine.cs`)
 - Cell/row semantics, grapheme cluster handling, Unicode width
 - Buffer threading contract (`TerminalBuffer.Lock`, `ReaderWriterLockSlim`)
+- `MaxScrollbackBytesLimit`: a host-imposed cell-storage ceiling, clamping direct budget assignments and every history/width recomputation under the buffer write lock. The default adds no extra ceiling.
 - Resolution of `OSC 133` marks against the buffer: `GridQueryReader` (mark → live command-line
   text) and `ShellMarkAnchorResolver` (mark → viewport row, for Command Assist's overlay anchor).
   Both live here rather than in `Ntilde.CommandAssist` because they are buffer arithmetic
@@ -330,6 +331,7 @@ invariant changes.
 - **Seq semantics:** `Output.seq` = raw offset before the chunk, `ResizeEvent.seq` = offset it applies at, snapshot `StreamSeq + DecoderTail.Length` = offset at capture, and clients drop the connection on any gap
 - **The mux answers device queries** and clients never do
 - Latest resize wins
+- Daemon-owned scrollback retention: optional spawn/presentation requests set a bounded row high-water policy. Interactive clients can raise it; lower requests and read-only observers cannot trim shared history. Coalesced resizes preserve the highest request per sender. The retained cell-byte ceiling survives all buffer resizes; attach row/frame/snapshot caps remain independent. Optional Welcome history limits advertise support without changing the protocol range.
 - No thread-pool work on the output path
 - A slow client is disconnected, never waited for (stream frames against the send budget, snapshots against their own separate bound)
 - Attach limits are rejection ceilings, never clamps (#473)

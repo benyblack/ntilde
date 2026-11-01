@@ -462,7 +462,13 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         }
 
         Volatile.Write(ref _version, chosen);
-        Reply(request, new WelcomeResult { Version = chosen, ForceConPtyFiltering = o.ForceConPtyFiltering, ServerVersion = string.IsNullOrEmpty(o.AppVersion) ? null : o.AppVersion }, MuxJsonContext.Default.WelcomeResult);
+        Reply(request, new WelcomeResult
+        {
+            Version = chosen,
+            ForceConPtyFiltering = o.ForceConPtyFiltering,
+            ServerVersion = string.IsNullOrEmpty(o.AppVersion) ? null : o.AppVersion,
+            HistoryLimits = new MuxHistoryLimits { MaxRows = o.MaxSessionHistoryRows, MaxBytes = o.MaxSessionScrollbackBytes, MaxAttachRows = o.MaxAttachScrollbackRows },
+        }, MuxJsonContext.Default.WelcomeResult);
     }
 
     private void HandleRequest(MuxRequest request)
@@ -524,7 +530,11 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                         }
 
                         _server.RequireGeometry(p.Cols, p.Rows);
-                        if (p.Presentation is { } presentation) _server.RequireGeometry(presentation.Cols, presentation.Rows);
+                        if (p.Presentation is { } presentation)
+                        {
+                            _server.RequireGeometry(presentation.Cols, presentation.Rows);
+                            MuxServer.RequireHistoryRequest(presentation.MaxHistory);
+                        }
                         Session(p.SessionId).PostResize(this, p.Cols, p.Rows, p.Presentation); // named: its kitty flag is this client's own
                         ReplyEmpty(request);
                         break;
@@ -675,6 +685,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         }
 
         _server.RequireGeometry(p.Presentation.Cols, p.Presentation.Rows);
+        MuxServer.RequireHistoryRequest(p.Presentation.MaxHistory);
         HeadlessTerminalSession session = Session(p.SessionId);
         int rows = Math.Clamp(p.MaxScrollbackRows, 0, _server.Options.MaxAttachScrollbackRows);
         _attached.Add(p.SessionId);

@@ -142,6 +142,17 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
         await MuxTestHost.AttachPaneAsync(client, id);
     }
 
+    [Fact]
+    public void RemoteSpawnCarriesRetentionBeforeAnyAttach()
+    {
+        var result = _factory.CreatePersistent(Ssh() with { MaxHistory = 42_000 });
+        var session = Assert.IsType<MuxClientSession>(result.Session);
+        Assert.False(session.IsAttached);
+        Assert.True(_remote.Server.TryGetSession(session.Id, out var daemon));
+        Assert.Equal(42_000, daemon!.HistoryRetentionRows);
+        Assert.Equal(42_000, Assert.Single(_remote.Shells.Requests).MaxHistory);
+    }
+
     [Theory]
     [InlineData(3)]
     [InlineData(0)]

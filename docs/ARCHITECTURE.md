@@ -341,6 +341,21 @@ Shell composition glue (startup orchestration, app paths/logging/services, sessi
 - Buffer mutation (except via explicit APIs)
 - Rendering logic (Skia primitives in Rendering; Avalonia binding shell here is intentionally thin — though see Known Tech Debt)
 
+### Persistent-session scrollback policy
+
+The GUI forwards `MaxHistory` at spawn and in presentation updates. The daemon owns the chosen
+row high-water policy: interactive clients may raise it, lower requests do not discard shared
+history, and read-only observers do not change it. Resize coalescing preserves each sender's
+highest request independently from the newest geometry. Legacy absent fields keep 10,000 rows.
+
+`MuxServerOptions.MaxSessionHistoryRows` defaults to 100,000 and
+`MaxSessionScrollbackBytes` to 128 MiB of retained cell storage. The buffer's independent
+`MaxScrollbackBytesLimit` clamps every budget recomputation, including reflow, without changing
+VT semantics or the default unbounded ceiling for other hosts. Retention is separate from
+`MaxAttachScrollbackRows` (20,000 by default), client restore limits, and snapshot/frame byte caps.
+Optional Welcome `historyLimits` reports support and these ceilings; optional spawn/presentation
+`maxHistory` works additively on the existing protocol range. Older daemons ignore it.
+
 ### 8.1 Persistent sessions: the mux daemon
 
 With `TerminalSettings.SessionPersistence = "KeepOnClose"` (the default since 0.12.0,

@@ -25,7 +25,7 @@
             </settings:SettingGroup>
 
             <settings:SettingGroup Header="Scrollback">
-                <settings:SettingRow RowId="scrollback" Title="Scrollback limit" Description="Maximum number of lines retained per pane." Keywords="history lines buffer">
+                <settings:SettingRow RowId="scrollback" Title="Scrollback limit" Description="Per-pane limit and requested persistent-session retention. Shared sessions keep the highest request within host row/byte limits. Reattach restores up to 20,000 lines by default." Keywords="history lines buffer">
                     <NumericUpDown Name="ScrollbackInput" Classes="Wide" Minimum="100" Maximum="100000" Value="10000" Increment="1000" AutomationProperties.Name="Scrollback limit"/>
                 </settings:SettingRow>
             </settings:SettingGroup>

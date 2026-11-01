@@ -65,6 +65,8 @@ public sealed class MuxServer : IDisposable
         }
 
         if (o.MaxAttachScrollbackRows < 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxAttachScrollbackRows, "MaxAttachScrollbackRows cannot be negative.");
+        if (o.MaxSessionHistoryRows < 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxSessionHistoryRows, "MaxSessionHistoryRows cannot be negative.");
+        if (o.MaxSessionScrollbackBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxSessionScrollbackBytes, "MaxSessionScrollbackBytes must be positive.");
         if (o.MaxCells <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxCells, "MaxCells must be positive.");
         if (o.MaxDimension <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxDimension, "MaxDimension must be positive.");
         if (o.MaxFlightRecordingBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxFlightRecordingBytes, "MaxFlightRecordingBytes must be positive.");
@@ -251,10 +253,16 @@ public sealed class MuxServer : IDisposable
             throw new MuxRequestException(MuxErrorCodes.ProtocolError, "Initial cell metrics must be an absent pair or two finite positive values.");
     }
 
+    internal static void RequireHistoryRequest(int? rows)
+    {
+        if (rows < 0) throw new MuxRequestException(MuxErrorCodes.ProtocolError, "MaxHistory cannot be negative.");
+    }
+
     internal Guid Spawn(SpawnParams p)
     {
         RequireGeometry(p.Cols, p.Rows);
         RequireInitialCellMetrics(p.CellWidthPx, p.CellHeightPx);
+        RequireHistoryRequest(p.MaxHistory);
 
         // Chosen before the spawn so the shell can be told its own id; added to the caller's
         // overrides, which the PTY layers on top of the daemon's environment. The caller may choose
@@ -273,6 +281,7 @@ public sealed class MuxServer : IDisposable
             environment, p.SkipPowerShellPostLaunchInit, Ssh: null)
         {
             KittyKeyboardSupportedFlags = p.KittyKeyboardSupportedFlags,
+            MaxHistory = p.MaxHistory,
             DefaultBg = p.DefaultBg,
             DefaultFg = p.DefaultFg,
             CursorColor = p.CursorColor,
@@ -319,6 +328,9 @@ public sealed class MuxServer : IDisposable
                 AnsiPalette = p.AnsiPalette,
                 CellWidthPx = p.CellWidthPx,
                 CellHeightPx = p.CellHeightPx,
+                MaxHistory = Math.Min(p.MaxHistory ?? MuxHistoryLimits.DefaultRows, Options.MaxSessionHistoryRows),
+                MaxHistoryLimit = Options.MaxSessionHistoryRows,
+                MaxScrollbackBytes = Options.MaxSessionScrollbackBytes,
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,
                 Log = Options.Log,
                 MaxQueuedInputBytes = Options.MaxQueuedInputBytes,

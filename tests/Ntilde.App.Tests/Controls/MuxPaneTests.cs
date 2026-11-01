@@ -13,6 +13,7 @@ using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Pty;
 using Ntilde.Shell.Mux;
+using Ntilde.Shell;
 using Ntilde.Tests.Shell.Mux;
 using Ntilde.VT;
 using Ntilde.VT.Tests.StateTransfer;
@@ -62,10 +63,15 @@ public sealed class MuxPaneTests : IDisposable
         }
     }
 
-    private MuxClientSession StartPane()
+    private MuxClientSession StartPane(TerminalSettings? settings = null)
     {
         _pane = new TerminalPane();
         PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        if (settings is not null)
+        {
+            settings.CommandAssistShellIntegrationEnabled = false;
+            _pane.ApplySettings(settings);
+        }
         _pane.SessionFactory = _factory;
         _pane.CreateAndWireParser();
         _pane.InitializeSessionCore("scripted", string.Empty, profile: null, cols: 80, rows: 24);
@@ -79,10 +85,15 @@ public sealed class MuxPaneTests : IDisposable
     /// calls InitializeSession itself (Reconnect): an unhosted TermView has a 0x0 grid, and
     /// InitializeSession returns early on that (see TerminalPaneSshDisconnectTests).
     /// </summary>
-    private MuxClientSession StartHostedPane(ITerminalSessionFactory? factory = null)
+    private MuxClientSession StartHostedPane(ITerminalSessionFactory? factory = null, TerminalSettings? settings = null)
     {
         _pane = new TerminalPane();
         PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        if (settings is not null)
+        {
+            settings.CommandAssistShellIntegrationEnabled = false;
+            _pane.ApplySettings(settings);
+        }
         _pane.SessionFactory = factory ?? _factory;
         _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
         _window.Show();
@@ -111,6 +122,45 @@ public sealed class MuxPaneTests : IDisposable
         Settle(id);
         HeadlessTerminalSession m = _mux.Mux(id);
         TerminalStateAssert.AssertEquivalent($"[{because}]", m.Buffer, m.Parser, _pane!.Buffer!, _pane.Parser!);
+    }
+
+    [AvaloniaFact]
+    public void HistorySettingIsForwardedAtSpawnAndRaisedByLiveSettingsChanges()
+    {
+        var session = StartPane(new TerminalSettings { MaxHistory = 30_000 });
+        Settle(session.Id);
+        Assert.Equal(30_000, _mux.Mux(session.Id).HistoryRetentionRows);
+        Assert.Equal(30_000, _mux.Factory.Requests.Last().MaxHistory);
+        _pane!.ApplySettings(new TerminalSettings { MaxHistory = 60_000 });
+        Settle(session.Id);
+        Assert.Equal(60_000, _mux.Mux(session.Id).HistoryRetentionRows);
+        _pane.ApplySettings(new TerminalSettings { MaxHistory = 500 });
+        Settle(session.Id);
+        Assert.Equal(60_000, _mux.Mux(session.Id).HistoryRetentionRows);
+        Assert.Equal(500, _pane.Buffer!.MaxHistory);
+    }
+
+    [AvaloniaFact]
+    public void ReattachRestoresTheBoundedTailWhileTheDaemonRetainsTheConfiguredHistory()
+    {
+        var first = StartHostedPane(settings: new TerminalSettings { MaxHistory = 100_000 });
+        _mux.Fake(first.Id).EmitInChunks(System.Text.Encoding.UTF8.GetBytes(string.Concat(
+            Enumerable.Range(0, 25_000).Select(i => $"reattach row {i:D5}\r\n"))), 64 * 1024);
+        Settle(first.Id);
+        Assert.True(_pane!.Buffer!.Scrollback.Count > 24_000);
+        Assert.Single(_pane.Buffer.FindMatches("reattach row 00000", false, true));
+        _host.CurrentClient!.Dispose();
+        PumpUntil(() => BufferText(_pane.Buffer).Contains("[Multiplexer disconnected]"), "the disconnect banner appeared");
+        PressEnter();
+        var again = Assert.IsType<MuxClientSession>(_pane.Session);
+        Assert.Equal(first.Id, again.Id);
+        PumpUntil(() => again.IsAttached && _pane.Buffer.Scrollback.Count == 20_000, "the bounded snapshot replaced the pane");
+        Settle(first.Id);
+        Assert.Equal(100_000, _mux.Mux(first.Id).HistoryRetentionRows);
+        Assert.Single(_mux.Mux(first.Id).Buffer.FindMatches("reattach row 00000", false, true));
+        Assert.Empty(_pane.Buffer.FindMatches("reattach row 00000", false, true));
+        Assert.Single(_pane.Buffer.FindMatches("reattach row 24999", false, true));
+        Assert.Equal(20_000, again.HistoryLimits!.MaxAttachRows);
     }
 
     [AvaloniaFact]

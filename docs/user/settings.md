@@ -56,7 +56,7 @@ quits ([Closing the window](persistent-sessions.md#closing-the-window)).
 | Font size | `FontSize` | 14 | 6 to 72. `Ctrl+=` / `Ctrl+-` change it too, and save it. |
 | Programming ligatures | `EnableLigatures` | off | Draws `=>`, `!=`, `>=`, `\|>` and the like as single glyphs, when the font has them. |
 | Complex shaping (HarfBuzz) | `EnableComplexShaping` | on | Shapes runs of text, for non-Latin scripts and emoji. |
-| Scrollback limit | `MaxHistory` | 10000 | Lines of scrollback kept per pane, 100 to 100000. |
+| Scrollback limit | `MaxHistory` | 10000 | Per-pane scrollback and requested persistent-session retention, 100 to 100000 rows. Shared persistent sessions keep the highest request within host limits; reattach restores a bounded tail. |
 
 ## Tabs & title bar
 

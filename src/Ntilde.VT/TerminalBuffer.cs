@@ -33,6 +33,7 @@ namespace Ntilde.VT
         private static readonly TerminalPagePool _sharedPagePool = new();
         private int _maxHistory = 10000;
         private long _maxScrollbackBytes;
+        private long _maxScrollbackBytesLimit = long.MaxValue;
 
         public int MaxHistory
         {
@@ -49,6 +50,23 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>Host ceiling on retained scrollback cell bytes, including after resize or MaxHistory changes.</summary>
+        public long MaxScrollbackBytesLimit
+        {
+            get => _maxScrollbackBytesLimit;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
+                bool lockTaken = EnterWriteLockIfNeeded();
+                try
+                {
+                    _maxScrollbackBytesLimit = value;
+                    MaxScrollbackBytes = Math.Min(_maxScrollbackBytes, value);
+                }
+                finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+            }
+        }
+
         public long MaxScrollbackBytes
         {
             get => _maxScrollbackBytes;
@@ -57,7 +75,7 @@ namespace Ntilde.VT
                 bool lockTaken = EnterWriteLockIfNeeded();
                 try
                 {
-                    _maxScrollbackBytes = Math.Max(ComputeScrollbackBudgetBytes(Cols, 1), value);
+                    _maxScrollbackBytes = Math.Min(_maxScrollbackBytesLimit, Math.Max(ComputeScrollbackBudgetBytes(Cols, 1), value));
                     if (_scrollback != null)
                     {
                         _scrollback.MaxScrollbackBytes = _maxScrollbackBytes;
@@ -365,7 +383,7 @@ namespace Ntilde.VT
 
         private void RecomputeScrollbackBudgetForCurrentWidth()
         {
-            _maxScrollbackBytes = ComputeScrollbackBudgetBytes(Cols, _maxHistory);
+            _maxScrollbackBytes = Math.Min(_maxScrollbackBytesLimit, ComputeScrollbackBudgetBytes(Cols, _maxHistory));
             if (_scrollback != null)
             {
                 _scrollback.MaxScrollbackBytes = _maxScrollbackBytes;

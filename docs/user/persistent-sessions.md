@@ -75,6 +75,31 @@ updates included. SSH tabs keep running on their host only for the connections y
   `ntilde mux kill-server --force` where it still applies (its endpoint file names a live
   multiplexer this Ntilde cannot talk to).
 
+
+### Retained history and history restored on attach
+
+The scrollback setting controls a pane's local buffer and requests retention from its persistent
+session host. A new session starts with that request. Later interactive clients can raise the
+session's limit; a smaller setting, a detached client, or a read-only observer never trims another
+client's retained history. The highest accepted request lasts until the session ends. Lowering a
+pane's setting still limits that pane's own buffer.
+
+By default the host accepts up to 100,000 retained terminal rows, with a separate 128 MiB budget
+for scrollback cell storage. Wide rows, whole-page eviction and that byte budget can retain fewer
+rows. Viewports, side metadata and cached allocations are outside that cell-byte budget.
+
+Reattaching transfers a smaller tail: at most 20,000 scrollback rows by default, further limited by
+the pane's setting and existing snapshot/frame limits. Older history can remain in the host even
+though it is absent from a newly attached pane. Connected panes can accumulate more history while
+they receive live output. A snapshot that exceeds byte/frame limits is refused; increasing retention
+does not raise those limits.
+
+Host operators can configure the retention row ceiling, cell-byte ceiling and attach-row ceiling
+independently. New hosts report these limits to clients. Older hosts ignore the optional retention
+request and retain their existing policy; restart or update the background host to use this policy.
+Missing requests keep the legacy 10,000-row default. Raising a limit cannot recover rows already
+removed before the change.
+
 ## Closing the window
 
 Closing a pane or a tab ends its shell, as in any terminal ([Detach, close, and Attach to session…](#detach-close-and-attach-to-session) has the exceptions for shells

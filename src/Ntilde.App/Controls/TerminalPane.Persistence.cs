@@ -622,7 +622,8 @@ namespace Ntilde.Controls
         private async Task AttachMuxAsync(MuxClientSession mux, bool previousLost)
         {
             MuxPresentation presentation = BuildMuxPresentation(); // UI thread, before the first await
-            int scrollback = Math.Clamp(_settings?.MaxHistory ?? 10_000, 0, 50_000);
+            int restoreLimit = Math.Min(50_000, mux.HistoryLimits?.MaxAttachRows ?? 50_000);
+            int scrollback = Math.Clamp(_settings?.MaxHistory ?? 10_000, 0, restoreLimit);
             bool remote = FollowsRemoteSession;
             try
             {
@@ -715,6 +716,7 @@ namespace Ntilde.Controls
             {
                 Cols = cols,
                 Rows = rows,
+                MaxHistory = Math.Max(0, _settings?.MaxHistory ?? MuxHistoryLimits.DefaultRows),
                 CellWidthPx = (float)(TermView.Metrics.CellWidth * scale),
                 CellHeightPx = (float)(TermView.Metrics.CellHeight * scale),
                 SupportsSixelScrolling = true,
