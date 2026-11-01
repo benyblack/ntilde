@@ -462,15 +462,20 @@ jobs:
       # Which part of the headless main lane this job runs: the filter is ANDed onto the lane's
       # own exclusions in the headless test step below, and the floor goes to the gate. Self-tests the
       # partition first, because a shard that silently owned nothing would pass its own gate.
+      #
+      # Expressions reach this job's run blocks through env, never by interpolation into the
+      # script text - the same rule release.yml follows (githubactions:S7630).
       - name: Select the App.Tests shard
         id: shard
         shell: bash
+        env:
+          SHARD: ${{ matrix.shard }}
         run: |
           py=python3
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/app_tests_shard_tests.py > /dev/null || {
             "$py" scripts/tests/app_tests_shard_tests.py; exit 1; }
-          "$py" scripts/ci/app-tests-shard.py "${{ matrix.shard }}" | tee -a "$GITHUB_OUTPUT"
+          "$py" scripts/ci/app-tests-shard.py "$SHARD" | tee -a "$GITHUB_OUTPUT"
 
       # The Avalonia-headless suite (Ntilde.App.Tests). BLOCKING - on failures, on hangs, and on
       # a non-zero exit nobody can account for - but the verdict is given by the gate step
@@ -505,6 +510,7 @@ jobs:
         continue-on-error: true
         env:
           SKIP_RUST_NATIVE_BUILD: '1'
+          SHARD_FILTER: ${{ steps.shard.outputs.filter }}
         shell: bash
         run: |
           mkdir -p tests/Ntilde.App.Tests/TestResults/main
@@ -513,7 +519,7 @@ jobs:
           # the gate has to read the log to see them at all.
           set -o pipefail
           dotnet test tests/Ntilde.App.Tests -c "$CONFIGURATION" --no-build --no-restore \
-            --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot&${{ steps.shard.outputs.filter }}" \
+            --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot&$SHARD_FILTER" \
             --blame-hang-timeout 5m --blame-hang-dump-type mini \
             --results-directory tests/Ntilde.App.Tests/TestResults/main \
             --logger "trx;LogFileName=unit_app.trx" \
@@ -569,6 +575,11 @@ jobs:
       - name: Check App.Tests failures against the flake allowlist
         if: always()
         shell: bash
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARD_FLOOR: ${{ steps.shard.outputs.floor }}
+          MAIN_OUTCOME: ${{ steps.app_tests_main.outcome }}
+          PLATFORMBOOT_OUTCOME: ${{ steps.app_tests_platformboot.outcome }}
         run: |
           # windows-latest ships python.exe; ubuntu ships python3. Pick whichever exists.
           py=python3
@@ -595,9 +606,9 @@ jobs:
           # there only - elsewhere its step is skipped, which the gate would rightly call a lane
           # that never ran.
           status=0
-          lanes=("main:unit_app:${{ steps.shard.outputs.floor }}:${{ steps.app_tests_main.outcome }}")
-          if [ "${{ matrix.shard }}" = rest ]; then
-            lanes+=("platformboot:unit_app_platformboot:40:${{ steps.app_tests_platformboot.outcome }}")
+          lanes=("main:unit_app:$SHARD_FLOOR:$MAIN_OUTCOME")
+          if [ "$SHARD" = rest ]; then
+            lanes+=("platformboot:unit_app_platformboot:40:$PLATFORMBOOT_OUTCOME")
           fi
           for lane in "${lanes[@]}"; do
             IFS=: read -r dir trx floor outcome <<< "$lane"
@@ -671,8 +682,9 @@ jobs:
     steps:
       - name: Every shard passed
         shell: bash
+        env:
+          result: ${{ needs.build_and_unit_tests.result }}
         run: |
-          result="${{ needs.build_and_unit_tests.result }}"
           echo "Unit Tests shards: $result"
           [ "$result" = success ] || { echo "::error::A Unit Tests shard did not succeed ($result); see the 'Unit Tests (<os>, <shard>)' jobs."; exit 1; }
 
