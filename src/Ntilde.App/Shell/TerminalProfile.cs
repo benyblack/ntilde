@@ -2,6 +2,7 @@ using Ntilde.Platform;
 using System;
 using System.Globalization;
 using Ntilde.Platform.Ssh.Models;
+using Ntilde.Platform.Ssh.OpenSsh;
 using Ntilde.Pty;
 
 namespace Ntilde.Shell
@@ -144,7 +145,8 @@ namespace Ntilde.Shell
             if (visited.Contains(current.Id)) return ""; // Break circle
             visited.Add(current.Id);
 
-            string entry = string.IsNullOrEmpty(current.SshUser) ? current.SshHost : $"{current.SshUser}@{current.SshHost}";
+            string host = OpenSshEndpoint.FormatHost(current.SshHost);
+            string entry = string.IsNullOrEmpty(current.SshUser) ? host : $"{current.SshUser}@{host}";
             if (current.SshPort != 22) entry += $":{current.SshPort}";
 
             if (current.JumpHostProfileId.HasValue)

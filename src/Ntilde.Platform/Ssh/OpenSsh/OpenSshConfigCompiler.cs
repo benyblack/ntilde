@@ -201,7 +201,7 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
 
         string bind = string.IsNullOrWhiteSpace(forward.BindAddress)
             ? forward.SourcePort.ToString(System.Globalization.CultureInfo.InvariantCulture)
-            : $"{forward.BindAddress.Trim()}:{forward.SourcePort}";
+            : $"{OpenSshEndpoint.FormatHost(forward.BindAddress)}:{forward.SourcePort}";
 
         switch (forward.Kind)
         {
@@ -213,7 +213,7 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
                 }
 
                 string keyword = forward.Kind == PortForwardKind.Local ? "LocalForward" : "RemoteForward";
-                return $"{keyword} {bind} {forward.DestinationHost.Trim()}:{forward.DestinationPort.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+                return $"{keyword} {bind} {OpenSshEndpoint.FormatHost(forward.DestinationHost)}:{forward.DestinationPort.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
 
             case PortForwardKind.Dynamic:
                 return "DynamicForward " + bind;
@@ -235,8 +235,8 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
             }
 
             string entry = string.IsNullOrWhiteSpace(hop.User)
-                ? hop.Host.Trim()
-                : $"{hop.User.Trim()}@{hop.Host.Trim()}";
+                ? OpenSshEndpoint.FormatHost(hop.Host)
+                : $"{hop.User.Trim()}@{OpenSshEndpoint.FormatHost(hop.Host)}";
 
             int port = hop.Port > 0 ? hop.Port : 22;
             if (port != 22)

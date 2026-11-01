@@ -864,6 +864,11 @@ it).
   its prompt could reach the user's terminal. Reasons are worded from `MuxListingError`, remote titles
   are `RemoteOutputText.Quote`d, and each failure's own text goes to `logs/mux-ls-all.log`.
 
+- OpenSSH colon-delimited endpoints use `OpenSshEndpoint.FormatHost`: IPv6 literals are bracketed
+  in ProxyJump, local/remote/dynamic forwarding and legacy SCP operands, including the App legacy
+  jump chain. Already bracketed input stays bracketed once; direct SSH targets and `HostName`
+  remain host values without added brackets. DNS and IPv4 syntax stays unchanged.
+
 #### Exec transports (`Ntilde.Platform/Ssh/Exec/`)
 
 `ISshExecTransport.Start(command)` returns an `ISshExecChannel`: `Stdout`, `Stdin` (its dispose
