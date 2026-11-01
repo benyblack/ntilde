@@ -8,6 +8,14 @@ namespace Ntilde.VT
 {
     public partial class TerminalBuffer
     {
+        private static (int Row, int Column) MapReflowImageOffset(List<int> rowStarts, int offset, int columns)
+        {
+            int row = rowStarts.BinarySearch(offset);
+            if (row < 0) row = Math.Max(0, ~row - 1);
+            int column = offset - rowStarts[row];
+            return (row + column / columns, column % columns);
+        }
+
         private sealed class ReflowEngineContext
         {
             private readonly SavedCursorStates _savedCursors;
@@ -258,6 +266,10 @@ namespace Ntilde.VT
                         if (img != null && !img.IsAltScreenImage) unanchoredImages.Add(img);
                     }
                     var imagePlacements = new List<(TerminalImage Image, int NewY, int NewX)>();
+                    // Only image-bearing buffers need row-prefix maps. Wide pre-wrap gaps do not
+                    // contribute to the logical stream on either side of the reflow.
+                    var sourceRowOffsets = unanchoredImages.Count > 0 ? new List<int>() : null;
+                    var targetRowOffsets = unanchoredImages.Count > 0 ? new List<int>() : null;
                     var lineAnchors = new List<(TerminalImage Image, int OffsetInLogicalLine)>();
 
                     // 5. Distribution state
@@ -314,19 +326,23 @@ namespace Ntilde.VT
 
                         // 5b. Anchor Images to Logical Positions
                         lineAnchors.Clear();
+                        targetRowOffsets?.Clear();
                         for (int k = unanchoredImages.Count - 1; k >= 0; k--)
                         {
                             var img = unanchoredImages[k];
                             if (img.CellY >= startPhys && img.CellY < endPhysExclusive)
                             {
                                 int rowOffset = img.CellY - startPhys;
-                                lineAnchors.Add((img, rowOffset * oldCols + img.CellX));
+                                int rowStart = sourceRowOffsets != null && rowOffset < sourceRowOffsets.Count
+                                    ? sourceRowOffsets[rowOffset] : rowOffset * oldCols;
+                                lineAnchors.Add((img, rowStart + img.CellX));
                                 unanchoredImages.RemoveAt(k);
                             }
                         }
 
                         if (lineCount == 0)
                         {
+                            targetRowOffsets?.Add(0);
                             // If this is the WIPED prompt, place cursor here
                             if (i == cursorLogicalIdx) { newCursorPhysRow = flowedRows; newCursorPhysCol = 0; }
                             if (i == mainSavedLogicalIdx) { newMainSavedPhysRow = flowedRows; newMainSavedPhysCol = 0; }
@@ -349,6 +365,7 @@ namespace Ntilde.VT
                             int processed = 0;
                             while (processed < lineCount)
                             {
+                                targetRowOffsets?.Add(processed);
                                 int remaining = lineCount - processed;
                                 int take = Math.Min(remaining, newCols);
 
@@ -444,7 +461,8 @@ namespace Ntilde.VT
 
                         foreach (var (image, offsetInLine) in lineAnchors)
                         {
-                            imagePlacements.Add((image, startFlowIndex + (offsetInLine / newCols), offsetInLine % newCols));
+                            var position = MapReflowImageOffset(targetRowOffsets!, offsetInLine, newCols);
+                            imagePlacements.Add((image, startFlowIndex + position.Row, position.Column));
                         }
                     }
 
@@ -477,7 +495,9 @@ namespace Ntilde.VT
                         {
                             lineStartPhys = i;
                             lineLen = 0;
+                            sourceRowOffsets?.Clear();
                         }
+                        sourceRowOffsets?.Add(lineLen);
 
                         // One physical row adds at most its own cells plus a right-prompt fill up to newCols.
                         EnsureLineCapacity(lineLen + physRow.Cells.Length + newCols + 4);

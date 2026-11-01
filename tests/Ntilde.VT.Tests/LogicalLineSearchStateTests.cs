@@ -207,6 +207,41 @@ public sealed class LogicalLineSearchStateTests
         Assert.Equal(0, state.Scrollback.RowWrittenColumns![^1]);
     }
 
+    [Theory]
+    [InlineData("lineEnd")]
+    [InlineData("zero")]
+    [InlineData("negative")]
+    [InlineData("pastEnd")]
+    public void EmptyEraseRangePreservesWrapPadding(string operation)
+    {
+        var buffer = Source();
+        buffer.CursorRow = 0;
+        buffer.CursorCol = buffer.Cols;
+        int? before = buffer.ViewportRows[0].WrappedColumns;
+        int written = buffer.ViewportRows[0].WrittenColumns;
+        if (operation == "lineEnd") buffer.EraseLineToEnd();
+        else buffer.EraseCharacters(operation == "zero" ? 0 : operation == "negative" ? -1 : 1);
+        Assert.Equal(before, buffer.ViewportRows[0].WrappedColumns);
+        Assert.Equal(written, buffer.ViewportRows[0].WrittenColumns);
+        Assert.Single(buffer.FindMatches("c" + Emoji, false, true));
+    }
+
+    [Theory]
+    [InlineData(4, 8)]
+    [InlineData(8, 4)]
+    public void ImagesFollowLogicalOffsetsAcrossWidePrewrapPadding(int sourceWidth, int targetWidth)
+    {
+        var buffer = new TerminalBuffer(sourceWidth, 3);
+        new AnsiParser(buffer, false).Process("abc" + Emoji + "!");
+        var image = new TerminalImage(new object(), sourceWidth == 4 ? 0 : 3, sourceWidth == 4 ? 1 : 0, 1, 1);
+        buffer.AddImage(image);
+        buffer.Resize(targetWidth, 3);
+        Assert.Same(image, Assert.Single(buffer.Images));
+        Assert.Equal(targetWidth == 4 ? 0 : 3, image.CellX);
+        Assert.Equal(targetWidth == 4 ? 1 : 0, image.CellY);
+        Assert.Single(buffer.FindMatches("c" + Emoji, false, true));
+    }
+
     [Fact]
     public void AlternateScreenSearchDoesNotBorrowMainHistory()
     {

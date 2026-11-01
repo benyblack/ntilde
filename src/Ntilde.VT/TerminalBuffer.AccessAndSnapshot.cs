@@ -495,7 +495,7 @@ namespace Ntilde.VT
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 var row = _viewport[_cursorRow];
-                row.NoteColumnsWritten(Cols);
+                if (_cursorCol >= 0 && _cursorCol < Cols) row.NoteColumnsWritten(Cols);
                 for (int i = _cursorCol; i < Cols; i++)
                 {
                     row.Cells[i] = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
@@ -584,7 +584,8 @@ namespace Ntilde.VT
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 var row = _viewport[_cursorRow];
-                row.NoteColumnsWritten((int)Math.Min(Cols, (long)_cursorCol + Math.Max(0, count)));
+                if (count > 0 && _cursorCol >= 0 && _cursorCol < Cols)
+                    row.NoteColumnsWritten((int)Math.Min(Cols, (long)_cursorCol + count));
 
                 for (int i = 0; i < count; i++)
                 {

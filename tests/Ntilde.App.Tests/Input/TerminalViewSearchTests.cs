@@ -1,5 +1,7 @@
 using System.Reflection;
 using Avalonia.Headless.XUnit;
+using Avalonia.Controls;
+using Avalonia.Threading;
 using Ntilde.Shell;
 using Ntilde.VT;
 
@@ -7,6 +9,92 @@ namespace Ntilde.Tests.Input;
 
 public sealed class TerminalViewSearchTests
 {
+    [AvaloniaFact]
+    public void SessionResizeRefreshesSearchOptionsNavigationAndHighlightSpans()
+    {
+        var buffer = new TerminalBuffer(5, 2);
+        new AnsiParser(buffer, false).Process("abcdefgh\r\nabcdefgh\r\nABCDEFGH");
+        var view = new TerminalView();
+        view.SetBuffer(buffer);
+        (int Current, int Count) state = default;
+        view.SearchStateChanged += (current, count) => state = (current, count);
+        view.Search("abc.*h", useRegex: true, caseSensitive: true);
+        view.NextMatch();
+        Assert.Equal((2, 2), state);
+        ResizeAndCheck(10, 1);
+        view.PrevMatch();
+        Assert.Equal((1, 2), state);
+        ResizeAndCheck(5, 2);
+        view.ClearSearch();
+        buffer.Resize(10, 2);
+        view.NotifySessionResizedBuffer();
+        Assert.Equal((0, 0), state);
+        Assert.Empty(Matches());
+
+        IReadOnlyList<SearchMatch> Matches() => (IReadOnlyList<SearchMatch>)typeof(TerminalView)
+            .GetField("_searchMatches", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(view)!;
+
+        void ResizeAndCheck(int width, int expectedSpans)
+        {
+            int selected = state.Current;
+            buffer.Resize(width, 2);
+            view.NotifySessionResizedBuffer();
+            Assert.Equal((selected, 2), state);
+            var fresh = buffer.FindMatches("abc.*h", true, true);
+            var actual = Matches();
+            Assert.Equal(fresh.Count, actual.Count);
+            for (int i = 0; i < actual.Count; i++)
+            {
+                Assert.Equal(expectedSpans, actual[i].SpanCount);
+                for (int span = 0; span < actual[i].SpanCount; span++)
+                    Assert.Equal(fresh[i].GetSpan(span), actual[i].GetSpan(span));
+            }
+            using var snapshot = buffer.CaptureRenderSnapshot(new RenderSnapshotRequest
+            {
+                ViewportRows = buffer.Rows,
+                ViewportCols = buffer.Cols,
+                ScrollOffset = view.ScrollOffset,
+                SearchMatches = actual,
+                ActiveSearchIndex = selected - 1,
+                Isolated = true
+            }, out _);
+            var active = snapshot.SearchHighlights.Array.Take(snapshot.SearchHighlights.Length)
+                .Where(span => span.IsActive).ToArray();
+            Assert.Equal(expectedSpans, active.Length);
+            for (int span = 0; span < expectedSpans; span++)
+                Assert.Equal(fresh[selected - 1].GetSpan(span).AbsRow, active[span].AbsRow);
+        }
+    }
+
+    [AvaloniaFact]
+    public void LocalResizeRebuildsWrappedSearchSpans()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var view = new TerminalView();
+        view.SetBuffer(buffer);
+        var window = new Window { Content = view, Width = 800, Height = 400 };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        try
+        {
+            string query = new('a', buffer.Cols + 3);
+            new AnsiParser(buffer, false).Process(query);
+            view.Search(query, caseSensitive: true);
+            int oldWidth = buffer.Cols;
+            view.ReleaseResizeThrottleForTest();
+            window.Width = 500;
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(buffer.Cols < oldWidth);
+            var fresh = Assert.Single(buffer.FindMatches(query, false, true));
+            var actual = Assert.Single((IReadOnlyList<SearchMatch>)typeof(TerminalView)
+                .GetField("_searchMatches", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(view)!);
+            Assert.Equal(fresh.SpanCount, actual.SpanCount);
+            for (int span = 0; span < fresh.SpanCount; span++)
+                Assert.Equal(fresh.GetSpan(span), actual.GetSpan(span));
+        }
+        finally { window.Close(); Dispatcher.UIThread.RunJobs(); }
+    }
+
     [AvaloniaFact]
     public void WrappedMatchesNavigateAndHighlightAsOneLogicalResultEach()
     {

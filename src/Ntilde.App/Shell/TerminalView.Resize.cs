@@ -275,9 +275,11 @@ namespace Ntilde.Shell
         /// </remarks>
         private void RecordDispatchedGrid(int cols, int rows)
         {
+            bool changed = cols != _lastDispatchedCols || rows != _lastDispatchedRows;
             _lastDispatchedCols = cols;
             _lastDispatchedRows = rows;
             _resizeDispatchCancelled = false;
+            if (changed) RefreshSearchAfterResize();
         }
 
         /// <summary>

@@ -10,12 +10,18 @@ namespace Ntilde.Shell
         // Search state
         private List<SearchMatch> _searchMatches = new List<SearchMatch>();
         private int _activeSearchIndex = -1;
+        private string _searchQuery = string.Empty;
+        private bool _searchUseRegex;
+        private bool _searchCaseSensitive;
 
         public event Action<int, int>? SearchStateChanged;
 
         public void Search(string query, bool useRegex = false, bool caseSensitive = false)
         {
             if (_buffer == null) return;
+            _searchQuery = query;
+            _searchUseRegex = useRegex;
+            _searchCaseSensitive = caseSensitive;
             _searchMatches = _buffer.FindMatches(query, useRegex, caseSensitive);
             _activeSearchIndex = _searchMatches.Count > 0 ? 0 : -1;
 
@@ -48,9 +54,20 @@ namespace Ntilde.Shell
 
         public void ClearSearch()
         {
+            _searchQuery = string.Empty;
             _searchMatches.Clear();
             _activeSearchIndex = -1;
             SearchStateChanged?.Invoke(0, 0);
+            InvalidateVisual();
+        }
+
+        private void RefreshSearchAfterResize()
+        {
+            if (_buffer == null || string.IsNullOrEmpty(_searchQuery)) return;
+            _searchMatches = _buffer.FindMatches(_searchQuery, _searchUseRegex, _searchCaseSensitive);
+            _activeSearchIndex = _searchMatches.Count == 0 ? -1 : Math.Clamp(_activeSearchIndex, 0, _searchMatches.Count - 1);
+            if (_activeSearchIndex >= 0) ScrollToMatch(_searchMatches[_activeSearchIndex]);
+            SearchStateChanged?.Invoke(_activeSearchIndex + 1, _searchMatches.Count);
             InvalidateVisual();
         }
 
