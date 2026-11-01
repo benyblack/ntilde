@@ -938,7 +938,10 @@ namespace Ntilde.VT
                 {
                     inactive ??= new Dictionary<int, List<SearchInterval>>();
                     if (!inactive.TryGetValue(span.AbsRow, out var intervals))
-                        inactive.Add(span.AbsRow, intervals = new List<SearchInterval>());
+                    {
+                        intervals = new List<SearchInterval>();
+                        inactive.Add(span.AbsRow, intervals);
+                    }
                     MergeSearchInterval(intervals, start, end);
                 }
             }
