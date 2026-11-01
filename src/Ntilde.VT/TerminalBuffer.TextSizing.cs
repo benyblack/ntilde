@@ -228,7 +228,13 @@ public partial class TerminalBuffer
     }
 
     private bool TryAppendToSizedBlock(ReadOnlySpan<char> text)
-        => TryAppendToSizedBlockAtColumn(_isPendingWrap ? _cursorCol : _cursorCol - 1, text);
+    {
+        if (TryAppendToSizedBlockAtColumn(_isPendingWrap ? _cursorCol : _cursorCol - 1, text)) return true;
+        // A joiner entered on the first column has no preceding cell; continue only its actual block.
+        var current = _viewport[_cursorRow].GetTextSizing(_cursorCol);
+        return _isAfterZwj && current != null && EndsWithZwj(current.Block.Text)
+            && TryAppendToSizedBlockAtColumn(_cursorCol, text);
+    }
 
     private bool TryAppendToSizedBlockAtColumn(int col, ReadOnlySpan<char> text)
     {

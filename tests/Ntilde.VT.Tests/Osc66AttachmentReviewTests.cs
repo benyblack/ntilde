@@ -260,4 +260,21 @@ public sealed class Osc66AttachmentReviewTests
         new TerminalBuffer(16, 4).ImportState(streamed.ExportState(0));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void A_joiner_sequence_can_continue_at_the_first_column_inside_a_sized_block(int row)
+    {
+        var buffer = new TerminalBuffer(16, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process($"\x1b]66;s=2;👩\a\x1b[{row + 1};1H");
+        parser.Process("\u200D");
+        parser.Process("👧");
+        Assert.Equal("👩\u200D👧", Block(buffer).Text);
+        Assert.Equal(2, Block(buffer).BaseWidth);
+        Assert.Equal(0, buffer.CursorCol);
+        Assert.Equal(row, buffer.CursorRow);
+        new TerminalBuffer(16, 4).ImportState(buffer.ExportState(0));
+    }
+
 }
