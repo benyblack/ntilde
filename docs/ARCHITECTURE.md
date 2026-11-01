@@ -242,6 +242,11 @@ Cancellation interrupts reads and realtime inter-event waits in v1 and v2. A can
 returns its partial result quietly, skips the delayed event and subsequent time publication,
 and closes its reader before completing. Virtual playback and seek timing are unchanged.
 
+Legacy v2 input delivery chooses decoded UTF-8 or its malformed-Base64 legacy fallback before
+calling the input callback once. The callback runs outside decoding recovery: an `IOException`
+propagates and stops processing before event/time publication, while run-token cancellation
+still returns quietly. Successfully decoded empty input remains a delivered input event.
+
 Manual recording holds at most 16 MiB of serialized pending events, including the
 in-flight write and per-record bookkeeping. An oversized event, saturation, open/write
 failure or flush deadline stops acceptance and exposes a typed `RecordingFailure`;

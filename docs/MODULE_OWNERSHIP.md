@@ -141,6 +141,10 @@ invariant changes.
 - Replay cancellation interrupts both file reads and realtime inter-event waits, returning the
   partial result quietly without dispatching the delayed event or a later time update. Readers
   close before completion; virtual playback and seek timing retain their existing semantics.
+- Legacy v2 input selects decoded UTF-8 or the malformed-Base64 legacy fallback before delivery.
+  The selected callback runs at most once; its `IOException` propagates without advancing the
+  processed-event count or publishing a later time. Decoded empty input remains deliverable,
+  and cancellation from the run token retains the quiet partial-result behavior.
 - Snapshot format is forward-compatible within v2
 - Restart positions can resume after a physical snapshot record, preserving output with equal timestamps.
   Header validation remains active; App suppresses header geometry/metrics when a checkpoint
