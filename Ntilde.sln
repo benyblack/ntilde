@@ -61,6 +61,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ntilde.Launcher", "src\Ntil
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ntilde.CommandAssist.TestHost", "tests\Ntilde.CommandAssist.TestHost\Ntilde.CommandAssist.TestHost.csproj", "{60596EC9-6700-46B0-AA38-A37D01F0C1E6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ntilde.Platform.TestHost", "tests\Ntilde.Platform.TestHost\Ntilde.Platform.TestHost.csproj", "{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -395,6 +397,18 @@ Global
 		{60596EC9-6700-46B0-AA38-A37D01F0C1E6}.Release|x64.Build.0 = Release|Any CPU
 		{60596EC9-6700-46B0-AA38-A37D01F0C1E6}.Release|x86.ActiveCfg = Release|Any CPU
 		{60596EC9-6700-46B0-AA38-A37D01F0C1E6}.Release|x86.Build.0 = Release|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Debug|x64.Build.0 = Debug|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Debug|x86.Build.0 = Debug|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Release|x64.ActiveCfg = Release|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Release|x64.Build.0 = Release|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Release|x86.ActiveCfg = Release|Any CPU
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -427,5 +441,6 @@ Global
 		{CDD3EEAB-B7D6-4F08-8D6B-AB8E51A53776} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{CAA4CC6D-9D72-44A0-AD04-5DB83D20E83F} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{60596EC9-6700-46B0-AA38-A37D01F0C1E6} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{1191F91C-FD63-4FEA-8BD0-A8703B0CCFB0} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
