@@ -35,6 +35,25 @@ public partial class TerminalBuffer
         }
     }
 
+    // Main history remains retained when the alternate screen is resized.
+    // Retire invalid rectangles across both history and the detached main viewport.
+    private void PrepareMainHistoryTextSizingResize(int cols, int rows)
+    {
+        var discarded = new Dictionary<TextSizingBlock, (int X, int Y)>();
+        for (int row = 0; row < _scrollback.Count; row++)
+        {
+            int currentRow = row;
+            _scrollback.GetTextSizingMap(row)?.ForEach((col, piece) =>
+            {
+                int x = col - piece.ColumnOffset;
+                if (x + piece.Block.Width > cols || piece.Block.Height > rows)
+                    discarded.TryAdd(piece.Block, (x, currentRow - piece.RowOffset));
+            });
+        }
+        foreach (var (block, position) in discarded)
+            EraseTextSizingBlockInPlane(block, position.X, position.Y, alternate: false);
+    }
+
     private void ReclaimSizingRows(TerminalRow[] rows, long required)
     {
         var discarded = new HashSet<TextSizingBlock>();

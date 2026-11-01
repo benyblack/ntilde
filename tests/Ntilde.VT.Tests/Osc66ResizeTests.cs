@@ -47,6 +47,55 @@ public sealed class Osc66ResizeTests
         Assert.DoesNotContain("AB", Ntilde.VT.Export.TerminalExporter.ExportToPlainText(buffer));
     }
 
+    [Theory]
+    [InlineData(1, 12, 2, false)]
+    [InlineData(1, 12, 2, true)]
+    [InlineData(3, 12, 2, false)]
+    [InlineData(3, 12, 2, true)]
+    [InlineData(1, 4, 5, false)]
+    [InlineData(1, 4, 5, true)]
+    [InlineData(3, 4, 5, false)]
+    [InlineData(3, 4, 5, true)]
+    public void History_rectangles_that_cannot_fit_are_discarded_on_either_active_screen(
+        int scrolled, int cols, int rows, bool alternate)
+    {
+        var buffer = new TerminalBuffer(12, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]66;s=3:w=2;AB\a\x1b[5;1H" + new string('\n', scrolled));
+        if (alternate) parser.Process("\x1b[?47h");
+        buffer.Resize(cols, rows);
+        if (alternate) parser.Process("\x1b[?47l");
+        var state = buffer.ExportState(int.MaxValue);
+        Assert.Null(state.TextSizing);
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            for (int row = 0; row < buffer.TotalLines; row++)
+                for (int col = 0; col < cols; col++)
+                {
+                    Assert.Null(buffer.GetTextSizingAbsolute(col, row));
+                    Assert.NotEqual("AB", buffer.GetGraphemeAbsolute(col, row));
+                }
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        new TerminalBuffer(cols, rows).ImportState(state);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void Alternate_screen_resize_preserves_main_history_rectangles_that_still_fit(int scrolled)
+    {
+        var buffer = new TerminalBuffer(12, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]66;s=3:w=2;AB\a\x1b[5;1H" + new string('\n', scrolled) + "\x1b[?47h");
+        buffer.Resize(12, 4);
+        parser.Process("\x1b[?47l");
+        var state = buffer.ExportState(int.MaxValue);
+        Assert.Equal("AB", Assert.Single(state.TextSizing!).Text);
+        new TerminalBuffer(12, 4).ImportState(state);
+    }
+
     [Fact]
     public void Ordinary_lines_on_each_side_still_reflow()
     {

@@ -76,6 +76,7 @@ public partial class TerminalBuffer
 
     private void PrepareInactiveTextSizingResize(int cols, int rows)
     {
+        if (_isAltScreen) PrepareMainHistoryTextSizingResize(cols, rows);
         var inactive = _isAltScreen ? _mainScreen : _altScreen;
         var discarded = new HashSet<TextSizingBlock>();
         for (int r = 0; r < inactive.Length; r++)
