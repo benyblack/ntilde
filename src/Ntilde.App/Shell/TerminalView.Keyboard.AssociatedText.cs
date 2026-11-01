@@ -46,6 +46,18 @@ public partial class TerminalView
         return true;
     }
 
+    /// <summary>Expires stale fragments and drains fallback sends before reserving another text slot.</summary>
+    private void PrepareKittyTextForKeyDown(Key key, string? keySymbol)
+    {
+        // Unicode packet keys have no logical identity; their two text callbacks
+        // may be separated by packet key events. A real new key ends that fragment.
+        if (key != Key.None || (!string.IsNullOrEmpty(keySymbol)
+            && !(keySymbol.Length == 1 && char.IsLowSurrogate(keySymbol[0])))) ClearKittyTextFragment();
+        // Sending a fallback can reenter keydown and queue another frame. Drain
+        // those frames before replacing their correlation with this key's state.
+        while (_pendingAssociatedKey != null) FlushPendingKittyAssociatedKey();
+    }
+
     /// <summary>One actual text callback owns the pending key or becomes a pure text event with code zero.</summary>
     private bool TrySendKittyAssociatedText(string text)
     {
