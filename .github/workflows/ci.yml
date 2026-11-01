@@ -907,8 +907,12 @@ jobs:
     name: Coverage (Ntilde.VT floor)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [build]
-
+    # No `needs: [build]`. This job compiles from source and consumes nothing `build` produces
+    # (see "Builds from source" below), so waiting for it only delayed the start: coverage began
+    # at minute ~6 and finished at ~11.4, as late as the sharded Unit Tests that end the run. It
+    # starts at minute 0 now. The one thing it reads that `build` writes is the native-bin cache,
+    # and that restore already tolerates a miss - on a PR that changes the Rust sources, MSBuild
+    # compiles the crates here as it always did.
     steps:
       - uses: actions/checkout@v4
 
