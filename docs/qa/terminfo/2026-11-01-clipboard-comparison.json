@@ -54,12 +54,12 @@
     "cleanedUpAt": "2026-11-01T16:56:20.438Z"
   },
   "after": {
-    "sourceCommit": "44f4aea9dcb0bed4dc5051693849cc61d7af6011",
-    "appVersion": "0.12.0+44f4aea9dcb0bed4dc5051693849cc61d7af6011",
-    "measuredAt": "2026-11-01T18:37:27.779Z",
-    "localDirectory": "artifacts/terminfo/owned-6KQmVL",
-    "rawSha256": "c4b8d406dc8c98b2fe20aa8450323a063e1ac3ff20ba83ead4e9b4cb9f0c9550",
-    "assemblySha256": "7e11f2b5722b3b9189886a60c22caea0e0ad1a3394de9fd431ee7e2e76783483",
+    "sourceCommit": "be9b04c273ad6224fa26843edadd571a41ac36c4",
+    "appVersion": "0.12.0+be9b04c273ad6224fa26843edadd571a41ac36c4",
+    "measuredAt": "2026-11-01T18:47:09.200Z",
+    "localDirectory": "artifacts/terminfo/owned-4A4NGw",
+    "rawSha256": "f0267f129a612e5dc4c35eb766675c68b896b64775fb5d756cd73a56e0c8c59c",
+    "assemblySha256": "924584fba9755296d3ab3d9059c16fde99a1f8212041c6235882e7ffe6ca9e00",
     "counts": {
       "inconclusive": 177,
       "supported": 78
@@ -69,8 +69,8 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "runId": "72655f4d5b1cfd598fd9fd4eabd70a9e",
-    "ownerRunId": "e72bdba73674592526169937afd3d1ba",
+    "runId": "258462cbdeb8a2e15dd0ae60ebacab66",
+    "ownerRunId": "41e4472be09652d77ffe05a7ab1bc5c0",
     "suiteComplete": false,
     "ungradedDiagnostics": {
       "cursor.reverse-wrap": {
@@ -79,7 +79,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "cleanedUpAt": "2026-11-01T18:37:27.808Z"
+    "cleanedUpAt": "2026-11-01T18:47:09.228Z"
   },
   "unchangedOutcomeAndReasonCount": 254,
   "changes": [
@@ -161,6 +161,7 @@
     "Raw identity remains unverified; appVersion is operator supplied. The selected sidecars have matching DLL informational-version bytes and recorded assembly SHA-256 hashes.",
     "The probe establishes recognition of mode 5522; it does not read or write clipboard data. All three OSC 52 probes remain policy-refused.",
     "No clipboard transfer between native applications was measured on macOS, Windows or Linux. Test-owned Avalonia DataTransfer values and fake clipboard services cover transport and permission behavior.",
+    "Paste tokens authorize only immutable MIME values captured at the paste gesture under the same 64 MiB aggregate read budget; redemption never reads the current clipboard.",
     "Primary selection returns ENOSYS. Mux/headless hosts do not advertise. Persistent password grants are not stored.",
     "Write wire-data budget is 64 MiB; materialized MIME/alias expansion is capped at 128 MiB. Packets/metadata/MIME counts are also bounded.",
     "Avalonia first native value materialization has no size/stream preflight API; its allocation is not capped by the managed conversion/retention budget.",
@@ -252,6 +253,34 @@
         }
       },
       "cleanedUpAt": "2026-11-01T18:08:55.578Z"
+    },
+    {
+      "sourceCommit": "44f4aea9dcb0bed4dc5051693849cc61d7af6011",
+      "appVersion": "0.12.0+44f4aea9dcb0bed4dc5051693849cc61d7af6011",
+      "measuredAt": "2026-11-01T18:37:27.779Z",
+      "localDirectory": "artifacts/terminfo/owned-6KQmVL",
+      "rawSha256": "c4b8d406dc8c98b2fe20aa8450323a063e1ac3ff20ba83ead4e9b4cb9f0c9550",
+      "assemblySha256": "7e11f2b5722b3b9189886a60c22caea0e0ad1a3394de9fd431ee7e2e76783483",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 78
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "72655f4d5b1cfd598fd9fd4eabd70a9e",
+      "ownerRunId": "e72bdba73674592526169937afd3d1ba",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T18:37:27.808Z"
     }
   ]
 }

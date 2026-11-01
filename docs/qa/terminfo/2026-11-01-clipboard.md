@@ -8,10 +8,10 @@ clipboard transfer permissions or native application interoperability.
 | Build | Source | Local evidence | Raw SHA-256 |
 |---|---|---|---|
 | Before | `04019dbacf1c02aa7ccd85c39fcd2670ec2905eb` | `artifacts/terminfo/owned-WTxDq5` | `5291400dfd56c2b67ef7011cbd275cba9a9dd261fb3664b0fed2e9fd1b159144` |
-| After | `44f4aea9dcb0bed4dc5051693849cc61d7af6011` | `artifacts/terminfo/owned-6KQmVL` | `c4b8d406dc8c98b2fe20aa8450323a063e1ac3ff20ba83ead4e9b4cb9f0c9550` |
+| After | `be9b04c273ad6224fa26843edadd571a41ac36c4` | `artifacts/terminfo/owned-4A4NGw` | `f0267f129a612e5dc4c35eb766675c68b896b64775fb5d756cd73a56e0c8c59c` |
 
 The before probe ran at 2026-11-01T16:56:20.405Z and cleaned up at 2026-11-01T16:56:20.438Z.
-The after probe ran at 2026-11-01T18:37:27.779Z and cleaned up at 2026-11-01T18:37:27.808Z.
+The after probe ran at 2026-11-01T18:47:09.200Z and cleaned up at 2026-11-01T18:47:09.228Z.
 The [derived comparison](2026-11-01-clipboard-comparison.json) records the original
 query/reply traces, DLL hashes, source/input pins and ownership completion.
 The executable informational-version strings matched the stated source commits.
@@ -44,7 +44,10 @@ defines DEC mode 5522 and its precedence over plain/bracketed paste.
   is shown separately. No reusable password grants are stored.
 - A user paste in mode 5522 sends MIME types with a cryptographic token valid
   once, for 15 seconds, on that TTY and default clipboard. A human-friendly
-  name must accompany the token. No plain/bracketed paste is sent for that event.
+  name must accompany the token. The grant owns immutable MIME values captured at
+  that gesture under the same 64 MiB budget; redemption never opens a newer
+  clipboard. A later paste or reset discards the old grant, and the next packet
+  releases an expired grant. No plain/bracketed paste is sent for that event.
 - Primary selection returns `ENOSYS`; it never falls back to the system clipboard.
 - DATA and terminal replies wait for bounded device-queue capacity off the UI
   thread, with a five-second admission deadline per packet. Immediate errors retry
@@ -89,16 +92,17 @@ prompt cancellation, paste-token scope/use/expiry, both size budgets, session-ex
 mode reset, response emission outside the clipboard/UI thread, snapshot consistency,
 empty padded chunks, primary fragments, slow queues exceeding 768 frames, admission
 timeout/cancellation, immediate next requests after DONE, unknown-packet aborts,
-queued error retries and reset during admission-lock acquisition.
+queued error retries, reset during admission-lock acquisition and paste-content
+binding across native clipboard replacement and provider-buffer reuse.
 `AvaloniaKittyClipboardTests` round-trips test-owned binary/text MIME formats
 through Avalonia DataTransfer values; macOS MIME/UTI conversion has a separate
 deterministic regression. `PaneParserWiringTests` checks direct/mux wiring.
 
-Local verification includes 1,489 VT tests, 80 focused clipboard/wiring tests,
+Local verification includes 1,489 VT tests, 84 focused clipboard/wiring tests,
 6 conformance/report tests, platform boot
 75 passed / 4 skipped, architecture 178, mux 1,123 passed / 20 skipped, and MCP
 223. The full app main lane passed 7,648 cases and skipped 56 before the
-last queued-error refinements; the later clipboard/wiring regressions also pass. Latest-head
+last queued-error and paste-content refinements; the later clipboard/wiring regressions also pass. Latest-head
 CI supplies the full platform gate.
 
 The owned collector has clipboard writes disabled and no clipboard fixture.
