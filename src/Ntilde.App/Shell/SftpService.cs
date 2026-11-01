@@ -1,3 +1,4 @@
+using Ntilde.Platform;
 using Ntilde.Platform.Security;
 using System;
 using System.Collections.Generic;
@@ -838,7 +839,12 @@ namespace Ntilde.Shell
             string localPath = QuoteArg(job.LocalPath.Replace("\\", "/", StringComparison.Ordinal));
             // Legacy SCP passes its remote operand through the remote login shell.
             // Escape that layer first, then serialize the whole operand for local argv.
-            string remotePath = QuoteArg(remotePart + ":" + EscapeScpRemotePath(job.RemotePath));
+            // PowerShell and Windows-style Auto paths keep their existing SCP encoding;
+            // POSIX backslashes would change their meaning on cmd/PowerShell targets.
+            ValidateScpRemotePath(job.RemotePath);
+            bool posixPath = profile.RemoteShellKind != RemoteShellKind.Pwsh &&
+                !(profile.RemoteShellKind == RemoteShellKind.Auto && IsWindowsRemotePath(job.RemotePath));
+            string remotePath = QuoteArg(remotePart + ":" + (posixPath ? EscapeScpRemotePath(job.RemotePath) : job.RemotePath));
             if (job.Direction == TransferDirection.Upload)
             {
                 args.Append(' ').Append(localPath).Append(' ').Append(remotePath);
@@ -851,17 +857,25 @@ namespace Ntilde.Shell
             return args.ToString();
         }
 
-        internal static string EscapeScpRemotePath(string remotePath)
+        private static bool IsWindowsRemotePath(string path) =>
+            path.Length >= 2 && ((char.IsAsciiLetter(path[0]) && path[1] == ':') ||
+                path.StartsWith(@"\\", StringComparison.Ordinal));
+
+        private static void ValidateScpRemotePath(string remotePath)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(remotePath);
             if (remotePath.IndexOfAny(['\0', '\r', '\n']) >= 0)
             {
                 throw new ArgumentException("Legacy SCP paths cannot contain NUL or line breaks.", nameof(remotePath));
             }
+        }
 
+        internal static string EscapeScpRemotePath(string remotePath)
+        {
+            ValidateScpRemotePath(remotePath);
             // Backslashes (rather than shell quote delimiters) also work with SCP's
             // strict download filename matching. Never unescape a caller's literal path.
-            ReadOnlySpan<char> special = " \t\v\f\"'\\!#$&()*;<>?[]^`{|}~".AsSpan();
+            ReadOnlySpan<char> special = " \t\v\f\"'\\!#$&()*;<>?[]^`{|}~=".AsSpan();
             var escaped = new System.Text.StringBuilder(remotePath.Length);
             if (remotePath[0] == '-') escaped.Append("./");
             for (int i = 0; i < remotePath.Length; i++)

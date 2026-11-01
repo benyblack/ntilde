@@ -12,6 +12,7 @@ public sealed class ScpRemotePathTests
     [InlineData("~/my file", "~/my\\ file")]
     [InlineData("~", "~")]
     [InlineData("-option", "./-option")]
+    [InlineData("=literal", @"\=literal")]
     [InlineData("/tmp/ñ😀", "/tmp/ñ😀")]
     [InlineData(@"/tmp/file\ name", @"/tmp/file\\\ name")]
     public void RemoteShellEscaping_PreservesLiteralPathsAndHomeShorthand(string path, string expected)
@@ -26,6 +27,21 @@ public sealed class ScpRemotePathTests
     public void RemoteShellEscaping_RejectsUnsupportedProtocolCharacters(string path)
     {
         Assert.Throws<ArgumentException>(() => SftpService.EscapeScpRemotePath(path));
+        var profile = new TerminalProfile { SshHost = "target", RemoteShellKind = RemoteShellKind.Pwsh };
+        var job = new TransferJob { RemotePath = path, LocalPath = "local.txt" };
+        Assert.Throws<ArgumentException>(() => SftpService.BuildScpArguments(job, profile, null));
+    }
+
+    [Theory]
+    [InlineData(RemoteShellKind.Pwsh, "C:/Temp/a$b.txt")]
+    [InlineData(RemoteShellKind.Pwsh, "/tmp/a$b.txt")]
+    [InlineData(RemoteShellKind.Auto, "C:/Temp/a$b.txt")]
+    [InlineData(RemoteShellKind.Auto, @"\\server\share\a$b.txt")]
+    public void NonPosixRemotePaths_KeepExistingEncoding(RemoteShellKind shell, string remotePath)
+    {
+        var profile = new TerminalProfile { SshHost = "target", RemoteShellKind = shell };
+        var job = new TransferJob { Direction = TransferDirection.Download, LocalPath = "local.txt", RemotePath = remotePath };
+        Assert.EndsWith(" " + SftpService.QuoteArg("target:" + remotePath) + " local.txt", SftpService.BuildScpArguments(job, profile, null));
     }
 
     [Theory]
@@ -36,6 +52,7 @@ public sealed class ScpRemotePathTests
     [InlineData("ñ😀 file.txt", false)]
     [InlineData("~/home file.txt", false)]
     [InlineData("-option", false)]
+    [InlineData("=literal", false)]
     [InlineData("folder with spaces", true)]
     public async Task LegacyScp_UploadAndDownload_UseLiteralRemoteNames(string name, bool folder)
     {
@@ -53,7 +70,7 @@ public sealed class ScpRemotePathTests
         try
         {
             string ssh = Path.Combine(root, "fake-ssh");
-            await File.WriteAllTextAsync(ssh, "#!/bin/sh\nfor arg do command=\"$arg\"; done\ncd \"$FAKE_SSH_ROOT\" || exit 1\nexec /bin/sh -c \"$command\"\n", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(ssh, "#!/bin/sh\nfor arg do command=\"$arg\"; done\ncd \"$FAKE_SSH_ROOT\" || exit 1\nexec \"$FAKE_SSH_SHELL\" -c \"$command\"\n", TestContext.Current.CancellationToken);
             File.SetUnixFileMode(ssh, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             string local = Path.Combine(root, "local file.txt");
             string remote = Path.Combine(root, name.StartsWith("~/", StringComparison.Ordinal) ? name[2..] : name);
@@ -65,11 +82,12 @@ public sealed class ScpRemotePathTests
             var profile = new TerminalProfile { SshHost = "fakehost" };
             foreach (TransferDirection direction in new[] { TransferDirection.Upload, TransferDirection.Download })
             {
-                var job = new TransferJob { Direction = direction, Kind = folder ? TransferKind.Folder : TransferKind.File, LocalPath = local, RemotePath = name.StartsWith("~/", StringComparison.Ordinal) || name[0] == '-' ? name : remote };
+                var job = new TransferJob { Direction = direction, Kind = folder ? TransferKind.Folder : TransferKind.File, LocalPath = local, RemotePath = name.StartsWith("~/", StringComparison.Ordinal) || name[0] is '-' or '=' ? name : remote };
                 string args = "-S " + SftpService.QuoteArg(ssh) + SftpService.BuildScpArguments(job, profile, null);
                 using var process = new Process { StartInfo = SftpService.CreateScpStartInfo("/usr/bin/scp", args, profile) };
                 process.StartInfo.Environment["HOME"] = root;
                 process.StartInfo.Environment["FAKE_SSH_ROOT"] = root;
+                process.StartInfo.Environment["FAKE_SSH_SHELL"] = name == "=literal" && File.Exists("/bin/zsh") ? "/bin/zsh" : "/bin/sh";
                 Assert.True(process.Start());
                 Task<string> error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
                 try

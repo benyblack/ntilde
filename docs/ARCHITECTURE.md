@@ -826,7 +826,9 @@ it).
   is answered. An OpenSSH persisted pane gets the palette's transfers (`scp -B`, its own connection),
   and no sidebar, as a plain OpenSSH tab. Legacy SCP remote paths are backslash-escaped for the
   remote shell before local argv encoding; `~`/`~/` retain home expansion, while NUL/CR/LF are
-  rejected because the legacy protocol cannot carry them. Native SFTP normalization is separate.
+  rejected because the legacy protocol cannot carry them. Explicit PowerShell and Auto Windows
+  drive/UNC paths keep the prior local-only encoding (and existing special-character limitations),
+  because POSIX escapes change Windows paths. Native SFTP normalization is separate.
   Port forwards are still not set up (`ClearAllForwardings=yes`;
   the native exec mode has no forward router): they would ride the exec channel's single event queue,
   drop on every reconnect and collide with plain tabs of the profile.
