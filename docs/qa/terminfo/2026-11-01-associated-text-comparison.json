@@ -53,12 +53,12 @@
     "cleanedUpAt": "2026-11-01T11:01:13.571Z"
   },
   "after": {
-    "sourceCommit": "471650d95acff311dbadbaa9f1d1629eff7e89f9",
-    "appVersion": "0.12.0+471650d95acff311dbadbaa9f1d1629eff7e89f9",
-    "measuredAt": "2026-11-01T11:37:19.383Z",
-    "localDirectory": "artifacts/terminfo/owned-jjfiBp",
-    "rawSha256": "8eb0d79dcd1890008d0b5c96413d7fe018e6889ca994bb9f2de2a8787fb05908",
-    "assemblySha256": "8974f0d44bebc9f5b83883e47210e0195bebe2eb406c45ab018ad3cf4890ebf2",
+    "sourceCommit": "cb1f99a6153f267327f65295dbecadd77773bf70",
+    "appVersion": "0.12.0+cb1f99a6153f267327f65295dbecadd77773bf70",
+    "measuredAt": "2026-11-01T11:45:18.589Z",
+    "localDirectory": "artifacts/terminfo/owned-6a3g10",
+    "rawSha256": "a527f0c2f18fd0f933026d0341c00e70c670d226975d2f73897e5c3d096a20e2",
+    "assemblySha256": "0f000fb7ed02ef113e523d1bfe0262332ec29c89278ef206ca9aca2cfc87653d",
     "counts": {
       "inconclusive": 177,
       "supported": 76,
@@ -69,7 +69,7 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "runId": "76ec3638ddf22037cb6c4409e936d95e",
+    "runId": "f5074814447005718ac5b5e1adad26ec",
     "suiteComplete": false,
     "ungradedDiagnostics": {
       "cursor.reverse-wrap": {
@@ -78,7 +78,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "cleanedUpAt": "2026-11-01T11:37:19.410Z"
+    "cleanedUpAt": "2026-11-01T11:45:18.639Z"
   },
   "unchangedOutcomeAndReasonCount": 254,
   "changes": [
@@ -226,5 +226,35 @@
     "Unavailable key identities and lock-state bits are not invented.",
     "Flag 16 without flag 8 retains legacy text behavior; releases never contain text.",
     "177 inconclusive observations and an ungraded geometry diagnostic remain."
+  ],
+  "intermediateAfters": [
+    {
+      "sourceCommit": "471650d95acff311dbadbaa9f1d1629eff7e89f9",
+      "appVersion": "0.12.0+471650d95acff311dbadbaa9f1d1629eff7e89f9",
+      "measuredAt": "2026-11-01T11:37:19.383Z",
+      "localDirectory": "artifacts/terminfo/owned-jjfiBp",
+      "rawSha256": "8eb0d79dcd1890008d0b5c96413d7fe018e6889ca994bb9f2de2a8787fb05908",
+      "assemblySha256": "8974f0d44bebc9f5b83883e47210e0195bebe2eb406c45ab018ad3cf4890ebf2",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 76,
+        "unsupported": 2
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "76ec3638ddf22037cb6c4409e936d95e",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T11:37:19.410Z"
+    }
   ]
 }
