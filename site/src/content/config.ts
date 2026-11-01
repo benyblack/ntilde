@@ -14,4 +14,19 @@ const docs = defineCollection({
   }),
 });
 
-export const collections = { docs };
+// Blog posts. Unlike the user guide, these are written for the site, so they live here
+// (src/content/posts/) instead of being copied in from docs/. A post is a folder holding
+// index.md and anything it embeds, which the post links relatively (./chart.svg).
+const posts = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+    date: z.coerce.date(),
+    author: z.string(),
+    /** Drafts build locally but are left out of the list and of the published site. */
+    draft: z.boolean().default(false),
+  }),
+});
+
+export const collections = { docs, posts };

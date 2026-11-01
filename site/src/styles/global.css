@@ -226,6 +226,8 @@
 
   .doc-prose :not(pre) > code {
     @apply rounded bg-ink-900 px-1.5 py-0.5 font-mono text-[0.85em] text-ink-100;
+    /* A long identifier would otherwise widen the page on a phone. */
+    overflow-wrap: anywhere;
   }
 
   .doc-prose pre {
@@ -252,6 +254,16 @@
 
   .doc-prose td {
     @apply border-b border-ink-800 px-3 py-2 align-top;
+  }
+
+  /* Charts and screenshots in blog posts: full column width, on the page's own background. */
+  .doc-prose img {
+    @apply h-auto w-full rounded-lg border border-ink-800;
+  }
+
+  /* A post's caption: the italic line written straight after an image. */
+  .doc-prose p:has(> img) + p > em:only-child {
+    @apply block text-sm not-italic text-ink-400;
   }
 }
 
