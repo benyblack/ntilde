@@ -105,6 +105,7 @@ namespace Ntilde.Shell
             set => SetProperty(ref _localPath, value);
         }
 
+        /// <summary>Literal remote path, including spaces and backslashes; not a shell-escaped word.</summary>
         public string RemotePath
         {
             get => _remotePath;
@@ -737,6 +738,7 @@ namespace Ntilde.Shell
         internal static NativeSftpTransferOptions BuildNativeTransferOptions(TransferJob job)
         {
             ArgumentNullException.ThrowIfNull(job);
+            ArgumentException.ThrowIfNullOrWhiteSpace(job.RemotePath);
 
             return new NativeSftpTransferOptions
             {
@@ -747,31 +749,8 @@ namespace Ntilde.Shell
                     ? NativeSftpTransferKind.Directory
                     : NativeSftpTransferKind.File,
                 LocalPath = job.LocalPath,
-                RemotePath = NormalizeNativeRemotePath(job.RemotePath)
+                RemotePath = job.RemotePath
             };
-        }
-
-        internal static string NormalizeNativeRemotePath(string remotePath)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(remotePath);
-
-            ReadOnlySpan<char> shellEscapable = " \t\n\"'\\!#$&()*;<>?[]^`{|}~".AsSpan();
-            var normalized = new System.Text.StringBuilder(remotePath.Length);
-
-            for (int i = 0; i < remotePath.Length; i++)
-            {
-                char current = remotePath[i];
-                if (current == '\\' && i + 1 < remotePath.Length && shellEscapable.IndexOf(remotePath[i + 1]) >= 0)
-                {
-                    normalized.Append(remotePath[i + 1]);
-                    i++;
-                    continue;
-                }
-
-                normalized.Append(current);
-            }
-
-            return normalized.ToString();
         }
 
         internal static string BuildScpArguments(

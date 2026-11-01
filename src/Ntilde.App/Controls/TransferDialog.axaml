@@ -22,6 +22,7 @@
                        VerticalAlignment="Center"
                        Margin="0,0,12,0"/>
             <controls:RemotePathTextBox Name="RemotePathInput"
+                                        ToolTip.Tip="Enter the remote path as it appears on the server. Spaces do not need escaping."
                                         Grid.Row="1"
                                         Grid.Column="1"
                                         Margin="0,0,8,0"/>

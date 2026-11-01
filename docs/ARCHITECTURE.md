@@ -844,7 +844,8 @@ it).
   remote shell before local argv encoding; `~`/`~/` retain home expansion, while NUL/CR/LF are
   rejected because the legacy protocol cannot carry them. Explicit PowerShell and Auto Windows
   drive/UNC paths keep the prior local-only encoding (and existing special-character limitations),
-  because POSIX escapes change Windows paths. Native SFTP normalization is separate.
+  because POSIX escapes change Windows paths. Native SFTP receives literal paths from both the sidebar and
+  validated dialog input; it never interprets shell backslash escapes.
   Port forwards are still not set up (`ClearAllForwardings=yes`;
   the native exec mode has no forward router): they would ride the exec channel's single event queue,
   drop on every reconnect and collide with plain tabs of the profile.
