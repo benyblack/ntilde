@@ -183,7 +183,7 @@ public sealed class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.wait_for_events"),
-     Description("Waits for session events from the running Ntilde app: status changes, command completions (with exit code and duration), bells, stalls, and sessions opening/closing (never for windowless sessions). Long-poll with a cursor: pass sinceSeq=0 on the first call, then the nextSeq from each result. Returns immediately when events are pending, otherwise parks up to timeoutMs (server-capped at 25000). An empty result means the timeout elapsed — call again with the same cursor. Read-only.")]
+     Description("Waits for session events from the running Ntilde app: status changes, command completions (with exit code, duration, and the command that ran when shell integration reports it, credentials redacted), bells, stalls, and sessions opening/closing (never for windowless sessions). Long-poll with a cursor: pass sinceSeq=0 on the first call, then the nextSeq from each result. Returns immediately when events are pending, otherwise parks up to timeoutMs (server-capped at 25000). An empty result means the timeout elapsed — call again with the same cursor. Read-only.")]
     public static async Task<string> WaitForEvents(
         AgentHostClient client,
         [Description("Cursor: deliver events newer than this sequence number. 0 on the first call, then the previous result's nextSeq.")] long sinceSeq = 0,
@@ -463,11 +463,23 @@ public sealed class SessionTools
         {
             var details = e.Type == AgentHostProtocol.EventTypes.CommandFinished
                 ? $"exit {(e.ExitCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?")}{(e.DurationMs is { } d ? $", {d} ms" : "")}"
+                    + (e.Command is { } command ? $", command: {TableCellText(command)}" : "")
                 : e.ExitCode is { } code ? $"exit {code}{(e.NeedsUser is { } why ? $", needs the user: {why}" : "")}" : "-";
             sb.AppendLine($"| {e.Seq} | {FormatUtc(e.TimestampMs)} | {e.PaneId} | {e.Type} | {e.Status} | {details} |");
         }
         return sb.ToString().TrimEnd();
     }
+
+    /// <summary>
+    /// Shell text inside one markdown table cell: a pipe would end the cell and a newline the row, and a pipeline or a
+    /// multi-line command carries both. Each line break becomes a visible ⏎ rather than a space, so the agent can still
+    /// tell <c>a⏎b</c> (two commands) from <c>a b</c> (one).
+    /// </summary>
+    internal static string TableCellText(string text)
+        => text.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace("\r", "\n", StringComparison.Ordinal)
+            .Replace("\n", " ⏎ ", StringComparison.Ordinal)
+            .Replace("|", "\\|", StringComparison.Ordinal);
 
     internal static string FormatExport(ExportReplayResult dto)
     {

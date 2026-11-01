@@ -623,7 +623,8 @@ namespace Ntilde.AgentHost
                 evt.Timestamp,
                 evt.ExitCode,
                 evt.Duration is { } d ? (long)d.TotalMilliseconds : null,
-                evt.NeedsUser?.ToWire());
+                evt.NeedsUser?.ToWire(),
+                AgentStatusWire.RedactCommand(evt.Command));
 
             _statusSubscriptions[registration] = Handler;
             registration.StatusMachine.EventEmitted += Handler;

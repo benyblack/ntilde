@@ -548,6 +548,45 @@ public class SessionToolsFormattingTests
     }
 
     [Fact]
+    public void FormatEvents_names_the_finished_command_without_breaking_the_table()
+    {
+        var paneId = Guid.NewGuid();
+        var text = SessionTools.FormatEvents(new WaitForEventsResult
+        {
+            Events = new[]
+            {
+                new AgentEventDto
+                {
+                    Seq = 7, TimestampMs = 1_800_000_000_000, PaneId = paneId,
+                    Type = AgentHostProtocol.EventTypes.CommandFinished,
+                    Status = AgentHostProtocol.StatusKinds.AwaitingInput,
+                    ExitCode = 0, DurationMs = 900,
+                    Command = "scripts/build.sh test | tail -5\necho done",
+                },
+                new AgentEventDto
+                {
+                    Seq = 8, TimestampMs = 1_800_000_000_000, PaneId = paneId,
+                    Type = AgentHostProtocol.EventTypes.CommandFinished,
+                    Status = AgentHostProtocol.StatusKinds.AwaitingInput,
+                    ExitCode = 1,
+                },
+            },
+            NextSeq = 8,
+            OldestSeq = 1,
+        }, sinceSeq: 6);
+
+        // The pipe is escaped and the line break made visible, so the command stays in one cell of one row.
+        Assert.Contains(@"exit 0, 900 ms, command: scripts/build.sh test \| tail -5 ⏎ echo done |", text, StringComparison.Ordinal);
+        var rows = text.Split('\n').Where(l => l.StartsWith("| 7 ", StringComparison.Ordinal)).ToArray();
+        Assert.Single(rows);
+
+        // No command text: the details say nothing about one.
+        var bare = Assert.Single(text.Split('\n'), l => l.StartsWith("| 8 ", StringComparison.Ordinal));
+        Assert.DoesNotContain("command:", bare, StringComparison.Ordinal);
+        Assert.Contains("exit 1", bare, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void FormatCapture_reports_path_geometry_and_what_the_image_excludes()
     {
         var text = SessionTools.FormatCapture(new CaptureScreenResult

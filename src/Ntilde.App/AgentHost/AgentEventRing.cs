@@ -31,7 +31,7 @@ namespace Ntilde.AgentHost
         }
 
         /// <summary>Appends with the next sequence number and wakes any parked long-pollers.</summary>
-        public long Append(Guid paneId, string type, string status, DateTimeOffset timestamp, int? exitCode = null, long? durationMs = null, string? needsUser = null)
+        public long Append(Guid paneId, string type, string status, DateTimeOffset timestamp, int? exitCode = null, long? durationMs = null, string? needsUser = null, string? command = null)
         {
             TaskCompletionSource<bool> toPulse;
             long seq;
@@ -48,6 +48,7 @@ namespace Ntilde.AgentHost
                     ExitCode = exitCode,
                     NeedsUser = needsUser,
                     DurationMs = durationMs,
+                    Command = command,
                 });
                 while (_events.Count > _capacity)
                 {
