@@ -235,6 +235,84 @@ public sealed class KittyAllKeyRoutingTests
     }
 
     [AvaloniaFact]
+    public void Encoded_key_text_stays_suppressed_after_a_capability_downgrade()
+    {
+        var (view, buffer, sent) = Create();
+        Assert.True(view.Down(Key.A, symbol: "a").Handled);
+        buffer.Modes.KittyKeyboard.SetSupportedFlags(7);
+        view.Text("a");
+        Assert.Equal("\u001b[97u", Assert.Single(sent));
+    }
+
+    [AvaloniaFact]
+    public void Legacy_key_text_is_preserved_after_capability_recovery()
+    {
+        var (view, buffer, sent) = Create();
+        buffer.Modes.KittyKeyboard.SetSupportedFlags(7);
+        Assert.False(view.Down(Key.A, symbol: "a").Handled);
+        buffer.Modes.KittyKeyboard.SetSupportedFlags(15);
+        view.Text("a");
+        Assert.Equal("a", Assert.Single(sent));
+    }
+
+    [AvaloniaFact]
+    public void Encoded_key_text_stays_suppressed_after_the_kill_switch_is_disabled()
+    {
+        var (view, _, sent) = Create();
+        view.Down(Key.A, symbol: "a");
+        view.ApplySettings(new TerminalSettings { EnableKittyKeyboardProtocol = false });
+        view.Text("a");
+        Assert.Equal("\u001b[97u", Assert.Single(sent));
+    }
+
+    [AvaloniaFact]
+    public void Legacy_key_text_is_preserved_after_the_kill_switch_is_enabled()
+    {
+        var (view, _, sent) = Create();
+        view.ApplySettings(new TerminalSettings { EnableKittyKeyboardProtocol = false });
+        Assert.False(view.Down(Key.A, symbol: "a").Handled);
+        view.ApplySettings(new TerminalSettings { EnableKittyKeyboardProtocol = true });
+        view.Text("a");
+        Assert.Equal("a", Assert.Single(sent));
+    }
+
+    [AvaloniaFact]
+    public void Legacy_recovery_keys_do_not_reserve_a_later_text_only_commit()
+    {
+        var (view, _, sent) = Create(0);
+        view.Down(Key.Enter);
+        view.Up(Key.Enter);
+        view.Text("かな");
+        Assert.Equal(new[] { "\r", "かな" }, sent);
+    }
+
+    [AvaloniaFact]
+    public void Suppression_is_one_shot_and_a_new_keydown_replaces_the_decision()
+    {
+        var (view, buffer, sent) = Create();
+        view.Down(Key.A, symbol: "a");
+        buffer.Modes.KittyKeyboard.SetSupportedFlags(7);
+        view.Text("a");
+        view.Text("かな");
+        view.Down(Key.B, symbol: "b");
+        view.Text("b");
+        Assert.Equal(new[] { "\u001b[97u", "かな", "b" }, sent);
+    }
+
+    [AvaloniaFact]
+    public void Pending_legacy_text_is_discarded_when_input_context_changes()
+    {
+        var (view, _, sent) = Create(0);
+        view.Down(Key.A, symbol: "a");
+        view.LoseFocus();
+        view.Text("a");
+        Assert.Empty(sent);
+        view.Down(Key.B, symbol: "b");
+        view.Text("b");
+        Assert.Equal("b", Assert.Single(sent));
+    }
+
+    [AvaloniaFact]
     public void Focus_loss_and_mode_reset_discard_all_key_releases()
     {
         var (view, buffer, sent) = Create(10);

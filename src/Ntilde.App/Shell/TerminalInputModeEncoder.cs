@@ -191,8 +191,11 @@ namespace Ntilde.Shell
 
         /// <summary>Enriches already encoded text keys with captured layout metadata when flag 4 is negotiated.</summary>
         public static string? EncodeKittyKey(Key key, KeyModifiers modifiers, ModeState? modes, TerminalKeyEventKind eventKind, KittyKeyIdentity identity)
+            => EncodeKittyKey(key, modifiers, modes?.KittyKeyboard.Flags ?? 0, eventKind, identity);
+
+        /// <summary>Encodes one keydown against its captured flag state, independent of later parser updates.</summary>
+        internal static string? EncodeKittyKey(Key key, KeyModifiers modifiers, int flags, TerminalKeyEventKind eventKind, KittyKeyIdentity identity)
         {
-            int flags = modes?.KittyKeyboard.Flags ?? 0;
             bool reportEvents = (flags & KittyKeyboardState.FlagReportEventTypes) != 0;
             bool disambiguate = (flags & KittyKeyboardState.FlagDisambiguateEscapeCodes) != 0;
             bool reportAll = (flags & KittyKeyboardState.FlagReportAllKeys) != 0;

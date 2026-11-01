@@ -42,7 +42,7 @@ namespace Ntilde.Shell
                 _enableSmoothScrolling = settings.SmoothScrolling;
                 _enableLinkDetection = settings.EnableLinkDetection;
                 _enableKittyKeyboardProtocol = settings.EnableKittyKeyboardProtocol;
-                if (!_enableKittyKeyboardProtocol) ResetKittyKeyTracking();
+                if (!_enableKittyKeyboardProtocol) ResetKittyKeyTracking(discardPendingText: false);
                 // Fall back to the default for non-positive/NaN values; clamp the upper
                 // bound so a wild settings value can't drive runaway scroll steps.
                 double wheelLinesPerNotch = settings.WheelLinesPerNotch;

@@ -4,6 +4,13 @@ namespace Ntilde.Shell;
 
 internal static partial class TerminalInputModeEncoder
 {
+    /// <summary>Framework key kinds that can have a following TextInput callback, including IME commits.</summary>
+    internal static bool MayProduceTextInput(Key key, string? symbol)
+        => !string.IsNullOrEmpty(symbol) || GetUnshiftedCodepoint(key) >= 0
+            || key is >= Key.NumPad0 and <= Key.NumPad9
+            or Key.Decimal or Key.Divide or Key.Multiply or Key.Subtract or Key.Add or Key.Separator
+            or Key.Enter or Key.Tab or Key.Back or Key.Escape or Key.ImeProcessed or Key.DeadCharProcessed;
+
     /// <summary>All-key mode uses layout identity independently of the optional alternate fields.</summary>
     internal static KittyKeyIdentity ResolveKittyAllKeyIdentity(Key key, KeyModifiers modifiers, PhysicalKey physical, string? symbol)
     {
