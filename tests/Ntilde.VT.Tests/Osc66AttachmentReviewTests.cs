@@ -18,6 +18,8 @@ public sealed class Osc66AttachmentReviewTests
     }
 
     [Theory]
+    [InlineData(0, 0)]
+    [InlineData(0, 1)]
     [InlineData(1, 0)]
     [InlineData(1, 1)]
     [InlineData(2, 1)]

@@ -228,8 +228,10 @@ public partial class TerminalBuffer
     }
 
     private bool TryAppendToSizedBlock(ReadOnlySpan<char> text)
+        => TryAppendToSizedBlockAtColumn(_isPendingWrap ? _cursorCol : _cursorCol - 1, text);
+
+    private bool TryAppendToSizedBlockAtColumn(int col, ReadOnlySpan<char> text)
     {
-        int col = _isPendingWrap ? _cursorCol : _cursorCol - 1;
         if ((uint)col >= (uint)Cols) return false;
         var piece = _viewport[_cursorRow].GetTextSizing(col);
         if (piece == null || !UnicodeWidth.ShouldAttachToPrevious(piece.Block.Text, text, EndsWithZwj(piece.Block.Text))) return false;

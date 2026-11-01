@@ -302,6 +302,8 @@ namespace Ntilde.VT
 
             // NORMAL WRITE LOGIC:
         NormalWrite:
+            // With no eligible preceding base, a mark on a sized cell extends that rectangle.
+            if (isZeroWidthComponent && _textSizingBlocks != null && TryAppendToSizedBlockAtColumn(_cursorCol, grapheme)) return;
             int width = GetGraphemeWidth(grapheme);
 
             // Handle Pending Wrap State (M1.3)
