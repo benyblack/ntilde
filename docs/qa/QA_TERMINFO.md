@@ -207,3 +207,9 @@ and [derived comparison](terminfo/2026-11-01-alternate-keys-comparison.json).
 It measured 74 supported / 4 unsupported / 177 inconclusive observations. The
 changed collector result proves negotiation; supplied-layout input and managed
 transport tests provide separate delivery evidence with explicit layout limits.
+
+Latest all-key follow-up: [2026-11-01 owned measurement](terminfo/2026-11-01-all-keys.md)
+and [derived comparison](terminfo/2026-11-01-all-keys-comparison.json).
+It measured 75 supported / 3 unsupported / 177 inconclusive observations.
+The changed query establishes flag-8 negotiation; routed-event and GUI/mux tests
+separately cover emitted frames and old-peer text fallback. Flag 16 remains masked.

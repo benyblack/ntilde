@@ -173,9 +173,10 @@ namespace Ntilde.Shell
         /// Encodes supported non-text keys with the negotiated Kitty flags. Flag 1
         /// disambiguates ASCII control chords; flag 2 adds repeat/release subparameters
         /// and canonical functional-key frames. Press is the omitted/default event type.
-        /// Ordinary text and AltGr remain on TextInput. Without flag 2, repeats keep the
+        /// Flag 8 encodes ordinary/recovery/modifier keys and suppresses plain text.
+        /// Without flag 8, ordinary text and AltGr remain on TextInput. Without flag 2, repeats keep the
         /// previous press encoding and releases are suppressed. Enter/Tab/Backspace
-        /// retain their initial recovery bytes when unmodified and never report releases.
+        /// retain their initial unmodified recovery bytes and suppress releases without flag 8.
         /// </summary>
         public static string? EncodeKittyKey(Key key, KeyModifiers modifiers, ModeState? modes)
             => EncodeKittyKey(key, modifiers, modes, TerminalKeyEventKind.Press);
@@ -183,22 +184,28 @@ namespace Ntilde.Shell
         /// <summary>
         /// Release is called only for a key whose non-text press the view forwarded. Its
         /// current modifiers can differ from the press (for example Ctrl released before C).
-        /// Text/IME/AltGr presses remain on OnTextInput and are never tracked for release.
+        /// Without flag 8, text/IME/AltGr presses stay on OnTextInput and acquire no releases.
         /// </summary>
         public static string? EncodeKittyKey(Key key, KeyModifiers modifiers, ModeState? modes, TerminalKeyEventKind eventKind)
             => EncodeKittyKey(key, modifiers, modes, eventKind, default);
 
         /// <summary>Enriches already encoded text keys with captured layout metadata when flag 4 is negotiated.</summary>
         public static string? EncodeKittyKey(Key key, KeyModifiers modifiers, ModeState? modes, TerminalKeyEventKind eventKind, KittyKeyIdentity identity)
+            => EncodeKittyKey(key, modifiers, modes?.KittyKeyboard.Flags ?? 0, eventKind, identity);
+
+        /// <summary>Encodes one keydown against its captured flag state, independent of later parser updates.</summary>
+        internal static string? EncodeKittyKey(Key key, KeyModifiers modifiers, int flags, TerminalKeyEventKind eventKind, KittyKeyIdentity identity)
         {
-            int flags = modes?.KittyKeyboard.Flags ?? 0;
             bool reportEvents = (flags & KittyKeyboardState.FlagReportEventTypes) != 0;
             bool disambiguate = (flags & KittyKeyboardState.FlagDisambiguateEscapeCodes) != 0;
-            if ((flags & (KittyKeyboardState.FlagDisambiguateEscapeCodes | KittyKeyboardState.FlagReportEventTypes)) == 0
+            bool reportAll = (flags & KittyKeyboardState.FlagReportAllKeys) != 0;
+            if ((flags & (KittyKeyboardState.FlagDisambiguateEscapeCodes | KittyKeyboardState.FlagReportEventTypes | KittyKeyboardState.FlagReportAllKeys)) == 0
                 || (eventKind == TerminalKeyEventKind.Release && !reportEvents)) return null;
             if (!reportEvents) eventKind = TerminalKeyEventKind.Press;
 
             int bits = GetKittyModifierBits(modifiers);
+            if (reportAll) return EncodeKittyAllKey(key, bits, eventKind, identity,
+                (flags & KittyKeyboardState.FlagReportAlternateKeys) != 0);
             if (reportEvents)
             {
                 var (number, final) = KittyFunctionalKey(key);
@@ -224,8 +231,8 @@ namespace Ntilde.Shell
         {
             if (key is Key.Enter or Key.Tab or Key.Back)
             {
-                // The report-all-keys enhancement is intentionally not implemented. Keep
-                // these recovery keys usable, including suppressing their modified releases.
+                // Without report-all-keys, preserve legacy recovery behavior,
+                // including suppressing their modified releases.
                 if (eventKind == TerminalKeyEventKind.Release || (bits == 0 && eventKind == TerminalKeyEventKind.Press)) return null;
                 int number = key switch
                 {

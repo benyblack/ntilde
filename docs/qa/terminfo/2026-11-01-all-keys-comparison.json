@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "evidenceScope": "Owned macOS collector: negotiation only. Available-key event frames and GUI/mux delivery have separate supplied-metadata tests; not native keyboard-layout/IME qualification.",
+  "startingMainCommit": "98f95b3d5d19880c20622cd56c1fc6006fbbe2ec",
+  "suiteId": "16a690f34c0e",
+  "probeHash": "16a690f34c0e",
+  "collectorSourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+  "adapter": {
+    "id": "ntilde-owned-macos-v1",
+    "bundleSha256": "2c36ba5d8ed7028bf3d54010ce550774ac5e4c433cba83dcb88b6f9f712b1224",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "nodeVersion": "v24.22.1",
+  "inputPins": {
+    "collectorManifestSha256": "56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e",
+    "collectorLockSha256": "837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "adapterBundleSha256": "2c36ba5d8ed7028bf3d54010ce550774ac5e4c433cba83dcb88b6f9f712b1224"
+  },
+  "sourcePins": {
+    "runnerSourceSha256": "a322ad12a62101e28f465275a7c6d6cd993ef9792e40c4aeeadb56113794fda5",
+    "adapterSourceSha256": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
+    "ownershipSourceSha256": "1bf16d996f4d4dfdb98cc2ec7011e64c6567de1515271bb2a4244ae48996d50f",
+    "workerSourceSha256": "00ed37f2cb00ce11268be08b4a69fc65e4a88236378fa35f032b4fde8976b83e",
+    "runtimeSourceSha256": "8199c0373ae9f423c2f2333f9166ce0f301dd6e5df238b78d1bdb317e3abfdd4"
+  },
+  "before": {
+    "sourceCommit": "1ba8a4fad3064eb7f5cee214a217f10496423816",
+    "appVersion": "0.12.0+1ba8a4fad3064eb7f5cee214a217f10496423816",
+    "measuredAt": "2026-11-01T09:51:04.145Z",
+    "localDirectory": "artifacts/terminfo/owned-X4Vux0",
+    "rawSha256": "c6a3072dd7cf7144c64a17e83734ab4c87275091b155c4064dbcf1b9187f88bc",
+    "assemblySha256": "8f2c1004a16324b8ba7313e47660766151fddf9a1f1234b152efc58ecece7760",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 74,
+      "unsupported": 4
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "runId": "7b48eabf33ebc2bd2e22227ab9ff6ca4",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "cleanedUpAt": "2026-11-01T09:51:04.176Z"
+  },
+  "after": {
+    "sourceCommit": "61e31bf3614167519f94380d1b2ba04659f0586b",
+    "appVersion": "0.12.0+61e31bf3614167519f94380d1b2ba04659f0586b",
+    "measuredAt": "2026-11-01T10:43:17.813Z",
+    "localDirectory": "artifacts/terminfo/owned-obn9EM",
+    "rawSha256": "a4d6b60d277b17907fabc177fa2be576967b8d66d2ed097dbfe22592875b9a29",
+    "assemblySha256": "1777f36c23660fb1e481128e2b5bb4485fb5bef1c015271b50c802e42415a745",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 75,
+      "unsupported": 3
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "runId": "630c3c12b81fd241c089c5efd8bd8f00",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "cleanedUpAt": "2026-11-01T10:43:17.843Z"
+  },
+  "unchangedOutcomeAndReasonCount": 254,
+  "changes": [
+    {
+      "featureId": "extensions.kitty-keyboard.report-all-keys",
+      "before": {
+        "featureId": "extensions.kitty-keyboard.report-all-keys",
+        "outcome": "unsupported",
+        "evidence": "query",
+        "note": "Queried enhancement flags=1; actual key press, repeat and release events were not tested",
+        "rawReplyRef": "extensions.kitty-keyboard.report-all-keys"
+      },
+      "after": {
+        "featureId": "extensions.kitty-keyboard.report-all-keys",
+        "outcome": "supported",
+        "evidence": "query",
+        "note": "Queried enhancement flags=9; actual key press, repeat and release events were not tested",
+        "rawReplyRef": "extensions.kitty-keyboard.report-all-keys"
+      },
+      "beforeTrace": {
+        "writes": [
+          "\u001b[>9u",
+          "\u001b[<u"
+        ],
+        "queries": [
+          {
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?0u",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?0u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MHUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?1u",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?1u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MXUbWz82Mjs0OzIyYw=="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?0u",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?0u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MHUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b[>9u"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?1u",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?1u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MXUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b[<u"
+          }
+        ]
+      },
+      "afterTrace": {
+        "writes": [
+          "\u001b[>9u",
+          "\u001b[<u"
+        ],
+        "queries": [
+          {
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?0u",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?0u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MHUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?9u",
+              "9"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?9u\u001b[?62;4;22c",
+            "rawBase64": "G1s/OXUbWz82Mjs0OzIyYw=="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?0u",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?0u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MHUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b[>9u"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?9u",
+              "9"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?9u\u001b[?62;4;22c",
+            "rawBase64": "G1s/OXUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b[<u"
+          }
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "Raw identity remains unverified; generated version metadata and assembly hashes bind the selected builds.",
+    "Baseline source 1ba8a4fa has the same keyboard runtime as starting main 98f95b3d; their follow-up changes only documented metadata limits.",
+    "Flag 8 suppresses raw text, including text-only IME commits. Flag 16 is not implemented in this follow-up.",
+    "Unavailable host key codes, layout glyphs and lock-state bits are not invented.",
+    "No competitor binaries measured or exhaustive physical keyboard-layout/IME qualification performed.",
+    "177 inconclusive observations and the ungraded geometry diagnostic remain."
+  ],
+  "intermediateAfters": [
+    {
+      "sourceCommit": "909513d03cab261fa45b5f87500e56de87757ca3",
+      "appVersion": "0.12.0+909513d03cab261fa45b5f87500e56de87757ca3",
+      "measuredAt": "2026-11-01T10:03:06.223Z",
+      "localDirectory": "artifacts/terminfo/owned-OJVIV5",
+      "rawSha256": "0e1bd5ad58e33cc725d340983e7cd89abbd06d41f7a44079e573b799bce24e26",
+      "assemblySha256": "955b4693fe50cdb2f7b62a56436705a2f225c3474e34f500ee392a877459bd95",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 75,
+        "unsupported": 3
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "fef4ace3b780d6f6670bb10d5278f518",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T10:03:06.247Z"
+    },
+    {
+      "sourceCommit": "2d911ed020a64f0d8e60062eeca0efcbfa9e99b1",
+      "appVersion": "0.12.0+2d911ed020a64f0d8e60062eeca0efcbfa9e99b1",
+      "measuredAt": "2026-11-01T10:27:09.725Z",
+      "localDirectory": "artifacts/terminfo/owned-D9htRn",
+      "rawSha256": "8c684901ab2416d0075b6ff6deac5868e09b889ee8c246cfcfa36284ae9f77ff",
+      "assemblySha256": "fbc934261aed65c252ff2eaa7f0dded95e9b0dd8ec1cf3fb05112206f70b8849",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 75,
+        "unsupported": 3
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "40d4333ff2ac00b5f222838ed29dad93",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T10:27:09.764Z"
+    }
+  ]
+}

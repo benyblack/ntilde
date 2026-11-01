@@ -350,12 +350,27 @@ invariant changes.
 - **Alternate-key data is input-host state.** App derives optional shifted and PC-101 base-layout
   key fields from available scalar Avalonia symbols and physical positions. VT only owns flag 4
   negotiation and stack state. The enhancement changes keys already encoded by another flag;
-  ordinary text, IME and AltGr stay on TextInput. A forwarded press captures its immutable
+  without all-key mode, ordinary text, IME and AltGr stay on TextInput. A forwarded press captures its immutable
   identity for repeats/releases; changes of session, buffer, focus or keyboard generation discard it.
   Only Shift-held events contain the shifted field. Missing, control, combining, format, multi-scalar
   or malformed symbols preserve the legacy primary;
   shifted punctuation retains that primary when the framework cannot provide its unshifted glyph.
   No guessed native keyboard-map queries, user input logging or new settings are introduced.
+- **All-key reporting is input-host policy.** VT owns flag 8 negotiation and the same per-screen
+  stacks and capability ceilings. App encodes available ordinary/recovery/modifier/keypad/media
+  identities, suppressing plain text while that flag is active. Flag 2 still controls repeat/release;
+  flag 4 controls optional alternate fields, not the primary identity needed by flag 8. All-key mode and
+  unhandled legacy text keydowns capture their encoding and one-shot text decisions; capability/stack/kill-switch changes
+  before TextInput cannot duplicate a key frame or discard the original legacy text. A matching
+  key release or focus/session/buffer change clears the correlation, allowing a new text-only
+  commit in the current context. Non-text modifier events do not replace it. Consuming text
+  or accepting a nested keydown invalidates the enclosing decision, so returning callbacks
+  cannot re-arm suppression or overwrite the newer decision. A press with
+  neither a logical nor physical identity has no repeat/release slot. Pure IME text is suppressed
+  without associated-text support; composing marker keys never become fabricated key presses.
+  Existing app shortcut/reconnect rules and recovery-key observation order retain precedence.
+  Modifier states come from the framework, including its left/right release state; unavailable
+  lock bits, key codes and layout glyphs are not guessed. No native layout APIs are introduced.
 - **Keyboard capabilities are ordered protocol state.** An explicit presentation mask opts a subscriber
   (including a v1 peer or read-only observer) into `keyboardCapabilities`, before its attach snapshot
   and subsequent output. Pending presentation bursts coalesce per sender; identical effective masks
