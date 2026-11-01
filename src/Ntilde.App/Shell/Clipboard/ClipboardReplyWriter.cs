@@ -1,5 +1,7 @@
 namespace Ntilde.Shell.Clipboard;
 
+internal sealed record ClipboardReplyPolicy(Func<TimeSpan, CancellationToken, Task>? Delay = null, TimeSpan? Timeout = null, Func<Func<Task>, Task>? Dispatch = null);
+
 /// <summary>Retries bounded device-reply admission without blocking the UI or occupying its reserved input slots.</summary>
 internal sealed class ClipboardReplyWriter
 {
@@ -9,9 +11,10 @@ internal sealed class ClipboardReplyWriter
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
     private readonly TimeSpan _timeout;
     private readonly object _admissionGate;
+    private readonly Action? _beforeAdmissionForTest;
 
     public ClipboardReplyWriter(Func<string, bool> trySend, Func<bool> alive, TimeProvider? clock = null,
-        Func<TimeSpan, CancellationToken, Task>? delay = null, TimeSpan? timeout = null, object? admissionGate = null)
+        Func<TimeSpan, CancellationToken, Task>? delay = null, TimeSpan? timeout = null, object? admissionGate = null, Action? beforeAdmissionForTest = null)
     {
         _trySend = trySend;
         _alive = alive;
@@ -19,6 +22,7 @@ internal sealed class ClipboardReplyWriter
         _delay = delay ?? Task.Delay;
         _timeout = timeout ?? TimeSpan.FromSeconds(5);
         _admissionGate = admissionGate ?? new object();
+        _beforeAdmissionForTest = beforeAdmissionForTest;
     }
 
     public bool TrySend(string response)
@@ -32,8 +36,10 @@ internal sealed class ClipboardReplyWriter
         while (_alive())
         {
             cancellation.ThrowIfCancellationRequested();
+            _beforeAdmissionForTest?.Invoke();
             lock (_admissionGate)
             {
+                cancellation.ThrowIfCancellationRequested();
                 if (_alive() && _trySend(response))
                 {
                     onAccepted?.Invoke();

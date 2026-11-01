@@ -1195,3 +1195,9 @@ through that interface. This is a provider limit, not a hard process-memory boun
 Clipboard DATA and terminal replies wait for bounded device-queue admission off
 the UI thread. The request slot and global gate are released atomically with
 terminal-packet admission; retries do not bypass the queue's keyboard reserve.
+
+Synchronous protocol errors use the same bounded admission retry. One background
+pump owns at most 64 queued error packets per TTY; overflow during an error flood
+is refused. Cancellation is rechecked inside the admission lock, so reset cannot
+be followed by admission of an old packet. Unknown packet types abort active
+write transactions with EINVAL.

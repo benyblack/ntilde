@@ -62,7 +62,7 @@ public class KittyClipboardSessionTests
         public readonly KittyClipboardSession Session;
         public Harness(TimeSpan? replyTimeout = null) => Session = new(Clipboard, reply => TrySendOverride?.Invoke(reply) ?? Record(reply),
             work => { Work.Enqueue(work); return Task.CompletedTask; }, () => WriteAllowed, () => Alive, Clock,
-            replyDelay: (delay, cancellation) => DelayOverride?.Invoke(delay, cancellation) ?? Task.Delay(delay, cancellation), replyTimeout: replyTimeout);
+            replyPolicy: new ClipboardReplyPolicy((delay, cancellation) => DelayOverride?.Invoke(delay, cancellation) ?? Task.Delay(delay, cancellation), replyTimeout, work => { Work.Enqueue(work); return Task.CompletedTask; }));
         public bool Record(string reply)
         {
             Replies.Add(reply);
@@ -117,6 +117,105 @@ public class KittyClipboardSessionTests
         Assert.Contains("status=EINVAL:id=x", Assert.Single(h.Replies));
         h.Send("type=write"); h.Send(Data("text/plain", "SGk=")); h.Send("type=wdata"); await h.Drain();
         Assert.Equal(1, h.Clipboard.Writes);
+    }
+
+    [Fact]
+    public async Task Cancellation_is_rechecked_after_waiting_for_the_admission_lock()
+    {
+        object gate = new();
+        using var reached = new ManualResetEventSlim();
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        int admitted = 0;
+        var writer = new ClipboardReplyWriter(_ => { admitted++; return true; }, () => true,
+            admissionGate: gate, beforeAdmissionForTest: reached.Set);
+        Task<bool>? result = null;
+        var sender = new Thread(() => result = writer.SendAsync("packet", cancellation.Token));
+        lock (gate)
+        {
+            sender.Start();
+            Assert.True(reached.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            cancellation.Cancel();
+        }
+        Assert.True(sender.Join(TimeSpan.FromSeconds(5)));
+        Assert.NotNull(result);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await result);
+        Assert.Equal(0, admitted);
+    }
+
+    [Theory]
+    [InlineData("type=wdat")]
+    [InlineData("type=unknown;AAAA")]
+    [InlineData("type=;AA==")]
+    public async Task Unknown_packets_abort_the_active_write_instead_of_committing_truncated_data(string packet)
+    {
+        using var h = new Harness();
+        h.Send("type=write:id=owner"); h.Send(Data("text/plain", "SGk=")); h.Send(packet); h.Send("type=wdata");
+        await h.Drain();
+        Assert.Contains("status=EINVAL:id=owner", Assert.Single(h.Replies));
+        Assert.Equal(0, h.Clipboard.Writes);
+    }
+
+    [Theory]
+    [InlineData("EPERM")]
+    [InlineData("ENOSYS")]
+    [InlineData("EINVAL")]
+    public async Task Immediate_write_errors_retry_when_the_device_queue_is_temporarily_full(string status)
+    {
+        using var h = new Harness();
+        int attempts = 0;
+        h.TrySendOverride = reply => ++attempts < 3 ? false : h.Record(reply);
+        h.DelayOverride = (delay, _) => { h.Clock.Now += delay; return Task.CompletedTask; };
+        if (status == "EPERM") h.WriteAllowed = false;
+        h.Send(status == "ENOSYS" ? "type=write:loc=primary" : "type=write");
+        if (status == "EINVAL") h.Send("type=wdat");
+        Assert.Empty(h.Replies);
+        Assert.Single(h.Work);
+        await h.Drain();
+        Assert.Contains("status=" + status, Assert.Single(h.Replies));
+        Assert.Equal(3, attempts);
+        Assert.Equal(0, h.Clipboard.Writes);
+    }
+
+    [Fact]
+    public async Task Busy_errors_retry_without_changing_the_already_pending_write()
+    {
+        using var h = new Harness();
+        int busyAttempts = 0;
+        h.TrySendOverride = reply => reply.Contains("status=EBUSY", StringComparison.Ordinal) && ++busyAttempts < 3 ? false : h.Record(reply);
+        h.DelayOverride = (delay, _) => { h.Clock.Now += delay; return Task.CompletedTask; };
+        h.Send("type=write:id=first"); h.Send(Data("text/plain", "SGk=")); h.Send("type=wdata");
+        h.Send("type=write:id=second"); await h.Drain();
+        Assert.Equal(1, h.Clipboard.Writes);
+        Assert.Contains(h.Replies, reply => reply.Contains("status=DONE:id=first", StringComparison.Ordinal));
+        Assert.Contains(h.Replies, reply => reply.Contains("status=EBUSY:id=second", StringComparison.Ordinal));
+        Assert.Equal(3, busyAttempts);
+    }
+
+    [Fact]
+    public async Task Error_reply_floods_keep_one_pump_and_a_bounded_queue()
+    {
+        using var h = new Harness { WriteAllowed = false };
+        h.TrySendOverride = _ => false;
+        h.DelayOverride = (_, _) => { h.Alive = false; return Task.CompletedTask; };
+        for (int i = 0; i < 1000; i++) h.Send("type=write:id=" + i);
+        Assert.Single(h.Work);
+        Assert.InRange(h.Session.QueuedErrorRepliesForTest, 1, 64);
+        await h.Drain();
+        Assert.Equal(0, h.Session.QueuedErrorRepliesForTest);
+        Assert.Equal(0, h.Clipboard.Writes);
+    }
+
+    [Fact]
+    public async Task Reset_invalidates_queued_error_replies()
+    {
+        using var h = new Harness { WriteAllowed = false };
+        h.TrySendOverride = _ => false;
+        h.Send("type=write");
+        Assert.Single(h.Work);
+        h.Session.Reset();
+        h.TrySendOverride = h.Record;
+        await h.Drain();
+        Assert.Empty(h.Replies);
     }
 
     [Fact]

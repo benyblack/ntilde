@@ -35,6 +35,11 @@ internal sealed class KittyClipboardSession : IDisposable
     private readonly object _sync = new();
     private readonly IKittyClipboard _clipboard;
     private readonly ClipboardReplyWriter _replies;
+    private const int MaxQueuedErrors = 64;
+    private readonly Queue<PendingError> _errors = new();
+    private readonly Func<Func<Task>, Task> _dispatchError;
+    private bool _errorPumpRunning;
+    internal int QueuedErrorRepliesForTest { get { lock (_sync) return _errors.Count; } }
     private readonly Func<Func<Task>, Task> _schedule;
     private readonly Func<bool> _writeAllowed;
     private readonly Func<bool> _alive;
@@ -48,7 +53,7 @@ internal sealed class KittyClipboardSession : IDisposable
 
     public KittyClipboardSession(IKittyClipboard clipboard, Func<string, bool> reply, Func<Func<Task>, Task> schedule,
         Func<bool> writeAllowed, Func<bool> alive, TimeProvider? clock = null,
-        Func<TimeSpan, CancellationToken, Task>? replyDelay = null, TimeSpan? replyTimeout = null)
+        ClipboardReplyPolicy? replyPolicy = null)
     {
         _clipboard = clipboard;
 
@@ -56,7 +61,8 @@ internal sealed class KittyClipboardSession : IDisposable
         _writeAllowed = writeAllowed;
         _alive = alive;
         _clock = clock ?? TimeProvider.System;
-        _replies = new ClipboardReplyWriter(reply, alive, _clock, replyDelay, replyTimeout, _sync);
+        _replies = new ClipboardReplyWriter(reply, alive, _clock, replyPolicy?.Delay, replyPolicy?.Timeout, _sync);
+        _dispatchError = replyPolicy?.Dispatch ?? (work => Task.Run(work));
     }
 
     public void Accept(string data)
@@ -91,6 +97,7 @@ internal sealed class KittyClipboardSession : IDisposable
                     else transfer.Add(packet);
                     break;
                 case "walias": transfer.Alias(packet); break;
+                default: Abort(InvalidPacket); break;
             }
         }
         catch (InvalidDataException error) { Abort(error.Message); }
@@ -316,7 +323,48 @@ internal sealed class KittyClipboardSession : IDisposable
     }
 
     private static string SafeName(string name) => new(name.Where(c => !char.IsControl(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).Take(80).ToArray());
-    private void Reply(string type, string status, string id) => _replies.TrySend(KittyClipboardPacket.Response(type, status, id));
+    private void Reply(string type, string status, string id)
+    {
+        lock (_sync)
+        {
+            if (_disposed) return;
+            string response = KittyClipboardPacket.Response(type, status, id);
+            if (!_errorPumpRunning && _replies.TrySend(response)) return;
+            // A flooding client cannot create an unbounded number of pending tasks/IDs.
+            if (_errors.Count >= MaxQueuedErrors) return;
+            _errors.Enqueue(new PendingError(response, _generation, _cancellation.Token));
+            if (_errorPumpRunning) return;
+            _errorPumpRunning = true;
+            _ = _dispatchError(DrainErrorsAsync);
+        }
+    }
+
+    private async Task DrainErrorsAsync()
+    {
+        while (true)
+        {
+            PendingError pending;
+            lock (_sync)
+            {
+                if (_errors.Count == 0) { _errorPumpRunning = false; return; }
+                pending = _errors.Dequeue();
+            }
+            try
+            {
+                if (IsAlive(pending.Generation)) await _replies.SendAsync(pending.Response, pending.Cancellation);
+            }
+            catch (OperationCanceledException) when (pending.Cancellation.IsCancellationRequested)
+            {
+                // Reset/disposal invalidated this queued error.
+            }
+            catch (Exception error)
+            {
+                TerminalLogger.Debug("[OSC5522] Error reply transport failed: " + error.GetType().Name);
+            }
+        }
+    }
+
+    private readonly record struct PendingError(string Response, int Generation, CancellationToken Cancellation);
     private bool IsAlive(int generation) { lock (_sync) return !_disposed && generation == _generation && _alive(); }
     public void Reset()
     {
@@ -329,6 +377,7 @@ internal sealed class KittyClipboardSession : IDisposable
             _cancellation = new CancellationTokenSource();
             _write?.Dispose();
             _write = null;
+            _errors.Clear();
             _pastePassword = null;
         }
     }
