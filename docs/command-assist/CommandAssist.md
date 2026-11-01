@@ -1096,7 +1096,7 @@ entries as redacted. It does not evaluate a command or guarantee that arbitrary 
 Supported long flags are `--password`, `--token`, `--api-key`, `--api_key`, `--apikey`,
 `--access-token`, `--auth-token`, `--client-secret` and `--secret-key`. Values may follow
 space/tab or `=`, including quoted flag names, quoted values, adjacent quoted fragments,
-and escaped values. `sshpass -p` remains supported. Backslash, backtick and caret
+and escaped values. `sshpass -p` and the legacy single-hyphen `-Password` option remain supported. Backslash, backtick and caret
 escapes outside single quotes have incompatible meanings across shells; encountering
 any of them in a credential value conservatively hides the remaining command tail. Balanced substitutions are
 hidden as text; they are never executed. Unclosed quotes/groups, excessive nesting,

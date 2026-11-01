@@ -1,4 +1,4 @@
-using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -7,37 +7,56 @@ namespace Ntilde.CommandAssist.Domain;
 public sealed partial class SecretsFilter
 {
     private const string CredentialFlags = "(?:password|token|api-key|api_key|apikey|access-token|auth-token|client-secret|secret-key)";
+    private const string CredentialOption = "(?:--" + CredentialFlags + "|-password)";
     private const string CredentialNames = "(?:GITHUB_TOKEN|GH_TOKEN|GITLAB_TOKEN|GITLAB_PRIVATE_TOKEN|CI_JOB_TOKEN|NPM_TOKEN|" +
         "OPENAI_API_KEY|ANTHROPIC_API_KEY|AZURE_OPENAI_API_KEY|GOOGLE_API_KEY|GEMINI_API_KEY|HF_TOKEN|HUGGING_FACE_HUB_TOKEN|" +
         "AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|API_KEY|ACCESS_TOKEN|AUTH_TOKEN|DOCKER_PASSWORD|DATABASE_PASSWORD|JWT)";
     private const int MaxCredentialNesting = 32;
     private static readonly Regex CredentialPrefixRegex = CredentialPrefix();
 
-    [GeneratedRegex(@"(?<![\w-])(?:sshpass[ \t]+-p[ \t]+|(?<argQuote>[""'])(?:--" + CredentialFlags + "|" + CredentialNames + @")=|" +
+    [GeneratedRegex(@"(?<![\w-])(?:sshpass[ \t]+-p[ \t]+|(?<argQuote>[""'])(?:" + CredentialOption + "|" + CredentialNames + @")=|" +
         @"(?<cmdQuoted>set[ \t]+"")" + CredentialNames + @"[ \t]*=|" +
         @"(?<cmd>set[ \t]+)" + CredentialNames + @"=|" +
         @"\$env:" + CredentialNames + @"[ \t]*=[ \t]*|" + CredentialNames + @"=|" +
-        @"(?:""--" + CredentialFlags + @"""|'--" + CredentialFlags + @"'|--" + CredentialFlags + @")(?:=|[ \t]+))",
+        @"(?:""" + CredentialOption + @"""|'" + CredentialOption + @"'|" + CredentialOption + @")(?:=|[ \t]+))",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
     private static partial Regex CredentialPrefix();
 
+    private readonly record struct CredentialRange(int Start, int End, char? ClosingQuote);
+
     private static string RedactCredentialArguments(string text)
     {
-        StringBuilder? output = null;
+        var ranges = CredentialRanges(text);
+        if (ranges.Count == 0) return text;
+        var output = new StringBuilder(text.Length);
         int copiedThrough = 0;
+        foreach (var range in ranges)
+        {
+            output.Append(text, copiedThrough, range.Start - copiedThrough);
+            output.Append("[REDACTED]");
+            if (range.ClosingQuote.HasValue) output.Append(range.ClosingQuote.Value);
+            copiedThrough = range.End;
+        }
+        return output.Append(text, copiedThrough, text.Length - copiedThrough).ToString();
+    }
+
+    private static List<CredentialRange> CredentialRanges(string text)
+    {
+        var ranges = new List<CredentialRange>();
         foreach (Match prefix in CredentialPrefixRegex.Matches(text))
         {
-            if (prefix.Index < copiedThrough) continue;
             int start = prefix.Index + prefix.Length;
             var (end, closingQuote) = CredentialValueEnd(text, start, prefix);
             if (end == start) continue;
-            output ??= new StringBuilder(text.Length);
-            output.Append(text, copiedThrough, start - copiedThrough);
-            output.Append("[REDACTED]");
-            if (closingQuote.HasValue) output.Append(closingQuote.Value);
-            copiedThrough = end;
+            // A value may itself look like another credential option. Hide the union of both values.
+            if (ranges.Count > 0 && prefix.Index < ranges[^1].End)
+            {
+                var previous = ranges[^1];
+                if (end > previous.End) ranges[^1] = previous with { End = end };
+            }
+            else ranges.Add(new CredentialRange(start, end, closingQuote));
         }
-        return output is null ? text : output.Append(text, copiedThrough, text.Length - copiedThrough).ToString();
+        return ranges;
     }
 
     private static (int End, char? ClosingQuote) CredentialValueEnd(string text, int start, Match prefix)
@@ -97,11 +116,8 @@ public sealed partial class SecretsFilter
         while (index < text.Length)
         {
             char c = text[index];
-            if (c == quote)
-            {
-                if (IsDoubledCredentialQuote(text, index, quote)) { index += 2; continue; }
-                return index + 1;
-            }
+            if (IsDoubledCredentialQuote(text, index, quote)) { index += 2; continue; }
+            if (c == quote) return index + 1;
             // Do not guess which shell owns an escape; none of its remaining text may leak.
             if (quote != '\'' && c is '\\' or '`' or '^') return text.Length;
             if (IsCredentialExpansion(text, index, quote))
@@ -115,7 +131,7 @@ public sealed partial class SecretsFilter
     }
 
     private static bool IsDoubledCredentialQuote(string text, int index, char quote) =>
-        quote != '`' && index + 1 < text.Length && text[index + 1] == quote;
+        text[index] == quote && index + 1 < text.Length && text[index + 1] == quote;
 
     private static bool IsCredentialExpansion(string text, int index, char quote) =>
         quote == '"' && text[index] == '$' && index + 1 < text.Length && text[index + 1] is '(' or '{';

@@ -64,6 +64,11 @@ public sealed class SecretsFilterTests
     [InlineData("tool --token prefix` middle` synth677 --verbose", "tool --token [REDACTED]")]
     [InlineData("tool --token prefix\\\"synth 677\" --verbose", "tool --token [REDACTED]")]
     [InlineData("tool --token \"\\$(Write-Output \"synth 677\")\" --verbose", "tool --token [REDACTED]")]
+    [InlineData("tool --token --api-key synth677 --verbose", "tool --token [REDACTED] --verbose")]
+    [InlineData("tool --token=--api-key synth677", "tool --token=[REDACTED]")]
+    [InlineData("tool --api-key '--token' synth677", "tool --api-key [REDACTED]")]
+    [InlineData("tool --password --hunter2", "tool --password [REDACTED]")]
+    [InlineData("tool -Password=synth677 --verbose", "tool -Password=[REDACTED] --verbose")]
     public void Redact_SupportedCredentials_RemovesEntireValueAndPreservesArguments(string command, string expected)
     {
         RedactionResult result = new SecretsFilter().Redact(command);
