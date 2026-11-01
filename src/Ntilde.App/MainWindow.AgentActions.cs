@@ -40,13 +40,13 @@ namespace Ntilde
             return await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 TerminalProfile? profile;
-                bool isSsh;
 
                 if (string.IsNullOrWhiteSpace(profileName))
                 {
-                    profile = _settings.Profiles.Find(p => p.Id == _settings.DefaultProfileId)
-                              ?? (_settings.Profiles.Count > 0 ? _settings.Profiles[0] : null);
-                    isSsh = false;
+                    // Migration can leave SSH profiles in settings. An unnamed agent spawn
+                    // always opens a local shell, even when the user's default is legacy SSH.
+                    profile = _settings.Profiles.Find(p => p.Id == _settings.DefaultProfileId && p.Type == ConnectionType.Local)
+                              ?? _settings.Profiles.Find(p => p.Type == ConnectionType.Local);
                 }
                 else
                 {
@@ -55,28 +55,24 @@ namespace Ntilde
                     profile = _settings.Profiles.Find(
                         p => p.Type == ConnectionType.Local &&
                              string.Equals(p.Name, profileName, StringComparison.OrdinalIgnoreCase));
-                    isSsh = false;
 
                     if (profile == null)
                     {
-                        TerminalProfile? sshProfile = _sshConnectionService.GetConnectionProfiles()
+                        profile = _sshConnectionService.GetConnectionProfiles()
                             .FirstOrDefault(p => string.Equals(p.Name, profileName, StringComparison.OrdinalIgnoreCase));
-                        if (sshProfile != null)
-                        {
-                            // SSH targets must be allowlisted per profile.
-                            if (!IsSshProfileAgentAllowed(sshProfile.Id))
-                            {
-                                return ((AgentHost.AgentSpawnResult?)null, (AgentHost.AgentSpawnError?)AgentHost.AgentSpawnError.ProfileNotAllowed);
-                            }
-                            profile = sshProfile;
-                            isSsh = true;
-                        }
                     }
                 }
 
                 if (profile == null)
                 {
                     return (null, AgentHost.AgentSpawnError.ProfileNotFound);
+                }
+
+                // Gate the resolved target, regardless of which resolution path found it.
+                bool isSsh = profile.Type == ConnectionType.SSH;
+                if (isSsh && !IsSshProfileAgentAllowed(profile.Id))
+                {
+                    return (null, AgentHost.AgentSpawnError.ProfileNotAllowed);
                 }
 
                 try
@@ -102,7 +98,7 @@ namespace Ntilde
                     Guid? tabId = _paneOwnerTab.TryGetValue(pane, out var tab)
                         ? GetPersistentTabId(tab)
                         : (Guid?)null;
-                    string kind = isSsh || profile.Type == ConnectionType.SSH ? "ssh" : "local";
+                    string kind = isSsh ? "ssh" : "local";
                     var result = new AgentHost.AgentSpawnResult(pane.PaneId, tabId, profile.Name, kind);
                     return ((AgentHost.AgentSpawnResult?)result, (AgentHost.AgentSpawnError?)null);
                 }
