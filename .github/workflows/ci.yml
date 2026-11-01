@@ -424,7 +424,9 @@ jobs:
   # same source on windows and ubuntu, and both builds were already passing the same rules. It
   # still gates: `Unit Tests (<os>)` fails unless this job succeeded, and
   # scripts/tests/analyzer_gate_tests.py fails if `build` skips analyzers while no job runs
-  # them. No Rust: the managed build copies the native libraries only where they exist.
+  # them. It needs the native libraries too (Ntilde.Platform.Tests copies librusty_ssh.so
+  # unconditionally), so it restores them as the coverage job does, and compiles the crates
+  # only on a miss.
   analyzers:
     name: Analyzers
     runs-on: ubuntu-latest
@@ -483,12 +485,30 @@ jobs:
           key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
 
+      # Restore-only, exactly as the coverage job: `build` owns saving this payload, and the
+      # paths and key MUST STAY IDENTICAL to its "Cache native binary" step for ubuntu-latest.
+      - name: Restore native binaries
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            src/Ntilde.App/native/target/release
+            src/Ntilde.App/native/target_linux/release
+            src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
+          key: native-bin-v5-ubuntu-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
+
+      - name: Check the native libraries
+        id: native-libs
+        shell: bash
+        run: bash scripts/ci/native-libs-present.sh "$RUNNER_OS" >> "$GITHUB_OUTPUT"
+
       - name: Restore
         run: dotnet restore
 
       - name: Build with analyzers and code style
         env:
-          SKIP_RUST_NATIVE_BUILD: '1'
+          SKIP_RUST_NATIVE_BUILD: ${{ steps.native-libs.outputs.skip }}
         run: dotnet build -c ${{ env.CONFIGURATION }} --no-restore
 
   # One job per (OS, shard). The headless App.Tests main lane - ~7,200 tests run strictly
