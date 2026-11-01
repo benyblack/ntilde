@@ -9,7 +9,7 @@ separate domain and shared-renderer pixel evidence below.
 | Build | Source commit | Owned collection | Measured at (UTC) |
 |---|---|---|---|
 | Before | `52ed24cd4bb2eb8d69d747c6ba6ee063d372709e` | `owned-KlBHUy` | 12:31:08.706 |
-| After | `da032b87c1cd110061d4cbbf60f34a209302fbc3` | `owned-tWfXlJ` | 15:14:55.855 |
+| After | `bee5d1ce9cfad3baf410053766c32689915954e8` | `owned-TzvdWL` | 16:01:27.427 |
 
 Both builds are fresh uninstalled sidecars outside `.app` bundles. Their DLL
 informational versions contain the full source commit. The selected assembly
@@ -23,7 +23,7 @@ source and ownership/cleanup proof. No personal clipboard was read.
 Both runs use the same pinned collector revision, suite/probe hash, adapter,
 manifest/lock, runner sources and Node v24.22.1. Raw SHA-256 values were recomputed;
 both ownership proofs record completion and cleanup. The after cleanup completed
-at 15:14:55.888 UTC.
+at 16:01:27.455 UTC.
 
 ## Observed behavior
 
@@ -59,7 +59,7 @@ also failed with double shrinking and passes with font scaling applied once.
 Eighteen shared-renderer pixel tests cover enlarged ink across rows, fractional
 font sizing/alignment, two small glyphs in one cell, compressed long text,
 visible lower fragments whose anchor is in history, cached-row refresh, italic baseline anchoring, and plain/styled underline policy.
-The full VT suite passes 1,427 tests. The earlier complete App gating rerun passed
+The full VT suite passes 1,455 tests. The earlier complete App gating rerun passed
 7,552 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
 (40), shared golden PNG (8), mux (1,123 with 20 platform skips), architecture
 (178), and platform-boot (75 with 4 font-platform skips) checks pass locally.
@@ -117,6 +117,22 @@ content, all removed pieces, cursor position and a successful state round trip.
 Inactive-plane retirement now uses neutral default cells instead of the active
 other screen's pen. Four colored-pen resize cases failed before that correction;
 the full VT suite and 124 focused App tests pass afterward.
+
+The next Codex review extends admission and height fitting to cursors above
+short scroll regions, resolves combining attachments from inside rectangles, and
+retires old spanning rectangles before legacy viewport replacement. Automatic
+width now tracks presentation selectors while explicit widths remain fixed.
+Replacement admission reserves against the old block before mutation; drawing
+keeps its original colors and side metadata, and wrap/scroll logic updates the
+whole rectangle. History and clipped-anchor fragments use the same replacement
+model. Ten initial regressions failed before the fixes. Additional tests cover
+full-screen and region-bottom scrolling, collision retirement, style retention,
+VS15/VS16 chunk boundaries, joined emoji, and refusal under a saturated budget
+with byte-identical exported state. A stale joiner from an unrelated cell also
+failed its regression before correction. First-column combining and ZWJ continuation tests cover both top and lower rows;
+the two joiner cases failed before their correction. All 27 attachment cases
+and the saturated-budget replacement case pass. The ordinary default fast path remains
+for non-emoji output; emoji sent through OSC 66 retains metadata for later selectors.
 
 ## Limits
 
