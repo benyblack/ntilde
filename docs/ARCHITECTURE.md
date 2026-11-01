@@ -1201,3 +1201,10 @@ pump owns at most 64 queued error packets per TTY; overflow during an error floo
 is refused. Cancellation is rechecked inside the admission lock, so reset cannot
 be followed by admission of an old packet. Unknown packet types abort active
 write transactions with EINVAL.
+
+Paste tokens authorize immutable copies of MIME values captured from one native
+clipboard snapshot at the user's paste gesture, under the 64 MiB aggregate read
+budget. Redemption never opens the current clipboard. A grant is one-use, named,
+TTY-scoped and valid for 15 seconds; reset and a later paste discard it. Only one
+bounded grant is retained per TTY; expired content is released on the next packet,
+paste or reset. The native snapshot is disposed before notification transmission.

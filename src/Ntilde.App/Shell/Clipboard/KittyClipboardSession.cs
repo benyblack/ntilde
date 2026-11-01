@@ -48,8 +48,7 @@ internal sealed class KittyClipboardSession : IDisposable
     private bool _busy, _disposed;
     private int _generation;
     private CancellationTokenSource _cancellation = new();
-    private string? _pastePassword;
-    private DateTimeOffset _pasteExpiry;
+    private PasteGrant? _pasteGrant;
 
     public KittyClipboardSession(IKittyClipboard clipboard, Func<string, bool> reply, Func<Func<Task>, Task> schedule,
         Func<bool> writeAllowed, Func<bool> alive, TimeProvider? clock = null,
@@ -62,7 +61,7 @@ internal sealed class KittyClipboardSession : IDisposable
         _alive = alive;
         _clock = clock ?? TimeProvider.System;
         _replies = new ClipboardReplyWriter(reply, alive, _clock, replyPolicy?.Delay, replyPolicy?.Timeout, _sync);
-        _dispatchError = replyPolicy?.Dispatch ?? (work => Task.Run(work));
+        _dispatchError = replyPolicy?.Dispatch ?? (work => Task.Run(work, CancellationToken.None));
     }
 
     public void Accept(string data)
@@ -70,6 +69,7 @@ internal sealed class KittyClipboardSession : IDisposable
         lock (_sync)
         {
             if (_disposed) return;
+            ExpirePasteGrant();
             var packet = KittyClipboardPacket.Parse(data);
             if (packet == null)
             {
@@ -217,24 +217,27 @@ internal sealed class KittyClipboardSession : IDisposable
         if (!KittyClipboardPacket.TryDecodeText(packet.Name, out string name) || !KittyClipboardPacket.TryDecodeText(packet.Password, out string password)) return;
         string? error = Unavailable(packet.Primary, includeWrite: true);
         if (error != null) { Reply(ReadOperation, error, packet.Id); return; }
-        bool granted = !listing && name.Length > 0 && password.Length > 0 && password == _pastePassword && _clock.GetUtcNow() < _pasteExpiry;
-        if (granted) _pastePassword = null; // consume before any await, once on this TTY and location
+        ExpirePasteGrant();
+        var grant = !listing && name.Length > 0 && password.Length > 0 && password == _pasteGrant?.Password ? _pasteGrant : null;
+        if (grant != null) _pasteGrant = null; // consume the captured content before any await, once on this TTY
         _busy = true;
         int generation = _generation;
         CancellationToken cancellation = _cancellation.Token;
-        _ = _schedule(() => ReadAsync(packet.Id, types, listing, name, granted, generation, cancellation));
+        _ = _schedule(() => ReadAsync(packet.Id, types, listing, name, grant, generation, cancellation));
     }
 
-    private Task ReadAsync(string id, string[] types, bool listing, string name, bool granted, int generation, CancellationToken cancellation)
+    private Task ReadAsync(string id, string[] types, bool listing, string name, PasteGrant? grant, int generation, CancellationToken cancellation)
     {
         return PerformAsync(ReadOperation, id, generation, async () =>
         {
-            if (!listing && !granted && !await _clipboard.ConfirmReadAsync(SafeName(name), cancellation))
+            if (!listing && grant == null && !await _clipboard.ConfirmReadAsync(SafeName(name), cancellation))
             {
                 return PermissionDenied;
             }
             if (!IsAlive(generation)) return null;
-            var values = await CollectReadValuesAsync(types, listing, generation);
+            var values = grant == null
+                ? await CollectReadValuesAsync(types, listing, generation)
+                : grant.Values.Where(p => types.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
             if (values == null) return null;
             // Clipboard API calls stay UI-affine; encoding and PTY transmission do not.
             bool sent = await Task.Run(() => SendDataAsync(id, values, generation, cancellation), CancellationToken.None);
@@ -245,6 +248,19 @@ internal sealed class KittyClipboardSession : IDisposable
     private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(string[] types, bool listing, int generation)
     {
         using var snapshot = await _clipboard.OpenReadAsync();
+        return await CollectReadValuesAsync(snapshot, types, listing, generation);
+    }
+
+    private async Task<Dictionary<string, byte[]>?> CapturePasteValuesAsync(int generation)
+    {
+        using var snapshot = await _clipboard.OpenReadAsync();
+        var values = await CollectReadValuesAsync(snapshot, snapshot.Types.ToArray(), listing: false, generation);
+        // Providers may retain their byte arrays. A grant owns immutable copies.
+        return values?.ToDictionary(p => p.Key, p => p.Value.ToArray(), StringComparer.Ordinal);
+    }
+
+    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(IKittyClipboardSnapshot snapshot, string[] types, bool listing, int generation)
+    {
         var available = snapshot.Types.Where(KittyClipboardPacket.IsMime).Distinct(StringComparer.Ordinal).Take(KittyClipboardPacket.MaxTypes).ToArray();
         var values = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         if (listing)
@@ -275,6 +291,7 @@ internal sealed class KittyClipboardSession : IDisposable
         lock (_sync)
         {
             if (_disposed) return Task.CompletedTask;
+            _pasteGrant = null;
             if (_busy || _write != null)
                 return Task.Run(() => Reply(ReadOperation, Busy, ""), CancellationToken.None);
             _busy = true;
@@ -283,18 +300,19 @@ internal sealed class KittyClipboardSession : IDisposable
         }
         return PerformAsync(ReadOperation, "", generation, async () =>
         {
-            using var snapshot = await _clipboard.OpenReadAsync();
-            var types = snapshot.Types;
+            // Capture all advertised values at the user's paste gesture, within the same
+            // aggregate budget as an explicit read. No later clipboard state is authorized.
+            var captured = await CapturePasteValuesAsync(generation);
+            if (captured == null) return null;
             string password = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
             lock (_sync)
             {
                 if (!IsAlive(generation)) return null;
-                _pastePassword = password;
-                _pasteExpiry = _clock.GetUtcNow().AddSeconds(15);
+                _pasteGrant = new PasteGrant(password, _clock.GetUtcNow().AddSeconds(15), captured);
             }
             var values = new Dictionary<string, byte[]>
             {
-                ["."] = Encoding.UTF8.GetBytes(string.Join(' ', types.Where(KittyClipboardPacket.IsMime).Distinct().Take(KittyClipboardPacket.MaxTypes)))
+                ["."] = Encoding.UTF8.GetBytes(string.Join(' ', captured.Keys))
             };
             bool sent = await Task.Run(() => SendDataAsync("", values, generation, cancellation, ":pw=" + KittyClipboardPacket.Encode(password)), CancellationToken.None);
             return sent ? "DONE" : null;
@@ -378,7 +396,7 @@ internal sealed class KittyClipboardSession : IDisposable
             _write?.Dispose();
             _write = null;
             _errors.Clear();
-            _pastePassword = null;
+            _pasteGrant = null;
         }
     }
     public void Dispose()
@@ -391,6 +409,13 @@ internal sealed class KittyClipboardSession : IDisposable
             _cancellation.Dispose();
         }
     }
+
+    private void ExpirePasteGrant()
+    {
+        if (_pasteGrant != null && _clock.GetUtcNow() >= _pasteGrant.Expiry) _pasteGrant = null;
+    }
+
+    private sealed record PasteGrant(string Password, DateTimeOffset Expiry, Dictionary<string, byte[]> Values);
 
     private sealed class OperationCompletion(Action release) : IDisposable
     {

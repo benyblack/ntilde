@@ -486,14 +486,15 @@ public class KittyClipboardSessionTests
         using var h = new Harness();
         await h.Session.NotifyPasteAsync();
         string token = h.Replies[0].Split(":pw=")[1][..^2];
-        Assert.Equal(0, h.Clipboard.Reads + h.Clipboard.Prompts);
+        Assert.Equal(2, h.Clipboard.Reads);
+        Assert.Equal(0, h.Clipboard.Prompts);
         using var other = new Harness();
         other.Send("type=read:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain")); await other.Drain();
         Assert.Equal(1, other.Clipboard.Prompts);
         h.Send("type=read:pw=" + token + ";" + B64("text/plain")); await h.Drain();
         Assert.Equal(1, h.Clipboard.Prompts);
         h.Send("type=read:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain")); await h.Drain();
-        Assert.Equal(1, h.Clipboard.Reads);
+        Assert.Equal(2, h.Clipboard.Reads);
         Assert.Equal(1, h.Clipboard.Prompts);
         h.Send("type=read:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain")); await h.Drain();
         Assert.Equal(2, h.Clipboard.Prompts);
@@ -501,6 +502,53 @@ public class KittyClipboardSessionTests
         h.Clock.Now = h.Clock.Now.AddSeconds(16);
         h.Send("type=read:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain")); await h.Drain();
         Assert.Equal(3, h.Clipboard.Prompts);
+    }
+
+    [Fact]
+    public async Task Paste_token_reads_only_the_content_captured_at_the_paste_gesture()
+    {
+        using var h = new Harness();
+        await h.Session.NotifyPasteAsync();
+        string token = h.Replies[0].Split(":pw=")[1][..^2];
+        Assert.Equal(1, h.Clipboard.Lists);
+        Assert.Equal(1, h.Clipboard.SnapshotsDisposed);
+        Array.Fill(h.Clipboard.Values["text/plain"], (byte)'X'); // a provider may reuse its buffers
+        h.Clipboard.Values = new() { ["text/plain"] = Encoding.UTF8.GetBytes("new sensitive content"), ["text/html"] = [1, 2, 3] };
+        h.Replies.Clear();
+        h.Send("type=read:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain text/html image/png"));
+        await h.Drain();
+        Assert.Equal(1, h.Clipboard.Lists); // redemption never reacquires the native clipboard
+        Assert.Equal(0, h.Clipboard.Prompts);
+        Assert.Contains(h.Replies, reply => reply.Contains(B64("private text"), StringComparison.Ordinal));
+        Assert.DoesNotContain(h.Replies, reply => reply.Contains(B64("new sensitive content"), StringComparison.Ordinal) || reply.Contains(":mime=" + B64("text/html"), StringComparison.Ordinal));
+        Assert.Contains("status=DONE", h.Replies[^1]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reset_or_replacement_paste_invalidates_the_old_content_grant(bool reset)
+    {
+        using var h = new Harness();
+        await h.Session.NotifyPasteAsync();
+        string token = h.Replies[0].Split(":pw=")[1][..^2];
+        if (reset) h.Session.Reset();
+        else await h.Session.NotifyPasteAsync();
+        h.Send("type=read:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain"));
+        await h.Drain();
+        Assert.Equal(1, h.Clipboard.Prompts);
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+    }
+
+    [Fact]
+    public async Task Paste_capture_over_the_aggregate_limit_issues_no_password_or_data()
+    {
+        using var h = new Harness();
+        h.Clipboard.Values = new() { ["application/octet-stream"] = new byte[KittyClipboardPacket.MaxDataBytes], ["text/plain"] = [1] };
+        await h.Session.NotifyPasteAsync();
+        Assert.Contains("status=EBUSY", Assert.Single(h.Replies));
+        Assert.DoesNotContain(":pw=", h.Replies[0]);
+        Assert.Equal(1, h.Clipboard.SnapshotsDisposed);
     }
 
     [Fact]
