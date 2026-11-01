@@ -13,6 +13,11 @@ namespace Ntilde.Shell
             base.OnTextInput(e);
             if (!e.Handled && _session != null && !string.IsNullOrEmpty(e.Text))
             {
+                if (TrySendKittyAssociatedText(e.Text))
+                {
+                    e.Handled = true;
+                    return;
+                }
                 // Flag 8 replaces text with key reports. Without flag 16, text-only IME
                 // commits have no associated-text payload and are deliberately suppressed.
                 bool suppress = _pendingKittyTextSuppression ?? ReportAllKeysActive;
@@ -99,7 +104,12 @@ namespace Ntilde.Shell
         private void ResetKittyKeyTracking(bool clearPendingText = true)
         {
             _reportedKittyKeys?.Clear();
-            if (clearPendingText) ClearPendingKittyTextInput();
+            if (clearPendingText)
+            {
+                _kittyTextContextEpoch++;
+                ClearKittyTextFragment();
+                ClearPendingKittyTextInput();
+            }
         }
 
         /// <summary>Removes the decision and invalidates an enclosing keydown that might otherwise re-arm it.</summary>
@@ -107,13 +117,18 @@ namespace Ntilde.Shell
         {
             _pendingKittyTextSuppression = null;
             _pendingKittyTextKey = null;
+            _pendingKittyTextFlags = null;
+            _pendingAssociatedKey = null;
             _kittyTextInputGeneration++;
         }
 
         /// <summary>A matching release ends the text gesture even when flag 2 does not report releases.</summary>
         private void ExpirePendingKittyTextInput(Key key, PhysicalKey physical)
         {
-            if (_pendingKittyTextKey is { } pending && pending == KeyIdentity(key, physical)) ClearPendingKittyTextInput();
+            if (_pendingKittyTextKey is not { } pending || pending != KeyIdentity(key, physical)) return;
+            int generation = _kittyTextInputGeneration;
+            FlushPendingKittyAssociatedKey();
+            if (generation == _kittyTextInputGeneration) ClearPendingKittyTextInput();
         }
 
         /// <summary>
@@ -121,11 +136,11 @@ namespace Ntilde.Shell
         /// fire-and-forget transport contract: it cannot acknowledge delivery to the child.
         /// A thrown write acquires no release; a context change during the call also discards it.
         /// </summary>
-        private void SendKeyInput(Key key, KeyModifiers modifiers, PhysicalKey physical, string sequence, KittyKeyIdentity identity = default)
+        private void SendKeyInput(Key key, KeyModifiers modifiers, PhysicalKey physical, string sequence, KittyKeyIdentity identity = default, bool trackKittyEvents = true)
         {
             var session = _session;
             ReportedKittyKey? reported = null;
-            if ((key != Key.None || physical != PhysicalKey.None)
+            if (trackKittyEvents && (key != Key.None || physical != PhysicalKey.None)
                 && _enableKittyKeyboardProtocol && _buffer?.Modes is { } modes && modes.KittyKeyboard.ReportEventTypes
                 && (key == Key.Escape || TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, modes, TerminalKeyEventKind.Repeat, identity) != null))
             {
@@ -179,6 +194,11 @@ namespace Ntilde.Shell
         /// </summary>
         internal bool HandleKeyDownCore(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey = PhysicalKey.None, string? keySymbol = null)
         {
+            // Unicode packet keys have no logical identity; their two text callbacks
+            // may be separated by packet key events. A real new key ends that fragment.
+            if (key != Key.None || (!string.IsNullOrEmpty(keySymbol)
+                && !(keySymbol.Length == 1 && char.IsLowSurrogate(keySymbol[0])))) ClearKittyTextFragment();
+            FlushPendingKittyAssociatedKey();
             int flags = _enableKittyKeyboardProtocol ? _buffer?.Modes.KittyKeyboard.Flags ?? 0 : 0;
             bool hasText = _session != null && TerminalInputModeEncoder.MayProduceTextInput(key, keySymbol);
             int generation = _kittyTextInputGeneration;
@@ -188,6 +208,7 @@ namespace Ntilde.Shell
                 generation = _kittyTextInputGeneration;
                 _pendingKittyTextSuppression = (flags & Ntilde.VT.KittyKeyboardState.FlagReportAllKeys) != 0;
                 _pendingKittyTextKey = KeyIdentity(key, physicalKey);
+                _pendingKittyTextFlags = flags;
             }
             bool handled = HandleKeyDownCoreImpl(key, keyModifiers, physicalKey, keySymbol, flags);
             if (hasText && generation == _kittyTextInputGeneration)
@@ -196,7 +217,11 @@ namespace Ntilde.Shell
                 bool? decision = handled ? null : false;
                 if ((flags & Ntilde.VT.KittyKeyboardState.FlagReportAllKeys) != 0) decision = true;
                 _pendingKittyTextSuppression = decision;
-                if (!decision.HasValue) _pendingKittyTextKey = null;
+                if (!decision.HasValue)
+                {
+                    _pendingKittyTextKey = null;
+                    _pendingKittyTextFlags = null;
+                }
             }
             return handled;
         }
@@ -233,6 +258,8 @@ namespace Ntilde.Shell
             KittyKeyIdentity identity = ResolveKittyInputIdentity(key, keyModifiers, physicalKey, keySymbol, kittyFlags);
             TerminalKeyEventKind eventKind = KittyEventKind(ref key, physicalKey, ref identity);
             ResetCursorBlink();
+
+            if (TryQueueKittyAssociatedKey(key, keyModifiers, physicalKey, identity, eventKind, kittyFlags, keySymbol)) return false;
 
             // Kitty keyboard protocol (disambiguation and negotiated event reporting). Must run before every legacy path
             // below - including Alt-sends-ESC - because the protocol replaces those encodings

@@ -366,8 +366,23 @@ invariant changes.
   commit in the current context. Non-text modifier events do not replace it. Consuming text
   or accepting a nested keydown invalidates the enclosing decision, so returning callbacks
   cannot re-arm suppression or overwrite the newer decision. A press with
-  neither a logical nor physical identity has no repeat/release slot. Pure IME text is suppressed
-  without associated-text support; composing marker keys never become fabricated key presses.
+  neither a logical nor physical identity has no repeat/release slot. With flag 8 alone, pure IME
+  text is suppressed; composing marker keys never become fabricated key presses.
+- **Associated text is actual input-method output.** Flag 16 requires flag 8 for text semantics.
+  App leaves text-producing keydowns unhandled because Avalonia's Windows, X11 and macOS
+  backends suppress subsequent text when a keydown is handled. One pending frame waits for
+  actual TextInput; one input-priority dispatcher job sends its key without guessed text if
+  no callback arrives. The next keydown or matching release flushes it first. Text after that
+  fallback, or text with no live key association, uses code zero. Context resets discard unsent
+  old-context frames; policy changes retain the captured encoding. Generation checks prevent a
+  deferred old-stack press from acquiring a release in a newer keyboard stack. Payloads contain
+  invariant Unicode scalar values, with complete malformed-UTF16/C0/C1 rejection; combining
+  and format scalars remain legitimate text. Win32's single-unit text callbacks can complete
+  one high/low surrogate pair; only one high unit and its original mode are retained. Context
+  reset or a new known key discards an incomplete fragment; packet keys without identity can
+  occur between its units. Unmatched halves never become replacement payloads. Releases never
+  carry text. Pending state and queued
+  fallback work are each bounded to one per view. The host-data/layout limits above still apply.
   Existing app shortcut/reconnect rules and recovery-key observation order retain precedence.
   Modifier states come from the framework, including its left/right release state; unavailable
   lock bits, key codes and layout glyphs are not guessed. No native layout APIs are introduced.
