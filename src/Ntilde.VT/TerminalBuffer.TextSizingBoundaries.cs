@@ -35,27 +35,42 @@ public partial class TerminalBuffer
         }
     }
 
+    private void InsertTextSizingRectangle(int width, int height)
+    {
+        int top = _cursorRow;
+        for (int dy = 0; dy < height; dy++)
+        {
+            _cursorRow = top + dy;
+            // Retire pairs split by insertion or by the source slice's clipping edge.
+            int movingWidth = Math.Max(0, Cols - width - _cursorCol);
+            EraseOrdinaryWideSizingBoundaries(_cursorCol, TextSizingAbsoluteRow(_cursorRow), movingWidth, 1);
+            InsertCharactersInternal(width);
+        }
+        _cursorRow = top;
+    }
+
     private void EraseOrdinaryWideSizingBoundaries(int x, int y, int width, int height)
     {
         bool changedHistory = false;
-        int right = x + width;
         int historyCount = _isAltScreen ? 0 : _scrollback.Count;
         for (int row = Math.Max(0, y); row < Math.Min(historyCount + Rows, y + height); row++)
         {
-            if (x > 0 && GetCellAbsolute(x, row).IsWideContinuation)
-            {
-                ClearOrdinarySizingBoundaryCell(x, row);
-                if (GetCellAbsolute(x - 1, row).IsWide) ClearOrdinarySizingBoundaryCell(x - 1, row);
-                changedHistory |= row < historyCount;
-            }
-            if (right < Cols && GetCellAbsolute(right - 1, row).IsWide)
-            {
-                ClearOrdinarySizingBoundaryCell(right - 1, row);
-                if (GetCellAbsolute(right, row).IsWideContinuation) ClearOrdinarySizingBoundaryCell(right, row);
-                changedHistory |= row < historyCount;
-            }
+            // Evaluate each boundary even when the first one changed a glyph.
+            bool leftChanged = ClearOrdinaryWideSplitAt(x, row);
+            bool rightChanged = ClearOrdinaryWideSplitAt(x + width, row);
+            changedHistory |= (leftChanged || rightChanged) && row < historyCount;
         }
         if (changedHistory) InvalidateTextSizingHistory();
+    }
+
+    private bool ClearOrdinaryWideSplitAt(int boundary, int absoluteRow)
+    {
+        if (boundary <= 0 || boundary >= Cols) return false;
+        if (!GetCellAbsolute(boundary - 1, absoluteRow).IsWide
+            || !GetCellAbsolute(boundary, absoluteRow).IsWideContinuation) return false;
+        ClearOrdinarySizingBoundaryCell(boundary - 1, absoluteRow);
+        ClearOrdinarySizingBoundaryCell(boundary, absoluteRow);
+        return true;
     }
 
     private void ClearOrdinarySizingBoundaryCell(int col, int absoluteRow)

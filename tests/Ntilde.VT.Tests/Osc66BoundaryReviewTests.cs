@@ -86,4 +86,79 @@ public sealed class Osc66BoundaryReviewTests
         finally { buffer.Lock.ExitReadLock(); }
         new TerminalBuffer(8, 4).ImportState(buffer.ExportState(0));
     }
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Insert_mode_preserves_styled_linked_wide_glyphs_shifted_beyond_the_final_footprint(int height)
+    {
+        var buffer = new TerminalBuffer(16, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b[1;4H" + Wide + "\x1b[2;4H" + Wide + "\x1b[1;3H\x1b[4h");
+        parser.Process(height == 1 ? "\x1b]66;w=2;M\a" : "\x1b]66;s=2;M\a");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            for (int row = 0; row < height; row++)
+            {
+                Assert.Equal("界\u0301", buffer.GetGraphemeAbsolute(5, row));
+                Assert.True(buffer.GetCellAbsolute(5, row).IsWide);
+                Assert.True(buffer.GetCellAbsolute(6, row).IsWideContinuation);
+                Assert.Equal("https://example.test", buffer.GetHyperlinkAbsolute(5, row));
+                Assert.Equal("https://example.test", buffer.GetHyperlinkAbsolute(6, row));
+                Assert.NotNull(buffer.GetUnderlineAbsolute(5, row));
+                Assert.NotNull(buffer.GetUnderlineAbsolute(6, row));
+                Assert.NotNull(buffer.GetTextSizingAbsolute(2, row));
+            }
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        new TerminalBuffer(16, 4).ImportState(buffer.ExportState(0));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(13)]
+    public void Insert_mode_retires_ordinary_wide_glyphs_split_at_the_insertion_or_clipping_boundary(int wideX)
+    {
+        var buffer = new TerminalBuffer(16, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process($"\x1b[1;{wideX + 1}H" + Wide + "\x1b[1;3H\x1b[4h\x1b]66;s=2;M\a");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            for (int col = 0; col < 16; col++)
+            {
+                Assert.False(buffer.GetCellAbsolute(col, 0).IsWide);
+                Assert.False(buffer.GetCellAbsolute(col, 0).IsWideContinuation);
+                Assert.Null(buffer.GetHyperlinkAbsolute(col, 0));
+                Assert.Null(buffer.GetUnderlineAbsolute(col, 0));
+            }
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        new TerminalBuffer(16, 4).ImportState(buffer.ExportState(0));
+    }
+
+    [Fact]
+    public void Insert_mode_preserves_an_intact_single_row_sized_block_shifted_beyond_the_new_one()
+    {
+        var buffer = new TerminalBuffer(16, 4);
+        new AnsiParser(buffer).Process("\x1b[1;4H\x1b]66;w=2;AB\a\x1b[1;3H\x1b[4h\x1b]66;s=2;M\a");
+        var state = buffer.ExportState(0);
+        Assert.Equal(2, state.TextSizing!.Count);
+        Assert.Contains(state.TextSizing, x => x.Text == "AB" && x.X == 5 && x.Y == 0);
+        Assert.Contains(state.TextSizing, x => x.Text == "M" && x.X == 2 && x.Options.Scale == 2);
+        new TerminalBuffer(16, 4).ImportState(state);
+    }
+
+    [Fact]
+    public void Ordinary_insert_mode_output_also_preserves_a_single_row_sized_block()
+    {
+        var buffer = new TerminalBuffer(16, 4);
+        new AnsiParser(buffer).Process("\x1b]66;w=2;AB\a\x1b[1;1H\x1b[4hx");
+        var state = buffer.ExportState(0);
+        var block = Assert.Single(state.TextSizing!);
+        Assert.Equal("AB", block.Text);
+        Assert.Equal(1, block.X);
+        new TerminalBuffer(16, 4).ImportState(state);
+    }
+
 }

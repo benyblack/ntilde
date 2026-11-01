@@ -124,9 +124,10 @@ public partial class TerminalBuffer
             ? Rows : ScrollBottom - ScrollTop + 1;
         if (width > Cols || height > availableHeight) return;
         var block = new TextSizingBlock(text, options, baseWidth);
-        if (!ReserveTextSizing(block, _cursorCol, TextSizingAbsoluteRow(_cursorRow), IsTextSizingTargetStable(block))) return;
+        if (!ReserveTextSizing(block, _cursorCol, TextSizingAbsoluteRow(_cursorRow), !Modes.IsInsertMode && IsTextSizingTargetStable(block))) return;
         FindTextSizingWritePosition(width);
         FitTextSizingHeight(height);
+        if (Modes.IsInsertMode) InsertTextSizingRectangle(width, height);
         int absTop = TextSizingAbsoluteRow(_cursorRow);
         EraseTextSizingRange(_cursorCol, _cursorCol + width, absTop, absTop + height);
         EraseOrdinaryWideSizingBoundaries(_cursorCol, absTop, width, height);
@@ -157,7 +158,6 @@ public partial class TerminalBuffer
 
     private void StoreTextSizingRow(TextSizingBlock block, int dy)
     {
-        if (Modes.IsInsertMode) InsertCharactersInternal(block.Width);
         var row = _viewport[_cursorRow];
         row.NoteColumnsWritten(_cursorCol + block.Width);
         for (int dx = 0; dx < block.Width; dx++)
@@ -290,6 +290,8 @@ public partial class TerminalBuffer
     private void PrepareTextSizingOverwrite(int width)
     {
         FindTextSizingWritePosition(width);
+        // In insertion mode the shift retires split blocks and preserves intact ones.
+        if (Modes.IsInsertMode) return;
         int row = TextSizingAbsoluteRow(_cursorRow);
         EraseTextSizingRange(_cursorCol, _cursorCol + width, row, row + 1);
     }
