@@ -26,7 +26,7 @@ public static class AgentHostDiscovery
         }
 
         return Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify),
             AppName);
     }
 

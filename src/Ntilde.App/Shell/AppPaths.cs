@@ -38,12 +38,12 @@ namespace Ntilde.Shell
         /// installed Ntilde uses. Tests read it here rather than clearing the variable, which is process-wide.
         /// </summary>
         public static string DefaultRootDirectory => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify),
             AppName);
 
         /// <summary>Where a pre-rebrand install kept its data. Only consulted by <see cref="MigrateLegacyRoot"/>.</summary>
         public static string LegacyRootDirectory => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify),
             LegacyAppName);
 
         public static string SettingsFilePath => Path.Combine(RootDirectory, "settings.json");
@@ -126,7 +126,7 @@ namespace Ntilde.Shell
 
                     string legacyBaseDir = AppDomain.CurrentDomain.BaseDirectory;
                     string legacyRoamingRoot = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.DoNotVerify),
                         AppName);
 
                     MigrateFileIfNeeded(Path.Combine(legacyBaseDir, "settings.json"), SettingsFilePath);

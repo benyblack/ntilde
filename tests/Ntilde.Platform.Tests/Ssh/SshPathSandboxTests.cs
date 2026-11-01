@@ -54,7 +54,7 @@ public sealed class SshPathSandboxTests
     public void No_platform_ssh_path_escapes_to_the_real_appdata_directory()
     {
         string real = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify),
             "ntilde");
 
         using var root = new TemporaryRoot();
@@ -79,7 +79,7 @@ public sealed class SshPathSandboxTests
         // Read without clearing NTILDE_APPDATA_ROOT: the variable is process-wide, and a test running alongside this
         // one would resolve the real root meanwhile (#317).
         string expected = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify),
             "ntilde");
 
         Assert.Equal(expected, PlatformAppPaths.DefaultRootDirectory);

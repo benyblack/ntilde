@@ -401,6 +401,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Which part of the headless main lane this job runs: the filter is ANDed onto the lane's
+      # own exclusions in the headless test step below, and the floor goes to the gate. Self-tests the
+      # partition first, because a shard that silently owned nothing would pass its own gate.
+      # First, before any setup, because it also says what setup this shard needs: `restore`
+      # and `shells` (see NEEDS in the script) switch the NuGet cache, `dotnet restore` and the
+      # zsh/fish install on or off. Only python, which every runner image ships, is needed here.
+      #
+      # Expressions reach this job's run blocks through env, never by interpolation into the
+      # script text - the same rule release.yml follows (githubactions:S7630).
+      - name: Select the App.Tests shard
+        id: shard
+        shell: bash
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/app_tests_shard_tests.py > /dev/null || {
+            "$py" scripts/tests/app_tests_shard_tests.py; exit 1; }
+          "$py" scripts/ci/app-tests-shard.py "$SHARD" | tee -a "$GITHUB_OUTPUT"
+
       - name: Cache .NET SDK
         uses: actions/cache@v4
         with:
@@ -414,13 +435,17 @@ jobs:
           key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
           restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
+      # The NuGet package cache (~1 GB, about 20 s to restore on windows) only on the shard
+      # whose tests run `dotnet build` (steps.shard.outputs.restore). Every other test here runs
+      # an assembly the build job already compiled, straight from its output folder, which
+      # holds every dependency it loads - so it never reads the package cache.
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         env:
           DOTNET_INSTALL_DIR: ~/.dotnet
         with:
           global-json-file: global.json
-          cache: true
+          cache: ${{ steps.shard.outputs.restore == '1' }}
           cache-dependency-path: "**/*.csproj"
 
       - name: Download build artifact
@@ -472,53 +497,42 @@ jobs:
           }
           exit 0
 
+      # For VtReportCliTests, which `dotnet build` the App and the CLI with --no-restore, so
+      # only on the shard that runs them (see the Setup .NET step). The test steps themselves
+      # no longer need it: they hand `dotnet test` the compiled test assembly rather than the
+      # project, which runs it through VSTest without evaluating the project (the project form,
+      # even with --no-build --no-restore, fails without obj/project.assets.json).
       - name: Restore
+        if: steps.shard.outputs.restore == '1'
         run: dotnet restore
 
       # The shell-integration tests under tests/Ntilde.App.Tests/CommandAssist/ShellIntegration/Integration
       # spawn real bash/zsh/fish via the production PTY path. bash is
       # preinstalled on ubuntu-latest; zsh and fish are not on ubuntu-24.04,
       # so install them here -- otherwise ZshShellIntegrationTests and
-      # FishShellIntegrationTests skip instead of running.
+      # FishShellIntegrationTests skip instead of running. Only on the shard that runs them.
       - name: Install zsh and fish (Linux)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && steps.shard.outputs.shells == '1'
         run: sudo apt-get update && sudo apt-get install -y zsh fish
 
       # Gating lane: the non-headless test projects. These are deterministic and
       # MUST pass. The filter drops the lanes that run in their own jobs (replay,
       # render-metrics, pty-smoke, stress, golden-shared-png). Once per OS, on the rest shard.
+      # Each project runs from its compiled assembly (see the Restore step); the results
+      # directory keeps each trx beside its project, where the project form put it.
       - name: Test (unit — gating, non-headless projects)
         if: matrix.shard == 'rest'
-        env:
-          SKIP_RUST_NATIVE_BUILD: '1'
         shell: bash
         run: |
           set -e
           filter="Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng"
           for proj in VT Rendering Architecture Platform McpServer Mux; do
             echo "::group::Ntilde.$proj.Tests"
-            dotnet test "tests/Ntilde.$proj.Tests" -c "$CONFIGURATION" --no-build --no-restore \
-              --filter "$filter" --logger "trx;LogFileName=unit_${proj}.trx"
+            dotnet test "tests/Ntilde.$proj.Tests/bin/$CONFIGURATION/net10.0/Ntilde.$proj.Tests.dll" \
+              --filter "$filter" --results-directory "tests/Ntilde.$proj.Tests/TestResults" \
+              --logger "trx;LogFileName=unit_${proj}.trx"
             echo "::endgroup::"
           done
-
-      # Which part of the headless main lane this job runs: the filter is ANDed onto the lane's
-      # own exclusions in the headless test step below, and the floor goes to the gate. Self-tests the
-      # partition first, because a shard that silently owned nothing would pass its own gate.
-      #
-      # Expressions reach this job's run blocks through env, never by interpolation into the
-      # script text - the same rule release.yml follows (githubactions:S7630).
-      - name: Select the App.Tests shard
-        id: shard
-        shell: bash
-        env:
-          SHARD: ${{ matrix.shard }}
-        run: |
-          py=python3
-          command -v "$py" >/dev/null 2>&1 || py=python
-          "$py" scripts/tests/app_tests_shard_tests.py > /dev/null || {
-            "$py" scripts/tests/app_tests_shard_tests.py; exit 1; }
-          "$py" scripts/ci/app-tests-shard.py "$SHARD" | tee -a "$GITHUB_OUTPUT"
 
       # The Avalonia-headless suite (Ntilde.App.Tests). BLOCKING - on failures, on hangs, and on
       # a non-zero exit nobody can account for - but the verdict is given by the gate step
@@ -561,7 +575,7 @@ jobs:
           # kill a whole collection without writing a result, so the trx cannot report them and
           # the gate has to read the log to see them at all.
           set -o pipefail
-          dotnet test tests/Ntilde.App.Tests -c "$CONFIGURATION" --no-build --no-restore \
+          dotnet test "tests/Ntilde.App.Tests/bin/$CONFIGURATION/net10.0/Ntilde.App.Tests.dll" \
             --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot&$SHARD_FILTER" \
             --blame-hang-timeout 5m --blame-hang-dump-type mini \
             --results-directory tests/Ntilde.App.Tests/TestResults/main \
@@ -591,7 +605,7 @@ jobs:
         run: |
           mkdir -p tests/Ntilde.App.Tests/TestResults/platformboot
           set -o pipefail
-          dotnet test tests/Ntilde.App.Tests -c "$CONFIGURATION" --no-build --no-restore \
+          dotnet test "tests/Ntilde.App.Tests/bin/$CONFIGURATION/net10.0/Ntilde.App.Tests.dll" \
             --filter "Lane=PlatformBoot&Category!=GoldenSharedPng" \
             --blame-hang-timeout 5m --blame-hang-dump-type mini \
             --results-directory tests/Ntilde.App.Tests/TestResults/platformboot \

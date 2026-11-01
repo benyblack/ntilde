@@ -22,7 +22,7 @@ public static class MuxDiscovery
     {
         string? overrideRoot = Environment.GetEnvironmentVariable(RootOverrideEnvVar);
         if (!string.IsNullOrWhiteSpace(overrideRoot)) return Path.GetFullPath(overrideRoot);
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName);
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify), AppName);
     }
 
     public static string GetDescriptorPath() => GetDescriptorPath(GetRootDirectory());
