@@ -182,11 +182,10 @@ public sealed class CommandAssistServices
     /// <c>JsonHistoryStore</c> was stateless per operation.
     /// </para>
     /// <para>
-    /// <see cref="JsonlHistoryStore"/> is not: it caches an index and a physical line count, and
-    /// compaction rewrites the whole file from that cache. Two live instances over one file would
-    /// each rewrite from their own stale view - the older instance resurrecting entries the newer
-    /// one's cap deleted, and either one dropping the other's appends. So the cap is pushed into
-    /// the existing instance instead, and no code path in this class ever nulls the field.
+    /// <see cref="JsonlHistoryStore"/> caches an index and physical line count. Its shared file
+    /// lease coordinates other instances and processes; retaining this instance also keeps all
+    /// panes on the same live cap and avoids rebuilding their cache on a settings change. The cap
+    /// is pushed into the existing instance, and no code path in this class ever nulls the field.
     /// </para>
     /// </remarks>
     public void ApplyHistoryRetentionLimit(int maxHistoryEntries)
