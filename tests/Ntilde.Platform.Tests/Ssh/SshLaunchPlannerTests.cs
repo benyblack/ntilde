@@ -105,7 +105,7 @@ public sealed class SshLaunchPlannerTests
 
     /// <summary>
     /// Codex D2: a profile the store holds as it is - its block and extra arguments unchanged; its name or install
-    /// metadata may differ - gets the usual plan, over the shared generated config.
+    /// metadata may differ - gets the usual plan, over the generated config snapshot.
     /// </summary>
     [Fact]
     public void PlanFor_a_profile_the_store_holds_as_it_is_is_the_usual_plan()
@@ -125,7 +125,7 @@ public sealed class SshLaunchPlannerTests
 
             string[] expected = ["-F", plan.ConfigFilePath, $"ntilde_{stored.Id:N}", "-o", "ServerAliveInterval=7", "-v"];
             Assert.Equal(expected, plan.Arguments);
-            Assert.Equal(Path.Combine(root, "ssh_config.generated"), plan.ConfigFilePath);
+            Assert.StartsWith(Path.Combine(root, "ssh_config.generated."), plan.ConfigFilePath, StringComparison.Ordinal);
         }
         finally
         {
@@ -136,7 +136,7 @@ public sealed class SshLaunchPlannerTests
     /// <summary>
     /// Codex D2: a snapshot the store no longer holds as it is - the profile was edited to another host - gets a plan
     /// that reads no config file: its own block as <c>-o</c> options, after its extra arguments, which ssh lets win
-    /// as over a config file. The shared generated file, every other launch's, is not written.
+    /// as over a config file. No generated config snapshot is written.
     /// </summary>
     [Fact]
     public void PlanFor_an_edited_profiles_snapshot_reads_no_config_file_and_passes_its_block_as_options()
@@ -159,7 +159,7 @@ public sealed class SshLaunchPlannerTests
             Assert.Contains("HostName first.example", compiler.BuildHostOptions(snapshot));
             Assert.Contains("ProxyJump ops@bastion.example:2200", compiler.BuildHostOptions(snapshot));
             Assert.Equal("none", plan.ConfigFilePath);
-            Assert.False(File.Exists(Path.Combine(root, "ssh_config.generated")));
+            Assert.Empty(Directory.GetFiles(root, "ssh_config.generated*"));
         }
         finally
         {
@@ -169,7 +169,7 @@ public sealed class SshLaunchPlannerTests
 
     /// <summary>
     /// Codex D2, residual R4: a self-contained plan is asked for whatever the store holds - a pinned connection's - so
-    /// a save that rewrites the shared generated file between the check and ssh reading it cannot redirect it.
+    /// the plan is independent of the store and of generated configuration snapshots.
     /// </summary>
     [Fact]
     public void PlanFor_self_contained_reads_no_config_file_even_for_the_stores_own_profile()
@@ -187,7 +187,7 @@ public sealed class SshLaunchPlannerTests
             string[] options = compiler.BuildHostOptions(stored).SelectMany(option => new[] { "-o", option }).ToArray();
             string[] expected = ["-F", "none", $"ntilde_{stored.Id:N}", "-o", "ServerAliveInterval=7", .. options];
             Assert.Equal(expected, plan.Arguments);
-            Assert.False(File.Exists(Path.Combine(root, "ssh_config.generated")));
+            Assert.Empty(Directory.GetFiles(root, "ssh_config.generated*"));
         }
         finally
         {

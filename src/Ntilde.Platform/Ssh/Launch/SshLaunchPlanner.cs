@@ -66,13 +66,11 @@ public sealed class SshLaunchPlanner : ISshLaunchPlanner
     /// codex D2). Unless <paramref name="selfContained"/>, when the store's profile with that id compiles to the same
     /// <c>Host</c> block and has the same extra arguments, this is <see cref="Plan(Guid, IReadOnlyList{string}?)"/>. With
     /// <paramref name="selfContained"/> - a pinned connection's every attempt (residual R4) - or otherwise, it reads no
-    /// config file, so a save that rewrites the shared generated file between this check and ssh reading it cannot
-    /// redirect it:
+    /// config file, independently of the store and generated configuration snapshots:
     /// <c>["-F", "none", alias, ...ExtraSshArgs, ...extraArgs, "-o", option, ...]</c>, with the profile's block
     /// (<see cref="IOpenSshConfigCompiler.BuildHostOptions"/>) as <c>-o</c> options - after the extra arguments, so
     /// those win over them as they win over a config file (ssh keeps an option's first value). It writes nothing:
-    /// the shared generated file is every other launch's, compiled from the store, and must not describe a target
-    /// the store no longer has.
+    /// the attempt's own block need not describe a target the store still has.
     /// </summary>
     public SshLaunchPlan PlanFor(SshProfile profile, IReadOnlyList<string>? extraArgs = null, bool selfContained = false)
     {

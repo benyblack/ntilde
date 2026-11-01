@@ -723,7 +723,7 @@ it).
   profile, and the install metadata does only while the profile names that destination. So an edited
   profile cannot send the reconnects and kills of shells on one host to another. A pinned attempt's
   OpenSSH plan is self-contained: `-F none` and the attempt profile's block as `-o` options
-  (`SshLaunchPlanner.PlanFor`), never the shared generated config a save may rewrite under it.
+  (`SshLaunchPlanner.PlanFor`), independent of generated configuration snapshots.
 - **The proxy** (`ntilde-mux proxy --stdio`, `Ntilde.Mux.Cli.MuxProxyCommand`) connects to the
   host-local daemon or spawns one (`MuxDaemonLauncher.EnsureEndpointStreamAsync`), writes the
   preamble, then copies bytes on two dedicated threads. It exits 0 when stdin ends; 3 when the
@@ -863,6 +863,13 @@ it).
   jump host or proxy (`MuxListingError.ThroughJumpHost`): BatchMode does not reach a ProxyJump hop, so
   its prompt could reach the user's terminal. Reasons are worded from `MuxListingError`, remote titles
   are `RemoteOutputText.Quote`d, and each failure's own text goes to `logs/mux-ls-all.log`.
+
+- Generated OpenSSH configuration is a content snapshot: Platform publishes complete UTF-8 bytes
+  by atomic rename to `ssh_config.generated.<SHA256>`, then returns that path with the profile alias.
+  Cache hits compare the actual bytes; no sidecar is trusted. Concurrent compiler instances and
+  processes may publish the same content, while different profile snapshots get different paths.
+  A later compile cannot retarget a pending SSH/SCP launch. Prior snapshots and the unused legacy
+  config/hash pair are retained; compilation does not delete files a pending launch may need.
 
 - OpenSSH colon-delimited endpoints use `OpenSshEndpoint.FormatHost`: IPv6 literals are bracketed
   in ProxyJump, local/remote/dynamic forwarding and legacy SCP operands, including the App legacy

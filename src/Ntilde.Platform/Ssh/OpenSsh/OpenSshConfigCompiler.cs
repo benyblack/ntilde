@@ -8,8 +8,6 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
 {
     private readonly object _syncRoot = new();
     private readonly string _sshRootDirectory;
-    private readonly string _generatedConfigPath;
-    private readonly string _generatedHashPath;
     private readonly OpenSshCompilerOptions _options;
 
     public OpenSshConfigCompiler(string? sshRootDirectory = null, OpenSshCompilerOptions? options = null)
@@ -17,10 +15,12 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
         _sshRootDirectory = string.IsNullOrWhiteSpace(sshRootDirectory)
             ? GetDefaultSshRootDirectory()
             : Path.GetFullPath(sshRootDirectory);
-        _generatedConfigPath = Path.Combine(_sshRootDirectory, "ssh_config.generated");
-        _generatedHashPath = Path.Combine(_sshRootDirectory, "ssh_config.generated.hash");
         _options = options ?? new OpenSshCompilerOptions();
     }
+
+    // Deterministic publication interleavings in the compiler tests.
+    internal Action? BeforeConfigPublicationForTest { get; set; }
+    internal Action? AfterConfigPublishedForTest { get; set; }
 
     public OpenSshCompilationResult Compile(IReadOnlyList<SshProfile> profiles, Guid launchProfileId)
     {
@@ -35,7 +35,11 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
             .ToList();
 
         string configText = BuildConfigText(orderedProfiles);
-        string newHash = ComputeHash(configText);
+        byte[] configBytes = Encoding.UTF8.GetBytes(configText);
+        string newHash = Convert.ToHexString(SHA256.HashData(configBytes));
+        // Each content snapshot has its own path: another compiler/process cannot
+        // retarget a returned plan while ssh is waiting to open its config.
+        string configPath = Path.Combine(_sshRootDirectory, $"ssh_config.generated.{newHash}");
 
         lock (_syncRoot)
         {
@@ -46,39 +50,36 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
                 Directory.CreateDirectory(Path.GetDirectoryName(GetKnownHostsFilePath())!);
             }
 
-            bool isCached = false;
-            if (File.Exists(_generatedConfigPath) && File.Exists(_generatedHashPath))
+            if (!HasExpectedContent(configPath, configBytes))
             {
-                try
-                {
-                    string existingHash = File.ReadAllText(_generatedHashPath).Trim();
-                    isCached = string.Equals(existingHash, newHash, StringComparison.Ordinal);
-                }
-                catch
-                {
-                    isCached = false;
-                }
-            }
-
-            if (!isCached)
-            {
-                WriteFileAtomically(_generatedConfigPath, configText);
-                WriteFileAtomically(_generatedHashPath, newHash);
+                BeforeConfigPublicationForTest?.Invoke();
+                WriteFileAtomically(configPath, configBytes);
+                AfterConfigPublishedForTest?.Invoke();
             }
         }
 
         return new OpenSshCompilationResult
         {
-            ConfigFilePath = _generatedConfigPath,
+            ConfigFilePath = configPath,
             Alias = BuildAlias(launchProfile.Id)
         };
     }
 
-    private static string ComputeHash(string text)
+    private static bool HasExpectedContent(string path, ReadOnlySpan<byte> expected)
     {
-        byte[] bytes = Encoding.UTF8.GetBytes(text);
-        byte[] hashBytes = SHA256.HashData(bytes);
-        return Convert.ToHexString(hashBytes);
+        try
+        {
+            // Readers allow atomic repair/publication by another compiler on Windows too.
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            if (stream.Length != expected.Length) return false;
+            byte[] actual = new byte[expected.Length];
+            stream.ReadExactly(actual);
+            return actual.AsSpan().SequenceEqual(expected);
+        }
+        catch (IOException)
+        {
+            return false;
+        }
     }
 
     private string BuildConfigText(IReadOnlyList<SshProfile> profiles)
@@ -250,22 +251,27 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
         return string.Join(",", chain);
     }
 
-    private static void WriteFileAtomically(string path, string text)
+    private static void WriteFileAtomically(string path, byte[] content)
     {
         string directory = Path.GetDirectoryName(path)
             ?? throw new InvalidOperationException("Generated config directory is missing.");
         string tempPath = Path.Combine(directory, $"{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
 
-        File.WriteAllText(tempPath, text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         try
         {
-            if (File.Exists(path))
-            {
-                File.Move(tempPath, path, overwrite: true);
-            }
-            else
+            File.WriteAllBytes(tempPath, content);
+            try
             {
                 File.Move(tempPath, path);
+            }
+            catch (IOException) when (File.Exists(path))
+            {
+                // Another process may have published the same snapshot after our cache
+                // check. Leave it in place, including while ssh holds it open on Windows.
+                if (!HasExpectedContent(path, content))
+                {
+                    File.Move(tempPath, path, overwrite: true);
+                }
             }
         }
         finally
