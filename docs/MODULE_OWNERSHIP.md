@@ -645,6 +645,11 @@ invariant changes.
   duplicate/escaped/case-variant keys. Source and recovery files remain untouched. Unsafe JSON
   or profile shapes fail closed; a required pre-import/restore snapshot then refuses the mutation.
   Snapshot dedupe hashes the sanitized settings bytes, never preserved legacy credentials.
+- Snapshot identity hashes the captured sanitized bundle's entry paths and uncompressed bytes,
+  then publishes that same bundle. Live files are never re-read for the hash. Catalog/path order
+  and hash format stay compatible, ZIP metadata is excluded, and hashing uses bounded memory.
+  Temporary captures are outside the catalog and removed on dedupe/failure. This guarantees
+  hash/archive agreement, not a transaction across all files in the live tree.
 - Import/restore join selected profile/snippet stores' stable `.lock` sidecars before rollback
   snapshots and merge baseline reads, holding them through commit and rollback. Multiple locks
   use sorted full paths; acquisition contention has a shared five-second ceiling. Lock files and

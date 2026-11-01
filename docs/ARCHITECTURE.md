@@ -99,6 +99,12 @@ changing live/recovery files or accessing credential storage. Duplicate, escaped
 keys are covered. Unsafe settings JSON/shapes fail closed, including mandatory pre-import/restore
 snapshots; snapshot dedupe uses sanitized bytes so its ids do not fingerprint those credentials.
 
+Snapshot dedupe hashes the paths and uncompressed entries of one temporary sanitized bundle,
+then publishes that same bundle. Concurrent live saves cannot make the id describe different
+bytes. Catalog/path ordering and hash format remain compatible; ZIP metadata is excluded, hashing
+streams with bounded memory, and captures are removed on dedupe or failure. The capture is a set
+of archived file reads, not a filesystem-wide transaction.
+
 Backup import/restore also participates in the profile/snippet stores' stable sidecar file locks.
 Selected stores stay leased from before the rollback snapshot and merge reads through commit or
 rollback, in sorted path order. The shared acquisition budget is five seconds; permanent errors

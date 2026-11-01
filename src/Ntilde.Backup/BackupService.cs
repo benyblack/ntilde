@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -998,15 +999,29 @@ public sealed class BackupService
     /// </remarks>
     public SnapshotInfo? Snapshot(SnapshotReason reason)
     {
+        string? capturedBundle = null;
         try
         {
+            var now = _timeProvider.GetUtcNow();
+            Directory.CreateDirectory(BackupsDirectory);
+            capturedBundle = Path.Combine(BackupsDirectory, $".snapshot-{Guid.NewGuid():N}.tmp");
+
+            // Capture once through the common sanitizing writer. Hash and publish these same
+            // bytes; another process saving live configuration cannot mislabel the archive.
+            // ExportCore bypasses public Export's protected-destination guard for this internal path.
+            var outcome = ExportCore(capturedBundle, categories: null);
+            if (!outcome.Success)
+            {
+                _log($"[backup] snapshot failed: {outcome.Message}");
+                return null;
+            }
             // Only the first SnapshotHashPrefixLength hex chars survive on disk (they're
             // embedded in the file name), so that's the granularity ListSnapshots can ever
             // recover. Comparing against the full 64-char hash here would compare unequal
             // length strings and never match, silently disabling dedupe - so the comparison
             // (and the stored ContentHash) must use the same truncated form that
             // TryParseSnapshot parses back out of the id.
-            string hashPrefix = ComputeContentHash()[..SnapshotHashPrefixLength];
+            string hashPrefix = ComputeContentHash(capturedBundle)[..SnapshotHashPrefixLength];
 
             if (reason == SnapshotReason.Auto)
             {
@@ -1018,21 +1033,11 @@ public sealed class BackupService
                 }
             }
 
-            var now = _timeProvider.GetUtcNow();
             string id = $"{ReasonToken(reason)}-{now.UtcDateTime.ToString(SnapshotTimestampFormat, CultureInfo.InvariantCulture)}-{hashPrefix}";
             string path = Path.Combine(BackupsDirectory, id + BundleExtension);
 
-            Directory.CreateDirectory(BackupsDirectory);
-
-            // F2: ExportCore, not Export - this write's destination is inside BackupsDirectory,
-            // one of the paths the public Export's guard rejects for an arbitrary caller-supplied
-            // destination. See Export's own remarks on why this internal call is exempt.
-            var outcome = ExportCore(path, categories: null);
-            if (!outcome.Success)
-            {
-                _log($"[backup] snapshot failed: {outcome.Message}");
-                return null;
-            }
+            File.Move(capturedBundle, path, overwrite: true);
+            capturedBundle = null;
 
             // A snapshot exists on disk at this point - Export already wrote it durably. A
             // pruning failure (e.g. Directory.GetFiles throwing on BackupsDirectory) must not
@@ -1054,6 +1059,14 @@ public sealed class BackupService
         {
             _log($"[backup] snapshot failed: {ex.Message}");
             return null;
+        }
+        finally
+        {
+            if (capturedBundle is not null)
+            {
+                try { File.Delete(capturedBundle); }
+                catch (Exception ex) { _log($"[backup] snapshot capture cleanup failed: {ex.Message}"); }
+            }
         }
     }
 
@@ -1107,56 +1120,32 @@ public sealed class BackupService
     }
 
     /// <summary>
-    /// SHA-256 over every backed-up file's bundle path and bytes, in catalog order. Computed
-    /// from the live tree rather than the zip: zip bytes carry entry timestamps, so two
-    /// archives of identical content do not compare equal.
+    /// SHA-256 over captured entry paths and uncompressed bytes in the existing catalog/path
+    /// order. ZIP metadata is excluded, preserving dedupe ids for unchanged content. Streaming
+    /// from the bundle bounds hashing memory independently of the configuration's total size.
     /// </summary>
-    private string ComputeContentHash()
+    private static string ComputeContentHash(string bundlePath)
     {
+        using var zip = ZipFile.OpenRead(bundlePath);
         using var sha = SHA256.Create();
-        using var buffer = new MemoryStream();
-
+        using var hashStream = new CryptoStream(Stream.Null, sha, CryptoStreamMode.Write, leaveOpen: true);
         foreach (var entry in BackupCatalog.Entries)
         {
-            string source = BackupCatalog.ResolveSource(RootDirectory, entry);
-
-            if (entry.IsDirectory)
+            string prefix = entry.BundlePath + "/";
+            var files = zip.Entries
+                .Where(file => entry.IsDirectory
+                    ? file.FullName.StartsWith(prefix, StringComparison.Ordinal)
+                    : string.Equals(file.FullName, entry.BundlePath, StringComparison.Ordinal))
+                .OrderBy(file => file.FullName, StringComparer.Ordinal);
+            foreach (var file in files)
             {
-                if (!Directory.Exists(source)) continue;
-
-                // Sort on the forward-slash-normalized relative path that actually gets hashed,
-                // not the raw OS path: '\' (0x5C) and '/' (0x2F) sit at different points in
-                // ASCII, so a directory and a sibling file whose names diverge in that range
-                // could sort differently on Windows vs Linux if we ordered by the native path,
-                // hashing an identical tree to different digests across platforms.
-                var files = Directory.GetFiles(source, "*", SearchOption.AllDirectories)
-                    .Select(file => (File: file, Relative: Path.GetRelativePath(source, file).Replace('\\', '/')))
-                    .OrderBy(f => f.Relative, StringComparer.Ordinal);
-
-                foreach (var (file, relative) in files)
-                {
-                    AppendToHash(buffer, $"{entry.BundlePath}/{relative}", File.ReadAllBytes(file));
-                }
-            }
-            else if (File.Exists(source))
-            {
-                // Dedupe ids must not become fingerprints of a preserved legacy password.
-                byte[] content = entry.BundlePath == SettingsBackupContent.BundlePath
-                    ? SettingsBackupContent.Read(source)
-                    : File.ReadAllBytes(source);
-                AppendToHash(buffer, entry.BundlePath, content);
+                hashStream.Write(System.Text.Encoding.UTF8.GetBytes(file.FullName + "\n"));
+                using var content = file.Open();
+                content.CopyTo(hashStream);
             }
         }
-
-        buffer.Position = 0;
-        return Convert.ToHexString(sha.ComputeHash(buffer)).ToLowerInvariant();
-    }
-
-    private static void AppendToHash(Stream target, string path, byte[] content)
-    {
-        byte[] pathBytes = System.Text.Encoding.UTF8.GetBytes(path + "\n");
-        target.Write(pathBytes);
-        target.Write(content);
+        hashStream.FlushFinalBlock();
+        return Convert.ToHexString(sha.Hash!).ToLowerInvariant();
     }
 
     /// <summary>Keeps the union of the newest <see cref="MaxSnapshots"/> and everything inside the retention window.</summary>
