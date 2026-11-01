@@ -54,12 +54,12 @@
     "cleanedUpAt": "2026-11-01T16:56:20.438Z"
   },
   "after": {
-    "sourceCommit": "190eab1575087f3c5cd95ac5770ebd08b4e9ebb9",
-    "appVersion": "0.12.0+190eab1575087f3c5cd95ac5770ebd08b4e9ebb9",
-    "measuredAt": "2026-11-01T17:28:46.011Z",
-    "localDirectory": "artifacts/terminfo/owned-IlHkZI",
-    "rawSha256": "704fc0babb01c107d0b072213ce2e78fc2c3fd17dbeefaeb39440f9d7ebaf858",
-    "assemblySha256": "bfa237837abe6e62a0a770cbf9121baa50771cc1ab306efca99f8525a0e1ba16",
+    "sourceCommit": "98a80a9a8d06280081854d5d26185fbb81374810",
+    "appVersion": "0.12.0+98a80a9a8d06280081854d5d26185fbb81374810",
+    "measuredAt": "2026-11-01T18:08:55.545Z",
+    "localDirectory": "artifacts/terminfo/owned-EA6IpC",
+    "rawSha256": "52d75356645aada057be68d76332bd8d4974b23b9211d05c7fba018e911686ab",
+    "assemblySha256": "b4dba1bc4a1c80de2c2b12da8323d05cd97d35fefa1b7b7c535bf6650cfdc225",
     "counts": {
       "inconclusive": 177,
       "supported": 78
@@ -69,8 +69,8 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "runId": "d53bbd21e4f83239e11e26a1024de866",
-    "ownerRunId": "844e0923ed62d652cb18a444ff877c42",
+    "runId": "17a3a26709078180f43b8dc9174430e0",
+    "ownerRunId": "e2382da95aae28d6731b893c34150673",
     "suiteComplete": false,
     "ungradedDiagnostics": {
       "cursor.reverse-wrap": {
@@ -79,7 +79,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "cleanedUpAt": "2026-11-01T17:28:46.037Z"
+    "cleanedUpAt": "2026-11-01T18:08:55.578Z"
   },
   "unchangedOutcomeAndReasonCount": 254,
   "changes": [
@@ -163,6 +163,7 @@
     "No clipboard transfer between native applications was measured on macOS, Windows or Linux. Test-owned Avalonia DataTransfer values and fake clipboard services cover transport and permission behavior.",
     "Primary selection returns ENOSYS. Mux/headless hosts do not advertise. Persistent password grants are not stored.",
     "Write wire-data budget is 64 MiB; materialized MIME/alias expansion is capped at 128 MiB. Packets/metadata/MIME counts are also bounded.",
+    "Avalonia first native value materialization has no size/stream preflight API; its allocation is not capped by the managed conversion/retention budget.",
     "Host-assembled transfers and grants are excluded from snapshots. Raw client OSC packets can occur in recorded PTY output and incomplete parser accumulators.",
     "177 inconclusive observations, an ungraded geometry diagnostic and suiteComplete=false remain. Zero unsupported observations is not a complete compatibility score."
   ],
@@ -194,6 +195,34 @@
         }
       },
       "cleanedUpAt": "2026-11-01T17:15:35.322Z"
+    },
+    {
+      "sourceCommit": "190eab1575087f3c5cd95ac5770ebd08b4e9ebb9",
+      "appVersion": "0.12.0+190eab1575087f3c5cd95ac5770ebd08b4e9ebb9",
+      "measuredAt": "2026-11-01T17:28:46.011Z",
+      "localDirectory": "artifacts/terminfo/owned-IlHkZI",
+      "rawSha256": "704fc0babb01c107d0b072213ce2e78fc2c3fd17dbeefaeb39440f9d7ebaf858",
+      "assemblySha256": "bfa237837abe6e62a0a770cbf9121baa50771cc1ab306efca99f8525a0e1ba16",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 78
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "d53bbd21e4f83239e11e26a1024de866",
+      "ownerRunId": "844e0923ed62d652cb18a444ff877c42",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T17:28:46.037Z"
     }
   ]
 }

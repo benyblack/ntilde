@@ -8,10 +8,10 @@ clipboard transfer permissions or native application interoperability.
 | Build | Source | Local evidence | Raw SHA-256 |
 |---|---|---|---|
 | Before | `04019dbacf1c02aa7ccd85c39fcd2670ec2905eb` | `artifacts/terminfo/owned-WTxDq5` | `5291400dfd56c2b67ef7011cbd275cba9a9dd261fb3664b0fed2e9fd1b159144` |
-| After | `190eab1575087f3c5cd95ac5770ebd08b4e9ebb9` | `artifacts/terminfo/owned-IlHkZI` | `704fc0babb01c107d0b072213ce2e78fc2c3fd17dbeefaeb39440f9d7ebaf858` |
+| After | `98a80a9a8d06280081854d5d26185fbb81374810` | `artifacts/terminfo/owned-EA6IpC` | `52d75356645aada057be68d76332bd8d4974b23b9211d05c7fba018e911686ab` |
 
 The before probe ran at 2026-11-01T16:56:20.405Z and cleaned up at 2026-11-01T16:56:20.438Z.
-The after probe ran at 2026-11-01T17:28:46.011Z and cleaned up at 2026-11-01T17:28:46.037Z.
+The after probe ran at 2026-11-01T18:08:55.545Z and cleaned up at 2026-11-01T18:08:55.578Z.
 The [derived comparison](2026-11-01-clipboard-comparison.json) records the original
 query/reply traces, DLL hashes, source/input pins and ownership completion.
 The executable informational-version strings matched the stated source commits.
@@ -27,6 +27,7 @@ responses. The [paste-notification specification](https://rockorager.dev/misc/br
 defines DEC mode 5522 and its precedence over plain/bracketed paste.
 
 - Direct desktop and SSH panes opt in. Mux/headless hosts report unrecognized.
+- Each read owns one native data-transfer snapshot across all requested MIME types.
 - Binary writes assemble privately and commit once. Invalid packets abort the
   whole transaction; later write packets are ignored until a new start.
 - Base64 requires the standard alphabet, padding and canonical bits. A quartet
@@ -44,12 +45,33 @@ defines DEC mode 5522 and its precedence over plain/bracketed paste.
   once, for 15 seconds, on that TTY and default clipboard. A human-friendly
   name must accompany the token. No plain/bracketed paste is sent for that event.
 - Primary selection returns `ENOSYS`; it never falls back to the system clipboard.
+- DATA and terminal replies wait for bounded device-queue capacity off the UI
+  thread, with a five-second admission deadline per packet. A missing DATA packet
+  cannot be followed by a success DONE. The request slot stays reserved until the
+  terminal packet is admitted or delivery fails; a fast peer can request its next
+  read immediately after DONE. The existing keyboard-input reserve remains intact.
 - Closing/replacing the pane, session exit and RIS invalidate pending requests
   and paste grants. Reset cancels permission prompts. Pending work stays bounded
   across resets. One clipboard operation runs globally at a time.
 - Host-assembled transactions/grants are excluded from terminal snapshots.
   Raw client OSC packets can still occur in recorded PTY output and an incomplete
   parser accumulator. Replay/headless parsers have no clipboard callback.
+
+## Read allocation boundary
+
+Read results have a 64 MiB aggregate retention budget. The remaining budget is
+passed into each snapshot read: byte-array lengths and UTF-8 byte counts are
+checked before Ntilde retains or encodes them, bitmap pixel counts are checked
+before PNG conversion, and encoder output grows only through a bounded stream.
+The aggregate check also rejects a provider that returns more than requested.
+
+Avalonia 12.1.3's [IAsyncDataTransferItem API](https://github.com/AvaloniaUI/Avalonia/blob/12.1.3/src/Avalonia.Base/Input/IAsyncDataTransferItem.cs)
+returns an already materialized object from TryGetRawAsync and exposes no length
+or streaming preflight. That first framework/native allocation can therefore
+exceed Ntilde's budget before it can be inspected. The budget bounds Ntilde's
+conversion and retained result; it is not a hard cap on the provider's first
+allocation or total process memory. Reads still require approval or a one-use
+paste grant. No native size-preflight capability is claimed.
 
 ## Verification and limits
 
@@ -60,12 +82,14 @@ metadata, strict base64, host opt-in, reset and complete state transfer.
 padding, transaction abort/recovery, read denial, listing, reply chunking,
 primary-selection denial, live write settings, stale requests, global exclusion,
 prompt cancellation, paste-token scope/use/expiry, both size budgets, session-exit
-mode reset and response emission outside the clipboard/UI thread.
+mode reset, response emission outside the clipboard/UI thread, snapshot consistency,
+empty padded chunks, primary fragments, slow queues exceeding 768 frames, admission
+timeout/cancellation and immediate next requests after DONE.
 `AvaloniaKittyClipboardTests` round-trips test-owned binary/text MIME formats
 through Avalonia DataTransfer values; macOS MIME/UTI conversion has a separate
 deterministic regression. `PaneParserWiringTests` checks direct/mux wiring.
 
-Local verification includes 1,488 VT tests, 57 focused clipboard/wiring tests,
+Local verification includes 1,489 VT tests, 70 focused clipboard/wiring tests,
 6 conformance/report tests, platform boot
 75 passed / 4 skipped, architecture 178, mux 1,123 passed / 20 skipped, and MCP
 223. The full app main lane passed 7,633 cases and skipped 56 before the
