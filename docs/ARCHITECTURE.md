@@ -99,6 +99,11 @@ changing live/recovery files or accessing credential storage. Duplicate, escaped
 keys are covered. Unsafe settings JSON/shapes fail closed, including mandatory pre-import/restore
 snapshots; snapshot dedupe uses sanitized bytes so its ids do not fingerprint those credentials.
 
+Backup import/restore also participates in the profile/snippet stores' stable sidecar file locks.
+Selected stores stay leased from before the rollback snapshot and merge reads through commit or
+rollback, in sorted path order. The shared acquisition budget is five seconds; permanent errors
+fail immediately. Lock files/revisions remain intact, and Backup retains zero project references.
+
 ### Hard Rule
 
 > **No OS-specific logic in `Ntilde.VT`.** VT is the leaf — no Avalonia, no Skia, no native interop, no I/O. Enforced by `LayeringTests.Vt_must_be_a_leaf_assembly`.

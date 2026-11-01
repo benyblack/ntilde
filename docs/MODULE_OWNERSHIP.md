@@ -600,6 +600,11 @@ invariant changes.
   duplicate/escaped/case-variant keys. Source and recovery files remain untouched. Unsafe JSON
   or profile shapes fail closed; a required pre-import/restore snapshot then refuses the mutation.
   Snapshot dedupe hashes the sanitized settings bytes, never preserved legacy credentials.
+- Import/restore join selected profile/snippet stores' stable `.lock` sidecars before rollback
+  snapshots and merge baseline reads, holding them through commit and rollback. Multiple locks
+  use sorted full paths; acquisition contention has a shared five-second ceiling. Lock files and
+  revision contents are never replaced, truncated or deleted; permanent errors fail immediately.
+  This is a BCL file-sharing protocol, not a reference to either store assembly.
 - `BackupCommand` (the `backup` CLI verb) is the one caller-facing piece that stays behind in
   `Ntilde.App/Shell/Backup/`: it is the only consumer that needs `AppPaths`, and the CLI
   already lives in App (see the Task 7 dispatch guard on `Ntilde.App`, below). Moving it here
