@@ -117,7 +117,7 @@ public sealed class BackupService
             BundleWriter.Write(RootDirectory, destinationPath, present, manifest);
             return BackupOutcome.Ok($"Exported {present.Length} categories to {destinationPath}.");
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidDataException)
         {
             return BackupOutcome.Fail(
                 BackupFailureKind.WriteFailed,
@@ -1113,7 +1113,11 @@ public sealed class BackupService
             }
             else if (File.Exists(source))
             {
-                AppendToHash(buffer, entry.BundlePath, File.ReadAllBytes(source));
+                // Dedupe ids must not become fingerprints of a preserved legacy password.
+                byte[] content = entry.BundlePath == SettingsBackupContent.BundlePath
+                    ? SettingsBackupContent.Read(source)
+                    : File.ReadAllBytes(source);
+                AppendToHash(buffer, entry.BundlePath, content);
             }
         }
 

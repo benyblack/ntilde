@@ -41,25 +41,26 @@ public sealed class BackupImportTests
     }
 
     /// <summary>
-    /// I4: malformed LOCAL content must not abort the import — it is treated as absent so the
-    /// bundle wins wholesale, exactly as if the file did not exist. (Malformed BUNDLE content is
-    /// the opposite case — see Import_RejectsBundleWithZipSlipEntry_AsTypedFailureNotThrow for a
-    /// bundle-side corruption — and correctly aborts instead.)
+    /// #718: unsafe local settings cannot be copied into the mandatory rollback snapshot.
+    /// Refuse import rather than exporting possible credentials from malformed JSON.
     /// </summary>
     [Fact]
-    public void Merge_Settings_CorruptLocalJson_BundleWinsWholesale()
+    public void Merge_Settings_CorruptLocalJson_RefusesWithoutSafePreImportSnapshot()
     {
         using var source = BackupTestTree.CreatePopulated();
         source.WriteFile("settings.json", """{"FontSize":42}""");
         using var target = BackupTestTree.CreatePopulated();
         target.WriteFile("settings.json", "{not json");
         string bundle = ExportFrom(source);
+        var service = new BackupService(target.Root, Clock());
 
-        var outcome = new BackupService(target.Root, Clock()).Import(bundle, ImportMode.Merge);
+        var outcome = service.Import(bundle, ImportMode.Merge);
 
-        Assert.True(outcome.Success, outcome.Message);
-        using var settings = target.ReadJson("settings.json");
-        Assert.Equal(42, settings.RootElement.GetProperty("FontSize").GetInt32());
+        Assert.False(outcome.Success);
+        Assert.Equal(BackupFailureKind.WriteFailed, outcome.Failure);
+        Assert.Contains("pre-import snapshot", outcome.Message, StringComparison.Ordinal);
+        Assert.Equal("{not json", target.ReadFile("settings.json"));
+        Assert.Empty(service.ListSnapshots());
     }
 
     /// <summary>
@@ -79,10 +80,17 @@ public sealed class BackupImportTests
     public void Merge_Settings_BundleSettingsIsWrongJsonRootKind_FailsInsteadOfSilentlySkipping()
     {
         using var source = BackupTestTree.CreatePopulated();
-        source.WriteFile("settings.json", "[1,2,3]");
         using var target = BackupTestTree.CreatePopulated();
         string originalTargetSettings = target.ReadFile("settings.json");
         string bundle = ExportFrom(source);
+        // The normal writer now refuses unsafe settings. Model an untrusted hand-edited
+        // bundle so this still exercises import validation, independently of export.
+        using (var zip = System.IO.Compression.ZipFile.Open(bundle, System.IO.Compression.ZipArchiveMode.Update))
+        {
+            zip.GetEntry("settings/settings.json")!.Delete();
+            using var writer = new StreamWriter(zip.CreateEntry("settings/settings.json").Open());
+            writer.Write("[1,2,3]");
+        }
 
         var outcome = new BackupService(target.Root, Clock()).Import(bundle, ImportMode.Merge);
 
