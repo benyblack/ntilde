@@ -119,7 +119,18 @@ The terminal engine is the **single source of truth** for terminal semantics. Th
 - Maintain deterministic screen state in `TerminalBuffer` (`src/Ntilde.VT/TerminalBuffer.cs` + partial files)
 - Handle alternate-screen transitions
 - Manage scrollback (`src/Ntilde.VT/Buffer/ScrollbackPages.cs`)
-- Perform lossless reflow on resize (`src/Ntilde.VT/TerminalBuffer.ReflowEngine.cs`)
+- Perform lossless ordinary-text reflow on resize (`src/Ntilde.VT/TerminalBuffer.ReflowEngine.cs`).
+  OSC 66 blocks retain fixed physical rectangles as layout barriers; blocks clipped by a new
+  width or too tall for the new screen are discarded whole. Optional immutable row metadata,
+  separately capped at 16 MiB, carries payload/options through history, render snapshots,
+  complete state transfer and replay without growing the 12-byte packed cell. VT owns geometry
+  and edit semantics; App paints scaled/shaped glyphs and decorations through each row's clip.
+  The mux text client uses a bounded normal-size fallback until the outer terminal negotiates
+  sizing; ordinary text extraction emits each block payload once. Detected URL hit areas carry
+  coherent start/end column maps for the full top-row block width. Legacy replay restores the
+  checkpoint independently of prior seek history: if necessary, it retires older retained
+  rectangles to make room, while live output refuses a new reservation. An unchanged budget
+  refusal does not rescan history; eviction/reset or screen replacement invalidates pruning.
 - Provide read-only snapshots for rendering and replay
 
 ### 3.2 Components

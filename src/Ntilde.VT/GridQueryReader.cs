@@ -289,7 +289,7 @@ namespace Ntilde.VT
                     }
 
                     TerminalCell cell = buffer.GetCellAbsolute(col, row);
-                    if (cell.IsWideContinuation)
+                    if (cell.IsWideContinuation || buffer.GetTextSizingAbsolute(col, row) is { IsAnchor: false })
                     {
                         continue; // trailing half of a double-width cell
                     }
@@ -688,7 +688,7 @@ namespace Ntilde.VT
             var text = new StringBuilder();
             for (int col = 0; col < endCol; col++)
             {
-                if (buffer.GetCellAbsolute(col, row).IsWideContinuation)
+                if (buffer.GetCellAbsolute(col, row).IsWideContinuation || buffer.GetTextSizingAbsolute(col, row) is { IsAnchor: false })
                 {
                     continue;
                 }

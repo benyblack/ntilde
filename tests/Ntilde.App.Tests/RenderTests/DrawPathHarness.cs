@@ -56,6 +56,8 @@ internal sealed class DrawPathHarness : IDisposable
 
     public RowImageCache? RowCache { get; }
 
+    public int ScrollOffset { get; set; }
+
     /// <summary>
     /// A screenful of what a shell shows: a prompt, colored listings, bold and underlined words, a 256-color and an RGB
     /// run, and a line of wide characters.
@@ -101,7 +103,7 @@ internal sealed class DrawPathHarness : IDisposable
         var op = new TerminalDrawOperation(
             _bounds,
             Buffer,
-            scrollOffset: 0,
+            scrollOffset: ScrollOffset,
             selection: _selection,
             searchMatches: null,
             activeSearchIndex: -1,

@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "adf9120e0c0bbbca91e1e416028c300b4fd0c8f130ab537a83ca776be1d2ae09",
+  "matrixSha256": "dbc24580a285a752196666d6baf98172067305105ea1f838a2188148413fac7a",
   "summary": {
-    "totalRows": 74,
+    "totalRows": 75,
     "supportedCount": 36,
-    "partialCount": 34,
+    "partialCount": 35,
     "experimentalCount": 1,
     "notSupportedCount": 2,
     "wontSupportCount": 1,
-    "rowsWithLinkedEvidence": 55,
+    "rowsWithLinkedEvidence": 56,
     "supportedRowsWithLinkedEvidence": 36,
     "errorCount": 0,
     "warningCount": 0
@@ -68,35 +68,35 @@
       "order": 7,
       "title": "8) OSC sequences",
       "startLine": 153,
-      "endLine": 168,
-      "rowCount": 14
+      "endLine": 169,
+      "rowCount": 15
     },
     {
       "order": 8,
       "title": "9) Kitty graphics / APC",
-      "startLine": 174,
-      "endLine": 177,
+      "startLine": 175,
+      "endLine": 178,
       "rowCount": 2
     },
     {
       "order": 9,
       "title": "10) SIXEL",
-      "startLine": 183,
-      "endLine": 186,
+      "startLine": 184,
+      "endLine": 187,
       "rowCount": 2
     },
     {
       "order": 10,
       "title": "11) Clipboard, selection, and hyperlinking",
-      "startLine": 192,
-      "endLine": 196,
+      "startLine": 193,
+      "endLine": 197,
       "rowCount": 3
     },
     {
       "order": 11,
       "title": "12) Unicode width, graphemes, and font behavior",
-      "startLine": 202,
-      "endLine": 206,
+      "startLine": 203,
+      "endLine": 207,
       "rowCount": 3
     }
   ],
@@ -1440,6 +1440,44 @@
     },
     {
       "section": "8) OSC sequences",
+      "feature": "OSC 66",
+      "status": "\u26A0 Partial",
+      "specOrNotes": "",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/Osc66ProtocolTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/Osc66GridTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/Osc66StateTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/Osc66ReplayTests.cs\u0060, pixels: \u0060tests/Ntilde.App.Tests/RenderTests/Osc66RenderTests.cs\u0060",
+      "evidenceKinds": [
+        "replay",
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/Osc66RenderTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/Osc66GridTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/Osc66ProtocolTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/Osc66ReplayTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/Osc66StateTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer\u002BRenderer",
+      "knownDeviations": "\u0060s\u0060 1\u20137, \u0060w\u0060 0\u20137, \u0060n\u0060/\u0060d\u0060 0\u201315 with nonzero denominator greater than numerator, \u0060v\u0060/\u0060h\u0060 0\u20132; safe Unicode payload up to 4096 UTF-8 bytes and metadata up to 256 characters. Explicit width packs the entire payload into one block; automatic width scales graphemes individually. Fractions and alignment affect ink only. Immutable rectangular side metadata preserves the 12-byte cell ABI; an additional 16 MiB metadata budget bounds retained blocks. Overwrite, erase, shifts and line edits preserve or erase whole blocks; lower rows are skipped by ordinary text. Complete state transfer, legacy replay checkpoints and render snapshots preserve geometry, including a retained lower fragment whose anchor aged out. Rows containing blocks are physical layout barriers on resize; ordinary lines outside them reflow. Blocks clipped by the new physical width or too tall for the new screen are discarded whole. GUI rendering clips the scaled/shaped text and decorations per row; cursor keeps its ordinary cell shape. ANSI snapshot export emits OSC 66, while an unnegotiated mux text client uses a bounded normal-size fallback. No claim of exact font-pixel parity with Kitty.",
+      "sourceLine": 163
+    },
+    {
+      "section": "8) OSC sequences",
       "feature": "OSC 52",
       "status": "\u26A0 Partial",
       "specOrNotes": "",
@@ -1461,7 +1499,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "Write-only (issue #268): valid base64 decodes and raises \u0060AnsiParser.OnClipboardWrite\u0060, capped at 1 MiB decoded (rejected on encoded length before decoding, re-checked after); invalid base64 dropped silently; a sequence with no payload separator at all is ignored rather than clearing the clipboard. Targets \u0060c\u0060/\u0060p\u0060 both map to the system clipboard, other selection chars ignored. Query (\u0060?\u0060) always gets an empty-payload denial reply, never real clipboard contents \u2014 clipboard READ is unsupported by design (security). The echoed selection parameter is whitelisted to \u0060c p q s 0-7\u0060 and length-capped first: responses go to the child process\u0027s stdin, so an unsanitized echo was a command-injection primitive (PR #280 review). Gated by \u0060TerminalSettings.AllowOsc52ClipboardWrite\u0060 (default true, single global setting; per-profile/SSH-scoped opt-in is future work)",
-      "sourceLine": 163
+      "sourceLine": 164
     },
     {
       "section": "8) OSC sequences",
@@ -1482,7 +1520,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer\u002BUI",
       "knownDeviations": "Ctrl-click open path is app-level",
-      "sourceLine": 164
+      "sourceLine": 165
     },
     {
       "section": "8) OSC sequences",
@@ -1507,7 +1545,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "#271. \u00609;\u003Ctext\u003E\u0060 flattens/caps (200 chars) and raises \u0060OnDesktopNotification\u0060; \u00609;4;\u003Cstate\u003E[;\u003Cpct\u003E]\u0060 clamps pct 0-100 and raises \u0060OnProgressReported\u0060 (state 0-4, pct null when omitted; malformed payloads dropped; bare \u00604\u0060 without \u0060;\u0060 is notification text). App side: focus-gated in-app toast (\u0060Osc9NotificationsEnabled\u0060, default false, same policy as long-command notifications), per-tab progress \u2014 thin bar in vertical headers, trailing suffix in horizontal titles \u2014 and Windows taskbar progress mirroring the selected tab (\u0060Osc9ProgressReportingEnabled\u0060, default true). Progress withdraws on state 0, pane exit, and pane close",
-      "sourceLine": 165
+      "sourceLine": 166
     },
     {
       "section": "8) OSC sequences",
@@ -1528,7 +1566,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BCommand Assist",
       "knownDeviations": "Supports A/B/C/D markers; C\u0027s command from base64, plain text or kitty\u0027s \u0060cmdline_url\u0060 (fish 4); other semantic prompt extensions not audited",
-      "sourceLine": 166
+      "sourceLine": 167
     },
     {
       "section": "8) OSC sequences",
@@ -1554,7 +1592,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
       "knownDeviations": "Requires \u0060inline=1\u0060 and the \u0060File=\u0060 arg shape; no \u0060name=\u0060/\u0060size=\u0060 enforcement",
-      "sourceLine": 167
+      "sourceLine": 168
     },
     {
       "section": "8) OSC sequences",
@@ -1570,7 +1608,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BWin",
       "knownDeviations": "",
-      "sourceLine": 168
+      "sourceLine": 169
     },
     {
       "section": "9) Kitty graphics / APC",
@@ -1599,7 +1637,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
       "knownDeviations": "Native APC (non-tunneled) on Windows decodes behind \u0060TerminalSettings.AllowNativeKittyGraphics\u0060 (default on) \u2014 historically probes got \u0060ERR\u0060/images skipped; modern ConPTY passes APC through intact (live-verified 2026-09). Payload formats: container (PNG/...) plus raw \u0060f=24\u0060/\u0060f=32\u0060 sized by \u0060s=\u0060/\u0060v=\u0060, \u0060o=z\u0060 zlib inflation, and \u0060t=f\u0060 file transport read through the host-injected \u0060ReadFileBytes\u0060 delegate (App-side reader confined to \u0060%TEMP%\u0060, 64 MB cap). \u0060t=s\u0060 (shm) skips gracefully. Placement params (\u0060z\u0060, \u0060U=1\u0060, \u0060p=1\u0060, \u0060C=1\u0060) are accepted but only cursor-anchored placement is implemented.",
-      "sourceLine": 176
+      "sourceLine": 177
     },
     {
       "section": "9) Kitty graphics / APC",
@@ -1615,7 +1653,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Pruned images\u0027 bitmaps are retired by the buffer; the owning view disposes them once no in-flight snapshot session predates the retire (#166)",
-      "sourceLine": 177
+      "sourceLine": 178
     },
     {
       "section": "10) SIXEL",
@@ -1640,7 +1678,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Decoder\u002BRenderer",
       "knownDeviations": "",
-      "sourceLine": 185
+      "sourceLine": 186
     },
     {
       "section": "10) SIXEL",
@@ -1669,7 +1707,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BRenderer",
       "knownDeviations": "Default scrolling reserves rows without writing text cells or wrapping wide images. Set \u0060?80\u0060 places at page origin without moving the text cursor; reset restores scrolling. Regional and alternate-screen scrolling clip discarded pixels; right-edge clipping survives widening. Shared sessions receive initial pixel metrics at spawn and ordered updates afterward; GUI panes decode new SIXELs while the daemon measures geometry. Attach snapshots restore retained SIXEL source, placement and clipping for both screens without moving the cursor. Per pane/session, source retention is capped at 256 entries and 2 Mi UTF-16 characters; oldest or oversized sources are omitted when this budget is reached. Active captures share an additional bounded source-reference allowance of 256 entries and 2 Mi characters (at most 8 MiB retained payloads plus capture pins), preserving copied undecoded images through their final draw. Updated GUI/daemon required for shared layout parity. Existing below-image cursor and immediate trailing-newline policy is retained. Cursor-right extension \u0060?8452\u0060 is not implemented; placement remains cell-aligned.",
-      "sourceLine": 186
+      "sourceLine": 187
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1685,7 +1723,7 @@
       "hasLinkedEvidence": false,
       "ownership": "UI",
       "knownDeviations": "",
-      "sourceLine": 194
+      "sourceLine": 195
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1699,7 +1737,7 @@
       "hasLinkedEvidence": false,
       "ownership": "UI",
       "knownDeviations": "",
-      "sourceLine": 195
+      "sourceLine": 196
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1720,7 +1758,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BUI",
       "knownDeviations": "Ctrl-click open path is app-level",
-      "sourceLine": 196
+      "sourceLine": 197
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1750,7 +1788,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Deterministic 0/1/2-cell model for combining marks, emoji modifiers, ZWJ emoji, variation selectors, and regional-indicator flags. No Unicode-version pin or full UAX #11 conformance table is documented yet.",
-      "sourceLine": 204
+      "sourceLine": 205
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1783,7 +1821,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Combining/variation attachment is covered for common terminal cases, including pending-wrap boundaries. Full extended-grapheme-cluster conformance is not claimed.",
-      "sourceLine": 205
+      "sourceLine": 206
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1812,7 +1850,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Chunked ZWJ families, emoji modifiers, VS15/VS16, and chunked regional-indicator flag pairs are covered. Remaining gaps: cursor-addressing CSI remains cell-oriented, and width-changing selectors that arrive after a base glyph already placed at the last column are not guaranteed to retroactively reflow.",
-      "sourceLine": 206
+      "sourceLine": 207
     }
   ],
   "errors": [],

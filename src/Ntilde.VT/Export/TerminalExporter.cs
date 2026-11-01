@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Ntilde.VT.Export
 {
-    public static class TerminalExporter
+    public static partial class TerminalExporter
     {
         /// <summary>
         /// The absolute row of screen row 0, for the absolute reads the exports make (cells, and the underline
@@ -27,7 +27,7 @@ namespace Ntilde.VT.Export
                     for (int c = 0; c < buffer.Cols; c++)
                     {
                         var cell = buffer.GetCellAbsolute(c, screenTop + r);
-                        if (cell.IsWideContinuation) continue;
+                        if (cell.IsWideContinuation || buffer.GetTextSizingAbsolute(c, screenTop + r) is { IsAnchor: false }) continue;
 
                         string text = buffer.GetGrapheme(c, r);
                         rowSb.Append(text);
@@ -129,7 +129,7 @@ namespace Ntilde.VT.Export
             for (int c = 0; c < buffer.Cols; c++)
             {
                 var cell = buffer.GetCellAbsolute(c, absRow);
-                if (cell.IsWideContinuation) continue;
+                if (cell.IsWideContinuation || buffer.GetTextSizingAbsolute(c, absRow) is { IsAnchor: false }) continue;
 
                 string text = buffer.GetGrapheme(c, row);
                 rowSb.Append(text);
@@ -153,6 +153,8 @@ namespace Ntilde.VT.Export
                 bool isFirstCell = true;
 
                 int screenTop = ScreenTop(buffer);
+                bool sizedOutput = buffer.HasSizedTextOnScreen();
+                if (sizedOutput) AppendClippedSizingPrelude(sb, buffer, screenTop);
 
                 for (int r = 0; r < buffer.Rows; r++)
                 {
@@ -165,6 +167,7 @@ namespace Ntilde.VT.Export
                     {
                         var cell = buffer.GetCellAbsolute(eol, absRow);
                         if (cell.Character != ' ' || !cell.IsDefaultBackground
+                            || buffer.GetTextSizingAbsolute(eol, absRow) != null
                             || (cell.IsUnderline && buffer.GetUnderlineAbsolute(eol, absRow) != null))
                         {
                             break;
@@ -172,11 +175,20 @@ namespace Ntilde.VT.Export
                         eol--;
                     }
 
-                    for (int c = 0; c <= eol; c++)
+                    int c = 0;
+                    while (c <= eol)
                     {
                         var cell = buffer.GetCellAbsolute(c, absRow);
-                        if (cell.IsWideContinuation) continue;
+                        if (cell.IsWideContinuation) { c++; continue; }
 
+                        var sizing = buffer.GetTextSizingAbsolute(c, absRow);
+                        if (sizing is { IsAnchor: false })
+                        {
+                            // Preserve a multi-row block already emitted on its top row.
+                            sb.Append("\x1b[C");
+                            c++;
+                            continue;
+                        }
                         CellUnderline? underline = cell.IsUnderline ? buffer.GetUnderlineAbsolute(c, absRow) : null;
                         if (isFirstCell || StateChanged(lastCell, cell) || underline != lastUnderline)
                         {
@@ -186,7 +198,12 @@ namespace Ntilde.VT.Export
                             isFirstCell = false;
                         }
 
-                        sb.Append(buffer.GetGrapheme(c, r));
+                        if (sizing is { IsAnchor: true })
+                        {
+                            AnsiCellWriter.AppendTextSizing(sb, sizing.Block);
+                            c += sizing.Block.Width;
+                        }
+                        else sb.Append(buffer.GetGrapheme(c++, r));
                     }
 
                     // Reset at end of line if needed
@@ -202,7 +219,10 @@ namespace Ntilde.VT.Export
                         lastUnderline = null;
                     }
 
-                    sb.AppendLine();
+                    // A sized lower row uses relative cursor skips. Reset the column explicitly,
+                    // independently of the receiving terminal's LNM mode or the exporting OS.
+                    if (sizedOutput) sb.Append("\r\n");
+                    else sb.AppendLine();
                 }
                 return sb.ToString().TrimEnd();
             }

@@ -17,7 +17,7 @@ public partial class TerminalBuffer
     }
 
     private readonly record struct SearchRow(int AbsRow, int TextStart, int TextLength);
-    private readonly record struct SearchQuery(string Text, bool CaseSensitive, Regex? Regex, LongLiteralPattern? LongLiteral);
+    private readonly record struct SearchQuery(string Text, bool CaseSensitive, Regex? Regex, LongLiteralPattern? LongLiteral, Dictionary<(int Row, int Col), int>? SizedEnds = null);
 
     public List<SearchMatch> FindMatches(string query, bool useRegex, bool caseSensitive)
     {
@@ -41,13 +41,14 @@ public partial class TerminalBuffer
         {
             int history = _isAltScreen ? 0 : _scrollback.Count;
             int totalRows = history + Rows;
+            if (_textSizingBlocks is { Count: > 0 }) pattern = pattern with { SizedEnds = new() };
             // Reuse these across hard lines instead of allocating a builder and map for every row.
             var text = new StringBuilder(Cols);
             var columns = new List<SearchColumn>(Cols);
             var rows = new List<SearchRow>();
             for (int row = 0; row < totalRows; row++)
             {
-                bool wrapped = AppendSearchRow(row, history, text, columns, rows);
+                bool wrapped = AppendSearchRow(row, history, text, columns, rows, pattern.SizedEnds);
                 if (wrapped && row + 1 < totalRows) continue;
                 if (!SearchLogicalLine(pattern, text.ToString(), columns, rows, matches))
                 {
@@ -57,13 +58,14 @@ public partial class TerminalBuffer
                 text.Clear();
                 columns.Clear();
                 rows.Clear();
+                pattern.SizedEnds?.Clear();
             }
         }
         finally { Lock.ExitReadLock(); }
         return matches;
     }
 
-    private bool AppendSearchRow(int absRow, int history, StringBuilder text, List<SearchColumn> columns, List<SearchRow> rows)
+    private bool AppendSearchRow(int absRow, int history, StringBuilder text, List<SearchColumn> columns, List<SearchRow> rows, Dictionary<(int Row, int Col), int>? sizedEnds)
     {
         ReadOnlySpan<TerminalCell> cells;
         SmallMap<string>? extended;
@@ -89,21 +91,29 @@ public partial class TerminalBuffer
         for (int col = 0; col < count; col++)
         {
             var cell = cells[col];
-            if (cell.IsWideContinuation) continue;
+            var sizing = _textSizingBlocks == null ? null : GetTextSizingAbsolute(col, absRow);
+            if (cell.IsWideContinuation || sizing is { IsAnchor: false }) continue;
+            if (sizing != null && sizedEnds != null) sizedEnds[(absRow, col)] = col + sizing.Block.Width - 1;
             var mapping = new SearchColumn(col, SearchCellEnd(cells, col) > col);
-            if (cell.HasExtendedText && extended != null && extended.TryGet(col, out string? grapheme) && grapheme != null)
-            {
-                text.Append(grapheme);
-                for (int i = 0; i < grapheme.Length; i++) columns.Add(mapping);
-            }
-            else
-            {
-                text.Append(cell.Character);
-                columns.Add(mapping);
-            }
+            AppendSearchCell(cell, extended, col, mapping, text, columns);
         }
         if (text.Length > start) rows.Add(new SearchRow(absRow, start, text.Length - start));
         return wrapped;
+    }
+
+    private static void AppendSearchCell(TerminalCell cell, SmallMap<string>? extended, int col,
+        SearchColumn mapping, StringBuilder text, List<SearchColumn> columns)
+    {
+        if (cell.HasExtendedText && extended != null && extended.TryGet(col, out string? grapheme) && grapheme != null)
+        {
+            text.Append(grapheme);
+            for (int i = 0; i < grapheme.Length; i++) columns.Add(mapping);
+        }
+        else
+        {
+            text.Append(cell.Character);
+            columns.Add(mapping);
+        }
     }
 
     private static bool SearchLogicalLine(SearchQuery query, string text,
@@ -115,13 +125,13 @@ public partial class TerminalBuffer
             try
             {
                 foreach (Match match in regex.Matches(text))
-                    if (match.Length > 0) matches.Add(CreateSearchMatch(match.Index, match.Length, columns, rows, ref physicalSpans));
+                    if (match.Length > 0) matches.Add(CreateSearchMatch(match.Index, match.Length, columns, rows, query.SizedEnds, ref physicalSpans));
             }
             catch (RegexMatchTimeoutException) { return false; }
         }
         else if (query.LongLiteral is { } linear)
         {
-            linear.AppendMatches(text, columns, rows, matches, ref physicalSpans);
+            linear.AppendMatches(text, columns, rows, matches, query.SizedEnds, ref physicalSpans);
         }
         else
         {
@@ -129,7 +139,7 @@ public partial class TerminalBuffer
             int index = text.IndexOf(query.Text, comparison);
             while (index >= 0)
             {
-                matches.Add(CreateSearchMatch(index, query.Text.Length, columns, rows, ref physicalSpans));
+                matches.Add(CreateSearchMatch(index, query.Text.Length, columns, rows, query.SizedEnds, ref physicalSpans));
                 index = text.IndexOf(query.Text, index + 1, comparison);
             }
         }
@@ -149,11 +159,12 @@ public partial class TerminalBuffer
     }
 
     private static SearchMatch CreateSearchMatch(int index, int length, List<SearchColumn> columns, List<SearchRow> rows,
-        ref SearchMatchSpan[]? physicalSpans)
+        Dictionary<(int Row, int Col), int>? sizedEnds, ref SearchMatchSpan[]? physicalSpans)
     {
+        int End(int row, SearchColumn column) => sizedEnds?.GetValueOrDefault((row, column.Start), column.End) ?? column.End;
         int end = index + length - 1;
         int first = SearchRowAt(rows, index), last = SearchRowAt(rows, end);
-        if (first == last) return new SearchMatch(rows[first].AbsRow, columns[index].Start, columns[end].End);
+        if (first == last) return new SearchMatch(rows[first].AbsRow, columns[index].Start, End(rows[last].AbsRow, columns[end]));
         if (physicalSpans == null)
         {
             physicalSpans = new SearchMatchSpan[rows.Count];
@@ -161,9 +172,9 @@ public partial class TerminalBuffer
             {
                 var source = rows[row];
                 physicalSpans[row] = new SearchMatchSpan(source.AbsRow, columns[source.TextStart].Start,
-                    columns[source.TextStart + source.TextLength - 1].End);
+                    End(source.AbsRow, columns[source.TextStart + source.TextLength - 1]));
             }
         }
-        return new SearchMatch(physicalSpans, first, last, columns[index].Start, columns[end].End);
+        return new SearchMatch(physicalSpans, first, last, columns[index].Start, End(rows[last].AbsRow, columns[end]));
     }
 }

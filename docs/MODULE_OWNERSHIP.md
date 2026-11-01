@@ -38,7 +38,21 @@ invariant changes.
 **Invariants** (enforced by architecture tests and `tests/Ntilde.VT.Tests/`)
 - Deterministic parsing — same byte stream produces the same semantic ops
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
-- Lossless reflow — resize never silently drops content
+- Lossless reflow — resize never silently drops ordinary text content. OSC 66 rectangles are
+  fixed physical layout barriers; a rectangle clipped by a narrower grid or taller than the
+  new screen is discarded whole, as permitted by the sizing protocol.
+- **OSC 66 geometry belongs to VT.** Immutable block text/options are shared by optional per-row
+  side tables, paged history and render snapshots; packed cells remain 12 bytes. Overwrite/erase
+  operate on whole rectangles and ordinary writes skip their lower rows. Additional retained
+  metadata is capped at 16 MiB; block payloads at 4096 UTF-8 bytes. Complete transfer and replay
+  restore validated rectangles before later edits, and malformed/overlapping blocks are rejected
+  before mutation. Live reservations reject before cursor/scroll mutation. Legacy replay
+  checkpoints take priority over older retained rectangles when the metadata budget is full;
+  retirement removes whole old blocks and otherwise preserves retained history. Repeated
+  refusals against an unchanged store reuse the last prune result; history eviction/reset and
+  screen replacement invalidate it. App owns clipped scaled/shaped painting and decorations. Plain-text consumers
+  emit each anchor payload once; the unnegotiated mux text client uses a bounded normal-size
+  fallback rather than changing the outer terminal's sizing policy.
 - **Search groups soft wraps into logical lines.** Hard newlines and the active screen remain
   boundaries. Each result owns logical identity while exposing inclusive physical spans; row maps
   are shared across overlapping results. Highlight snapshots clip and union inactive coverage,

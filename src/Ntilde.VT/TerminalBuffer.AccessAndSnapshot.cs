@@ -328,6 +328,7 @@ namespace Ntilde.VT
 
         private void ClearAltScreenNoLock()
         {
+            _textSizingPruneRequired = true;
             for (int i = 0; i < Rows; i++)
             {
                 var row = _viewport[i];
@@ -341,6 +342,7 @@ namespace Ntilde.VT
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
                 row.ClearUnderlines();
+                row.ClearTextSizing();
                 row.TouchRevision();
             }
         }
@@ -494,6 +496,7 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
+                EraseTextSizingRange(_cursorCol, Cols, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 if (_cursorCol >= 0 && _cursorCol < Cols) row.NoteColumnsWritten(Cols);
                 for (int i = _cursorCol; i < Cols; i++)
@@ -518,6 +521,7 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
+                EraseTextSizingRange(0, Math.Min(Cols, _cursorCol + 1), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + 1));
                 for (int i = 0; i <= _cursorCol; i++)
@@ -563,6 +567,7 @@ namespace Ntilde.VT
 
         private void ClearRowInternal(int rowIndex)
         {
+            EraseTextSizingRange(0, Cols, TextSizingAbsoluteRow(rowIndex), TextSizingAbsoluteRow(rowIndex) + 1);
             var row = _viewport[rowIndex];
             row.WrappedColumns = null;
             row.WrittenColumns = 0;
@@ -574,6 +579,7 @@ namespace Ntilde.VT
             row.ClearExtendedText();
             row.ClearHyperlinks();
             row.ClearUnderlines();
+            row.ClearTextSizing();
             row.TouchRevision();
         }
 
@@ -583,6 +589,7 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
+                EraseTextSizingRange(_cursorCol, (int)Math.Min(Cols, (long)_cursorCol + Math.Max(0, count)), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 if (count > 0 && _cursorCol >= 0 && _cursorCol < Cols)
                     row.NoteColumnsWritten((int)Math.Min(Cols, (long)_cursorCol + count));
@@ -620,6 +627,12 @@ namespace Ntilde.VT
                 int n = Math.Min(count, bottom - top + 1);
 
                 if (n <= 0) return;
+
+                int sizedTop = TextSizingAbsoluteRow(top);
+                int sizedEnd = TextSizingAbsoluteRow(bottom + 1);
+                EraseTextSizingAcrossBoundary(sizedTop);
+                EraseTextSizingAcrossBoundary(sizedEnd);
+                EraseTextSizingRange(0, Cols, sizedEnd - n, sizedEnd);
 
                 // Shift lines DOWN
                 // To insert N lines at TOP, we must move lines starting at TOP down by N.
@@ -679,6 +692,11 @@ namespace Ntilde.VT
                 int n = Math.Min(count, bottom - top + 1);
 
                 if (n <= 0) return;
+
+                int sizedTop = TextSizingAbsoluteRow(top);
+                int sizedEnd = TextSizingAbsoluteRow(bottom + 1);
+                EraseTextSizingRange(0, Cols, sizedTop, sizedTop + n);
+                EraseTextSizingAcrossBoundary(sizedEnd);
 
                 // Shift lines UP
                 // To delete N lines at TOP, we shift content from (top + n) UP to top.
@@ -948,6 +966,7 @@ namespace Ntilde.VT
                 {
                     Character = cell.Character,
                     Text = cell.HasExtendedText ? row.GetExtendedText(c) : null,
+                    TextSizing = row.GetTextSizing(c),
                     Foreground = cell.Foreground,
                     Background = cell.Background,
                     IsInverse = cell.IsInverse,
@@ -1014,6 +1033,7 @@ namespace Ntilde.VT
                 throw new InvalidOperationException("Invalid replay geometry: columns and rows must be positive.");
             byte[]? cells = string.IsNullOrEmpty(snapshot.CellsBase64) ? null : Convert.FromBase64String(snapshot.CellsBase64);
             ValidateWrittenColumns(snapshot.RowWrittenColumns, snapshot.Rows, snapshot.Cols, "legacy replay");
+            ValidateReplayTextSizing(snapshot, cells);
             if (snapshot.RowWrapColumns is { } widths)
             {
                 ValidateWrappedColumns(new TerminalScreenState
@@ -1042,9 +1062,14 @@ namespace Ntilde.VT
                 return;
             }
             ValidateReplaySnapshot(snapshot);
+            byte[]? legacyCells = string.IsNullOrEmpty(snapshot.CellsBase64) ? null : Convert.FromBase64String(snapshot.CellsBase64);
             AcquireWriteLock();
             try
             {
+                if (legacyCells != null && System.Runtime.InteropServices.MemoryMarshal.Cast<byte, TerminalCell>(legacyCells.AsSpan()).Length
+                    >= (long)snapshot.Cols * snapshot.Rows)
+                    RetireLegacyViewportTextSizing(Math.Min(snapshot.Cols, Cols), Math.Min(snapshot.Rows, Rows));
+
                 // Legacy files cannot reconstruct a save from earlier chunks. Use deterministic defaults
                 // instead of retaining banks from a previous seek on this replay window.
                 ResetSavedCursorStateToDefaultsNoLock(_savedCursors.Main);
@@ -1091,10 +1116,9 @@ namespace Ntilde.VT
                 IsHidden = snapshot.IsHidden;
 
                 // Cells
-                if (!string.IsNullOrEmpty(snapshot.CellsBase64))
+                if (legacyCells != null)
                 {
-                    byte[] cellBytes = Convert.FromBase64String(snapshot.CellsBase64);
-                    var cellSpan = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, TerminalCell>(cellBytes.AsSpan());
+                    var cellSpan = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, TerminalCell>(legacyCells.AsSpan());
 
                     int expectedCells = snapshot.Cols * snapshot.Rows;
                     if (cellSpan.Length >= expectedCells)
@@ -1114,12 +1138,14 @@ namespace Ntilde.VT
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
                             row.ClearUnderlines();
+                            row.ClearTextSizing();
                             if (snapshot.RowWrapColumns is { } widths && widths[r] >= 0)
                                 row.WrappedColumns = Math.Min(widths[r], colsToCopy);
                             row.TouchRevision();
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
                             row.ClearUnderlines();
+                            row.ClearTextSizing();
                         }
                     }
                 }
@@ -1166,6 +1192,8 @@ namespace Ntilde.VT
                         _viewport[r].SetUnderline(c, underline);
                     }
                 }
+
+                ImportTextSizingState(ReplaySizingEnvelope(snapshot), activeOnly: true);
 
                 // Restore deferred autowrap ("pw", absent=false in legacy files):
                 // a snapshot taken right after output filled the last column must

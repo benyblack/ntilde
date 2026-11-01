@@ -12,7 +12,7 @@ namespace Ntilde.VT.Storage
     /// Call <see cref="ReturnToPool"/> when the page is no longer needed so the
     /// array is returned to the pool.
     /// </summary>
-    public sealed class TerminalPage
+    public sealed partial class TerminalPage
     {
         /// <summary>Number of rows this page can hold.</summary>
         public readonly int RowsInPage;
@@ -121,6 +121,7 @@ namespace Ntilde.VT.Storage
             _extendedText = null;
             _hyperlinks = null;
             _underlines = null;
+            _textSizing = null;
             ResetCells();
         }
 
@@ -138,6 +139,7 @@ namespace Ntilde.VT.Storage
             _extendedText = null;
             _hyperlinks = null;
             _underlines = null;
+            _textSizing = null;
             // Clear the usable portion so pooled memory doesn't retain stale data.
             Cells.AsSpan(0, RowsInPage * Cols).Clear();
             ArrayPool<TerminalCell>.Shared.Return(Cells, clearArray: false);
@@ -266,6 +268,7 @@ namespace Ntilde.VT.Storage
             if (_extendedText != null) _extendedText[rowIndex] = null;
             if (_hyperlinks != null) _hyperlinks[rowIndex] = null;
             if (_underlines != null) _underlines[rowIndex] = null;
+            if (_textSizing != null) _textSizing[rowIndex] = null;
         }
 
         /// <summary>

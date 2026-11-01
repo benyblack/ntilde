@@ -96,6 +96,10 @@ namespace Ntilde.VT
                     HandleOscClipboard(data);
                     break;
 
+                case "66":
+                    HandleTextSizing(data);
+                    break;
+
                 case "133":
                     HandleShellIntegrationMark(data);
                     break;

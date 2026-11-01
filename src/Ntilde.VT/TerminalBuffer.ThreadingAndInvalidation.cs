@@ -478,12 +478,11 @@ namespace Ntilde.VT
                     {
                         AbsRow = absRow,
                         // Scrollback row content is immutable, but a theme switch rewrites
-                        // the stored default colors (UpdateThemeColors). Stamping the theme
-                        // epoch here is what invalidates the paged-row snapshot cache below
-                        // and every render-side cache keyed by this revision.
-                        Revision = (uint)themeEpoch,
+                        // the stored default colors (UpdateThemeColors). The combined theme/sizing
+                        // revision invalidates the paged-row snapshot cache and render-side caches.
+                        Revision = PagedRenderRevision,
                         Cols = viewportCols,
-                        Cells = GetOrBuildCachedPagedRenderRowCells_NoLock(r, absRow, absRowId, viewportCols, themeEpoch),
+                        Cells = GetOrBuildCachedPagedRenderRowCells_NoLock(r, absRow, absRowId, viewportCols, PagedRenderRevision),
                         RowId = absRowId
                     };
                     rowId = rowSnapshot.RowId;
@@ -566,7 +565,6 @@ namespace Ntilde.VT
         /// </summary>
         private PooledArray<DirtySpan> CaptureIsolatedRows_NoLock(PooledArray<RenderRowSnapshot> rowsData, int absDisplayStart, int viewportRows, int viewportCols)
         {
-            int themeEpoch = _renderThemeEpoch;
             var dirtyList = new List<DirtySpan>(Math.Max(8, viewportRows));
 
             for (int r = 0; r < viewportRows; r++)
@@ -590,12 +588,12 @@ namespace Ntilde.VT
                 }
                 else if (!_isAltScreen && absRow < _scrollback.Count)
                 {
-                    // Same id and theme-epoch revision the live path stamps on a paged row, so a
+                    // Same id and combined revision the live path stamps on a paged row, so a
                     // caller's own row-picture cache keys it the same way.
                     rowSnapshot = new RenderRowSnapshot
                     {
                         AbsRow = absRow,
-                        Revision = (uint)themeEpoch,
+                        Revision = PagedRenderRevision,
                         Cols = viewportCols,
                         Cells = BuildPagedRenderRowCells_NoLock(absRow, viewportCols),
                         RowId = _scrollback.TotalRowsEvicted + absRow
@@ -757,6 +755,7 @@ namespace Ntilde.VT
         {
             return a.Character == b.Character &&
                    a.Text == b.Text &&
+                   Equals(a.TextSizing, b.TextSizing) &&
                    a.Foreground.Equals(b.Foreground) &&
                    a.Background.Equals(b.Background) &&
                    a.IsInverse == b.IsInverse &&
@@ -970,7 +969,7 @@ namespace Ntilde.VT
             intervals.Insert(index, new SearchInterval(start, end));
         }
 
-        private RenderCellSnapshot[] GetOrBuildCachedPagedRenderRowCells_NoLock(int rowIndex, int absRow, long rowId, int viewportCols, int themeEpoch)
+        private RenderCellSnapshot[] GetOrBuildCachedPagedRenderRowCells_NoLock(int rowIndex, int absRow, long rowId, int viewportCols, uint revision)
         {
             if (viewportCols <= 0)
             {
@@ -982,7 +981,7 @@ namespace Ntilde.VT
                 cachedCells != null &&
                 cachedCells.Length == viewportCols &&
                 _cachedRenderRowIds[rowIndex] == rowId &&
-                _cachedRenderRowRevisions[rowIndex] == (uint)themeEpoch &&
+                _cachedRenderRowRevisions[rowIndex] == revision &&
                 _cachedRenderRowCols[rowIndex] == viewportCols;
 
             if (canReuse)
@@ -990,11 +989,11 @@ namespace Ntilde.VT
                 return cachedCells!;
             }
 
-            // Scrollback rows are immutable, so we only need to build them once per rowId/Cols combination.
+            // Sizing edits can mutate retained rows; their dedicated revision invalidates both cell and picture caches.
             var rebuiltCells = BuildPagedRenderRowCells_NoLock(absRow, viewportCols);
 
             _cachedRenderRowIds[rowIndex] = rowId;
-            _cachedRenderRowRevisions[rowIndex] = (uint)themeEpoch;
+            _cachedRenderRowRevisions[rowIndex] = revision;
             _cachedRenderRowCols[rowIndex] = viewportCols;
             _cachedRenderRowCells[rowIndex] = rebuiltCells;
 
@@ -1020,6 +1019,7 @@ namespace Ntilde.VT
             // item 4). Fetched once per row rather than per cell.
             var extendedText = _scrollback.GetExtendedTextMap(absRow);
             var underlines = _scrollback.GetUnderlineMap(absRow);
+            var sizing = _scrollback.GetTextSizingMap(absRow);
 
             for (int c = 0; c < viewportCols; c++)
             {
@@ -1029,6 +1029,7 @@ namespace Ntilde.VT
                     rebuiltCells[c] = new RenderCellSnapshot
                     {
                         Character = cell.Character,
+                        TextSizing = ReadSizingMap(sizing, c),
                         Text = cell.HasExtendedText && extendedText != null
                                && extendedText.TryGet(c, out string? graphemeText)
                             ? graphemeText

@@ -92,6 +92,24 @@ public sealed class TerminalViewLinkActivationTests
         Assert.Empty(env.Probed);
     }
 
+    [AvaloniaTheory]
+    [InlineData(0, 0)]
+    [InlineData(0, 5)]
+    [InlineData(0, 9)]
+    [InlineData(1, 0)]
+    [InlineData(1, 5)]
+    [InlineData(1, 9)]
+    public void A_detected_url_in_a_sized_block_can_be_hovered_and_opened_across_its_width(int row, int col)
+    {
+        const string url = "https://example.com/docs";
+        var (view, env) = CreateView("\x1b]66;s=2:w=5;" + url + "\a");
+        view.UpdateHoveredLink(CellCentre(row, col));
+        Assert.Equal(url, view.HoveredLinkUriForTest);
+        Assert.Equal([new HyperlinkRun(row, 0, 9)], view.HoveredLinkRunsForTest);
+        Assert.True(view.TryActivateLinkAt(CellCentre(row, col), LinkModifier));
+        Assert.Equal(url, Assert.Single(env.Started).FileName);
+    }
+
     [AvaloniaFact]
     public void Osc8_link_to_a_local_program_reveals_it_instead_of_running_it()
     {

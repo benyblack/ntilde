@@ -314,6 +314,10 @@ public static partial class UnicodeWidth
 
     // The SMP symbol and pictograph blocks, used only with GetRuneWidth == 2 to spot a wide emoji
     // in a ZWJ sequence. A block span, not a width claim.
+    // OSC 66 applies VS15 to a preceding wide emoji base, excluding regional-indicator components.
+    internal static bool IsWideEmojiPresentationBase(Rune rune)
+        => GetRuneWidth(rune) == 2 && IsEmojiRange(rune) && !IsRegionalIndicator(rune) && !IsEmojiModifier(rune);
+
     private static bool IsEmojiRange(Rune rune)
         => rune.Value >= 0x1F000 && rune.Value <= 0x1FBFF;
 

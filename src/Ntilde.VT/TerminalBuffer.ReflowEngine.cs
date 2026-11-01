@@ -167,6 +167,33 @@ namespace Ntilde.VT
                 };
             }
 
+            private TerminalRow ResizeSizedPhysicalRow(TerminalRow source, int cols, int rows)
+            {
+                var result = new TerminalRow(cols, Theme.Foreground, Theme.Background);
+                Array.Copy(source.Cells, result.Cells, Math.Min(cols, source.Cells.Length));
+                result.CopyRowMetadataFrom(source, cols);
+                for (int col = 0; col < Math.Min(cols, source.Cells.Length); col++)
+                {
+                    var piece = source.GetTextSizing(col);
+                    if (piece == null) continue;
+                    int left = col - piece.ColumnOffset;
+                    if (left + piece.Block.Width <= cols && piece.Block.Height <= rows) continue;
+                    result.Cells[col] = TerminalCell.Default;
+                    result.SetExtendedText(col, null);
+                    result.SetHyperlink(col, null);
+                    result.SetUnderline(col, null);
+                    result.SetTextSizing(col, null);
+                }
+                if (cols > 0 && result.Cells[cols - 1].IsWide)
+                {
+                    result.Cells[cols - 1] = TerminalCell.Default;
+                    result.SetExtendedText(cols - 1, null);
+                }
+                result.WrittenColumns = Math.Min(cols, source.WrittenColumns);
+                result.IsWrapped = false;
+                return result;
+            }
+
             private int GetGraphemeWidth(string textElement)
             {
                 return _getGraphemeWidth(textElement);
@@ -230,7 +257,7 @@ namespace Ntilde.VT
                                 break;
                             }
                         }
-                        if (!isEmpty || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
+                        if (!isEmpty || row.GetTextSizingMap() is { Count: > 0 } || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
                     }
 
                     int vpRowsToTake = lastActiveVpRow + 1;
@@ -305,10 +332,11 @@ namespace Ntilde.VT
                     {
                         if (isHistory)
                         {
-                            newScrollback.AppendRow(row.Cells, row.IsWrapped, row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap(), row.WrappedColumns, row.WrittenColumns);
+                            newScrollback.AppendRow(row);
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
                             row.ClearUnderlines();
+                            row.ClearTextSizing();
                             row.IsWrapped = false;
                         }
                         else
@@ -481,7 +509,7 @@ namespace Ntilde.VT
                             int storeRow = i - oldRowsReleased;
                             _scrollback.GetRow(storeRow).CopyTo(scrollbackRow.Cells);
                             scrollbackRow.IsWrapped = _scrollback.IsRowWrapped(storeRow);
-                            scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(storeRow), _scrollback.GetHyperlinkMap(storeRow), _scrollback.GetUnderlineMap(storeRow));
+                            scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(storeRow), _scrollback.GetHyperlinkMap(storeRow), _scrollback.GetUnderlineMap(storeRow), _scrollback.GetTextSizingMap(storeRow));
                             scrollbackRow.WrittenColumns = _scrollback.GetWrittenColumns(storeRow);
                             scrollbackRow.WrappedColumns = _scrollback.GetWrappedColumns(storeRow);
                             physRow = scrollbackRow;
@@ -490,6 +518,39 @@ namespace Ntilde.VT
                         {
                             int vpRow = i - oldScrollbackCount;
                             physRow = vpRow < actualVpLen ? _viewport[vpRow] : new TerminalRow(oldCols, Theme.Foreground, Theme.Background);
+                        }
+
+                        // Multi-line rectangles are physical grid content. Keep their rows together
+                        // as fixed layout barriers; ordinary logical lines on either side still reflow.
+                        if (physRow.GetTextSizingMap() is { Count: > 0 })
+                        {
+                            if (lineStartPhys != -1)
+                            {
+                                FlowLine(logicalIdx++, lineLen, lineStartPhys, i);
+                                lineStartPhys = -1;
+                            }
+                            var sizedRow = ResizeSizedPhysicalRow(physRow, newCols, newRows);
+                            if (i == absCursorPhysicalIdx) { newCursorPhysRow = flowedRows; newCursorPhysCol = Math.Min(_cursorCol, newCols); }
+                            if (i == absMainSavedIdx) { newMainSavedPhysRow = flowedRows; newMainSavedPhysCol = Math.Min(_savedCursors.Main.Col, newCols); }
+                            if (i == absAltSavedIdx) { newAltSavedPhysRow = flowedRows; newAltSavedPhysCol = Math.Min(_savedCursors.Alt.Col, newCols); }
+                            if (i == absCommandStartIdx && _commandStartMark is ShellIntegrationMark sizedCs)
+                            { newCommandStartPhysRow = flowedRows; newCommandStartPhysCol = Math.Min(sizedCs.Column, newCols); }
+                            if (i == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark sizedOs)
+                            { newOutputStartPhysRow = flowedRows; newOutputStartPhysCol = Math.Min(sizedOs.Column, newCols); }
+                            for (int k = unanchoredImages.Count - 1; k >= 0; k--)
+                                if (unanchoredImages[k].CellY == i)
+                                {
+                                    var image = unanchoredImages[k];
+                                    imagePlacements.Add((image, flowedRows, Math.Min(image.CellX, newCols - 1)));
+                                    unanchoredImages.RemoveAt(k);
+                                }
+                            bool sizedHistory = i < oldScrollbackCount;
+                            EmitRow(sizedRow, sizedHistory);
+                            if (sizedHistory) historyRowCount++;
+                            logicalIdx++;
+                            if (i < oldScrollbackCount && i - oldRowsReleased + 1 == _scrollback.OldestPageRowCount)
+                                oldRowsReleased += _scrollback.ReleaseOldestPage();
+                            continue;
                         }
 
                         if (lineStartPhys == -1)
@@ -845,12 +906,7 @@ namespace Ntilde.VT
                     {
                         // Carry each reflowed row's side tables into the rebuilt
                         // scrollback; extended graphemes must survive reflow.
-                        newScrollback.AppendRow(
-                            activeRows[i].Cells,
-                            activeRows[i].IsWrapped,
-                            activeRows[i].GetExtendedTextMap(),
-                            activeRows[i].GetHyperlinkMap(),
-                            activeRows[i].GetUnderlineMap(), activeRows[i].WrappedColumns, activeRows[i].WrittenColumns);
+                        newScrollback.AppendRow(activeRows[i]);
                     }
 
                     int discardedRows = (int)newScrollback.TotalRowsEvicted;
@@ -956,7 +1012,7 @@ namespace Ntilde.VT
                             if (!nextRow.IsWrapped)
                             {
                                 // Check if row has any actual content
-                                bool hasContent = false;
+                                bool hasContent = nextRow.GetTextSizingMap() is { Count: > 0 };
                                 for (int c = 0; c < nextRow.Cells.Length; c++)
                                 {
                                     if (nextRow.Cells[c].Character != ' ' && nextRow.Cells[c].Character != '\0')

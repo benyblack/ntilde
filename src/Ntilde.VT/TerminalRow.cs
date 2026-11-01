@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Ntilde.VT
 {
-    public class TerminalRow
+    public partial class TerminalRow
     {
         private static long _nextId;
         public readonly long Id;
@@ -57,7 +57,7 @@ namespace Ntilde.VT
         private bool CanExcludeWrapTail(int columns)
         {
             for (int col = columns; col < Cells.Length; col++)
-                if (!IsWrapPaddingCell(Cells[col]) || GetExtendedText(col) != null || GetHyperlink(col) != null || GetUnderline(col) != null)
+                if (!IsWrapPaddingCell(Cells[col]) || GetExtendedText(col) != null || GetHyperlink(col) != null || GetUnderline(col) != null || GetTextSizing(col) != null)
                     return false;
             return true;
         }
@@ -182,7 +182,7 @@ namespace Ntilde.VT
         /// (insert mode runs per printable character) skip metadata maintenance entirely for
         /// the overwhelmingly common plain-ASCII, no-hyperlink row.
         /// </summary>
-        public bool HasRowMetadata => _extendedText != null || _hyperlinks != null || _underlines != null;
+        public bool HasRowMetadata => _extendedText != null || _hyperlinks != null || _underlines != null || _textSizing != null;
 
         /// <summary>
         /// Moves side-table entries to follow a horizontal cell shift, so extended graphemes and
@@ -204,6 +204,7 @@ namespace Ntilde.VT
             _extendedText = ShiftMap(_extendedText, startCol, delta, cols);
             _hyperlinks = ShiftMap(_hyperlinks, startCol, delta, cols);
             _underlines = ShiftMap(_underlines, startCol, delta, cols);
+            _textSizing = ShiftMap(_textSizing, startCol, delta, cols);
         }
 
         // Generic over the value type so the extended-text and hyperlink maps share one implementation:
@@ -277,6 +278,10 @@ namespace Ntilde.VT
             {
                 if (col < columnLimit) SetUnderline(col, underline);
             });
+            source._textSizing?.ForEach((col, value) =>
+            {
+                if (col < columnLimit) SetTextSizing(col, value);
+            });
         }
 
         /// <summary>
@@ -288,11 +293,13 @@ namespace Ntilde.VT
         public void RestoreSideTables(
             Storage.SmallMap<string>? extendedText,
             Storage.SmallMap<Links.Hyperlink>? hyperlinks,
-            Storage.SmallMap<CellUnderline>? underlines)
+            Storage.SmallMap<CellUnderline>? underlines,
+            Storage.SmallMap<CellTextSizing>? textSizing = null)
         {
             _extendedText = extendedText is { Count: > 0 } ? extendedText : null;
             _hyperlinks = hyperlinks is { Count: > 0 } ? hyperlinks : null;
             _underlines = underlines is { Count: > 0 } ? underlines : null;
+            _textSizing = textSizing is { Count: > 0 } ? textSizing : null;
         }
 
         public TerminalRow(int cols)
