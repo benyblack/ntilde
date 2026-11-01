@@ -9,7 +9,7 @@ separate domain and shared-renderer pixel evidence below.
 | Build | Source commit | Owned collection | Measured at (UTC) |
 |---|---|---|---|
 | Before | `52ed24cd4bb2eb8d69d747c6ba6ee063d372709e` | `owned-KlBHUy` | 12:31:08.706 |
-| After | `aa9456808a24d75bbf9a04265b220f02a278fb26` | `owned-zqbmw8` | 15:06:40.487 |
+| After | `da032b87c1cd110061d4cbbf60f34a209302fbc3` | `owned-tWfXlJ` | 15:14:55.855 |
 
 Both builds are fresh uninstalled sidecars outside `.app` bundles. Their DLL
 informational versions contain the full source commit. The selected assembly
@@ -23,7 +23,7 @@ source and ownership/cleanup proof. No personal clipboard was read.
 Both runs use the same pinned collector revision, suite/probe hash, adapter,
 manifest/lock, runner sources and Node v24.22.1. Raw SHA-256 values were recomputed;
 both ownership proofs record completion and cleanup. The after cleanup completed
-at 15:06:40.539 UTC.
+at 15:14:55.888 UTC.
 
 ## Observed behavior
 
@@ -59,8 +59,8 @@ also failed with double shrinking and passes with font scaling applied once.
 Eighteen shared-renderer pixel tests cover enlarged ink across rows, fractional
 font sizing/alignment, two small glyphs in one cell, compressed long text,
 visible lower fragments whose anchor is in history, cached-row refresh, italic baseline anchoring, and plain/styled underline policy.
-The full VT suite passes 1,426 tests. The earlier complete App gating rerun passed
-7,545 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
+The full VT suite passes 1,427 tests. The earlier complete App gating rerun passed
+7,552 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
 (40), shared golden PNG (8), mux (1,123 with 20 platform skips), architecture
 (178), and platform-boot (75 with 4 font-platform skips) checks pass locally.
 The [VT matrix](../../vt_coverage_matrix.md) records implementation scope.
@@ -109,6 +109,14 @@ cached draw path with an uncached reference. Ordinary writes with retained sized
 history no longer allocate an empty erase dictionary for every grapheme: the
 regression previously measured 104 KB versus a 24 KB baseline per 1,000 writes;
 the fixed path stays within 16 KiB of the baseline.
+
+The following source inspection added a width-expanding VS16 attachment case.
+Before its continuation is written, any intersecting sizing rectangle is retired
+whole. Its regression failed before the fix and now verifies packed continuation
+content, all removed pieces, cursor position and a successful state round trip.
+Inactive-plane retirement now uses neutral default cells instead of the active
+other screen's pen. Four colored-pen resize cases failed before that correction;
+the full VT suite and 124 focused App tests pass afterward.
 
 ## Limits
 
