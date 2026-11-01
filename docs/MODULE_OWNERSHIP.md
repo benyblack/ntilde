@@ -268,6 +268,11 @@ invariant changes.
   session instead, so no empty password is ever submitted to a server
 - **No thread-pool work on the native exec's stdout path:** one dedicated poll thread per channel
   feeds a bounded byte queue that a reader drains synchronously
+- **Native shared-connection idle close is conditional at the close boundary.** Both an immediate
+  last-lease close (including before login completes) and the ControlPersist timer recheck that no
+  leases remain under the gate that marks the connection closed. A new lease either keeps the
+  connection alive or is refused after closure and acquires a fresh connection. Transport failure
+  and explicit abandonment may still close an occupied connection.
 - A native exec on a profile without multiplexing (or with `ControlMasterAuto` off) has a connection of its own, which lives exactly as long as its channel. With multiplexing on, it leases the profile's shared connection instead (`NativeSshConnectionPool`), joining or opening it; that connection closes when its last lease is released, at once or after ControlPersist
 
 **Test authority**

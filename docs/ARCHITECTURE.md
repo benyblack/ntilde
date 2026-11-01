@@ -918,7 +918,10 @@ deadline; the installer uses it.
   exec's connection lives exactly as long as its channel and never shares a pane's. With the
   profile's multiplexing (and `ControlMasterAuto`) on, the exec leases the profile's shared connection
   (`NativeSshConnectionPool`, `nova_ssh_open_exec`), which closes when its last lease is released, at
-  once or after ControlPersist.
+  once or after ControlPersist. Both the immediate idle close (also used before login completes)
+  and the timer recheck the lease count under the gate that marks the connection closed. A lease
+  acquired after an earlier idle decision keeps its connection and newly opened channel alive;
+  acquisition after closure gets a fresh connection. Failure/abandonment remain unconditional.
 
 #### Install flow (`Shell/Mux/Remote/RemoteMuxInstaller.cs`, `Views/Ssh/RemoteMuxInstallDialog.cs`)
 
