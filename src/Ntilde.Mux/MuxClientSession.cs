@@ -386,7 +386,14 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
     internal void DeliverRecordingFailed(RecordingFailedNotification notification)
     {
-        var failure = new RecordingFailure(Enum.TryParse<RecordingFailureKind>(notification.Kind, out var kind) ? kind : RecordingFailureKind.Write, notification.Message, notification.RecordingId);
+        // Bound retained peer text before it enters the pending-start cache.
+        string message = notification.Message ?? "Recording failed.";
+        if (message.Length > 512)
+        {
+            int end = char.IsHighSurrogate(message[511]) ? 511 : 512;
+            message = message[..end] + "…";
+        }
+        var failure = new RecordingFailure(Enum.TryParse<RecordingFailureKind>(notification.Kind, out var kind) ? kind : RecordingFailureKind.Write, message, notification.RecordingId);
         bool notify;
         lock (_recordingGate)
         {
@@ -396,8 +403,9 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
                     _pendingRecordingFailures[notification.RecordingId] = failure;
                 else _pendingRecordingFailuresOverflowed = true;
             }
-            bool active = _activeRecordingId == notification.RecordingId;
-            notify = active || _startedRecordingIds.Contains(notification.RecordingId);
+            bool active = _activeRecordingId == notification.RecordingId && Volatile.Read(ref _recording) != 0;
+            bool known = _startedRecordingIds.Remove(notification.RecordingId);
+            notify = active || known;
             if (active) Volatile.Write(ref _recording, 0);
         }
         if (notify) PublishRecordingFailure(failure);

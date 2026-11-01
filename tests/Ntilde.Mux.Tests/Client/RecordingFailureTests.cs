@@ -86,8 +86,10 @@ public sealed class RecordingFailureTests
         Assert.True(client.IsConnected);
     }
 
-    [Fact]
-    public async Task HistoricalFailureWarnsWithoutStoppingNewRecording()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HistoricalFailureWarnsWithoutStoppingNewRecording(bool longMessage)
     {
         using var fake = FakeMuxServerEnd.Create();
         Task<MuxClient> connecting = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
@@ -104,8 +106,10 @@ public sealed class RecordingFailureTests
             await start;
         }
         var observed = new TaskCompletionSource<RecordingFailure>(TaskCreationOptions.RunContinuationsAsynchronously);
-        session.RecordingFailed += failure => observed.TrySetResult(failure);
-        fake.Raw.Send(MuxFrames.Notification(new MuxNotification
+        int warnings = 0;
+        session.RecordingFailed += failure => { Interlocked.Increment(ref warnings); observed.TrySetResult(failure); };
+        string message = longMessage ? new string('x', 10000) : "old disk full";
+        void SendFailure() => fake.Raw.Send(MuxFrames.Notification(new MuxNotification
         {
             Method = MuxMethods.RecordingFailed,
             Params = MuxFrames.ToElement(new RecordingFailedNotification
@@ -116,7 +120,16 @@ public sealed class RecordingFailureTests
                 Message = "old disk full"
             }, MuxJsonContext.Default.RecordingFailedNotification)
         }));
-        Assert.Equal(old, (await observed.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct)).RecordingId);
+        SendFailure();
+        RecordingFailure failure = await observed.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        Assert.Equal(old, failure.RecordingId);
+        Assert.InRange(failure.Message.Length, 1, 513);
+        SendFailure(); // A duplicate cannot flood advisory callbacks.
+        Task ping = client.PingAsync(Ct);
+        MuxRequest pingRequest = await fake.ReadRequestAsync();
+        fake.Reply(pingRequest.Id, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty);
+        await ping;
+        Assert.Equal(1, warnings);
         Assert.True(session.IsRecording);
         Assert.Equal(current, session.RecordingId);
     }

@@ -342,7 +342,8 @@ namespace Ntilde.Controls
             if (failure.RecordingId != Guid.Empty && _recordingAttemptsById.TryGetValue(failure.RecordingId, out var owner)) attempt = owner;
             if (attempt.FailureReported || !ReferenceEquals(Session, attempt.Source)) return;
             if (attempt.Id is { } id && id != Guid.Empty && failure.RecordingId != Guid.Empty && id != failure.RecordingId) return;
-            if (attempt.PendingFailures.Count < 64) attempt.PendingFailures.TryAdd(failure.RecordingId, failure);
+            if (attempt.PendingFailures.Count < 64)
+                attempt.PendingFailures.TryAdd(failure.RecordingId, failure with { Message = Ntilde.Shell.Mux.Remote.RemoteOutputText.Quote(failure.Message) });
             _pendingRecordingAttempts.Add(attempt);
             if (!_recordingBusy) DrainRecordingFailures();
         }
