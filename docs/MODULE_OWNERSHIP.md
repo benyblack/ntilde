@@ -351,7 +351,8 @@ invariant changes.
   negotiation and stack state. The enhancement changes keys already encoded by another flag;
   ordinary text, IME and AltGr stay on TextInput. A forwarded press captures its immutable
   identity for repeats/releases; changes of session, buffer, focus or keyboard generation discard it.
-  Only Shift-held events contain the shifted field. Unknown metadata preserves the legacy primary;
+  Only Shift-held events contain the shifted field. Missing, control, combining, format, multi-scalar
+  or malformed symbols preserve the legacy primary;
   shifted punctuation retains that primary when the framework cannot provide its unshifted glyph.
   No guessed native keyboard-map queries, user input logging or new settings are introduced.
 - **Keyboard capabilities are ordered protocol state.** An explicit presentation mask opts a subscriber
