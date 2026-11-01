@@ -899,15 +899,18 @@ namespace Ntilde.VT
             return new ValidatedBufferState(mainCells, altCells, scrollbackCells, lastSyncStart);
         }
 
+        private static void ValidateWrittenColumns(int[]? written, int rows, int cols, string what)
+        {
+            if (written == null) return;
+            if (written.Length != rows)
+                throw StateTransferValidation.Reject(what, "written column count does not match row count");
+            foreach (int count in written)
+                StateTransferValidation.RequireInRange(count, 0, cols, $"{what} written columns");
+        }
+
         private static void ValidateWrappedColumns(TerminalScreenState state, int rows, int cols, byte[]? blob, string what)
         {
-            if (state.RowWrittenColumns is { } written)
-            {
-                if (written.Length != rows)
-                    throw StateTransferValidation.Reject(what, "written column count does not match row count");
-                foreach (int count in written)
-                    StateTransferValidation.RequireInRange(count, 0, cols, $"{what} written columns");
-            }
+            ValidateWrittenColumns(state.RowWrittenColumns, rows, cols, what);
             if (state.RowWrapColumns is not { } widths) return;
             if (widths.Length != rows)
                 throw StateTransferValidation.Reject(what, "wrap column count does not match row count");

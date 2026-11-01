@@ -1012,11 +1012,7 @@ namespace Ntilde.VT
             if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
                 throw new InvalidOperationException("Invalid replay geometry: columns and rows must be positive.");
             byte[]? cells = string.IsNullOrEmpty(snapshot.CellsBase64) ? null : Convert.FromBase64String(snapshot.CellsBase64);
-            if (snapshot.RowWrittenColumns is { } written)
-            {
-                if (written.Length != snapshot.Rows || Array.Exists(written, value => value < 0 || value > snapshot.Cols))
-                    throw new InvalidOperationException("Invalid replay written columns.");
-            }
+            ValidateWrittenColumns(snapshot.RowWrittenColumns, snapshot.Rows, snapshot.Cols, "legacy replay");
             if (snapshot.RowWrapColumns is { } widths)
             {
                 ValidateWrappedColumns(new TerminalScreenState
