@@ -497,12 +497,10 @@ namespace Ntilde.Shell
 
             if (job.ProfileId != Guid.Empty)
             {
-                TerminalProfile? byId = storeSsh.FirstOrDefault(profile => profile.Id == job.ProfileId)
+                // A known identity must never retarget a queued transfer by display name.
+                // Only legacy jobs without an id may use the name-based compatibility path.
+                return storeSsh.FirstOrDefault(profile => profile.Id == job.ProfileId)
                     ?? localSsh.FirstOrDefault(profile => profile.Id == job.ProfileId);
-                if (byId != null)
-                {
-                    return byId;
-                }
             }
 
             string name = job.ProfileName?.Trim() ?? string.Empty;
