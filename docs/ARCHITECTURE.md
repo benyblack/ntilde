@@ -837,7 +837,9 @@ it).
   profile with jump hops (R7) - and the scope is cleared when the host goes. While the host still runs
   on a destination the profile no longer names (`MuxConnectionHost.IsRetargeted`), the sidebar,
   listing and transfers are refused on that tab, checked again at every listing and once each dialog
-  is answered. An OpenSSH persisted pane gets the palette's transfers (`scp -B`, its own connection),
+  is answered. A transfer's nonempty profile id is authoritative: a deleted id fails instead of
+  resolving a different same-name host. Only legacy id-less jobs use unique-name lookup.
+  An OpenSSH persisted pane gets the palette's transfers (`scp -B`, its own connection),
   and no sidebar, as a plain OpenSSH tab. Legacy SCP remote paths are backslash-escaped for the
   remote shell before local argv encoding; `~`/`~/` retain home expansion, while NUL/CR/LF are
   rejected because the legacy protocol cannot carry them. Explicit PowerShell and Auto Windows

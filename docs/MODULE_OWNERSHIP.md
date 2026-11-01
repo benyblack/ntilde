@@ -811,6 +811,9 @@ requires public test classes.
 - Skia primitive logic (delegated to Rendering)
 
 **Invariants**
+- Transfer jobs with a nonempty profile id resolve that id or fail; deleting a profile must
+  never redirect its pending transfers to another same-name profile. Only legacy id-less jobs
+  retain unique-name lookup, for both native SFTP and external SCP.
 - App is allowed to depend on all production assemblies; nothing depends on App except Cli and the App.Tests project (and Architecture.Tests, which references everything for inspection)
 - Renderer-side bugs ("the pixels look wrong") are diagnosed by chasing back through Rendering → VT, not by patching App
 - With `SessionPersistence` explicitly off nothing of the multiplexer appears: no daemon is ever spawned, no first-close question, no mux commands, and updates ask and shut down any live daemon as before Phase 5. The daemon mode never initialises Avalonia; a daemon spawn never inherits the caller's std handles

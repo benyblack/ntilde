@@ -851,6 +851,71 @@ public sealed class SftpServiceTests
         Assert.Equal("b.internal", resolved.SshHost);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResolveProfileForJob_DeletedIdNeverFallsBackToAnotherSameNameProfile(bool local)
+    {
+        var job = new TransferJob { ProfileId = Guid.NewGuid(), ProfileName = "Production" };
+        var replacement = new TerminalProfile { Id = Guid.NewGuid(), Name = "Production", SshHost = "replacement.invalid", Type = ConnectionType.SSH };
+        Assert.Null(SftpService.ResolveProfileForJob(job, local ? [replacement] : [], local ? [] : [replacement]));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResolveProfileForJob_LegacyJobWithoutIdStillUsesUniqueName(bool local)
+    {
+        var job = new TransferJob { ProfileId = Guid.Empty, ProfileName = " production " };
+        var profile = new TerminalProfile { Id = Guid.NewGuid(), Name = "Production", Type = ConnectionType.SSH };
+        Assert.Same(profile, SftpService.ResolveProfileForJob(job, local ? [profile] : [], local ? [] : [profile]));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResolveProfileForJob_ExistingIdSurvivesDisplayNameChange(bool local)
+    {
+        Guid id = Guid.NewGuid();
+        var job = new TransferJob { ProfileId = id, ProfileName = "Old name" };
+        var profile = new TerminalProfile { Id = id, Name = "Renamed", Type = ConnectionType.SSH };
+        Assert.Same(profile, SftpService.ResolveProfileForJob(job, local ? [profile] : [], local ? [] : [profile]));
+    }
+
+    [Fact]
+    public void ResolveProfileForJob_LegacyNameMustRemainUnambiguous()
+    {
+        var job = new TransferJob { ProfileId = Guid.Empty, ProfileName = "Production" };
+        var first = new TerminalProfile { Id = Guid.NewGuid(), Name = "Production", Type = ConnectionType.SSH };
+        var second = new TerminalProfile { Id = Guid.NewGuid(), Name = "Production", Type = ConnectionType.SSH };
+        Assert.Null(SftpService.ResolveProfileForJob(job, [], [first, second]));
+    }
+
+    [AvaloniaFact]
+    public async Task RunJob_DeletedProfileFailsBeforeReachingReplacementBackend()
+    {
+        var store = new InMemorySshProfileStore();
+        store.SaveProfile(new SshProfile
+        {
+            Id = Guid.NewGuid(),
+            Name = "Production",
+            Host = "replacement.invalid",
+            BackendKind = SshBackendKind.Native,
+            AuthMode = SshAuthMode.IdentityFile,
+            IdentityFilePath = "synthetic-identity"
+        });
+        var interop = new CapturingNativeSshInterop();
+        var sut = new SftpService(interop, () => new TerminalSettings { Profiles = [] }, () => new SshConnectionService(store));
+        var job = new TransferJob { ProfileId = Guid.NewGuid(), ProfileName = "Production", RemotePath = "/tmp/file", LocalPath = "local.txt", Direction = TransferDirection.Download };
+        Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+        await sut.RunJobAsync(job, dispatcher, TestContext.Current.CancellationToken);
+        dispatcher.RunJobs();
+        Assert.Equal(TransferState.Failed, job.State);
+        Assert.Equal("Profile not found", job.LastError);
+        Assert.Null(interop.ConnectionOptions);
+        Assert.Null(interop.TransferOptions);
+    }
+
     [Fact]
     public void BuildScpArguments_UsesGeneratedConfigAliasWhenAvailable()
     {
