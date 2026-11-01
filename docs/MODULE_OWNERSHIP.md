@@ -346,6 +346,15 @@ invariant changes.
 - **`sessionChanged` coalescing lives in the parse loop, with no timer.** The bounded wait the
   parse loop already does between `Process()` calls drives the trailing flush; no `Timer`,
   `Task.Delay`, `ThreadPool` or `Task.Run` on this path
+- **Alternate-key data is input-host state.** App derives optional shifted and PC-101 base-layout
+  key fields from available scalar Avalonia symbols and physical positions. VT only owns flag 4
+  negotiation and stack state. The enhancement changes keys already encoded by another flag;
+  ordinary text, IME and AltGr stay on TextInput. A forwarded press captures its immutable
+  identity for repeats/releases; changes of session, buffer, focus or keyboard generation discard it.
+  Only Shift-held events contain the shifted field. Missing, control, combining, format, multi-scalar
+  or malformed symbols preserve the legacy primary;
+  shifted punctuation retains that primary when the framework cannot provide its unshifted glyph.
+  No guessed native keyboard-map queries, user input logging or new settings are introduced.
 - **Keyboard capabilities are ordered protocol state.** An explicit presentation mask opts a subscriber
   (including a v1 peer or read-only observer) into `keyboardCapabilities`, before its attach snapshot
   and subsequent output. Pending presentation bursts coalesce per sender; identical effective masks
