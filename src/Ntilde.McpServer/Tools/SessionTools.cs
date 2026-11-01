@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Ntilde.AgentHost.Contracts;
@@ -14,7 +15,7 @@ namespace Ntilde.McpServer.Tools;
 /// enabled "Agent access (observe)" in Ntilde's settings.
 /// </summary>
 [McpServerToolType]
-public sealed class SessionTools
+public sealed partial class SessionTools
 {
     [McpServerTool(Name = "ntilde.list_sessions"),
      Description("Lists the live terminal sessions in the running Ntilde app: pane id, title, profile, kind (local/ssh), size, and active state, plus windowless multiplexer sessions that no window shows (marked 'windowless'; their id is the multiplexer session id). Requires Ntilde to be running with 'Agent access (observe)' enabled; returns instructions if it isn't. Use the paneId with ntilde.read_screen / ntilde.read_scrollback.")]
@@ -475,11 +476,20 @@ public sealed class SessionTools
     /// multi-line command carries both. Each line break becomes a visible ⏎ rather than a space, so the agent can still
     /// tell <c>a⏎b</c> (two commands) from <c>a b</c> (one).
     /// </summary>
+    /// <remarks>
+    /// A pipe is escaped only by an odd run of backslashes, so a command's own backslashes in front of one
+    /// (<c>echo \| tail</c>) would cancel a single added escape and split the cell again. The run in front of each pipe
+    /// is doubled before the pipe is escaped; backslashes anywhere else stay as typed.
+    /// </remarks>
     internal static string TableCellText(string text)
-        => text.Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace("\r", "\n", StringComparison.Ordinal)
-            .Replace("\n", " ⏎ ", StringComparison.Ordinal)
-            .Replace("|", "\\|", StringComparison.Ordinal);
+        => PipeWithLeadingBackslashes().Replace(
+            text.Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Replace("\r", "\n", StringComparison.Ordinal)
+                .Replace("\n", " ⏎ ", StringComparison.Ordinal),
+            m => m.Groups[1].Value + m.Groups[1].Value + "\\|");
+
+    [GeneratedRegex(@"(\\*)\|", RegexOptions.CultureInvariant)]
+    private static partial Regex PipeWithLeadingBackslashes();
 
     internal static string FormatExport(ExportReplayResult dto)
     {

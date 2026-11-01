@@ -586,6 +586,50 @@ public class SessionToolsFormattingTests
         Assert.Contains("exit 1", bare, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A pipe is a cell delimiter unless an odd run of backslashes precedes it, so the command's own backslashes in
+    /// front of a pipe must not cancel the escape (Codex review on #709).
+    /// </summary>
+    [Theory]
+    [InlineData(@"echo \| tail", @"echo \\\| tail")]
+    [InlineData(@"echo \\| tail", @"echo \\\\\| tail")]
+    [InlineData(@"printf 'a\\\|b'", @"printf 'a\\\\\\\|b'")]
+    [InlineData(@"type C:\logs\x.txt | more", @"type C:\logs\x.txt \| more")]
+    public void TableCellText_keeps_every_pipe_inside_the_cell(string command, string expected)
+    {
+        Assert.Equal(expected, SessionTools.TableCellText(command));
+
+        var row = Assert.Single(SessionTools.FormatEvents(new WaitForEventsResult
+        {
+            Events = new[]
+            {
+                new AgentEventDto
+                {
+                    Seq = 1, TimestampMs = 1_800_000_000_000, PaneId = Guid.NewGuid(),
+                    Type = AgentHostProtocol.EventTypes.CommandFinished,
+                    Status = AgentHostProtocol.StatusKinds.AwaitingInput,
+                    ExitCode = 0, Command = command,
+                },
+            },
+            NextSeq = 1,
+            OldestSeq = 1,
+        }, sinceSeq: 0).Split('\n'), l => l.StartsWith("| 1 ", StringComparison.Ordinal));
+
+        // Six cells: seven delimiting pipes, counting only pipes behind an even run of backslashes.
+        Assert.Equal(7, CountDelimitingPipes(row.TrimEnd('\r')));
+    }
+
+    private static int CountDelimitingPipes(string row)
+    {
+        int count = 0, backslashes = 0;
+        foreach (char c in row)
+        {
+            if (c == '|' && backslashes % 2 == 0) count++;
+            backslashes = c == '\\' ? backslashes + 1 : 0;
+        }
+        return count;
+    }
+
     [Fact]
     public void FormatCapture_reports_path_geometry_and_what_the_image_excludes()
     {
