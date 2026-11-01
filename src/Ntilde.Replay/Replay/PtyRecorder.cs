@@ -332,7 +332,7 @@ namespace Ntilde.Replay
                     }
                     byte[] record = bytes.FinishLine();
                     Interlocked.Add(ref _pendingBytes, record.Length + RecordOverheadBytes);
-                    _queue.Add(record);
+                    _queue.Add(record, CancellationToken.None);
                 }
                 catch (RecordingException ex) { Fail(ex.Failure); }
                 catch (Exception ex) { Fail(new RecordingFailure(RecordingFailureKind.Write, ex.Message)); }
