@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json.Serialization.Metadata;
 using Ntilde.Mux.Contracts;
 using Ntilde.Pty;
+using Ntilde.Replay;
 
 namespace Ntilde.Mux;
 
@@ -623,7 +624,14 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     private void ReplyRecordingFailure(MuxRequest request, Exception ex)
     {
         SafeLog($"[MuxServer] connection {ConnectionId}: {Clip(request.Method)} failed: {ex}");
-        ReplyError(request, MuxErrorCodes.Internal, $"{ex.GetType().Name}: {Clip(ex.Message)}");
+        string code = ex is RecordingException recording ? recording.Failure.Kind switch
+        {
+            RecordingFailureKind.Open => MuxErrorCodes.RecordingOpenFailed,
+            RecordingFailureKind.Overflow => MuxErrorCodes.RecordingOverflow,
+            RecordingFailureKind.FlushTimeout => MuxErrorCodes.RecordingFlushTimeout,
+            _ => MuxErrorCodes.RecordingWriteFailed
+        } : MuxErrorCodes.Internal;
+        ReplyError(request, code, $"{ex.GetType().Name}: {Clip(ex.Message)}");
     }
 
     private async Task ReleaseFlightOwnershipAsync(Guid sessionId)

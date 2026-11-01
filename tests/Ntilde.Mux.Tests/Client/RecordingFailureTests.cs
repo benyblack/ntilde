@@ -16,6 +16,7 @@ public sealed class RecordingFailureTests
         Guid id = await MuxTestHost.SpawnAsync(client);
         ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(client, id);
         var failed = new TaskCompletionSource<RecordingFailure>(TaskCreationOptions.RunContinuationsAsynchronously);
+        pane.Session.RecordingFailed += _ => throw new InvalidOperationException("advisory observer failed");
         pane.Session.RecordingFailed += failure => failed.TrySetResult(failure);
         await pane.Session.StartRecordingAsync("test.nrec");
         Assert.True(pane.Session.IsRecording);
@@ -61,12 +62,25 @@ public sealed class RecordingFailureTests
             Assert.False(stop.IsCompleted);
             fake.Emit("while flushing");
             await host.SettleAsync(id, client);
-            flushed.TrySetException(new IOException("flush failed"));
-            await Assert.ThrowsAsync<MuxProtocolException>(() => stop);
+            flushed.TrySetException(new RecordingException(new RecordingFailure(RecordingFailureKind.Write, "flush failed")));
+            Assert.Equal(RecordingFailureKind.Write, (await Assert.ThrowsAsync<RecordingException>(() => stop)).Failure.Kind);
             Assert.False(pane.Session.IsRecording);
             Assert.True(client.IsConnected);
         }
         finally { ready.TrySetResult(); flushed.TrySetResult(); }
+    }
+
+    [Fact]
+    public async Task OpenFailureKeepsItsTypedKindAcrossRpc()
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        host.Fake(id).RecordingReady = Task.FromException(new RecordingException(new RecordingFailure(RecordingFailureKind.Open, "access denied")));
+        using MuxClientSession session = client.OpenSession(id);
+        Assert.Equal(RecordingFailureKind.Open, (await Assert.ThrowsAsync<RecordingException>(() => session.StartRecordingAsync("bad.nrec"))).Failure.Kind);
+        Assert.False(session.IsRecording);
+        Assert.True(client.IsConnected);
     }
 
     [Fact]
@@ -96,6 +110,7 @@ public sealed class RecordingFailureTests
         Task nextStart = session.StartRecordingAsync("two.nrec");
         MuxRequest nextRequest = await fake.ReadRequestAsync();
         SendFailure(next);
+        SendFailure(old); // A delayed old fault must not erase the early failure of this pending start.
         fake.Reply(nextRequest.Id, new StartRecordingResult { RecordingId = next }, MuxJsonContext.Default.StartRecordingResult);
         await Assert.ThrowsAsync<RecordingException>(() => nextStart);
         Assert.False(session.IsRecording);

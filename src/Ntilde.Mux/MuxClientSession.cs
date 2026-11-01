@@ -47,8 +47,10 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private int _recording;
     private readonly object _recordingGate = new();
     private Guid _activeRecordingId;
-    private Guid _lastFailedRecordingId;
-    private RecordingFailure? _lastRecordingFailure;
+    // Only the latest pending start can publish state. Retain its observed failures until acknowledgement.
+    private readonly Dictionary<Guid, RecordingFailure> _pendingRecordingFailures = new();
+    private bool _recordingStartPending;
+    private bool _pendingRecordingFailuresOverflowed;
     private int _recordingGeneration; // bumped by every Start/Stop; guarded by _recordingGate
     private int _flightRecording;
     private int _disposed;
@@ -296,8 +298,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         try { await request.ConfigureAwait(false); }
         catch (Exception ex)
         {
-            try { RecordingFailed?.Invoke(new RecordingFailure(RecordingFailureKind.Write, ex.Message)); }
-            catch (Exception observer) { _client.SafeLog($"[MuxClient] Recording failure observer: {observer.Message}"); }
+            PublishRecordingFailure(ex is RecordingException recording ? recording.Failure : new RecordingFailure(RecordingFailureKind.Write, ex.Message));
         }
     }
 
@@ -306,16 +307,39 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         int generation;
-        lock (_recordingGate) generation = ++_recordingGeneration;
-        StartRecordingResult result = await _client.RequestAsync(MuxMethods.StartRecording, new StartRecordingParams { SessionId = Id, Path = filePath },
-            MuxJsonContext.Default.StartRecordingParams, MuxJsonContext.Default.StartRecordingResult, CancellationToken.None).ConfigureAwait(false);
         lock (_recordingGate)
         {
-            if (_recordingGeneration != generation) return;
-            if (result.RecordingId != Guid.Empty && result.RecordingId == _lastFailedRecordingId && _lastRecordingFailure is { } failure)
-                throw new RecordingException(failure);
-            _activeRecordingId = result.RecordingId;
-            Volatile.Write(ref _recording, 1);
+            generation = ++_recordingGeneration;
+            _pendingRecordingFailures.Clear();
+            _pendingRecordingFailuresOverflowed = false;
+            _recordingStartPending = true;
+        }
+        try
+        {
+            StartRecordingResult result = await AwaitRecordingRequestAsync(_client.RequestAsync(MuxMethods.StartRecording, new StartRecordingParams { SessionId = Id, Path = filePath },
+                MuxJsonContext.Default.StartRecordingParams, MuxJsonContext.Default.StartRecordingResult, CancellationToken.None)).ConfigureAwait(false);
+            lock (_recordingGate)
+            {
+                if (_recordingGeneration != generation) return;
+                if (_pendingRecordingFailures.TryGetValue(result.RecordingId, out RecordingFailure? failure))
+                    throw new RecordingException(failure);
+                // Bound notification bookkeeping as well. Refuse an uncertain success rather than forget a fault.
+                if (_pendingRecordingFailuresOverflowed)
+                    throw new RecordingException(new RecordingFailure(RecordingFailureKind.Write, "Too many recording state changes while waiting for start confirmation."));
+                _activeRecordingId = result.RecordingId;
+                Volatile.Write(ref _recording, 1);
+            }
+        }
+        finally
+        {
+            lock (_recordingGate)
+            {
+                if (_recordingGeneration == generation)
+                {
+                    _recordingStartPending = false;
+                    _pendingRecordingFailures.Clear();
+                }
+            }
         }
     }
 
@@ -324,10 +348,29 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         lock (_recordingGate)
         {
             _recordingGeneration++;
+            _recordingStartPending = false;
+            _pendingRecordingFailures.Clear();
             Volatile.Write(ref _recording, 0);
         }
-        await _client.RequestAsync(MuxMethods.StopRecording, new SessionIdParams { SessionId = Id },
-            MuxJsonContext.Default.SessionIdParams, MuxJsonContext.Default.MuxEmpty, CancellationToken.None).ConfigureAwait(false);
+        await AwaitRecordingRequestAsync(_client.RequestAsync(MuxMethods.StopRecording, new SessionIdParams { SessionId = Id },
+            MuxJsonContext.Default.SessionIdParams, MuxJsonContext.Default.MuxEmpty, CancellationToken.None)).ConfigureAwait(false);
+    }
+
+    private static async Task<T> AwaitRecordingRequestAsync<T>(Task<T> request)
+    {
+        try { return await request.ConfigureAwait(false); }
+        catch (MuxProtocolException ex) when (ex.Code is MuxErrorCodes.RecordingOpenFailed or MuxErrorCodes.RecordingWriteFailed
+            or MuxErrorCodes.RecordingOverflow or MuxErrorCodes.RecordingFlushTimeout)
+        {
+            RecordingFailureKind kind = ex.Code switch
+            {
+                MuxErrorCodes.RecordingOpenFailed => RecordingFailureKind.Open,
+                MuxErrorCodes.RecordingOverflow => RecordingFailureKind.Overflow,
+                MuxErrorCodes.RecordingFlushTimeout => RecordingFailureKind.FlushTimeout,
+                _ => RecordingFailureKind.Write
+            };
+            throw new RecordingException(new RecordingFailure(kind, ex.Message));
+        }
     }
 
     internal void DeliverRecordingFailed(RecordingFailedNotification notification)
@@ -336,12 +379,26 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         bool active;
         lock (_recordingGate)
         {
-            _lastFailedRecordingId = notification.RecordingId;
-            _lastRecordingFailure = failure;
+            if (_recordingStartPending)
+            {
+                if (_pendingRecordingFailures.Count < 64 || _pendingRecordingFailures.ContainsKey(notification.RecordingId))
+                    _pendingRecordingFailures[notification.RecordingId] = failure;
+                else _pendingRecordingFailuresOverflowed = true;
+            }
             active = _activeRecordingId == notification.RecordingId;
             if (active) Volatile.Write(ref _recording, 0);
         }
-        if (active) RecordingFailed?.Invoke(failure);
+        if (active) PublishRecordingFailure(failure);
+    }
+
+    private void PublishRecordingFailure(RecordingFailure failure)
+    {
+        if (RecordingFailed is not { } handlers) return;
+        foreach (Action<RecordingFailure> handler in Delegate.EnumerateInvocationList(handlers))
+        {
+            try { handler(failure); }
+            catch (Exception ex) { _client.SafeLog($"[MuxClient] Recording failure observer: {ex.Message}"); }
+        }
     }
 
     public bool IsFlightRecording => Volatile.Read(ref _flightRecording) != 0;
