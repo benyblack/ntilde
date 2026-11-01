@@ -915,7 +915,8 @@ namespace Ntilde.Pty
         // _recorder. Never records input — see ITerminalFlightRecorder.
         private Ntilde.Replay.FlightRecordingBuffer? _flightRecorder;
 
-        public bool IsRecording => _recorder != null;
+        public bool IsRecording => _recorder is { IsReady: true };
+        public Guid RecordingId => Volatile.Read(ref _recorder)?.Id ?? Guid.Empty;
 
         public bool IsFlightRecording => _flightRecorder != null;
 
@@ -1031,56 +1032,49 @@ namespace Ntilde.Pty
             throw new ObjectDisposedException(nameof(RustPtySession));
         }
 
+        public event Action<Ntilde.Replay.RecordingFailure>? RecordingFailed;
+
         public void StartRecording(string filePath) => AtDecodedRecordingBoundary(() => { StartRecordingCore(filePath); return 0; }, allowStopped: false);
+
+        public Task StartRecordingAsync(string filePath) => AtDecodedRecordingBoundary(() =>
+        {
+            StartRecordingCore(filePath);
+            return _recorder!.WaitUntilReadyAsync();
+        }, allowStopped: false);
 
         private void StartRecordingCore(string filePath)
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0 || (_recordingDelivery.Mode == 2 && _outputConsumerStopped.Task.IsCompleted), this);
-            if (_recorder != null) return; // Already recording
+            if (_recorder is { Failure: null }) return;
             var recorder = new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics);
-            try
-            {
-                recorder.RecordMarker("START");
-            }
-            catch (Exception ex)
-            {
-                PtyLogger.Warning($"[RustPtySession] Recording start marker failed: {ex.Message}");
-            }
-
             _recorder = recorder;
-            if (Volatile.Read(ref _disposed) != 0)
+            recorder.Failed += failure =>
+            {
+                if (ReferenceEquals(Volatile.Read(ref _recorder), recorder)) RecordingFailed?.Invoke(failure);
+            };
+            recorder.RecordMarker("START");
+            if (Volatile.Read(ref _disposed) != 0 || (_recordingDelivery.Mode == 2 && _outputConsumerStopped.Task.IsCompleted))
             {
                 if (ReferenceEquals(Interlocked.CompareExchange(ref _recorder, null, recorder), recorder)) recorder.Dispose();
-                throw new ObjectDisposedException(nameof(RustPtySession));
+                throw new ObjectDisposedException(GetType().Name);
             }
-            PtyLogger.Info($"[RustPtySession] Recording started to: {filePath}");
         }
 
-        public void StopRecording() => AtDecodedRecordingBoundary(() => { StopRecordingCore(); return 0; });
+        public Task StopRecordingAsync() => AtDecodedRecordingBoundary(() =>
+        {
+            var recorder = Interlocked.Exchange(ref _recorder, null);
+            if (recorder is null) return Task.CompletedTask;
+            recorder.RecordMarker("END");
+            return recorder.CompleteAsync();
+        });
+
+        public void StopRecording() => StopRecordingAsync().GetAwaiter().GetResult();
 
         private void StopRecordingCore()
         {
-            var recorder = Interlocked.Exchange(ref _recorder, null);
-            if (recorder == null) return;
-            try
-            {
-                recorder.RecordMarker("END");
-            }
-            catch (Exception ex)
-            {
-                PtyLogger.Warning($"[RustPtySession] Recording stop marker failed: {ex.Message}");
-            }
-
-            try
-            {
-                recorder.Dispose();
-            }
-            catch (Exception ex)
-            {
-                PtyLogger.Warning($"[RustPtySession] Recorder dispose failed: {ex.Message}");
-            }
-
-            PtyLogger.Info("[RustPtySession] Recording stopped.");
+            // Session shutdown must remain safe even when a manual recording has failed.
+            try { StopRecording(); }
+            catch (Ntilde.Replay.RecordingException) { }
         }
 
         private void ReadLoop()

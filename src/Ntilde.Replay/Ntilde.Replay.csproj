@@ -4,4 +4,8 @@
     <ProjectReference Include="..\Ntilde.VT\Ntilde.VT.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ntilde.App.Tests" />
+    <InternalsVisibleTo Include="Ntilde.Platform.Tests" />
+  </ItemGroup>
 </Project>

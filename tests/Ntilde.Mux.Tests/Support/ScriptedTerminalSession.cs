@@ -139,6 +139,25 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     }
 
     public bool IsRecording { get; private set; }
+    public Guid RecordingId { get; private set; }
+    public Task? RecordingReady { get; set; }
+    public Task? RecordingFlushed { get; set; }
+    public event Action<RecordingFailure>? RecordingFailed;
+    public void FailRecording(RecordingFailureKind kind)
+    {
+        IsRecording = false;
+        RecordingFailed?.Invoke(new RecordingFailure(kind, "scripted recording failure", RecordingId));
+    }
+    public async Task StartRecordingAsync(string filePath)
+    {
+        StartRecording(filePath);
+        if (RecordingReady is { } ready) await ready;
+    }
+    public async Task StopRecordingAsync()
+    {
+        StopRecording();
+        if (RecordingFlushed is { } flushed) await flushed;
+    }
     public ConcurrentQueue<byte[]> RecordedOutput { get; } = new();
     public Action? OnStartRecording { get; set; }
     public Action? OnEnableFlightRecording { get; set; }
@@ -152,6 +171,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         if (ThrowOnStartRecording) throw new UnauthorizedAccessException($"Access to the path '{filePath}' is denied.");
         OnStartRecording?.Invoke();
         RecordedOutput.Clear();
+        RecordingId = Guid.NewGuid();
         IsRecording = true;
         RecordingPath = filePath;
         RecordingCellMetricsAtStart = CurrentRecordingCellMetrics;

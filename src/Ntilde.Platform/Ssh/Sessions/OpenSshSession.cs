@@ -58,6 +58,7 @@ public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITer
     public bool HasActiveChildProcesses => _inner.HasActiveChildProcesses;
     public int? ExitCode => _inner.ExitCode;
     public bool IsRecording => _inner.IsRecording;
+    public Guid RecordingId => _inner.RecordingId;
 
     public event Action<string>? OnOutputReceived
     {
@@ -98,6 +99,13 @@ public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITer
     public void SetRecordingCellMetrics(float widthPx, float heightPx) =>
         (_inner as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(widthPx, heightPx);
 
+    public event Action<Ntilde.Replay.RecordingFailure>? RecordingFailed
+    {
+        add => _inner.RecordingFailed += value;
+        remove => _inner.RecordingFailed -= value;
+    }
+    public System.Threading.Tasks.Task StartRecordingAsync(string filePath) => _inner.StartRecordingAsync(filePath);
+    public System.Threading.Tasks.Task StopRecordingAsync() => _inner.StopRecordingAsync();
     public void StartRecording(string filePath) => _inner.StartRecording(filePath);
     public void StopRecording() => _inner.StopRecording();
     public bool IsFlightRecording => _inner.IsFlightRecording;

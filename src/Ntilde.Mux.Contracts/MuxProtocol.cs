@@ -66,6 +66,7 @@ public static class MuxMethods
     public const string Kill = "kill";
     public const string Resize = "resize";
     public const string SessionInfo = "sessionInfo";
+    public const string RecordingFailed = "recordingFailed";
     public const string StartRecording = "startRecording";
     public const string StopRecording = "stopRecording";
     public const string EnableFlightRecording = "enableFlightRecording";

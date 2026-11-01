@@ -66,6 +66,7 @@ public sealed class SshSession : ITerminalSession, ITerminalByteOutput, ITermina
     public bool HasActiveChildProcesses => _inner.HasActiveChildProcesses;
     public int? ExitCode => _inner.ExitCode;
     public bool IsRecording => _inner.IsRecording;
+    public Guid RecordingId => _inner.RecordingId;
 
     public event Action<string>? OnOutputReceived
     {
@@ -96,6 +97,13 @@ public sealed class SshSession : ITerminalSession, ITerminalByteOutput, ITermina
     public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) => _inner.RecordOutputAtHostBoundary(output);
     public void SetRecordingCellMetrics(float widthPx, float heightPx) => _inner.SetRecordingCellMetrics(widthPx, heightPx);
 
+    public event Action<Ntilde.Replay.RecordingFailure>? RecordingFailed
+    {
+        add => _inner.RecordingFailed += value;
+        remove => _inner.RecordingFailed -= value;
+    }
+    public System.Threading.Tasks.Task StartRecordingAsync(string filePath) => _inner.StartRecordingAsync(filePath);
+    public System.Threading.Tasks.Task StopRecordingAsync() => _inner.StopRecordingAsync();
     public void StartRecording(string filePath) => _inner.StartRecording(filePath);
     public void StopRecording() => _inner.StopRecording();
     public bool IsFlightRecording => _inner.IsFlightRecording;

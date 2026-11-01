@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Ntilde.Replay;
 
 namespace Ntilde.Pty
@@ -52,8 +53,12 @@ namespace Ntilde.Pty
     public interface ITerminalRecorder
     {
         bool IsRecording { get; }
+        Guid RecordingId => Guid.Empty;
         void StartRecording(string filePath);
         void StopRecording();
+        Task StartRecordingAsync(string filePath) { StartRecording(filePath); return Task.CompletedTask; }
+        Task StopRecordingAsync() { StopRecording(); return Task.CompletedTask; }
+        event Action<RecordingFailure>? RecordingFailed { add { } remove { } }
     }
 
     /// <summary>

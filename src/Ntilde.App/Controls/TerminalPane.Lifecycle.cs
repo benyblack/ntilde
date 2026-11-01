@@ -31,6 +31,7 @@ namespace Ntilde.Controls
             {
                 ITerminalSession session = Session;
                 UnregisterActiveSshSession(session);
+                UnsubscribeRecordingFailure();
                 Session = null;
                 _agentRegistration?.SetLifecycle(null);
 
@@ -222,6 +223,7 @@ namespace Ntilde.Controls
 
             if (_disposed) return null;
             _disposed = true;
+            UnsubscribeRecordingFailure();
 
             (_agentRegistry ?? Ntilde.AgentHost.AgentSessionRegistry.Instance).Unregister(PaneId);
             if (_agentRegistration != null)
@@ -268,6 +270,7 @@ namespace Ntilde.Controls
             {
                 ITerminalSession session = Session;
                 UnregisterActiveSshSession(session);
+                UnsubscribeRecordingFailure();
                 Session = null;
                 _agentRegistration?.SetLifecycle(null);
                 return session;

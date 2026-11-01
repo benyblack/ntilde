@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
+using Ntilde.VT;
 
 namespace Ntilde.Replay
 {
@@ -140,7 +142,7 @@ namespace Ntilde.Replay
 
         /// <summary>
         /// Writes the retained window to <paramref name="filePath"/> as a standard
-        /// replay v2 file via <see cref="PtyRecorder"/>. Event timestamps are rebased
+        /// replay v2 file. Event timestamps are rebased
         /// so the first retained event is at t=0. Concurrent writers keep recording;
         /// the export is a consistent point-in-time snapshot of the ring.
         /// Throws (IOException, UnauthorizedAccessException, …) when the target path
@@ -172,9 +174,16 @@ namespace Ntilde.Replay
             int cols, int rows, bool truncated, RecordingCellMetrics? cellSize)
         {
             ArgumentNullException.ThrowIfNull(filePath);
-            // Surface path errors before PtyRecorder's best-effort asynchronous writer starts.
-            using (File.Create(filePath)) { /* Close the writable-path probe before starting the writer. */ }
-            using var recorder = new PtyRecorder(filePath, cols, rows, shell ?? string.Empty, cellSize);
+            using var writer = new StreamWriter(filePath, append: false);
+            writer.WriteLine(JsonSerializer.Serialize(new ReplayHeader
+            {
+                Type = ReplayHeader.TypeToken,
+                Cols = cols,
+                Rows = rows,
+                Shell = shell ?? string.Empty,
+                SixelCellWidthPx = cellSize?.WidthPx,
+                SixelCellHeightPx = cellSize?.HeightPx
+            }, ReplayJsonContext.Default.ReplayHeader));
 
             if (entries.Length == 0)
             {
@@ -185,18 +194,12 @@ namespace Ntilde.Replay
             foreach (Entry entry in entries)
             {
                 long rebased = entry.TimeMs - baseMs;
-                if (entry.CellSize is { } size)
-                {
-                    recorder.RecordSixelCellSizeAt(rebased, size.WidthPx, size.HeightPx);
-                }
-                else if (entry.Payload != null)
-                {
-                    recorder.RecordChunkAt(rebased, entry.Payload, entry.Payload.Length);
-                }
-                else
-                {
-                    recorder.RecordResizeAt(rebased, entry.Cols, entry.Rows);
-                }
+                ReplayEvent ev = entry.CellSize is { } size
+                    ? new ReplayEvent { Type = "sixelCellSize", TimeOffsetMs = rebased, SixelCellWidthPx = size.WidthPx, SixelCellHeightPx = size.HeightPx }
+                    : entry.Payload is { } data
+                        ? new ReplayEvent { Type = "data", TimeOffsetMs = rebased, Data = Convert.ToBase64String(data) }
+                        : new ReplayEvent { Type = "resize", TimeOffsetMs = rebased, Cols = entry.Cols, Rows = entry.Rows };
+                writer.WriteLine(JsonSerializer.Serialize(ev, ReplayJsonContext.Default.ReplayEvent));
             }
 
             return new FlightExportInfo(

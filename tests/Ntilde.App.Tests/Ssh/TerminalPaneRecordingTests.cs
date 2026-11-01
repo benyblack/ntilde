@@ -56,6 +56,58 @@ public sealed class TerminalPaneRecordingTests
         }
     }
 
+    [AvaloniaFact]
+    public async Task NotificationsWaitForReadinessAndFailedFlushNeverReportsSaved()
+    {
+        using var pane = new TerminalPane(new TerminalProfile { Name = "test", Type = ConnectionType.Local, Command = "test" });
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var flushed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var session = new StubTerminalSession { Ready = ready.Task, Flushed = flushed.Task };
+        SetSessionForTest(pane, session);
+        var notifications = new List<RecordingNotificationEventArgs>();
+        pane.RecordingNotification += notifications.Add;
+        Task start = pane.ToggleRecordingAsync();
+        Assert.Empty(notifications);
+        ready.TrySetResult();
+        await start;
+        Assert.Equal(RecordingNotificationKind.Started, Assert.Single(notifications).Kind);
+        Task stop = pane.ToggleRecordingAsync();
+        Assert.Single(notifications);
+        flushed.TrySetException(new IOException("disk full"));
+        await stop;
+        Assert.Equal(new[] { RecordingNotificationKind.Started, RecordingNotificationKind.Failed }, notifications.Select(n => n.Kind));
+        Assert.Contains("disk full", notifications[1].ErrorMessage);
+        Assert.False(pane.IsRecording);
+    }
+
+    [AvaloniaFact]
+    public async Task MidRecordingFailurePublishesFailureAndClearsIndicator()
+    {
+        using var pane = new TerminalPane(new TerminalProfile { Name = "test", Type = ConnectionType.Local, Command = "test" });
+        var session = new StubTerminalSession();
+        SetSessionForTest(pane, session);
+        var notifications = new List<RecordingNotificationEventArgs>();
+        pane.RecordingNotification += notifications.Add;
+        await pane.ToggleRecordingAsync();
+        session.Fail();
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, Avalonia.Threading.DispatcherPriority.Background);
+        Assert.Equal(new[] { RecordingNotificationKind.Started, RecordingNotificationKind.Failed }, notifications.Select(n => n.Kind));
+        Assert.False(pane.IsRecording);
+    }
+
+    [AvaloniaFact]
+    public async Task FailedOpenNeverPublishesStarted()
+    {
+        using var pane = new TerminalPane(new TerminalProfile { Name = "test", Type = ConnectionType.Local, Command = "test" });
+        var session = new StubTerminalSession { Ready = Task.FromException(new IOException("cannot open")) };
+        SetSessionForTest(pane, session);
+        var notifications = new List<RecordingNotificationEventArgs>();
+        pane.RecordingNotification += notifications.Add;
+        await pane.ToggleRecordingAsync();
+        Assert.Equal(RecordingNotificationKind.Failed, Assert.Single(notifications).Kind);
+        Assert.False(pane.IsRecording);
+    }
+
     [Fact]
     public void BuildRecordingFileName_AppendsStableUniqueSuffix()
     {
@@ -100,6 +152,24 @@ public sealed class TerminalPaneRecordingTests
         public int? ExitCode => null;
         public bool IsRecording { get; private set; }
         public string? StartedPath { get; private set; }
+        public Task? Ready { get; init; }
+        public Task? Flushed { get; init; }
+        public event Action<Ntilde.Replay.RecordingFailure>? RecordingFailed;
+        public void Fail()
+        {
+            IsRecording = false;
+            RecordingFailed?.Invoke(new Ntilde.Replay.RecordingFailure(Ntilde.Replay.RecordingFailureKind.Write, "disk full"));
+        }
+        public async Task StartRecordingAsync(string path)
+        {
+            if (Ready is { } ready) await ready;
+            StartRecording(path);
+        }
+        public async Task StopRecordingAsync()
+        {
+            StopRecording();
+            if (Flushed is { } flushed) await flushed;
+        }
 
         public event Action<string>? OnOutputReceived
         {

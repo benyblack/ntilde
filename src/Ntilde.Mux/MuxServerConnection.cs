@@ -546,7 +546,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.StartRecording:
                     {
                         StartRecordingParams p = Params(request, MuxJsonContext.Default.StartRecordingParams);
-                        _ = CompleteRecordingRequestAsync(request, LiveSession(p.SessionId).StartRecordingAsync(p.Path));
+                        _ = CompleteRecordingStartAsync(request, LiveSession(p.SessionId).StartRecordingAsync(p.Path));
                         break;
                     }
                 case MuxMethods.StopRecording:
@@ -597,6 +597,13 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             string message = ex.Message.Length <= 512 ? ex.Message : string.Concat(ex.Message.AsSpan(0, 512), "…");
             ReplyError(request, MuxErrorCodes.Internal, $"{ex.GetType().Name}: {message}");
         }
+    }
+
+    private async Task CompleteRecordingStartAsync(MuxRequest request, Task<StartRecordingResult> operation)
+    {
+        await Task.Yield();
+        try { Reply(request, await operation.ConfigureAwait(false), MuxJsonContext.Default.StartRecordingResult); }
+        catch (Exception ex) { ReplyRecordingFailure(request, ex); }
     }
 
     private async Task CompleteRecordingRequestAsync(MuxRequest request, Task operation)

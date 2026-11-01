@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -14,7 +15,25 @@ namespace Ntilde.Replay
     public class PtyRecorder : IDisposable
     {
         private readonly string _filePath;
-        private readonly BlockingCollection<ReplayEvent> _queue = new BlockingCollection<ReplayEvent>();
+        public Guid Id { get; } = Guid.NewGuid();
+        public const int DefaultMaxPendingBytes = 16 * 1024 * 1024;
+        // Includes the record currently being written. Producers never wait for disk I/O.
+        private readonly BlockingCollection<byte[]> _queue = new();
+        private readonly object _producerGate = new();
+        private const int RecordOverheadBytes = 32;
+        private readonly int _maxPendingBytes;
+        private readonly int? _flushTimeoutMs;
+        private long _pendingBytes;
+        private bool _accepting = true;
+        private RecordingFailure? _failure;
+        private readonly Func<Stream> _openStream;
+        private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public event Action<RecordingFailure>? Failed;
+        public RecordingFailure? Failure => Volatile.Read(ref _failure);
+        public long PendingBytes => Interlocked.Read(ref _pendingBytes);
+        public bool IsAccepting => Volatile.Read(ref _accepting) && Failure is null;
+        public bool IsReady => _ready.Task.IsCompletedSuccessfully && Failure is null;
+        public Task Completion => _writeTask;
         private readonly Task _writeTask;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly DateTime _startTime;
@@ -22,7 +41,17 @@ namespace Ntilde.Replay
         private RecordingCellMetrics? _sixelCellSize;
 
         public PtyRecorder(string filePath, int cols, int rows, string shell = "", RecordingCellMetrics? sixelCellSize = null)
+            : this(filePath, cols, rows, shell, sixelCellSize, DefaultMaxPendingBytes,
+                () => new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, useAsync: true))
+        { }
+
+        internal PtyRecorder(string filePath, int cols, int rows, string shell, RecordingCellMetrics? sixelCellSize,
+            int maxPendingBytes, Func<Stream> openStream, int? flushTimeoutMs = null)
         {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPendingBytes);
+            _maxPendingBytes = maxPendingBytes;
+            _flushTimeoutMs = flushTimeoutMs;
+            _openStream = openStream;
             _filePath = filePath;
             _startTime = DateTime.UtcNow;
 
@@ -44,7 +73,7 @@ namespace Ntilde.Replay
         public static void RecordOutputAtBoundary(PtyRecorder? recorder, FlightRecordingBuffer? flight,
             RecordingCellMetrics size, ReadOnlyMemory<byte> output)
         {
-            if (output.IsEmpty || (recorder is null && flight is null)) return;
+            if (output.IsEmpty || ((recorder is null || !recorder.IsAccepting) && flight is null)) return;
             byte[] data = MemoryMarshal.TryGetArray(output, out var segment) && segment.Offset == 0 && segment.Array is { } array
                 ? array : output.ToArray();
             recorder?.RecordSixelCellSize(size);
@@ -69,17 +98,23 @@ namespace Ntilde.Replay
             ArgumentNullException.ThrowIfNull(data);
             if (timeOffsetMs < 0) throw new ArgumentOutOfRangeException(nameof(timeOffsetMs), timeOffsetMs, "Time offset must be non-negative.");
             if (length <= 0 || length > data.Length) return;
-            if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
+            if (!IsAccepting) return;
 
-            byte[] copy = new byte[length];
-            Array.Copy(data, copy, length);
-
-            TryEnqueue(new ReplayEvent
+            lock (_producerGate)
             {
-                TimeOffsetMs = timeOffsetMs,
-                Type = "data",
-                Data = Convert.ToBase64String(copy)
-            });
+                if (!IsAccepting) return;
+                if (((long)length + 2) / 3 * 4 + 256 > _maxPendingBytes - PendingBytes)
+                {
+                    Fail(new RecordingFailure(RecordingFailureKind.Overflow, "Recording stopped: pending output exceeded the byte budget."));
+                    return;
+                }
+                TryEnqueue(new ReplayEvent
+                {
+                    TimeOffsetMs = timeOffsetMs,
+                    Type = "data",
+                    Data = Convert.ToBase64String(data, 0, length)
+                });
+            }
         }
 
         public void RecordResize(int cols, int rows)
@@ -94,7 +129,7 @@ namespace Ntilde.Replay
         {
             if (timeOffsetMs < 0) throw new ArgumentOutOfRangeException(nameof(timeOffsetMs), timeOffsetMs, "Time offset must be non-negative.");
             if (cols <= 0 || rows <= 0) return;
-            if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
+            if (!IsAccepting) return;
 
             TryEnqueue(new ReplayEvent
             {
@@ -129,7 +164,7 @@ namespace Ntilde.Replay
             ArgumentOutOfRangeException.ThrowIfNegative(timeOffsetMs);
             var cellSize = RecordingCellMetrics.FromOptional(width, height);
             Volatile.Write(ref _sixelCellSize, cellSize);
-            if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
+            if (!IsAccepting) return;
             TryEnqueue(new ReplayEvent { Type = "sixelCellSize", TimeOffsetMs = timeOffsetMs, SixelCellWidthPx = width, SixelCellHeightPx = height });
         }
 
@@ -140,114 +175,121 @@ namespace Ntilde.Replay
         /// </summary>
         public void RecordSnapshot(TerminalBuffer buffer, AnsiParser? parser = null)
         {
-            if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
-
-            var cellSize = SnapshotCellMetrics(parser);
-            ReplaySnapshot snapshot;
+            if (!IsAccepting) return;
+            // Buffer before producer gate: output may enqueue while owning the buffer write lock.
             buffer.Lock.EnterReadLock();
             try
             {
-                var rows = buffer.ViewportRows;
-                int cols = buffer.Cols;
-                int rowCount = buffer.Rows;
-
-                // A complete cut needs the actual parser. Legacy buffer-only callers must
-                // not replace an in-progress replay parser with fabricated initial state.
-                TerminalStateSnapshot? state = null;
-                if (parser is not null)
+                lock (_producerGate)
                 {
-                    state = buffer.ExportState(maxScrollbackRows: 0);
-                    state.Parser = parser.ExportState();
-                }
-                snapshot = new ReplaySnapshot
-                {
-                    State = state,
-                    Cols = cols,
-                    Rows = rowCount,
-                    CursorCol = buffer.InternalCursorCol,
-                    CursorRow = buffer.InternalCursorRow,
-                    IsAltScreen = buffer.IsAltScreenActive,
-                    ScrollTop = buffer.ScrollTop,
-                    ScrollBottom = buffer.ScrollBottom,
-
-                    IsAutoWrapMode = buffer.Modes.IsAutoWrapMode,
-                    IsApplicationCursorKeys = buffer.Modes.IsApplicationCursorKeys,
-                    IsOriginMode = buffer.Modes.IsOriginMode,
-                    IsSixelDisplayMode = buffer.Modes.IsSixelDisplayMode,
-                    SixelCellWidthPx = cellSize?.WidthPx,
-                    SixelCellHeightPx = cellSize?.HeightPx,
-                    IsBracketedPasteMode = buffer.Modes.IsBracketedPasteMode,
-                    IsCursorVisible = buffer.Modes.IsCursorVisible,
-                    IsPendingWrap = buffer.IsPendingWrap,
-
-                    CurrentForeground = buffer.CurrentForeground.ToUint(),
-                    CurrentBackground = buffer.CurrentBackground.ToUint(),
-                    CurrentFgIndex = buffer.CurrentFgIndex,
-                    CurrentBgIndex = buffer.CurrentBgIndex,
-                    IsDefaultForeground = buffer.IsDefaultForeground,
-                    IsDefaultBackground = buffer.IsDefaultBackground,
-                    IsInverse = buffer.IsInverse,
-                    IsBold = buffer.IsBold,
-                    IsFaint = buffer.IsFaint,
-                    IsItalic = buffer.IsItalic,
-                    IsUnderline = buffer.IsUnderline,
-                    UnderlineStyle = (byte)buffer.UnderlineStyle,
-                    UnderlineColor = buffer.UnderlineColor?.ToUint(),
-                    UnderlineColorIndex = buffer.UnderlineColorIndex,
-                    IsBlink = buffer.IsBlink,
-                    IsStrikethrough = buffer.IsStrikethrough,
-                    IsHidden = buffer.IsHidden,
-                    ExtendedText = new Dictionary<int, string>(),
-                    RowWraps = new bool[rowCount]
-                };
-
-                // Allocate a single array for all cells in viewport
-                TerminalCell[] allCells = new TerminalCell[cols * rowCount];
-
-                for (int r = 0; r < rowCount; r++)
-                {
-                    var row = rows[r];
-                    snapshot.RowWraps[r] = row.IsWrapped;
-
-                    // Copy cells
-                    Array.Copy(row.Cells, 0, allCells, r * cols, cols);
-
-                    // Capture extended text
-                    for (int c = 0; c < cols; c++)
+                    if (!IsAccepting) return;
+                    var cellSize = SnapshotCellMetrics(parser);
+                    ReplaySnapshot snapshot;
+                    var rows = buffer.ViewportRows;
+                    int cols = buffer.Cols;
+                    int rowCount = buffer.Rows;
+                    if ((long)cols * rowCount * Unsafe.SizeOf<TerminalCell>() * 2 > _maxPendingBytes - PendingBytes)
                     {
-                        if (row.Cells[c].HasExtendedText && row.GetExtendedText(c) is { } text)
-                            snapshot.ExtendedText[r * cols + c] = text;
+                        Fail(new RecordingFailure(RecordingFailureKind.Overflow, "Recording stopped: checkpoint exceeded the byte budget."));
+                        return;
+                    }
 
-                        // Underline style and color (#270)
-                        if (row.Cells[c].IsUnderline && row.GetUnderline(c) is { } underline)
+
+                    // A complete cut needs the actual parser. Legacy buffer-only callers must
+                    // not replace an in-progress replay parser with fabricated initial state.
+                    TerminalStateSnapshot? state = null;
+                    if (parser is not null)
+                    {
+                        state = buffer.ExportState(maxScrollbackRows: 0);
+                        state.Parser = parser.ExportState();
+                    }
+                    snapshot = new ReplaySnapshot
+                    {
+                        State = state,
+                        Cols = cols,
+                        Rows = rowCount,
+                        CursorCol = buffer.InternalCursorCol,
+                        CursorRow = buffer.InternalCursorRow,
+                        IsAltScreen = buffer.IsAltScreenActive,
+                        ScrollTop = buffer.ScrollTop,
+                        ScrollBottom = buffer.ScrollBottom,
+
+                        IsAutoWrapMode = buffer.Modes.IsAutoWrapMode,
+                        IsApplicationCursorKeys = buffer.Modes.IsApplicationCursorKeys,
+                        IsOriginMode = buffer.Modes.IsOriginMode,
+                        IsSixelDisplayMode = buffer.Modes.IsSixelDisplayMode,
+                        SixelCellWidthPx = cellSize?.WidthPx,
+                        SixelCellHeightPx = cellSize?.HeightPx,
+                        IsBracketedPasteMode = buffer.Modes.IsBracketedPasteMode,
+                        IsCursorVisible = buffer.Modes.IsCursorVisible,
+                        IsPendingWrap = buffer.IsPendingWrap,
+
+                        CurrentForeground = buffer.CurrentForeground.ToUint(),
+                        CurrentBackground = buffer.CurrentBackground.ToUint(),
+                        CurrentFgIndex = buffer.CurrentFgIndex,
+                        CurrentBgIndex = buffer.CurrentBgIndex,
+                        IsDefaultForeground = buffer.IsDefaultForeground,
+                        IsDefaultBackground = buffer.IsDefaultBackground,
+                        IsInverse = buffer.IsInverse,
+                        IsBold = buffer.IsBold,
+                        IsFaint = buffer.IsFaint,
+                        IsItalic = buffer.IsItalic,
+                        IsUnderline = buffer.IsUnderline,
+                        UnderlineStyle = (byte)buffer.UnderlineStyle,
+                        UnderlineColor = buffer.UnderlineColor?.ToUint(),
+                        UnderlineColorIndex = buffer.UnderlineColorIndex,
+                        IsBlink = buffer.IsBlink,
+                        IsStrikethrough = buffer.IsStrikethrough,
+                        IsHidden = buffer.IsHidden,
+                        ExtendedText = new Dictionary<int, string>(),
+                        RowWraps = new bool[rowCount]
+                    };
+
+                    // Allocate a single array for all cells in viewport
+                    TerminalCell[] allCells = new TerminalCell[cols * rowCount];
+
+                    for (int r = 0; r < rowCount; r++)
+                    {
+                        var row = rows[r];
+                        snapshot.RowWraps[r] = row.IsWrapped;
+
+                        // Copy cells
+                        Array.Copy(row.Cells, 0, allCells, r * cols, cols);
+
+                        // Capture extended text
+                        for (int c = 0; c < cols; c++)
                         {
-                            (snapshot.Underlines ??= new Dictionary<int, TerminalUnderlineEntry>())[r * cols + c] = new TerminalUnderlineEntry
+                            if (row.Cells[c].HasExtendedText && row.GetExtendedText(c) is { } text)
+                                snapshot.ExtendedText[r * cols + c] = text;
+
+                            // Underline style and color (#270)
+                            if (row.Cells[c].IsUnderline && row.GetUnderline(c) is { } underline)
                             {
-                                Style = (byte)underline.Style,
-                                Color = underline.Color?.ToUint(),
-                                ColorIndex = underline.ColorIndex,
-                            };
+                                (snapshot.Underlines ??= new Dictionary<int, TerminalUnderlineEntry>())[r * cols + c] = new TerminalUnderlineEntry
+                                {
+                                    Style = (byte)underline.Style,
+                                    Color = underline.Color?.ToUint(),
+                                    ColorIndex = underline.ColorIndex,
+                                };
+                            }
                         }
                     }
+
+                    // Convert allCells to Base64 using zero-copy casting
+                    var byteSpan = MemoryMarshal.AsBytes(allCells.AsSpan());
+                    snapshot.CellsBase64 = Convert.ToBase64String(byteSpan);
+                    snapshot.CellsSizeOf = Unsafe.SizeOf<TerminalCell>();
+                    snapshot.CellsLayoutId = TerminalCell.TerminalCellLayoutId;
+
+                    TryEnqueue(new ReplayEvent
+                    {
+                        TimeOffsetMs = GetTimestamp(),
+                        Type = "snapshot",
+                        Snapshot = snapshot
+                    });
                 }
-
-                // Convert allCells to Base64 using zero-copy casting
-                var byteSpan = MemoryMarshal.AsBytes(allCells.AsSpan());
-                snapshot.CellsBase64 = Convert.ToBase64String(byteSpan);
-                snapshot.CellsSizeOf = Unsafe.SizeOf<TerminalCell>();
-                snapshot.CellsLayoutId = TerminalCell.TerminalCellLayoutId;
             }
-            finally
-            {
-                buffer.Lock.ExitReadLock();
-            }
-
-            TryEnqueue(new ReplayEvent
-            {
-                TimeOffsetMs = GetTimestamp(),
-                Type = "snapshot",
-                Snapshot = snapshot
-            });
+            finally { buffer.Lock.ExitReadLock(); }
         }
 
         private RecordingCellMetrics? SnapshotCellMetrics(AnsiParser? parser)
@@ -259,7 +301,7 @@ namespace Ntilde.Replay
 
         public void RecordMarker(string name)
         {
-            if (_cts.IsCancellationRequested || _queue.IsAddingCompleted) return;
+            if (!IsAccepting) return;
 
             TryEnqueue(new ReplayEvent
             {
@@ -273,13 +315,94 @@ namespace Ntilde.Replay
 
         private void TryEnqueue(ReplayEvent ev)
         {
-            try
+            lock (_producerGate)
             {
-                _queue.Add(ev);
+                if (!IsAccepting) return;
+                try
+                {
+                    var bytes = new BoundedRecordBuffer((int)Math.Max(0, _maxPendingBytes - PendingBytes - RecordOverheadBytes));
+                    using (var json = new Utf8JsonWriter(bytes))
+                    {
+                        JsonSerializer.Serialize(json, ev, ReplayJsonContext.Default.ReplayEvent);
+                    }
+                    byte[] record = bytes.FinishLine();
+                    Interlocked.Add(ref _pendingBytes, record.Length + RecordOverheadBytes);
+                    _queue.Add(record);
+                }
+                catch (RecordingException ex) { Fail(ex.Failure); }
+                catch (Exception ex) { Fail(new RecordingFailure(RecordingFailureKind.Write, ex.Message)); }
             }
-            catch (InvalidOperationException)
+        }
+
+        private void Fail(RecordingFailure failure)
+        {
+            failure = failure with { RecordingId = Id };
+            if (Interlocked.CompareExchange(ref _failure, failure, null) is not null) return;
+            lock (_producerGate)
             {
-                // Queue completed during shutdown; best-effort recording only.
+                _accepting = false;
+                _queue.CompleteAdding();
+                while (_queue.TryTake(out byte[]? record)) Interlocked.Add(ref _pendingBytes, -record.Length - RecordOverheadBytes);
+            }
+            _cts.Cancel();
+            _ready.TrySetResult();
+            TerminalLogger.Warning($"[PtyRecorder] {_filePath}: {failure.Message}");
+            // Observers may stop a session. Never invoke them on the writer or under the producer gate.
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try { Failed?.Invoke(failure); }
+                catch (Exception ex) { TerminalLogger.Warning($"[PtyRecorder] Failure observer: {ex.Message}"); }
+            });
+        }
+
+        public async Task WaitUntilReadyAsync()
+        {
+            await _ready.Task.ConfigureAwait(false);
+            ThrowIfFailed();
+        }
+
+        public void ThrowIfFailed()
+        {
+            if (Failure is { } failure) throw new RecordingException(failure);
+        }
+
+        public async Task CompleteAsync()
+        {
+            lock (_producerGate)
+            {
+                _accepting = false;
+                _queue.CompleteAdding();
+            }
+            if (Failure is { Kind: RecordingFailureKind.FlushTimeout }) ThrowIfFailed();
+            try { await _writeTask.WaitAsync(TimeSpan.FromMilliseconds(_flushTimeoutMs ?? ReadEnvInt("NTILDE_RECORDER_FLUSH_MS", 10000))).ConfigureAwait(false); }
+            catch (TimeoutException)
+            {
+                Fail(new RecordingFailure(RecordingFailureKind.FlushTimeout, "Recording did not finish saving before the flush deadline."));
+                _cts.Cancel();
+            }
+            ThrowIfFailed();
+        }
+
+        // Reject Utf8JsonWriter's requested capacity before it allocates an oversized value.
+        private sealed class BoundedRecordBuffer(int limit) : IBufferWriter<byte>
+        {
+            private byte[] _buffer = Array.Empty<byte>();
+            private int _written;
+            private void Ensure(int count)
+            {
+                if (count > limit - _written) throw new RecordingException(new RecordingFailure(
+                    RecordingFailureKind.Overflow, "Recording stopped: pending events exceeded the byte budget."));
+                if (_buffer.Length - _written < count)
+                    Array.Resize(ref _buffer, (int)Math.Min(limit, Math.Max((long)_written + count, Math.Max(4096L, (long)_buffer.Length * 2))));
+            }
+            public void Advance(int count) { ArgumentOutOfRangeException.ThrowIfNegative(count); Ensure(count); _written += count; }
+            public Memory<byte> GetMemory(int sizeHint = 0) { Ensure(Math.Max(1, sizeHint)); return _buffer.AsMemory(_written); }
+            public Span<byte> GetSpan(int sizeHint = 0) { Ensure(Math.Max(1, sizeHint)); return _buffer.AsSpan(_written); }
+            public byte[] FinishLine()
+            {
+                Ensure(1);
+                _buffer[_written++] = (byte)'\n';
+                return _buffer.AsSpan(0, _written).ToArray();
             }
         }
 
@@ -296,46 +419,39 @@ namespace Ntilde.Replay
 
         private async Task WriteLoop()
         {
+            bool opened = false;
             try
             {
-                using var writer = new StreamWriter(_filePath, append: false);
-
-                // Write v2 Header
-                string headerJson = JsonSerializer.Serialize(_header, ReplayJsonContext.Default.ReplayHeader);
-                await writer.WriteLineAsync(headerJson);
-
-                foreach (var ev in _queue.GetConsumingEnumerable(_cts.Token))
+                await using Stream stream = _openStream();
+                byte[] header = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(_header, ReplayJsonContext.Default.ReplayHeader) + "\n");
+                await stream.WriteAsync(header, _cts.Token).ConfigureAwait(false);
+                await stream.FlushAsync(_cts.Token).ConfigureAwait(false);
+                opened = true;
+                _ready.TrySetResult();
+                foreach (byte[] record in _queue.GetConsumingEnumerable(_cts.Token))
                 {
-                    string json = JsonSerializer.Serialize(ev, ReplayJsonContext.Default.ReplayEvent);
-                    await writer.WriteLineAsync(json);
+                    try
+                    {
+                        if (Failure is not null) break;
+                        await stream.WriteAsync(record, _cts.Token).ConfigureAwait(false);
+                    }
+                    finally { Interlocked.Add(ref _pendingBytes, -record.Length - RecordOverheadBytes); }
                 }
+                if (Failure is null) await stream.FlushAsync(_cts.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                TerminalLogger.Warning($"[PtyRecorder] Write failed: {ex.Message}");
+                Fail(new RecordingFailure(opened ? RecordingFailureKind.Write : RecordingFailureKind.Open, ex.Message));
             }
+            finally { _ready.TrySetResult(); }
         }
 
         public void Dispose()
         {
-            if (!_queue.IsAddingCompleted)
-            {
-                _queue.CompleteAdding();
-            }
-
-            int flushMs = ReadEnvInt("NTILDE_RECORDER_FLUSH_MS", 10000);
-            try
-            {
-                if (!_writeTask.Wait(flushMs))
-                {
-                    _cts.Cancel();
-                    _writeTask.Wait(1000);
-                }
-            }
-            catch { }
-
-            _cts.Dispose();
+            // Cleanup is best-effort; explicit save callers await CompleteAsync to report errors.
+            // CTS stays alive: a timed-out sink may still be using its token.
+            try { CompleteAsync().GetAwaiter().GetResult(); }
+            catch (RecordingException) { }
             GC.SuppressFinalize(this);
         }
     }

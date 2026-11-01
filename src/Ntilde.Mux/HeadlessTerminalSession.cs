@@ -176,6 +176,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         // The thread first: subscribing replays whatever arrived since spawn straight into the
         // bounded data queue, which would block this constructor if nobody were draining it.
         _parseThread = new Thread(ParseLoop) { IsBackground = true, Name = $"MuxParse-{id:N}" };
+        _session.RecordingFailed += OnRecordingFailed;
         _parseThread.Start();
         _inputThread = new Thread(InputLoop) { IsBackground = true, Name = $"MuxInput-{id:N}" };
         _inputThread.Start();
@@ -548,7 +549,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly object _flightOwnersGate = new();
     private readonly HashSet<Guid> _flightOwners = new();
 
-    // Admit synchronously to preserve order relative to later output and requests; completion is asynchronous.
+    // Admit synchronously to preserve order relative to later output and requests.
     private Task<T> AtRecordingBoundaryAsync<T>(Func<T> operation, bool allowStopped = true)
     {
         if (Thread.CurrentThread == _parseThread) return Task.FromResult(operation());
@@ -568,12 +569,37 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
-    internal Task StartRecordingAsync(string path) => AtRecordingBoundaryAsync(() =>
+    private void OnRecordingFailed(RecordingFailure failure)
+    {
+        EnqueueControl(() =>
+        {
+            Broadcast(MuxFrames.Notification(new MuxNotification
+            {
+                Method = MuxMethods.RecordingFailed,
+                Params = MuxFrames.ToElement(new RecordingFailedNotification
+                {
+                    SessionId = Id,
+                    RecordingId = failure.RecordingId,
+                    Kind = failure.Kind.ToString(),
+                    Message = failure.Message
+                }, MuxJsonContext.Default.RecordingFailedNotification)
+            }));
+        });
+    }
+
+    // Admit synchronously to preserve order; await disk readiness outside the parser queue.
+    internal Task<StartRecordingResult> StartRecordingAsync(string path) => AtRecordingBoundaryAsync(() =>
     {
         SetRecordingMetrics();
-        _session.StartRecording(path);
-        return 0;
-    }, allowStopped: false);
+        Task ready = _session.StartRecordingAsync(path);
+        return ConfirmRecordingAsync(ready, _session.RecordingId);
+    }, allowStopped: false).Unwrap();
+
+    private static async Task<StartRecordingResult> ConfirmRecordingAsync(Task ready, Guid id)
+    {
+        await ready.ConfigureAwait(false);
+        return new StartRecordingResult { RecordingId = id };
+    }
 
     internal Task EnableFlightRecordingAsync(Guid owner, long maxBytes) => AtRecordingBoundaryAsync(() =>
     {
@@ -601,7 +627,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private void SetRecordingMetrics() => (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(
         _parser.SixelCellWidthPx ?? 10, _parser.SixelCellHeightPx ?? 20);
 
-    internal Task StopRecordingAsync() => AtRecordingBoundaryAsync(() => { _session.StopRecording(); return 0; });
+    internal Task StopRecordingAsync() => AtRecordingBoundaryAsync(() => _session.StopRecordingAsync()).Unwrap();
 
     internal ExportFlightResult ExportFlight() => ExportFlightAsync().GetAwaiter().GetResult();
 
@@ -1488,6 +1514,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         _byteOutput.OnRawOutputReceived -= _onRawOutput;
         _session.OnOutputReceived -= _onStringOutput;
         _session.OnExit -= _onExit;
+        _session.RecordingFailed -= OnRecordingFailed;
     }
 
     /// <summary>Completes waiters on items that will never run (flush barriers, invokes).</summary>

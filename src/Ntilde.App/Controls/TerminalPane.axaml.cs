@@ -305,61 +305,83 @@ namespace Ntilde.Controls
             return profileName;
         }
 
-        public void ToggleRecording()
+        private bool _recordingBusy;
+        private ITerminalSession? _recordingSource;
+        private Action<Ntilde.Replay.RecordingFailure>? _recordingFailureHandler;
+
+        public async void ToggleRecording() => await ToggleRecordingAsync();
+
+        private void UnsubscribeRecordingFailure()
         {
-            if (Session == null) return;
+            if (_recordingSource is { } source && _recordingFailureHandler is { } handler) source.RecordingFailed -= handler;
+            _recordingSource = null;
+            _recordingFailureHandler = null;
+        }
 
-            string recordingsDirectory = AppPaths.RecordingsDirectory;
+        private void ReportRecordingFailure(ITerminalSession source, string message)
+        {
+            if (!ReferenceEquals(Session, source)) return;
+            UnsubscribeRecordingFailure();
+            RecordingNotification?.Invoke(new RecordingNotificationEventArgs
+            {
+                Kind = RecordingNotificationKind.Failed,
+                IsRecording = source.IsRecording,
+                FilePath = _currentRecordingFilePath,
+                RecordingsDirectory = AppPaths.RecordingsDirectory,
+                ErrorMessage = message
+            });
+            _currentRecordingFilePath = null;
+            RecordingStateChanged?.Invoke(IsRecording);
+        }
 
-            if (Session.IsRecording)
+        internal async Task ToggleRecordingAsync()
+        {
+            if (Session is not { } source || _recordingBusy) return;
+            _recordingBusy = true;
+            try
             {
-                Session.StopRecording();
-                RecordingNotification?.Invoke(new RecordingNotificationEventArgs
+                if (source.IsRecording)
                 {
-                    Kind = RecordingNotificationKind.Stopped,
-                    IsRecording = Session.IsRecording,
-                    FilePath = _currentRecordingFilePath,
-                    RecordingsDirectory = recordingsDirectory
-                });
-                _currentRecordingFilePath = null;
-            }
-            else
-            {
-                try
-                {
-                    if (!System.IO.Directory.Exists(recordingsDirectory))
+                    await source.StopRecordingAsync();
+                    if (!ReferenceEquals(Session, source)) return;
+                    UnsubscribeRecordingFailure();
+                    RecordingNotification?.Invoke(new RecordingNotificationEventArgs
                     {
-                        System.IO.Directory.CreateDirectory(recordingsDirectory);
-                    }
-
-                    string filename = BuildRecordingFileName(DateTime.Now, Guid.NewGuid().ToString("N"));
-                    string path = System.IO.Path.Combine(recordingsDirectory, filename);
-
-                    Session.StartRecording(path);
+                        Kind = RecordingNotificationKind.Stopped,
+                        IsRecording = source.IsRecording,
+                        FilePath = _currentRecordingFilePath,
+                        RecordingsDirectory = AppPaths.RecordingsDirectory
+                    });
+                    _currentRecordingFilePath = null;
+                }
+                else
+                {
+                    System.IO.Directory.CreateDirectory(AppPaths.RecordingsDirectory);
+                    string path = System.IO.Path.Combine(AppPaths.RecordingsDirectory,
+                        BuildRecordingFileName(DateTime.Now, Guid.NewGuid().ToString("N")));
+                    UnsubscribeRecordingFailure();
+                    _recordingSource = source;
+                    _recordingFailureHandler = failure => Dispatcher.UIThread.Post(() =>
+                    {
+                        if (!_recordingBusy && ReferenceEquals(_recordingSource, source)) ReportRecordingFailure(source, failure.Message);
+                    });
+                    source.RecordingFailed += _recordingFailureHandler;
                     _currentRecordingFilePath = path;
+                    await source.StartRecordingAsync(path);
+                    if (!ReferenceEquals(Session, source)) return;
+                    if (!source.IsRecording) throw new InvalidOperationException("Recording did not start.");
                     RecordingNotification?.Invoke(new RecordingNotificationEventArgs
                     {
                         Kind = RecordingNotificationKind.Started,
-                        IsRecording = Session.IsRecording,
+                        IsRecording = true,
                         FilePath = path,
-                        RecordingsDirectory = recordingsDirectory
+                        RecordingsDirectory = AppPaths.RecordingsDirectory
                     });
                 }
-                catch (Exception ex)
-                {
-                    _currentRecordingFilePath = null;
-                    RecordingNotification?.Invoke(new RecordingNotificationEventArgs
-                    {
-                        Kind = RecordingNotificationKind.Failed,
-                        IsRecording = Session.IsRecording,
-                        FilePath = _currentRecordingFilePath,
-                        RecordingsDirectory = recordingsDirectory,
-                        ErrorMessage = ex.Message
-                    });
-                }
+                RecordingStateChanged?.Invoke(IsRecording);
             }
-
-            RecordingStateChanged?.Invoke(IsRecording);
+            catch (Exception ex) { ReportRecordingFailure(source, ex.Message); }
+            finally { _recordingBusy = false; }
         }
 
         internal static string BuildRecordingFileName(DateTime timestamp, string uniqueSuffix)
