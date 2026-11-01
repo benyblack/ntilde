@@ -67,6 +67,29 @@ public sealed class TerminalViewSearchTests
     }
 
     [AvaloniaFact]
+    public void CoalescedSessionResizeRoundTripRefreshesAfterRetentionChanges()
+    {
+        var buffer = new TerminalBuffer(4, 4) { MaxHistory = 1 };
+        new AnsiParser(buffer, false).Process("abcdefgh\r\nabcdefgh");
+        var view = new TerminalView { DefersBufferResizeToSession = true };
+        view.SetBuffer(buffer);
+        view.NotifySessionResizedBuffer();
+        (int Current, int Count) state = default;
+        view.SearchStateChanged += (current, count) => state = (current, count);
+        view.Search("abcdefgh", caseSensitive: true);
+        view.NextMatch();
+        Assert.Equal((2, 2), state);
+        buffer.Resize(2, 4);
+        buffer.Resize(4, 4);
+        Assert.Single(buffer.FindMatches("abcdefgh", false, true));
+        view.NotifySessionResizedBuffer();
+        Assert.Equal((1, 1), state);
+        var matches = (IReadOnlyList<SearchMatch>)typeof(TerminalView)
+            .GetField("_searchMatches", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(view)!;
+        Assert.Single(matches);
+    }
+
+    [AvaloniaFact]
     public void LocalResizeRebuildsWrappedSearchSpans()
     {
         var buffer = new TerminalBuffer(80, 24);
