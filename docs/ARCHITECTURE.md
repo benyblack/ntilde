@@ -987,6 +987,11 @@ endpoint hash moved to a managed SHA-256). `LayeringTests.Nothing_ntilde_mux_run
 walks everything it runs, and CI's `mux_daemon_no_openssl` runs the linux-x64 binary's smoke again in
 debian:12-slim once it has proved no libssl or libcrypto is there (`scripts/mux-daemon-smoke.sh --no-openssl`).
 
+SSH launch planning uses one profile-store read for its compiled host blocks, argument overrides
+and working directory. A snapshot-based PlanFor launch either compiles the same store snapshot it
+validated or uses its own self-contained options; it never validates one revision and then re-reads
+another to launch. Concurrent profile edits and deletions cannot mix revisions or retarget that launch.
+
 Automatic OpenSSH connection-sharing sockets include both profile and connection identity.
 A compact hash of effective generated options plus extra SSH arguments separates destination,
 authentication, jump-chain and forwarding changes without lengthening the previous socket basename.
