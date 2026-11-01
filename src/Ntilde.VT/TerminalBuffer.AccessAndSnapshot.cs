@@ -1062,9 +1062,14 @@ namespace Ntilde.VT
                 return;
             }
             ValidateReplaySnapshot(snapshot);
+            byte[]? legacyCells = string.IsNullOrEmpty(snapshot.CellsBase64) ? null : Convert.FromBase64String(snapshot.CellsBase64);
             AcquireWriteLock();
             try
             {
+                if (legacyCells != null && System.Runtime.InteropServices.MemoryMarshal.Cast<byte, TerminalCell>(legacyCells.AsSpan()).Length
+                    >= (long)snapshot.Cols * snapshot.Rows)
+                    RetireLegacyViewportTextSizing(Math.Min(snapshot.Cols, Cols), Math.Min(snapshot.Rows, Rows));
+
                 // Legacy files cannot reconstruct a save from earlier chunks. Use deterministic defaults
                 // instead of retaining banks from a previous seek on this replay window.
                 ResetSavedCursorStateToDefaultsNoLock(_savedCursors.Main);
@@ -1111,10 +1116,9 @@ namespace Ntilde.VT
                 IsHidden = snapshot.IsHidden;
 
                 // Cells
-                if (!string.IsNullOrEmpty(snapshot.CellsBase64))
+                if (legacyCells != null)
                 {
-                    byte[] cellBytes = Convert.FromBase64String(snapshot.CellsBase64);
-                    var cellSpan = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, TerminalCell>(cellBytes.AsSpan());
+                    var cellSpan = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, TerminalCell>(legacyCells.AsSpan());
 
                     int expectedCells = snapshot.Cols * snapshot.Rows;
                     if (cellSpan.Length >= expectedCells)

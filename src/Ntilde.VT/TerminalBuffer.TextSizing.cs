@@ -37,17 +37,14 @@ public partial class TerminalBuffer
         try
         {
             _highSurrogateBuffer = null;
-            if (options.Scale == 1 && options.Width == 0 && !options.IsFractional) WriteContentCore(text);
+            if (options.Scale == 1 && options.Width == 0 && !options.IsFractional && !HasEmojiSizingBase(text)) WriteContentCore(text);
             else if (options.Width != 0) WriteSizedBlock(text, options, options.Width);
             else
             {
                 var elements = StringInfo.GetTextElementEnumerator(text);
                 while (elements.MoveNext())
                 {
-                    string grapheme = elements.GetTextElement();
-                    int width = GetGraphemeWidth(grapheme);
-                    if (width > 0) WriteSizedBlock(grapheme, options, width);
-                    else if (!TryAppendToSizedBlock(grapheme)) WriteContentCore(grapheme);
+                    WriteAutoSizedGrapheme(elements.GetTextElement(), options);
                 }
             }
         }
@@ -123,7 +120,8 @@ public partial class TerminalBuffer
     {
         int width = baseWidth * options.Scale;
         int height = options.Scale;
-        int availableHeight = _cursorRow > ScrollBottom ? Rows : ScrollBottom - ScrollTop + 1;
+        int availableHeight = _cursorRow < ScrollTop || _cursorRow > ScrollBottom
+            ? Rows : ScrollBottom - ScrollTop + 1;
         if (width > Cols || height > availableHeight) return;
         var block = new TextSizingBlock(text, options, baseWidth);
         if (!ReserveTextSizing(block, _cursorCol, TextSizingAbsoluteRow(_cursorRow), IsTextSizingTargetStable(block))) return;
@@ -143,11 +141,11 @@ public partial class TerminalBuffer
 
     private bool IsTextSizingTargetStable(TextSizingBlock block)
         => !_isPendingWrap && _cursorCol + block.Width <= Cols && LowerTextSizingEnd(_cursorCol, block.Width) < 0
-            && _cursorRow + block.Height <= (_cursorRow <= ScrollBottom ? ScrollBottom + 1 : Rows);
+            && _cursorRow + block.Height <= (_cursorRow >= ScrollTop && _cursorRow <= ScrollBottom ? ScrollBottom + 1 : Rows);
 
     private void FitTextSizingHeight(int height)
     {
-        if (_cursorRow <= ScrollBottom)
+        if (_cursorRow >= ScrollTop && _cursorRow <= ScrollBottom)
         {
             int extra = Math.Max(0, height - (ScrollBottom - _cursorRow + 1));
             for (int i = 0; i < extra; i++) ScrollUpInternal();
@@ -231,33 +229,22 @@ public partial class TerminalBuffer
 
     private bool TryAppendToSizedBlock(ReadOnlySpan<char> text)
     {
-        int col = _lastCharRow == _cursorRow ? _lastCharCol : -1;
-        var piece = SizedBlockAtCursorEnd(col);
-        if (piece == null)
-        {
-            col = _isPendingWrap ? _cursorCol : _cursorCol - 1;
-            piece = SizedBlockAtCursorEnd(col);
-        }
-        if (piece == null || !UnicodeWidth.ShouldAttachToPrevious(piece.Block.Text, text, _isAfterZwj)) return false;
+        int col = _isPendingWrap ? _cursorCol : _cursorCol - 1;
+        if ((uint)col >= (uint)Cols) return false;
+        var piece = _viewport[_cursorRow].GetTextSizing(col);
+        if (piece == null || !UnicodeWidth.ShouldAttachToPrevious(piece.Block.Text, text, EndsWithZwj(piece.Block.Text))) return false;
         string merged = string.Concat(piece.Block.Text.AsSpan(), text);
         if (!TextSizingOptions.IsSafeText(merged)) return true;
-        var replacement = new TextSizingBlock(merged, piece.Block.Options, piece.Block.BaseWidth);
+        int baseWidth = AttachedTextSizingWidth(piece.Block, merged);
+        var replacement = new TextSizingBlock(merged, piece.Block.Options, baseWidth);
         int x = col - piece.ColumnOffset;
         int y = TextSizingAbsoluteRow(_cursorRow) - piece.RowOffset;
+        if (replacement.Width != piece.Block.Width)
+            return ResizeAttachedTextSizing(piece, replacement, col, x, y);
         if (!ReserveTextSizing(replacement, x, y)) return true;
         ReplaceTextSizingBlock(piece.Block, replacement, x, y);
         _isAfterZwj = EndsWithZwj(text);
         return true;
-    }
-
-    private CellTextSizing? SizedBlockAtCursorEnd(int col)
-    {
-        if (col < 0 || col >= Cols) return null;
-        var piece = _viewport[_cursorRow].GetTextSizing(col);
-        if (piece == null || piece.RowOffset != 0) return null;
-        int end = col - piece.ColumnOffset + piece.Block.Width;
-        bool pending = Modes.IsAutoWrapMode && end >= Cols;
-        return _cursorCol == Math.Min(Cols - 1, end) && _isPendingWrap == pending ? piece : null;
     }
 
     private void ReplaceTextSizingBlock(TextSizingBlock previous, TextSizingBlock replacement, int x, int y)

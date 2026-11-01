@@ -25,6 +25,26 @@ public sealed partial class ScrollbackPages
         page.SetTextSizingFromMap(row, map);
     }
 
+    internal void WriteTextSizingCell(int logicalRow, int col, CellTextSizing piece, TextSizingCellStyle style)
+    {
+        var (page, row) = FindPage(logicalRow);
+        page.GetRowSpan(row)[col] = style.ForPiece(piece);
+        page.SetExtendedTextFromMap(row, SizingMetadata(page.GetExtendedTextMap(row), col, piece.IsAnchor ? piece.Block.Text : null));
+        page.SetHyperlinkFromMap(row, SizingMetadata(page.GetHyperlinkMap(row), col, style.Hyperlink));
+        page.SetUnderlineFromMap(row, SizingMetadata(page.GetUnderlineMap(row), col, style.Underline));
+        SetTextSizingCell(logicalRow, col, piece);
+        page.SetWrittenColumns(row, Math.Max(page.GetWrittenColumns(row), col + 1));
+        if (page.IsRowWrapped(row) && page.GetWrappedColumns(row) is int width && width < col + 1)
+            page.SetRowWrapped(row, true, col + 1);
+    }
+
+    private static SmallMap<T>? SizingMetadata<T>(SmallMap<T>? map, int col, T? value) where T : class
+    {
+        if (value == null) { map?.Remove(col); return map; }
+        (map ??= new()).Set(col, value);
+        return map;
+    }
+
     internal long AppendRow(TerminalRow row)
         => AppendRow(row.Cells, row.IsWrapped,
             new(row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap(), row.GetTextSizingMap()),

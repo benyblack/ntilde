@@ -76,6 +76,45 @@ public sealed class Osc66BudgetReviewTests
         Assert.Contains("storage budget exceeded", error.Message);
     }
 
+    [Fact]
+    public void A_width_increase_rejected_by_the_budget_leaves_cells_cursor_and_metadata_unchanged()
+    {
+        var target = Retained(600);
+        var source = new TerminalBuffer(49, 7);
+        source.WriteSizedText("❤", new(7, 0, 0, 0, 0, 0));
+        var state = source.ExportState(0);
+        target.ApplySnapshot(new ReplaySnapshot
+        {
+            Cols = 49,
+            Rows = 7,
+            ScrollBottom = 6,
+            IsAutoWrapMode = true,
+            CursorCol = state.CursorCol,
+            CursorRow = state.CursorRow,
+            CellsBase64 = state.Main.CellsBase64,
+            ExtendedText = state.Main.ExtendedText,
+            RowWrittenColumns = state.Main.RowWrittenColumns,
+            TextSizing = state.TextSizing
+        });
+        var parser = new AnsiParser(target);
+        bool rejected = false;
+        for (int row = 0; row < 7 && !rejected; row++)
+            for (int col = 7; col < 49; col++)
+            {
+                parser.Process($"\x1b[{row + 1};{col + 1}H");
+                target.WriteSizedText("x", new(1, 1, 0, 0, 0, 0));
+                target.Lock.EnterReadLock();
+                try { rejected = target.GetTextSizingAbsolute(col, target.Scrollback.Count + row) == null; }
+                finally { target.Lock.ExitReadLock(); }
+                if (rejected) break;
+            }
+        Assert.True(rejected, "the available viewport space must reach the retained-metadata budget");
+        parser.Process("\x1b[1;8H");
+        byte[] before = TerminalStateSerializer.ToBytes(target.ExportState(int.MaxValue));
+        parser.Process("\uFE0F");
+        Assert.Equal(before, TerminalStateSerializer.ToBytes(target.ExportState(int.MaxValue)));
+    }
+
     [Theory]
     [InlineData(1, false)]
     [InlineData(600, false)]

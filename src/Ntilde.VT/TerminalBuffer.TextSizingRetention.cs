@@ -5,6 +5,22 @@ public partial class TerminalBuffer
     // A replay checkpoint describes the visible state, independently of seek history.
     // Preserve retained blocks while they fit; under pressure retire old rectangles whole
     // before reserving the validated checkpoint, rather than dropping its visible glyphs.
+    private void RetireLegacyViewportTextSizing(int cols, int rows)
+    {
+        if (_textSizingBlocks == null || _textSizingBlocks.Count == 0) return;
+        var discarded = new Dictionary<TextSizingBlock, (int X, int Y)>();
+        for (int row = 0; row < rows; row++)
+        {
+            int absoluteRow = TextSizingAbsoluteRow(row);
+            _viewport[row].GetTextSizingMap()?.ForEach((col, piece) =>
+            {
+                if (col < cols) discarded.TryAdd(piece.Block, (col - piece.ColumnOffset, absoluteRow - piece.RowOffset));
+            });
+        }
+        foreach (var (block, position) in discarded)
+            EraseTextSizingBlock(block, position.X, position.Y);
+    }
+
     private void MakeRoomForLegacySizing(List<TerminalTextSizingState> entries)
     {
         long required = entries.Sum(entry => DecodeTextSizing(entry).StorageCost);
