@@ -409,15 +409,52 @@ public sealed class KittyAssociatedTextRoutingTests
         Assert.Equal("\u001b[97;1;97u", Assert.Single(sent));
     }
 
-    [AvaloniaFact]
-    public void Canonical_text_does_not_enter_the_legacy_typing_observer()
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Canonical_text_notifies_the_typing_observer_once_with_actual_payload(bool knownKey)
     {
-        var (view, _, sent) = Create();
-        int observed = 0;
-        view.TextInputObserved += _ => observed++;
-        view.Text("かな");
-        Assert.Equal("\u001b[0;1;12363:12394u", Assert.Single(sent));
-        Assert.Equal(0, observed);
+        var (view, _, sent) = Create(26);
+        var observed = new List<string>();
+        view.TextInputObserved += text =>
+        {
+            Assert.NotEmpty(sent); // Same ordering as the legacy text path.
+            observed.Add(text);
+        };
+        if (knownKey) view.Down(Key.A, physical: PhysicalKey.A, symbol: "a");
+        view.Text("e\u0301😀");
+        view.Up(Key.A, physical: PhysicalKey.A);
+        Dispatcher.UIThread.RunJobs(DispatcherPriority.Background);
+        Assert.Equal("e\u0301😀", Assert.Single(observed));
+        Assert.StartsWith(knownKey ? "\u001b[97;1;" : "\u001b[0;1;", sent[0], StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
+    public void Split_scalar_notifies_the_typing_observer_once_after_completion()
+    {
+        var (view, _, _) = Create();
+        var observed = new List<string>();
+        view.TextInputObserved += observed.Add;
+        view.Text(new string((char)0xd83d, 1));
+        Assert.Empty(observed);
+        view.Text(new string((char)0xde00, 1));
+        Assert.Equal("😀", Assert.Single(observed));
+    }
+
+    [AvaloniaFact]
+    public void Fallback_and_rejected_payload_do_not_notify_but_late_valid_text_does()
+    {
+        var (view, _, _) = Create(26);
+        var observed = new List<string>();
+        view.TextInputObserved += observed.Add;
+        view.Down(Key.A, physical: PhysicalKey.A, symbol: "a");
+        view.Text("\u001b[31m");
+        view.Down(Key.B, physical: PhysicalKey.B, symbol: "b");
+        Dispatcher.UIThread.RunJobs(DispatcherPriority.Background);
+        Assert.Empty(observed);
+        view.Text("b");
+        view.Up(Key.B, physical: PhysicalKey.B);
+        Assert.Equal("b", Assert.Single(observed));
     }
 
     [AvaloniaTheory]

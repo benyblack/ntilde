@@ -381,7 +381,9 @@ invariant changes.
   one high/low surrogate pair; only one high unit and its original mode are retained. Context
   reset or a new known key discards an incomplete fragment; packet keys without identity can
   occur between its units. Unmatched halves never become replacement payloads. Releases never
-  carry text. Pending state and queued
+  carry text. Valid forwarded text notifies the typing observer once, retaining markless
+  history capture and assist refresh; rejected payloads and key-only fallbacks do not.
+  Pending state and queued
   fallback work are each bounded to one per view. The host-data/layout limits above still apply.
   Existing app shortcut/reconnect rules and recovery-key observation order retain precedence.
   Modifier states come from the framework, including its left/right release state; unavailable

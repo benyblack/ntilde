@@ -85,17 +85,18 @@ public partial class TerminalView
         PendingAssociatedKey? pending = _pendingAssociatedKey;
         ClearPendingKittyTextInput();
         ResetCursorBlink();
-        if (pending != null && IsAssociatedInputContextCurrent(pending))
-        {
-            string frame = TerminalInputModeEncoder.AppendKittyAssociatedText(pending.Frame, text) ?? pending.Frame;
-            SendAssociatedKeyFrame(pending, frame);
-        }
-        else
-        {
-            string? frame = TerminalInputModeEncoder.AppendKittyAssociatedText("\x1b[0u", text);
-            if (frame != null) SendUserInput(frame);
-        }
+        if (ForwardKittyTextPayload(pending, text)) TextInputObserved?.Invoke(text);
         return true;
+    }
+
+    /// <summary>Returns true only when validated generated text was forwarded, not a key-only fallback.</summary>
+    private bool ForwardKittyTextPayload(PendingAssociatedKey? pending, string text)
+    {
+        PendingAssociatedKey? key = pending != null && IsAssociatedInputContextCurrent(pending) ? pending : null;
+        string? frame = TerminalInputModeEncoder.AppendKittyAssociatedText(key?.Frame ?? "\x1b[0u", text);
+        if (key != null) SendAssociatedKeyFrame(key, frame ?? key.Frame);
+        else if (frame != null) SendUserInput(frame);
+        return frame != null;
     }
 
     /// <summary>Context changes and a new known key cannot inherit an incomplete scalar.</summary>
