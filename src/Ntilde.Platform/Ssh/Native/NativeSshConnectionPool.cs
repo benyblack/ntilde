@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
 
@@ -205,16 +207,42 @@ public sealed class NativeSshConnectionPool
     /// What two tabs must agree on to share a connection: the profile, and everything the connection itself is made
     /// of. Terminal and shell settings are not in it; those belong to each tab's own channel.
     /// </summary>
-    internal static string KeyFor(SshProfile profile, NativeSshConnectionOptions options) => string.Join(
-        '\n',
-        profile.Id.ToString("N"),
-        options.Host,
-        options.User,
-        options.Port,
-        options.IdentityFilePath ?? string.Empty,
-        options.UseAgent,
-        options.KeepAliveIntervalSeconds,
-        options.KeepAliveCountMax,
-        string.Join(',', options.JumpHops),
-        string.Join(',', profile.Forwards));
+    internal static string KeyFor(SshProfile profile, NativeSshConnectionOptions options)
+    {
+        // Each field is length-prefixed; display strings are ambiguous for IPv6 and user-supplied delimiters.
+        var key = new StringBuilder();
+        Add(profile.Id.ToString("N"));
+        Add(options.Host);
+        Add(options.User);
+        AddNumber(options.Port);
+        Add(options.IdentityFilePath);
+        Add(options.UseAgent ? "1" : "0");
+        AddNumber(options.KeepAliveIntervalSeconds);
+        AddNumber(options.KeepAliveCountMax);
+        AddNumber(options.JumpHops.Count);
+        foreach (SshJumpHop hop in options.JumpHops)
+        {
+            Add(hop.Host);
+            Add(hop.User);
+            AddNumber(hop.Port);
+        }
+        AddNumber(profile.Forwards.Count);
+        foreach (PortForward forward in profile.Forwards)
+        {
+            AddNumber((int)forward.Kind);
+            Add(forward.BindAddress);
+            AddNumber(forward.SourcePort);
+            Add(forward.DestinationHost);
+            AddNumber(forward.DestinationPort);
+        }
+        return key.ToString();
+
+        void Add(string? value)
+        {
+            value ??= string.Empty;
+            key.Append(value.Length.ToString(CultureInfo.InvariantCulture)).Append(':').Append(value);
+        }
+
+        void AddNumber(int value) => Add(value.ToString(CultureInfo.InvariantCulture));
+    }
 }

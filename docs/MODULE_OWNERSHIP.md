@@ -260,6 +260,9 @@ invariant changes.
   forwarding edits cannot join the previous master. The 32-hex basename retains the prior Unix
   socket path length; display/shell/persistence policy edits retain sharing. Explicit custom
   ControlPath values remain the user's sharing contract, including `%id%` expansion.
+- Native shared-connection identities encode scalar fields and counted, ordered hop/forward
+  fields with length prefixes. IPv6 colons, commas and newlines cannot move field boundaries or
+  alias a different route. Terminal and shell settings remain channel-local and preserve sharing.
 - OpenSSH colon-delimited endpoints use `OpenSshEndpoint.FormatHost`: IPv6 literals are bracketed
   in ProxyJump, local/remote/dynamic forwarding and legacy SCP operands, including the App legacy
   jump chain. Already bracketed input stays bracketed once; direct SSH targets and `HostName`

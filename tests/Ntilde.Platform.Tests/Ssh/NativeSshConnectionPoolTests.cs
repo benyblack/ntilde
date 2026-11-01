@@ -367,6 +367,21 @@ public sealed class NativeSshConnectionPoolTests
     }
 
     [Fact]
+    public void Changing_valid_ipv6_jump_destination_opens_a_new_transport()
+    {
+        var interop = new SharingInterop();
+        var pool = new NativeSshConnectionPool();
+        SshProfile profile = CreateProfile();
+        profile.JumpHops.Add(new SshJumpHop { Host = "2001:db8::1", User = "jump", Port = 2222 });
+        using NativeSshSession first = new(profile, interop: interop, connectionPool: pool);
+        profile.JumpHops[0].Host = "2001:db8::1:2222";
+        profile.JumpHops[0].Port = 22;
+        using NativeSshSession second = new(profile, interop: interop, connectionPool: pool);
+        Assert.Equal(2, interop.SharedConnectCount);
+        Assert.NotEqual(interop.OpenedShells[0].Connection, interop.OpenedShells[1].Connection);
+    }
+
+    [Fact]
     public void KeyFor_IgnoresTheTerminalButNotTheConnection()
     {
         SshProfile profile = CreateProfile();
