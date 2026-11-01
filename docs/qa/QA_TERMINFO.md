@@ -201,3 +201,9 @@ Latest runtime-color follow-up: [2026-10-31 owned color-stack measurement](termi
 and [derived digest-bound comparison](terminfo/2026-10-31-color-stack-comparison.json).
 It measured 73 supported / 5 unsupported / 177 inconclusive observations; the
 report separates query evidence from state, replay and pixel verification.
+
+Latest alternate-key follow-up: [2026-11-01 owned measurement](terminfo/2026-11-01-alternate-keys.md)
+and [derived comparison](terminfo/2026-11-01-alternate-keys-comparison.json).
+It measured 74 supported / 4 unsupported / 177 inconclusive observations. The
+changed collector result proves negotiation; supplied-layout input and managed
+transport tests provide separate delivery evidence with explicit layout limits.
