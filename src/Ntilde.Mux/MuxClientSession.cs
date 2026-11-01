@@ -263,6 +263,17 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         _client.SendResize(Id, presentation.Cols, presentation.Rows, presentation);
     }
 
+    /// <summary>
+    /// Applies presentation settings while preserving the daemon's current size. Legacy daemons
+    /// use their existing combined presentation/resize request when they do not advertise support.
+    /// </summary>
+    public void UpdatePresentationSettings(MuxPresentation presentation)
+    {
+        ArgumentNullException.ThrowIfNull(presentation);
+        _presentation = presentation;
+        _client.SendResize(Id, presentation.Cols, presentation.Rows, presentation, _client.SupportsPresentationOnly);
+    }
+
     public bool IsProcessRunning => Volatile.Read(ref _exited) == 0;
     public int? ExitCode => Volatile.Read(ref _exited) != 0 ? Volatile.Read(ref _exitCode) : null;
 

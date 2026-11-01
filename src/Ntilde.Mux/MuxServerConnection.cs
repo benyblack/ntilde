@@ -467,6 +467,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             Version = chosen,
             ForceConPtyFiltering = o.ForceConPtyFiltering,
             ServerVersion = string.IsNullOrEmpty(o.AppVersion) ? null : o.AppVersion,
+            SupportsPresentationOnly = true,
             HistoryLimits = new MuxHistoryLimits { MaxRows = o.MaxSessionHistoryRows, MaxBytes = o.MaxSessionScrollbackBytes, MaxAttachRows = o.MaxAttachScrollbackRows },
         }, MuxJsonContext.Default.WelcomeResult);
     }
@@ -535,7 +536,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                             _server.RequireGeometry(presentation.Cols, presentation.Rows);
                             MuxServer.RequireHistoryRequest(presentation.MaxHistory);
                         }
-                        Session(p.SessionId).PostResize(this, p.Cols, p.Rows, p.Presentation); // named: its kitty flag is this client's own
+                        Session(p.SessionId).PostResize(this, p.Cols, p.Rows, p.Presentation, p.PresentationOnly); // named: its kitty flag is this client's own
                         ReplyEmpty(request);
                         break;
                     }

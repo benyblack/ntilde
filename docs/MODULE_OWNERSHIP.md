@@ -331,6 +331,7 @@ invariant changes.
 - **Seq semantics:** `Output.seq` = raw offset before the chunk, `ResizeEvent.seq` = offset it applies at, snapshot `StreamSeq + DecoderTail.Length` = offset at capture, and clients drop the connection on any gap
 - **The mux answers device queries** and clients never do
 - Latest resize wins
+- Presentation-only updates preserve geometry and any pending resize, while retaining the existing per-sender history and keyboard coalescing. The welcome advertises `SupportsPresentationOnly`; clients send the optional resize `PresentationOnly` flag only to supporting daemons. Legacy daemons retain combined presentation/resize behavior. App attach completion sends nothing when presentation settings are unchanged.
 - Daemon-owned scrollback retention: optional spawn/presentation requests set a bounded row high-water policy. Interactive clients can raise it; lower requests and read-only observers cannot trim shared history. Coalesced resizes preserve the highest request per sender. The retained cell-byte ceiling survives all buffer resizes; attach row/frame/snapshot caps remain independent. Optional Welcome history limits advertise support without changing the protocol range.
 - No thread-pool work on the output path
 - A slow client is disconnected, never waited for (stream frames against the send budget, snapshots against their own separate bound)

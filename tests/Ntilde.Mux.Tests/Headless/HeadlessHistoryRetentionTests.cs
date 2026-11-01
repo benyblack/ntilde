@@ -67,9 +67,11 @@ public sealed class HeadlessHistoryRetentionTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task CoalescedResizeRequestsKeepTheHighestRetentionAndNewestGeometry(bool interactiveClient)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task CoalescedResizeRequestsKeepTheHighestRetentionAndNewestGeometry(bool interactiveClient, bool presentationOnly)
     {
         var ct = TestContext.Current.CancellationToken;
         var fake = new ScriptedTerminalSession(new TerminalSessionRequest("scripted", "", "", 80, 24, null, false, null));
@@ -91,12 +93,12 @@ public sealed class HeadlessHistoryRetentionTests
         {
             Assert.True(entered.Wait(TimeSpan.FromSeconds(5), ct));
             session.PostResize(interactiveClient ? sink : null, 82, 24, MuxTestHost.DefaultPresentation with { MaxHistory = 100_000 });
-            session.PostResize(interactiveClient ? sink : null, 83, 24, MuxTestHost.DefaultPresentation with { MaxHistory = 100 });
+            session.PostResize(interactiveClient ? sink : null, 83, 24, MuxTestHost.DefaultPresentation with { MaxHistory = 100 }, presentationOnly);
         }
         finally { release.Set(); }
         await session.FlushAsync();
         Assert.Equal(100_000, session.HistoryRetentionRows);
-        Assert.Equal(83, session.Buffer.Cols);
+        Assert.Equal(presentationOnly ? 82 : 83, session.Buffer.Cols);
     }
 
     [Fact]

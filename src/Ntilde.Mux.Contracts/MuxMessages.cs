@@ -63,6 +63,10 @@ public sealed record WelcomeResult
     /// <summary>Absent on older daemons, whose retention cannot be configured by a client.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MuxHistoryLimits? HistoryLimits { get; init; }
+
+    /// <summary>Resize requests may update presentation without changing stream-owned geometry.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool SupportsPresentationOnly { get; init; }
 }
 
 /// <summary>What the client looks like: applied to the mux parser so its replies describe it.</summary>
@@ -221,6 +225,9 @@ public sealed record DetachParams
 
 public sealed record ResizeParams
 {
+    /// <summary>Apply presentation settings without requesting a size. Send only when advertised by the welcome.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool PresentationOnly { get; init; }
     public Guid SessionId { get; init; }
     public int Cols { get; init; }
     public int Rows { get; init; }
