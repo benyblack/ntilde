@@ -736,6 +736,9 @@ requires public test classes.
 - `AgentOutputRegionTracker`: coalesced streaming/presence read deadlines, one background read at a time, dirty follow-ups, and cancellation on generation/lifetime changes. Completion reads synchronously without waiting for background work; output/presence deliveries reject stale generations. Timer metadata locks never span buffer reads or UI dispatch.
 - Workspace and session lifecycle
 - SSH UI: connection manager, transfer center, remote files sidebar, vault, sftp service, ssh-askpass
+- Legacy OpenSSH SCP paths: `SftpService` backslash-escapes literal remote shell characters before
+  local argv encoding, preserving `~`/`~/` home shorthand and refusing NUL/CR/LF (legacy protocol
+  limits). Native SFTP path normalization is separate.
 - Credential lifetime composition: the session registry clones passwords under its lock, callers dispose operation
   copies, and remote mux hosts wipe cached credentials on replacement, refusal and teardown. Keyring adapters
   read/write buffers; string adapters remain for UI and OpenSSH askpass. `LegacyProfilePasswordMigration`
