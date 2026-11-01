@@ -69,6 +69,21 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task RecordingObserversCanBeReleasedConcurrentlyAfterParserStops()
+    {
+        (HeadlessTerminalSession mux, _) = NewSession();
+        using (mux)
+        {
+            var sinks = Enumerable.Range(0, 16).Select(_ => new RecordingFrameSink()).ToArray();
+            foreach (var sink in sinks) await mux.StartRecordingAsync("test.nrec", sink);
+            Assert.Equal(16, mux.RecordingObserverCountForTest);
+            mux.Dispose();
+            await Task.WhenAll(sinks.Select(sink => mux.RemoveRecordingObserverAsync(sink)));
+            Assert.Equal(0, mux.RecordingObserverCountForTest);
+        }
+    }
+
+    [Fact]
     public async Task Parses_the_tapped_bytes_on_its_own_dedicated_thread()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
