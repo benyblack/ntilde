@@ -127,7 +127,9 @@ public sealed class JsonSnippetStore : ISnippetStore
     private static void TryDeleteOrphan(string path, string prefix)
     {
         string name = Path.GetFileName(path);
-        if (name.Length <= prefix.Length + 4 || !Guid.TryParseExact(name[prefix.Length..^4], "N", out _)) return;
+        StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!name.StartsWith(prefix, comparison) || !name.EndsWith(".tmp", comparison) ||
+            name.Length <= prefix.Length + 4 || !Guid.TryParseExact(name[prefix.Length..^4], "N", out _)) return;
         try
         {
             if ((File.GetAttributes(path) & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0) return;

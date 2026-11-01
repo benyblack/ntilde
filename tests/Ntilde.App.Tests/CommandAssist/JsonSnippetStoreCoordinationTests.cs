@@ -134,6 +134,28 @@ public sealed class JsonSnippetStoreCoordinationTests : IDisposable
         if (link != null) Assert.True(File.Exists(link));
     }
 
+    [Fact]
+    public async Task WildcardCharactersInAUnixStoreNameCannotClaimAnotherStoresTemporaryFile()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows filenames do not permit question marks.");
+        }
+        else
+        {
+            string literal = Path.Combine(_root, "snip?ets.json");
+            var store = new JsonSnippetStore(literal);
+            await store.UpsertAsync(Snippet("seed"), Ct);
+            string foreign = Path.Combine(_root, $"snippets.json.leased.{Guid.NewGuid():N}.tmp");
+            await File.WriteAllTextAsync(foreign, "another store owns this temporary document", Ct);
+
+            await store.UpsertAsync(Snippet("new"), Ct);
+
+            Assert.True(File.Exists(foreign));
+            Assert.Equal("another store owns this temporary document", await File.ReadAllTextAsync(foreign, Ct));
+        }
+    }
+
     private static CommandSnippet Snippet(string id) =>
         new(id, id, "echo " + id, null, null, null, true, DateTimeOffset.UnixEpoch, null);
 }
