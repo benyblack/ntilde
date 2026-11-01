@@ -342,16 +342,23 @@ fn remote_basename_rejects_a_backslash_component_before_local_join() {
 async fn opened_windows_directories_prevent_ancestor_swap_during_copy() {
     let tree = Tree::new();
     let local = tree.path("download");
-    std::fs::create_dir_all(local.join("link")).unwrap();
+    std::fs::create_dir_all(local.join("link/deep")).unwrap();
     let root = local.clone();
-    let original = local.join("link");
+    let original = local.join("link/deep");
+    let middle = local.join("link");
+    let renamed_middle = local.join("renamed-middle");
     let moved = local.join("moved");
     let renamed_root = tree.path("renamed-root");
     let server = ReviewServer {
+        nested: true,
         on_read: Some(Box::new(move || {
             assert!(
                 std::fs::rename(&original, &moved).is_err(),
                 "opened parent must deny rename"
+            );
+            assert!(
+                std::fs::rename(&middle, &renamed_middle).is_err(),
+                "opened descendant must pin intermediate ancestor"
             );
             assert!(
                 std::fs::rename(&root, &renamed_root).is_err(),
@@ -362,7 +369,7 @@ async fn opened_windows_directories_prevent_ancestor_swap_during_copy() {
     };
     download(&local, server, None).await.unwrap();
     assert_eq!(
-        std::fs::read(local.join("link/victim.txt")).unwrap(),
+        std::fs::read(local.join("link/deep/victim.txt")).unwrap(),
         b"remote"
     );
 }
