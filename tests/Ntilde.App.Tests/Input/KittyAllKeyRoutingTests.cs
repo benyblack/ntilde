@@ -299,17 +299,102 @@ public sealed class KittyAllKeyRoutingTests
         Assert.Equal(new[] { "\u001b[97u", "かな", "b" }, sent);
     }
 
-    [AvaloniaFact]
-    public void Pending_legacy_text_is_discarded_when_input_context_changes()
+    [AvaloniaTheory]
+    [InlineData("focus", 0)]
+    [InlineData("focus", 8)]
+    [InlineData("buffer", 0)]
+    [InlineData("buffer", 8)]
+    [InlineData("session", 0)]
+    [InlineData("session", 8)]
+    public void Context_reset_expires_correlation_without_swallowing_a_new_text_only_commit(string context, int flags)
     {
-        var (view, _, sent) = Create(0);
+        var (view, buffer, sent) = Create(flags);
         view.Down(Key.A, symbol: "a");
-        view.LoseFocus();
+        switch (context)
+        {
+            case "focus": view.LoseFocus(); break;
+            case "buffer": view.SetBuffer(new TerminalBuffer(80, 24)); break;
+            case "session":
+                var session = new Mock<ITerminalSession>();
+                session.SetupGet(x => x.IsProcessRunning).Returns(true);
+                session.Setup(x => x.SendInput(It.IsAny<string>())).Callback<string>(sent.Add);
+                view.SetSession(session.Object);
+                break;
+        }
+        buffer.Modes.KittyKeyboard.SetSupportedFlags(7);
+        view.Text("かな"); // No callback from the old keydown ever arrived.
+        Assert.Equal(flags == 8 ? new[] { "\u001b[97u", "かな" } : new[] { "かな" }, sent);
+    }
+
+    [AvaloniaFact]
+    public void Matching_keyup_expires_suppression_before_a_later_text_only_commit()
+    {
+        var (view, buffer, sent) = Create();
+        view.Down(Key.A, physical: PhysicalKey.A, symbol: "a");
+        view.Up(Key.A, physical: PhysicalKey.A);
+        buffer.Modes.KittyKeyboard.SetSupportedFlags(7);
+        view.Text("かな");
+        Assert.Equal(new[] { "\u001b[97u", "かな" }, sent);
+    }
+
+    [AvaloniaFact]
+    public void Unrelated_keyup_does_not_expire_the_pending_text_decision()
+    {
+        var (view, buffer, sent) = Create();
+        view.Down(Key.A, physical: PhysicalKey.A, symbol: "a");
+        view.Up(Key.B, physical: PhysicalKey.B);
+        buffer.Modes.KittyKeyboard.SetSupportedFlags(7);
         view.Text("a");
-        Assert.Empty(sent);
-        view.Down(Key.B, symbol: "b");
+        Assert.Equal("\u001b[97u", Assert.Single(sent));
+    }
+
+    [AvaloniaFact]
+    public void Non_text_modifier_keydown_preserves_the_pending_legacy_text_decision()
+    {
+        var (view, buffer, sent) = Create();
+        buffer.Modes.KittyKeyboard.SetSupportedFlags(7);
+        view.Down(Key.A, physical: PhysicalKey.A, symbol: "a");
+        buffer.Modes.KittyKeyboard.SetSupportedFlags(15);
+        view.Down(Key.LeftShift, KeyModifiers.Shift, PhysicalKey.ShiftLeft);
+        view.Text("a");
+        Assert.Equal(new[] { "\u001b[57441;2u", "a" }, sent);
+    }
+
+    [AvaloniaFact]
+    public void Text_callback_during_send_is_consumed_once_and_not_rearmed_on_return()
+    {
+        var (view, buffer, sent) = Create();
+        var session = new Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        session.Setup(x => x.SendInput(It.IsAny<string>())).Callback<string>(sequence =>
+        {
+            sent.Add(sequence);
+            if (sequence == "\u001b[97u") view.Text("a");
+        });
+        view.SetSession(session.Object);
+        view.Down(Key.A, symbol: "a");
+        buffer.Modes.KittyKeyboard.SetSupportedFlags(7);
+        view.Text("かな");
+        Assert.Equal(new[] { "\u001b[97u", "かな" }, sent);
+    }
+
+    [AvaloniaFact]
+    public void Reentrant_keydown_owns_its_text_decision_after_the_outer_send_returns()
+    {
+        var (view, buffer, sent) = Create();
+        var session = new Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        session.Setup(x => x.SendInput(It.IsAny<string>())).Callback<string>(sequence =>
+        {
+            sent.Add(sequence);
+            if (sequence != "\u001b[97u") return;
+            buffer.Modes.KittyKeyboard.SetSupportedFlags(7);
+            view.Down(Key.B, symbol: "b");
+        });
+        view.SetSession(session.Object);
+        view.Down(Key.A, symbol: "a");
         view.Text("b");
-        Assert.Equal("b", Assert.Single(sent));
+        Assert.Equal(new[] { "\u001b[97u", "b" }, sent);
     }
 
     [AvaloniaFact]

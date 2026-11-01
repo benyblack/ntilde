@@ -16,7 +16,7 @@ namespace Ntilde.Shell
                 // Flag 8 replaces text with key reports. Without flag 16, text-only IME
                 // commits have no associated-text payload and are deliberately suppressed.
                 bool suppress = _pendingKittyTextSuppression ?? ReportAllKeysActive;
-                _pendingKittyTextSuppression = null;
+                ClearPendingKittyTextInput();
                 if (suppress)
                 {
                     e.Handled = true;
@@ -42,6 +42,7 @@ namespace Ntilde.Shell
 
         protected override void OnKeyUp(KeyEventArgs e)
         {
+            ExpirePendingKittyTextInput(e.Key, e.PhysicalKey);
             base.OnKeyUp(e);
             if (e.Handled)
             {
@@ -76,6 +77,7 @@ namespace Ntilde.Shell
 
         internal bool HandleKeyUpCore(Key key, KeyModifiers modifiers, PhysicalKey physical = PhysicalKey.None)
         {
+            ExpirePendingKittyTextInput(key, physical);
             if (_reportedKittyKeys?.Remove(KeyIdentity(key, physical), out var held) != true) return false;
             if (!_enableKittyKeyboardProtocol || _session?.IsProcessRunning != true
                 || !ReferenceEquals(held.State, _buffer?.Modes.KittyKeyboard)
@@ -88,17 +90,30 @@ namespace Ntilde.Shell
         }
 
         private bool? _pendingKittyTextSuppression;
-        private int _kittyTextContextGeneration;
+        private (PhysicalKey Physical, Key Logical)? _pendingKittyTextKey;
+        private int _kittyTextInputGeneration;
         private bool ReportAllKeysActive => _enableKittyKeyboardProtocol
             && ((_buffer?.Modes.KittyKeyboard.Flags ?? 0) & Ntilde.VT.KittyKeyboardState.FlagReportAllKeys) != 0;
 
-        /// <summary>Context resets discard a pending callback; policy changes retain its captured decision.</summary>
-        private void ResetKittyKeyTracking(bool discardPendingText = true)
+        /// <summary>Context resets expire correlation; policy changes retain the original text decision.</summary>
+        private void ResetKittyKeyTracking(bool clearPendingText = true)
         {
             _reportedKittyKeys?.Clear();
-            if (!discardPendingText) return;
-            _kittyTextContextGeneration++;
-            if (_pendingKittyTextSuppression.HasValue) _pendingKittyTextSuppression = true;
+            if (clearPendingText) ClearPendingKittyTextInput();
+        }
+
+        /// <summary>Removes the decision and invalidates an enclosing keydown that might otherwise re-arm it.</summary>
+        private void ClearPendingKittyTextInput()
+        {
+            _pendingKittyTextSuppression = null;
+            _pendingKittyTextKey = null;
+            _kittyTextInputGeneration++;
+        }
+
+        /// <summary>A matching release ends the text gesture even when flag 2 does not report releases.</summary>
+        private void ExpirePendingKittyTextInput(Key key, PhysicalKey physical)
+        {
+            if (_pendingKittyTextKey is { } pending && pending == KeyIdentity(key, physical)) ClearPendingKittyTextInput();
         }
 
         /// <summary>
@@ -159,22 +174,29 @@ namespace Ntilde.Shell
         /// Captures one text-capable keydown's policy so a ceiling/stack/kill-switch change before
         /// TextInput cannot duplicate encoded input or discard legacy text. Non-text modifier events
         /// do not replace the pending decision. A new text-capable keydown replaces it; TextInput
-        /// consumes it once. Focus/session/buffer changes discard the pending callback instead.
+        /// consumes it once. A matching release or focus/session/buffer change expires correlation
+        /// so an unrelated later text-only commit is not swallowed. Nested callbacks own their decisions.
         /// </summary>
         internal bool HandleKeyDownCore(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey = PhysicalKey.None, string? keySymbol = null)
         {
             int flags = _enableKittyKeyboardProtocol ? _buffer?.Modes.KittyKeyboard.Flags ?? 0 : 0;
             bool hasText = _session != null && TerminalInputModeEncoder.MayProduceTextInput(key, keySymbol);
-            int context = _kittyTextContextGeneration;
-            if (hasText) _pendingKittyTextSuppression = (flags & Ntilde.VT.KittyKeyboardState.FlagReportAllKeys) != 0;
-            bool handled = HandleKeyDownCoreImpl(key, keyModifiers, physicalKey, keySymbol, flags);
+            int generation = _kittyTextInputGeneration;
             if (hasText)
+            {
+                ClearPendingKittyTextInput();
+                generation = _kittyTextInputGeneration;
+                _pendingKittyTextSuppression = (flags & Ntilde.VT.KittyKeyboardState.FlagReportAllKeys) != 0;
+                _pendingKittyTextKey = KeyIdentity(key, physicalKey);
+            }
+            bool handled = HandleKeyDownCoreImpl(key, keyModifiers, physicalKey, keySymbol, flags);
+            if (hasText && generation == _kittyTextInputGeneration)
             {
                 // Consumed legacy keys leave their existing text-only behavior unchanged.
                 bool? decision = handled ? null : false;
-                if ((flags & Ntilde.VT.KittyKeyboardState.FlagReportAllKeys) != 0 || context != _kittyTextContextGeneration)
-                    decision = true;
+                if ((flags & Ntilde.VT.KittyKeyboardState.FlagReportAllKeys) != 0) decision = true;
                 _pendingKittyTextSuppression = decision;
+                if (!decision.HasValue) _pendingKittyTextKey = null;
             }
             return handled;
         }

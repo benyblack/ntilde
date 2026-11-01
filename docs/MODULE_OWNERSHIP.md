@@ -360,9 +360,11 @@ invariant changes.
   identities, suppressing plain text while that flag is active. Flag 2 still controls repeat/release;
   flag 4 controls optional alternate fields, not the primary identity needed by flag 8. All-key mode and
   unhandled legacy text keydowns capture their encoding and one-shot text decisions; capability/stack/kill-switch changes
-  before TextInput cannot duplicate a key frame or discard the original legacy text. Focus,
-  session and buffer changes discard the pending callback; non-text modifier events do not
-  replace it. A press with
+  before TextInput cannot duplicate a key frame or discard the original legacy text. A matching
+  key release or focus/session/buffer change clears the correlation, allowing a new text-only
+  commit in the current context. Non-text modifier events do not replace it. Consuming text
+  or accepting a nested keydown invalidates the enclosing decision, so returning callbacks
+  cannot re-arm suppression or overwrite the newer decision. A press with
   neither a logical nor physical identity has no repeat/release slot. Pure IME text is suppressed
   without associated-text support; composing marker keys never become fabricated key presses.
   Existing app shortcut/reconnect rules and recovery-key observation order retain precedence.
