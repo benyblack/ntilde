@@ -140,6 +140,15 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/mux_sha256_check_tests.py
 
+      # The build job skips analyzers because the `analyzers` job runs them; this fails if
+      # that stops being true, which would otherwise switch the gate off without a red build.
+      - name: Self-test the analyzer gate
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/analyzer_gate_tests.py
+
       # The check below decides whether dotnet build may skip compiling the Rust libraries, so a
       # wrong "skip" would ship a build with none: scripts/ci/native-libs-present.sh, tested here.
       - name: Self-test the native library presence check
@@ -285,7 +294,26 @@ jobs:
           key: ${{ steps.native-bin-cache.outputs.cache-primary-key }}
 
       # ── .NET ───────────────────────────────────────────────────────────────────
+      # The hosted images already ship a 10.0.4xx SDK (10.0.403 on windows-latest and
+      # ubuntu-latest, 2026-11-01), and global.json's rollForward: latestPatch accepts any
+      # 10.0.4xx patch from 10.0.400 up. When `dotnet --version` resolves an SDK here, under
+      # global.json, the job uses it and skips the cached ~/.dotnet copy (394 MB, ~19 s to
+      # unpack on windows) and setup-dotnet's install. When it does not - an image that has
+      # moved on from 10.0.4xx, macOS, arm64 - the two steps after this run as before.
+      - name: Use the runner's .NET SDK if global.json accepts it
+        id: sdk
+        shell: bash
+        run: |
+          if v=$(dotnet --version 2>/dev/null); then
+            echo "Preinstalled SDK $v satisfies global.json; no install needed."
+            echo "preinstalled=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "No preinstalled SDK satisfies global.json; installing one."
+            echo "preinstalled=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Cache .NET SDK
+        if: steps.sdk.outputs.preinstalled != '1'
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
@@ -299,13 +327,23 @@ jobs:
           restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
+        if: steps.sdk.outputs.preinstalled != '1'
         uses: actions/setup-dotnet@v4
         env:
           DOTNET_INSTALL_DIR: ~/.dotnet
         with:
           global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+
+      # NuGet packages (~1 GB) for the Restore step. A cache of its own rather than
+      # setup-dotnet's `cache: true`, which only comes with an SDK install this job usually no
+      # longer makes. The key adds Directory.Packages.props to the project files setup-dotnet
+      # hashed: the package versions live there, so a version bump now changes the key.
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Restore
         run: dotnet restore
@@ -313,7 +351,11 @@ jobs:
       - name: Build
         env:
           SKIP_RUST_NATIVE_BUILD: ${{ steps.native-libs.outputs.skip }}
-        run: dotnet build -c ${{ env.CONFIGURATION }} --no-restore
+        # Analyzers and code style run in the `analyzers` job, beside this one, not here: they
+        # were ~45% of this step on windows (180 s with them, 98 s without, PR #715), and every
+        # Unit Tests shard waits for this job. Compiler warnings still fail this build; the
+        # analyzer diagnostics fail that job, and its result gates `Unit Tests (<os>)`.
+        run: dotnet build -c ${{ env.CONFIGURATION }} --no-restore -p:RunAnalyzers=false
 
       # VtReportCliBuildTests (Category=SdkBuild): the App and CLI binaries answer --vt-report, and
       # the App's output carries the CLI shim as a named sidecar. They check what a real
@@ -372,6 +414,82 @@ jobs:
             tests/Ntilde.Rendering.Tests/bin/${{ env.CONFIGURATION }}
             tests/Ntilde.McpServer.Tests/bin/${{ env.CONFIGURATION }}
             tests/Ntilde.Mux.Tests/bin/${{ env.CONFIGURATION }}
+
+  # The analyzer and code-style gate (Directory.Build.props: AnalysisLevel latest-recommended,
+  # EnforceCodeStyleInBuild, TreatWarningsAsErrors), as its own job so it runs beside `build`
+  # instead of inside it. Analyzers were ~45% of the windows build step (180 s with them, 98 s
+  # without, PR #715), and every Unit Tests shard waits for `build`; nothing waits for this.
+  #
+  # One OS is enough: no project defines OS-specific compile symbols, so every analyzer sees the
+  # same source on windows and ubuntu, and both builds were already passing the same rules. It
+  # still gates: `Unit Tests (<os>)` fails unless this job succeeded, and
+  # scripts/tests/analyzer_gate_tests.py fails if `build` skips analyzers while no job runs
+  # them. No Rust: the managed build copies the native libraries only where they exist.
+  analyzers:
+    name: Analyzers
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # The hosted images already ship a 10.0.4xx SDK (10.0.403 on windows-latest and
+      # ubuntu-latest, 2026-11-01), and global.json's rollForward: latestPatch accepts any
+      # 10.0.4xx patch from 10.0.400 up. When `dotnet --version` resolves an SDK here, under
+      # global.json, the job uses it and skips the cached ~/.dotnet copy (394 MB, ~19 s to
+      # unpack on windows) and setup-dotnet's install. When it does not - an image that has
+      # moved on from 10.0.4xx, macOS, arm64 - the two steps after this run as before.
+      - name: Use the runner's .NET SDK if global.json accepts it
+        id: sdk
+        shell: bash
+        run: |
+          if v=$(dotnet --version 2>/dev/null); then
+            echo "Preinstalled SDK $v satisfies global.json; no install needed."
+            echo "preinstalled=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "No preinstalled SDK satisfies global.json; installing one."
+            echo "preinstalled=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cache .NET SDK
+        if: steps.sdk.outputs.preinstalled != '1'
+        uses: actions/cache@v4
+        with:
+          path: ~/.dotnet
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Setup .NET
+        if: steps.sdk.outputs.preinstalled != '1'
+        uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ~/.dotnet
+        with:
+          global-json-file: global.json
+
+      # NuGet packages (~1 GB) for the Restore step. A cache of its own rather than
+      # setup-dotnet's `cache: true`, which only comes with an SDK install this job usually no
+      # longer makes. The key adds Directory.Packages.props to the project files setup-dotnet
+      # hashed: the package versions live there, so a version bump now changes the key.
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build with analyzers and code style
+        env:
+          SKIP_RUST_NATIVE_BUILD: '1'
+        run: dotnet build -c ${{ env.CONFIGURATION }} --no-restore
 
   # One job per (OS, shard). The headless App.Tests main lane - ~7,200 tests run strictly
   # serially, about six minutes, the longest step on CI's critical path - is split across
@@ -444,7 +562,26 @@ jobs:
             "$py" scripts/tests/app_tests_shard_tests.py; exit 1; }
           "$py" scripts/ci/app-tests-shard.py "$SHARD" | tee -a "$GITHUB_OUTPUT"
 
+      # The hosted images already ship a 10.0.4xx SDK (10.0.403 on windows-latest and
+      # ubuntu-latest, 2026-11-01), and global.json's rollForward: latestPatch accepts any
+      # 10.0.4xx patch from 10.0.400 up. When `dotnet --version` resolves an SDK here, under
+      # global.json, the job uses it and skips the cached ~/.dotnet copy (394 MB, ~19 s to
+      # unpack on windows) and setup-dotnet's install. When it does not - an image that has
+      # moved on from 10.0.4xx, macOS, arm64 - the two steps after this run as before.
+      - name: Use the runner's .NET SDK if global.json accepts it
+        id: sdk
+        shell: bash
+        run: |
+          if v=$(dotnet --version 2>/dev/null); then
+            echo "Preinstalled SDK $v satisfies global.json; no install needed."
+            echo "preinstalled=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "No preinstalled SDK satisfies global.json; installing one."
+            echo "preinstalled=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Cache .NET SDK
+        if: steps.sdk.outputs.preinstalled != '1'
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
@@ -457,18 +594,26 @@ jobs:
           key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
           restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
-      # The NuGet package cache (~1 GB, about 20 s to restore on windows) only on a shard whose
-      # tests run `dotnet build` (steps.shard.outputs.restore; none today, see the Restore step).
-      # Every test here runs an assembly the build job already compiled, straight from its
-      # output folder, which holds every dependency it loads - so it never reads the cache.
       - name: Setup .NET
+        if: steps.sdk.outputs.preinstalled != '1'
         uses: actions/setup-dotnet@v4
         env:
           DOTNET_INSTALL_DIR: ~/.dotnet
         with:
           global-json-file: global.json
-          cache: ${{ steps.shard.outputs.restore == '1' }}
-          cache-dependency-path: "**/*.csproj"
+
+      # The NuGet package cache (~1 GB, about 20 s to restore on windows) only on a shard whose
+      # tests run `dotnet build` (steps.shard.outputs.restore; none today, see the Restore step).
+      # Every test here runs an assembly the build job already compiled, straight from its
+      # output folder, which holds every dependency it loads - so it never reads the cache.
+      # Same key as the build job's.
+      - name: Cache NuGet packages
+        if: steps.shard.outputs.restore == '1'
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -724,7 +869,7 @@ jobs:
   # failure here, not as the pass a skipped required check would otherwise report.
   unit_tests:
     name: Unit Tests (${{ matrix.os }})
-    needs: [build_and_unit_tests, script_self_tests]
+    needs: [build_and_unit_tests, script_self_tests, analyzers]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -738,10 +883,12 @@ jobs:
         env:
           result: ${{ needs.build_and_unit_tests.result }}
           scripts: ${{ needs.script_self_tests.result }}
+          analyzers: ${{ needs.analyzers.result }}
         run: |
-          echo "Unit Tests shards: $result; script self-tests: $scripts"
+          echo "Unit Tests shards: $result; script self-tests: $scripts; analyzers: $analyzers"
           [ "$result" = success ] || { echo "::error::A Unit Tests shard did not succeed ($result); see the 'Unit Tests (<os>, <shard>)' jobs."; exit 1; }
           [ "$scripts" = success ] || { echo "::error::The CI script self-tests did not succeed ($scripts); see the 'Script self-tests (<os>)' jobs."; exit 1; }
+          [ "$analyzers" = success ] || { echo "::error::The analyzer and code-style build did not succeed ($analyzers); see the 'Analyzers' job."; exit 1; }
 
   # Native SSH end-to-end against a real sshd in a container.
   #
