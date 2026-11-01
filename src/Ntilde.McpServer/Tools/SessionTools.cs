@@ -462,13 +462,27 @@ public sealed partial class SessionTools
         sb.AppendLine("|---|---|---|---|---|---|");
         foreach (var e in dto.Events)
         {
-            var details = e.Type == AgentHostProtocol.EventTypes.CommandFinished
-                ? $"exit {(e.ExitCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?")}{(e.DurationMs is { } d ? $", {d} ms" : "")}"
-                    + (e.Command is { } command ? $", command: {TableCellText(command)}" : "")
-                : e.ExitCode is { } code ? $"exit {code}{(e.NeedsUser is { } why ? $", needs the user: {why}" : "")}" : "-";
-            sb.AppendLine($"| {e.Seq} | {FormatUtc(e.TimestampMs)} | {e.PaneId} | {e.Type} | {e.Status} | {details} |");
+            sb.AppendLine($"| {e.Seq} | {FormatUtc(e.TimestampMs)} | {e.PaneId} | {e.Type} | {e.Status} | {FormatEventDetails(e)} |");
         }
         return sb.ToString().TrimEnd();
+    }
+
+    private static string FormatEventDetails(AgentEventDto e)
+    {
+        if (e.Type == AgentHostProtocol.EventTypes.CommandFinished)
+        {
+            var exit = e.ExitCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?";
+            var duration = e.DurationMs is { } d ? $", {d} ms" : "";
+            var command = e.Command is { } text ? $", command: {TableCellText(text)}" : "";
+            return $"exit {exit}{duration}{command}";
+        }
+
+        if (e.ExitCode is { } code)
+        {
+            return $"exit {code}{(e.NeedsUser is { } why ? $", needs the user: {why}" : "")}";
+        }
+
+        return "-";
     }
 
     /// <summary>
