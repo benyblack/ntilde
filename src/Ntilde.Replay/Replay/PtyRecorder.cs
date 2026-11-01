@@ -325,7 +325,7 @@ namespace Ntilde.Replay
                 if (!IsAccepting) return;
                 try
                 {
-                    var bytes = new BoundedRecordBuffer((int)Math.Max(0, _maxPendingBytes - PendingBytes - RecordOverheadBytes));
+                    using var bytes = new BoundedRecordBuffer((int)Math.Max(0, _maxPendingBytes - PendingBytes - RecordOverheadBytes));
                     using (var json = new Utf8JsonWriter(bytes))
                     {
                         JsonSerializer.Serialize(json, ev, ReplayJsonContext.Default.ReplayEvent);
@@ -391,7 +391,7 @@ namespace Ntilde.Replay
         }
 
         // Reject Utf8JsonWriter's requested capacity before it allocates an oversized value.
-        private sealed class BoundedRecordBuffer(int limit) : IBufferWriter<byte>
+        private sealed class BoundedRecordBuffer(int limit) : IBufferWriter<byte>, IDisposable
         {
             private byte[] _buffer = Array.Empty<byte>();
             private int _written;
@@ -400,11 +400,23 @@ namespace Ntilde.Replay
                 if (count > limit - _written) throw new RecordingException(new RecordingFailure(
                     RecordingFailureKind.Overflow, "Recording stopped: pending events exceeded the byte budget."));
                 if (_buffer.Length - _written < count)
-                    Array.Resize(ref _buffer, (int)Math.Min(limit, Math.Max((long)_written + count, Math.Max(4096L, (long)_buffer.Length * 2))));
+                {
+                    byte[] previous = _buffer;
+                    int capacity = (int)Math.Min(limit, Math.Max((long)_written + count, Math.Max(4096L, (long)_buffer.Length * 2)));
+                    _buffer = ArrayPool<byte>.Shared.Rent(capacity);
+                    previous.AsSpan(0, _written).CopyTo(_buffer);
+                    if (previous.Length != 0) ArrayPool<byte>.Shared.Return(previous, clearArray: true);
+                }
             }
             public void Advance(int count) { ArgumentOutOfRangeException.ThrowIfNegative(count); Ensure(count); _written += count; }
-            public Memory<byte> GetMemory(int sizeHint = 0) { Ensure(Math.Max(1, sizeHint)); return _buffer.AsMemory(_written); }
-            public Span<byte> GetSpan(int sizeHint = 0) { Ensure(Math.Max(1, sizeHint)); return _buffer.AsSpan(_written); }
+            public Memory<byte> GetMemory(int sizeHint = 0) { Ensure(Math.Max(1, sizeHint)); return _buffer.AsMemory(_written, Math.Min(limit, _buffer.Length) - _written); }
+            public Span<byte> GetSpan(int sizeHint = 0) { Ensure(Math.Max(1, sizeHint)); return _buffer.AsSpan(_written, Math.Min(limit, _buffer.Length) - _written); }
+            public void Dispose()
+            {
+                if (_buffer.Length == 0) return;
+                ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+                _buffer = Array.Empty<byte>();
+            }
             public byte[] FinishLine()
             {
                 Ensure(1);
