@@ -13,9 +13,11 @@ namespace Ntilde.Tests.Controls;
 public sealed class MuxAttachCompletionTests
 {
     [AvaloniaTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AttachCompletionDoesNotUndoNewerStreamGeometry(bool applySettings)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void AttachCompletionDoesNotUndoNewerStreamGeometry(bool applySettings, bool changeHistoryDuringAttach)
     {
         using var mux = new MuxTestHost();
         using var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test", null);
@@ -37,8 +39,8 @@ public sealed class MuxAttachCompletionTests
             Thread.Sleep(1);
         }
         // Wait for a fresh successful attach to POST its UI completion, keeping that callback queued.
-        var attach = (Task)typeof(TerminalPane).GetMethod("AttachMuxAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(pane, [session, false])!;
-        attach.GetAwaiter().GetResult();
+        if (changeHistoryDuringAttach) AttachAgainWithHistoryChange(mux, pane, session);
+        else AttachAgain(pane, session).GetAwaiter().GetResult();
         using var entered = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
         var ct = TestContext.Current.CancellationToken;
@@ -68,5 +70,38 @@ public sealed class MuxAttachCompletionTests
 
         Assert.Equal(100, mux.Mux(session.Id).Buffer.Cols);
         Assert.Equal(30, mux.Mux(session.Id).Buffer.Rows);
+        if (changeHistoryDuringAttach) Assert.Equal(60_000, mux.Mux(session.Id).HistoryRetentionRows);
+    }
+
+    private static Task AttachAgain(TerminalPane pane, MuxClientSession session) =>
+        (Task)typeof(TerminalPane).GetMethod("AttachMuxAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(pane, [session, false])!;
+
+    private static void AttachAgainWithHistoryChange(MuxTestHost mux, TerminalPane pane, MuxClientSession session)
+    {
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        var ct = TestContext.Current.CancellationToken;
+        int calls = 0;
+        mux.Fake(session.Id).OnResizeCalled = (_, _) =>
+        {
+            if (Interlocked.Increment(ref calls) != 1) return;
+            entered.Set();
+            if (!release.Wait(TimeSpan.FromSeconds(5), ct)) throw new TimeoutException("Attach was not released.");
+        };
+        Task attach;
+        try
+        {
+            mux.Mux(session.Id).PostResize(81, 24, null);
+            Assert.True(entered.Wait(TimeSpan.FromSeconds(5), ct));
+            // Model a fresh attach whose snapshot has not yet been published, without
+            // disposing this session (Detach permanently disposes and unregisters it).
+            typeof(MuxClientSession).GetField("_expectedOffset", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(session, -1L);
+            attach = AttachAgain(pane, session);
+            Assert.False(session.IsAttached);
+            pane.ApplySettings(new TerminalSettings { MaxHistory = 60_000, CommandAssistShellIntegrationEnabled = false });
+        }
+        finally { release.Set(); }
+        attach.GetAwaiter().GetResult();
+        mux.Fake(session.Id).OnResizeCalled = null;
     }
 }

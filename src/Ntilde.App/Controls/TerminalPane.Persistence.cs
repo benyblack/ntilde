@@ -634,7 +634,7 @@ namespace Ntilde.Controls
                     // A newer daemon resize may still be in transit. Only resend when client
                     // presentation settings changed during attach; geometry alone is stream state.
                     MuxPresentation current = BuildMuxPresentation();
-                    if (MuxPresentationSettingsChanged(presentation, current)) mux.UpdatePresentation(current);
+                    if (MuxPresentationSettingsChanged(presentation, current)) mux.UpdatePresentationSettings(current);
                     _muxReattachAfterDrop = false; // the drop (if any) is over: this session is shown again
                     if (remote) RegisterRemoteMuxSession(mux);
                     if (previousLost)
