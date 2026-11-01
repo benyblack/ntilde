@@ -117,13 +117,13 @@ public sealed class RecordingFailureTests
                 SessionId = session.Id,
                 RecordingId = old,
                 Kind = "Write",
-                Message = "old disk full"
+                Message = message
             }, MuxJsonContext.Default.RecordingFailedNotification)
         }));
         SendFailure();
         RecordingFailure failure = await observed.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
         Assert.Equal(old, failure.RecordingId);
-        Assert.InRange(failure.Message.Length, 1, 513);
+        Assert.Equal(longMessage ? new string('x', 512) + "…" : message, failure.Message);
         SendFailure(); // A duplicate cannot flood advisory callbacks.
         Task ping = client.PingAsync(Ct);
         MuxRequest pingRequest = await fake.ReadRequestAsync();
