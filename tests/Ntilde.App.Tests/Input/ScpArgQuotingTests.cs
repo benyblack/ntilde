@@ -41,6 +41,34 @@ public class ScpArgQuotingTests
         Assert.EndsWith("\\\\\"", quoted);
     }
 
+    [Theory]
+    [InlineData(TransferDirection.Upload)]
+    [InlineData(TransferDirection.Download)]
+    public void BuildScpArguments_PreservesWindowsArgvAndJumpOptions(TransferDirection direction)
+    {
+        var jump = new TerminalProfile { Id = Guid.NewGuid(), SshHost = "bastion", SshUser = "jump" };
+        var profile = new TerminalProfile
+        {
+            SshHost = "target",
+            SshUser = "user",
+            SshPort = 2222,
+            IdentityFilePath = @"C:\key dir\identity",
+            UseSshAgent = false,
+            JumpHostProfileId = jump.Id
+        };
+        var job = new TransferJob
+        {
+            Direction = direction,
+            LocalPath = @"C:\local dir\file.txt",
+            RemotePath = "/remote dir/quotes'\"\\.txt"
+        };
+        string[] args = CommandLineToArgs("scp " + SftpService.BuildScpArguments(job, profile, null, [jump, profile]));
+        Assert.Equal(new[] { "scp", "-i", profile.IdentityFilePath, "-P", "2222", "-J", "jump@bastion", "-O", "-B" }, args[..^2]);
+        string remote = "user@target:" + SftpService.EscapeScpRemotePath(job.RemotePath);
+        string local = "C:/local dir/file.txt";
+        Assert.Equal(direction == TransferDirection.Upload ? new[] { local, remote } : new[] { remote, local }, args[^2..]);
+    }
+
     // P/Invoke to the same parser scp / any Windows program uses.
     [System.Runtime.InteropServices.DllImport("shell32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern nint CommandLineToArgvW([System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] string lpCmdLine, out int pNumArgs);
