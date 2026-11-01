@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Sockets;
+
 namespace Ntilde.Platform.Ssh.OpenSsh;
 
 /// <summary>Host syntax for OpenSSH operands that use colons as separators.</summary>
@@ -11,7 +14,11 @@ public static class OpenSshEndpoint
     {
         ArgumentNullException.ThrowIfNull(host);
         string value = host.Trim();
-        return value.Contains(':') && !(value.StartsWith('[') && value.EndsWith(']'))
+        // A jump Host can also contain an existing user@host:port operand.
+        // Only an IPv6 literal needs brackets; preserve those legacy spellings.
+        return IPAddress.TryParse(value, out IPAddress? address) &&
+            address.AddressFamily == AddressFamily.InterNetworkV6 &&
+            !value.StartsWith('[')
             ? $"[{value}]"
             : value;
     }

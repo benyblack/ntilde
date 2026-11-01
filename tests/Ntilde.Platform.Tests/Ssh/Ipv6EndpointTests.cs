@@ -7,6 +7,22 @@ namespace Ntilde.Platform.Tests.Ssh;
 public sealed class Ipv6EndpointTests
 {
     [Theory]
+    [InlineData("bastion.example:2200")]
+    [InlineData("ops@bastion.example:2200")]
+    [InlineData("ops@[2001:db8::1]:2200")]
+    [InlineData("[2001:db8::1]:2200")]
+    public void Jump_host_preserves_existing_endpoint_spellings(string host)
+    {
+        var profile = new SshProfile
+        {
+            Host = "target.example",
+            JumpHops = { new SshJumpHop { Host = host } }
+        };
+        Assert.Contains(host, SshArgBuilder.BuildArguments(profile));
+        Assert.Contains("ProxyJump " + host, new OpenSshConfigCompiler().BuildHostOptions(profile));
+    }
+
+    [Theory]
     [InlineData("2001:db8::1", "[2001:db8::1]")]
     [InlineData(" [2001:db8::1] ", "[2001:db8::1]")]
     [InlineData("fe80::1%eth0", "[fe80::1%eth0]")]
