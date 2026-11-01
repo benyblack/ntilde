@@ -134,12 +134,13 @@ internal sealed class KittyClipboardSession : IDisposable
         _write = null;
         _busy = true;
         int generation = _generation;
+        CancellationToken cancellation = _cancellation.Token;
         _ = _schedule(() => PerformAsync(WriteOperation, id, generation, async () =>
         {
             if (!_writeAllowed()) return PermissionDenied;
             await _clipboard.WriteAsync(values);
             return "DONE";
-        }));
+        }, cancellation));
     }
 
     private string? Unavailable(bool primary, bool includeWrite)
@@ -149,10 +150,9 @@ internal sealed class KittyClipboardSession : IDisposable
         return null;
     }
 
-    private async Task PerformAsync(string type, string id, int generation, Func<Task<string?>> action, CancellationToken? operationCancellation = null)
+    private async Task PerformAsync(string type, string id, int generation, Func<Task<string?>> action, CancellationToken cancellation)
     {
         bool gate = false;
-        CancellationToken cancellation = CancellationToken.None;
         string? status = null;
         using var completion = new OperationCompletion(() =>
         {
@@ -166,8 +166,7 @@ internal sealed class KittyClipboardSession : IDisposable
         {
             lock (_sync)
             {
-                if (!IsAlive(generation)) return;
-                cancellation = operationCancellation ?? _cancellation.Token;
+                if (!IsAlive(generation) || cancellation.IsCancellationRequested) return;
             }
             // An immediate try, with no queued waiter to outlive this request.
             gate = await ClipboardGate.WaitAsync(0, CancellationToken.None);
@@ -237,13 +236,13 @@ internal sealed class KittyClipboardSession : IDisposable
             }
             if (!IsAlive(generation)) return null;
             var values = grant == null
-                ? await CollectReadValuesAsync(types, listing, generation)
+                ? await CollectReadValuesAsync(types, listing, generation, cancellation)
                 : grant.Values.Where(p => types.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
             if (values == null) return null;
             // Clipboard API calls stay UI-affine; encoding and PTY transmission do not.
             bool sent = await Task.Run(() => SendDataAsync(id, values, generation, cancellation), CancellationToken.None);
             return sent ? "DONE" : null;
-        });
+        }, cancellation);
     }
 
     private async Task<Dictionary<string, byte[]>?> CapturePasteValuesAsync(int generation, CancellationToken cancellation)
@@ -252,13 +251,13 @@ internal sealed class KittyClipboardSession : IDisposable
         return await CollectReadValuesAsync(snapshot, snapshot.Types.ToArray(), listing: false, generation, cancellation);
     }
 
-    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(string[] types, bool listing, int generation)
+    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(string[] types, bool listing, int generation, CancellationToken cancellation)
     {
         using var snapshot = await _clipboard.OpenReadAsync();
-        return await CollectReadValuesAsync(snapshot, types, listing, generation);
+        return await CollectReadValuesAsync(snapshot, types, listing, generation, cancellation);
     }
 
-    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(IKittyClipboardSnapshot snapshot, string[] types, bool listing, int generation, CancellationToken cancellation = default)
+    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(IKittyClipboardSnapshot snapshot, string[] types, bool listing, int generation, CancellationToken cancellation)
     {
         var available = snapshot.Types.Where(KittyClipboardPacket.IsMime).Distinct(StringComparer.Ordinal).Take(KittyClipboardPacket.MaxTypes).ToArray();
         var values = new Dictionary<string, byte[]>(StringComparer.Ordinal);

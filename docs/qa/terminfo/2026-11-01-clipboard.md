@@ -110,8 +110,8 @@ deterministic regression. Bitmap reads cover PNG encoding and the pixel-size lim
 Local verification includes 1,489 VT tests, 92 focused clipboard/wiring tests,
 6 conformance/report tests, platform boot
 75 passed / 4 skipped, architecture 178, mux 1,123 passed / 20 skipped, and MCP
-223. The full app main lane passed 7,662 cases and skipped 56 before the
-last provider, overlapping-paste and bitmap refinements; the later clipboard/wiring regressions also pass. Latest-head
+223. The full app main lane passed 7,670 cases and skipped 56 before the
+last explicit cancellation-token forwarding refinement; the later clipboard/wiring regressions also pass. Latest-head
 CI supplies the full platform gate.
 
 The owned collector has clipboard writes disabled and no clipboard fixture.
