@@ -895,6 +895,10 @@ pin the paths used for mutations, and native helpers retain the OS extended path
   A later compile cannot retarget a pending SSH/SCP launch. Prior snapshots and the unused legacy
   config/hash pair are retained; compilation does not delete files a pending launch may need.
 
+- Native shared-connection identities encode scalar fields and counted, ordered hop/forward
+  fields with length prefixes. IPv6 colons, commas and newlines cannot move field boundaries or
+  alias a different route. Terminal and shell settings remain channel-local and preserve sharing.
+
 - OpenSSH colon-delimited endpoints use `OpenSshEndpoint.FormatHost`: IPv6 literals are bracketed
   in ProxyJump, local/remote/dynamic forwarding and legacy SCP operands, including the App legacy
   jump chain. Already bracketed input stays bracketed once; direct SSH targets and `HostName`
