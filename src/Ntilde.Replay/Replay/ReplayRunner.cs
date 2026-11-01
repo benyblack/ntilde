@@ -131,9 +131,16 @@ namespace Ntilde.Replay
             if (header is not null)
             {
                 _ = RecordingCellMetrics.FromOptional(header.SixelCellWidthPx, header.SixelCellHeightPx);
-                if ((options?.ApplyHeaderResize ?? true) && onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
-                if (ct.IsCancellationRequested) return result;
-                if (onHeaderCallback is not null) await onHeaderCallback(header);
+                try
+                {
+                    if ((options?.ApplyHeaderResize ?? true) && onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
+                    if (ct.IsCancellationRequested) return result;
+                    if (onHeaderCallback is not null) await onHeaderCallback(header);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    return result;
+                }
             }
             else if (startAfterLine > 0)
             {
@@ -167,7 +174,16 @@ namespace Ntilde.Replay
             {
                 if (!skipCurrentLine && lineNumber <= startAfterLine &&
                     !string.IsNullOrWhiteSpace(line) && options?.OnSkippedData is { } onSkippedData)
-                    ObserveSkippedData(line, isV2, onSkippedData);
+                {
+                    try
+                    {
+                        ObserveSkippedData(line, isV2, onSkippedData);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        return result;
+                    }
+                }
                 if (!skipCurrentLine && lineNumber > startAfterLine)
                 {
                     if (!string.IsNullOrWhiteSpace(line))

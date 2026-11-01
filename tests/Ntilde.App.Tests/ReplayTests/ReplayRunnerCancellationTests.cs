@@ -165,6 +165,49 @@ public sealed class ReplayRunnerCancellationTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData("resize")]
+    [InlineData("header")]
+    [InlineData("checkpoint")]
+    public async Task SetupCallbackCancellation_ReturnsQuietlyAndReleasesReader(string callbackKind)
+    {
+        string path = Path.GetTempFileName();
+        using var cancellation = new CancellationTokenSource();
+        try
+        {
+            await File.WriteAllLinesAsync(path, new[]
+            {
+                JsonSerializer.Serialize(new ReplayHeader { Type = ReplayHeader.TypeToken, Cols = 80, Rows = 24 }, ReplayJsonContext.Default.ReplayHeader),
+                "{\"t\":0,\"type\":\"data\",\"d\":\"QQ==\"}",
+                "{\"t\":1,\"type\":\"data\",\"d\":\"Qg==\"}"
+            }, TestContext.Current.CancellationToken);
+            var callbacks = new List<string>();
+            Task Cancel(string kind)
+            {
+                callbacks.Add(kind);
+                cancellation.Cancel();
+                return Task.FromCanceled(cancellation.Token);
+            }
+            ReplayRunResult result = await new ReplayRunner(path).RunWithResultAsync(
+                _ => { callbacks.Add("data"); return Task.CompletedTask; },
+                onResizeCallback: (_, _) => Cancel("resize"),
+                onHeaderCallback: callbackKind == "header" ? _ => Cancel("header") : null,
+                onTimeUpdate: _ => { callbacks.Add("time"); return Task.CompletedTask; },
+                options: new ReplayRunOptions
+                {
+                    ApplyHeaderResize = callbackKind == "resize",
+                    StartAfterLineNumber = callbackKind == "checkpoint" ? 2 : 0,
+                    OnSkippedData = _ => { callbacks.Add("checkpoint"); cancellation.Cancel(); cancellation.Token.ThrowIfCancellationRequested(); }
+                }, ct: cancellation.Token);
+            Assert.Equal(new[] { callbackKind }, callbacks);
+            Assert.Equal(0, result.EventsProcessed);
+            Assert.Equal(-1, result.LastGoodOffset);
+            Assert.False(result.Truncated);
+            using var exclusive = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        }
+        finally { File.Delete(path); }
+    }
+
     private sealed class PausedTimeProvider : TimeProvider
     {
         public TaskCompletionSource<PausedTimer> Scheduled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
