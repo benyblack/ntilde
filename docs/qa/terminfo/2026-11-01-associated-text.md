@@ -9,12 +9,12 @@ versions and hashes bind the selected builds.
 
 | Evidence | Before | After |
 |---|---|---|
-| Source | `894f833d69ec2fd16ff7db69fae6924608e9f818` | `cb1f99a6153f267327f65295dbecadd77773bf70` |
-| App version | `0.12.0+894f833d69ec2fd16ff7db69fae6924608e9f818` | `0.12.0+cb1f99a6153f267327f65295dbecadd77773bf70` |
-| Measured UTC | `2026-11-01T11:01:13.545Z` | `2026-11-01T11:45:18.589Z` |
-| Retained directory | `artifacts/terminfo/owned-eC2dKV` | `artifacts/terminfo/owned-6a3g10` |
-| Raw SHA-256 | `61b45b928e8ddb5ca4a3df9b5262e525b2f2ac92458895aa87ec993d10c80e3a` | `a527f0c2f18fd0f933026d0341c00e70c670d226975d2f73897e5c3d096a20e2` |
-| Assembly SHA-256 | `58c03946942ee8d6a11b722aa28f9306a4a00dbbefb984892ef919e9ef8266c9` | `0f000fb7ed02ef113e523d1bfe0262332ec29c89278ef206ca9aca2cfc87653d` |
+| Source | `894f833d69ec2fd16ff7db69fae6924608e9f818` | `98c79fe140db666a950194298f4c456e6f087e39` |
+| App version | `0.12.0+894f833d69ec2fd16ff7db69fae6924608e9f818` | `0.12.0+98c79fe140db666a950194298f4c456e6f087e39` |
+| Measured UTC | `2026-11-01T11:01:13.545Z` | `2026-11-01T11:54:50.908Z` |
+| Retained directory | `artifacts/terminfo/owned-eC2dKV` | `artifacts/terminfo/owned-tPXBam` |
+| Raw SHA-256 | `61b45b928e8ddb5ca4a3df9b5262e525b2f2ac92458895aa87ec993d10c80e3a` | `5276c33657ff0d647f7150f23c815bc9851c27ae26ccae9669d7209549484499` |
+| Assembly SHA-256 | `58c03946942ee8d6a11b722aa28f9306a4a00dbbefb984892ef919e9ef8266c9` | `b56c425eff2c22f930b040a889e694e33ff07a9bcf6bd779d09042afaaca6b6a` |
 | Supported / unsupported / inconclusive | 75 / 3 / 177 | 76 / 2 / 177 |
 
 Both use terminfo.dev 4.0.0, Node v24.22.1, suite/probe `16a690f34c0e` and collector `cf7d8759c7e637aa8dba1e429f3dddd1c0124158`. Their adapter digest is `1eb43545a2fa23a2ffd8ef64d99bce92d08cf763442c6d2409e97910b7b7194a`; all input and runner/source pins match. The derived digest includes this worktree's ownership-module path.
@@ -48,7 +48,7 @@ and [macOS](https://github.com/AvaloniaUI/Avalonia/blob/12.1.3/native/Avalonia.N
 backends: handled keydowns suppress their text callbacks. Win32 constructs a
 single UTF-16 code unit per WM_CHAR, motivating the bounded fragment handling.
 
-Local validation before the reentrancy correction: full App main **7,459 passed / 52 expected skips**; separate
+Local validation before the final helper extraction: full App main **7,461 passed / 52 expected skips**; separate
 PlatformBoot **75 passed / 4 font skips**; full VT **1,323 passed**; mux
 **1,123 passed / 20 platform skips**; architecture **178 passed**; SSH input
 boundary **41 passed**. Conformance reports 74 rows with zero errors/warnings.
@@ -68,7 +68,7 @@ text sizing and OSC 5522 clipboard. Inconclusive reasons remain 152 insufficient
 evidence, 22 no response and three clipboard policy refusals. Both collections
 retain the ungraded geometry diagnostic and `suiteComplete: false`.
 
-Cleanup completed at `2026-11-01T11:01:13.571Z` and `2026-11-01T11:45:18.639Z`. Raw evidence was not edited or submitted upstream.
+Cleanup completed at `2026-11-01T11:01:13.571Z` and `2026-11-01T11:54:50.935Z`. Raw evidence was not edited or submitted upstream.
 
 Review found that sending a fallback could reenter keydown and queue a frame
 that the outer keydown then discarded. The handler now drains nested pending
@@ -77,3 +77,9 @@ failed before the correction; the corrected relevant keyboard/associated-mux
 suite passes **348 tests**. The full App lane also gates the final PR in CI.
 The first feature collection remains in `artifacts/terminfo/owned-jjfiBp`, retained as an
 intermediate result in the comparison. All 255 outcome/reason pairs agree.
+
+The final source extracts keydown preparation into a small helper to keep its
+policy method within the maintainability limit. The extraction preserves the
+fragment-reset and reentrant-drain order; all **348 focused tests** pass afterward.
+The preceding corrected-runtime collection remains in `artifacts/terminfo/owned-6a3g10`
+and is also retained in `intermediateAfters`. All outcome/reason pairs still agree.
