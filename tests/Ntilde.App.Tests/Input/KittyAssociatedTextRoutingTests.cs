@@ -374,6 +374,30 @@ public sealed class KittyAssociatedTextRoutingTests
         Assert.Equal(new[] { "\u001b[97;1;97u", "\u001b[0;1;98u" }, sent);
     }
 
+    [AvaloniaTheory]
+    [InlineData(1)]
+    [InlineData(4)]
+    public void Reentrant_keydowns_during_fallback_are_forwarded_before_the_outer_key(int nestedCount)
+    {
+        var (view, _, sent) = Create();
+        int remaining = nestedCount;
+        var session = new Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        session.Setup(x => x.SendInput(It.IsAny<string>())).Callback<string>(frame =>
+        {
+            sent.Add(frame);
+            if (frame.EndsWith('u') && !frame.Contains(';') && remaining-- > 0)
+                view.Down(Key.B, physical: PhysicalKey.B, symbol: "b");
+        });
+        view.SetSession(session.Object);
+        view.Down(Key.A, physical: PhysicalKey.A, symbol: "a");
+        Assert.False(view.Down(Key.C, physical: PhysicalKey.C, symbol: "c").Handled);
+        view.Text("c");
+        Dispatcher.UIThread.RunJobs(DispatcherPriority.Background);
+        Assert.Equal(new[] { "\u001b[97u" }.Concat(Enumerable.Repeat("\u001b[98u", nestedCount))
+            .Append("\u001b[99;1;99u"), sent);
+    }
+
     [AvaloniaFact]
     public void Unrelated_release_leaves_the_waiting_text_key_associated()
     {

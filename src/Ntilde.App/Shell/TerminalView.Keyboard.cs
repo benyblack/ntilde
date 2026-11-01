@@ -198,7 +198,9 @@ namespace Ntilde.Shell
             // may be separated by packet key events. A real new key ends that fragment.
             if (key != Key.None || (!string.IsNullOrEmpty(keySymbol)
                 && !(keySymbol.Length == 1 && char.IsLowSurrogate(keySymbol[0])))) ClearKittyTextFragment();
-            FlushPendingKittyAssociatedKey();
+            // Sending a fallback can reenter keydown and queue another frame. Drain
+            // those frames before replacing their correlation with this key's state.
+            while (_pendingAssociatedKey != null) FlushPendingKittyAssociatedKey();
             int flags = _enableKittyKeyboardProtocol ? _buffer?.Modes.KittyKeyboard.Flags ?? 0 : 0;
             bool hasText = _session != null && TerminalInputModeEncoder.MayProduceTextInput(key, keySymbol);
             int generation = _kittyTextInputGeneration;
