@@ -6,7 +6,9 @@ public sealed class KittyKeyboardEventTests
     [InlineData(2, 2)]
     [InlineData(3, 3)]
     [InlineData(7, 7)]
-    [InlineData(31, 7)]
+    [InlineData(8, 8)]
+    [InlineData(15, 15)]
+    [InlineData(31, 15)]
     public void Query_AdvertisesEventReportingAndMasksOtherEnhancements(int requested, int expected)
     {
         var buffer = new TerminalBuffer(40, 8);

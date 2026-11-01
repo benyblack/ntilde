@@ -3,14 +3,14 @@ namespace Ntilde.VT.Tests;
 public sealed class KittyAlternateKeyProtocolTests
 {
     [Fact]
-    public void Alternate_flag_is_negotiated_but_all_keys_and_associated_text_remain_masked()
+    public void Alternate_and_all_key_flags_are_negotiated_but_associated_text_remains_masked()
     {
         var buffer = new TerminalBuffer(40, 8);
         var parser = new AnsiParser(buffer);
         var replies = new List<string>();
         parser.OnResponse = replies.Add;
         parser.Process("\x1b[>31u\x1b[?u");
-        Assert.Equal("\x1b[?7u", Assert.Single(replies));
+        Assert.Equal("\x1b[?15u", Assert.Single(replies));
     }
 
     [Fact]

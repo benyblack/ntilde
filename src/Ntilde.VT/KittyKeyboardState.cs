@@ -17,8 +17,8 @@ namespace Ntilde.VT
     /// even knowing - the shell's mode on the main screen.
     ///
     /// SCOPE / DEVIATION: Ntilde implements disambiguate escape codes (0b1) and
-    /// report event types (0b10) and alternate keys (0b100). Unsupported bits (report all keys,
-    /// report associated text) are masked out on push/set, so they are never stored and never
+    /// report event types (0b10), alternate keys (0b100) and all keys (0b1000). Unsupported bits
+    /// (report associated text) are masked out on push/set, so they are never stored and never
     /// echoed by the CSI ? u query. This is deliberate: the spec's detection section tells
     /// applications to "set the desired progressive enhancements and then query" to discover
     /// partial implementations, which only works if the terminal reports the flags actually
@@ -36,8 +36,11 @@ namespace Ntilde.VT
         /// <summary>0b100 - enrich encoded keys with available shifted and physical-layout alternatives.</summary>
         public const int FlagReportAlternateKeys = 0b100;
 
+        /// <summary>0b1000 - encode ordinary, recovery and modifier keys; suppress plain text.</summary>
+        public const int FlagReportAllKeys = 0b1000;
+
         /// <summary>Bit mask of the flags this terminal honors; everything else is dropped.</summary>
-        public const int SupportedFlags = FlagDisambiguateEscapeCodes | FlagReportEventTypes | FlagReportAlternateKeys;
+        public const int SupportedFlags = FlagDisambiguateEscapeCodes | FlagReportEventTypes | FlagReportAlternateKeys | FlagReportAllKeys;
 
         /// <summary>
         /// Stack depth cap. The spec only says "terminals should limit the size of the stack

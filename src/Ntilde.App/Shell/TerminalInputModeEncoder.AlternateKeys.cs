@@ -28,10 +28,14 @@ internal static partial class TerminalInputModeEncoder
     /// logical primary: Avalonia does not expose its
     /// unshifted layout glyph. No native layout lookup or composition-state mutation occurs here.
     /// </summary>
-    internal static KittyKeyIdentity ResolveKittyKeyIdentity(Key key, KeyModifiers modifiers, PhysicalKey physical, string? symbol)
+    internal static KittyKeyIdentity ResolveKittyKeyIdentity(Key key, KeyModifiers modifiers, PhysicalKey physical, string? symbol, bool allowUnknownKey = false)
     {
         int primary = GetUnshiftedCodepoint(key);
-        if (primary < 0) return default; // Keep the existing claimed key set, including keypad/IME exclusions.
+        if (primary < 0)
+        {
+            if (!allowUnknownKey || (modifiers & KeyModifiers.Alt) != 0 || !TryKeyScalar(symbol, out Rune supplied)) return default;
+            primary = Rune.ToLowerInvariant(supplied).Value;
+        }
         int? shifted = null;
         if ((modifiers & KeyModifiers.Alt) == 0 && TryKeyScalar(symbol, out Rune rune))
         {

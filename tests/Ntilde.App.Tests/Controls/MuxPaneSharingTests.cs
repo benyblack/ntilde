@@ -77,7 +77,7 @@ public sealed class MuxPaneSharingTests : IDisposable
     }).GetAwaiter().GetResult();
 
     [AvaloniaTheory]
-    [InlineData(true, 7)]
+    [InlineData(true, 15)]
     [InlineData(false, 0)]
     public void Spawn_carries_the_panes_keyboard_setting_before_attach(bool enabled, int flags)
     {
@@ -209,7 +209,7 @@ public sealed class MuxPaneSharingTests : IDisposable
     {
         MuxClientSession session = StartHostedPane();
         var child = _mux.Fake(session.Id);
-        PumpUntil(() => session.KittyKeyboardSupportedFlags == 7, "the GUI advertised alternates");
+        PumpUntil(() => session.KittyKeyboardSupportedFlags == 15, "the GUI advertised its keyboard ceiling");
         child.Emit("\x1b[>7u");
         PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 7, "the requested keyboard mode reached the GUI");
 
@@ -228,6 +228,34 @@ public sealed class MuxPaneSharingTests : IDisposable
         legacy.Session.Dispose();
         PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 7, "the requested alternate mode recovered");
         PressAndCheck("\x1b[97::113;5u");
+    }
+
+    [AvaloniaFact]
+    public void All_key_input_reaches_the_child_and_returns_to_text_with_an_old_peer()
+    {
+        MuxClientSession session = StartHostedPane();
+        var child = _mux.Fake(session.Id);
+        child.Emit("\x1b[>8u");
+        PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 8, "all-key mode reached the GUI");
+        int before = child.SentInput.Count;
+        Assert.True(_pane!.TermView.HandleKeyDownCore(Key.A, KeyModifiers.None, PhysicalKey.A, "a"));
+        PumpUntil(() => child.SentInput.Count > before, "the ordinary key reached the child as a frame");
+        Assert.Equal("\x1b[97u", child.SentInput.ToArray()[before]);
+
+        ClientPaneModel legacy = AttachOther(session.Id);
+        PumpUntil(() => _pane.Buffer!.Modes.KittyKeyboard.Flags == 0, "the old peer cannot report all keys");
+        before = child.SentInput.Count;
+        Assert.False(_pane.TermView.HandleKeyDownCore(Key.A, KeyModifiers.None, PhysicalKey.A, "a"));
+        _pane.TermView.RaiseEvent(new TextInputEventArgs { Text = "a", RoutedEvent = InputElement.TextInputEvent });
+        PumpUntil(() => child.SentInput.Count > before, "legacy text reached the child");
+        Assert.Equal("a", child.SentInput.ToArray()[before]);
+
+        legacy.Session.Dispose();
+        PumpUntil(() => _pane.Buffer!.Modes.KittyKeyboard.Flags == 8, "all-key mode recovered after detach");
+        before = child.SentInput.Count;
+        Assert.True(_pane.TermView.HandleKeyDownCore(Key.A, KeyModifiers.None, PhysicalKey.A, "a"));
+        PumpUntil(() => child.SentInput.Count > before, "the recovered all-key frame reached the child");
+        Assert.Equal("\x1b[97u", child.SentInput.ToArray()[before]);
     }
 
     [AvaloniaFact]
