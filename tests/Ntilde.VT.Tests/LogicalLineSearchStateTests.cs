@@ -201,7 +201,7 @@ public sealed class LogicalLineSearchStateTests
     public void BlankHistoryRowReflowResetsReusedAuthoredExtent()
     {
         var buffer = new TerminalBuffer(8, 2);
-        new AnsiParser(buffer, false).Process("abcdefgh\r\n\r\nend");
+        new AnsiParser(buffer, false).Process("abcdefgh\r\n\r\nend\r\ntail");
         buffer.Resize(4, 2);
         var state = buffer.ExportState(100);
         Assert.Equal(0, state.Scrollback.RowWrittenColumns![^1]);
