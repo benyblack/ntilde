@@ -97,7 +97,7 @@ public sealed class JsonlHistoryProcessTests : IDisposable
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
-    private sealed class Worker : IAsyncDisposable
+    internal sealed class Worker : IAsyncDisposable
     {
         private readonly Process _process;
         private readonly Task<string> _stderr;
@@ -110,7 +110,7 @@ public sealed class JsonlHistoryProcessTests : IDisposable
             _stderr = process.StandardError.ReadToEndAsync();
         }
 
-        internal static async Task<Worker> StartAsync(string historyPath, bool holdLock = false)
+        internal static async Task<Worker> StartAsync(string historyPath, bool holdLock = false, bool snippets = false)
         {
             string dll = Path.Combine(AppContext.BaseDirectory, "HistoryWorker", "Ntilde.CommandAssist.TestHost.dll");
             Assert.True(File.Exists(dll), $"History test worker was not staged: {dll}");
@@ -126,6 +126,7 @@ public sealed class JsonlHistoryProcessTests : IDisposable
             start.ArgumentList.Add(dll);
             start.ArgumentList.Add(historyPath);
             if (holdLock) start.ArgumentList.Add("--hold-lock");
+            else if (snippets) start.ArgumentList.Add("--snippets");
             var process = new Process { StartInfo = start };
             try
             {
