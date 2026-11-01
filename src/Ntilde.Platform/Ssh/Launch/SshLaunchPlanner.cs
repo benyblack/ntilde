@@ -22,11 +22,20 @@ public sealed class SshLaunchPlanner : ISshLaunchPlanner
 
     public SshLaunchPlan Plan(Guid profileId, IReadOnlyList<string>? extraArgs = null)
     {
-        SshProfile profile = _profileStore.GetProfile(profileId)
-            ?? throw new InvalidOperationException($"SSH profile '{profileId}' was not found.");
         IReadOnlyList<SshProfile> profiles = _profileStore.GetProfiles();
+        SshProfile profile = profiles.FirstOrDefault(p => p.Id == profileId)
+            ?? throw new InvalidOperationException($"SSH profile '{profileId}' was not found.");
+        return PlanSnapshot(profiles, profile, extraArgs);
+    }
 
-        OpenSshCompilationResult result = _configCompiler.Compile(profiles, profileId);
+    // Host blocks, argv overrides and local working directory must come from
+    // the same whole-file read, even if another process edits/deletes it next.
+    private SshLaunchPlan PlanSnapshot(
+        IReadOnlyList<SshProfile> profiles,
+        SshProfile profile,
+        IReadOnlyList<string>? extraArgs)
+    {
+        OpenSshCompilationResult result = _configCompiler.Compile(profiles, profile.Id);
         string executable = _sshPathResolver();
 
         var args = new List<string>
@@ -64,7 +73,7 @@ public sealed class SshLaunchPlanner : ISshLaunchPlanner
     /// The plan for exactly <paramref name="profile"/>, which need not be what the store holds now: a persistent SSH
     /// connection keeps the destination it first connected to after its profile is edited or deleted (multiplexer Phase 4,
     /// codex D2). Unless <paramref name="selfContained"/>, when the store's profile with that id compiles to the same
-    /// <c>Host</c> block and has the same extra arguments, this is <see cref="Plan(Guid, IReadOnlyList{string}?)"/>. With
+    /// <c>Host</c> block and has the same extra arguments and working directory, this is <see cref="Plan(Guid, IReadOnlyList{string}?)"/>. With
     /// <paramref name="selfContained"/> - a pinned connection's every attempt (residual R4) - or otherwise, it reads no
     /// config file, independently of the store and generated configuration snapshots:
     /// <c>["-F", "none", alias, ...ExtraSshArgs, ...extraArgs, "-o", option, ...]</c>, with the profile's block
@@ -77,12 +86,19 @@ public sealed class SshLaunchPlanner : ISshLaunchPlanner
         ArgumentNullException.ThrowIfNull(profile);
 
         IReadOnlyList<string> options = _configCompiler.BuildHostOptions(profile);
-        if (!selfContained
-            && _profileStore.GetProfile(profile.Id) is { } stored
-            && string.Equals(stored.ExtraSshArgs, profile.ExtraSshArgs, StringComparison.Ordinal)
-            && _configCompiler.BuildHostOptions(stored).SequenceEqual(options, StringComparer.Ordinal))
+        if (!selfContained)
         {
-            return Plan(profile.Id, extraArgs);
+            IReadOnlyList<SshProfile> profiles = _profileStore.GetProfiles();
+            SshProfile? stored = profiles.FirstOrDefault(p => p.Id == profile.Id);
+            if (stored is not null
+                && string.Equals(stored.ExtraSshArgs, profile.ExtraSshArgs, StringComparison.Ordinal)
+                && string.Equals(stored.WorkingDirectory, profile.WorkingDirectory, StringComparison.Ordinal)
+                && _configCompiler.BuildHostOptions(stored).SequenceEqual(options, StringComparer.Ordinal))
+            {
+                // Compile exactly the snapshot just validated. Calling Plan here
+                // would re-read and could retarget a pinned launch after an edit.
+                return PlanSnapshot(profiles, stored, extraArgs);
+            }
         }
 
         string alias = OpenSshConfigCompiler.BuildAlias(profile.Id);

@@ -251,6 +251,10 @@ invariant changes.
   Different snapshots never share a path across compiler instances/processes, so a returned launch
   plan keeps its destination until SSH reads it. Legacy config/hash pairs are ignored. Compilation
   retains prior snapshots rather than deleting files a pending launch may still need.
+- SSH launch planning selects the launch profile and compiles host blocks from one whole-file
+  profile-store snapshot. Command-line overrides and working directory use that same revision.
+  The PlanFor fast path compiles the snapshot it validated rather than re-reading by id, so a
+  concurrent edit or deletion cannot retarget a requested snapshot or mix its launch fields.
 - Automatic OpenSSH ControlPath identities hash the profile id, effective generated connection
   options and raw extra SSH arguments with length-prefixed fields. Destination, auth, jump or
   forwarding edits cannot join the previous master. The 32-hex basename retains the prior Unix
