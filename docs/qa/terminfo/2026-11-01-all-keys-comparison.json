@@ -53,12 +53,12 @@
     "cleanedUpAt": "2026-11-01T09:51:04.176Z"
   },
   "after": {
-    "sourceCommit": "909513d03cab261fa45b5f87500e56de87757ca3",
-    "appVersion": "0.12.0+909513d03cab261fa45b5f87500e56de87757ca3",
-    "measuredAt": "2026-11-01T10:03:06.223Z",
-    "localDirectory": "artifacts/terminfo/owned-OJVIV5",
-    "rawSha256": "0e1bd5ad58e33cc725d340983e7cd89abbd06d41f7a44079e573b799bce24e26",
-    "assemblySha256": "955b4693fe50cdb2f7b62a56436705a2f225c3474e34f500ee392a877459bd95",
+    "sourceCommit": "2d911ed020a64f0d8e60062eeca0efcbfa9e99b1",
+    "appVersion": "0.12.0+2d911ed020a64f0d8e60062eeca0efcbfa9e99b1",
+    "measuredAt": "2026-11-01T10:27:09.725Z",
+    "localDirectory": "artifacts/terminfo/owned-D9htRn",
+    "rawSha256": "8c684901ab2416d0075b6ff6deac5868e09b889ee8c246cfcfa36284ae9f77ff",
+    "assemblySha256": "fbc934261aed65c252ff2eaa7f0dded95e9b0dd8ec1cf3fb05112206f70b8849",
     "counts": {
       "inconclusive": 177,
       "supported": 75,
@@ -69,7 +69,7 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "runId": "fef4ace3b780d6f6670bb10d5278f518",
+    "runId": "40d4333ff2ac00b5f222838ed29dad93",
     "suiteComplete": false,
     "ungradedDiagnostics": {
       "cursor.reverse-wrap": {
@@ -78,7 +78,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "cleanedUpAt": "2026-11-01T10:03:06.247Z"
+    "cleanedUpAt": "2026-11-01T10:27:09.764Z"
   },
   "unchangedOutcomeAndReasonCount": 254,
   "changes": [
@@ -227,5 +227,33 @@
     "Unavailable host key codes, layout glyphs and lock-state bits are not invented.",
     "No competitor binaries measured or exhaustive physical keyboard-layout/IME qualification performed.",
     "177 inconclusive observations and the ungraded geometry diagnostic remain."
-  ]
+  ],
+  "intermediateAfter": {
+    "sourceCommit": "909513d03cab261fa45b5f87500e56de87757ca3",
+    "appVersion": "0.12.0+909513d03cab261fa45b5f87500e56de87757ca3",
+    "measuredAt": "2026-11-01T10:03:06.223Z",
+    "localDirectory": "artifacts/terminfo/owned-OJVIV5",
+    "rawSha256": "0e1bd5ad58e33cc725d340983e7cd89abbd06d41f7a44079e573b799bce24e26",
+    "assemblySha256": "955b4693fe50cdb2f7b62a56436705a2f225c3474e34f500ee392a877459bd95",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 75,
+      "unsupported": 3
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "runId": "fef4ace3b780d6f6670bb10d5278f518",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "cleanedUpAt": "2026-11-01T10:03:06.247Z"
+  }
 }
