@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 1,
+  "evidenceScope": "Owned macOS collector: negotiation only. Actual TextInput routing, Unicode, GUI/mux and SSH input boundary have separate tests; not exhaustive native IME/layout qualification.",
+  "startingMainCommit": "894f833d69ec2fd16ff7db69fae6924608e9f818",
+  "suiteId": "16a690f34c0e",
+  "probeHash": "16a690f34c0e",
+  "collectorSourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+  "adapter": {
+    "id": "ntilde-owned-macos-v1",
+    "bundleSha256": "1eb43545a2fa23a2ffd8ef64d99bce92d08cf763442c6d2409e97910b7b7194a",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "nodeVersion": "v24.22.1",
+  "inputPins": {
+    "collectorManifestSha256": "56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e",
+    "collectorLockSha256": "837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "adapterBundleSha256": "1eb43545a2fa23a2ffd8ef64d99bce92d08cf763442c6d2409e97910b7b7194a"
+  },
+  "sourcePins": {
+    "runnerSourceSha256": "a322ad12a62101e28f465275a7c6d6cd993ef9792e40c4aeeadb56113794fda5",
+    "adapterSourceSha256": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
+    "ownershipSourceSha256": "1bf16d996f4d4dfdb98cc2ec7011e64c6567de1515271bb2a4244ae48996d50f",
+    "workerSourceSha256": "00ed37f2cb00ce11268be08b4a69fc65e4a88236378fa35f032b4fde8976b83e",
+    "runtimeSourceSha256": "8199c0373ae9f423c2f2333f9166ce0f301dd6e5df238b78d1bdb317e3abfdd4"
+  },
+  "before": {
+    "sourceCommit": "894f833d69ec2fd16ff7db69fae6924608e9f818",
+    "appVersion": "0.12.0+894f833d69ec2fd16ff7db69fae6924608e9f818",
+    "measuredAt": "2026-11-01T11:01:13.545Z",
+    "localDirectory": "artifacts/terminfo/owned-eC2dKV",
+    "rawSha256": "61b45b928e8ddb5ca4a3df9b5262e525b2f2ac92458895aa87ec993d10c80e3a",
+    "assemblySha256": "58c03946942ee8d6a11b722aa28f9306a4a00dbbefb984892ef919e9ef8266c9",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 75,
+      "unsupported": 3
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "runId": "482f6823d664257f0a42288e0e0a9a8a",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "cleanedUpAt": "2026-11-01T11:01:13.571Z"
+  },
+  "after": {
+    "sourceCommit": "471650d95acff311dbadbaa9f1d1629eff7e89f9",
+    "appVersion": "0.12.0+471650d95acff311dbadbaa9f1d1629eff7e89f9",
+    "measuredAt": "2026-11-01T11:37:19.383Z",
+    "localDirectory": "artifacts/terminfo/owned-jjfiBp",
+    "rawSha256": "8eb0d79dcd1890008d0b5c96413d7fe018e6889ca994bb9f2de2a8787fb05908",
+    "assemblySha256": "8974f0d44bebc9f5b83883e47210e0195bebe2eb406c45ab018ad3cf4890ebf2",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 76,
+      "unsupported": 2
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "runId": "76ec3638ddf22037cb6c4409e936d95e",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "cleanedUpAt": "2026-11-01T11:37:19.410Z"
+  },
+  "unchangedOutcomeAndReasonCount": 254,
+  "changes": [
+    {
+      "featureId": "extensions.kitty-keyboard.report-text",
+      "before": {
+        "featureId": "extensions.kitty-keyboard.report-text",
+        "outcome": "unsupported",
+        "evidence": "query",
+        "note": "Queried enhancement flags=9; actual key press, repeat and release events were not tested",
+        "rawReplyRef": "extensions.kitty-keyboard.report-text"
+      },
+      "after": {
+        "featureId": "extensions.kitty-keyboard.report-text",
+        "outcome": "supported",
+        "evidence": "query",
+        "note": "Queried enhancement flags=25; actual key press, repeat and release events were not tested",
+        "rawReplyRef": "extensions.kitty-keyboard.report-text"
+      },
+      "beforeTrace": {
+        "writes": [
+          "\u001b[>25u",
+          "\u001b[<u"
+        ],
+        "queries": [
+          {
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?0u",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?0u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MHUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?9u",
+              "9"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?9u\u001b[?62;4;22c",
+            "rawBase64": "G1s/OXUbWz82Mjs0OzIyYw=="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?0u",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?0u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MHUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b[>25u"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?9u",
+              "9"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?9u\u001b[?62;4;22c",
+            "rawBase64": "G1s/OXUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b[<u"
+          }
+        ]
+      },
+      "afterTrace": {
+        "writes": [
+          "\u001b[>25u",
+          "\u001b[<u"
+        ],
+        "queries": [
+          {
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?0u",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?0u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MHUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?25u",
+              "25"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?25u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MjV1G1s/NjI7NDsyMmM="
+          }
+        ],
+        "events": [
+          {
+            "kind": "query",
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?0u",
+              "0"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?0u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MHUbWz82Mjs0OzIyYw=="
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b[>25u"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b[?u\u001b[c",
+            "match": [
+              "\u001b[?25u",
+              "25"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?25u\u001b[?62;4;22c",
+            "rawBase64": "G1s/MjV1G1s/NjI7NDsyMmM="
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b[<u"
+          }
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "Raw identity remains unverified; assembly version metadata and hashes bind selected builds.",
+    "Collector queries prove negotiation, not actual physical keyboard or IME delivery.",
+    "Unavailable key identities and lock-state bits are not invented.",
+    "Flag 16 without flag 8 retains legacy text behavior; releases never contain text.",
+    "177 inconclusive observations and an ungraded geometry diagnostic remain."
+  ]
+}
