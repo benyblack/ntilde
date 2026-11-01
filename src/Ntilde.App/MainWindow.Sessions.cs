@@ -508,7 +508,12 @@ namespace Ntilde
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return false;
 
-            TabItem? tabItem = SessionManager.CreateRestoredTabItem(InstantiateTemplateTab(template.Tabs[0]), _settings);
+            TabSession tab = InstantiateTemplateTab(template.Tabs[0]);
+            // Deferred migration can leave legacy SSH ids in settings. A template must
+            // not introduce a connection beyond the profile the agent was allowed to open.
+            if (openedByAgent && TemplateResolvesSshProfile(tab.Root)) return false;
+
+            TabItem? tabItem = SessionManager.CreateRestoredTabItem(tab, _settings);
             if (tabItem == null) return false;
 
             // An agent's spawn: every pane of the tab is the agent's (#610), marked before any of them starts its session.
@@ -523,6 +528,16 @@ namespace Ntilde
             RefreshAfterTabsFromSessions(tabs);
             pane = ResolvePaneForTab(tabItem);
             return true;
+        }
+
+        private bool TemplateResolvesSshProfile(PaneNode? node)
+        {
+            if (node == null) return false;
+            if (node.Type == NodeType.Leaf)
+            {
+                return SessionManager.TryResolvePaneProfile(node, _settings)?.Type == ConnectionType.SSH;
+            }
+            return node.Children.Any(TemplateResolvesSshProfile);
         }
 
         /// <summary>
