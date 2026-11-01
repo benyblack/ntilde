@@ -815,7 +815,9 @@ namespace Ntilde.Shell
             args.Append(" -O");
             args.Append(" -B");
 
-            string localPath = QuoteArg(job.LocalPath.Replace("\\", "/", StringComparison.Ordinal));
+            string localPath = QuoteArg(OperatingSystem.IsWindows()
+                ? job.LocalPath.Replace("\\", "/", StringComparison.Ordinal)
+                : job.LocalPath);
             // Legacy SCP passes its remote operand through the remote login shell.
             // Escape that layer first, then serialize the whole operand for local argv.
             // PowerShell and Windows-style Auto paths keep their existing SCP encoding;

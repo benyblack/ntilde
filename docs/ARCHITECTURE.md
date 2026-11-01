@@ -886,6 +886,10 @@ it).
   its prompt could reach the user's terminal. Reasons are worded from `MuxListingError`, remote titles
   are `RemoteOutputText.Quote`d, and each failure's own text goes to `logs/mux-ls-all.log`.
 
+External SCP preserves the selected local path on Unix, including literal backslashes. Only
+Windows local operands convert backslashes to forward slashes before local argv quoting; remote
+SCP shell escaping remains separate. File and folder transfers obey the same path rule.
+
 Native SFTP resolves bare `~` and `~/` against the authenticated server's home at the common
 transfer boundary, for file/directory uploads and downloads on shared or standalone connections.
 Expansion precedes destination selection and the download basename. Ordinary file paths and
