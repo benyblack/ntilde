@@ -93,10 +93,13 @@ internal sealed class CommandAssistScenario : IScenario
 
         Grid overlayHost = context.Driver.RequireIn<Grid>(pane, "CommandAssistOverlayHost");
         CommandAssistPopupView popup = context.Driver.RequireIn<CommandAssistPopupView>(pane, "CommandAssistPopup");
+        // Either surface may be the one carrying the ranked rows on screen; the list below is the
+        // shared source of both.
+        Control bubble = context.Driver.RequireIn<Control>(pane, "CommandAssistBubble");
         ItemsControl suggestionsList = context.Driver.RequireIn<ItemsControl>(popup, "PopupSuggestionsList");
 
         context.Driver.WaitFor(
-            () => overlayHost.IsVisible && popup.IsVisible && suggestionsList.ItemCount > 1,
+            () => overlayHost.IsVisible && (popup.IsVisible || bubble.IsVisible) && suggestionsList.ItemCount > 1,
             TimeSpan.FromSeconds(5),
             "the command assist popup to open with more than one ranked suggestion, built from real " +
             "shell-integration history");

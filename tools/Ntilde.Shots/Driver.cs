@@ -78,7 +78,14 @@ public sealed class Driver
             ?? throw new InvalidOperationException(
                 $"{target.GetType().Name} has no method '{method}'. It was renamed — update the scenario.");
 
-        object? result = info.Invoke(target, arguments);
+        // Reflection does not apply C# default values, so a method that gained optional parameters
+        // (AddTab did) would fail with a parameter-count mismatch; Type.Missing asks for the default.
+        int declared = info.GetParameters().Length;
+        object?[] padded = arguments.Length < declared
+            ? [.. arguments, .. Enumerable.Repeat(Type.Missing, declared - arguments.Length)]
+            : arguments;
+
+        object? result = info.Invoke(target, padded);
         Pump();
         return result;
     }

@@ -4,6 +4,7 @@ using Avalonia.Layout;
 using Ntilde.Controls;
 using Ntilde.Pty;
 using Ntilde.Shell;
+using Ntilde.Shell.Shortcuts;
 
 namespace Ntilde.Shots.Scenarios;
 
@@ -119,8 +120,16 @@ internal sealed class ClipSplitScenario : IScenario
     /// own <c>SplitPane</c> call, which has no keybinding of its own in this catalogue's other
     /// scenarios to reuse.
     /// </summary>
+    /// <remarks>
+    /// Cmd rather than Ctrl on macOS, where ShortcutPlatform swaps the default (Ctrl+Shift+B is
+    /// unbound there, so pressing it toggled nothing).
+    /// </remarks>
     private static void PressToggleBroadcastBinding(ShotContext context) =>
-        context.Driver.PressKey(Key.B, RawInputModifiers.Control | RawInputModifiers.Shift, PhysicalKey.B, null);
+        context.Driver.PressKey(
+            Key.B,
+            (ShortcutPlatform.IsMacOS ? RawInputModifiers.Meta : RawInputModifiers.Control) | RawInputModifiers.Shift,
+            PhysicalKey.B,
+            null);
 
     /// <summary>
     /// Types <see cref="BroadcastCommand"/> character by character into <paramref name="left"/>

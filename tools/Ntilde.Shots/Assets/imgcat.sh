@@ -10,8 +10,8 @@ if [ $# -ne 1 ]; then
 fi
 
 file="$1"
-name_b64=$(basename -- "$file" | base64 | tr -d '\n')
-size=$(wc -c < "$file")
-data_b64=$(base64 -- "$file" | tr -d '\n')
+name_b64=$(printf "%s" "$(basename -- "$file")" | base64 | tr -d '\n')
+size=$(wc -c < "$file" | tr -d " ")
+data_b64=$(base64 < "$file" | tr -d '\n')
 
 printf '\033]1337;File=name=%s;size=%s;inline=1:%s\a\n' "$name_b64" "$size" "$data_b64"

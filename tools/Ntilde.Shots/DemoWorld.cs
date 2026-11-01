@@ -171,6 +171,14 @@ public sealed class DemoWorld : IDisposable
         SetEnvironment("USERPROFILE", HomeRoot);
         SetEnvironment("PS1", DemoPrompt);
         SetEnvironment("TERM", "xterm-256color");
+        // No pager: git's default `less` takes the alternate screen and waits at (END), which on
+        // macOS left command-assist staring at a pager instead of a prompt. Pinned rather than left
+        // to whatever PAGER/LESS the capturing machine happens to export.
+        SetEnvironment("GIT_PAGER", "cat");
+        SetEnvironment("PAGER", "cat");
+        // macOS's /bin/bash prints a three-line "default interactive shell is now zsh" notice at the
+        // top of any pane whose rc files run (command-assist's does).
+        SetEnvironment("BASH_SILENCE_DEPRECATION_WARNING", "1");
         // Darwin has no C.UTF-8 locale (bash warns that it cannot change to it); en_US.UTF-8 is
         // present on every macOS install and on mainstream Linux.
         string utf8Locale = OperatingSystem.IsMacOS() ? "en_US.UTF-8" : "C.UTF-8";

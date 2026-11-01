@@ -37,9 +37,13 @@ internal sealed class SettingsAppearanceScenario : IScenario
 
     private static void AssertAndCapture(ShotContext context, SettingsWindow settingsWindow)
     {
+        // Each page is its own UserControl and so its own name scope: the window cannot find the
+        // page's named controls, the page can.
+        Control page = settingsWindow.GetPage(SettingsPage.Appearance).View;
+
         // Proof that the combo reflects the seeded theme rather than sitting on whatever the first
         // item happens to be.
-        var themeList = context.Driver.RequireIn<ComboBox>(settingsWindow, "ThemeList");
+        var themeList = context.Driver.RequireIn<ComboBox>(page, "ThemeList");
         if (themeList.SelectedItem is not ComboBoxItem themeItem ||
             !string.Equals(themeItem.Content?.ToString(), SeededThemeName, StringComparison.Ordinal))
         {
@@ -50,8 +54,8 @@ internal sealed class SettingsAppearanceScenario : IScenario
         }
 
         // The live preview is repainted from the selected theme, not a static XAML placeholder.
-        var sampleBorder = context.Driver.RequireIn<Border>(settingsWindow, "SampleTextBorder");
-        var sampleText = context.Driver.RequireIn<TextBlock>(settingsWindow, "SampleTextBlock");
+        var sampleBorder = context.Driver.RequireIn<Border>(page, "SampleTextBorder");
+        var sampleText = context.Driver.RequireIn<TextBlock>(page, "SampleTextBlock");
 
         if (sampleBorder.Background is not ISolidColorBrush borderBrush || borderBrush.Color != SeededThemeBackground)
         {
