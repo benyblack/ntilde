@@ -71,13 +71,8 @@ public sealed partial class SecretsFilter
         char c = text[index];
         if (c is '\'' or '"') return CredentialQuotedEnd(text, index + 1, c, depth + 1);
         if (c is '(' or '{' or '[') return CredentialGroupEnd(text, index + 1, CredentialCloser(c), depth + 1);
-        if (c == '`' && text.IndexOf('`', index + 1) >= 0) return CredentialQuotedEnd(text, index + 1, '`', depth + 1);
-        if (c is '\\' or '`' or '^')
-        {
-            // Ambiguous continued commands are hidden through the end, rather than leaking a following word.
-            if (index + 1 < text.Length && text[index + 1] is '\r' or '\n') return text.Length;
-            return Math.Min(text.Length, index + 2);
-        }
+        // These escape markers have incompatible meanings across supported shells.
+        if (c is '\\' or '`' or '^') return text.Length;
         return index + 1;
     }
 
@@ -107,10 +102,8 @@ public sealed partial class SecretsFilter
                 if (IsDoubledCredentialQuote(text, index, quote)) { index += 2; continue; }
                 return index + 1;
             }
-            // Bash substitutions and PowerShell escapes are ambiguous without the shell grammar.
-            // Hide the tail rather than letting an inner/escaped quote expose credential text.
-            if (quote == '"' && c == '`') return text.Length;
-            if (quote != '\'' && c is '\\' or '`' or '^') { index = Math.Min(text.Length, index + 2); continue; }
+            // Do not guess which shell owns an escape; none of its remaining text may leak.
+            if (quote != '\'' && c is '\\' or '`' or '^') return text.Length;
             if (IsCredentialExpansion(text, index, quote))
             {
                 index = CredentialGroupEnd(text, index + 2, CredentialCloser(text[index + 1]), depth + 1);

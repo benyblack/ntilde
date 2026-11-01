@@ -22,6 +22,8 @@ public sealed class CredentialCapturePersistenceTests
                 $"env \"GITHUB_TOKEN=prefix {Secret}\" tool",
                 $"tool --token \"`printf '%s' \"prefix {Secret}\"`\" --verbose",
                 $"tool --token \"prefix`\" middle`\" {Secret}\" --verbose",
+                $"tool --token \"prefix\\`\" {Secret}\" --verbose",
+                $"tool --token prefix\\` {Secret} --verbose",
                 $"tool --token {Secret} --verbose", $"tool --api-key=\"{Secret} with spaces\" --verbose",
                 $"GITHUB_TOKEN={Secret} gh repo list", $"export OPENAI_API_KEY='{Secret}'",
                 $"$env:GITHUB_TOKEN = '{Secret}'; gh repo list", $"set \"NPM_TOKEN={Secret} with spaces\" && tool"

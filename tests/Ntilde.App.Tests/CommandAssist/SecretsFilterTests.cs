@@ -42,9 +42,9 @@ public sealed class SecretsFilterTests
     [InlineData("set \"GITHUB_TOKEN=synth 677\" && gh repo list", "set \"GITHUB_TOKEN=[REDACTED]\" && gh repo list")]
     [InlineData("GH_TOKEN=synth677 NPM_TOKEN=synth677 tool --token=synth677", "GH_TOKEN=[REDACTED] NPM_TOKEN=[REDACTED] tool --token=[REDACTED]")]
     [InlineData("tool --token 'synth'\"677\" --verbose", "tool --token [REDACTED] --verbose")]
-    [InlineData("tool --token synth\\ 677 --verbose", "tool --token [REDACTED] --verbose")]
-    [InlineData("tool --token synth` 677 --verbose", "tool --token [REDACTED] --verbose")]
-    [InlineData("tool --token \"synth\\\"677\" --verbose", "tool --token [REDACTED] --verbose")]
+    [InlineData("tool --token synth\\ 677 --verbose", "tool --token [REDACTED]")]
+    [InlineData("tool --token synth` 677 --verbose", "tool --token [REDACTED]")]
+    [InlineData("tool --token \"synth\\\"677\" --verbose", "tool --token [REDACTED]")]
     [InlineData("tool --token 'synth''677' --verbose", "tool --token [REDACTED] --verbose")]
     [InlineData("tool --token $(printf 'synth 677') --verbose", "tool --token [REDACTED] --verbose")]
     [InlineData("tool --token 'unterminated synth677", "tool --token [REDACTED]")]
@@ -59,6 +59,11 @@ public sealed class SecretsFilterTests
     [InlineData("env \"GITHUB_TOKEN=synth 677\" tool", "env \"GITHUB_TOKEN=[REDACTED]\" tool")]
     [InlineData("tool \"--token=synth \"677 --verbose", "tool \"--token=[REDACTED]\" --verbose")]
     [InlineData("tool --token \"prefix`\" middle`\" synth677\" --verbose", "tool --token [REDACTED]")]
+    [InlineData("tool --token \"prefix\\`\" synth677\" --verbose", "tool --token [REDACTED]")]
+    [InlineData("tool --token prefix\\` synth677 --verbose", "tool --token [REDACTED]")]
+    [InlineData("tool --token prefix` middle` synth677 --verbose", "tool --token [REDACTED]")]
+    [InlineData("tool --token prefix\\\"synth 677\" --verbose", "tool --token [REDACTED]")]
+    [InlineData("tool --token \"\\$(Write-Output \"synth 677\")\" --verbose", "tool --token [REDACTED]")]
     public void Redact_SupportedCredentials_RemovesEntireValueAndPreservesArguments(string command, string expected)
     {
         RedactionResult result = new SecretsFilter().Redact(command);
