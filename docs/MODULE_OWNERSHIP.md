@@ -227,6 +227,11 @@ invariant changes.
 - Future home of `SessionBufferBinder` and other session-orchestration helpers
 
 **Invariants**
+- **Generated OpenSSH launch configurations name content snapshots.** `OpenSshConfigCompiler` publishes
+  UTF-8 bytes atomically to `ssh_config.generated.<SHA256>` and validates the actual bytes on reuse.
+  Different snapshots never share a path across compiler instances/processes, so a returned launch
+  plan keeps its destination until SSH reads it. Legacy config/hash pairs are ignored. Compilation
+  retains prior snapshots rather than deleting files a pending launch may still need.
 - OpenSSH colon-delimited endpoints use `OpenSshEndpoint.FormatHost`: IPv6 literals are bracketed
   in ProxyJump, local/remote/dynamic forwarding and legacy SCP operands, including the App legacy
   jump chain. Already bracketed input stays bracketed once; direct SSH targets and `HostName`

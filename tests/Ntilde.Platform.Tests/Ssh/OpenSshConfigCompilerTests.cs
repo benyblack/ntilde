@@ -211,7 +211,7 @@ public sealed class OpenSshConfigCompilerTests
     }
 
     [Fact]
-    public void Compile_WhenHashMatches_DoesNotRecompile()
+    public void Compile_WhenContentMatches_DoesNotRecompile()
     {
         string root = CreateTempDirectory();
         try
@@ -224,18 +224,17 @@ public sealed class OpenSshConfigCompilerTests
             };
 
             OpenSshCompilationResult firstResult = compiler.Compile(new[] { profile }, profile.Id);
-            DateTime firstWriteTime = File.GetLastWriteTimeUtc(firstResult.ConfigFilePath);
-
-            // Wait brief moment to guarantee write time difference if modified
-            Thread.Sleep(100);
+            DateTime firstWriteTime = new(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            File.SetLastWriteTimeUtc(firstResult.ConfigFilePath, firstWriteTime);
 
             OpenSshCompilationResult secondResult = compiler.Compile(new[] { profile }, profile.Id);
             DateTime secondWriteTime = File.GetLastWriteTimeUtc(secondResult.ConfigFilePath);
 
             Assert.Equal(firstWriteTime, secondWriteTime);
 
-            string hashPath = Path.Combine(root, "ssh_config.generated.hash");
-            Assert.True(File.Exists(hashPath));
+            string hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(firstResult.ConfigFilePath)));
+            Assert.Equal(Path.Combine(root, "ssh_config.generated." + hash), firstResult.ConfigFilePath);
+            Assert.Equal(firstResult.ConfigFilePath, secondResult.ConfigFilePath);
         }
         finally
         {
@@ -244,7 +243,7 @@ public sealed class OpenSshConfigCompilerTests
     }
 
     [Fact]
-    public void Compile_WhenHashDiffers_WritesNewConfigAndHash()
+    public void Compile_WhenContentDiffers_PreservesBothSnapshots()
     {
         string root = CreateTempDirectory();
         try
@@ -257,16 +256,14 @@ public sealed class OpenSshConfigCompilerTests
             };
 
             OpenSshCompilationResult firstResult = compiler.Compile(new[] { profile }, profile.Id);
-            string hashPath = Path.Combine(root, "ssh_config.generated.hash");
-            string firstHash = File.ReadAllText(hashPath);
+            string firstText = File.ReadAllText(firstResult.ConfigFilePath);
 
             // Simulate modifying the store profile
             profile.User = "new_user";
 
             OpenSshCompilationResult secondResult = compiler.Compile(new[] { profile }, profile.Id);
-            string secondHash = File.ReadAllText(hashPath);
-
-            Assert.NotEqual(firstHash, secondHash);
+            Assert.NotEqual(firstResult.ConfigFilePath, secondResult.ConfigFilePath);
+            Assert.Equal(firstText, File.ReadAllText(firstResult.ConfigFilePath));
 
             string configText = File.ReadAllText(secondResult.ConfigFilePath);
             Assert.Contains("User new_user", configText);

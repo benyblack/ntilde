@@ -19,8 +19,7 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <param name="Prompts">The native backend's prompt handler for this attempt (<see cref="RemoteMuxInteractionHandler.Attempt"/>).</param>
 /// <param name="Pinned">
 /// The host's destination is pinned (codex D2, residual R4): the profile handed with this request is the connector's
-/// own blend, which the store may not hold, so OpenSSH plans it without the shared generated config, which a save can
-/// rewrite under it. False until the host first took a client.
+/// own blend, which the store may not hold, so OpenSSH plans it without a generated config snapshot. False until the host first took a client.
 /// </param>
 /// <param name="Retargeted">
 /// Pinned, and the profile now names another destination (codex D2, final round): OpenSSH must neither use nor create
