@@ -186,7 +186,7 @@ namespace Ntilde.VT
                 }
             }
             bool isZeroWidthComponent = UnicodeWidth.IsZeroWidthGraphemeComponent(firstRune);
-            if (_textSizingBlocks != null && (isZeroWidthComponent || _isAfterZwj) && TryAppendToSizedBlock(grapheme)) return;
+            if (_textSizingBlocks != null && (isZeroWidthComponent || _isAfterZwj || UnicodeWidth.IsSingleRegionalIndicator(grapheme)) && TryAppendToSizedBlock(grapheme)) return;
 
 
             // ATTACHMENT LOGIC:
@@ -238,6 +238,8 @@ namespace Ntilde.VT
                 if (attachCol >= 0)
                 {
                     var row = _viewport[_cursorRow];
+                    // Sized attachments must update their immutable block and every piece together.
+                    if (row.GetTextSizing(attachCol) != null) goto NormalWrite;
                     ref var cell = ref row.Cells[attachCol];
                     if (!cell.IsWideContinuation)
                     {
@@ -327,7 +329,7 @@ namespace Ntilde.VT
                 if (_cursorCol + width > Cols) _cursorCol = Math.Max(0, Cols - width);
             }
 
-            if (_textSizingBlocks != null) PrepareTextSizingOverwrite(width);
+            if (_textSizingBlocks != null) PrepareTextSizingOverwrite(Math.Max(1, width));
 
             // Write to buffer
             if (_cursorRow >= 0 && _cursorRow < Rows && _cursorCol >= 0 && _cursorCol < Cols)

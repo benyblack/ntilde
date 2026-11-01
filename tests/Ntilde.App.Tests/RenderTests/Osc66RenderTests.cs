@@ -88,6 +88,41 @@ public sealed class Osc66RenderTests
         Assert.NotEqual(before, harness.Pixels());
     }
 
+    [AvaloniaFact]
+    public void Italic_shear_keeps_the_same_baseline_anchor_as_ordinary_italic_text()
+    {
+        using var ordinary = Render("\x1b[3mI");
+        using var sized = Render("\x1b[3m\x1b]66;w=1;I\a");
+        var normal = Ink(ordinary);
+        var actual = Ink(sized);
+        Assert.True(actual.Width > 0);
+        Assert.InRange(actual.Left, normal.Left - 1, normal.Left + 1);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("\x1b[4m", false)]
+    [InlineData("\x1b[4:3m", true)]
+    [InlineData("\x1b[4;58:5:1m", true)]
+    public void Sized_blank_underlines_follow_the_ordinary_plain_vs_styled_policy(string style, bool visible)
+    {
+        using var bitmap = Render(style + "\x1b]66;s=2:w=2;  \a");
+        Assert.Equal(visible, Ink(bitmap).Width > 0);
+    }
+
+    [AvaloniaFact]
+    public void A_plain_underline_still_draws_below_visible_sized_text()
+    {
+        using var bitmap = Render("\x1b[4m\x1b]66;s=2:w=2;M\a");
+        bool line = false;
+        for (int y = (int)(Metrics.Baseline * 2 * Scaling) + 2; y < Metrics.CellHeight * 2 * Scaling; y++)
+            for (int x = 8; x < (4 + Metrics.CellWidth * 4) * Scaling; x++)
+            {
+                var c = bitmap.GetPixel(x, y);
+                line |= Math.Max(c.Red, Math.Max(c.Green, c.Blue)) > 96;
+            }
+        Assert.True(line);
+    }
+
     private static SKRectI Ink(SKBitmap bitmap)
     {
         int left = bitmap.Width, right = 0, top = bitmap.Height, bottom = 0;

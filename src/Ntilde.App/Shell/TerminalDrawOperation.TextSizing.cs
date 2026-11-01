@@ -20,6 +20,7 @@ public sealed partial class TerminalDrawOperation
         public byte Alpha { get; init; }
         public required SKTypeface Primary { get; init; }
         public bool DrawBackgrounds { get; init; }
+        public bool HasVisibleText { get; init; }
         public SKColor? ForegroundOverride { get; init; }
         public SKColor? OverlayFill { get; init; }
     }
@@ -64,12 +65,17 @@ public sealed partial class TerminalDrawOperation
             // Fraction scales the font once. Compress only text that exceeds the full block.
             canvas.Scale(Math.Min(heightScale, (right - left) / naturalWidth), heightScale);
             float localBaseline = baseline - rowTop;
-            if (cell.IsItalic) canvas.Skew(-0.22f, 0);
+            if (cell.IsItalic)
+            {
+                canvas.Translate(0, localBaseline);
+                canvas.Skew(-0.22f, 0);
+                canvas.Translate(0, -localBaseline);
+            }
             paint.Color = fg;
             canvas.DrawShapedText(resources.Shaper, block.Text, 0, localBaseline, resources.Font, paint);
             IncrementShapedTextRun();
             IncrementTextDrawCall();
-            DrawSizedDecorations(canvas, cell, naturalWidth, localBaseline, rowHeight, fg, context.Theme);
+            DrawSizedDecorations(canvas, cell, naturalWidth, localBaseline, rowHeight, fg, context);
             return block.Width;
         }
         finally { canvas.Restore(); }
@@ -79,17 +85,17 @@ public sealed partial class TerminalDrawOperation
         => alignment switch { 1 => slack, 2 => slack / 2, _ => 0 };
 
     private void DrawSizedDecorations(SKCanvas canvas, RenderCellSnapshot cell, float width,
-        float baseline, float rowHeight, SKColor fg, RenderThemeSnapshot theme)
+        float baseline, float rowHeight, SKColor fg, SizedTextRowPaint context)
     {
         _decoStrokePaint.Color = fg;
         _decoStrokePaint.IsAntialias = true;
         _decoStrokePaint.Style = SKPaintStyle.Stroke;
         float stroke = Math.Max(1f, rowHeight * 0.06f);
         _decoStrokePaint.StrokeWidth = stroke;
-        if (cell.IsUnderline)
+        if (cell.IsUnderline && (cell.Underline != null || context.HasVisibleText))
         {
             if (cell.Underline is { HasColor: true } underline)
-                _decoStrokePaint.Color = ResolveUnderlineColor(underline, theme);
+                _decoStrokePaint.Color = ResolveUnderlineColor(underline, context.Theme);
             DrawUnderline(canvas, cell.Underline?.Style ?? UnderlineStyle.Single, 0, width,
                 Math.Min(rowHeight - stroke, baseline + stroke), rowHeight, stroke);
         }

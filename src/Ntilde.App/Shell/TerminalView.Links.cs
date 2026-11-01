@@ -56,6 +56,7 @@ namespace Ntilde.Shell
         private System.Collections.Generic.IReadOnlyList<Ntilde.VT.Links.LinkSpan> _hoverScanSpans =
             System.Array.Empty<Ntilde.VT.Links.LinkSpan>();
         private int[] _hoverScanMap = System.Array.Empty<int>();
+        private int[] _hoverScanEndMap = System.Array.Empty<int>();
 
         internal void UpdateHoveredLink(Avalonia.Point position)
         {
@@ -95,16 +96,17 @@ namespace Ntilde.Shell
                 int generation = Volatile.Read(ref _contentGeneration);
                 if (absRow != _hoverScanRow || generation != _hoverScanGeneration)
                 {
-                    var (text, map) = Ntilde.VT.Links.RowTextExtractor.Extract(_buffer, absRow);
+                    var (text, map) = Ntilde.VT.Links.RowTextExtractor.Extract(_buffer, absRow, out int[] endMap);
                     _hoverScanSpans = _urlDetector.Detect(text);
                     _hoverScanMap = map;
+                    _hoverScanEndMap = endMap;
                     _hoverScanRow = absRow;
                     _hoverScanGeneration = generation;
                 }
 
                 foreach (var span in _hoverScanSpans)
                 {
-                    var (startCol, endCol) = Ntilde.VT.Links.RowTextExtractor.SpanToColumns(span, _hoverScanMap);
+                    var (startCol, endCol) = Ntilde.VT.Links.RowTextExtractor.SpanToColumns(span, _hoverScanMap, _hoverScanEndMap);
                     if (col >= startCol && col <= endCol)
                     {
                         // Mirror the click: don't underline links that can't open.
@@ -287,10 +289,10 @@ namespace Ntilde.Shell
 
             if (!_enableLinkDetection) return null;
 
-            var (text, map) = Ntilde.VT.Links.RowTextExtractor.Extract(_buffer, absRow);
+            var (text, map) = Ntilde.VT.Links.RowTextExtractor.Extract(_buffer, absRow, out int[] endMap);
             foreach (var span in _urlDetector.Detect(text))
             {
-                var (startCol, endCol) = Ntilde.VT.Links.RowTextExtractor.SpanToColumns(span, map);
+                var (startCol, endCol) = Ntilde.VT.Links.RowTextExtractor.SpanToColumns(span, map, endMap);
                 if (col >= startCol && col <= endCol) return span.Uri;
             }
             return null;

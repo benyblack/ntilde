@@ -77,6 +77,7 @@ namespace Ntilde.VT.Export
             {
                 string element = elements.GetTextElement();
                 int width = UnicodeWidth.GetGraphemeWidth(element);
+                if (width == 0 && used == 0) continue;
                 if (used + width > columns) break;
                 sb.Append(element);
                 used += width;

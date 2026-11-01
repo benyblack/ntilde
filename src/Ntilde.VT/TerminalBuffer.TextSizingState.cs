@@ -82,7 +82,7 @@ public partial class TerminalBuffer
     private static void ValidateSizingRectangle(TerminalStateSnapshot state, TerminalTextSizingState entry, TextSizingBlock block)
     {
         int rows = entry.Alt ? state.Rows : checked(state.Rows + state.ScrollbackRowCount);
-        if (entry.X < 0 || entry.X > state.Cols - block.Width || entry.Y < 1 - block.Height
+        if (entry.X < 0 || entry.X > state.Cols - block.Width || entry.Y < (entry.Alt ? 0 : 1 - block.Height)
             || entry.Y >= rows || entry.Y > rows - block.Height)
             throw StateTransferValidation.Reject(TextSizingValidationName, "rectangle outside retained geometry");
     }
@@ -143,6 +143,7 @@ public partial class TerminalBuffer
             _textSizingStorage = 0;
         }
         if (state.TextSizing == null) return;
+        if (activeOnly) MakeRoomForLegacySizing(state.TextSizing);
         foreach (var entry in state.TextSizing)
         {
             var block = DecodeTextSizing(entry);

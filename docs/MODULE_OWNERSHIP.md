@@ -46,7 +46,11 @@ invariant changes.
   operate on whole rectangles and ordinary writes skip their lower rows. Additional retained
   metadata is capped at 16 MiB; block payloads at 4096 UTF-8 bytes. Complete transfer and replay
   restore validated rectangles before later edits, and malformed/overlapping blocks are rejected
-  before mutation. App owns clipped scaled/shaped painting and decorations. Plain-text consumers
+  before mutation. Live reservations reject before cursor/scroll mutation. Legacy replay
+  checkpoints take priority over older retained rectangles when the metadata budget is full;
+  retirement removes whole old blocks and otherwise preserves retained history. Repeated
+  refusals against an unchanged store reuse the last prune result; history eviction/reset and
+  screen replacement invalidate it. App owns clipped scaled/shaped painting and decorations. Plain-text consumers
   emit each anchor payload once; the unnegotiated mux text client uses a bounded normal-size
   fallback rather than changing the outer terminal's sizing policy.
 - **Search groups soft wraps into logical lines.** Hard newlines and the active screen remain

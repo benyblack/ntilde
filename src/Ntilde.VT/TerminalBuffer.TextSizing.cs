@@ -7,6 +7,8 @@ public partial class TerminalBuffer
     private const long MaxTextSizingStorage = 16L * 1024 * 1024;
     private HashSet<TextSizingBlock>? _textSizingBlocks;
     private long _textSizingStorage;
+    private bool _textSizingPruneRequired = true;
+    private (long Generation, long Evicted) _textSizingPrunedHistory;
 
     internal bool HasSizedTextOnScreen()
     {
@@ -46,7 +48,7 @@ public partial class TerminalBuffer
                     string grapheme = elements.GetTextElement();
                     int width = GetGraphemeWidth(grapheme);
                     if (width > 0) WriteSizedBlock(grapheme, options, width);
-                    else TryAppendToSizedBlock(grapheme);
+                    else if (!TryAppendToSizedBlock(grapheme)) WriteContentCore(grapheme);
                 }
             }
         }
@@ -57,6 +59,7 @@ public partial class TerminalBuffer
     private void PrepareTextSizingResize(int cols, int rows)
     {
         if (_textSizingBlocks == null) return;
+        _textSizingPruneRequired = true;
         var remove = new Dictionary<TextSizingBlock, (int X, int Y)>();
         void Collect(Ntilde.VT.Storage.SmallMap<CellTextSizing>? map, int row)
         {
@@ -228,12 +231,11 @@ public partial class TerminalBuffer
     private bool TryAppendToSizedBlock(ReadOnlySpan<char> text)
     {
         int col = _lastCharRow == _cursorRow ? _lastCharCol : -1;
-        if (col < 0 && _cursorCol > 0) col = _cursorCol - 1;
-        var piece = col >= 0 && col < Cols ? _viewport[_cursorRow].GetTextSizing(col) : null;
-        if (piece == null && _cursorCol < Cols)
+        var piece = SizedBlockAtCursorEnd(col);
+        if (piece == null)
         {
-            col = _cursorCol;
-            piece = _viewport[_cursorRow].GetTextSizing(col);
+            col = _isPendingWrap ? _cursorCol : _cursorCol - 1;
+            piece = SizedBlockAtCursorEnd(col);
         }
         if (piece == null || !UnicodeWidth.ShouldAttachToPrevious(piece.Block.Text, text, _isAfterZwj)) return false;
         string merged = string.Concat(piece.Block.Text.AsSpan(), text);
@@ -245,6 +247,16 @@ public partial class TerminalBuffer
         ReplaceTextSizingBlock(piece.Block, replacement, x, y);
         _isAfterZwj = EndsWithZwj(text);
         return true;
+    }
+
+    private CellTextSizing? SizedBlockAtCursorEnd(int col)
+    {
+        if (col < 0 || col >= Cols) return null;
+        var piece = _viewport[_cursorRow].GetTextSizing(col);
+        if (piece == null || piece.RowOffset != 0) return null;
+        int end = col - piece.ColumnOffset + piece.Block.Width;
+        bool pending = Modes.IsAutoWrapMode && end >= Cols;
+        return _cursorCol == Math.Min(Cols - 1, end) && _isPendingWrap == pending ? piece : null;
     }
 
     private void ReplaceTextSizingBlock(TextSizingBlock previous, TextSizingBlock replacement, int x, int y)
@@ -313,7 +325,8 @@ public partial class TerminalBuffer
         long cost = block.StorageCost;
         if (_textSizingStorage + cost > MaxTextSizingStorage)
         {
-            PruneTextSizingStorage();
+            if (_textSizingPruneRequired || _textSizingPrunedHistory != (_scrollback.Generation, _scrollback.TotalRowsEvicted))
+                PruneTextSizingStorage();
             long reclaimed = allowReclaim ? TextSizingInRange(x, x + block.Width, y, y + block.Height).Sum(b => b.StorageCost) : 0;
             if (_textSizingStorage - reclaimed + cost > MaxTextSizingStorage) return false;
         }
@@ -331,6 +344,8 @@ public partial class TerminalBuffer
         for (int i = 0; i < _scrollback.Count; i++) Add(_scrollback.GetTextSizingMap(i));
         _textSizingBlocks = retained;
         _textSizingStorage = retained.Sum(b => b.StorageCost);
+        _textSizingPruneRequired = false;
+        _textSizingPrunedHistory = (_scrollback.Generation, _scrollback.TotalRowsEvicted);
     }
 
     private void EraseTextSizingRange(int x0, int x1, int y0, int y1)

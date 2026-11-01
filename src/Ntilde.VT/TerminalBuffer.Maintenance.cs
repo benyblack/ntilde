@@ -320,6 +320,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
+                EraseTextSizingRange(0, Cols, TextSizingAbsoluteRow(0), TextSizingAbsoluteRow(Rows));
                 // DECALN: Fill screen with 'E'
                 var cell = new TerminalCell('E', Theme.Foreground, Theme.Background, false, false, true, true);
 

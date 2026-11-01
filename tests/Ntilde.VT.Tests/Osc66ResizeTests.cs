@@ -25,6 +25,9 @@ public sealed class Osc66ResizeTests
                 Assert.Same(block, piece.Block);
                 Assert.Equal(row, piece.RowOffset);
                 Assert.Equal(col, piece.ColumnOffset);
+                buffer.Lock.EnterReadLock();
+                try { Assert.Equal((short)1, buffer.GetCellAbsolute(col, row).FgIndex); }
+                finally { buffer.Lock.ExitReadLock(); }
             }
         Assert.Equal("AB", block.Text);
         var state = buffer.ExportState(0);

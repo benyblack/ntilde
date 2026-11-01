@@ -1314,6 +1314,7 @@ namespace Ntilde.Shell
                                 Alpha = alpha,
                                 Primary = primaryTf,
                                 DrawBackgrounds = drawBackgrounds,
+                                HasVisibleText = ContainsNonWhitespace(sized.Block.Text),
                                 ForegroundOverride = foregroundOverride,
                                 OverlayFill = overlayFill
                             });

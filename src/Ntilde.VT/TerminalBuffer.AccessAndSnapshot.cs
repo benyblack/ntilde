@@ -328,6 +328,7 @@ namespace Ntilde.VT
 
         private void ClearAltScreenNoLock()
         {
+            _textSizingPruneRequired = true;
             for (int i = 0; i < Rows; i++)
             {
                 var row = _viewport[i];
@@ -1033,6 +1034,8 @@ namespace Ntilde.VT
             byte[]? cells = string.IsNullOrEmpty(snapshot.CellsBase64) ? null : Convert.FromBase64String(snapshot.CellsBase64);
             ValidateWrittenColumns(snapshot.RowWrittenColumns, snapshot.Rows, snapshot.Cols, "legacy replay");
             ValidateTextSizingState(ReplaySizingEnvelope(snapshot), cells, null, null);
+            if (snapshot.IsAltScreen && snapshot.TextSizing?.Any(entry => entry.Y < 0) == true)
+                throw StateTransferValidation.Reject(TextSizingValidationName, "alternate-screen anchor above row zero");
             if (snapshot.RowWrapColumns is { } widths)
             {
                 ValidateWrappedColumns(new TerminalScreenState
