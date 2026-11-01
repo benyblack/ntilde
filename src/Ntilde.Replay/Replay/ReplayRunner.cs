@@ -345,29 +345,23 @@ namespace Ntilde.Replay
                 case "input":
                     if (onInputCallback != null)
                     {
+                        string? input = string.IsNullOrEmpty(ev.Input) ? null : ev.Input;
                         if (!string.IsNullOrEmpty(ev.Data))
                         {
                             try
                             {
-                                string input = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(ev.Data));
-                                await onInputCallback(input);
+                                input = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(ev.Data));
                             }
-                            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                            catch (FormatException)
                             {
-                                throw;
-                            }
-                            catch
-                            {
-                                // Fallback to legacy field if decoding fails
-                                if (!string.IsNullOrEmpty(ev.Input))
-                                {
-                                    await onInputCallback(ev.Input);
-                                }
+                                // Malformed Base64 retains the legacy input, if present.
                             }
                         }
-                        else if (!string.IsNullOrEmpty(ev.Input))
+                        // Delivery is outside decoding recovery: a callback failure must
+                        // neither retry with legacy input nor count as successful processing.
+                        if (input is not null)
                         {
-                            await onInputCallback(ev.Input);
+                            await onInputCallback(input);
                         }
                     }
                     break;
