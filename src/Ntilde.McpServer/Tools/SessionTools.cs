@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Ntilde.AgentHost.Contracts;
@@ -14,7 +15,7 @@ namespace Ntilde.McpServer.Tools;
 /// enabled "Agent access (observe)" in Ntilde's settings.
 /// </summary>
 [McpServerToolType]
-public sealed class SessionTools
+public sealed partial class SessionTools
 {
     [McpServerTool(Name = "ntilde.list_sessions"),
      Description("Lists the live terminal sessions in the running Ntilde app: pane id, title, profile, kind (local/ssh), size, and active state, plus windowless multiplexer sessions that no window shows (marked 'windowless'; their id is the multiplexer session id). Requires Ntilde to be running with 'Agent access (observe)' enabled; returns instructions if it isn't. Use the paneId with ntilde.read_screen / ntilde.read_scrollback.")]
@@ -183,7 +184,7 @@ public sealed class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.wait_for_events"),
-     Description("Waits for session events from the running Ntilde app: status changes, command completions (with exit code and duration), bells, stalls, and sessions opening/closing (never for windowless sessions). Long-poll with a cursor: pass sinceSeq=0 on the first call, then the nextSeq from each result. Returns immediately when events are pending, otherwise parks up to timeoutMs (server-capped at 25000). An empty result means the timeout elapsed — call again with the same cursor. Read-only.")]
+     Description("Waits for session events from the running Ntilde app: status changes, command completions (with exit code, duration, and the command that ran when shell integration reports it, credentials redacted), bells, stalls, and sessions opening/closing (never for windowless sessions). Long-poll with a cursor: pass sinceSeq=0 on the first call, then the nextSeq from each result. Returns immediately when events are pending, otherwise parks up to timeoutMs (server-capped at 25000). An empty result means the timeout elapsed — call again with the same cursor. Read-only.")]
     public static async Task<string> WaitForEvents(
         AgentHostClient client,
         [Description("Cursor: deliver events newer than this sequence number. 0 on the first call, then the previous result's nextSeq.")] long sinceSeq = 0,
@@ -461,13 +462,48 @@ public sealed class SessionTools
         sb.AppendLine("|---|---|---|---|---|---|");
         foreach (var e in dto.Events)
         {
-            var details = e.Type == AgentHostProtocol.EventTypes.CommandFinished
-                ? $"exit {(e.ExitCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?")}{(e.DurationMs is { } d ? $", {d} ms" : "")}"
-                : e.ExitCode is { } code ? $"exit {code}{(e.NeedsUser is { } why ? $", needs the user: {why}" : "")}" : "-";
-            sb.AppendLine($"| {e.Seq} | {FormatUtc(e.TimestampMs)} | {e.PaneId} | {e.Type} | {e.Status} | {details} |");
+            sb.AppendLine($"| {e.Seq} | {FormatUtc(e.TimestampMs)} | {e.PaneId} | {e.Type} | {e.Status} | {FormatEventDetails(e)} |");
         }
         return sb.ToString().TrimEnd();
     }
+
+    private static string FormatEventDetails(AgentEventDto e)
+    {
+        if (e.Type == AgentHostProtocol.EventTypes.CommandFinished)
+        {
+            var exit = e.ExitCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?";
+            var duration = e.DurationMs is { } d ? $", {d} ms" : "";
+            var command = e.Command is { } text ? $", command: {TableCellText(text)}" : "";
+            return $"exit {exit}{duration}{command}";
+        }
+
+        if (e.ExitCode is { } code)
+        {
+            return $"exit {code}{(e.NeedsUser is { } why ? $", needs the user: {why}" : "")}";
+        }
+
+        return "-";
+    }
+
+    /// <summary>
+    /// Shell text inside one markdown table cell: a pipe would end the cell and a newline the row, and a pipeline or a
+    /// multi-line command carries both. Each line break becomes a visible ⏎ rather than a space, so the agent can still
+    /// tell <c>a⏎b</c> (two commands) from <c>a b</c> (one).
+    /// </summary>
+    /// <remarks>
+    /// A pipe is escaped only by an odd run of backslashes, so a command's own backslashes in front of one
+    /// (<c>echo \| tail</c>) would cancel a single added escape and split the cell again. The run in front of each pipe
+    /// is doubled before the pipe is escaped; backslashes anywhere else stay as typed.
+    /// </remarks>
+    internal static string TableCellText(string text)
+        => PipeWithLeadingBackslashes().Replace(
+            text.Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Replace("\r", "\n", StringComparison.Ordinal)
+                .Replace("\n", " ⏎ ", StringComparison.Ordinal),
+            m => m.Groups[1].Value + m.Groups[1].Value + "\\|");
+
+    [GeneratedRegex(@"(\\*)\|", RegexOptions.CultureInvariant)]
+    private static partial Regex PipeWithLeadingBackslashes();
 
     internal static string FormatExport(ExportReplayResult dto)
     {
