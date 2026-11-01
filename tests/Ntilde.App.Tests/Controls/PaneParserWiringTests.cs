@@ -44,6 +44,22 @@ public class PaneParserWiringTests
     ];
 
     [AvaloniaFact]
+    public void Clipboard_protocol_is_wired_only_for_a_presenting_direct_pane()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        Assert.True(pane.Parser!.KittyClipboardEnabled);
+        Assert.NotNull(pane.Parser.OnKittyClipboardPacket);
+        Assert.NotNull(pane.Parser.OnKittyClipboardReset);
+        var retired = pane.Parser;
+        pane.CreateAndWireParser(muxBacked: true);
+        Assert.False(pane.Parser!.KittyClipboardEnabled);
+        Assert.Null(pane.Parser.OnKittyClipboardPacket);
+        // The retired service is disposed, so stale output cannot initiate clipboard I/O.
+        retired.Process("\x1b]5522;type=read;dGV4dC9wbGFpbg==\a");
+    }
+
+    [AvaloniaFact]
     public void RewiringTheParser_ReplacesItRatherThanReusingIt()
     {
         using var pane = new TerminalPane();

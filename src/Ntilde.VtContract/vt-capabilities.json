@@ -63,6 +63,15 @@
       "matrixFeature": "OSC 30101",
       "evidencePath": "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
       "contractCase": "color-stack-pop"
+    },
+    {
+      "key": "DEC:5522",
+      "mnemonic": "MIME clipboard paste notifications",
+      "support": "supported",
+      "description": "Presenting hosts with desktop clipboard services opt in to MIME paste events. Headless and mux hosts report unrecognized.",
+      "matrixFeature": "MIME clipboard paste notifications",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "mime-clipboard-paste"
     }
   ]
 }

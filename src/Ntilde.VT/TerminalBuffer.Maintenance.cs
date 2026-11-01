@@ -396,6 +396,7 @@ namespace Ntilde.VT
                 Modes.IsSixelDisplayMode = false;
                 Modes.IsAutoWrapMode = true;
                 Modes.IsApplicationCursorKeys = false;
+                Modes.IsClipboardPasteMode = false;
                 ResetCursorPresentationNoLock();
 
                 // Reset Mouse Modes

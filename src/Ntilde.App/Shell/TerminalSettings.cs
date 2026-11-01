@@ -75,7 +75,7 @@ namespace Ntilde.Shell
         // that does strip APC simply never delivers the probe, so the client falls back on its
         // own, and a corrupted payload that does arrive fails decode as a silent skip.
         public bool AllowNativeKittyGraphics { get; set; } = true;
-        // Settings gate for OSC 52 clipboard-write support (issue #268). Default on for
+        // Settings gate for OSC 52 and OSC 5522 clipboard writes (issue #268). Default on for
         // local sessions: AnsiParser.OnClipboardWrite always fires (VT stays policy-free),
         // and this flag is what TerminalPane checks before actually touching the system
         // clipboard. Read (answering an OSC 52 query with real clipboard contents) is never

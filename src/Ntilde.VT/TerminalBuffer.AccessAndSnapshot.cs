@@ -1094,6 +1094,7 @@ namespace Ntilde.VT
                 Modes.IsOriginMode = snapshot.IsOriginMode;
                 Modes.IsSixelDisplayMode = snapshot.IsSixelDisplayMode;
                 Modes.IsBracketedPasteMode = snapshot.IsBracketedPasteMode;
+                Modes.IsClipboardPasteMode = snapshot.IsClipboardPasteMode;
                 Modes.IsCursorVisible = snapshot.IsCursorVisible;
 
                 CurrentForeground = TermColor.FromUint(snapshot.CurrentForeground);

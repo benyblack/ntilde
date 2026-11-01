@@ -77,6 +77,7 @@ namespace Ntilde.Controls
 
             if (session is MuxClientSession) UnregisterRemoteMuxSession(); // its shell ended: nothing left to browse
             LastExitCode = code;
+            _kittyClipboard?.Reset();
 
             if (Profile?.Type == ConnectionType.SSH)
             {
@@ -223,6 +224,7 @@ namespace Ntilde.Controls
 
             if (_disposed) return null;
             _disposed = true;
+            _kittyClipboard?.Dispose();
             UnsubscribeRecordingFailure(forgetAttempts: true);
 
             (_agentRegistry ?? Ntilde.AgentHost.AgentSessionRegistry.Instance).Unregister(PaneId);

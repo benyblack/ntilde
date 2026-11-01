@@ -1174,3 +1174,15 @@ Ntilde is:
 > UI attracts users. Correctness keeps them.
 
 Read this before making architectural changes. Add an arch test before reaching for documentation as the enforcement mechanism — docs rot, tests don't.
+
+### OSC 5522 clipboard boundary
+
+VT parses bounded clipboard framing and stores the paste-notification mode only.
+The App owns binary transfer assembly, permission prompts, one-use expiring
+paste grants and Avalonia clipboard I/O; macOS MIME/UTI conversion stays in App.
+Host-assembled clipboard transactions and permission grants are excluded from
+terminal snapshots. Raw client OSC packets can still occur in recorded PTY output
+and an in-progress parser accumulator, like any other output. Replay/headless
+parsers have no clipboard callback. Mux and
+headless parsers do not advertise the desktop service. Clipboard writes use the
+existing AllowOsc52ClipboardWrite setting.

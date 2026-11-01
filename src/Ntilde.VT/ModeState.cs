@@ -19,6 +19,7 @@ namespace Ntilde.VT
         public bool IsAutoWrapMode { get; set; } = true;  // ?7 - DECAWM (Auto Wrap Mode)
         public bool IsOriginMode { get; set; }            // ?6 - DECOM (Origin Mode)
         public bool IsFocusEventReporting { get; set; }   // ?1004 - FocusIn/FocusOut reporting
+        public bool IsClipboardPasteMode { get; set; }    // ?5522 - MIME paste notifications
         public bool IsBracketedPasteMode { get; set; }    // ?2004 - Bracketed Paste Mode
         public bool IsCursorVisible { get; set; } = true; // ?25 - DECTCEM (Text Cursor Enable Mode)
         public bool IsCursorBlinkEnabled { get; set; } = true;
@@ -59,6 +60,7 @@ namespace Ntilde.VT
             MouseModeAnyEvent = false;
             MouseModeSGR = false;
             IsFocusEventReporting = false;
+            IsClipboardPasteMode = false;
             KittyKeyboard.Reset();
         }
 
@@ -76,6 +78,7 @@ namespace Ntilde.VT
                 IsSixelDisplayMode = this.IsSixelDisplayMode,
                 IsFocusEventReporting = this.IsFocusEventReporting,
                 IsBracketedPasteMode = this.IsBracketedPasteMode,
+                IsClipboardPasteMode = this.IsClipboardPasteMode,
                 IsCursorVisible = this.IsCursorVisible,
                 IsCursorBlinkEnabled = this.IsCursorBlinkEnabled,
                 CursorStyle = this.CursorStyle,

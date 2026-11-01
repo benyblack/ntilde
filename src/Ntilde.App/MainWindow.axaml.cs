@@ -673,18 +673,22 @@ namespace Ntilde
                     return;
                 }
 
+                var pastePane = _currentPane;
+                var pasteSession = pastePane.Session;
+                if (await pastePane.TryNotifyClipboardPasteAsync()) return;
                 var clipboard = topLevel.Clipboard;
                 var text = await clipboard.TryGetTextAsync();
+                if (!ReferenceEquals(pastePane.Session, pasteSession)) return;
                 if (!string.IsNullOrEmpty(text))
                 {
                     // Normalize line endings to avoid double newlines on paste
-                    _currentPane.NotifyCommandAssistPaste(text);
+                    pastePane.NotifyCommandAssistPaste(text);
                     text = Ntilde.Platform.Input.TerminalInputSender.PreparePaste(
                         text,
-                        _currentPane.Buffer?.Modes.IsBracketedPasteMode == true);
+                        pastePane.Buffer?.Modes.IsBracketedPasteMode == true);
 
-                    _currentPane.ScrollToInputLine();
-                    _currentPane.Session.SendInput(text);
+                    pastePane.ScrollToInputLine();
+                    pastePane.Session.SendInput(text);
                     return;
                 }
 
@@ -696,18 +700,19 @@ namespace Ntilde
                 {
                     try
                     {
+                        if (!ReferenceEquals(pastePane.Session, pasteSession)) return;
                         string path = Ntilde.Platform.Input.ClipboardImage.GetTempImagePath(".png");
                         bitmap.Save(path, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
 
                         // In a WSL session the Linux CLI can't resolve a C:\ path, so map it to
                         // its /mnt/<drive> form — mirroring the file-drop path handling.
-                        bool isWsl = _currentPane.Session.ShellCommand?.Contains("wsl", StringComparison.OrdinalIgnoreCase) ?? false;
+                        bool isWsl = pastePane.Session.ShellCommand?.Contains("wsl", StringComparison.OrdinalIgnoreCase) ?? false;
                         string sendPath = isWsl
                             ? Ntilde.Platform.Input.ClipboardImage.ToWslMountPath(path)
                             : path;
-                        _currentPane.NotifyExternalInputSent();
-                        _currentPane.ScrollToInputLine();
-                        _currentPane.Session.SendInput(Ntilde.Platform.Input.ClipboardImage.QuotePathForInput(sendPath));
+                        pastePane.NotifyExternalInputSent();
+                        pastePane.ScrollToInputLine();
+                        pastePane.Session.SendInput(Ntilde.Platform.Input.ClipboardImage.QuotePathForInput(sendPath));
                     }
                     finally
                     {

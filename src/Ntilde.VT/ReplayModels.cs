@@ -94,6 +94,7 @@ namespace Ntilde.VT
         [JsonPropertyName("sixel_cw"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public float? SixelCellWidthPx { get; set; }
         [JsonPropertyName("sixel_ch"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public float? SixelCellHeightPx { get; set; }
         [JsonPropertyName("bp")] public bool IsBracketedPasteMode { get; set; }
+        [JsonPropertyName("mime_paste")] public bool IsClipboardPasteMode { get; set; }
         [JsonPropertyName("cv")] public bool IsCursorVisible { get; set; }
 
         /// <summary>
