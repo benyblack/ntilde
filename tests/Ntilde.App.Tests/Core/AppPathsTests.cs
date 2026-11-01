@@ -31,7 +31,7 @@ public sealed class AppPathsTests
     [Fact]
     public void DefaultRootDirectory_IsUnderLocalApplicationData()
     {
-        string localAppData = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+        string localAppData = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify));
         string root = Path.GetFullPath(AppPaths.DefaultRootDirectory);
 
         if (OperatingSystem.IsWindows())
@@ -41,6 +41,35 @@ public sealed class AppPathsTests
         else
         {
             Assert.StartsWith(localAppData, root, StringComparison.Ordinal);
+        }
+    }
+
+    // On Linux LocalApplicationData is $XDG_DATA_HOME, else ~/.local/share, and GetFolderPath returns "" for a folder
+    // that does not exist unless told not to check. The root then became a bare relative "ntilde", resolved against
+    // whatever directory each process started in - so on an account that had never had ~/.local/share, the app and its
+    // mux daemon (which start in different directories) kept their data, and looked for each other, in different
+    // places. CI hid it for as long as its test jobs ran `dotnet restore`, which creates ~/.local/share for NuGet.
+    [Fact]
+    public void DefaultRootDirectory_IsAbsolute_WhenTheAppDataFolderDoesNotExistYet()
+    {
+        if (!OperatingSystem.IsLinux())
+        {
+            Assert.Skip("XDG_DATA_HOME locates LocalApplicationData on Linux only.");
+        }
+
+        string missing = Path.Combine(Path.GetTempPath(), "ntilde-xdg-" + Guid.NewGuid().ToString("N"), "share");
+        string? previous = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("XDG_DATA_HOME", missing);
+
+            Assert.False(Directory.Exists(missing));
+            Assert.Equal(Path.Combine(missing, "ntilde"), AppPaths.DefaultRootDirectory);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("XDG_DATA_HOME", previous);
         }
     }
 

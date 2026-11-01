@@ -7,7 +7,9 @@ each shard's floor only sees its own share - and a class in two would run twice.
 evaluates each shard's real filter, with VSTest's `~` (contains) semantics, against every class
 declared under tests/Ntilde.App.Tests, plus hand-written names for the edge cases.
 
-Also covers the floor output the gate consumes, and the usage errors.
+Also covers the floor output the gate consumes, the per-shard needs (a shard that runs a test
+needing `dotnet restore` or real shells must say so, or that test fails or skips on a runner
+that was never set up for it), and the usage errors.
 """
 import re
 import subprocess
@@ -17,6 +19,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "ci" / "app-tests-shard.py"
 APP_TESTS = ROOT / "tests" / "Ntilde.App.Tests"
+# The non-headless projects ci.yml runs on the rest shard, besides its share of App.Tests.
+NON_HEADLESS = ["VT", "Rendering", "Architecture", "Platform", "McpServer", "Mux"]
+
+# A test that drives the SDK on the source tree - `dotnet build ...` and the like - rather than
+# running an already-built assembly with `dotnet <dll>`. Those need a restored tree.
+SDK_COMMAND = re.compile(r'\$?"(build|publish|restore|pack|test|run)\s')
 
 EDGE_CASES = [
     "Ntilde.Tests.Shell.Mux.Remote.RemoteMuxCommandTests",
@@ -63,15 +71,16 @@ def matches(filter_text: str, fqn: str) -> bool:
     return True
 
 
-def declared_classes():
-    """Namespace-qualified names of the classes in tests/Ntilde.App.Tests, from the source."""
+def declared_classes(root=APP_TESTS, only=None):
+    """Namespace-qualified names of the classes under root, from the source. With `only`, just
+    the classes in files whose text satisfies it."""
     names = set()
-    for path in APP_TESTS.rglob("*.cs"):
+    for path in root.rglob("*.cs"):
         if any(part in ("bin", "obj") for part in path.parts):
             continue
         text = path.read_text(encoding="utf-8", errors="ignore")
         ns = re.search(r"^\s*namespace\s+([\w.]+)", text, re.M)
-        if not ns:
+        if not ns or (only and not only(text)):
             continue
         for cls in re.findall(r"\bclass\s+(\w+)", text):
             names.add(f"{ns.group(1)}.{cls}")
@@ -125,6 +134,39 @@ def main():
     check(owner.get("rest"), "a namespace that merely starts with a claimed one falls to rest")
     owner = {s: matches(filters[s], "Ntilde.Tests.VtReportCliTestsHelpers.M") for s in shards}
     check(owner.get("rest"), "a class that merely starts with a claimed class falls to rest")
+
+    # Needs. Each shard prints one line per need; the workflow skips setup on a shard whose
+    # line is empty, so the shard owning such a test must print 1.
+    needs = {}
+    for shard in shards:
+        out = dict(line.split("=", 1) for line in run(shard).stdout.splitlines() if "=" in line)
+        needs[shard] = {k: v for k, v in out.items() if k not in ("filter", "floor")}
+        check(set(needs[shard]) == {"restore", "shells"} and
+              all(v in ("", "1") for v in needs[shard].values()),
+              f"{shard}: prints restore= and shells= as 1 or empty ({needs[shard]})")
+
+    def owners_of(fqn):
+        return [s for s in shards if matches(filters[s], fqn + ".SomeMethod")]
+
+    shells = [c for c in classes
+              if c.startswith("Ntilde.Tests.CommandAssist.ShellIntegration.Integration.")]
+    check(shells, f"found the real-shell integration classes ({len(shells)})")
+    missing = [f"{c} -> {o}" for c in shells for o in owners_of(c) if needs[o].get("shells") != "1"]
+    check(not missing, f"every shard running real-shell tests installs the shells ({missing[:3]})")
+
+    def drives_sdk(text):
+        return '"dotnet"' in text and SDK_COMMAND.search(text) is not None
+
+    sdk = declared_classes(only=drives_sdk)
+    check("Ntilde.Tests.VtReportCliTests" in sdk,
+          f"the detector finds VtReportCliTests' `dotnet build` ({sorted(sdk)})")
+    missing = [f"{c} -> {o}" for c in sdk for o in owners_of(c) if needs[o].get("restore") != "1"]
+    check(not missing, "every shard running a test that drives `dotnet build` restores the tree "
+                       f"(add the class to NEEDS['restore'] in app-tests-shard.py: {missing[:3]})")
+    others = sorted(c for proj in NON_HEADLESS
+                    for c in declared_classes(ROOT / "tests" / f"Ntilde.{proj}.Tests", drives_sdk))
+    check(not others or needs["rest"].get("restore") == "1",
+          f"no non-headless test drives `dotnet build`, or rest restores the tree ({others[:3]})")
 
     for bad in ([], ["nope"], ["shell", "extra"]):
         proc = run(*bad)
