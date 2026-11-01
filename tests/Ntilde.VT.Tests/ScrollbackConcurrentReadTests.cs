@@ -157,6 +157,37 @@ public class ScrollbackConcurrentReadTests
     }
 
     [Fact]
+    public void MetadataCache_KeepsAbsolutePageCoordinates_AfterReplacementAndEviction()
+    {
+        var pool = new TerminalPagePool();
+        var pages = new ScrollbackPages(1, pool, rowsPerPage: 1);
+        try
+        {
+            foreach (string text in new[] { "e\u0301", "👩‍💻" })
+            {
+                var map = new SmallMap<string>();
+                map.Set(0, text);
+                pages.AppendRow(new[] { TerminalCell.Default }, extendedText: map);
+            }
+            Assert.True(pages.GetExtendedTextMap(1)!.TryGet(0, out string? expected));
+            Assert.Equal("👩‍💻", expected);
+            Assert.NotNull(pages.CachedPage);
+            Assert.Equal(1, pages.CachedPage.StartAbsRow);
+            _ = pages.GetRow(0); // A competing reader replaces the cached page.
+            Assert.True(pages.GetExtendedTextMap(1)!.TryGet(0, out string? replaced));
+            Assert.Equal(expected, replaced);
+            Assert.Equal(1, pages.ReleaseOldestPage());
+            Assert.True(pages.GetExtendedTextMap(0)!.TryGet(0, out string? evicted));
+            Assert.Equal(expected, evicted);
+            pages.Clear();
+            Assert.Null(pages.CachedPage);
+            pages.AppendRow(new[] { TerminalCell.Default });
+            Assert.Null(pages.GetExtendedTextMap(0));
+        }
+        finally { pages.Clear(); pool.Clear(); }
+    }
+
+    [Fact]
     public void SequentialReads_AllocatePerPage_NotPerRow()
     {
         const int rows = 8192;
