@@ -9,7 +9,7 @@ separate domain and shared-renderer pixel evidence below.
 | Build | Source commit | Owned collection | Measured at (UTC) |
 |---|---|---|---|
 | Before | `52ed24cd4bb2eb8d69d747c6ba6ee063d372709e` | `owned-KlBHUy` | 12:31:08.706 |
-| After | `039555898794b9bdb645b53272f30150584c3a28` | `owned-uHfQB0` | 14:51:41.225 |
+| After | `aa9456808a24d75bbf9a04265b220f02a278fb26` | `owned-zqbmw8` | 15:06:40.487 |
 
 Both builds are fresh uninstalled sidecars outside `.app` bundles. Their DLL
 informational versions contain the full source commit. The selected assembly
@@ -23,7 +23,7 @@ source and ownership/cleanup proof. No personal clipboard was read.
 Both runs use the same pinned collector revision, suite/probe hash, adapter,
 manifest/lock, runner sources and Node v24.22.1. Raw SHA-256 values were recomputed;
 both ownership proofs record completion and cleanup. The after cleanup completed
-at 14:51:41.255 UTC.
+at 15:06:40.539 UTC.
 
 ## Observed behavior
 
@@ -56,10 +56,10 @@ replay; metadata budgets; ANSI export and bounded text-client fallback. Initial
 probe tests failed before implementation. A fractional-pair pixel regression
 also failed with double shrinking and passes with font scaling applied once.
 
-Eleven shared-renderer pixel tests cover enlarged ink across rows, fractional
+Eighteen shared-renderer pixel tests cover enlarged ink across rows, fractional
 font sizing/alignment, two small glyphs in one cell, compressed long text,
 visible lower fragments whose anchor is in history, cached-row refresh, italic baseline anchoring, and plain/styled underline policy.
-The full VT suite passes 1,420 tests. The earlier complete App gating rerun passed
+The full VT suite passes 1,426 tests. The earlier complete App gating rerun passed
 7,545 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
 (40), shared golden PNG (8), mux (1,123 with 20 platform skips), architecture
 (178), and platform-boot (75 with 4 font-platform skips) checks pass locally.
@@ -91,12 +91,24 @@ ANSI export bootstraps clipped anchors with bounded scrolling before its viewpor
 walk, including anchors evicted from history. Two mixed-height round trips failed
 before the fix and now preserve both fragments. Lower-row URL extraction maps to
 the same payload and physical width; three real view cases failed before the fix.
-All 77 focused App sizing, link and replay tests pass after these changes.
+All 124 focused App sizing, link, replay and render-metrics tests pass after the
+subsequent review fixes, with 8 shared goldens passing in a separate process.
 
 The next Codex review found invalid main-history blocks surviving an alternate-
 screen height resize. Main-history cleanup now retires the whole rectangle in
 its own plane. Two height cases failed before the fix; eight invalid resize cases
 across both active screens and two retained-fit controls now pass.
+
+The next review batch fixes compressed fractional alignment, full-block styled
+underlines, placement below short scroll margins, and ordinary-base combining
+next to a sized anchor. History mutations now advance a dedicated revision in
+both live and isolated paged snapshots so App picture caches cannot retain old
+ink. Six domain failures and six pixel failures were reproduced before the fixes.
+The history pixel fixture uses a nonzero history row identity and compares the
+cached draw path with an uncached reference. Ordinary writes with retained sized
+history no longer allocate an empty erase dictionary for every grapheme: the
+regression previously measured 104 KB versus a 24 KB baseline per 1,000 writes;
+the fixed path stays within 16 KiB of the baseline.
 
 ## Limits
 
