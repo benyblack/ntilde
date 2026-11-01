@@ -1117,6 +1117,9 @@ and Windows `set NAME=value` or `set "NAME=value"`. Unquoted `set` values extend
 the next command separator, so spaces in the value are hidden too. Unrelated names
 such as `GITHUB_TOKEN_FILE` are left alone.
 
+A shared scan-work budget bounds processing of overlapping credential patterns.
+Exhausting it hides the entire command, just like a pattern-matching timeout.
+
 Existing token-query, bearer-header and connection-string password patterns remain.
 Unlisted credential names, unrelated positional arguments, script contents, shell
 expansion semantics and other encodings are not a universal detection contract.

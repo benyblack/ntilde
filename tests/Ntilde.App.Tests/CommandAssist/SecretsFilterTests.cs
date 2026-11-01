@@ -90,6 +90,17 @@ public sealed class SecretsFilterTests
         Assert.Equal(command, result.RedactedText);
     }
 
+    [Theory]
+    [InlineData(128)]
+    [InlineData(4096)]
+    public void Redact_PathologicalCredentialOverlap_FailsClosedWithinSharedWorkBudget(int count)
+    {
+        string command = "tool " + string.Concat(Enumerable.Repeat("--token=", count)) + "synthetic_secret_677";
+        RedactionResult result = new SecretsFilter().Redact(command);
+        Assert.True(result.WasRedacted);
+        Assert.Equal("[REDACTED]", result.RedactedText);
+    }
+
     public static TheoryData<string> CredentialEnvironmentNames => new(
         "GITHUB_TOKEN", "GH_TOKEN", "GITLAB_TOKEN", "GITLAB_PRIVATE_TOKEN", "CI_JOB_TOKEN", "NPM_TOKEN",
         "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "AZURE_OPENAI_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY",

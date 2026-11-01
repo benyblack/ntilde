@@ -24,9 +24,19 @@ public sealed partial class SecretsFilter
 
     private readonly record struct CredentialRange(int Start, int End, char? ClosingQuote);
 
+    private sealed class CredentialScanBudget(int length)
+    {
+        // Shared across overlapping matches, not reset for every suffix scan.
+        private long _remaining = 4L * length + 64;
+        public bool Exhausted => _remaining < 0;
+        public bool TryConsume() => --_remaining >= 0;
+    }
+
     private static string RedactCredentialArguments(string text)
     {
-        var ranges = CredentialRanges(text);
+        var budget = new CredentialScanBudget(text.Length);
+        var ranges = CredentialRanges(text, budget);
+        if (budget.Exhausted) return "[REDACTED]";
         if (ranges.Count == 0) return text;
         var output = new StringBuilder(text.Length);
         int copiedThrough = 0;
@@ -40,13 +50,14 @@ public sealed partial class SecretsFilter
         return output.Append(text, copiedThrough, text.Length - copiedThrough).ToString();
     }
 
-    private static List<CredentialRange> CredentialRanges(string text)
+    private static List<CredentialRange> CredentialRanges(string text, CredentialScanBudget budget)
     {
         var ranges = new List<CredentialRange>();
         foreach (Match prefix in CredentialPrefixRegex.Matches(text))
         {
             int start = prefix.Index + prefix.Length;
-            var (end, closingQuote) = CredentialValueEnd(text, start, prefix);
+            var (end, closingQuote) = CredentialValueEnd(text, start, prefix, budget);
+            if (budget.Exhausted) break;
             if (end == start) continue;
             // A value may itself look like another credential option. Hide the union of both values.
             if (ranges.Count > 0 && prefix.Index < ranges[^1].End)
@@ -59,15 +70,15 @@ public sealed partial class SecretsFilter
         return ranges;
     }
 
-    private static (int End, char? ClosingQuote) CredentialValueEnd(string text, int start, Match prefix)
+    private static (int End, char? ClosingQuote) CredentialValueEnd(string text, int start, Match prefix, CredentialScanBudget budget)
     {
         string argumentQuote = prefix.Groups["argQuote"].Value;
         bool quotedValue = argumentQuote.Length > 0 || prefix.Groups["cmdQuoted"].Success;
-        if (!quotedValue) return (CredentialWordEnd(text, start, prefix.Groups["cmd"].Success), null);
+        if (!quotedValue) return (CredentialWordEnd(text, start, prefix.Groups["cmd"].Success, budget), null);
         char quote = argumentQuote.Length > 0 ? argumentQuote[0] : '"';
-        int quotedEnd = CredentialQuotedEnd(text, start, quote, 0);
+        int quotedEnd = CredentialQuotedEnd(text, start, quote, 0, budget);
         // Whole-argument quotes can be followed by more fragments of the same shell word.
-        int end = argumentQuote.Length > 0 ? CredentialWordEnd(text, quotedEnd, cmdAssignment: false) : quotedEnd;
+        int end = argumentQuote.Length > 0 ? CredentialWordEnd(text, quotedEnd, cmdAssignment: false, budget) : quotedEnd;
         char? closingQuote = quotedEnd > start && text[quotedEnd - 1] == quote ? quote : null;
         return (end, closingQuote);
     }
@@ -76,20 +87,20 @@ public sealed partial class SecretsFilter
         c is '\r' or '\n' or '&' or '|' or '<' or '>' ||
         (!cmdAssignment && c is ' ' or '\t' or ';');
 
-    private static int CredentialWordEnd(string text, int start, bool cmdAssignment)
+    private static int CredentialWordEnd(string text, int start, bool cmdAssignment, CredentialScanBudget budget)
     {
         int index = start;
-        while (index < text.Length && !CredentialBoundary(text[index], cmdAssignment))
-            index = CredentialSyntaxEnd(text, index, 0);
+        while (index < text.Length && !CredentialBoundary(text[index], cmdAssignment) && budget.TryConsume())
+            index = CredentialSyntaxEnd(text, index, 0, budget);
         return index;
     }
 
-    private static int CredentialSyntaxEnd(string text, int index, int depth)
+    private static int CredentialSyntaxEnd(string text, int index, int depth, CredentialScanBudget budget)
     {
         if (depth >= MaxCredentialNesting) return text.Length;
         char c = text[index];
-        if (c is '\'' or '"') return CredentialQuotedEnd(text, index + 1, c, depth + 1);
-        if (c is '(' or '{' or '[') return CredentialGroupEnd(text, index + 1, CredentialCloser(c), depth + 1);
+        if (c is '\'' or '"') return CredentialQuotedEnd(text, index + 1, c, depth + 1, budget);
+        if (c is '(' or '{' or '[') return CredentialGroupEnd(text, index + 1, CredentialCloser(c), depth + 1, budget);
         // These escape markers have incompatible meanings across supported shells.
         if (c is '\\' or '`' or '^') return text.Length;
         return index + 1;
@@ -97,23 +108,28 @@ public sealed partial class SecretsFilter
 
     private static char CredentialCloser(char opener) => opener switch { '(' => ')', '{' => '}', _ => ']' };
 
-    private static int CredentialGroupEnd(string text, int start, char closer, int depth)
+    private static int CredentialGroupEnd(string text, int start, char closer, int depth, CredentialScanBudget budget)
     {
         int index = start;
-        while (index < text.Length)
+        while (index < text.Length && budget.TryConsume())
         {
             if (text[index] == closer) return index + 1;
-            index = CredentialSyntaxEnd(text, index, depth);
+            index = CredentialSyntaxEnd(text, index, depth, budget);
         }
         // An unclosed group consumes the remaining command conservatively.
         return text.Length;
     }
 
-    private static int CredentialQuotedEnd(string text, int start, char quote, int depth)
+    private static int CredentialQuotedEnd(string text, int start, char quote, int depth, CredentialScanBudget budget)
     {
         if (depth >= MaxCredentialNesting) return text.Length;
+        return CredentialQuotedContentEnd(text, start, quote, depth, budget);
+    }
+
+    private static int CredentialQuotedContentEnd(string text, int start, char quote, int depth, CredentialScanBudget budget)
+    {
         int index = start;
-        while (index < text.Length)
+        while (index < text.Length && budget.TryConsume())
         {
             char c = text[index];
             if (IsDoubledCredentialQuote(text, index, quote)) { index += 2; continue; }
@@ -122,7 +138,7 @@ public sealed partial class SecretsFilter
             if (quote != '\'' && c is '\\' or '`' or '^') return text.Length;
             if (IsCredentialExpansion(text, index, quote))
             {
-                index = CredentialGroupEnd(text, index + 2, CredentialCloser(text[index + 1]), depth + 1);
+                index = CredentialGroupEnd(text, index + 2, CredentialCloser(text[index + 1]), depth + 1, budget);
                 continue;
             }
             index++;
