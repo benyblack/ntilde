@@ -56,7 +56,7 @@ public static class PlatformAppPaths
     /// here rather than clearing the variable, which is process-wide.
     /// </summary>
     public static string DefaultRootDirectory => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify),
         AppName);
 
     /// <summary>The directory holding SSH profiles, generated OpenSSH config, and known-hosts.</summary>

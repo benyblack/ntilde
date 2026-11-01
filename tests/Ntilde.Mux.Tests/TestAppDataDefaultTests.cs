@@ -13,7 +13,7 @@ public class TestAppDataDefaultTests
     public void TheTestProcess_ResolvesAScratchRoot_NotTheRealOne()
     {
         // MuxDiscovery's default when NTILDE_APPDATA_ROOT is unset.
-        string real = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ntilde");
+        string real = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify), "ntilde");
 
         Assert.False(
             TestAppDataDefault.IsInside(MuxDiscovery.GetRootDirectory(), real),

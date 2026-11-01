@@ -16,7 +16,7 @@ namespace Ntilde.Shell
             var profiles = new List<TerminalProfile>();
             try
             {
-                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify);
                 // Common path for Windows Terminal (Stable)
                 var wtPath = Path.Combine(localAppData, "Packages", "Microsoft.WindowsTerminal_8wekyb3d8bbwe", "LocalState", "settings.json");
 
