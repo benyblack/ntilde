@@ -8,10 +8,10 @@ clipboard transfer permissions or native application interoperability.
 | Build | Source | Local evidence | Raw SHA-256 |
 |---|---|---|---|
 | Before | `04019dbacf1c02aa7ccd85c39fcd2670ec2905eb` | `artifacts/terminfo/owned-WTxDq5` | `5291400dfd56c2b67ef7011cbd275cba9a9dd261fb3664b0fed2e9fd1b159144` |
-| After | `be9b04c273ad6224fa26843edadd571a41ac36c4` | `artifacts/terminfo/owned-4A4NGw` | `f0267f129a612e5dc4c35eb766675c68b896b64775fb5d756cd73a56e0c8c59c` |
+| After | `5aa7481b2d3187325378168f68c0548111322ac3` | `artifacts/terminfo/owned-lZP2Uv` | `2ad91173e34040c19bd4ee4a97833d724d609e3cf7a2bc99a5fa1b9a99edc018` |
 
 The before probe ran at 2026-11-01T16:56:20.405Z and cleaned up at 2026-11-01T16:56:20.438Z.
-The after probe ran at 2026-11-01T18:47:09.200Z and cleaned up at 2026-11-01T18:47:09.228Z.
+The after probe ran at 2026-11-01T18:58:01.465Z and cleaned up at 2026-11-01T18:58:01.493Z.
 The [derived comparison](2026-11-01-clipboard-comparison.json) records the original
 query/reply traces, DLL hashes, source/input pins and ownership completion.
 The executable informational-version strings matched the stated source commits.
@@ -36,7 +36,7 @@ defines DEC mode 5522 and its precedence over plain/bracketed paste.
 - Limits are 64 MiB decoded write data, 128 MIME types, 8192 characters per
   packet, 2048 metadata characters and 256 characters per MIME identifier.
   Native MIME/alias expansion has a separate 128 MiB budget. An unfinished
-  transfer expires when another packet arrives after one minute.
+  transfer expires when another packet or a user paste arrives after one minute.
 - Writes honor the existing `AllowOsc52ClipboardWrite` setting, including a
   toggle between transfer start and commit. OSC 52 reads retain their denial.
 - Data reads ask **Allow once / Deny**. MIME listings require no prompt. The
@@ -80,6 +80,13 @@ conversion and retained result; it is not a hard cap on the provider's first
 allocation or total process memory. Reads still require approval or a one-use
 paste grant. No native size-preflight capability is claimed.
 
+The native clipboard tasks also expose no cancellation/abort API. If one stalls,
+the shared OSC 5522 gate stays held until actual completion and other requests
+receive EBUSY. Reset suppresses stale results/replies but cannot stop that native
+call. Keeping its gate prevents a late abandoned write from overwriting a newer
+acknowledged write and bounds outstanding provider work across repeated resets.
+This provider availability limit has deterministic stalled-call regression coverage.
+
 ## Verification and limits
 
 `KittyClipboardProtocolTests` covers framing at every input split, bounded
@@ -93,16 +100,18 @@ mode reset, response emission outside the clipboard/UI thread, snapshot consiste
 empty padded chunks, primary fragments, slow queues exceeding 768 frames, admission
 timeout/cancellation, immediate next requests after DONE, unknown-packet aborts,
 queued error retries, reset during admission-lock acquisition and paste-content
-binding across native clipboard replacement and provider-buffer reuse.
+binding across native clipboard replacement and provider-buffer reuse. Native-call
+completion/reset ordering and user-paste expiry of abandoned writes are covered.
 `AvaloniaKittyClipboardTests` round-trips test-owned binary/text MIME formats
 through Avalonia DataTransfer values; macOS MIME/UTI conversion has a separate
-deterministic regression. `PaneParserWiringTests` checks direct/mux wiring.
+deterministic regression. Bitmap reads cover PNG encoding and the pixel-size limit.
+`PaneParserWiringTests` checks direct/mux wiring.
 
-Local verification includes 1,489 VT tests, 84 focused clipboard/wiring tests,
+Local verification includes 1,489 VT tests, 92 focused clipboard/wiring tests,
 6 conformance/report tests, platform boot
 75 passed / 4 skipped, architecture 178, mux 1,123 passed / 20 skipped, and MCP
-223. The full app main lane passed 7,648 cases and skipped 56 before the
-last queued-error and paste-content refinements; the later clipboard/wiring regressions also pass. Latest-head
+223. The full app main lane passed 7,662 cases and skipped 56 before the
+last provider, overlapping-paste and bitmap refinements; the later clipboard/wiring regressions also pass. Latest-head
 CI supplies the full platform gate.
 
 The owned collector has clipboard writes disabled and no clipboard fixture.
