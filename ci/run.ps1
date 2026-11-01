@@ -26,17 +26,18 @@ Write-Host "=== CLEAN ==="
 Write-Host "=== RESTORE ==="
 & $build restore
 
-# NOTE: -warnaserror is deliberately absent. It was here while GitHub CI did not pass it
-# (ci.yml builds without it), so this script enforced a stricter contract than CI and
-# could fail on warnings that CI accepted. #108 owns re-enabling warnings-as-errors
-# repo-wide, once the ~350 existing diagnostics are addressed; until then both paths
-# build with the same flags.
+# No -warnaserror here: Directory.Build.props sets TreatWarningsAsErrors, with
+# AnalysisLevel latest-recommended and EnforceCodeStyleInBuild, for every project (#108).
+# So this build runs the analyzers and fails on their warnings, as CI's Analyzers job does.
+# (CI's Build job passes -p:RunAnalyzers=false to compile faster and leaves them to that job.)
 Write-Host "=== BUILD RELEASE ==="
 & $build build -c Release
 
-# The same lanes as ci.yml's Unit Tests job. A bare `test` would run App.Tests in one process,
-# and its PlatformBoot tests must not share a process with the rest: mixing them makes later
-# headless tests time out and the testhost hang (see the PlatformBoot comment in ci.yml).
+# The same tests as ci.yml's Unit Tests jobs. CI splits App.Tests across three shard jobs and
+# runs its Category=SdkBuild tests in the Build job, to save wall-clock time; here they run in
+# the two lanes below. A bare `test` would run App.Tests in one process, and its PlatformBoot
+# tests must not share a process with the rest: mixing them makes later headless tests time
+# out and the testhost hang (see the PlatformBoot comment in ci.yml).
 Write-Host "=== TEST ==="
 $filter = "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng"
 $tests = Join-Path $PSScriptRoot "..\tests"

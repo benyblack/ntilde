@@ -3,8 +3,8 @@
 // installers are `ntilde-Setup-{rid}-{tag}.{exe,pkg}`, portable bundles are
 // `ntilde-{rid}-{tag}.zip`, and Linux ships `ntilde-linux-{arch}-{tag}.AppImage`,
 // `ntilde-linux-{arch}-{tag}.tar.gz`, and `ntilde_{version}-1_{debarch}.deb`
-// from the publish_linux / release_linux lanes. The winget package id lives in
-// `packaging/winget/0.3.0/benyblack.ntilde.yaml`.
+// from the publish_linux / release_linux lanes. The winget package id is set by the
+// manifests in `packaging/winget/` (see its README).
 //
 // Ordered Windows, macOS, Linux: the two platforms with an installer come first,
 // because that is the path most people should take.
@@ -59,18 +59,19 @@ const buildSteps = [
   },
   {
     title: 'Build',
-    body: 'dotnet restore triggers a cargo build for the native PTY and SSH libraries automatically.',
+    body: 'Through the wrapper script (scripts\\build.ps1 on Windows), never raw dotnet build: it stops MSBuild leaving daemons that hang a captured build. The build compiles the native PTY and SSH libraries with cargo automatically.',
     code: [
-      'dotnet restore',
-      'dotnet build -c Release',
+      'scripts/build.sh build -c Release',
     ],
   },
   {
     title: 'Test',
-    body: 'Run the same filter as the blocking CI unit lane (fast, deterministic).',
+    body: 'One project at a time, with the filter of the blocking CI lane. App.Tests needs two runs, split on Lane=PlatformBoot; ci/run.sh runs every lane the way CI does.',
     code: [
-      'dotnet test -c Release --no-build \\',
+      'scripts/build.sh test tests/Ntilde.VT.Tests -c Release --no-build \\',
       '  --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng"',
+      '',
+      'ci/run.sh   # the full local CI rehearsal',
     ],
   },
 ];
