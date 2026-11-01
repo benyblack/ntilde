@@ -29,21 +29,28 @@ public sealed partial class SecretsFilter
         {
             if (prefix.Index < copiedThrough) continue;
             int start = prefix.Index + prefix.Length;
-            string argumentQuote = prefix.Groups["argQuote"].Value;
-            char quote = argumentQuote.Length > 0 ? argumentQuote[0] : '"';
-            bool quotedValue = argumentQuote.Length > 0 || prefix.Groups["cmdQuoted"].Success;
-            int quotedEnd = quotedValue ? CredentialQuotedEnd(text, start, quote, 0) : start;
-            int end = quotedValue ? quotedEnd : CredentialWordEnd(text, start, prefix.Groups["cmd"].Success);
-            // Whole-argument quotes can be followed by more fragments of the same shell word.
-            if (argumentQuote.Length > 0) end = CredentialWordEnd(text, end, cmdAssignment: false);
+            var (end, closingQuote) = CredentialValueEnd(text, start, prefix);
             if (end == start) continue;
             output ??= new StringBuilder(text.Length);
             output.Append(text, copiedThrough, start - copiedThrough);
             output.Append("[REDACTED]");
-            if (quotedValue && quotedEnd > start && text[quotedEnd - 1] == quote) output.Append(quote);
+            if (closingQuote.HasValue) output.Append(closingQuote.Value);
             copiedThrough = end;
         }
         return output is null ? text : output.Append(text, copiedThrough, text.Length - copiedThrough).ToString();
+    }
+
+    private static (int End, char? ClosingQuote) CredentialValueEnd(string text, int start, Match prefix)
+    {
+        string argumentQuote = prefix.Groups["argQuote"].Value;
+        bool quotedValue = argumentQuote.Length > 0 || prefix.Groups["cmdQuoted"].Success;
+        if (!quotedValue) return (CredentialWordEnd(text, start, prefix.Groups["cmd"].Success), null);
+        char quote = argumentQuote.Length > 0 ? argumentQuote[0] : '"';
+        int quotedEnd = CredentialQuotedEnd(text, start, quote, 0);
+        // Whole-argument quotes can be followed by more fragments of the same shell word.
+        int end = argumentQuote.Length > 0 ? CredentialWordEnd(text, quotedEnd, cmdAssignment: false) : quotedEnd;
+        char? closingQuote = quotedEnd > start && text[quotedEnd - 1] == quote ? quote : null;
+        return (end, closingQuote);
     }
 
     private static bool CredentialBoundary(char c, bool cmdAssignment) =>
@@ -97,16 +104,12 @@ public sealed partial class SecretsFilter
             char c = text[index];
             if (c == quote)
             {
-                if (quote != '`' && index + 1 < text.Length && text[index + 1] == quote) { index += 2; continue; }
+                if (IsDoubledCredentialQuote(text, index, quote)) { index += 2; continue; }
                 return index + 1;
             }
-            // Bash substitutions may contain quotes that do not close the surrounding double quote.
-            // PowerShell backtick escapes with a later backtick are hidden conservatively as a unit.
-            if (quote == '"' && c == '`' && text.IndexOf('`', index + 1) >= 0)
-            {
-                index = CredentialQuotedEnd(text, index + 1, '`', depth + 1);
-                continue;
-            }
+            // Bash substitutions and PowerShell escapes are ambiguous without the shell grammar.
+            // Hide the tail rather than letting an inner/escaped quote expose credential text.
+            if (quote == '"' && c == '`') return text.Length;
             if (quote != '\'' && c is '\\' or '`' or '^') { index = Math.Min(text.Length, index + 2); continue; }
             if (IsCredentialExpansion(text, index, quote))
             {
@@ -117,6 +120,9 @@ public sealed partial class SecretsFilter
         }
         return text.Length;
     }
+
+    private static bool IsDoubledCredentialQuote(string text, int index, char quote) =>
+        quote != '`' && index + 1 < text.Length && text[index + 1] == quote;
 
     private static bool IsCredentialExpansion(string text, int index, char quote) =>
         quote == '"' && text[index] == '$' && index + 1 < text.Length && text[index + 1] is '(' or '{';
