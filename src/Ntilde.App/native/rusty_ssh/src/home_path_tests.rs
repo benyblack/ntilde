@@ -9,6 +9,7 @@ struct RemoteTree {
     directories: HashSet<String>,
     files: BTreeMap<String, Vec<u8>>,
     paths: Vec<String>,
+    home_resolutions: usize,
 }
 struct Server {
     tree: Arc<Mutex<RemoteTree>>,
@@ -36,6 +37,7 @@ impl russh_sftp::server::Handler for Server {
     }
     async fn realpath(&mut self, id: u32, path: String) -> Result<Name, Self::Error> {
         assert_eq!(path, ".");
+        self.tree.lock().unwrap().home_resolutions += 1;
         Ok(Name {
             id,
             files: vec![File::dummy("/home/ops")],
@@ -234,6 +236,7 @@ impl Fixture {
     fn assert_no_literal_home_path(&self) {
         let tree = self.remote.lock().unwrap();
         assert!(!tree.paths.is_empty());
+        assert_eq!(tree.home_resolutions, 1);
         assert!(
             tree.paths.iter().all(|p| !p.starts_with('~')),
             "{:?}",
@@ -327,4 +330,21 @@ async fn file_download_preserves_literal_backslashes_and_spaces() {
             .unwrap();
         assert_eq!(std::fs::read(local).unwrap(), b"download bytes");
     }
+}
+
+#[tokio::test]
+async fn file_upload_preserves_a_literal_padded_tilde_filename() {
+    let fixture = Fixture::new().await;
+    {
+        let mut tree = fixture.remote.lock().unwrap();
+        tree.directories.insert(".".to_owned());
+        tree.files.insert("~ ".to_owned(), b"old bytes".to_vec());
+    }
+    fixture
+        .transfer("upload", "file", "~ ", &fixture.local.join("upload.txt"))
+        .await
+        .unwrap();
+    let tree = fixture.remote.lock().unwrap();
+    assert_eq!(tree.files["~ "], b"upload bytes");
+    assert_eq!(tree.home_resolutions, 0);
 }

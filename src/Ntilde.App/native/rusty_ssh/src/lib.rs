@@ -3802,7 +3802,7 @@ async fn resolve_upload_file_target(
         .and_then(|value| value.to_str())
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| anyhow::anyhow!("Local file name is required for native SFTP upload."))?;
-    let home_directory = if remote_path.trim().starts_with('~') {
+    let home_directory = if remote_path == "~" || remote_path.starts_with("~/") {
         Some(
             sftp.canonicalize(".")
                 .await
@@ -4204,9 +4204,8 @@ fn resolve_upload_file_destination_path(
     home_directory: Option<&str>,
     remote_path_is_dir: bool,
 ) -> anyhow::Result<String> {
-    let trimmed_remote_path = remote_path.trim();
     let expanded_remote_path = expand_remote_home_path(remote_path, home_directory)?;
-    if trimmed_remote_path == "~" || remote_path_is_dir {
+    if remote_path == "~" || remote_path_is_dir {
         return Ok(join_remote_path(&expanded_remote_path, local_name));
     }
 
