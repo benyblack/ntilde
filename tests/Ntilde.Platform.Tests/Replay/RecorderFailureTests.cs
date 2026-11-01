@@ -201,6 +201,39 @@ public sealed class RecorderFailureTests
         finally { release.Set(); second?.Dispose(); }
     }
 
+    [Fact]
+    public async Task SessionObservesFailureThatPredatesItsSubscriptionExactlyOnce()
+    {
+        using var open = new ManualResetEventSlim(false);
+        using var recorder = Create(() => { open.Wait(TestContext.Current.CancellationToken); throw new IOException("early open failure"); });
+        var original = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        recorder.Failed += _ => original.TrySetResult();
+        open.Set();
+        await recorder.Completion;
+        await original.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        using var state = new SessionRecording();
+        var observed = new TaskCompletionSource<RecordingFailure>(TaskCreationOptions.RunContinuationsAsynchronously);
+        int count = 0;
+        state.Begin(() => recorder, failure => { Interlocked.Increment(ref count); observed.TrySetResult(failure); });
+        Assert.Equal(RecordingFailureKind.Open, (await observed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Kind);
+        Assert.Equal(1, count);
+    }
+
+    [Theory]
+    [InlineData(3, 256)]
+    [InlineData(300, 1024)]
+    [InlineData(3000, 8192)]
+    public async Task SmallChunkThatFitsTheSerializedBudgetIsAccepted(int length, int budget)
+    {
+        var sink = new ControlledStream();
+        using var recorder = Create(() => sink, budget);
+        await recorder.WaitUntilReadyAsync();
+        recorder.RecordChunk(new byte[length], length);
+        await recorder.CompleteAsync();
+        Assert.Null(recorder.Failure);
+        Assert.Equal(2, Encoding.UTF8.GetString(sink.ToArray()).Split('\n', StringSplitOptions.RemoveEmptyEntries).Length);
+    }
+
     private sealed class ControlledStream : MemoryStream
     {
         public bool FailRecord { get; init; }

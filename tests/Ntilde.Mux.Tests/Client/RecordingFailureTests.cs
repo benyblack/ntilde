@@ -8,26 +8,29 @@ public sealed class RecordingFailureTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    [Fact]
-    public async Task MidRecordingFailureCrossesDaemonBoundaryWithoutEndingTerminal()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MidRecordingFailureCrossesDaemonBoundaryWithoutEndingTerminal(bool attached)
     {
         using var host = new MuxTestHost();
         MuxClient client = await host.ConnectClientAsync();
         Guid id = await MuxTestHost.SpawnAsync(client);
-        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(client, id);
+        ClientPaneModel? pane = attached ? await MuxTestHost.AttachPaneAsync(client, id) : null;
+        MuxClientSession session = pane?.Session ?? client.OpenSession(id);
         var failed = new TaskCompletionSource<RecordingFailure>(TaskCreationOptions.RunContinuationsAsynchronously);
-        pane.Session.RecordingFailed += _ => throw new InvalidOperationException("advisory observer failed");
-        pane.Session.RecordingFailed += failure => failed.TrySetResult(failure);
-        await pane.Session.StartRecordingAsync("test.nrec");
-        Assert.True(pane.Session.IsRecording);
+        session.RecordingFailed += _ => throw new InvalidOperationException("advisory observer failed");
+        session.RecordingFailed += failure => failed.TrySetResult(failure);
+        await session.StartRecordingAsync("test.nrec");
+        Assert.True(session.IsRecording);
         host.Fake(id).FailRecording(RecordingFailureKind.Overflow);
         RecordingFailure error = await failed.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
         Assert.Equal(RecordingFailureKind.Overflow, error.Kind);
-        Assert.False(pane.Session.IsRecording);
+        Assert.False(session.IsRecording);
         host.Fake(id).Emit("terminal still alive");
         await host.SettleAsync(id, client);
         Assert.True(client.IsConnected);
-        Assert.Contains(pane.Events, e => e.Contains("terminal still alive", StringComparison.Ordinal));
+        if (pane is not null) Assert.Contains(pane.Events, e => e.Contains("terminal still alive", StringComparison.Ordinal));
     }
 
     [Fact]

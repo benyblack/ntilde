@@ -305,33 +305,86 @@ namespace Ntilde.Controls
             return profileName;
         }
 
+        private sealed class RecordingAttempt(ITerminalSession source, string path)
+        {
+            public ITerminalSession Source { get; } = source;
+            public string Path { get; } = path;
+            public Guid? Id { get; set; }
+            public bool FailureReported { get; set; }
+            public Dictionary<Guid, Ntilde.Replay.RecordingFailure> PendingFailures { get; } = new();
+        }
+
         private bool _recordingBusy;
         private ITerminalSession? _recordingSource;
         private Action<Ntilde.Replay.RecordingFailure>? _recordingFailureHandler;
+        private RecordingAttempt? _recordingAttempt;
+        private readonly HashSet<RecordingAttempt> _pendingRecordingAttempts = new();
+        private readonly Dictionary<Guid, RecordingAttempt> _recordingAttemptsById = new();
 
         public void ToggleRecording() => _ = ToggleRecordingAsync();
 
-        private void UnsubscribeRecordingFailure()
+        private void UnsubscribeRecordingFailure(bool forgetAttempts = false)
         {
             if (_recordingSource is { } source && _recordingFailureHandler is { } handler) source.RecordingFailed -= handler;
             _recordingSource = null;
             _recordingFailureHandler = null;
+            if (forgetAttempts)
+            {
+                _recordingAttemptsById.Clear();
+                _pendingRecordingAttempts.Clear();
+                _recordingAttempt = null;
+            }
         }
 
-        private void ReportRecordingFailure(ITerminalSession source, string message)
+        private void QueueRecordingFailure(RecordingAttempt attempt, Ntilde.Replay.RecordingFailure failure)
         {
-            if (!ReferenceEquals(Session, source)) return;
-            UnsubscribeRecordingFailure();
+            // Publication can read the session's observer list after a newer subscription replaced the old one.
+            if (failure.RecordingId != Guid.Empty && _recordingAttemptsById.TryGetValue(failure.RecordingId, out var owner)) attempt = owner;
+            if (attempt.FailureReported || !ReferenceEquals(Session, attempt.Source)) return;
+            if (attempt.Id is { } id && id != Guid.Empty && failure.RecordingId != Guid.Empty && id != failure.RecordingId) return;
+            if (attempt.PendingFailures.Count < 64) attempt.PendingFailures.TryAdd(failure.RecordingId, failure);
+            _pendingRecordingAttempts.Add(attempt);
+            if (!_recordingBusy) DrainRecordingFailures();
+        }
+
+        private void DrainRecordingFailures()
+        {
+            var pending = new List<RecordingAttempt>(_pendingRecordingAttempts);
+            _pendingRecordingAttempts.Clear();
+            foreach (RecordingAttempt attempt in pending)
+            {
+                Ntilde.Replay.RecordingFailure? failure = null;
+                if (attempt.Id is { } id && id != Guid.Empty)
+                {
+                    if (!attempt.PendingFailures.TryGetValue(id, out failure)) attempt.PendingFailures.TryGetValue(Guid.Empty, out failure);
+                }
+                else if (attempt.PendingFailures.Count > 0) failure = attempt.PendingFailures.Values.First();
+                attempt.PendingFailures.Clear();
+                if (failure is not null) ReportRecordingFailure(attempt, failure.Message);
+            }
+        }
+
+        private void ReportRecordingFailure(RecordingAttempt attempt, string message)
+        {
+            if (attempt.FailureReported || !ReferenceEquals(Session, attempt.Source)) return;
+            attempt.FailureReported = true;
+            bool current = ReferenceEquals(_recordingAttempt, attempt);
+            if (current)
+            {
+                UnsubscribeRecordingFailure();
+                _currentRecordingFilePath = null;
+                _recordingAttempt = null;
+            }
             RecordingNotification?.Invoke(new RecordingNotificationEventArgs
             {
                 Kind = RecordingNotificationKind.Failed,
-                IsRecording = source.IsRecording,
-                FilePath = _currentRecordingFilePath,
+                IsRecording = IsRecording,
+                FilePath = attempt.Path,
                 RecordingsDirectory = AppPaths.RecordingsDirectory,
-                ErrorMessage = message
+                ErrorMessage = Ntilde.Shell.Mux.Remote.RemoteOutputText.Quote(message)
             });
-            _currentRecordingFilePath = null;
-            RecordingStateChanged?.Invoke(IsRecording);
+            // A historical failure reports its own file, without switching off a replacement recording.
+            if (current) RecordingStateChanged?.Invoke(IsRecording);
         }
 
         internal async Task ToggleRecordingAsync()
@@ -353,29 +406,43 @@ namespace Ntilde.Controls
                         RecordingsDirectory = AppPaths.RecordingsDirectory
                     });
                     _currentRecordingFilePath = null;
+                    _recordingAttempt = null;
                 }
                 else await StartPaneRecordingAsync(source);
                 RecordingStateChanged?.Invoke(IsRecording);
             }
-            catch (Exception ex) { ReportRecordingFailure(source, ex.Message); }
-            finally { _recordingBusy = false; }
+            catch (Exception ex)
+            {
+                ReportRecordingFailure(_recordingAttempt ?? new RecordingAttempt(source, _currentRecordingFilePath ?? string.Empty), ex.Message);
+            }
+            finally
+            {
+                _recordingBusy = false;
+                DrainRecordingFailures();
+            }
         }
 
         private async Task StartPaneRecordingAsync(ITerminalSession source)
         {
-            System.IO.Directory.CreateDirectory(AppPaths.RecordingsDirectory);
             string path = System.IO.Path.Combine(AppPaths.RecordingsDirectory,
                 BuildRecordingFileName(DateTime.Now, Guid.NewGuid().ToString("N")));
             UnsubscribeRecordingFailure();
+            var attempt = new RecordingAttempt(source, path);
+            _recordingAttempt = attempt;
             _recordingSource = source;
-            _recordingFailureHandler = failure => Dispatcher.UIThread.Post(() =>
-            {
-                if (!_recordingBusy && ReferenceEquals(_recordingSource, source)) ReportRecordingFailure(source, failure.Message);
-            });
+            _recordingFailureHandler = failure => Dispatcher.UIThread.Post(() => QueueRecordingFailure(attempt, failure));
             source.RecordingFailed += _recordingFailureHandler;
             _currentRecordingFilePath = path;
+            System.IO.Directory.CreateDirectory(AppPaths.RecordingsDirectory);
             await source.StartRecordingAsync(path);
             if (!ReferenceEquals(Session, source)) return;
+            Guid recordingId = source.RecordingId;
+            attempt.Id = recordingId;
+            if (recordingId != Guid.Empty)
+            {
+                if (_recordingAttemptsById.Count >= 64) _recordingAttemptsById.Remove(_recordingAttemptsById.Keys.First());
+                _recordingAttemptsById[recordingId] = attempt;
+            }
             if (!source.IsRecording) throw new InvalidOperationException("Recording did not start.");
             RecordingNotification?.Invoke(new RecordingNotificationEventArgs
             {

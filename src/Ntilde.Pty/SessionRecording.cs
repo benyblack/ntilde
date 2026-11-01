@@ -16,10 +16,16 @@ public sealed class SessionRecording : IDisposable
         if (Current is { Failure: null } existing) return existing;
         PtyRecorder recorder = create();
         Volatile.Write(ref _current, recorder);
-        recorder.Failed += failure =>
+        int delivered = 0;
+        void Deliver(RecordingFailure failure)
         {
-            if (ReferenceEquals(Current, recorder)) onFailure(failure);
-        };
+            if (!ReferenceEquals(Current, recorder) || Interlocked.Exchange(ref delivered, 1) != 0) return;
+            try { onFailure(failure); }
+            catch (Exception ex) { PtyLogger.Warning($"[SessionRecording] Failure observer: {ex.Message}"); }
+        }
+        recorder.Failed += Deliver;
+        // A file can fail before Begin installs its observer. Replay that latched failure off the caller's boundary.
+        if (recorder.Failure is { } early) ThreadPool.QueueUserWorkItem(_ => Deliver(early));
         recorder.RecordMarker("START");
         return recorder;
     }

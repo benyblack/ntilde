@@ -108,7 +108,7 @@ namespace Ntilde.Replay
             lock (_producerGate)
             {
                 if (!IsAccepting) return;
-                if (((long)length + 2) / 3 * 4 + 256 > _maxPendingBytes - PendingBytes)
+                if (((long)length + 2) / 3 * 4 > _maxPendingBytes - PendingBytes)
                 {
                     Fail(new RecordingFailure(RecordingFailureKind.Overflow, "Recording stopped: pending output exceeded the byte budget."));
                     return;
@@ -325,12 +325,12 @@ namespace Ntilde.Replay
                 if (!IsAccepting) return;
                 try
                 {
-                    using var bytes = new BoundedRecordBuffer((int)Math.Max(0, _maxPendingBytes - PendingBytes - RecordOverheadBytes));
+                    using var bytes = new BoundedRecordBuffer(_maxPendingBytes);
                     using (var json = new Utf8JsonWriter(bytes))
                     {
                         JsonSerializer.Serialize(json, ev, ReplayJsonContext.Default.ReplayEvent);
                     }
-                    byte[] record = bytes.FinishLine();
+                    byte[] record = bytes.FinishLine((int)Math.Max(0, _maxPendingBytes - PendingBytes - RecordOverheadBytes));
                     Interlocked.Add(ref _pendingBytes, record.Length + RecordOverheadBytes);
                     _queue.Add(record, CancellationToken.None);
                 }
@@ -390,36 +390,45 @@ namespace Ntilde.Replay
             ThrowIfFailed();
         }
 
-        // Reject Utf8JsonWriter's requested capacity before it allocates an oversized value.
+        // Utf8JsonWriter may reserve more than it commits. Scratch is bounded separately;
+        // Advance and FinishLine enforce the exact serialized and pending-byte limits.
         private sealed class BoundedRecordBuffer(int limit) : IBufferWriter<byte>, IDisposable
         {
             private byte[] _buffer = Array.Empty<byte>();
             private int _written;
-            private void Ensure(int count)
+            private static RecordingException Overflow() => new(new RecordingFailure(
+                RecordingFailureKind.Overflow, "Recording stopped: pending events exceeded the byte budget."));
+            private void EnsureCapacity(int count)
             {
-                if (count > limit - _written) throw new RecordingException(new RecordingFailure(
-                    RecordingFailureKind.Overflow, "Recording stopped: pending events exceeded the byte budget."));
-                if (_buffer.Length - _written < count)
-                {
-                    byte[] previous = _buffer;
-                    int capacity = (int)Math.Min(limit, Math.Max((long)_written + count, Math.Max(4096L, (long)_buffer.Length * 2)));
-                    _buffer = ArrayPool<byte>.Shared.Rent(capacity);
-                    previous.AsSpan(0, _written).CopyTo(_buffer);
-                    if (previous.Length != 0) ArrayPool<byte>.Shared.Return(previous, clearArray: true);
-                }
+                // Reservations include the encoder's worst-case escaping expansion, even for plain ASCII.
+                long largestReservation = Math.Min(int.MaxValue, 6L * limit + 256);
+                long maxScratch = Math.Min(int.MaxValue, (long)limit + largestReservation);
+                if (count > largestReservation || (long)_written + count > maxScratch) throw Overflow();
+                if (_buffer.Length - _written >= count) return;
+                byte[] previous = _buffer;
+                int capacity = (int)Math.Min(maxScratch, Math.Max((long)_written + count, Math.Max(4096L, (long)_buffer.Length * 2)));
+                _buffer = ArrayPool<byte>.Shared.Rent(capacity);
+                previous.AsSpan(0, _written).CopyTo(_buffer);
+                if (previous.Length != 0) ArrayPool<byte>.Shared.Return(previous, clearArray: true);
             }
-            public void Advance(int count) { ArgumentOutOfRangeException.ThrowIfNegative(count); Ensure(count); _written += count; }
-            public Memory<byte> GetMemory(int sizeHint = 0) { Ensure(Math.Max(1, sizeHint)); return _buffer.AsMemory(_written, Math.Min(limit, _buffer.Length) - _written); }
-            public Span<byte> GetSpan(int sizeHint = 0) { Ensure(Math.Max(1, sizeHint)); return _buffer.AsSpan(_written, Math.Min(limit, _buffer.Length) - _written); }
+            public void Advance(int count)
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(count);
+                if (count > limit - _written) throw Overflow();
+                _written += count;
+            }
+            public Memory<byte> GetMemory(int sizeHint = 0) { EnsureCapacity(Math.Max(1, sizeHint)); return _buffer.AsMemory(_written); }
+            public Span<byte> GetSpan(int sizeHint = 0) { EnsureCapacity(Math.Max(1, sizeHint)); return _buffer.AsSpan(_written); }
             public void Dispose()
             {
                 if (_buffer.Length == 0) return;
                 ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
                 _buffer = Array.Empty<byte>();
             }
-            public byte[] FinishLine()
+            public byte[] FinishLine(int remaining)
             {
-                Ensure(1);
+                if (_written + 1 > remaining) throw Overflow();
+                EnsureCapacity(1);
                 _buffer[_written++] = (byte)'\n';
                 return _buffer.AsSpan(0, _written).ToArray();
             }

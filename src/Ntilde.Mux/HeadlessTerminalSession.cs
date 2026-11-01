@@ -569,11 +569,33 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
+    private readonly HashSet<IMuxFrameSink> _recordingObservers = new();
+
+    internal Task RemoveRecordingObserverAsync(IMuxFrameSink sink) => InvokeAsync(() => _recordingObservers.Remove(sink));
+
+    private void BroadcastRecordingFailure(MuxOutboundFrame frame)
+    {
+        // Starting a recorder does not require attaching a terminal output stream.
+        var targets = new HashSet<IMuxFrameSink>(_subscribers);
+        targets.UnionWith(_recordingObservers);
+        try
+        {
+            foreach (IMuxFrameSink sink in targets)
+            {
+                if (sink.TryEnqueue(frame)) continue;
+                _subscribers.Remove(sink);
+                _recordingObservers.Remove(sink);
+                DropRefusingSink(sink);
+            }
+        }
+        finally { frame.Release(); }
+    }
+
     private void OnRecordingFailed(RecordingFailure failure)
     {
         EnqueueControl(() =>
         {
-            Broadcast(MuxFrames.Notification(new MuxNotification
+            BroadcastRecordingFailure(MuxFrames.Notification(new MuxNotification
             {
                 Method = MuxMethods.RecordingFailed,
                 Params = MuxFrames.ToElement(new RecordingFailedNotification
@@ -588,9 +610,10 @@ public sealed class HeadlessTerminalSession : IDisposable
     }
 
     // Admit synchronously to preserve order; await disk readiness outside the parser queue.
-    internal Task<StartRecordingResult> StartRecordingAsync(string path) => AtRecordingBoundaryAsync(() =>
+    internal Task<StartRecordingResult> StartRecordingAsync(string path, IMuxFrameSink? observer = null) => AtRecordingBoundaryAsync(() =>
     {
         SetRecordingMetrics();
+        if (observer is not null) _recordingObservers.Add(observer);
         Task ready = _session.StartRecordingAsync(path);
         return ConfirmRecordingAsync(ready, _session.RecordingId);
     }, allowStopped: false).Unwrap();
