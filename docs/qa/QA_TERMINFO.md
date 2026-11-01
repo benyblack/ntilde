@@ -223,3 +223,9 @@ The [2026-11-01 text-sizing follow-up](terminfo/2026-11-01-text-sizing.md)
 measured 77 supported / 1 unsupported / 177 inconclusive observations. The owned
 probe verifies OSC 66 cursor advance; separate domain, state/replay, resize and
 shared-renderer pixel tests cover the implemented geometry and appearance.
+
+The [2026-11-01 clipboard follow-up](terminfo/2026-11-01-clipboard.md) measured
+78 supported / 0 unsupported / 177 inconclusive observations. The changed probe
+establishes mode-5522 recognition only; binary transfers, permission boundaries
+and paste grants have separate test-owned backend evidence. Native cross-app
+clipboard interoperability remains unqualified.

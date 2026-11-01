@@ -78,16 +78,19 @@ advance; eleven shared-renderer pixel tests separately cover appearance. Resize
 barriers, ordinary cursor drawing and the unnegotiated text-client fallback are
 explicit limits in the [measurement report](../qa/terminfo/2026-11-01-text-sizing.md).
 
-## Remaining observations after the text-sizing follow-up
+## Clipboard follow-up and remaining observations
 
-| Probe family | Observations | Measured result | What remains |
-|---|---:|---|---|
-| OSC 5522 clipboard | 1 | Mode explicitly unrecognized | Separate clipboard policy and fixture work |
+OSC 5522 now supplies bounded binary MIME transactions, aliases, permission-gated
+reads and MIME paste events in direct desktop/SSH panes. The fresh owned probe
+recognizes mode 5522, taking the observations to **78 supported / 0 unsupported /
+177 inconclusive**. Test-owned clipboard backends separately cover the data and
+permission boundaries. Primary selection and mux/headless desktop clipboard
+access are unavailable; native cross-app interoperability is unqualified.
+See the [measurement, implementation scope and limits](../qa/terminfo/2026-11-01-clipboard.md).
 
-The remaining unsupported observation is not an overall compatibility score.
-The 177 inconclusive observations include missing pixel/input evidence, absent
-replies and deliberate clipboard-fixture refusal. In particular, a palette query
-does not prove pixels, and a keyboard negotiation reply does not prove
-press/repeat/release delivery. No overall terminal ranking follows from these
-counts. The collector still has one ungraded geometry diagnostic and marks the
-suite incomplete.
+Zero unsupported observations is not an overall compatibility score. The 177
+inconclusive observations include missing pixel/input evidence, absent replies
+and deliberate clipboard-fixture refusal. Query replies do not prove pixels or
+native clipboard access. No overall terminal ranking follows from these counts.
+The collector still has one ungraded geometry diagnostic and marks the suite
+incomplete.
