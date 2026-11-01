@@ -23,8 +23,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// </param>
 /// <param name="Retargeted">
 /// Pinned, and the profile now names another destination (codex D2, final round): OpenSSH must neither use nor create
-/// a connection-sharing master for this attempt. The master's ControlPath is keyed by the profile id, so one a plain
-/// tab opened to the profile's new host would carry the pinned attempt there.
+/// a connection-sharing master for this attempt. A custom ControlPath may still be keyed only by the profile id,
+/// so one a plain tab opened to the profile's new host could carry the pinned attempt there.
 /// </param>
 /// <param name="OfferSavedPassword">
 /// For an automatic attempt that may sign in with the profile's saved password

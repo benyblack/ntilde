@@ -910,7 +910,7 @@ deadline; the installer uses it.
 - **OpenSSH** (`OpenSshExecTransport`): `ssh` from `SshLaunchPlanner.PlanFor(profile)`
   (`-F <generated config> <alias>`, or, once the host's destination is pinned, `-F none <alias>` with
   the attempt profile's block as `-o` options, behind `-o ControlPath=none` while the profile names
-  another destination than the pinned one, so no master keyed by the profile id can carry it to the
+  another destination than the pinned one, so no custom master keyed only by the profile id can carry it to the
   new host), plus `-o ControlMaster=no` (the hidden exec never becomes a
   master a visible tab then rides on), `-T -o ClearAllForwardings=yes`, `-o BatchMode=no|yes` and
   `-- <command>`. The profile's extra arguments are read with ssh's own getopt rules
@@ -986,6 +986,12 @@ not show it, and a remote host may have no libssl (`serve` aborted on debian:12-
 endpoint hash moved to a managed SHA-256). `LayeringTests.Nothing_ntilde_mux_runs_references_an_OpenSSL_backed_assembly`
 walks everything it runs, and CI's `mux_daemon_no_openssl` runs the linux-x64 binary's smoke again in
 debian:12-slim once it has proved no libssl or libcrypto is there (`scripts/mux-daemon-smoke.sh --no-openssl`).
+
+Automatic OpenSSH connection-sharing sockets include both profile and connection identity.
+A compact hash of effective generated options plus extra SSH arguments separates destination,
+authentication, jump-chain and forwarding changes without lengthening the previous socket basename.
+Display, shell and persistence policy edits do not change it. Explicit custom ControlPath templates
+keep their user-selected semantics, including `%id%` expansion.
 
 ### 8.3 `ntilde.com`: the Windows console launcher
 

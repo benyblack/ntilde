@@ -281,7 +281,7 @@ _Preserved for context. All items below are shipped._
 **Outcome:** Multi-pane SSH feels snappy.
 
 - `SshMuxOptions` UI + config emission
-- ControlPath strategy (short path on Windows, per-profile stable path)
+- ControlPath strategy (compact per-profile and connection identity; explicit custom templates retained)
 - Keepalive defaults + UI
 - Failure classifier + friendly error surface
 

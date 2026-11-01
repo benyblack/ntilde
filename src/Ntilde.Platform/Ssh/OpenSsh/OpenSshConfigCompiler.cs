@@ -166,6 +166,10 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
             return;
         }
 
+        // Hash only connection options, before adding persistence policy or the
+        // socket itself. A display/persistence edit must not break useful sharing.
+        string controlPath = GetResolvedControlPath(profile, options);
+
         if (profile.MuxOptions.ControlMasterAuto)
         {
             options.Add("ControlMaster auto");
@@ -176,16 +180,30 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
             options.Add("ControlPersist " + profile.MuxOptions.ControlPersistSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
-        string controlPath = GetResolvedControlPath(profile);
         options.Add("ControlPath " + EscapeValue(controlPath));
     }
 
-    private string GetResolvedControlPath(SshProfile profile)
+    private string GetResolvedControlPath(SshProfile profile, List<string> connectionOptions)
     {
         string raw = profile.MuxOptions.ControlPath?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(raw))
         {
-            raw = Path.Combine(_sshRootDirectory, "mux", "cm_%id%");
+            // A profile id alone can reuse an old master after the destination
+            // changes. Length-prefixed fields also avoid ambiguous jump/option
+            // concatenations. Keep the old 32-hex basename length for Unix socket
+            // path limits; the 128-bit token includes profile and connection identity.
+            using var identity = new MemoryStream();
+            using (var writer = new BinaryWriter(identity, Encoding.UTF8, leaveOpen: true))
+            {
+                writer.Write("ntilde-openssh-control-v1");
+                writer.Write(profile.Id.ToByteArray());
+                writer.Write(connectionOptions.Count);
+                foreach (string option in connectionOptions) writer.Write(option);
+                writer.Write(profile.ExtraSshArgs ?? string.Empty);
+            }
+            string token = Convert.ToHexString(SHA256.HashData(identity.GetBuffer().AsSpan(0, (int)identity.Length)))
+                .ToLowerInvariant()[..32];
+            return Path.Combine(_sshRootDirectory, "mux", "cm_" + token);
         }
 
         string profileIdToken = profile.Id.ToString("N");
