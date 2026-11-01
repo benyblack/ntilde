@@ -5,6 +5,7 @@ namespace Ntilde.VT;
 
 public partial class TerminalBuffer
 {
+    private const string TextSizingValidationName = "text sizing";
     /// <summary>Bounded active-screen rectangles for legacy buffer-only replay checkpoints. Lock held.</summary>
     public List<TerminalTextSizingState>? ExportReplayTextSizing()
     {
@@ -65,14 +66,14 @@ public partial class TerminalBuffer
     {
         if (state.TextSizing == null) return;
         if (state.TextSizing.Count > MaxTextSizingStorage / 128)
-            throw StateTransferValidation.Reject("text sizing", "too many blocks");
+            throw StateTransferValidation.Reject(TextSizingValidationName, "too many blocks");
         long storage = 0;
         var occupied = new HashSet<(bool Alt, int Row, int Col)>();
         foreach (var entry in state.TextSizing)
         {
             var block = DecodeTextSizing(entry);
             storage += block.StorageCost;
-            if (storage > MaxTextSizingStorage) throw StateTransferValidation.Reject("text sizing", "storage budget exceeded");
+            if (storage > MaxTextSizingStorage) throw StateTransferValidation.Reject(TextSizingValidationName, "storage budget exceeded");
             ValidateSizingRectangle(state, entry, block);
             ValidateSizingCells(state, entry, block, (main, alt, history), occupied);
         }
@@ -83,7 +84,7 @@ public partial class TerminalBuffer
         int rows = entry.Alt ? state.Rows : checked(state.Rows + state.ScrollbackRowCount);
         if (entry.X < 0 || entry.X > state.Cols - block.Width || entry.Y < 1 - block.Height
             || entry.Y >= rows || entry.Y > rows - block.Height)
-            throw StateTransferValidation.Reject("text sizing", "rectangle outside retained geometry");
+            throw StateTransferValidation.Reject(TextSizingValidationName, "rectangle outside retained geometry");
     }
 
     private static void ValidateSizingCells(TerminalStateSnapshot state, TerminalTextSizingState entry,
@@ -91,17 +92,25 @@ public partial class TerminalBuffer
         HashSet<(bool Alt, int Row, int Col)> occupied)
     {
         for (int dy = 0; dy < block.Height; dy++)
+        {
+            int r = entry.Y + dy;
+            if (r < 0) continue;
+            var (screen, cells, localRow) = ResolveSizingSource(state, bytes, entry.Alt, r);
             for (int dx = 0; dx < block.Width; dx++)
             {
-                int r = entry.Y + dy, c = entry.X + dx;
-                if (r < 0) continue;
-                if (!occupied.Add((entry.Alt, r, c))) throw StateTransferValidation.Reject("text sizing", "overlapping rectangles");
-                bool inHistory = !entry.Alt && r < state.ScrollbackRowCount;
-                int localRow = entry.Alt || inHistory ? r : r - state.ScrollbackRowCount;
-                var screen = entry.Alt ? state.Alt : inHistory ? state.Scrollback : state.Main;
-                var cells = entry.Alt ? bytes.Alt : inHistory ? bytes.History : bytes.Main;
+                int c = entry.X + dx;
+                if (!occupied.Add((entry.Alt, r, c))) throw StateTransferValidation.Reject(TextSizingValidationName, "overlapping rectangles");
                 ValidateSizingCell(screen, cells, localRow * state.Cols + c, block, dx == 0 && dy == 0);
             }
+        }
+    }
+
+    private static (TerminalScreenState Screen, byte[]? Cells, int Row) ResolveSizingSource(
+        TerminalStateSnapshot state, (byte[]? Main, byte[]? Alt, byte[]? History) bytes, bool alt, int row)
+    {
+        if (alt) return (state.Alt, bytes.Alt, row);
+        if (row < state.ScrollbackRowCount) return (state.Scrollback, bytes.History, row);
+        return (state.Main, bytes.Main, row - state.ScrollbackRowCount);
     }
 
     private static TextSizingBlock DecodeTextSizing(TerminalTextSizingState? entry)
@@ -109,7 +118,7 @@ public partial class TerminalBuffer
         if (entry == null || !entry.Options.IsValid || entry.BaseWidth is < 1 or > 7
             || !TextSizingOptions.IsSafeText(entry.Text)
             || entry.Options.Width > 0 && entry.Options.Width != entry.BaseWidth)
-            throw StateTransferValidation.Reject("text sizing", "invalid block");
+            throw StateTransferValidation.Reject(TextSizingValidationName, "invalid block");
         return new TextSizingBlock(entry.Text, entry.Options, entry.BaseWidth);
     }
 
@@ -117,12 +126,12 @@ public partial class TerminalBuffer
         TextSizingBlock block, bool anchor)
     {
         if (bytes == null || (uint)key >= (uint)(bytes.Length / Marshal.SizeOf<TerminalCell>()))
-            throw StateTransferValidation.Reject("text sizing", "missing occupied cells");
+            throw StateTransferValidation.Reject(TextSizingValidationName, "missing occupied cells");
         var cell = MemoryMarshal.Cast<byte, TerminalCell>(bytes)[key];
         string? text = cell.HasExtendedText ? screen.ExtendedText?.GetValueOrDefault(key) : null;
         string actual = text ?? cell.Character.ToString();
         if (cell.IsWide || cell.IsWideContinuation || actual != (anchor ? block.Text : " "))
-            throw StateTransferValidation.Reject("text sizing", "cell content disagrees with rectangle");
+            throw StateTransferValidation.Reject(TextSizingValidationName, "cell content disagrees with rectangle");
     }
 
     private void ImportTextSizingState(TerminalStateSnapshot state, bool activeOnly = false)
@@ -171,15 +180,13 @@ public partial class TerminalBuffer
             return;
         }
         int localRow = entry.Alt ? r : r - state.ScrollbackRowCount;
-        var rows = activeOnly ? _viewport : entry.Alt ? _altScreen : _mainScreen;
+        var rows = entry.Alt ? _altScreen : _mainScreen;
+        if (activeOnly) rows = _viewport;
         if ((uint)localRow >= (uint)rows.Length) return;
         if (fits) rows[localRow].SetTextSizing(c, piece);
         else
         {
-            rows[localRow].Cells[c] = TerminalCell.Default;
-            rows[localRow].SetExtendedText(c, null);
-            rows[localRow].SetHyperlink(c, null);
-            rows[localRow].SetUnderline(c, null);
+            ClearSizedCell(rows[localRow], c);
         }
     }
 }

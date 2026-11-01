@@ -32,7 +32,8 @@ public sealed class Osc66ReplayTests
                 data => { restoredParser.Process(Encoding.UTF8.GetString(data)); return Task.CompletedTask; },
                 onSnapshotCallback: snapshot =>
                 {
-                    Assert.NotNull(snapshot.TextSizing);
+                    Assert.Equal(legacy, snapshot.TextSizing != null);
+                    if (!legacy) Assert.NotNull(snapshot.State?.TextSizing);
                     ReplayRunner.ApplySnapshot(restored, restoredParser, snapshot);
                     applied = true;
                     return Task.CompletedTask;

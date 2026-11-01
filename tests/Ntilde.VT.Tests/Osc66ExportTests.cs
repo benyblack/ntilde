@@ -13,7 +13,7 @@ public sealed class Osc66ExportTests
         string ansi = TerminalExporter.ExportToAnsi(source);
         Assert.Contains("\x1b]66;", ansi);
         var restored = new TerminalBuffer(12, 4);
-        new AnsiParser(restored).Process("\x1b[20h" + ansi);
+        new AnsiParser(restored).Process(ansi);
         restored.Lock.EnterReadLock();
         try
         {

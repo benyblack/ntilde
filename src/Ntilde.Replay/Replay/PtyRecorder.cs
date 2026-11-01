@@ -222,7 +222,7 @@ namespace Ntilde.Replay
                     snapshot = new ReplaySnapshot
                     {
                         State = state,
-                        TextSizing = buffer.ExportReplayTextSizing(),
+                        TextSizing = state is null ? buffer.ExportReplayTextSizing() : null,
                         Cols = cols,
                         Rows = rowCount,
                         CursorCol = buffer.InternalCursorCol,

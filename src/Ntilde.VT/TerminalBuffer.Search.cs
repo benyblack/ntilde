@@ -95,19 +95,25 @@ public partial class TerminalBuffer
             if (cell.IsWideContinuation || sizing is { IsAnchor: false }) continue;
             if (sizing != null && sizedEnds != null) sizedEnds[(absRow, col)] = col + sizing.Block.Width - 1;
             var mapping = new SearchColumn(col, SearchCellEnd(cells, col) > col);
-            if (cell.HasExtendedText && extended != null && extended.TryGet(col, out string? grapheme) && grapheme != null)
-            {
-                text.Append(grapheme);
-                for (int i = 0; i < grapheme.Length; i++) columns.Add(mapping);
-            }
-            else
-            {
-                text.Append(cell.Character);
-                columns.Add(mapping);
-            }
+            AppendSearchCell(cell, extended, col, mapping, text, columns);
         }
         if (text.Length > start) rows.Add(new SearchRow(absRow, start, text.Length - start));
         return wrapped;
+    }
+
+    private static void AppendSearchCell(TerminalCell cell, SmallMap<string>? extended, int col,
+        SearchColumn mapping, StringBuilder text, List<SearchColumn> columns)
+    {
+        if (cell.HasExtendedText && extended != null && extended.TryGet(col, out string? grapheme) && grapheme != null)
+        {
+            text.Append(grapheme);
+            for (int i = 0; i < grapheme.Length; i++) columns.Add(mapping);
+        }
+        else
+        {
+            text.Append(cell.Character);
+            columns.Add(mapping);
+        }
     }
 
     private static bool SearchLogicalLine(SearchQuery query, string text,

@@ -14,8 +14,9 @@ public readonly record struct TextSizingOptions(int Scale, int Width, int Numera
         && (Denominator == 0 || Denominator > Numerator)
         && VerticalAlignment is >= 0 and <= 2 && HorizontalAlignment is >= 0 and <= 2;
 
+    internal bool IsFractional => Numerator > 0 && Denominator > Numerator;
     [JsonIgnore]
-    public float Fraction => Numerator > 0 && Denominator > Numerator ? (float)Numerator / Denominator : 1f;
+    public float Fraction => IsFractional ? (float)Numerator / Denominator : 1f;
 
     internal static bool TryParse(ReadOnlySpan<char> metadata, out TextSizingOptions options)
     {

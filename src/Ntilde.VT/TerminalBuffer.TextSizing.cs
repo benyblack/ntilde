@@ -8,6 +8,15 @@ public partial class TerminalBuffer
     private HashSet<TextSizingBlock>? _textSizingBlocks;
     private long _textSizingStorage;
 
+    internal bool HasSizedTextOnScreen()
+    {
+        AssertLockHeld();
+        if (_textSizingBlocks == null) return false;
+        foreach (var row in _viewport)
+            if (row.GetTextSizingMap() is { Count: > 0 }) return true;
+        return false;
+    }
+
     public CellTextSizing? GetTextSizingAbsolute(int col, int absRow)
     {
         AssertLockHeld();
@@ -27,7 +36,7 @@ public partial class TerminalBuffer
         try
         {
             _highSurrogateBuffer = null;
-            if (options.Scale == 1 && options.Width == 0 && options.Fraction == 1f) WriteContentCore(text);
+            if (options.Scale == 1 && options.Width == 0 && !options.IsFractional) WriteContentCore(text);
             else if (options.Width != 0) WriteSizedBlock(text, options, options.Width);
             else
             {
@@ -77,17 +86,33 @@ public partial class TerminalBuffer
                     || !_isAltScreen && r - piece.RowOffset + piece.Block.Height > rows)
                     discarded.Add(piece.Block);
             });
-        foreach (var row in inactive)
-            for (int c = 0; c < row.Cells.Length; c++)
-                if (row.GetTextSizing(c) is { } piece && discarded.Contains(piece.Block))
-                {
-                    row.Cells[c] = TerminalCell.Default;
-                    row.SetExtendedText(c, null); row.SetHyperlink(c, null); row.SetUnderline(c, null); row.SetTextSizing(c, null);
-                    row.TouchRevision();
-                }
+        ClearDiscardedSizingRows(inactive, discarded);
         foreach (var block in discarded)
             if (_textSizingBlocks?.Remove(block) == true) _textSizingStorage -= block.StorageCost;
     }
+
+    private static void ClearDiscardedSizingRows(TerminalRow[] rows, HashSet<TextSizingBlock> discarded)
+    {
+        foreach (var row in rows)
+            for (int c = 0; c < row.Cells.Length; c++)
+                if (row.GetTextSizing(c) is { } piece && discarded.Contains(piece.Block))
+                {
+                    ClearSizedCell(row, c);
+                    row.SetTextSizing(c, null);
+                    row.TouchRevision();
+                }
+    }
+
+    private static void ClearSizedCell(TerminalRow row, int col)
+    {
+        row.Cells[col] = TerminalCell.Default;
+        row.SetExtendedText(col, null);
+        row.SetHyperlink(col, null);
+        row.SetUnderline(col, null);
+    }
+
+    private static CellTextSizing? ReadSizingMap(Storage.SmallMap<CellTextSizing>? map, int col)
+        => map?.TryGet(col, out CellTextSizing? piece) == true ? piece : null;
 
     private int TextSizingAbsoluteRow(int viewportRow) => _isAltScreen ? viewportRow : _scrollback.Count + viewportRow;
 
@@ -234,18 +259,23 @@ public partial class TerminalBuffer
                     historyChanged = true;
                     continue;
                 }
-                var target = GetRowAbsolute(row);
-                if (target?.GetTextSizing(col) is not { } piece || !ReferenceEquals(piece.Block, previous)) continue;
-                target.SetTextSizing(col, new(replacement, piece.ColumnOffset, piece.RowOffset));
-                if (piece.IsAnchor)
-                {
-                    target.Cells[col].HasExtendedText = true;
-                    target.SetExtendedText(col, replacement.Text);
-                }
-                target.TouchRevision();
+                ReplaceSizedRowCell(GetRowAbsolute(row), col, previous, replacement);
             }
         if (historyChanged) Array.Clear(_cachedRenderRowIds);
         if (_textSizingBlocks?.Remove(previous) == true) _textSizingStorage -= previous.StorageCost;
+    }
+
+    private static void ReplaceSizedRowCell(TerminalRow? target, int col,
+        TextSizingBlock previous, TextSizingBlock replacement)
+    {
+        if (target?.GetTextSizing(col) is not { } piece || !ReferenceEquals(piece.Block, previous)) return;
+        target.SetTextSizing(col, new(replacement, piece.ColumnOffset, piece.RowOffset));
+        if (piece.IsAnchor)
+        {
+            target.Cells[col].HasExtendedText = true;
+            target.SetExtendedText(col, replacement.Text);
+        }
+        target.TouchRevision();
     }
 
     private void PrepareTextSizingOverwrite(int width)
@@ -329,17 +359,21 @@ public partial class TerminalBuffer
                     changedHistory = true;
                     continue;
                 }
-                var target = GetRowAbsolute(row)!;
-                if (!ReferenceEquals(target.GetTextSizing(col)?.Block, block)) continue;
-                target.Cells[col] = blank;
-                target.SetExtendedText(col, null);
-                target.SetHyperlink(col, null);
-                target.SetUnderline(col, null);
-                target.SetTextSizing(col, null);
-                target.TouchRevision();
+                EraseSizedRowCell(GetRowAbsolute(row), col, block, blank);
             }
         }
         if (changedHistory) Array.Clear(_cachedRenderRowIds);
         if (_textSizingBlocks?.Remove(block) == true) _textSizingStorage -= block.StorageCost;
     }
+    private static void EraseSizedRowCell(TerminalRow? target, int col, TextSizingBlock block, TerminalCell blank)
+    {
+        if (target == null || !ReferenceEquals(target.GetTextSizing(col)?.Block, block)) return;
+        target.Cells[col] = blank;
+        target.SetExtendedText(col, null);
+        target.SetHyperlink(col, null);
+        target.SetUnderline(col, null);
+        target.SetTextSizing(col, null);
+        target.TouchRevision();
+    }
+
 }

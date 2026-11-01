@@ -1031,7 +1031,7 @@ namespace Ntilde.VT
                     rebuiltCells[c] = new RenderCellSnapshot
                     {
                         Character = cell.Character,
-                        TextSizing = sizing != null && sizing.TryGet(c, out CellTextSizing? piece) ? piece : null,
+                        TextSizing = ReadSizingMap(sizing, c),
                         Text = cell.HasExtendedText && extendedText != null
                                && extendedText.TryGet(c, out string? graphemeText)
                             ? graphemeText

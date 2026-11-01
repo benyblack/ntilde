@@ -153,6 +153,7 @@ namespace Ntilde.VT.Export
                 bool isFirstCell = true;
 
                 int screenTop = ScreenTop(buffer);
+                bool sizedOutput = buffer.HasSizedTextOnScreen();
 
                 for (int r = 0; r < buffer.Rows; r++)
                 {
@@ -173,16 +174,18 @@ namespace Ntilde.VT.Export
                         eol--;
                     }
 
-                    for (int c = 0; c <= eol; c++)
+                    int c = 0;
+                    while (c <= eol)
                     {
                         var cell = buffer.GetCellAbsolute(c, absRow);
-                        if (cell.IsWideContinuation) continue;
+                        if (cell.IsWideContinuation) { c++; continue; }
 
                         var sizing = buffer.GetTextSizingAbsolute(c, absRow);
                         if (sizing is { IsAnchor: false })
                         {
                             // Preserve a multi-row block already emitted on its top row.
                             sb.Append("\x1b[C");
+                            c++;
                             continue;
                         }
                         CellUnderline? underline = cell.IsUnderline ? buffer.GetUnderlineAbsolute(c, absRow) : null;
@@ -197,9 +200,9 @@ namespace Ntilde.VT.Export
                         if (sizing is { IsAnchor: true })
                         {
                             AnsiCellWriter.AppendTextSizing(sb, sizing.Block);
-                            c += sizing.Block.Width - 1;
+                            c += sizing.Block.Width;
                         }
-                        else sb.Append(buffer.GetGrapheme(c, r));
+                        else sb.Append(buffer.GetGrapheme(c++, r));
                     }
 
                     // Reset at end of line if needed
@@ -215,7 +218,10 @@ namespace Ntilde.VT.Export
                         lastUnderline = null;
                     }
 
-                    sb.AppendLine();
+                    // A sized lower row uses relative cursor skips. Reset the column explicitly,
+                    // independently of the receiving terminal's LNM mode or the exporting OS.
+                    if (sizedOutput) sb.Append("\r\n");
+                    else sb.AppendLine();
                 }
                 return sb.ToString().TrimEnd();
             }
