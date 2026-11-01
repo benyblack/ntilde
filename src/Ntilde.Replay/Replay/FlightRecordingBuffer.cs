@@ -194,11 +194,13 @@ namespace Ntilde.Replay
             foreach (Entry entry in entries)
             {
                 long rebased = entry.TimeMs - baseMs;
-                ReplayEvent ev = entry.CellSize is { } size
-                    ? new ReplayEvent { Type = "sixelCellSize", TimeOffsetMs = rebased, SixelCellWidthPx = size.WidthPx, SixelCellHeightPx = size.HeightPx }
-                    : entry.Payload is { } data
-                        ? new ReplayEvent { Type = "data", TimeOffsetMs = rebased, Data = Convert.ToBase64String(data) }
-                        : new ReplayEvent { Type = "resize", TimeOffsetMs = rebased, Cols = entry.Cols, Rows = entry.Rows };
+                ReplayEvent ev;
+                if (entry.CellSize is { } size)
+                    ev = new ReplayEvent { Type = "sixelCellSize", TimeOffsetMs = rebased, SixelCellWidthPx = size.WidthPx, SixelCellHeightPx = size.HeightPx };
+                else if (entry.Payload is { } data)
+                    ev = new ReplayEvent { Type = "data", TimeOffsetMs = rebased, Data = Convert.ToBase64String(data) };
+                else
+                    ev = new ReplayEvent { Type = "resize", TimeOffsetMs = rebased, Cols = entry.Cols, Rows = entry.Rows };
                 writer.WriteLine(JsonSerializer.Serialize(ev, ReplayJsonContext.Default.ReplayEvent));
             }
 

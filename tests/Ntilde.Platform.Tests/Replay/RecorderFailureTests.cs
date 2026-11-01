@@ -1,12 +1,13 @@
 using System.Text;
 using Ntilde.Replay;
+using Ntilde.Pty;
 using Xunit;
 
 namespace Ntilde.Platform.Tests.Replay;
 
 public sealed class RecorderFailureTests
 {
-    private static PtyRecorder Create(Func<Stream> open, int budget = 4096) => new("test", 80, 24, "test", null, budget, open);
+    private static PtyRecorder Create(Func<Stream> open, int budget = 4096) => new("test", 80, 24, "test", null, new RecorderSinkOptions(budget, open));
 
     [Fact]
     public async Task OpenFailureStopsProducersAndReturnsTypedError()
@@ -119,7 +120,7 @@ public sealed class RecorderFailureTests
     public async Task FlushDeadlineFailsVisiblyAndConcurrentCompletionDoesNotDisposeLiveToken()
     {
         var sink = new ControlledStream { BlockRecord = true };
-        using var recorder = new PtyRecorder("test", 80, 24, "test", null, 4096, () => sink, flushTimeoutMs: 50);
+        using var recorder = new PtyRecorder("test", 80, 24, "test", null, new RecorderSinkOptions(4096, () => sink, FlushTimeoutMs: 50));
         try
         {
             await recorder.WaitUntilReadyAsync();
@@ -151,6 +152,53 @@ public sealed class RecorderFailureTests
             Assert.True(new FileInfo(path).Length > PtyRecorder.DefaultMaxPendingBytes);
         }
         finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task SharedSessionLifecycleConfirmsReadinessAndReturnsTypedStopFailure()
+    {
+        using var state = new SessionRecording();
+        int creations = 0;
+        using PtyRecorder recorder = state.Begin(() => { creations++; return Create(() => new ControlledStream { FailFinalFlush = true }); }, _ => { });
+        await recorder.WaitUntilReadyAsync();
+        Assert.Equal(recorder, state.Begin(() => throw new InvalidOperationException("already active"), _ => { }));
+        Assert.Equal(1, creations);
+        await Assert.ThrowsAsync<RecordingException>(state.StopAsync);
+        Assert.NotNull(recorder.Failure);
+        Assert.Null(state.Current);
+        state.Dispose();
+    }
+
+    [Fact]
+    public async Task SharedSessionLifecycleRejectsDelayedFailureFromReplacedRecorder()
+    {
+        using var state = new SessionRecording();
+        using var release = new ManualResetEventSlim(false);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var delivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int notifications = 0;
+        using PtyRecorder first = state.Begin(() =>
+        {
+            var recorder = Create(() => new MemoryStream(), 1024);
+            recorder.Failed += _ => { entered.TrySetResult(); release.Wait(TestContext.Current.CancellationToken); };
+            return recorder;
+        }, _ => Interlocked.Increment(ref notifications));
+        first.Failed += _ => delivered.TrySetResult();
+        PtyRecorder? second = null;
+        try
+        {
+            await first.WaitUntilReadyAsync();
+            first.RecordChunk(new byte[10000], 10000);
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            second = state.Begin(() => Create(() => new MemoryStream()), _ => Interlocked.Increment(ref notifications));
+            await second.WaitUntilReadyAsync();
+            release.Set();
+            await delivered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.Equal(0, notifications);
+            Assert.True(state.Current!.IsReady);
+            await state.StopAsync();
+        }
+        finally { release.Set(); second?.Dispose(); }
     }
 
     private sealed class ControlledStream : MemoryStream

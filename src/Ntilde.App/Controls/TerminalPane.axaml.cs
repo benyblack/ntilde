@@ -309,7 +309,7 @@ namespace Ntilde.Controls
         private ITerminalSession? _recordingSource;
         private Action<Ntilde.Replay.RecordingFailure>? _recordingFailureHandler;
 
-        public async void ToggleRecording() => await ToggleRecordingAsync();
+        public void ToggleRecording() => _ = ToggleRecordingAsync();
 
         private void UnsubscribeRecordingFailure()
         {
@@ -354,34 +354,36 @@ namespace Ntilde.Controls
                     });
                     _currentRecordingFilePath = null;
                 }
-                else
-                {
-                    System.IO.Directory.CreateDirectory(AppPaths.RecordingsDirectory);
-                    string path = System.IO.Path.Combine(AppPaths.RecordingsDirectory,
-                        BuildRecordingFileName(DateTime.Now, Guid.NewGuid().ToString("N")));
-                    UnsubscribeRecordingFailure();
-                    _recordingSource = source;
-                    _recordingFailureHandler = failure => Dispatcher.UIThread.Post(() =>
-                    {
-                        if (!_recordingBusy && ReferenceEquals(_recordingSource, source)) ReportRecordingFailure(source, failure.Message);
-                    });
-                    source.RecordingFailed += _recordingFailureHandler;
-                    _currentRecordingFilePath = path;
-                    await source.StartRecordingAsync(path);
-                    if (!ReferenceEquals(Session, source)) return;
-                    if (!source.IsRecording) throw new InvalidOperationException("Recording did not start.");
-                    RecordingNotification?.Invoke(new RecordingNotificationEventArgs
-                    {
-                        Kind = RecordingNotificationKind.Started,
-                        IsRecording = true,
-                        FilePath = path,
-                        RecordingsDirectory = AppPaths.RecordingsDirectory
-                    });
-                }
+                else await StartPaneRecordingAsync(source);
                 RecordingStateChanged?.Invoke(IsRecording);
             }
             catch (Exception ex) { ReportRecordingFailure(source, ex.Message); }
             finally { _recordingBusy = false; }
+        }
+
+        private async Task StartPaneRecordingAsync(ITerminalSession source)
+        {
+            System.IO.Directory.CreateDirectory(AppPaths.RecordingsDirectory);
+            string path = System.IO.Path.Combine(AppPaths.RecordingsDirectory,
+                BuildRecordingFileName(DateTime.Now, Guid.NewGuid().ToString("N")));
+            UnsubscribeRecordingFailure();
+            _recordingSource = source;
+            _recordingFailureHandler = failure => Dispatcher.UIThread.Post(() =>
+            {
+                if (!_recordingBusy && ReferenceEquals(_recordingSource, source)) ReportRecordingFailure(source, failure.Message);
+            });
+            source.RecordingFailed += _recordingFailureHandler;
+            _currentRecordingFilePath = path;
+            await source.StartRecordingAsync(path);
+            if (!ReferenceEquals(Session, source)) return;
+            if (!source.IsRecording) throw new InvalidOperationException("Recording did not start.");
+            RecordingNotification?.Invoke(new RecordingNotificationEventArgs
+            {
+                Kind = RecordingNotificationKind.Started,
+                IsRecording = true,
+                FilePath = path,
+                RecordingsDirectory = AppPaths.RecordingsDirectory
+            });
         }
 
         internal static string BuildRecordingFileName(DateTime timestamp, string uniqueSuffix)

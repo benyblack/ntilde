@@ -12,6 +12,8 @@ using Ntilde.VT;
 
 namespace Ntilde.Replay
 {
+    internal sealed record RecorderSinkOptions(int MaxPendingBytes, Func<Stream> OpenStream, int? FlushTimeoutMs = null);
+
     public class PtyRecorder : IDisposable
     {
         private readonly string _filePath;
@@ -23,6 +25,9 @@ namespace Ntilde.Replay
         private const int RecordOverheadBytes = 32;
         private readonly int _maxPendingBytes;
         private readonly int? _flushTimeoutMs;
+        private readonly object _cancellationGate = new();
+        private Task _cancellation = Task.CompletedTask;
+        private bool _writerFinished;
         private long _pendingBytes;
         private bool _accepting = true;
         private RecordingFailure? _failure;
@@ -41,17 +46,17 @@ namespace Ntilde.Replay
         private RecordingCellMetrics? _sixelCellSize;
 
         public PtyRecorder(string filePath, int cols, int rows, string shell = "", RecordingCellMetrics? sixelCellSize = null)
-            : this(filePath, cols, rows, shell, sixelCellSize, DefaultMaxPendingBytes,
-                () => new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, useAsync: true))
+            : this(filePath, cols, rows, shell, sixelCellSize, new RecorderSinkOptions(DefaultMaxPendingBytes,
+                () => new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, useAsync: true)))
         { }
 
         internal PtyRecorder(string filePath, int cols, int rows, string shell, RecordingCellMetrics? sixelCellSize,
-            int maxPendingBytes, Func<Stream> openStream, int? flushTimeoutMs = null)
+            RecorderSinkOptions sink)
         {
-            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPendingBytes);
-            _maxPendingBytes = maxPendingBytes;
-            _flushTimeoutMs = flushTimeoutMs;
-            _openStream = openStream;
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sink.MaxPendingBytes);
+            _maxPendingBytes = sink.MaxPendingBytes;
+            _flushTimeoutMs = sink.FlushTimeoutMs;
+            _openStream = sink.OpenStream;
             _filePath = filePath;
             _startTime = DateTime.UtcNow;
 
@@ -344,7 +349,10 @@ namespace Ntilde.Replay
                 _queue.CompleteAdding();
                 while (_queue.TryTake(out byte[]? record)) Interlocked.Add(ref _pendingBytes, -record.Length - RecordOverheadBytes);
             }
-            _cts.Cancel();
+            lock (_cancellationGate)
+            {
+                if (!_writerFinished) _cancellation = _cts.CancelAsync();
+            }
             _ready.TrySetResult();
             TerminalLogger.Warning($"[PtyRecorder] {_filePath}: {failure.Message}");
             // Observers may stop a session. Never invoke them on the writer or under the producer gate.
@@ -374,11 +382,10 @@ namespace Ntilde.Replay
                 _queue.CompleteAdding();
             }
             if (Failure is { Kind: RecordingFailureKind.FlushTimeout }) ThrowIfFailed();
-            try { await _writeTask.WaitAsync(TimeSpan.FromMilliseconds(_flushTimeoutMs ?? ReadEnvInt("NTILDE_RECORDER_FLUSH_MS", 10000))).ConfigureAwait(false); }
+            try { await _writeTask.WaitAsync(TimeSpan.FromMilliseconds(_flushTimeoutMs ?? ReadEnvInt("NTILDE_RECORDER_FLUSH_MS", 10000)), CancellationToken.None).ConfigureAwait(false); }
             catch (TimeoutException)
             {
                 Fail(new RecordingFailure(RecordingFailureKind.FlushTimeout, "Recording did not finish saving before the flush deadline."));
-                _cts.Cancel();
             }
             ThrowIfFailed();
         }
@@ -443,15 +450,27 @@ namespace Ntilde.Replay
             {
                 Fail(new RecordingFailure(opened ? RecordingFailureKind.Write : RecordingFailureKind.Open, ex.Message));
             }
-            finally { _ready.TrySetResult(); }
+            finally
+            {
+                _ready.TrySetResult();
+                Task cancellation;
+                lock (_cancellationGate)
+                {
+                    _writerFinished = true;
+                    cancellation = _cancellation;
+                }
+                // CancelAsync callbacks finish before disposal; completion callers never own the live token.
+                try { await cancellation.ConfigureAwait(false); }
+                catch (Exception ex) { TerminalLogger.Warning($"[PtyRecorder] Cancellation callback failed: {ex.Message}"); }
+                finally { _cts.Dispose(); }
+            }
         }
 
         public void Dispose()
         {
             // Cleanup is best-effort; explicit save callers await CompleteAsync to report errors.
-            // CTS stays alive: a timed-out sink may still be using its token.
             try { CompleteAsync().GetAwaiter().GetResult(); }
-            catch (RecordingException) { }
+            catch (RecordingException) { /* Failure is already exposed; explicit saves use CompleteAsync. */ }
             GC.SuppressFinalize(this);
         }
     }

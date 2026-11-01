@@ -907,7 +907,8 @@ namespace Ntilde.Pty
             }
         }
 
-        private Ntilde.Replay.ReplayWriter? _recorder;
+        private readonly SessionRecording _manualRecording = new();
+        private Ntilde.Replay.PtyRecorder? _recorder => _manualRecording.Current;
 
         // Flight recorder ring (agent replay export). Written from the read loop and
         // Resize; enabled/disabled from the App's agent-host lifecycle. Reference
@@ -916,7 +917,7 @@ namespace Ntilde.Pty
         private Ntilde.Replay.FlightRecordingBuffer? _flightRecorder;
 
         public bool IsRecording => _recorder is { IsReady: true };
-        public Guid RecordingId => Volatile.Read(ref _recorder)?.Id ?? Guid.Empty;
+        public Guid RecordingId => _recorder?.Id ?? Guid.Empty;
 
         public bool IsFlightRecording => _flightRecorder != null;
 
@@ -1034,48 +1035,29 @@ namespace Ntilde.Pty
 
         public event Action<Ntilde.Replay.RecordingFailure>? RecordingFailed;
 
-        public void StartRecording(string filePath) => AtDecodedRecordingBoundary(() => { StartRecordingCore(filePath); return 0; }, allowStopped: false);
+        public void StartRecording(string filePath) => AtDecodedRecordingBoundary(() => StartRecordingCore(filePath), allowStopped: false);
 
-        public Task StartRecordingAsync(string filePath) => AtDecodedRecordingBoundary(() =>
-        {
-            StartRecordingCore(filePath);
-            return _recorder!.WaitUntilReadyAsync();
-        }, allowStopped: false);
+        public Task StartRecordingAsync(string filePath) => AtDecodedRecordingBoundary(() => StartRecordingCore(filePath).WaitUntilReadyAsync(), allowStopped: false);
 
-        private void StartRecordingCore(string filePath)
+        private Ntilde.Replay.PtyRecorder StartRecordingCore(string filePath)
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0 || (_recordingDelivery.Mode == 2 && _outputConsumerStopped.Task.IsCompleted), this);
-            if (_recorder is { Failure: null }) return;
-            var recorder = new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics);
-            _recorder = recorder;
-            recorder.Failed += failure =>
-            {
-                if (ReferenceEquals(Volatile.Read(ref _recorder), recorder)) RecordingFailed?.Invoke(failure);
-            };
-            recorder.RecordMarker("START");
+            var recorder = _manualRecording.Begin(
+                () => new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics),
+                failure => RecordingFailed?.Invoke(failure));
             if (Volatile.Read(ref _disposed) != 0 || (_recordingDelivery.Mode == 2 && _outputConsumerStopped.Task.IsCompleted))
             {
-                if (ReferenceEquals(Interlocked.CompareExchange(ref _recorder, null, recorder), recorder)) recorder.Dispose();
+                _manualRecording.Discard(recorder);
                 throw new ObjectDisposedException(GetType().Name);
             }
+            return recorder;
         }
 
-        public Task StopRecordingAsync() => AtDecodedRecordingBoundary(() =>
-        {
-            var recorder = Interlocked.Exchange(ref _recorder, null);
-            if (recorder is null) return Task.CompletedTask;
-            recorder.RecordMarker("END");
-            return recorder.CompleteAsync();
-        });
+        public Task StopRecordingAsync() => AtDecodedRecordingBoundary(_manualRecording.StopAsync);
 
         public void StopRecording() => StopRecordingAsync().GetAwaiter().GetResult();
 
-        private void StopRecordingCore()
-        {
-            // Session shutdown must remain safe even when a manual recording has failed.
-            try { StopRecording(); }
-            catch (Ntilde.Replay.RecordingException) { }
-        }
+        private void StopRecordingCore() => _manualRecording.Dispose();
 
         private void ReadLoop()
         {

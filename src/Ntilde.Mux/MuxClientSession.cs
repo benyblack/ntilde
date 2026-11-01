@@ -290,10 +290,10 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     /// </summary>
     public event Action<RecordingFailure>? RecordingFailed;
 
-    public void StartRecording(string filePath) => ObserveRecordingRequest(StartRecordingAsync(filePath));
-    public void StopRecording() => ObserveRecordingRequest(StopRecordingAsync());
+    public void StartRecording(string filePath) => _ = ObserveRecordingRequestAsync(StartRecordingAsync(filePath));
+    public void StopRecording() => _ = ObserveRecordingRequestAsync(StopRecordingAsync());
 
-    private async void ObserveRecordingRequest(Task request)
+    private async Task ObserveRecordingRequestAsync(Task request)
     {
         try { await request.ConfigureAwait(false); }
         catch (Exception ex)

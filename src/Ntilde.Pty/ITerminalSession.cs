@@ -58,7 +58,8 @@ namespace Ntilde.Pty
         void StopRecording();
         Task StartRecordingAsync(string filePath) { StartRecording(filePath); return Task.CompletedTask; }
         Task StopRecordingAsync() { StopRecording(); return Task.CompletedTask; }
-        event Action<RecordingFailure>? RecordingFailed { add { } remove { } }
+        // Legacy session implementations have no asynchronous failure source.
+        event Action<RecordingFailure>? RecordingFailed { add { _ = value; } remove { _ = value; } }
     }
 
     /// <summary>
