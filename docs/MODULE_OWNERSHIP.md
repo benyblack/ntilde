@@ -234,7 +234,8 @@ invariant changes.
   delete hold a stable sibling `.lock` lease before loading and through atomic replacement. Valid
   queries read complete snapshots without a lease; corruption recovery takes the lease and reloads
   before quarantining, so a stale corrupt read cannot move a newer writer's file. The synchronous
-  API fails with `IOException` after five seconds of contention, before reading for mutation.
+  shared file-lease acquisition fails with `IOException` after five seconds of contention, before
+  reading for mutation. Same-instance callers retain the existing unbounded `_syncRoot` monitor wait.
   Permanent coordination/read/quarantine failures preserve existing profile bytes. The lock file
   is never deleted or moved, and creation-only recovery cannot overwrite a file that appeared later.
 - SSH transports must satisfy `IRemoteTerminalTransport` so all SSH session implementations are interchangeable

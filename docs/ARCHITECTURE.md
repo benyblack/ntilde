@@ -317,6 +317,15 @@ This is **not** the terminal engine. It's a platform-utilities library: input ro
 
 This is also where session-orchestration helpers (such as a future `SessionBufferBinder`) belong.
 
+SSH profile save and delete are whole-file transactions across cooperating instances and processes.
+They hold a stable sibling `.lock` lease before loading and through atomic replacement; corruption
+recovery acquires the same lease and reloads before quarantining. Valid queries read complete snapshots
+without acquiring the file lease. Shared file-lease acquisition is bounded at five seconds and fails
+with `IOException` before mutation reads; same-instance calls retain the existing `_syncRoot` monitor
+wait. The stable lock file is never deleted or moved. See `docs/MODULE_OWNERSHIP.md` for the storage
+failure and recovery contracts.
+
+
 ---
 
 ## 8. UI Shell — `Ntilde.App`
