@@ -218,3 +218,8 @@ The [2026-11-01 associated-text follow-up](terminfo/2026-11-01-associated-text.m
 measured 76 supported / 2 unsupported / 177 inconclusive observations. Flag 16
 negotiation is separate from routed actual-text, Unicode, GUI/mux and SSH input
 boundary tests; the report records their scope and remaining limits.
+
+The [2026-11-01 text-sizing follow-up](terminfo/2026-11-01-text-sizing.md)
+measured 77 supported / 1 unsupported / 177 inconclusive observations. The owned
+probe verifies OSC 66 cursor advance; separate domain, state/replay, resize and
+shared-renderer pixel tests cover the implemented geometry and appearance.

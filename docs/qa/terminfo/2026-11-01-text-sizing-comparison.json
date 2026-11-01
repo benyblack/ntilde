@@ -1,0 +1,297 @@
+{
+  "schemaVersion": 1,
+  "evidenceScope": "Owned macOS cursor-advance behavior only. Grid, edit, resize, state/replay and shared-renderer pixel tests provide separate evidence; no exhaustive font or native-platform qualification.",
+  "startingMainCommit": "52ed24cd4bb2eb8d69d747c6ba6ee063d372709e",
+  "suiteId": "16a690f34c0e",
+  "probeHash": "16a690f34c0e",
+  "collectorSourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+  "adapter": {
+    "id": "ntilde-owned-macos-v1",
+    "bundleSha256": "faf47bf5c48b26ce7088626a0c474f83b34912f533477ad36c3d50daf04113a9",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "nodeVersion": "v24.22.1",
+  "inputPins": {
+    "collectorManifestSha256": "56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e",
+    "collectorLockSha256": "837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "adapterBundleSha256": "faf47bf5c48b26ce7088626a0c474f83b34912f533477ad36c3d50daf04113a9"
+  },
+  "sourcePins": {
+    "runnerSourceSha256": "a322ad12a62101e28f465275a7c6d6cd993ef9792e40c4aeeadb56113794fda5",
+    "adapterSourceSha256": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
+    "ownershipSourceSha256": "1bf16d996f4d4dfdb98cc2ec7011e64c6567de1515271bb2a4244ae48996d50f",
+    "workerSourceSha256": "00ed37f2cb00ce11268be08b4a69fc65e4a88236378fa35f032b4fde8976b83e",
+    "runtimeSourceSha256": "8199c0373ae9f423c2f2333f9166ce0f301dd6e5df238b78d1bdb317e3abfdd4"
+  },
+  "before": {
+    "sourceCommit": "52ed24cd4bb2eb8d69d747c6ba6ee063d372709e",
+    "appVersion": "0.12.0+52ed24cd4bb2eb8d69d747c6ba6ee063d372709e",
+    "measuredAt": "2026-11-01T12:31:08.706Z",
+    "localDirectory": "artifacts/terminfo/owned-KlBHUy",
+    "rawSha256": "54216969578b7078110434f3fd92cd351885e7728d9338139380626117754504",
+    "assemblySha256": "6a6f95a2cea833570245f76bf40afe8f3a369e7151f94fb0ba862c8564724227",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 76,
+      "unsupported": 2
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "runId": "baab744029ba23841229486b2d7b4d70",
+    "ownerRunId": "e7f5d9761c8fdf96ab2ca18378237565",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "cleanedUpAt": "2026-11-01T12:31:08.733Z"
+  },
+  "after": {
+    "sourceCommit": "6843c998837f402041144752a906f723fa66db5a",
+    "appVersion": "0.12.0+6843c998837f402041144752a906f723fa66db5a",
+    "measuredAt": "2026-11-01T13:37:52.060Z",
+    "localDirectory": "artifacts/terminfo/owned-DPo1I6",
+    "rawSha256": "eaa16e7eeb11a429bceea4473999f8b00c1d7e935e4f6018787c348d47289d01",
+    "assemblySha256": "e0792eeb4b6d378579825252ec2fa88f0aedbe23cd8bb38b339f809a448bada6",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 77,
+      "unsupported": 1
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "runId": "3c243da1808ef8d07592dad8a8035def",
+    "ownerRunId": "2d44a5744a0c884903df123889d28a16",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "cleanedUpAt": "2026-11-01T13:37:52.087Z"
+  },
+  "unchangedOutcomeAndReasonCount": 254,
+  "changes": [
+    {
+      "featureId": "extensions.osc66-text-sizing",
+      "before": {
+        "featureId": "extensions.osc66-text-sizing",
+        "outcome": "unsupported",
+        "evidence": "behavior",
+        "note": "Cursor advance: width not verified; scale not verified. Glyph appearance needs a visual check.",
+        "rawReplyRef": "extensions.osc66-text-sizing"
+      },
+      "after": {
+        "featureId": "extensions.osc66-text-sizing",
+        "outcome": "supported",
+        "evidence": "behavior",
+        "note": "Cursor advance: width verified; scale verified. Glyph appearance needs a visual check.",
+        "rawReplyRef": "extensions.osc66-text-sizing"
+      },
+      "beforeTrace": {
+        "writes": [
+          "\u001b[1;1H\u001b[2K\r",
+          "\u001b]66;w=2; \u0007",
+          "\u001b]66;s=2; \u0007"
+        ],
+        "queries": [
+          {
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;1R",
+              "1",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;1R",
+            "rawBase64": "G1sxOzFS"
+          },
+          {
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;1R",
+              "1",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;1R",
+            "rawBase64": "G1sxOzFS"
+          },
+          {
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;1R",
+              "1",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;1R",
+            "rawBase64": "G1sxOzFS"
+          }
+        ],
+        "events": [
+          {
+            "kind": "write",
+            "sequence": "\u001b[1;1H\u001b[2K\r"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;1R",
+              "1",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;1R",
+            "rawBase64": "G1sxOzFS"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]66;w=2; \u0007"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;1R",
+              "1",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;1R",
+            "rawBase64": "G1sxOzFS"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]66;s=2; \u0007"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;1R",
+              "1",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;1R",
+            "rawBase64": "G1sxOzFS"
+          }
+        ]
+      },
+      "afterTrace": {
+        "writes": [
+          "\u001b[1;1H\u001b[2K\r",
+          "\u001b]66;w=2; \u0007",
+          "\u001b]66;s=2; \u0007"
+        ],
+        "queries": [
+          {
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;1R",
+              "1",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;1R",
+            "rawBase64": "G1sxOzFS"
+          },
+          {
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;3R",
+              "1",
+              "3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;3R",
+            "rawBase64": "G1sxOzNS"
+          },
+          {
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;5R",
+              "1",
+              "5"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;5R",
+            "rawBase64": "G1sxOzVS"
+          }
+        ],
+        "events": [
+          {
+            "kind": "write",
+            "sequence": "\u001b[1;1H\u001b[2K\r"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;1R",
+              "1",
+              "1"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;1R",
+            "rawBase64": "G1sxOzFS"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]66;w=2; \u0007"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;3R",
+              "1",
+              "3"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;3R",
+            "rawBase64": "G1sxOzNS"
+          },
+          {
+            "kind": "write",
+            "sequence": "\u001b]66;s=2; \u0007"
+          },
+          {
+            "kind": "query",
+            "sequence": "\u001b[6n",
+            "match": [
+              "\u001b[1;5R",
+              "1",
+              "5"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[1;5R",
+            "rawBase64": "G1sxOzVS"
+          }
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "Raw identity remains unverified; selected assembly informational versions and hashes bind the measured builds.",
+    "The owned probe verifies width and scale cursor advance, not glyph appearance.",
+    "Six shared-renderer pixel tests separately cover scale, fractional font sizing/alignment, long text fitting, visible lower fragments and cache refresh.",
+    "Sized rows are physical layout barriers on resize; clipped or oversized blocks are discarded whole.",
+    "Cursor keeps its ordinary cell shape; unnegotiated mux text clients use a bounded normal-size fallback.",
+    "177 inconclusive observations, one unsupported OSC 5522 observation and an ungraded geometry diagnostic remain."
+  ]
+}

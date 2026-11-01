@@ -1,8 +1,8 @@
 # Ntilde compatibility comparison — 2026-11-01
 
 This refresh focuses on the gaps observed by the owned terminfo.dev collector.
-The [latest associated-text measurement](../qa/terminfo/2026-11-01-associated-text.md)
-measures 76 supported / 2 unsupported / 177 inconclusive observations.
+The [latest text-sizing measurement](../qa/terminfo/2026-11-01-text-sizing.md)
+measures 77 supported / 1 unsupported / 177 inconclusive observations.
 The [runtime-color before/after evidence](../qa/terminfo/2026-10-31-color-stack.md)
 identifies the measured Ntilde binaries. The [prior color-preference report](../qa/terminfo/2026-10-31-macos-owned.md)
 remains available. The [VT matrix](../vt_coverage_matrix.md)
@@ -69,14 +69,22 @@ frames; text-only composition uses key zero and releases never carry text.
 One bounded key fallback and one UTF-16 fragment slot handle absent or split
 backend callbacks. See the [measurement, event evidence and limits](../qa/terminfo/2026-11-01-associated-text.md).
 
-## Remaining observations after the associated-text follow-up
+## Text sizing
+
+OSC 66 now owns bounded rectangular grid geometry and scaled/shaped GUI painting,
+including fractional sizing/alignment, whole-block editing, history fragments,
+state transfer and replay. The fresh owned probe verifies width and scale cursor
+advance; six shared-renderer pixel tests separately cover appearance. Resize
+barriers, ordinary cursor drawing and the unnegotiated text-client fallback are
+explicit limits in the [measurement report](../qa/terminfo/2026-11-01-text-sizing.md).
+
+## Remaining observations after the text-sizing follow-up
 
 | Probe family | Observations | Measured result | What remains |
 |---|---:|---|---|
-| OSC 66 text sizing | 1 | Unsupported by the cursor-advance probe | Grid geometry, rendering and evidence for the [text-sizing protocol](https://sw.kovidgoyal.net/kitty/text-sizing-protocol/) |
 | OSC 5522 clipboard | 1 | Mode explicitly unrecognized | Separate clipboard policy and fixture work |
 
-The two unsupported observations are not an overall compatibility score.
+The remaining unsupported observation is not an overall compatibility score.
 The 177 inconclusive observations include missing pixel/input evidence, absent
 replies and deliberate clipboard-fixture refusal. In particular, a palette query
 does not prove pixels, and a keyboard negotiation reply does not prove
