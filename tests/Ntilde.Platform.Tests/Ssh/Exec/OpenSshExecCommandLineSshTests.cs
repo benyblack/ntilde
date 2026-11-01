@@ -203,6 +203,53 @@ public sealed class OpenSshExecCommandLineSshTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Ssh_accepts_ipv6_jump_and_forward_endpoints(bool compiled)
+    {
+        string? ssh = FindSsh();
+        Assert.SkipUnless(ssh is not null, "No OpenSSH client (ssh) on this machine.");
+        string root = Path.Combine(Path.GetTempPath(), $"ntilde_ipv6_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var profile = new SshProfile
+            {
+                Host = "2001:db8::2",
+                JumpHops = { new SshJumpHop { Host = "2001:db8::1", User = "ops", Port = 2200 } },
+                Forwards =
+                {
+                    new PortForward { Kind = PortForwardKind.Local, BindAddress = "::1", SourcePort = 8080, DestinationHost = "::1", DestinationPort = 80 },
+                    new PortForward { Kind = PortForwardKind.Remote, BindAddress = "::1", SourcePort = 8081, DestinationHost = "::1", DestinationPort = 81 },
+                    new PortForward { Kind = PortForwardKind.Dynamic, BindAddress = "::1", SourcePort = 1080 }
+                }
+            };
+            string[] argv;
+            if (compiled)
+            {
+                OpenSshCompilationResult result = new OpenSshConfigCompiler(root).Compile([profile], profile.Id);
+                argv = ["-F", result.ConfigFilePath, result.Alias];
+            }
+            else
+            {
+                string emptyConfig = Path.Combine(root, "empty");
+                File.WriteAllText(emptyConfig, string.Empty);
+                argv = ["-F", emptyConfig, .. SshArgBuilder.BuildArguments(profile)];
+            }
+            Dictionary<string, string> resolved = ResolvedConfiguration(ssh!, argv);
+            Assert.Equal("2001:db8::2", resolved["hostname"]);
+            Assert.Equal("ops@[2001:db8::1]:2200", resolved["proxyjump"]);
+            Assert.Contains("::1", resolved["localforward"]);
+            Assert.Contains("::1", resolved["remoteforward"]);
+            Assert.Contains("1080", resolved["dynamicforward"]);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static string? FindSsh()
     {
         try

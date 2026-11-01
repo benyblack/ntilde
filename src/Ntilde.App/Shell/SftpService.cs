@@ -1,3 +1,4 @@
+using Ntilde.Platform.Ssh.OpenSsh;
 using Ntilde.Platform;
 using Ntilde.Platform.Security;
 using System;
@@ -807,7 +808,8 @@ namespace Ntilde.Shell
                     }
                 }
 
-                remotePart = string.IsNullOrEmpty(profile.SshUser) ? profile.SshHost : $"{profile.SshUser}@{profile.SshHost}";
+                string host = OpenSshEndpoint.FormatHost(profile.SshHost);
+                remotePart = string.IsNullOrEmpty(profile.SshUser) ? host : $"{profile.SshUser}@{host}";
             }
 
             args.Append(" -O");

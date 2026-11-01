@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Ntilde.Platform.Ssh.Models;
+using Ntilde.Platform.Ssh.OpenSsh;
 
 namespace Ntilde.Platform.Ssh.Launch;
 
@@ -157,7 +158,7 @@ public static class SshArgBuilder
             }
 
             int port = hop.Port > 0 ? hop.Port : 22;
-            string target = FormatTarget(hop.User, hop.Host.Trim());
+            string target = FormatTarget(hop.User, OpenSshEndpoint.FormatHost(hop.Host));
             if (port != 22)
             {
                 target = $"{target}:{port.ToString(CultureInfo.InvariantCulture)}";
@@ -191,7 +192,7 @@ public static class SshArgBuilder
             return port.ToString(CultureInfo.InvariantCulture);
         }
 
-        return $"{bindAddress.Trim()}:{port.ToString(CultureInfo.InvariantCulture)}";
+        return $"{OpenSshEndpoint.FormatHost(bindAddress)}:{port.ToString(CultureInfo.InvariantCulture)}";
     }
 
     private static string FormatDestination(PortForward forward)
@@ -206,7 +207,7 @@ public static class SshArgBuilder
             throw new ArgumentException("Destination host is required for local/remote forwarding.", nameof(forward));
         }
 
-        return $"{forward.DestinationHost.Trim()}:{forward.DestinationPort.ToString(CultureInfo.InvariantCulture)}";
+        return $"{OpenSshEndpoint.FormatHost(forward.DestinationHost)}:{forward.DestinationPort.ToString(CultureInfo.InvariantCulture)}";
     }
 
     private static string QuoteToken(string token)

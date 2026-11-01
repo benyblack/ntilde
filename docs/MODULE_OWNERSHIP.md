@@ -227,6 +227,10 @@ invariant changes.
 - Future home of `SessionBufferBinder` and other session-orchestration helpers
 
 **Invariants**
+- OpenSSH colon-delimited endpoints use `OpenSshEndpoint.FormatHost`: IPv6 literals are bracketed
+  in ProxyJump, local/remote/dynamic forwarding and legacy SCP operands, including the App legacy
+  jump chain. Already bracketed input stays bracketed once; direct SSH targets and `HostName`
+  remain host values without added brackets. DNS and IPv4 syntax stays unchanged.
 - This is NOT the terminal engine (that's VT). Renamed from `Ntilde.Core` in #76 to end the three-way "Core" name overload.
 - No Avalonia or Skia in the dependency closure
 - Native SSH credentials use owned, pinned UTF-8 `Security/SecretBuffer` values. Prompt responses and serialized
