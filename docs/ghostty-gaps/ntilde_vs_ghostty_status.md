@@ -1,8 +1,8 @@
 # Ntilde compatibility comparison — 2026-11-01
 
 This refresh focuses on the gaps observed by the owned terminfo.dev collector.
-The [latest alternate-key measurement](../qa/terminfo/2026-11-01-alternate-keys.md)
-measures 74 supported / 4 unsupported / 177 inconclusive observations.
+The [latest all-key measurement](../qa/terminfo/2026-11-01-all-keys.md)
+measures 75 supported / 3 unsupported / 177 inconclusive observations.
 The [runtime-color before/after evidence](../qa/terminfo/2026-10-31-color-stack.md)
 identifies the measured Ntilde binaries. The [prior color-preference report](../qa/terminfo/2026-10-31-macos-owned.md)
 remains available. The [VT matrix](../vt_coverage_matrix.md)
@@ -55,15 +55,22 @@ Missing symbols and shifted punctuation retain the existing primary-key fallback
 there is no complete native keyboard-layout qualification. See the
 [report and limits](../qa/terminfo/2026-11-01-alternate-keys.md).
 
-## Remaining observations after the alternate-key follow-up
+## All-key reporting
+
+Flag 8 now encodes available ordinary, recovery, modifier, keypad and media keys.
+Flag 2 still controls repeat/release; flag 4 controls optional alternate fields.
+Raw text callbacks, including text-only IME commits, are suppressed in this mode.
+Associated text is the next follow-up. See the [measurement and event evidence](../qa/terminfo/2026-11-01-all-keys.md).
+
+## Remaining observations after the all-key follow-up
 
 | Probe family | Observations | Measured result | What remains |
 |---|---:|---|---|
-| Kitty all keys / associated text | 2 | Requested flags 8 and 16 remain masked out | Extend key/text routing while preserving IME/layout behavior; the [Kitty protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) defines the remaining flags |
+| Kitty associated text | 1 | Requested flag 16 remains masked out | Add generated/composed text fields to all-key reporting; the [Kitty protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) defines the remaining flags |
 | OSC 66 text sizing | 1 | Unsupported by the cursor-advance probe | Grid geometry, rendering and evidence for the [text-sizing protocol](https://sw.kovidgoyal.net/kitty/text-sizing-protocol/) |
 | OSC 5522 clipboard | 1 | Mode explicitly unrecognized | Separate clipboard policy and fixture work |
 
-The four unsupported observations are not four independent feature requests.
+The three unsupported observations are not an overall compatibility score.
 The 177 inconclusive observations include missing pixel/input evidence, absent
 replies and deliberate clipboard-fixture refusal. In particular, a palette query
 does not prove pixels, and a keyboard negotiation reply does not prove
