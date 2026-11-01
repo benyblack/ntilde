@@ -19,6 +19,8 @@ internal static class Program
                 return 0;
             }
 
+            if (args.Length == 2 && args[1] == "--snippets") return await RunSnippetsAsync(args[0]);
+
             var store = new JsonlHistoryStore(args[0], 50);
             await ReplyAsync("ready");
             while (await Console.In.ReadLineAsync() is { } line)
@@ -54,6 +56,34 @@ internal static class Program
             await Console.Error.WriteLineAsync(ex.ToString());
             return 1;
         }
+    }
+
+    private static async Task<int> RunSnippetsAsync(string path)
+    {
+        var store = new JsonSnippetStore(path);
+        await ReplyAsync("ready");
+        while (await Console.In.ReadLineAsync() is { } line)
+        {
+            string[] parts = line.Split('\t', 2);
+            switch (parts[0])
+            {
+                case "upsert":
+                    await store.UpsertAsync(new CommandSnippet(parts[1], parts[1], "echo " + parts[1], null, null, null, true, DateTimeOffset.UnixEpoch, null));
+                    await ReplyAsync("ok");
+                    break;
+                case "remove":
+                    await store.RemoveAsync(parts[1]);
+                    await ReplyAsync("ok");
+                    break;
+                case "recent":
+                    var snippets = await store.GetAllAsync();
+                    await ReplyAsync("ids" + string.Concat(snippets.Select(s => s.Id).Order(StringComparer.Ordinal).Select(id => "\t" + id)));
+                    break;
+                default:
+                    throw new ArgumentException("Unknown snippet test command.");
+            }
+        }
+        return 0;
     }
 
     private static async Task ReplyIdsAsync(JsonlHistoryStore store)

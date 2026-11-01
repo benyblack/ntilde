@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.AccessControl;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,15 +23,15 @@ public sealed class JsonSnippetStore : ISnippetStore
 
     public JsonSnippetStore(string filePath) : this(filePath,
         path => new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete),
-        CreateTemporaryFile)
+        null)
     {
     }
 
-    internal JsonSnippetStore(string filePath, Func<string, Stream> openRead, Func<string, Stream> createWrite)
+    internal JsonSnippetStore(string filePath, Func<string, Stream> openRead, Func<string, Stream>? createWrite)
     {
-        _filePath = filePath;
+        _filePath = Path.GetFullPath(filePath);
         _openRead = openRead;
-        _createWrite = createWrite;
+        _createWrite = createWrite ?? CreateTemporaryFile;
     }
 
     public async Task<IReadOnlyList<CommandSnippet>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -51,6 +52,7 @@ public sealed class JsonSnippetStore : ISnippetStore
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            using var lease = await EnterMutationAsync(cancellationToken);
             List<CommandSnippet> snippets = await LoadSnippetsUnsafeAsync(cancellationToken);
             int existingIndex = snippets.FindIndex(x => x.Id == snippet.Id);
             if (existingIndex >= 0)
@@ -80,6 +82,7 @@ public sealed class JsonSnippetStore : ISnippetStore
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            using var lease = await EnterMutationAsync(cancellationToken);
             List<CommandSnippet> snippets = await LoadSnippetsUnsafeAsync(cancellationToken);
             snippets.RemoveAll(x => x.Id == snippetId);
             await SaveSnippetsUnsafeAsync(snippets, cancellationToken);
@@ -88,6 +91,53 @@ public sealed class JsonSnippetStore : ISnippetStore
         {
             _gate.Release();
         }
+    }
+
+    private async Task<HistoryFileLease> EnterMutationAsync(CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
+        HistoryFileLease lease = await HistoryFileLease.AcquireAsync(_filePath + ".lock", cancellationToken);
+        try
+        {
+            SweepOrphanedTemporaryFiles(cancellationToken);
+            return lease;
+        }
+        catch
+        {
+            lease.Dispose();
+            throw;
+        }
+    }
+
+    private void SweepOrphanedTemporaryFiles(CancellationToken cancellationToken)
+    {
+        string prefix = Path.GetFileName(_filePath) + ".leased.";
+        try
+        {
+            foreach (string candidate in Directory.EnumerateFiles(Path.GetDirectoryName(_filePath)!, prefix + "*.tmp"))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                TryDeleteOrphan(candidate, prefix);
+            }
+        }
+        catch (IOException) { /* Retry cleanup on a later mutation. */ }
+        catch (UnauthorizedAccessException) { /* A known file can be writable without directory-list permission. */ }
+    }
+
+    private static void TryDeleteOrphan(string path, string prefix)
+    {
+        string name = Path.GetFileName(path);
+        if (name.Length <= prefix.Length + 4 || !Guid.TryParseExact(name[prefix.Length..^4], "N", out _)) return;
+        try
+        {
+            if ((File.GetAttributes(path) & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0) return;
+            // Only the leased naming scheme is owned here. The transaction lease excludes its writers;
+            // an exclusive probe also leaves files alone while another process has them open.
+            using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None)) { }
+            File.Delete(path);
+        }
+        catch (IOException) { /* An open or temporarily unavailable file is retried later. */ }
+        catch (UnauthorizedAccessException) { /* Never let orphan cleanup block a valid save. */ }
     }
 
     private async Task<List<CommandSnippet>> LoadSnippetsUnsafeAsync(CancellationToken cancellationToken)
@@ -114,8 +164,18 @@ public sealed class JsonSnippetStore : ISnippetStore
         }
     }
 
-    private static Stream CreateTemporaryFile(string path)
+    private FileStream CreateTemporaryFile(string path)
     {
+        if (OperatingSystem.IsWindows())
+        {
+            FileSecurity? security;
+            try { security = new FileInfo(_filePath).GetAccessControl(AccessControlSections.Access); }
+            catch (FileNotFoundException) { security = null; }
+            catch (DirectoryNotFoundException) { security = null; }
+            if (security != null)
+                return new FileInfo(path).Create(FileMode.CreateNew, FileSystemRights.Read | FileSystemRights.Write,
+                    FileShare.None, 4096, FileOptions.None, security);
+        }
         var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None };
         if (!OperatingSystem.IsWindows()) options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
         return new FileStream(path, options);
@@ -139,7 +199,7 @@ public sealed class JsonSnippetStore : ISnippetStore
         }
 
         UnixFileMode? mode = ReadExistingUnixMode();
-        string tempPath = _filePath + $".{Guid.NewGuid():N}.tmp";
+        string tempPath = _filePath + $".leased.{Guid.NewGuid():N}.tmp";
         try
         {
             await using (Stream stream = _createWrite(tempPath))

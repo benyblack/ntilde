@@ -1,4 +1,8 @@
 using System.Text.Json;
+using System.Reflection;
+using System.Runtime.Versioning;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using Ntilde.CommandAssist.Models;
 using Ntilde.CommandAssist.Storage;
 
@@ -179,6 +183,56 @@ public sealed class JsonSnippetStoreFailureTests : IDisposable
             Assert.Equal(original, await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken));
             Assert.Empty(Directory.GetFiles(_root, "*.tmp"));
         }
+    }
+
+    [Fact]
+    public async Task WindowsTemporaryFileReceivesTheDestinationAclBeforeWriting()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows ACL semantics only.");
+        }
+        else
+        {
+            var (path, _) = await SeedAsync();
+            using var identity = WindowsIdentity.GetCurrent();
+            SecurityIdentifier owner = identity.User ?? throw new InvalidOperationException("The Windows test identity has no user SID.");
+            var restricted = new FileSecurity();
+            restricted.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+            restricted.AddAccessRule(new FileSystemAccessRule(owner, FileSystemRights.FullControl, AccessControlType.Allow));
+            new FileInfo(path).SetAccessControl(restricted);
+            var defaults = new JsonSnippetStore(path);
+            var create = (Func<string, Stream>)typeof(JsonSnippetStore).GetField("_createWrite", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(defaults)!;
+            bool checkedBeforeWriting = false;
+            var store = new JsonSnippetStore(path, File.OpenRead, destination =>
+            {
+                Stream stream = create(destination);
+                try
+                {
+                    if (OperatingSystem.IsWindows()) AssertOwnerOnlyAcl(destination, owner);
+                    Assert.Equal(0, stream.Length);
+                    checkedBeforeWriting = true;
+                    return stream;
+                }
+                catch { stream.Dispose(); throw; }
+            });
+
+            await store.UpsertAsync(Snippet("new"), TestContext.Current.CancellationToken);
+
+            Assert.True(checkedBeforeWriting);
+            AssertOwnerOnlyAcl(path, owner);
+        }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void AssertOwnerOnlyAcl(string path, SecurityIdentifier owner)
+    {
+        FileSecurity security = new FileInfo(path).GetAccessControl(AccessControlSections.Access);
+        Assert.True(security.AreAccessRulesProtected);
+        FileSystemAccessRule rule = Assert.Single(security.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>());
+        Assert.Equal(owner, rule.IdentityReference);
+        Assert.Equal(AccessControlType.Allow, rule.AccessControlType);
+        Assert.Equal(FileSystemRights.FullControl, rule.FileSystemRights & FileSystemRights.FullControl);
     }
 
     private async Task<(string Path, byte[] Bytes)> SeedAsync()

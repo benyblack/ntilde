@@ -1,7 +1,7 @@
 namespace Ntilde.CommandAssist.Storage;
 
 /// <summary>
-/// Serializes cooperating history stores across processes on a stable file name. The file is
+/// Serializes cooperating file stores across processes on a stable file name. The file is
 /// never deleted or moved: on Unix a replacement inode would make two different locks.
 /// </summary>
 internal sealed class HistoryFileLease : IDisposable

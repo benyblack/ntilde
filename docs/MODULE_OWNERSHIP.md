@@ -627,11 +627,17 @@ requires public test classes.
   query methods may read uncached snapshots; this mode never migrates, retires, repairs,
   compacts or writes history and never supplies the cache for a later mutation.
 - **Snippet mutations preserve the last complete file on failure.** Only a missing file means an
-  empty store; cancellation, read errors and invalid JSON propagate to callers. Writes serialize,
-  flush and close a unique sibling temporary file before atomically replacing `snippets.json`.
-  The final cancellation check precedes replacement, and failed temporary files are cleaned up.
+  empty store; cancellation, read errors and invalid JSON propagate to callers. A stable sibling
+  `.lock` lease spans each load/modify/replace transaction across cooperating instances and processes.
+  Queries read complete snapshots without creating or taking that lease. Writes serialize, flush
+  and close a unique sibling temporary file before atomically replacing `snippets.json`.
+  The final cancellation check precedes replacement. Immediate cleanup is best effort; later
+  mutations retry orphan cleanup while holding the lease. Only `<file>.leased.<32-hex-guid>.tmp`
+  names belong to this coordinated scheme; links, unknown names and exclusively open files are
+  left alone. The stable lock file is never deleted or moved.
   New Unix files are private to their owner; existing modes are applied before serializing commands.
-  Replacing an existing Windows file retains its destination metadata.
+  Existing Windows DACLs are applied when the temporary file is created, before writing command text;
+  replacement also retains destination metadata.
 - All types in `Ntilde.CommandAssist.*` (`Leaf_assembly_types_reside_in_its_own_namespace`);
   the App may only use that prefix for Views
   (`App_may_only_use_the_CommandAssist_prefix_for_Views`).
