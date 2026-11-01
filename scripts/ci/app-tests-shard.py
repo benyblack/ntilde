@@ -44,22 +44,24 @@ REST = "rest"
 # non-headless projects ~100 and the PlatformBoot lane ~10, which also run on REST. Core alone
 # is one shard. The in-process VtReportCliTests stay with CommandAssist; their three tests
 # that `dotnet build` the App and the CLI (~76 s) left the shards altogether for the build job
-# (VtReportCliBuildTests, Category=SdkBuild), so Shell and Controls join them: the three land
-# near 155 / 147 / 162 s of step, from 145 / 198 / 189 before.
+# (VtReportCliBuildTests, Category=SdkBuild), so Shell and Controls join them. Measured on the
+# first run of this split (41298327211), windows test steps: assist-shell 149 s, core 132,
+# rest 142 (89 non-headless + 45 + 8 PlatformBoot), from 145 / 198 / 189 before.
 #
-# Floors are executed counts (identical on windows and ubuntu give or take a few OS-specific
-# theory rows: the count includes skipped tests) less about 2% for churn. The ones below are
-# provisional - estimated from the source, ~8% under - until the first run of this split
-# reports its counts per namespace (scripts/ci/app-tests-timing.py).
+# Floors are the executed counts that run measured - identical on windows and ubuntu, since the
+# count includes skipped tests - less about 2% for churn: assist-shell 2,942, core 1,610,
+# rest 2,817; with the 3 SdkBuild tests, 7,372, the lane's count before the split. Each shard's
+# timing report (scripts/ci/app-tests-timing.py) prints the count per namespace, which is what
+# moving a namespace moves between floors.
 SHARDS = [
     ("assist-shell", [
         "Ntilde.Tests.CommandAssist.",
         "Ntilde.Tests.VtReportCliTests.",
         "Ntilde.Tests.Shell.",
         "Ntilde.Tests.Controls.",
-    ], 2700),
-    ("core", ["Ntilde.Tests.Core."], 1500),
-    (REST, [], 2550),
+    ], 2880),
+    ("core", ["Ntilde.Tests.Core."], 1575),
+    (REST, [], 2760),
 ]
 
 
