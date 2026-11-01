@@ -379,6 +379,7 @@ scripts/build.sh test --filter \
 | `Performance`, `Latency` | Throughput and input-to-frame latency. | Any perf change — **performance PRs without metrics are sent back.** |
 | `Stress` | Sustained load, leaks. | Lifetime or threading work. |
 | `ShellIntegration` | OSC 133 / OSC 7 shell markers. | Shell-integration changes. |
+| `SdkBuild` | What a real `dotnet build` of the App and the CLI produces (the `--vt-report` answers, the CLI sidecar). Gating; CI runs these in its Build job against that job's own build rather than in a test shard. | You touch `BuildCliShim`, the CLI project or how the App copies it. |
 | `Regression` | Previously-fixed bugs, pinned so they stay fixed. | You fix a bug — pin it here. |
 | `DockerE2E` | Real SSH against a Docker sshd: the native backend (Platform.Tests) and persistent remote tabs over both backends (App.Tests). Opt-in via `NTILDE_ENABLE_DOCKER_E2E=1`; skipped otherwise. The remote-tab suite also needs `NTILDE_MUX_E2E_BINARY`, the path of a linux-x64 `ntilde-mux`: build one with `scripts/docker-publish-mux-daemon.sh linux-x64 artifacts/mux-daemon` (Docker; Git Bash on Windows) and point the variable at `artifacts/mux-daemon/linux-x64/ntilde-mux`. | You touch the SSH transports, the exec channels or the remote multiplexer. Run it with `--filter "Category=DockerE2E"`, alone. |
 
@@ -466,9 +467,24 @@ All PRs are automatically checked by CI:
 - formatting (`dotnet format whitespace`, Windows + Linux — blocking). The
   cheapest check to fail and the cheapest to fix: run `dotnet format whitespace`
   and commit the result.
-- unit tests (VT, Rendering, Architecture, Platform, McpServer — blocking)
+- analyzers (the **Analyzers** job — blocking). `Directory.Build.props` turns on
+  `AnalysisLevel latest-recommended`, `EnforceCodeStyleInBuild` and
+  `TreatWarningsAsErrors` for every project, so a local `scripts/build.sh build`
+  fails on the same warnings. CI's Build job compiles with
+  `-p:RunAnalyzers=false` to save time and leaves the check to this job;
+  `scripts/tests/analyzer_gate_tests.py` fails if that job is ever dropped or
+  made optional while the Build job skips analyzers.
+- script self-tests (`scripts/tests/*.py`, Windows + Linux — blocking): the
+  CI helper scripts, such as the App.Tests shard split, tested against the
+  workflow and the test sources they describe.
+- unit tests (VT, Rendering, Architecture, Platform, McpServer, Mux — blocking)
 - headless App.Tests, in two lanes (`Lane!=PlatformBoot` and `Lane=PlatformBoot`)
-  — **blocking**, on failures and on hangs. Both test steps carry
+  — **blocking**, on failures and on hangs. CI splits the first lane across three
+  jobs per OS by test namespace (`scripts/ci/app-tests-shard.py`: `assist-shell`,
+  `core` and `rest`; `rest` also runs the PlatformBoot lane and the other test
+  projects), and runs the three `Category=SdkBuild` tests in the Build job.
+  The `Unit Tests (<os>)` check rolls them up. Locally, run the two lanes as
+  shown above; the shards only exist to save wall-clock time. Both test steps carry
   `continue-on-error`, but only so the verdict can come from the following step,
   **Check App.Tests failures against the flake allowlist**, instead of from
   `dotnet test`'s exit code. That step fails the job for any failing test not

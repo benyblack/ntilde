@@ -30,9 +30,9 @@ const programs = [
   },
   {
     title: 'Native SSH',
-    status: 'Experimental · opt-in',
+    status: 'Default for new profiles',
     body:
-      'Cross-platform SSH client (experimental, opt-in) with VT correctness, resize coalescing, dynamic forwarding, keepalive, and runtime password memory.',
+      'Cross-platform SSH client built into Ntilde, with its own host-key trust store: password, key and agent auth, jump chains, local, remote and dynamic forwarding, SFTP, and resize coalescing. OpenSSH stays selectable per profile.',
     links: [
       { href: `${repoUrl}/blob/main/docs/SSH_ROADMAP.md`, label: 'SSH roadmap' },
     ],
@@ -53,6 +53,7 @@ const lanes = [
   { name: 'Rendering.Tests', kind: 'Deterministic' },
   { name: 'Platform.Tests', kind: 'Deterministic' },
   { name: 'McpServer.Tests', kind: 'Deterministic' },
+  { name: 'Mux.Tests', kind: 'Deterministic' },
   { name: 'App.Tests', kind: 'Avalonia Headless' },
   { name: 'Architecture.Tests', kind: 'NetArchTest (IL + ns)' },
   { name: 'Benchmarks', kind: 'SharpFuzz / libFuzzer' },
@@ -118,10 +119,10 @@ const lanes = [
         Test lanes
       </h3>
       <p class="mt-2 text-sm leading-relaxed text-ink-300">
-        Ntilde splits tests into focused, deterministic lanes. The
-        blocking CI lane is fast and runs on every PR; the long-running
-        lanes (replay parity, render metrics, golden PNG) run on
-        schedule.
+        Ntilde splits tests into focused, deterministic lanes. Every PR
+        runs the blocking unit lanes, an analyzer check, render metrics
+        and the golden PNGs; replay and cross-platform parity run on
+        every push to main and on a daily schedule.
       </p>
       <ul class="mt-6 grid gap-2 sm:grid-cols-2">
         {

@@ -551,7 +551,9 @@ scripts/build.sh test -c Release --filter "Category!=Replay&Category!=RenderMetr
 ```
 
 CI applies that filter per test project rather than across the solution, and
-runs the App.Tests `Lane=PlatformBoot` tests in a separate process. Per-project
+runs the App.Tests `Lane=PlatformBoot` tests in a separate process (it also splits
+App.Tests across three jobs to save time; see
+[CONTRIBUTING.md](CONTRIBUTING.md#ci--review-process)). Per-project
 runs are also the fast local loop — a whole-solution run takes tens of minutes
 because of the headless Avalonia suite.
 
