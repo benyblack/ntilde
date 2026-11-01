@@ -155,6 +155,29 @@ public sealed class Osc66ReviewTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
+    [Fact]
+    public void Width_expanding_attachment_retires_the_adjacent_rectangle_before_its_continuation()
+    {
+        var buffer = new TerminalBuffer(16, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b[1;2H\x1b]66;s=2;M\a\x1b[1;1H1");
+        parser.Process("\uFE0F");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal("1\uFE0F", buffer.GetGraphemeAbsolute(0, 0));
+            Assert.True(buffer.GetCellAbsolute(1, 0).IsWideContinuation);
+            for (int row = 0; row < 2; row++)
+                for (int col = 1; col < 3; col++)
+                    Assert.Null(buffer.GetTextSizingAbsolute(col, row));
+            Assert.Equal(2, buffer.CursorCol);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        var state = buffer.ExportState(int.MaxValue);
+        Assert.Null(state.TextSizing);
+        new TerminalBuffer(16, 4).ImportState(state);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -62,7 +62,7 @@ public sealed class Osc66ResizeTests
         var buffer = new TerminalBuffer(12, 5);
         var parser = new AnsiParser(buffer);
         parser.Process("\x1b]66;s=3:w=2;AB\a\x1b[5;1H" + new string('\n', scrolled));
-        if (alternate) parser.Process("\x1b[?47h");
+        if (alternate) parser.Process("\x1b[?47h\x1b[44m");
         buffer.Resize(cols, rows);
         if (alternate) parser.Process("\x1b[?47l");
         var state = buffer.ExportState(int.MaxValue);
@@ -74,6 +74,7 @@ public sealed class Osc66ResizeTests
                 for (int col = 0; col < cols; col++)
                 {
                     Assert.Null(buffer.GetTextSizingAbsolute(col, row));
+                    Assert.True(buffer.GetCellAbsolute(col, row).IsDefaultBackground);
                     Assert.NotEqual("AB", buffer.GetGraphemeAbsolute(col, row));
                 }
         }

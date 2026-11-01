@@ -267,6 +267,9 @@ namespace Ntilde.VT
                             cell.IsWide = true;
                             if (attachCol + 1 < Cols)
                             {
+                                // Width expansion overwrites the adjacent cell; retire its whole sized rectangle first.
+                                int absoluteRow = TextSizingAbsoluteRow(_cursorRow);
+                                EraseTextSizingRange(attachCol + 1, attachCol + 2, absoluteRow, absoluteRow + 1);
                                 // Ensure next cell is a continuation
                                 ref var nextCell = ref row.Cells[attachCol + 1];
                                 bool expandedIntoNextCell = false;

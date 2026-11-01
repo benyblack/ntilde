@@ -378,7 +378,10 @@ public partial class TerminalBuffer
         var (main, alt) = ResolveScreensNoLock();
         var rows = alternate ? alt : main;
         int historyCount = alternate ? 0 : _scrollback.Count;
-        var blank = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
+        // The active pen applies to active-screen edits, never to retirement in the other screen.
+        var blank = alternate == _isAltScreen
+            ? new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground)
+            : TerminalCell.Default;
         bool changedHistory = false;
         int limit = historyCount + rows.Length;
         for (int row = Math.Max(0, y); row < Math.Min(limit, y + block.Height); row++)
