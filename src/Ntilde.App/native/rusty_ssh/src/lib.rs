@@ -3539,6 +3539,7 @@ where
                 cancellation_marker_path,
                 progress,
                 &mut copy_buffer,
+                None,
             )
             .await?;
         }
@@ -3667,6 +3668,7 @@ async fn download_file_from_remote(
     cancellation_marker_path: Option<&str>,
     progress: SftpProgressEmitter,
     copy_buffer: &mut [u8],
+    destination_dir: Option<&cap_std::fs::Dir>,
 ) -> anyhow::Result<()> {
     let total_bytes = sftp
         .metadata(remote_path.to_owned())
@@ -3677,7 +3679,7 @@ async fn download_file_from_remote(
         .open(remote_path.to_owned())
         .await
         .map_err(|error| map_remote_transfer_error(remote_path, error))?;
-    if let Some(parent) = local_path.parent() {
+    if let Some(parent) = local_path.parent().filter(|_| destination_dir.is_none()) {
         if !parent.as_os_str().is_empty() {
             tokio::fs::create_dir_all(parent)
                 .await
@@ -3690,7 +3692,7 @@ async fn download_file_from_remote(
     // created — before a single byte arrives — so a cancelled or failed re-download
     // used to destroy the previous version and leave a truncated file behind.
     let partial_path = partial_download_path(local_path);
-    let mut local_file = create_partial_download_file(&partial_path).await?;
+    let mut local_file = create_partial_download_file_at(&partial_path, destination_dir).await?;
 
     if let Err(error) = copy_file_with_cancellation(
         &mut remote_file,
@@ -3704,13 +3706,13 @@ async fn download_file_from_remote(
     .await
     {
         drop(local_file);
-        discard_partial_download(&partial_path).await;
+        discard_partial_download_at(&partial_path, destination_dir).await;
         return Err(error);
     }
 
     if let Err(error) = local_file.flush().await {
         drop(local_file);
-        discard_partial_download(&partial_path).await;
+        discard_partial_download_at(&partial_path, destination_dir).await;
         return Err(map_local_transfer_error(&partial_path, error));
     }
 
@@ -3724,12 +3726,12 @@ async fn download_file_from_remote(
     // destination had already been replaced - and in a directory download would abort
     // the remaining files having already committed this one.
     if let Err(error) = remote_file.shutdown().await {
-        discard_partial_download(&partial_path).await;
+        discard_partial_download_at(&partial_path, destination_dir).await;
         return Err(error.into());
     }
 
-    if let Err(error) = tokio::fs::rename(&partial_path, local_path).await {
-        discard_partial_download(&partial_path).await;
+    if let Err(error) = commit_partial_download(&partial_path, local_path, destination_dir).await {
+        discard_partial_download_at(&partial_path, destination_dir).await;
         return Err(map_local_transfer_error(local_path, error));
     }
 
@@ -3817,15 +3819,16 @@ async fn download_directory_from_remote(
     progress: SftpProgressEmitter,
     copy_buffer: &mut [u8],
 ) -> anyhow::Result<()> {
-    tokio::fs::create_dir_all(local_root)
-        .await
+    // Open the root once and resolve every server-selected descendant relative to
+    // it. Ordinary path checks cannot protect against an ancestor becoming a link
+    // between validation, scratch creation and rename.
+    let root = download_destination::open_root(local_root)
         .map_err(|error| map_local_transfer_error(local_root, error))?;
-
-    let mut pending = VecDeque::from([(remote_root.to_owned(), local_root.to_path_buf())]);
-    while let Some((remote_dir, local_dir)) = pending.pop_front() {
+    let mut pending = VecDeque::from([(remote_root.to_owned(), PathBuf::new())]);
+    while let Some((remote_dir, relative_dir)) = pending.pop_front() {
         ensure_transfer_not_canceled(cancellation_marker_path)?;
-        tokio::fs::create_dir_all(&local_dir)
-            .await
+        let local_dir = local_root.join(&relative_dir);
+        let directory = download_destination::open_directory(&root, &relative_dir)
             .map_err(|error| map_local_transfer_error(&local_dir, error))?;
 
         let mut entries = sftp
@@ -3845,7 +3848,7 @@ async fn download_directory_from_remote(
             let metadata = entry.metadata();
 
             if metadata.is_dir() {
-                pending.push_back((remote_child, local_child));
+                pending.push_back((remote_child, relative_dir.join(&file_name)));
                 continue;
             }
 
@@ -3857,6 +3860,7 @@ async fn download_directory_from_remote(
                     cancellation_marker_path,
                     progress,
                     copy_buffer,
+                    Some(&directory),
                 )
                 .await?;
             }
@@ -4168,6 +4172,7 @@ fn remote_basename(path: &str) -> anyhow::Result<String> {
         )));
     }
 
+    validate_remote_entry_name(&basename)?;
     Ok(basename)
 }
 
@@ -4342,6 +4347,50 @@ async fn create_partial_download_file(partial_path: &Path) -> anyhow::Result<Tok
         .open(partial_path)
         .await
         .map_err(|error| map_local_transfer_error(partial_path, error))
+}
+
+// A directory download supplies the already-open parent. Only the basename is
+// used for creation, cleanup and commit, so a renamed/replaced ancestor cannot
+// redirect these operations after the file has started downloading.
+async fn create_partial_download_file_at(
+    path: &Path,
+    directory: Option<&cap_std::fs::Dir>,
+) -> anyhow::Result<TokioFile> {
+    if let Some(directory) = directory {
+        let mut options = cap_std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        return directory
+            .open_with(download_destination::basename(path)?, &options)
+            .map(|file| TokioFile::from_std(file.into_std()))
+            .map_err(|error| map_local_transfer_error(path, error));
+    }
+    create_partial_download_file(path).await
+}
+
+async fn discard_partial_download_at(path: &Path, directory: Option<&cap_std::fs::Dir>) {
+    if let Some(directory) = directory {
+        if let Some(name) = path.file_name() {
+            let _ = download_destination::remove_file(directory, name);
+        }
+    } else {
+        discard_partial_download(path).await;
+    }
+}
+
+async fn commit_partial_download(
+    partial: &Path,
+    destination: &Path,
+    directory: Option<&cap_std::fs::Dir>,
+) -> std::io::Result<()> {
+    if let Some(directory) = directory {
+        download_destination::rename_file(
+            directory,
+            download_destination::basename(partial)?,
+            download_destination::basename(destination)?,
+        )
+    } else {
+        tokio::fs::rename(partial, destination).await
+    }
 }
 
 /// Best-effort removal of an abandoned partial download. Failures are ignored
@@ -10995,3 +11044,8 @@ mod shared_connection_e2e_tests {
         assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(session));
     }
 }
+
+#[cfg(test)]
+mod download_tests;
+
+mod download_destination;
