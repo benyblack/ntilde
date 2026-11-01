@@ -18,6 +18,13 @@ public partial class TerminalBuffer
         return state.TextSizing;
     }
 
+    private static void ValidateReplayTextSizing(ReplaySnapshot snapshot, byte[]? cells)
+    {
+        ValidateTextSizingState(ReplaySizingEnvelope(snapshot), cells, null, null);
+        if (snapshot.IsAltScreen && snapshot.TextSizing?.Any(entry => entry.Y < 0) == true)
+            throw StateTransferValidation.Reject(TextSizingValidationName, "alternate-screen anchor above row zero");
+    }
+
     private static TerminalStateSnapshot ReplaySizingEnvelope(ReplaySnapshot snapshot)
         => new()
         {

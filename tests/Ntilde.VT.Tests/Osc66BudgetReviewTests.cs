@@ -61,12 +61,14 @@ public sealed class Osc66BudgetReviewTests
     }
 
     [Theory]
-    [InlineData(1)]
-    [InlineData(600)]
-    public void Legacy_checkpoint_restores_the_same_visible_block_with_and_without_budget_pressure(int retainedBlocks)
+    [InlineData(1, false)]
+    [InlineData(600, false)]
+    [InlineData(600, true)]
+    public void Legacy_checkpoint_restores_the_same_visible_block_with_and_without_budget_pressure(int retainedBlocks, bool alternate)
     {
         var target = Retained(retainedBlocks);
         int previousBlocks = target.ExportState(int.MaxValue).TextSizing!.Count;
+        if (alternate) new AnsiParser(target).Process("\x1b[?47h");
         var source = new TerminalBuffer(49, 7);
         source.WriteSizedText(Payload, Options);
         var state = source.ExportState(0);
@@ -74,6 +76,7 @@ public sealed class Osc66BudgetReviewTests
         {
             Cols = 49,
             Rows = 7,
+            IsAltScreen = alternate,
             ScrollBottom = 6,
             IsAutoWrapMode = true,
             CursorCol = state.CursorCol,
@@ -89,12 +92,17 @@ public sealed class Osc66BudgetReviewTests
         target.Lock.EnterReadLock();
         try
         {
-            var piece = Assert.IsType<CellTextSizing>(target.GetTextSizingAbsolute(48, target.Scrollback.Count + 6));
+            var piece = Assert.IsType<CellTextSizing>(target.GetTextSizingAbsolute(48, (alternate ? 0 : target.Scrollback.Count) + 6));
             Assert.Equal(Payload, piece.Block.Text);
             Assert.Equal(Options, piece.Block.Options);
         }
         finally { target.Lock.ExitReadLock(); }
-        int restoredBlocks = target.ExportState(int.MaxValue).TextSizing!.Count;
+        var exported = target.ExportState(int.MaxValue);
+        int restoredBlocks = exported.TextSizing!.Count;
+        // The actual retained cells must remain within budget, not just the accounting field.
+        var roundTrip = new TerminalBuffer(49, 7);
+        roundTrip.ImportState(exported);
+        Assert.Equal(alternate, roundTrip.IsAltScreenActive);
         Assert.True(restoredBlocks >= previousBlocks, "reclaim only enough old history to restore the checkpoint");
         if (retainedBlocks == 1) Assert.Equal(2, restoredBlocks);
     }

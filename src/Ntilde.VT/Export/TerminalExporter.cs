@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Ntilde.VT.Export
 {
-    public static class TerminalExporter
+    public static partial class TerminalExporter
     {
         /// <summary>
         /// The absolute row of screen row 0, for the absolute reads the exports make (cells, and the underline
@@ -154,6 +154,7 @@ namespace Ntilde.VT.Export
 
                 int screenTop = ScreenTop(buffer);
                 bool sizedOutput = buffer.HasSizedTextOnScreen();
+                if (sizedOutput) AppendClippedSizingPrelude(sb, buffer, screenTop);
 
                 for (int r = 0; r < buffer.Rows; r++)
                 {

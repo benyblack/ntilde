@@ -101,13 +101,15 @@ public sealed class Osc66ReviewTests
         Assert.Equal("X", Grapheme(outer, 1));
         Assert.Equal("!", Grapheme(outer, 3));
     }
-    [Fact]
-    public void Detected_link_spans_cover_the_full_sized_payload_width()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void Detected_link_spans_cover_the_full_sized_payload_width(int row)
     {
         const string url = "https://example.test";
         var buffer = new TerminalBuffer(20, 4);
         new AnsiParser(buffer).Process("\x1b]66;s=2:w=5;" + url + "\a");
-        var (text, map) = Ntilde.VT.Links.RowTextExtractor.Extract(buffer, 0, out int[] ends);
+        var (text, map) = Ntilde.VT.Links.RowTextExtractor.Extract(buffer, row, out int[] ends);
         Assert.StartsWith(url, text);
         Assert.Equal((0, 9), Ntilde.VT.Links.RowTextExtractor.SpanToColumns(new(0, url.Length, url), map, ends));
         var ordinary = new TerminalBuffer(20, 4);

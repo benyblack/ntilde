@@ -13,10 +13,7 @@ public partial class TerminalBuffer
     internal bool HasSizedTextOnScreen()
     {
         AssertLockHeld();
-        if (_textSizingBlocks == null) return false;
-        foreach (var row in _viewport)
-            if (row.GetTextSizingMap() is { Count: > 0 }) return true;
-        return false;
+        return _textSizingBlocks != null && _viewport.Any(static row => row.GetTextSizingMap() is { Count: > 0 });
     }
 
     public CellTextSizing? GetTextSizingAbsolute(int col, int absRow)
@@ -360,21 +357,27 @@ public partial class TerminalBuffer
     }
 
     private void EraseTextSizingBlock(TextSizingBlock block, int x, int y)
+        => EraseTextSizingBlockInPlane(block, x, y, _isAltScreen);
+
+    private void EraseTextSizingBlockInPlane(TextSizingBlock block, int x, int y, bool alternate)
     {
+        var (main, alt) = ResolveScreensNoLock();
+        var rows = alternate ? alt : main;
+        int historyCount = alternate ? 0 : _scrollback.Count;
         var blank = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
         bool changedHistory = false;
-        int limit = _isAltScreen ? Rows : _scrollback.Count + Rows;
+        int limit = historyCount + rows.Length;
         for (int row = Math.Max(0, y); row < Math.Min(limit, y + block.Height); row++)
         {
             for (int col = Math.Max(0, x); col < Math.Min(Cols, x + block.Width); col++)
             {
-                if (!_isAltScreen && row < _scrollback.Count)
+                if (row < historyCount)
                 {
                     _scrollback.ClearTextSizingCell(row, col, blank, block);
                     changedHistory = true;
                     continue;
                 }
-                EraseSizedRowCell(GetRowAbsolute(row), col, block, blank);
+                EraseSizedRowCell(rows[row - historyCount], col, block, blank);
             }
         }
         if (changedHistory) Array.Clear(_cachedRenderRowIds);

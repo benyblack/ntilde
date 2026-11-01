@@ -93,17 +93,20 @@ public sealed class TerminalViewLinkActivationTests
     }
 
     [AvaloniaTheory]
-    [InlineData(0)]
-    [InlineData(5)]
-    [InlineData(9)]
-    public void A_detected_url_in_a_sized_block_can_be_hovered_and_opened_across_its_width(int col)
+    [InlineData(0, 0)]
+    [InlineData(0, 5)]
+    [InlineData(0, 9)]
+    [InlineData(1, 0)]
+    [InlineData(1, 5)]
+    [InlineData(1, 9)]
+    public void A_detected_url_in_a_sized_block_can_be_hovered_and_opened_across_its_width(int row, int col)
     {
         const string url = "https://example.com/docs";
         var (view, env) = CreateView("\x1b]66;s=2:w=5;" + url + "\a");
-        view.UpdateHoveredLink(CellCentre(0, col));
+        view.UpdateHoveredLink(CellCentre(row, col));
         Assert.Equal(url, view.HoveredLinkUriForTest);
-        Assert.Equal([new HyperlinkRun(0, 0, 9)], view.HoveredLinkRunsForTest);
-        Assert.True(view.TryActivateLinkAt(CellCentre(0, col), LinkModifier));
+        Assert.Equal([new HyperlinkRun(row, 0, 9)], view.HoveredLinkRunsForTest);
+        Assert.True(view.TryActivateLinkAt(CellCentre(row, col), LinkModifier));
         Assert.Equal(url, Assert.Single(env.Started).FileName);
     }
 

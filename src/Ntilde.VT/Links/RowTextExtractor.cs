@@ -33,11 +33,12 @@ namespace Ntilde.VT.Links
                 {
                     var cell = buffer.GetCellAbsolute(col, absRow);
                     var sizing = buffer.GetTextSizingAbsolute(col, absRow);
-                    if (cell.IsWideContinuation || sizing is { IsAnchor: false }) continue;
+                    if (cell.IsWideContinuation || sizing is { ColumnOffset: > 0 }) continue;
                     int endCol = sizing == null ? col : col + sizing.Block.Width - 1;
                     if (endCol > col) ends ??= new List<int>(map);
 
-                    string g = buffer.GetGraphemeAbsolute(col, absRow);
+                    // Links occupy the whole rendered rectangle, including its lower rows.
+                    string g = sizing?.Block.Text ?? buffer.GetGraphemeAbsolute(col, absRow);
                     if (string.IsNullOrEmpty(g)) g = " ";
                     foreach (char ch in g)
                     {

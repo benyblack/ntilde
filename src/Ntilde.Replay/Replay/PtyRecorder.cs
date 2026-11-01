@@ -222,7 +222,7 @@ namespace Ntilde.Replay
                     snapshot = new ReplaySnapshot
                     {
                         State = state,
-                        TextSizing = state is null ? buffer.ExportReplayTextSizing() : null,
+                        TextSizing = LegacyTextSizing(buffer, state),
                         Cols = cols,
                         Rows = rowCount,
                         CursorCol = buffer.InternalCursorCol,
@@ -311,6 +311,9 @@ namespace Ntilde.Replay
             }
             finally { buffer.Lock.ExitReadLock(); }
         }
+
+        private static List<TerminalTextSizingState>? LegacyTextSizing(TerminalBuffer buffer, TerminalStateSnapshot? state)
+            => state is null ? buffer.ExportReplayTextSizing() : null;
 
         private RecordingCellMetrics? SnapshotCellMetrics(AnsiParser? parser)
         {

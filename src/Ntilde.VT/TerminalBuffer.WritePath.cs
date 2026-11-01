@@ -235,11 +235,10 @@ namespace Ntilde.VT
                     }
                 }
 
-                if (attachCol >= 0)
+                // Sized attachments must update their immutable block and every piece together.
+                if (attachCol >= 0 && _viewport[_cursorRow].GetTextSizing(attachCol) == null)
                 {
                     var row = _viewport[_cursorRow];
-                    // Sized attachments must update their immutable block and every piece together.
-                    if (row.GetTextSizing(attachCol) != null) goto NormalWrite;
                     ref var cell = ref row.Cells[attachCol];
                     if (!cell.IsWideContinuation)
                     {

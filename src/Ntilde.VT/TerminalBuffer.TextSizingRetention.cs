@@ -29,7 +29,8 @@ public partial class TerminalBuffer
             foreach (var (block, position) in anchors)
             {
                 if (HasSizingCapacity(required)) return;
-                EraseTextSizingBlock(block, position.X, position.Y);
+                // Scrollback belongs to the main plane even while the alternate screen is active.
+                EraseTextSizingBlockInPlane(block, position.X, position.Y, alternate: false);
             }
         }
     }

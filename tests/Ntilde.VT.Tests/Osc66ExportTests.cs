@@ -25,6 +25,33 @@ public sealed class Osc66ExportTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Ansi_snapshot_preserves_clipped_blocks_with_different_anchor_rows(bool withoutHistory)
+    {
+        var source = new TerminalBuffer(24, 7);
+        var parser = new AnsiParser(source);
+        parser.Process("\x1b]66;s=7:w=1;deep\a\x1b[6;8H\x1b]66;s=2:w=2;shallow\a\x1b[7;1H\n\n\n\n\n\n");
+        parser.Process("\x1b[3;1Hafter");
+        if (withoutHistory)
+        {
+            var cropped = new TerminalBuffer(24, 7);
+            cropped.ImportState(source.ExportState(0));
+            source = cropped;
+        }
+        string ansi = TerminalExporter.ExportToAnsi(source);
+        var restored = new TerminalBuffer(24, 7);
+        new AnsiParser(restored).Process(ansi);
+        var expected = source.ExportState(0);
+        var actual = restored.ExportState(0);
+        Assert.Equal(2, expected.TextSizing!.Count);
+        Assert.NotNull(actual.TextSizing);
+        Assert.Equal(expected.Main.CellsBase64, actual.Main.CellsBase64);
+        Assert.Equal(expected.TextSizing!.Select(x => (x.Text, x.X, x.Y, x.Options)),
+            actual.TextSizing!.Select(x => (x.Text, x.X, x.Y, x.Options)));
+    }
+
+    [Theory]
     [InlineData("long unbounded payload", 2)]
     [InlineData("界界界", 3)]
     public void Unnegotiated_text_client_fallback_keeps_the_exact_physical_width(string text, int width)

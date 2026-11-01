@@ -1033,9 +1033,7 @@ namespace Ntilde.VT
                 throw new InvalidOperationException("Invalid replay geometry: columns and rows must be positive.");
             byte[]? cells = string.IsNullOrEmpty(snapshot.CellsBase64) ? null : Convert.FromBase64String(snapshot.CellsBase64);
             ValidateWrittenColumns(snapshot.RowWrittenColumns, snapshot.Rows, snapshot.Cols, "legacy replay");
-            ValidateTextSizingState(ReplaySizingEnvelope(snapshot), cells, null, null);
-            if (snapshot.IsAltScreen && snapshot.TextSizing?.Any(entry => entry.Y < 0) == true)
-                throw StateTransferValidation.Reject(TextSizingValidationName, "alternate-screen anchor above row zero");
+            ValidateReplayTextSizing(snapshot, cells);
             if (snapshot.RowWrapColumns is { } widths)
             {
                 ValidateWrappedColumns(new TerminalScreenState
