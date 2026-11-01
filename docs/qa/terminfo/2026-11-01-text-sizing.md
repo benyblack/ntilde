@@ -9,7 +9,7 @@ separate domain and shared-renderer pixel evidence below.
 | Build | Source commit | Owned collection | Measured at (UTC) |
 |---|---|---|---|
 | Before | `52ed24cd4bb2eb8d69d747c6ba6ee063d372709e` | `owned-KlBHUy` | 12:31:08.706 |
-| After | `38f1a32038bd73a0c69f08c2b03a5f512431ed04` | `owned-75cRPs` | 16:20:50.102 |
+| After | `836c81429517ce5dd124d200953e742fa79c7b21` | `owned-yVenFW` | 16:41:02.515 |
 
 Both builds are fresh uninstalled sidecars outside `.app` bundles. Their DLL
 informational versions contain the full source commit. The selected assembly
@@ -23,7 +23,7 @@ source and ownership/cleanup proof. No personal clipboard was read.
 Both runs use the same pinned collector revision, suite/probe hash, adapter,
 manifest/lock, runner sources and Node v24.22.1. Raw SHA-256 values were recomputed;
 both ownership proofs record completion and cleanup. The after cleanup completed
-at 16:20:50.128 UTC.
+at 16:41:02.541 UTC.
 
 ## Observed behavior
 
@@ -59,7 +59,7 @@ also failed with double shrinking and passes with font scaling applied once.
 Eighteen shared-renderer pixel tests cover enlarged ink across rows, fractional
 font sizing/alignment, two small glyphs in one cell, compressed long text,
 visible lower fragments whose anchor is in history, cached-row refresh, italic baseline anchoring, and plain/styled underline policy.
-The full VT suite passes 1,465 tests. The earlier complete App gating rerun passed
+The full VT suite passes 1,472 tests. The earlier complete App gating rerun passed
 7,552 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
 (40), shared golden PNG (8), mux (1,123 with 20 platform skips), architecture
 (178), and platform-boot (75 with 4 font-platform skips) checks pass locally.
@@ -144,6 +144,15 @@ intersecting either horizontal edge of initial or replacement sizing footprints
 are retired whole, including text/link/underline metadata, in viewport and history.
 Eight initial boundary regressions failed before these fixes; ten boundary cases
 and the full VT suite pass afterward. All 124 focused App checks pass.
+
+The insert-mode follow-up shifts all affected rows before final footprint
+cleanup. Intact styled/linked ordinary wide glyphs and single-row sizing blocks
+move with their metadata; only glyphs split at the insertion or source-clipping
+boundary are retired. Ordinary inserted text also preserves movable sizing
+blocks. Insert-mode reservations conservatively avoid crediting blocks that may
+remain after the shift. Seven added cases cover these paths and refusal with
+byte-identical state at the metadata limit. Four initial insert cases, the
+budget case, and the ordinary-output case failed before their fixes.
 
 ## Limits
 
