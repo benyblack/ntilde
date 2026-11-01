@@ -28,6 +28,8 @@ EDGE_CASES = [
     "Ntilde.AppTests.AgentHost.SomethingTests",
     "Some.Brand.New.Namespace.Tests",
     "Ntilde.Tests.Shell.Outer+Nested",
+    "Ntilde.Tests.VtReportCliTests",  # one class claimed out of the top-level namespace
+    "Ntilde.Tests.VtReportCliTestsHelpers",  # must not ride that class prefix
 ]
 
 
@@ -121,6 +123,8 @@ def main():
 
     owner = {s: matches(filters[s], "Ntilde.Tests.CoreX.LooksLikeCoreTests.M") for s in shards}
     check(owner.get("rest"), "a namespace that merely starts with a claimed one falls to rest")
+    owner = {s: matches(filters[s], "Ntilde.Tests.VtReportCliTestsHelpers.M") for s in shards}
+    check(owner.get("rest"), "a class that merely starts with a claimed class falls to rest")
 
     for bad in ([], ["nope"], ["shell", "extra"]):
         proc = run(*bad)

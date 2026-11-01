@@ -326,7 +326,7 @@ jobs:
       matrix:
         # MUST MATCH `python scripts/ci/app-tests-shard.py --list`; the "Select the App.Tests
         # shard" step fails on a name the script does not know.
-        shard: [shell, assist-core, rest]
+        shard: [shell-assist, core, rest]
         # Same dispatch-conditional shape as `build` above, and for the same reason: macOS is
         # not worth the minutes on every PR, but it must be reachable WITHOUT cutting a
         # release. Until now `build` compiled on macOS while nothing ever ran the tests there,

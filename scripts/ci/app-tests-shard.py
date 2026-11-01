@@ -30,10 +30,22 @@ import sys
 REST = "rest"
 
 # Ordered: (name, namespace prefixes, floor). REST must be last and claims nothing itself.
+# A prefix can also name one class ("Ntilde.Tests.VtReportCliTests."), which is how a single
+# slow class that lives in a busy namespace gets moved.
+#
+# Balanced from the first sharded run (PR #694, run 41288590793), test-step seconds on
+# windows / ubuntu: Shell 56 / 59, CommandAssist ~70 / ~58, VtReportCliTests 68 / 108 (one
+# class spawning the CLI), Core ~146 / ~138, the rest of the lane ~68 / ~59 plus the
+# non-headless projects 79 / 86, which also run on REST.
+#
+# Floors are lower bounds from the declared test counts (every [Fact]/[Theory] yields at least
+# one result) until a run measures the new split; then they go to the measured counts less a
+# little headroom for OS skip differences, as the single lane's floor did.
 SHARDS = [
-    ("shell", ["Ntilde.Tests.Shell."], 500),
-    ("assist-core", ["Ntilde.Tests.CommandAssist.", "Ntilde.Tests.Core."], 1500),
-    (REST, [], 1500),
+    ("shell-assist", ["Ntilde.Tests.Shell.", "Ntilde.Tests.CommandAssist.",
+                      "Ntilde.Tests.VtReportCliTests."], 2050),
+    ("core", ["Ntilde.Tests.Core."], 1250),
+    (REST, [], 3000),
 ]
 
 
