@@ -53,12 +53,12 @@
     "cleanedUpAt": "2026-11-01T11:01:13.571Z"
   },
   "after": {
-    "sourceCommit": "bb6bea90206ca60c13497c694511790733a36744",
-    "appVersion": "0.12.0+bb6bea90206ca60c13497c694511790733a36744",
-    "measuredAt": "2026-11-01T12:06:11.268Z",
-    "localDirectory": "artifacts/terminfo/owned-ZnnYxT",
-    "rawSha256": "86581c9b7ed58d1c951007fedb6afa64994a0cb53c147ba9c5c4dd5bd0559288",
-    "assemblySha256": "c89abf987fb7912fbe3a0378e25a87d754862dae1a8ced16ba7e11f4ab9785d5",
+    "sourceCommit": "cf011384c9601a667d9245150f896cc36a12ada5",
+    "appVersion": "0.12.0+cf011384c9601a667d9245150f896cc36a12ada5",
+    "measuredAt": "2026-11-01T12:15:58.752Z",
+    "localDirectory": "artifacts/terminfo/owned-1oPQ0d",
+    "rawSha256": "d4013aec41de9278117f3737d1b8da42cc7d0271dc86d0ff849590659097e6e4",
+    "assemblySha256": "6466fc294f03c9da4bf74f9177a660c1bfc71b548931756035b57a1514e955b4",
     "counts": {
       "inconclusive": 177,
       "supported": 76,
@@ -69,7 +69,7 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "runId": "34780fced9be8c36381b9798dc2c3bff",
+    "runId": "917ab5955580825460d090de94a9df1a",
     "suiteComplete": false,
     "ungradedDiagnostics": {
       "cursor.reverse-wrap": {
@@ -78,7 +78,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "cleanedUpAt": "2026-11-01T12:06:11.321Z"
+    "cleanedUpAt": "2026-11-01T12:15:58.807Z"
   },
   "unchangedOutcomeAndReasonCount": 254,
   "changes": [
@@ -311,6 +311,34 @@
         }
       },
       "cleanedUpAt": "2026-11-01T11:54:50.935Z"
+    },
+    {
+      "sourceCommit": "bb6bea90206ca60c13497c694511790733a36744",
+      "appVersion": "0.12.0+bb6bea90206ca60c13497c694511790733a36744",
+      "measuredAt": "2026-11-01T12:06:11.268Z",
+      "localDirectory": "artifacts/terminfo/owned-ZnnYxT",
+      "rawSha256": "86581c9b7ed58d1c951007fedb6afa64994a0cb53c147ba9c5c4dd5bd0559288",
+      "assemblySha256": "c89abf987fb7912fbe3a0378e25a87d754862dae1a8ced16ba7e11f4ab9785d5",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 76,
+        "unsupported": 2
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "34780fced9be8c36381b9798dc2c3bff",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T12:06:11.321Z"
     }
   ]
 }
