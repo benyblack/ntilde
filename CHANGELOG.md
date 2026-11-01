@@ -3,7 +3,14 @@
 User-facing changes, newest release first. This file starts with 0.12.0: the notes for earlier
 releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 
-## Unreleased
+## 0.13.0
+
+0.13.0 puts the theme on every part of the app, ships the MCP server in every bundle, lets native
+SSH tabs share one connection, adds focus mode, and brings Ntilde up to date with what modern TUIs
+ask of a terminal: the full Kitty keyboard protocol, styled and colored underlines, runtime colors
+and dark/light reporting.
+
+### Themes
 
 - **Themes reach every part of the app.** Settings, the Connection Manager, the tab strip and
   sidebar, dialogs, the command palette, toasts and everything inside a pane (search, the status
@@ -29,6 +36,8 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 - Built-in themes are refreshed on update, overwriting local edits to their files, as before. Save
   a customized built-in theme under a new name to keep it.
 
+### Agents, SSH and the window
+
 - **The MCP server ships with Ntilde.** Every bundle now includes `ntilde-mcp` (`ntilde-mcp.exe`
   on Windows), a native binary next to the app that needs no .NET and updates with it. Connect
   Claude Code with `claude mcp add ntilde -- ntilde-mcp`: the Windows installer, the `.deb`, the
@@ -41,6 +50,61 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
   the connection open that long after its last tab closes. Persistent tabs, *Remote Files*, path
   completion and SFTP transfers of the profile ride the same connection, so none of them logs in
   again either; with it, persistent tabs on such a profile now run its port forwards.
+- **Focus mode.** `Ctrl+Shift+Enter` (`Cmd+Shift+Enter` on macOS), or *View: Toggle Focus Mode*,
+  hides the tab strip or sidebar, the side panels and each pane's status bar and scrollbar, leaving
+  the current tab's panes under one slim title strip. Every tab keeps running, splits and zoom stay
+  as they were, and the same key puts everything back.
+- **Keyboard-interactive servers ask for the password once.** On servers that take only
+  keyboard-interactive (PAM, some Tailscale hosts), the native backend no longer shows a password
+  window the server can never accept before the real prompt. A refused password gets one more
+  window that is never filled from the vault, and ticking *remember* there replaces the stale
+  saved password.
+- **Old plaintext SSH passwords move to the OS credential store.** A settings file from an older
+  version that still holds a profile password has it moved to the keyring on first start, checked,
+  and only then removed from the file. If the move fails the file is left untouched and Ntilde says
+  so at startup. Native SSH also wipes passwords and prompt answers from memory once used.
+- **Links show where they go.** Hovering a link shows its target and *Ctrl+click to open*
+  (*Cmd+click* on macOS), with hidden or look-alike characters made visible, and underlines the
+  whole OSC 8 link, across rows, instead of one cell.
+- **Search finds text across soft wraps**, highlighting each row of a wrapped match, and finds
+  emoji and combining characters that have scrolled into scrollback.
+
+### Terminal compatibility
+
+- **The full Kitty keyboard protocol.** Programs can now ask for key repeat and release events,
+  alternate keys, every key (including modifiers and keypad) and the text a key produces, on top of
+  the disambiguation Ntilde already supported.
+- **Styled and colored underlines.** Curly, dotted, dashed and double underlines (`SGR 4:1`–`4:5`,
+  `SGR 21`) and underline colors (`SGR 58`/`59`), as Neovim and language servers use for
+  diagnostics. They survive persistent sessions and recordings, and ANSI exports keep them.
+- **Runtime colors.** Programs can change the palette and the foreground, background and cursor
+  colors (OSC 4, 10–12, 17, 19, and their resets), and save and restore them with OSC 30001/30101.
+- **Dark and light reporting.** Programs can ask whether the background is dark or light
+  (`CSI ? 996 n`) and be told when it changes (mode 2031).
+- **SIXEL scrolling.** Wide SIXEL images no longer cause extra wraps or overwrite text; DECSDM
+  (mode 80) is supported, and images come back when a persistent session is reattached.
+- **XTVERSION** (`CSI > q`) answers `Ntilde <version>`; **DECSTR** (`CSI ! p`) soft-resets the
+  terminal; mode 1048 saves and restores the cursor; and a program's blinking or steady cursor
+  is honored whatever the *Cursor blink* setting.
+- **fish 4** commands are no longer marked twice, which had doubled long-command notifications,
+  Fix mode runs and agents' `CommandFinished` events.
+
+### Privacy and fixes
+
+- **Recordings no longer contain what you type**, including passwords typed without echo. Program
+  output is recorded as before, and older recordings still play their input.
+- **Command Assist history hides credentials** passed as token or API-key flags and environment
+  assignments. History saved before this version is not rewritten.
+- A closed pane frees its glyph atlases at once; scrolling and heavy output redraw with less work;
+  native SSH idles without polling.
+- A `cmd.exe` profile's own `/k` or `/c` command runs again, and a fresh Windows install starts in
+  PowerShell (7, else Windows PowerShell) instead of `cmd.exe`, the shell Ntilde already used
+  whenever none was named.
+- An agent's SSH or persistent-remote tab fails instead of raising a sign-in dialog, and an agent
+  spawn with no profile named always picks a local one and checks the SSH allowlist.
+- Legacy SCP transfers keep remote paths with spaces and special characters literal.
+
+The other changes in 0.13.0 are listed in its GitHub release notes.
 - **An agent's SSH session no longer opens a dialog over your shell.** When an agent opens a
   native SSH session and the server asks for something only you can give (a host key you have not
   trusted, a password Ntilde has none saved for, a key passphrase, a one-time code), the session ends
