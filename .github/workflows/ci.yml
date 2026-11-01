@@ -79,17 +79,20 @@ jobs:
 
   # Single build job per OS: Rust native + .NET in one step.
   # Eliminates the artifact round-trip that the old build_native → build_dotnet split required.
-  build:
-    name: Build (${{ matrix.os }})
+  # The CI scripts' own self-tests: plain Python against stubs and fixtures, needing neither the
+  # SDK nor the build. They used to run as the first steps of `build`, which put ~40 s of them on
+  # the Windows critical path (Build windows -> Unit Tests windows) for no reason but placement.
+  # Here they run beside it on the same OS matrix, so every script is still exercised on every
+  # shell it runs under, and their verdict still gates the PR: the `unit_tests` roll-up below
+  # needs this job, so a failure here reads "Unit Tests (<os>)" red as it always did.
+  script_self_tests:
+    name: Script self-tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        # MUST STAY IDENTICAL to build_and_unit_tests' matrix below, which explains why
-        # each platform is in which trigger. It is not stylistic: that job downloads
-        # `dotnet-build-${{ matrix.os }}` from this one, so a platform present there and
-        # absent here fails at artifact download rather than anywhere informative.
+        # MUST STAY IDENTICAL to build's matrix, so each script is tested on each OS it runs on.
         os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || github.event_name == 'schedule' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || '["windows-latest","ubuntu-latest"]') }}
 
     steps:
@@ -145,6 +148,32 @@ jobs:
           py=python3
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/native_libs_present_tests.py
+
+      # The build job deletes other platforms' native assets from the test outputs before upload,
+      # so deleting too much would fail a test job on a missing native library far from the cause:
+      # scripts/ci/trim-test-outputs.py, tested here.
+      - name: Self-test the test-output trim
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/trim_test_outputs_tests.py
+
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # MUST STAY IDENTICAL to build_and_unit_tests' matrix below, which explains why
+        # each platform is in which trigger. It is not stylistic: that job downloads
+        # `dotnet-build-${{ matrix.os }}` from this one, so a platform present there and
+        # absent here fails at artifact download rather than anywhere informative.
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || github.event_name == 'schedule' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || '["windows-latest","ubuntu-latest"]') }}
+
+    steps:
+      - uses: actions/checkout@v4
 
       # ── Rust native ────────────────────────────────────────────────────────────
       # Cache the compiled binaries of BOTH crates (rusty_pty and rusty_ssh), keyed on
@@ -285,6 +314,20 @@ jobs:
         env:
           SKIP_RUST_NATIVE_BUILD: ${{ steps.native-libs.outputs.skip }}
         run: dotnet build -c ${{ env.CONFIGURATION }} --no-restore
+
+      # Before the upload, drop what no test job on this OS can load: other platforms' runtimes/
+      # folders and the native .pdb files the Windows Skia/HarfBuzz packages ship beside their
+      # DLLs (84 + 23 MB per architecture). Every consumer of this artifact runs on this same OS
+      # and CPU, and the host only probes the RID folders on its own fallback chain. The output
+      # carried ~590 MB of such assets per folder that references Skia, which made this artifact
+      # ~774 MB and its upload ~70 s of the Windows critical path, plus the download in every
+      # consumer. scripts/ci/trim-test-outputs.py says exactly what it keeps.
+      - name: Trim the test outputs to this OS's native assets
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/ci/trim-test-outputs.py "$RUNNER_OS" "$RUNNER_ARCH" tests
 
       # Upload only the test output directories. src/*/bin/ is 100% duplicated inside
       # tests/Ntilde.App.Tests/bin/ (MSBuild copies all referenced DLLs + executables),
@@ -671,7 +714,7 @@ jobs:
   # failure here, not as the pass a skipped required check would otherwise report.
   unit_tests:
     name: Unit Tests (${{ matrix.os }})
-    needs: [build_and_unit_tests]
+    needs: [build_and_unit_tests, script_self_tests]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -684,9 +727,11 @@ jobs:
         shell: bash
         env:
           result: ${{ needs.build_and_unit_tests.result }}
+          scripts: ${{ needs.script_self_tests.result }}
         run: |
-          echo "Unit Tests shards: $result"
+          echo "Unit Tests shards: $result; script self-tests: $scripts"
           [ "$result" = success ] || { echo "::error::A Unit Tests shard did not succeed ($result); see the 'Unit Tests (<os>, <shard>)' jobs."; exit 1; }
+          [ "$scripts" = success ] || { echo "::error::The CI script self-tests did not succeed ($scripts); see the 'Script self-tests (<os>)' jobs."; exit 1; }
 
   # Native SSH end-to-end against a real sshd in a container.
   #
