@@ -228,6 +228,10 @@ A focused module that owns the record/replay file format and the snapshot/byte-s
 
 `PtyRecorder`, `ReplayWriter`, `ReplayReader`, `ReplayRunner` live here. Goldens and regression suites consume `ReplayRunner`.
 
+Cancellation interrupts reads and realtime inter-event waits in v1 and v2. A cancelled run
+returns its partial result quietly, skips the delayed event and subsequent time publication,
+and closes its reader before completing. Virtual playback and seek timing are unchanged.
+
 Manual recording holds at most 16 MiB of serialized pending events, including the
 in-flight write and per-record bookkeeping. An oversized event, saturation, open/write
 failure or flush deadline stops acceptance and exposes a typed `RecordingFailure`;

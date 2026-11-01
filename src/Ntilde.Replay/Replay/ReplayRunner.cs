@@ -42,10 +42,16 @@ namespace Ntilde.Replay
     public class ReplayRunner
     {
         private readonly string _filePath;
+        private readonly TimeProvider _timeProvider;
 
-        public ReplayRunner(string filePath)
+        public ReplayRunner(string filePath) : this(filePath, TimeProvider.System)
+        {
+        }
+
+        internal ReplayRunner(string filePath, TimeProvider timeProvider)
         {
             _filePath = filePath;
+            _timeProvider = timeProvider;
         }
 
         public async Task RunAsync(
@@ -118,7 +124,7 @@ namespace Ntilde.Replay
                 line = await ReadLineOrEndAsync(reader, ct);
                 lineNumber++;
             }
-            if (line == null) return result;
+            if (line == null || ct.IsCancellationRequested) return result;
 
             ReplayHeader? header = ReadHeader(line);
             bool isV2 = header is not null;
@@ -126,6 +132,7 @@ namespace Ntilde.Replay
             {
                 _ = RecordingCellMetrics.FromOptional(header.SixelCellWidthPx, header.SixelCellHeightPx);
                 if ((options?.ApplyHeaderResize ?? true) && onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
+                if (ct.IsCancellationRequested) return result;
                 if (onHeaderCallback is not null) await onHeaderCallback(header);
             }
             else if (startAfterLine > 0)
@@ -171,8 +178,8 @@ namespace Ntilde.Replay
                             if (IsPastStopTime(line, options?.StopAtTimeMs)) break;
                             ProcessedLine processedLine = isV2
                                 ? await ProcessV2Line(line, onDataCallback, onResizeCallback, onMarkerCallback, onInputCallback, onSnapshotCallback, onSixelCellSizeCallback,
-                                    playbackMode, lastOffset, minTimeMs, fastForwardToMs, playbackSpeed)
-                                : await ProcessV1Line(line, onDataCallback, playbackMode, lastOffset, minTimeMs, fastForwardToMs, playbackSpeed);
+                                    playbackMode, lastOffset, minTimeMs, fastForwardToMs, playbackSpeed, ct)
+                                : await ProcessV1Line(line, onDataCallback, playbackMode, lastOffset, minTimeMs, fastForwardToMs, playbackSpeed, ct);
 
                             lastOffset = processedLine.LastOffsetMs;
                             if (processedLine.EventProcessed)
@@ -180,10 +187,15 @@ namespace Ntilde.Replay
                                 result.EventsProcessed++;
                                 result.LastGoodOffset = lastOffset;
                             }
-                            if (onTimeUpdate != null)
+                            if (onTimeUpdate != null && !ct.IsCancellationRequested)
                             {
                                 await onTimeUpdate(lastOffset);
                             }
+                        }
+                        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                        {
+                            // A cancelled wait ends quietly, just like a cancelled read.
+                            break;
                         }
                         catch (Exception ex) when (isLastLine && IsTailTruncationException(ex))
                         {
@@ -264,7 +276,7 @@ namespace Ntilde.Replay
             public bool EventProcessed { get; }
         }
 
-        private static async Task<ProcessedLine> ProcessV2Line(
+        private async Task<ProcessedLine> ProcessV2Line(
             string line,
             Func<byte[], Task> onDataCallback,
             Func<int, int, Task>? onResizeCallback,
@@ -276,7 +288,8 @@ namespace Ntilde.Replay
             long lastOffset,
             long minTimeMs,
             long fastForwardToMs,
-            double playbackSpeed)
+            double playbackSpeed,
+            CancellationToken ct)
         {
             var ev = JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayEvent)
                      ?? throw new JsonException("Replay event line deserialized to null.");
@@ -284,8 +297,9 @@ namespace Ntilde.Replay
             // SKIP logic: If event is strictly before minTimeMs, ignore it completely (unless it's a resize? No, caller handles state).
             if (ev.TimeOffsetMs < minTimeMs) return new ProcessedLine(lastOffset, eventProcessed: false);
 
-            long updatedOffset = await AdvanceClockAsync(ev.TimeOffsetMs, playbackMode, lastOffset, fastForwardToMs, playbackSpeed);
+            long updatedOffset = await AdvanceClockAsync(ev.TimeOffsetMs, playbackMode, lastOffset, fastForwardToMs, playbackSpeed, ct);
 
+            ct.ThrowIfCancellationRequested();
             switch (ev.Type)
             {
                 case "data":
@@ -321,6 +335,10 @@ namespace Ntilde.Replay
                             {
                                 string input = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(ev.Data));
                                 await onInputCallback(input);
+                            }
+                            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                            {
+                                throw;
                             }
                             catch
                             {
@@ -409,14 +427,15 @@ namespace Ntilde.Replay
                 $"cell layout mismatch: expected cells_sizeof={expectedSizeOf}, cells_layout_id={expectedLayoutId}; actual cells_sizeof={actualSizeLabel}, cells_layout_id={actualLayoutLabel}.");
         }
 
-        private static async Task<ProcessedLine> ProcessV1Line(
+        private async Task<ProcessedLine> ProcessV1Line(
             string line,
             Func<byte[], Task> onDataCallback,
             ReplayPlaybackMode playbackMode,
             long lastOffset,
             long minTimeMs,
             long fastForwardToMs,
-            double playbackSpeed)
+            double playbackSpeed,
+            CancellationToken ct)
         {
             using JsonDocument doc = JsonDocument.Parse(line);
             JsonElement root = doc.RootElement;
@@ -442,19 +461,22 @@ namespace Ntilde.Replay
 
             string dataBase64 = dataElement.GetString() ?? throw new JsonException("Legacy replay data field is null.");
 
-            long updatedOffset = await AdvanceClockAsync(timeMs, playbackMode, lastOffset, fastForwardToMs, playbackSpeed);
+            long updatedOffset = await AdvanceClockAsync(timeMs, playbackMode, lastOffset, fastForwardToMs, playbackSpeed, ct);
+            ct.ThrowIfCancellationRequested();
             byte[] data = Convert.FromBase64String(dataBase64);
             await onDataCallback(data);
             return new ProcessedLine(updatedOffset, eventProcessed: true);
         }
 
-        private static async Task<long> AdvanceClockAsync(
+        private async Task<long> AdvanceClockAsync(
             long eventOffsetMs,
             ReplayPlaybackMode playbackMode,
             long lastOffsetMs,
             long fastForwardToMs,
-            double playbackSpeed)
+            double playbackSpeed,
+            CancellationToken ct)
         {
+            ct.ThrowIfCancellationRequested();
             if (playbackMode == ReplayPlaybackMode.Virtual)
             {
                 return eventOffsetMs;
@@ -477,7 +499,7 @@ namespace Ntilde.Replay
                 int outputDelay = (int)(delay / playbackSpeed);
                 if (outputDelay > 0)
                 {
-                    await Task.Delay(outputDelay);
+                    await Task.Delay(TimeSpan.FromMilliseconds(outputDelay), _timeProvider, ct);
                 }
             }
 

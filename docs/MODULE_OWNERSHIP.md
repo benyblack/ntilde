@@ -138,6 +138,9 @@ invariant changes.
 - Explicit recording start/stop await readiness/flush outside parser boundaries;
   best-effort lifetime cleanup must never be treated as a successful save.
 - Frozen flight exports bypass the live queue and propagate write/close failures.
+- Replay cancellation interrupts both file reads and realtime inter-event waits, returning the
+  partial result quietly without dispatching the delayed event or a later time update. Readers
+  close before completion; virtual playback and seek timing retain their existing semantics.
 - Snapshot format is forward-compatible within v2
 - Restart positions can resume after a physical snapshot record, preserving output with equal timestamps.
   Header validation remains active; App suppresses header geometry/metrics when a checkpoint
