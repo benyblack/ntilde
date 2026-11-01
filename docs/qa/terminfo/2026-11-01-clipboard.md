@@ -8,10 +8,10 @@ clipboard transfer permissions or native application interoperability.
 | Build | Source | Local evidence | Raw SHA-256 |
 |---|---|---|---|
 | Before | `04019dbacf1c02aa7ccd85c39fcd2670ec2905eb` | `artifacts/terminfo/owned-WTxDq5` | `5291400dfd56c2b67ef7011cbd275cba9a9dd261fb3664b0fed2e9fd1b159144` |
-| After | `98a80a9a8d06280081854d5d26185fbb81374810` | `artifacts/terminfo/owned-EA6IpC` | `52d75356645aada057be68d76332bd8d4974b23b9211d05c7fba018e911686ab` |
+| After | `44f4aea9dcb0bed4dc5051693849cc61d7af6011` | `artifacts/terminfo/owned-6KQmVL` | `c4b8d406dc8c98b2fe20aa8450323a063e1ac3ff20ba83ead4e9b4cb9f0c9550` |
 
 The before probe ran at 2026-11-01T16:56:20.405Z and cleaned up at 2026-11-01T16:56:20.438Z.
-The after probe ran at 2026-11-01T18:08:55.545Z and cleaned up at 2026-11-01T18:08:55.578Z.
+The after probe ran at 2026-11-01T18:37:27.779Z and cleaned up at 2026-11-01T18:37:27.808Z.
 The [derived comparison](2026-11-01-clipboard-comparison.json) records the original
 query/reply traces, DLL hashes, source/input pins and ownership completion.
 The executable informational-version strings matched the stated source commits.
@@ -29,7 +29,8 @@ defines DEC mode 5522 and its precedence over plain/bracketed paste.
 - Direct desktop and SSH panes opt in. Mux/headless hosts report unrecognized.
 - Each read owns one native data-transfer snapshot across all requested MIME types.
 - Binary writes assemble privately and commit once. Invalid packets abort the
-  whole transaction; later write packets are ignored until a new start.
+  whole transaction, including unrecognized packet types; later write packets are
+  ignored until a new start.
 - Base64 requires the standard alphabet, padding and canonical bits. A quartet
   can span packets; individually padded read chunks are at most 4096 bytes.
 - Limits are 64 MiB decoded write data, 128 MIME types, 8192 characters per
@@ -46,7 +47,10 @@ defines DEC mode 5522 and its precedence over plain/bracketed paste.
   name must accompany the token. No plain/bracketed paste is sent for that event.
 - Primary selection returns `ENOSYS`; it never falls back to the system clipboard.
 - DATA and terminal replies wait for bounded device-queue capacity off the UI
-  thread, with a five-second admission deadline per packet. A missing DATA packet
+  thread, with a five-second admission deadline per packet. Immediate errors retry
+  through one background pump with at most 64 queued error packets per TTY;
+  excess requests during error floods can be refused rather than growing memory.
+  A missing DATA packet
   cannot be followed by a success DONE. The request slot stays reserved until the
   terminal packet is admitted or delivery fails; a fast peer can request its next
   read immediately after DONE. The existing keyboard-input reserve remains intact.
@@ -84,16 +88,17 @@ primary-selection denial, live write settings, stale requests, global exclusion,
 prompt cancellation, paste-token scope/use/expiry, both size budgets, session-exit
 mode reset, response emission outside the clipboard/UI thread, snapshot consistency,
 empty padded chunks, primary fragments, slow queues exceeding 768 frames, admission
-timeout/cancellation and immediate next requests after DONE.
+timeout/cancellation, immediate next requests after DONE, unknown-packet aborts,
+queued error retries and reset during admission-lock acquisition.
 `AvaloniaKittyClipboardTests` round-trips test-owned binary/text MIME formats
 through Avalonia DataTransfer values; macOS MIME/UTI conversion has a separate
 deterministic regression. `PaneParserWiringTests` checks direct/mux wiring.
 
-Local verification includes 1,489 VT tests, 70 focused clipboard/wiring tests,
+Local verification includes 1,489 VT tests, 80 focused clipboard/wiring tests,
 6 conformance/report tests, platform boot
 75 passed / 4 skipped, architecture 178, mux 1,123 passed / 20 skipped, and MCP
-223. The full app main lane passed 7,633 cases and skipped 56 before the
-review refinements; the later clipboard/wiring regressions also pass. Latest-head
+223. The full app main lane passed 7,648 cases and skipped 56 before the
+last queued-error refinements; the later clipboard/wiring regressions also pass. Latest-head
 CI supplies the full platform gate.
 
 The owned collector has clipboard writes disabled and no clipboard fixture.
