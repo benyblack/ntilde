@@ -818,6 +818,7 @@ requires public test classes.
 
 **Test authority**
 - `tests/Ntilde.App.Tests/VtReportCliTests.cs`
+- `tests/Ntilde.App.Tests/VtReportCliBuildTests.cs` — what a real `dotnet build` of the App and the CLI produces, including the `BuildCliShim` sidecar (`Category=SdkBuild`, run by CI's build job against its own build)
 - Console-output rules for CLI vs GUI assemblies: `tests/Ntilde.Architecture.Tests/DiagnosticSinkTests.cs`
 
 ---

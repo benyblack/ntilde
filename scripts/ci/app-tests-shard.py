@@ -38,20 +38,30 @@ REST = "rest"
 # A prefix can also name one class ("Ntilde.Tests.VtReportCliTests."), which is how a single
 # slow class that lives in a busy namespace gets moved.
 #
-# Balanced from measured runs on PR #694 (41288590793 and 41289702045), test-step seconds on
-# windows / ubuntu: Core ~146 / ~130, VtReportCliTests 68-101 / ~108 (9 tests that drive the
-# CLI, the single heaviest class - whichever shard holds it carries it), CommandAssist ~69 / ~58,
-# Shell ~51 / ~59, the rest of the lane ~79 / ~59 plus the non-headless projects ~93 / ~80,
-# which also run on REST. Pairing VtReportCliTests with Shell left that shard the slowest
-# (235 s on windows); with CommandAssist the three shards land near 183 / 197 / 172 s.
+# Rebalanced from run 41296868089 (windows test-step seconds; ubuntu is lower
+# throughout): Core ~124 s of test time; CommandAssist ~62; Shell (almost all Shell.Mux) ~51;
+# REST's App.Tests share ~79 s of step, Controls the largest part of it at ~27, plus the
+# non-headless projects ~100 and the PlatformBoot lane ~10, which also run on REST. Core alone
+# is one shard. The in-process VtReportCliTests stay with CommandAssist; their three tests
+# that `dotnet build` the App and the CLI (~76 s) left the shards altogether for the build job
+# (VtReportCliBuildTests, Category=SdkBuild), so Shell and Controls join them. Measured on the
+# first run of this split (41298327211), windows test steps: assist-shell 149 s, core 132,
+# rest 142 (89 non-headless + 45 + 8 PlatformBoot), from 145 / 198 / 189 before.
 #
-# Floors are the executed counts those runs measured (identical on windows and ubuntu: the
-# count includes skipped tests), less about 2% for churn: assist-cli 1,446, core-shell 2,793,
-# rest 3,088 - together 7,327, main's single-lane count at the same commit.
+# Floors are the executed counts that run measured - identical on windows and ubuntu, since the
+# count includes skipped tests - less about 2% for churn: assist-shell 2,942, core 1,610,
+# rest 2,817; with the 3 SdkBuild tests, 7,372, the lane's count before the split. Each shard's
+# timing report (scripts/ci/app-tests-timing.py) prints the count per namespace, which is what
+# moving a namespace moves between floors.
 SHARDS = [
-    ("assist-cli", ["Ntilde.Tests.CommandAssist.", "Ntilde.Tests.VtReportCliTests."], 1415),
-    ("core-shell", ["Ntilde.Tests.Core.", "Ntilde.Tests.Shell."], 2735),
-    (REST, [], 3025),
+    ("assist-shell", [
+        "Ntilde.Tests.CommandAssist.",
+        "Ntilde.Tests.VtReportCliTests.",
+        "Ntilde.Tests.Shell.",
+        "Ntilde.Tests.Controls.",
+    ], 2880),
+    ("core", ["Ntilde.Tests.Core."], 1575),
+    (REST, [], 2760),
 ]
 
 
@@ -60,10 +70,12 @@ SHARDS = [
 # filter selects any class under one of those prefixes. scripts/tests/app_tests_shard_tests.py
 # checks the lists against the source, so a new class with the same need cannot be missed.
 NEEDS = {
-    # These tests run `dotnet build` of src/Ntilde.App or src/Ntilde.Cli (with --no-restore),
-    # so their shard needs `dotnet restore` and the NuGet package cache - about 35 s of setup on
-    # windows that no other shard needs, because the others only run the compiled assemblies.
-    "restore": ["Ntilde.Tests.VtReportCliTests."],
+    # Tests that run `dotnet build` on the source tree need `dotnet restore` and the NuGet
+    # package cache, about 35 s of setup on windows. None is left in the shards: the only ones,
+    # VtReportCliBuildTests, carry Category=SdkBuild and run in the build job, which has a
+    # restored and built tree already. A new such test either takes that category or is listed
+    # here, and its shard restores; the self-test fails until it does one or the other.
+    "restore": [],
     # These spawn real bash, zsh and fish; ubuntu runners have only bash, so the shard installs
     # the other two (without them the zsh and fish tests skip rather than fail).
     "shells": ["Ntilde.Tests.CommandAssist.ShellIntegration.Integration."],
