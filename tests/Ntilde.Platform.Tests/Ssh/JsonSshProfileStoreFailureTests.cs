@@ -26,7 +26,8 @@ public sealed class JsonSshProfileStoreFailureTests
         Assert.Same(failure, error.InnerException);
         Assert.Contains(fixture.Path, error.Message, StringComparison.Ordinal);
         Assert.Equal(fixture.OriginalBytes, File.ReadAllBytes(fixture.Path));
-        Assert.Single(Directory.GetFiles(fixture.Root));
+        Assert.Equal(new[] { fixture.Path, fixture.Path + ".lock" }.Order(StringComparer.Ordinal),
+            Directory.GetFiles(fixture.Root).Order(StringComparer.Ordinal));
 
         failRead = false;
         Mutate(store, fixture, delete);
@@ -53,7 +54,8 @@ public sealed class JsonSshProfileStoreFailureTests
         }
         Assert.Equal(fixture.OriginalBytes, File.ReadAllBytes(fixture.Path));
         Assert.Equal(fixture.First.Id, Assert.Single(store.GetProfiles()).Id);
-        Assert.Single(Directory.GetFiles(fixture.Root));
+        Assert.Equal(new[] { fixture.Path, fixture.Path + ".lock" }.Order(StringComparer.Ordinal),
+            Directory.GetFiles(fixture.Root).Order(StringComparer.Ordinal));
     }
 
     [Theory]
@@ -72,7 +74,8 @@ public sealed class JsonSshProfileStoreFailureTests
         var error = Assert.Throws<IOException>(() => Mutate(store, fixture, delete));
         Assert.Same(failure, error.InnerException);
         Assert.Equal(corrupt, File.ReadAllText(fixture.Path));
-        Assert.Single(Directory.GetFiles(fixture.Root));
+        Assert.Equal(new[] { fixture.Path, fixture.Path + ".lock" }.Order(StringComparer.Ordinal),
+            Directory.GetFiles(fixture.Root).Order(StringComparer.Ordinal));
     }
 
     [Theory]

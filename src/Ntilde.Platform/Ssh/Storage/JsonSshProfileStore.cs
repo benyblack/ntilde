@@ -13,9 +13,11 @@ public sealed class JsonSshProfileStore : ISshProfileStore
     private readonly Dictionary<int, ISshProfileStoreMigration> _migrations;
     private readonly Func<string, string> _readAllText;
     private readonly Action<string, string> _moveCorruptStore;
+    private readonly Action? _leaseContended;
+    private readonly TimeSpan _leaseTimeout;
 
     public JsonSshProfileStore(string? storeFilePath = null, IEnumerable<ISshProfileStoreMigration>? migrations = null)
-        : this(storeFilePath, migrations, File.ReadAllText, File.Move)
+        : this(storeFilePath, migrations, ReadSnapshot, File.Move)
     {
     }
 
@@ -23,8 +25,12 @@ public sealed class JsonSshProfileStore : ISshProfileStore
         string? storeFilePath,
         IEnumerable<ISshProfileStoreMigration>? migrations,
         Func<string, string> readAllText,
-        Action<string, string> moveCorruptStore)
+        Action<string, string> moveCorruptStore,
+        Action? leaseContended = null,
+        TimeSpan? leaseTimeout = null)
     {
+        _leaseContended = leaseContended;
+        _leaseTimeout = leaseTimeout ?? TimeSpan.FromSeconds(5);
         _readAllText = readAllText ?? throw new ArgumentNullException(nameof(readAllText));
         _moveCorruptStore = moveCorruptStore ?? throw new ArgumentNullException(nameof(moveCorruptStore));
         _storeFilePath = string.IsNullOrWhiteSpace(storeFilePath)
@@ -76,7 +82,8 @@ public sealed class JsonSshProfileStore : ISshProfileStore
 
         lock (_syncRoot)
         {
-            var document = LoadDocumentLocked(out bool mayOverwrite, forMutation: true);
+            using var lease = AcquireStoreLease();
+            var document = LoadDocumentLocked(out bool mayOverwrite, forMutation: true, leaseHeld: true);
             var normalized = NormalizeProfile(profile);
             int existingIndex = document.Profiles.FindIndex(existing => existing.Id == normalized.Id);
 
@@ -99,7 +106,8 @@ public sealed class JsonSshProfileStore : ISshProfileStore
     {
         lock (_syncRoot)
         {
-            var document = LoadDocumentLocked(out bool mayOverwrite, forMutation: true);
+            using var lease = AcquireStoreLease();
+            var document = LoadDocumentLocked(out bool mayOverwrite, forMutation: true, leaseHeld: true);
             bool removed = document.Profiles.RemoveAll(profile => profile.Id == profileId) > 0;
 
             if (removed)
@@ -111,7 +119,7 @@ public sealed class JsonSshProfileStore : ISshProfileStore
         }
     }
 
-    private SshStoreDocument LoadDocumentLocked(out bool mayOverwrite, bool forMutation = false)
+    private SshStoreDocument LoadDocumentLocked(out bool mayOverwrite, bool forMutation = false, bool leaseHeld = false)
     {
         // An absent or successfully quarantined store authorizes creation only. If a file
         // appears before persistence, it must be read before it may be replaced.
@@ -148,21 +156,51 @@ public sealed class JsonSshProfileStore : ISshProfileStore
         }
         catch (JsonException ex)
         {
-            try
-            {
-                QuarantineCorruptStoreLocked();
-            }
-            catch (Exception quarantineError)
-            {
-                return HandleLoadFailure(quarantineError, forMutation);
-            }
-            TerminalLogger.Log($"[JsonSshProfileStore] Parsed JSON is corrupt. Store quarantined. Error: {ex.Message}");
-            return CreateNewDocument();
+            return RecoverCorruptDocumentLocked(ex, out mayOverwrite, forMutation, leaseHeld);
         }
         catch (Exception ex)
         {
             return HandleLoadFailure(ex, forMutation);
         }
+    }
+
+    private static string ReadSnapshot(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    private SshProfileStoreLease AcquireStoreLease()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_storeFilePath)!);
+            return SshProfileStoreLease.Acquire(_storeFilePath + ".lock", _leaseTimeout, _leaseContended);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            throw new IOException($"Cannot coordinate SSH profiles at '{_storeFilePath}'. Existing contents are preserved. {error.Message}", error);
+        }
+    }
+
+    private SshStoreDocument RecoverCorruptDocumentLocked(JsonException error, out bool mayOverwrite, bool forMutation, bool leaseHeld)
+    {
+        mayOverwrite = false;
+        if (!leaseHeld)
+        {
+            try
+            {
+                using var lease = AcquireStoreLease();
+                // A writer may have replaced the corrupt snapshot before recovery acquired the lease.
+                return LoadDocumentLocked(out mayOverwrite, forMutation, leaseHeld: true);
+            }
+            catch (Exception recoveryError) { return HandleLoadFailure(recoveryError, forMutation); }
+        }
+        try { QuarantineCorruptStoreLocked(); }
+        catch (Exception recoveryError) { return HandleLoadFailure(recoveryError, forMutation); }
+        TerminalLogger.Log($"[JsonSshProfileStore] Parsed JSON is corrupt. Store quarantined. Error: {error.Message}");
+        return CreateNewDocument();
     }
 
     private SshStoreDocument HandleLoadFailure(Exception error, bool forMutation)

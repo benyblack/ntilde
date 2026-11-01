@@ -230,6 +230,13 @@ invariant changes.
   request buffers are disposed after submission/call, including on failure. Connection-option credentials are
   borrowed for the synchronous operation; its caller owns their disposal. The boundary never serializes a
   credential through a managed JSON string. A consumer that retains a credential clones it.
+- **SSH profile mutations are whole-file transactions across cooperating processes.** Save and
+  delete hold a stable sibling `.lock` lease before loading and through atomic replacement. Valid
+  queries read complete snapshots without a lease; corruption recovery takes the lease and reloads
+  before quarantining, so a stale corrupt read cannot move a newer writer's file. The synchronous
+  API fails with `IOException` after five seconds of contention, before reading for mutation.
+  Permanent coordination/read/quarantine failures preserve existing profile bytes. The lock file
+  is never deleted or moved, and creation-only recovery cannot overwrite a file that appeared later.
 - SSH transports must satisfy `IRemoteTerminalTransport` so all SSH session implementations are interchangeable
 - **An exec channel's stdout is a clean byte stream.** The OpenSSH exec always runs `-T` with
   `ClearAllForwardings=yes` and `ControlMaster=no`, and drops `-t`/`-tt`/`-T` from the profile's

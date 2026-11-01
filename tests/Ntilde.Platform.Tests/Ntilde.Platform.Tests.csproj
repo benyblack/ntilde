@@ -25,6 +25,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Ntilde.Platform.TestHost\Ntilde.Platform.TestHost.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <Target Name="CopyProfileTestHost" AfterTargets="Build">
+    <ItemGroup>
+      <_ProfileTestHost Include="$(MSBuildThisFileDirectory)..\Ntilde.Platform.TestHost\bin\$(Configuration)\$(TargetFramework)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ProfileTestHost)"
+          DestinationFiles="@(_ProfileTestHost->'$(OutDir)ProfileWorker\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <ItemGroup>
     <!-- #317: the process starts on a scratch app-data root, never the developer's real one. -->
     <Compile Include="..\Ntilde.App.Tests\TestAppDataDefault.cs" Link="Shared\TestAppDataDefault.cs" />
   </ItemGroup>
