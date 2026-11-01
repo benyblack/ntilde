@@ -332,6 +332,7 @@ namespace Ntilde.VT
             {
                 var row = _viewport[i];
                 row.IsWrapped = false;
+                row.WrittenColumns = 0;
                 for (int c = 0; c < Cols; c++)
                 {
                     row.Cells[c] = TerminalCell.Default;

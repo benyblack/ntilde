@@ -335,6 +335,7 @@ namespace Ntilde.VT
                             if (i == outputStartLogicalIdx) { newOutputStartPhysRow = flowedRows; newOutputStartPhysCol = 0; }
                             if (isHistory)
                             {
+                                historyRow.WrittenColumns = 0;
                                 for (int c = 0; c < newCols; c++) historyRow.Cells[c] = def;
                                 EmitRow(historyRow, isHistory: true);
                             }

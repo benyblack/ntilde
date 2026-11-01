@@ -188,6 +188,26 @@ public sealed class LogicalLineSearchStateTests
     }
 
     [Fact]
+    public void ReenteringClearedAlternateScreenResetsAuthoredExtent()
+    {
+        var buffer = new TerminalBuffer(4, 2);
+        var parser = new AnsiParser(buffer, false);
+        parser.Process("\u001b[?1049habcd\u001b[?1049l\u001b[?1049habc" + Emoji + "!");
+        Assert.Single(buffer.FindMatches("c" + Emoji, false, true));
+        Assert.Empty(buffer.FindMatches("c " + Emoji, false, true));
+    }
+
+    [Fact]
+    public void BlankHistoryRowReflowResetsReusedAuthoredExtent()
+    {
+        var buffer = new TerminalBuffer(8, 2);
+        new AnsiParser(buffer, false).Process("abcdefgh\r\n\r\nend");
+        buffer.Resize(4, 2);
+        var state = buffer.ExportState(100);
+        Assert.Equal(0, state.Scrollback.RowWrittenColumns![^1]);
+    }
+
+    [Fact]
     public void AlternateScreenSearchDoesNotBorrowMainHistory()
     {
         var buffer = new TerminalBuffer(5, 2);
