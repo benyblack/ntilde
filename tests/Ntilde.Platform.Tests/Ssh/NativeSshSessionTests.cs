@@ -20,7 +20,10 @@ public sealed class NativeSshSessionTests
     [InlineData("\x1b[97:65;6u")]
     [InlineData("\x1b[1089::99;5u")]
     [InlineData("\x1b[97::113;1:3u")]
-    public void Alternate_keyboard_frames_reach_the_native_write_boundary_unchanged(string frame)
+    [InlineData("\x1b[97;1;97u")]
+    [InlineData("\x1b[0;1;101:769:128512u")]
+    [InlineData("\x1b[97;1:2;97u")]
+    public void Keyboard_protocol_frames_reach_the_native_write_boundary_unchanged(string frame)
     {
         var interop = new FakeNativeSshInterop();
         using var session = new NativeSshSession(CreateProfile(), interop: interop);

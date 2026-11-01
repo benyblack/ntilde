@@ -53,6 +53,26 @@ public class PaneMarklessCaptureTests
         Assert.Equal(CommandCaptureSource.Heuristic, entry.Source);
     }
 
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Associated_text_callbacks_preserve_echoed_markless_history_capture(bool knownKey)
+    {
+        using var fixture = await Fixture.MarklessAsync();
+        TerminalView view = fixture.Pane.TermView;
+        view.SetBuffer(fixture.Pane.Buffer!);
+        view.SetSession(fixture.Pane.Session!);
+        fixture.Pane.Parser!.Process("\x1b[>24u");
+        const string command = "echo associated";
+        if (knownKey) Assert.False(view.HandleKeyDownCore(Key.E, KeyModifiers.None, PhysicalKey.E, "e"));
+        view.RaiseEvent(new TextInputEventArgs { Text = command, RoutedEvent = InputElement.TextInputEvent });
+        fixture.Echo(command);
+        Assert.True(view.HandleKeyDownCore(Key.Enter, KeyModifiers.None));
+        CommandHistoryEntry entry = await fixture.WaitForSingleEntryAsync();
+        Assert.Equal(command, entry.CommandText);
+        Assert.Equal(CommandCaptureSource.Heuristic, entry.Source);
+    }
+
     /// <summary>
     /// Every key the accumulator cannot model turns it off. These are the edits that made V1 wrong:
     /// an arrow moves the insertion point so later characters do not land where the buffer thinks;

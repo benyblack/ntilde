@@ -3,14 +3,14 @@ namespace Ntilde.VT.Tests;
 public sealed class KittyAllKeyProtocolTests
 {
     [Fact]
-    public void All_key_reporting_is_negotiated_without_associated_text()
+    public void All_key_and_associated_text_flags_are_negotiated()
     {
         var buffer = new TerminalBuffer(40, 8);
         var parser = new AnsiParser(buffer);
         var replies = new List<string>();
         parser.OnResponse = replies.Add;
         parser.Process("\u001b[>31u\u001b[?u");
-        Assert.Equal("\u001b[?15u", Assert.Single(replies));
+        Assert.Equal("\u001b[?31u", Assert.Single(replies));
     }
 
     [Fact]

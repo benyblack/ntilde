@@ -34,7 +34,9 @@ public sealed class HeadlessKittyPresentationTests
     [InlineData(7, 7)]
     [InlineData(8, 8)]
     [InlineData(15, 15)]
-    [InlineData(31, 15)]
+    [InlineData(16, 16)]
+    [InlineData(24, 24)]
+    [InlineData(31, 31)]
     public async Task Spawn_capabilities_answer_the_first_query_before_any_attach(int? flags, int expected)
     {
         using var host = new MuxTestHost();

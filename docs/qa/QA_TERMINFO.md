@@ -213,3 +213,8 @@ and [derived comparison](terminfo/2026-11-01-all-keys-comparison.json).
 It measured 75 supported / 3 unsupported / 177 inconclusive observations.
 The changed query establishes flag-8 negotiation; routed-event and GUI/mux tests
 separately cover emitted frames and old-peer text fallback. Flag 16 remains masked.
+
+The [2026-11-01 associated-text follow-up](terminfo/2026-11-01-associated-text.md)
+measured 76 supported / 2 unsupported / 177 inconclusive observations. Flag 16
+negotiation is separate from routed actual-text, Unicode, GUI/mux and SSH input
+boundary tests; the report records their scope and remaining limits.
