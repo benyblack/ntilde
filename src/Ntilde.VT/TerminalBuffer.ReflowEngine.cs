@@ -8,8 +8,9 @@ namespace Ntilde.VT
 {
     public partial class TerminalBuffer
     {
-        private static (int Row, int Column) MapReflowImageOffset(List<int> rowStarts, int offset, int columns)
+        private static (int Row, int Column) MapReflowImageOffset(List<int>? rowStarts, int offset, int columns)
         {
+            ArgumentNullException.ThrowIfNull(rowStarts);
             int row = rowStarts.BinarySearch(offset);
             if (row < 0) row = Math.Max(0, ~row - 1);
             int column = offset - rowStarts[row];
