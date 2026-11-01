@@ -686,6 +686,7 @@ requires public test classes.
   the `TerminalPane` wiring, and `Shell/CommandAssistServices.cs` as the composition root.
   Everything else moved to `Ntilde.CommandAssist` in #114.
 - Startup orchestration (seven `Startup*.cs` files in `Shell/`)
+- `AgentOutputRegionTracker`: coalesced streaming/presence read deadlines, one background read at a time, dirty follow-ups, and cancellation on generation/lifetime changes. Completion reads synchronously without waiting for background work; output/presence deliveries reject stale generations. Timer metadata locks never span buffer reads or UI dispatch.
 - Workspace and session lifecycle
 - SSH UI: connection manager, transfer center, remote files sidebar, vault, sftp service, ssh-askpass
 - Credential lifetime composition: the session registry clones passwords under its lock, callers dispose operation

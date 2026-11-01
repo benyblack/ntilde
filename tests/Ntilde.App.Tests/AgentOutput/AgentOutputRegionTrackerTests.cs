@@ -18,7 +18,7 @@ namespace Ntilde.Tests.AgentOutput;
 /// reader contract implies (alt screen, dead generation, disabled, reset). Driven through the
 /// real parser and buffer, like the VT-side reader tests.
 /// </remarks>
-public sealed class AgentOutputRegionTrackerTests
+public sealed partial class AgentOutputRegionTrackerTests
 {
     private const string PromptStart = "\x1b]133;A\x07";
     private const string PromptEnd = "\x1b]133;B\x07";
@@ -30,17 +30,18 @@ public sealed class AgentOutputRegionTrackerTests
         private ShellIntegrationMark? _commandLineMark;
         private ShellIntegrationMark? _outputStart;
 
-        public Harness(bool enabled = true, bool deferDispatch = false)
+        public Harness(bool enabled = true, bool deferDispatch = false, TimeProvider? timeProvider = null)
         {
             Buffer = new TerminalBuffer(40, 8);
             Parser = new AnsiParser(Buffer);
             Parser.OnCommandStarted = mark => _commandLineMark = mark;
 
             Tracker = new AgentOutputRegionTracker(
-                () => Buffer,
+                () => { BeforeRead?.Invoke(); return Buffer; },
                 () => _outputStart,
                 dispatch: action =>
                 {
+                    BeforeDispatch?.Invoke();
                     // Deferred mode stands in for the UI-thread hop: the update is produced but
                     // not delivered, so tests can transition the tracker in between and deliver
                     // afterwards - the interleaving production hits when a background read
@@ -70,9 +71,12 @@ public sealed class AgentOutputRegionTrackerTests
                     {
                         PresenceChanges.Add(present);
                     }
-                });
+                }, timeProvider ?? TimeProvider.System);
             Tracker.SetEnabled(enabled);
         }
+
+        public Action? BeforeRead { get; set; }
+        public Action? BeforeDispatch { get; set; }
 
         public TerminalBuffer Buffer { get; }
 
