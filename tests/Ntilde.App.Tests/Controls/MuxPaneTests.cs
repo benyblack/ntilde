@@ -141,6 +141,46 @@ public sealed class MuxPaneTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void HistorySettingsChangedDuringAttachReachTheDaemonAfterAttachment()
+    {
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        var ct = TestContext.Current.CancellationToken;
+        var factory = new AfterFirstCreateFactory(_factory, () =>
+        {
+            Guid id = Assert.Single(_mux.Server.GetSessionIds());
+            int calls = 0;
+            _mux.Fake(id).OnResizeCalled = (_, _) =>
+            {
+                if (Interlocked.Increment(ref calls) != 1) return;
+                entered.Set();
+                if (!release.Wait(TimeSpan.FromSeconds(5), ct)) throw new TimeoutException("Resize was not released.");
+            };
+            _mux.Mux(id).PostResize(81, 24, null);
+            Assert.True(entered.Wait(TimeSpan.FromSeconds(5), ct));
+        });
+        _pane = new TerminalPane();
+        PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        _pane.SessionFactory = factory;
+        _pane.CreateAndWireParser();
+        int attached = 0;
+        _pane.PersistentSessionAttached += _ => attached++;
+        MuxClientSession session;
+        try
+        {
+            _pane.InitializeSessionCore("scripted", string.Empty, profile: null, cols: 80, rows: 24);
+            session = Assert.IsType<MuxClientSession>(_pane.Session);
+            Assert.False(session.IsAttached);
+            _pane.ApplySettings(new TerminalSettings { MaxHistory = 60_000, CommandAssistShellIntegrationEnabled = false });
+        }
+        finally { release.Set(); }
+        PumpUntil(() => attached == 1, "the pane completed attachment");
+        Settle(session.Id);
+        Assert.Equal(60_000, _mux.Mux(session.Id).HistoryRetentionRows);
+        Assert.Equal(60_000, _pane.Buffer!.MaxHistory);
+    }
+
+    [AvaloniaFact]
     public void ReattachRestoresTheBoundedTailWhileTheDaemonRetainsTheConfiguredHistory()
     {
         var first = StartHostedPane(settings: new TerminalSettings { MaxHistory = 100_000 });

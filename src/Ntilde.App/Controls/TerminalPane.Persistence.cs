@@ -631,6 +631,8 @@ namespace Ntilde.Controls
                 this.Dispatcher.Post(() =>
                 {
                     if (!IsCurrentMux(mux)) return;
+                    // Settings may have changed while the attach request was in flight.
+                    mux.UpdatePresentation(BuildMuxPresentation());
                     _muxReattachAfterDrop = false; // the drop (if any) is over: this session is shown again
                     if (remote) RegisterRemoteMuxSession(mux);
                     if (previousLost)
