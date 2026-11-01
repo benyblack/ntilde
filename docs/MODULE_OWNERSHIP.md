@@ -626,6 +626,10 @@ requires public test classes.
   cancellation, without a data-dropping deadline. If coordination metadata is not writable,
   query methods may read uncached snapshots; this mode never migrates, retires, repairs,
   compacts or writes history and never supplies the cache for a later mutation.
+- **Snippet mutations preserve the last complete file on failure.** Only a missing file means an
+  empty store; cancellation, read errors and invalid JSON propagate to callers. Writes serialize,
+  flush and close a unique sibling temporary file before atomically replacing `snippets.json`.
+  The final cancellation check precedes replacement, and failed temporary files are cleaned up.
 - All types in `Ntilde.CommandAssist.*` (`Leaf_assembly_types_reside_in_its_own_namespace`);
   the App may only use that prefix for Views
   (`App_may_only_use_the_CommandAssist_prefix_for_Views`).

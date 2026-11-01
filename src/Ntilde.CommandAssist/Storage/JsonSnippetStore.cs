@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,10 +17,20 @@ public sealed class JsonSnippetStore : ISnippetStore
 {
     private readonly string _filePath;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly Func<string, Stream> _openRead;
+    private readonly Func<string, Stream> _createWrite;
 
-    public JsonSnippetStore(string filePath)
+    public JsonSnippetStore(string filePath) : this(filePath,
+        path => new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete),
+        path => new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+    {
+    }
+
+    internal JsonSnippetStore(string filePath, Func<string, Stream> openRead, Func<string, Stream> createWrite)
     {
         _filePath = filePath;
+        _openRead = openRead;
+        _createWrite = createWrite;
     }
 
     public async Task<IReadOnlyList<CommandSnippet>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -81,36 +92,53 @@ public sealed class JsonSnippetStore : ISnippetStore
 
     private async Task<List<CommandSnippet>> LoadSnippetsUnsafeAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_filePath))
-        {
-            return new List<CommandSnippet>();
-        }
-
+        cancellationToken.ThrowIfCancellationRequested();
+        Stream stream;
         try
         {
-            await using FileStream stream = File.OpenRead(_filePath);
-            List<CommandSnippet>? snippets = await JsonSerializer.DeserializeAsync(
-                stream,
-                CommandAssistJsonContext.Default.ListCommandSnippet,
-                cancellationToken);
-
-            return snippets ?? new List<CommandSnippet>();
+            stream = _openRead(_filePath);
         }
-        catch
+        catch (FileNotFoundException)
         {
             return new List<CommandSnippet>();
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return new List<CommandSnippet>();
+        }
+
+        await using (stream)
+        {
+            return await JsonSerializer.DeserializeAsync(stream, CommandAssistJsonContext.Default.ListCommandSnippet, cancellationToken)
+                ?? throw new JsonException("The snippet file must contain a JSON array.");
         }
     }
 
     private async Task SaveSnippetsUnsafeAsync(List<CommandSnippet> snippets, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         string? directory = Path.GetDirectoryName(_filePath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
             Directory.CreateDirectory(directory);
         }
 
-        await using FileStream stream = File.Create(_filePath);
-        await JsonSerializer.SerializeAsync(stream, snippets, CommandAssistJsonContext.Default.ListCommandSnippet, cancellationToken);
+        string tempPath = _filePath + $".{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await using (Stream stream = _createWrite(tempPath))
+            {
+                await JsonSerializer.SerializeAsync(stream, snippets, CommandAssistJsonContext.Default.ListCommandSnippet, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+            }
+            // Commit only after serialization and disposal succeed. No cancellation is reported after commit.
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(tempPath, _filePath, overwrite: true);
+        }
+        finally
+        {
+            try { File.Delete(tempPath); }
+            catch { /* Cleanup must not hide the original failure or cancellation. */ }
+        }
     }
 }
