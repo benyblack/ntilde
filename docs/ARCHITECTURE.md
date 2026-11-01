@@ -885,7 +885,8 @@ and each descendant open without following links, and scratch creation, cleanup 
 stay on the same opened parent directory. Existing directory symlinks/junctions are refused rather
 than redirecting writes outside the selected destination, including an ancestor swapped during a
 file copy. `cap-std`/`cap-fs-ext` supply the native cross-platform handle confinement; queued directory
-paths do not retain one OS handle per remote entry.
+paths do not retain one OS handle per remote entry. On Windows, no-delete directory handles
+pin the paths used for mutations, and native helpers retain the OS extended path prefix for UNC shares.
 
 - Generated OpenSSH configuration is a content snapshot: Platform publishes complete UTF-8 bytes
   by atomic rename to `ssh_config.generated.<SHA256>`, then returns that path with the profile alias.

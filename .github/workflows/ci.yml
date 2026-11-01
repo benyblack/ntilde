@@ -72,8 +72,24 @@ jobs:
           workspaces: |
             src/Ntilde.App/native
             src/Ntilde.App/native/rusty_ssh
+      - name: Prepare local SMB share for SFTP UNC regression
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Start-Service LanmanServer -ErrorAction Stop
+          $name = "ntilde-sftp-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $root = Join-Path $env:RUNNER_TEMP 'ntilde-sftp-unc'
+          New-Item -ItemType Directory -Path $root -Force | Out-Null
+          $account = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+          New-SmbShare -Name $name -Path $root -FullAccess $account -ErrorAction Stop | Out-Null
+          "NTILDE_TEST_SMB_ROOT=\\localhost\$name" >> $env:GITHUB_ENV
+          "NTILDE_TEST_SMB_SHARE_NAME=$name" >> $env:GITHUB_ENV
       - name: rusty_ssh FFI tests (registry, abuse suite, alloc balance)
         run: cargo test --manifest-path src/Ntilde.App/native/rusty_ssh/Cargo.toml
+      - name: Remove SFTP regression SMB share
+        if: always() && matrix.os == 'windows-latest' && env.NTILDE_TEST_SMB_SHARE_NAME != ''
+        shell: pwsh
+        run: Remove-SmbShare -Name $env:NTILDE_TEST_SMB_SHARE_NAME -Force -Confirm:$false -ErrorAction Stop
       - name: rusty_pty FFI tests
         run: cargo test --manifest-path src/Ntilde.App/native/Cargo.toml
 

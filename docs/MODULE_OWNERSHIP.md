@@ -806,7 +806,8 @@ requires public test classes.
   The remote basename and descendants are single components; existing symlinks/junctions are
   refused with no-follow directory opens. Scratch creation, cleanup and atomic replacement use
   one opened parent handle, so ancestor replacement cannot redirect a pending file. The native
-  `cap-std`/`cap-fs-ext` helpers own OS-specific confinement; VT and the managed ABI are unchanged.
+  `cap-std`/`cap-fs-ext` helpers own OS-specific confinement; VT and the managed ABI are unchanged. Windows mutations preserve the extended handle path,
+  including UNC, while no-delete directory handles keep that path pinned.
 - Credential lifetime composition: the session registry clones passwords under its lock, callers dispose operation
   copies, and remote mux hosts wipe cached credentials on replacement, refusal and teardown. Keyring adapters
   read/write buffers; string adapters remain for UI and OpenSSH askpass. `LegacyProfilePasswordMigration`

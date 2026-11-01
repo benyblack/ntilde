@@ -336,3 +336,92 @@ async fn ancestor_swap_after_scratch_creation_cannot_redirect_commit() {
 fn remote_basename_rejects_a_backslash_component_before_local_join() {
     assert!(remote_basename(r"/remote/root\child").is_err());
 }
+
+#[tokio::test]
+#[cfg(windows)]
+async fn opened_windows_directories_prevent_ancestor_swap_during_copy() {
+    let tree = Tree::new();
+    let local = tree.path("download");
+    std::fs::create_dir_all(local.join("link")).unwrap();
+    let root = local.clone();
+    let original = local.join("link");
+    let moved = local.join("moved");
+    let renamed_root = tree.path("renamed-root");
+    let server = ReviewServer {
+        on_read: Some(Box::new(move || {
+            assert!(
+                std::fs::rename(&original, &moved).is_err(),
+                "opened parent must deny rename"
+            );
+            assert!(
+                std::fs::rename(&root, &renamed_root).is_err(),
+                "opened root must deny rename"
+            );
+        })),
+        ..Default::default()
+    };
+    download(&local, server, None).await.unwrap();
+    assert_eq!(
+        std::fs::read(local.join("link/victim.txt")).unwrap(),
+        b"remote"
+    );
+}
+
+#[tokio::test]
+#[cfg(windows)]
+async fn unc_directory_download_creates_replaces_and_cleans_up() {
+    let Some(share) = std::env::var_os("NTILDE_TEST_SMB_ROOT") else {
+        eprintln!("UNC regression needs NTILDE_TEST_SMB_ROOT (set by Windows Rust CI)");
+        return;
+    };
+    let tree = Tree(PathBuf::from(share).join(format!(
+        "download-{}-{}",
+        std::process::id(),
+        PARTIAL_DOWNLOAD_COUNTER.fetch_add(1, Ordering::Relaxed)
+    )));
+    std::fs::create_dir_all(&tree.0).unwrap();
+    let local = tree.path("download");
+    download(
+        &local,
+        ReviewServer {
+            nested: true,
+            ..Default::default()
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        std::fs::read(local.join("link/deep/victim.txt")).unwrap(),
+        b"remote"
+    );
+    // Repeat to exercise atomic replacement through the UNC parent handle.
+    download(
+        &local,
+        ReviewServer {
+            nested: true,
+            ..Default::default()
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    let marker = tree.path("cancel");
+    let callback_marker = marker.clone();
+    let server = ReviewServer {
+        nested: true,
+        on_open: Some(Box::new(move || {
+            std::fs::write(callback_marker, b"cancel").unwrap();
+        })),
+        ..Default::default()
+    };
+    assert!(download(&local, server, marker.to_str()).await.is_err());
+    assert_eq!(
+        std::fs::read(local.join("link/deep/victim.txt")).unwrap(),
+        b"remote"
+    );
+    assert_eq!(
+        std::fs::read_dir(local.join("link/deep")).unwrap().count(),
+        1
+    );
+}

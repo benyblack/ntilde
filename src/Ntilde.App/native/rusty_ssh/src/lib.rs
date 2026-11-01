@@ -4370,7 +4370,7 @@ async fn create_partial_download_file_at(
 async fn discard_partial_download_at(path: &Path, directory: Option<&cap_std::fs::Dir>) {
     if let Some(directory) = directory {
         if let Some(name) = path.file_name() {
-            let _ = directory.remove_file(name);
+            let _ = download_destination::remove_file(directory, name);
         }
     } else {
         discard_partial_download(path).await;
@@ -4383,9 +4383,9 @@ async fn commit_partial_download(
     directory: Option<&cap_std::fs::Dir>,
 ) -> std::io::Result<()> {
     if let Some(directory) = directory {
-        directory.rename(
-            download_destination::basename(partial)?,
+        download_destination::rename_file(
             directory,
+            download_destination::basename(partial)?,
             download_destination::basename(destination)?,
         )
     } else {
