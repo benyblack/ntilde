@@ -160,7 +160,7 @@ public sealed class OpenSshExecCommandLineSshTests
             Assert.EndsWith("id key", resolved.GetValueOrDefault("identityfile") ?? string.Empty, StringComparison.Ordinal);
             Assert.Equal("7", resolved.GetValueOrDefault("serveraliveinterval"));   // the extra argument wins, as over a config file
             Assert.Equal("false", resolved.GetValueOrDefault("controlmaster"));
-            Assert.EndsWith($"cm_{snapshot.Id:N}", resolved.GetValueOrDefault("controlpath") ?? string.Empty, StringComparison.Ordinal);
+            Assert.Matches("cm_[0-9a-f]{32}$", resolved.GetValueOrDefault("controlpath") ?? string.Empty);
 
             // Codex D2, final round: a retargeted attempt puts -o ControlPath=none ahead of the plan (RemoteMuxHostFactory.
             // PlanArgumentsFor). ssh keeps the first value, so the block's ControlPath goes, and with it any master: ssh -G
@@ -248,6 +248,32 @@ public sealed class OpenSshExecCommandLineSshTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Fact]
+    public void Edited_and_pinned_profiles_resolve_to_separate_automatic_masters()
+    {
+        string? ssh = FindSsh();
+        Assert.SkipUnless(ssh is not null, "No OpenSSH client (ssh) on this machine.");
+        string root = Path.Combine(Path.GetTempPath(), "ntilde_master_identity_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new JsonSshProfileStore(Path.Combine(root, "profiles.json"));
+            var snapshot = new SshProfile { Host = "old.example", User = "alice", MuxOptions = new() { Enabled = true } };
+            store.SaveProfile(snapshot);
+            var planner = new SshLaunchPlanner(store, new OpenSshConfigCompiler(root), () => ssh!);
+            Dictionary<string, string> first = ResolvedConfiguration(ssh!, planner.Plan(snapshot.Id).Arguments.ToArray());
+            store.SaveProfile(new SshProfile { Id = snapshot.Id, Host = "new.example", User = "bob", Port = 2200, MuxOptions = new() { Enabled = true } });
+            Dictionary<string, string> edited = ResolvedConfiguration(ssh!, planner.Plan(snapshot.Id).Arguments.ToArray());
+            Dictionary<string, string> pinned = ResolvedConfiguration(ssh!, planner.PlanFor(snapshot, selfContained: true).Arguments.ToArray());
+            Assert.Equal("new.example", edited["hostname"]);
+            Assert.Equal("bob", edited["user"]);
+            Assert.Equal("2200", edited["port"]);
+            Assert.NotEqual(first["controlpath"], edited["controlpath"]);
+            Assert.Equal(first["controlpath"], pinned["controlpath"]);
+            Assert.Equal("old.example", pinned["hostname"]);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
 
     private static string? FindSsh()

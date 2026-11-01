@@ -121,7 +121,7 @@ public sealed class OpenSshConfigCompilerTests
             Assert.Contains("ControlMaster auto", text);
             Assert.Contains("ControlPersist 90", text);
             Assert.Contains("ControlPath ", text);
-            Assert.Contains("cm_f8f19f37da644de38c4c7f9227eaaf20", text);
+            Assert.Matches("cm_[0-9a-f]{32}", text);
         }
         finally
         {

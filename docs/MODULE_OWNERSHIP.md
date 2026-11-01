@@ -251,6 +251,11 @@ invariant changes.
   Different snapshots never share a path across compiler instances/processes, so a returned launch
   plan keeps its destination until SSH reads it. Legacy config/hash pairs are ignored. Compilation
   retains prior snapshots rather than deleting files a pending launch may still need.
+- Automatic OpenSSH ControlPath identities hash the profile id, effective generated connection
+  options and raw extra SSH arguments with length-prefixed fields. Destination, auth, jump or
+  forwarding edits cannot join the previous master. The 32-hex basename retains the prior Unix
+  socket path length; display/shell/persistence policy edits retain sharing. Explicit custom
+  ControlPath values remain the user's sharing contract, including `%id%` expansion.
 - OpenSSH colon-delimited endpoints use `OpenSshEndpoint.FormatHost`: IPv6 literals are bracketed
   in ProxyJump, local/remote/dynamic forwarding and legacy SCP operands, including the App legacy
   jump chain. Already bracketed input stays bracketed once; direct SSH targets and `HostName`
