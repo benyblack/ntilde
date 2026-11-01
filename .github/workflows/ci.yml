@@ -137,29 +137,56 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/mux_sha256_check_tests.py
 
+      # The check below decides whether dotnet build may skip compiling the Rust libraries, so a
+      # wrong "skip" would ship a build with none: scripts/ci/native-libs-present.sh, tested here.
+      - name: Self-test the native library presence check
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/native_libs_present_tests.py
+
       # ── Rust native ────────────────────────────────────────────────────────────
-      # Cache the compiled binary keyed on all Rust source files.
-      # On a hit the toolchain install, Swatinem, and cargo build are all skipped.
+      # Cache the compiled binaries of BOTH crates (rusty_pty and rusty_ssh), keyed on
+      # both crates' sources. On a hit the toolchain install, Swatinem and cargo build are
+      # all skipped, and the "Check the native libraries" step below then lets dotnet build
+      # skip MSBuild's own cargo calls too.
+      #
       # Cache both target/release and target_linux/release: the Linux csproj
       # consumes the .so from target_linux/release, so it must be part of the
-      # cache or a cache hit leaves the staged path empty and the Build step
-      # below is skipped. The v2 bump invalidated older caches that contained only
-      # target/release; the v3 bump on the key itself is explained there.
+      # cache or a cache hit leaves the staged path empty.
+      #
+      # rusty_ssh is cached as its library file only, not its target/release: that directory
+      # is about 330 MB of dependency objects nothing downstream reads, because MSBuild no
+      # longer runs cargo on a hit. A pattern that matches nothing on this OS (the .dll on
+      # Linux, say) is ignored by actions/cache.
+      #
+      # v4: rusty_ssh joined the payload and the key. Before, it was in neither, so every
+      # dotnet build compiled ring/russh/russh-sftp from scratch inside MSBuild - about 2
+      # minutes of the Windows build on every PR, with no cargo cache behind it.
+      #
+      # v5: restore and save are separate steps, and the save runs right after the cargo
+      # builds. With a single actions/cache step the save ran in its post step, AFTER
+      # Swatinem's post step - post steps run in reverse order - and Swatinem's target-dir
+      # cleanup deletes the workspace crates' own outputs from target/release first. v4
+      # payloads therefore held no librusty_ssh.so / rusty_ssh.dll (and on Windows and macOS
+      # no rusty_pty either; only Linux's staged target_linux copy survived), which is also
+      # why every v3 hit rebuilt rusty_pty: its binary and stamp were gone.
+      #
+      # Paths and key MUST STAY IDENTICAL to those in `coverage`, `aot_gate` and nightly.yml,
+      # which restore this payload rather than compile the crates again: actions/cache only
+      # matches an entry saved with the same path list.
       - name: Cache native binary
         id: native-bin-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             src/Ntilde.App/native/target/release
             src/Ntilde.App/native/target_linux/release
-          # Key version bumped to v3 for the rusty_pty input-hash stamp
-          # (native/target/release/.nova-rust-inputs.sha256). A v2 payload predates the stamp,
-          # so restoring one would make BuildRustNative call the binary stale and invoke cargo -
-          # on a runner where this same cache hit skipped the toolchain install and the cargo
-          # registry cache. Worse, actions/cache does not re-save on an exact key hit, so the
-          # stamp would never enter the v2 payload and every hit would pay that rebuild forever.
-          # Bumping forces one miss, whose save captures the stamp.
-          key: native-bin-v3-${{ matrix.os }}-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock') }}
+            src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
+          key: native-bin-v5-${{ matrix.os }}-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
 
       - name: Install Rust
         if: steps.native-bin-cache.outputs.cache-hit != 'true'
@@ -172,11 +199,16 @@ jobs:
         if: steps.native-bin-cache.outputs.cache-hit != 'true'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
-          workspaces: src/Ntilde.App/native
+          workspaces: |
+            src/Ntilde.App/native
+            src/Ntilde.App/native/rusty_ssh
 
       - name: Build Rust (Windows)
         if: runner.os == 'Windows' && steps.native-bin-cache.outputs.cache-hit != 'true'
-        run: cd src/Ntilde.App/native && cargo build --release --locked
+        # One && chain, not a multi-line script: this runs under pwsh, which does not stop at a
+        # failing native command, so a broken rusty_pty build would otherwise be reported by
+        # whatever rusty_ssh's exit code happened to be.
+        run: cd src/Ntilde.App/native && cargo build --release --locked && cd rusty_ssh && cargo build --release --locked
 
       # Linux build also stages the .so into target_linux/release so the
       # cached payload is complete and no separate stage step is needed.
@@ -191,10 +223,37 @@ jobs:
           cargo build --release --locked
           mkdir -p target_linux/release
           cp target/release/librusty_pty.so target_linux/release/
+          cd rusty_ssh && cargo build --release --locked
 
       - name: Build Rust (macOS)
         if: runner.os == 'macOS' && steps.native-bin-cache.outputs.cache-hit != 'true'
-        run: cd src/Ntilde.App/native && cargo build --release --locked
+        run: |
+          cd src/Ntilde.App/native
+          cargo build --release --locked
+          cd rusty_ssh && cargo build --release --locked
+
+      # Whether dotnet build may skip MSBuild's BuildRustNative / BuildRustSshNative. Checks
+      # the files, not the cache-hit flag: an incomplete payload falls back to MSBuild building
+      # them, as before, rather than to a build with no native library beside it.
+      - name: Check the native libraries
+        id: native-libs
+        shell: bash
+        run: bash scripts/ci/native-libs-present.sh "$RUNNER_OS" >> "$GITHUB_OUTPUT"
+
+      # Saved here, in the main phase, not in a post step: see v5 on "Cache native binary".
+      # Only on a miss, and only when the check found every library, so an incomplete payload
+      # is never written under a key that a later hit would then trust.
+      - name: Save native binaries
+        if: steps.native-bin-cache.outputs.cache-hit != 'true' && steps.native-libs.outputs.skip == '1'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            src/Ntilde.App/native/target/release
+            src/Ntilde.App/native/target_linux/release
+            src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
+          key: ${{ steps.native-bin-cache.outputs.cache-primary-key }}
 
       # ── .NET ───────────────────────────────────────────────────────────────────
       - name: Cache .NET SDK
@@ -223,6 +282,8 @@ jobs:
         run: dotnet restore
 
       - name: Build
+        env:
+          SKIP_RUST_NATIVE_BUILD: ${{ steps.native-libs.outputs.skip }}
         run: dotnet build -c ${{ env.CONFIGURATION }} --no-restore
 
       # Upload only the test output directories. src/*/bin/ is 100% duplicated inside
@@ -791,6 +852,28 @@ jobs:
           cache: true
           cache-dependency-path: "**/*.csproj"
 
+      # This job compiles from source (see below), so without this it also compiled both Rust
+      # crates inside dotnet build - about 1.5 minutes every run.
+      # Restore-only: `build` owns saving this payload. Paths and key MUST STAY IDENTICAL to
+      # the build job's "Cache native binary" step with matrix.os = ubuntu-latest (actions/cache
+      # matches on both). On a miss - a PR that changes the Rust sources, before `build` has
+      # saved - nothing is skipped and MSBuild compiles the crates itself, as it always did.
+      - name: Restore native binaries
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            src/Ntilde.App/native/target/release
+            src/Ntilde.App/native/target_linux/release
+            src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
+          key: native-bin-v5-ubuntu-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
+
+      - name: Check the native libraries
+        id: native-libs
+        shell: bash
+        run: bash scripts/ci/native-libs-present.sh "$RUNNER_OS" >> "$GITHUB_OUTPUT"
+
       # Builds from source rather than consuming the build job's artifact. Two reasons:
       #
       # 1. `dotnet test <dir> --no-build --settings <file>` silently does nothing on this
@@ -806,6 +889,8 @@ jobs:
         run: dotnet restore
 
       - name: Build
+        env:
+          SKIP_RUST_NATIVE_BUILD: ${{ steps.native-libs.outputs.skip }}
         run: dotnet build -c ${{ env.CONFIGURATION }} --no-restore
 
       # continue-on-error: this job measures, it does not judge correctness - the Unit Tests
@@ -1682,6 +1767,27 @@ jobs:
           cache: true
           cache-dependency-path: "**/*.csproj"
 
+      # The AOT publish compiled both Rust crates inside MSBuild (about 2.5 minutes) every run.
+      # Restore-only: `build` owns saving this payload. Paths and key MUST STAY IDENTICAL to
+      # the build job's "Cache native binary" step with matrix.os = windows-latest (actions/cache
+      # matches on both). On a miss - a PR that changes the Rust sources, before `build` has
+      # saved - nothing is skipped and MSBuild compiles the crates itself, as it always did.
+      - name: Restore native binaries
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            src/Ntilde.App/native/target/release
+            src/Ntilde.App/native/target_linux/release
+            src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
+          key: native-bin-v5-windows-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
+
+      - name: Check the native libraries
+        id: native-libs
+        shell: bash
+        run: bash scripts/ci/native-libs-present.sh "$RUNNER_OS" >> "$GITHUB_OUTPUT"
+
       - name: Restore
         run: dotnet restore
 
@@ -1694,6 +1800,8 @@ jobs:
       # one line per assembly. With the warning promotion in Ntilde.App.csproj, a
       # reintroduced reflection binding fails HERE, naming the .axaml line.
       - name: Publish AOT (win-x64)
+        env:
+          SKIP_RUST_NATIVE_BUILD: ${{ steps.native-libs.outputs.skip }}
         run: dotnet publish src/Ntilde.App/Ntilde.App.csproj -c ${{ env.CONFIGURATION }} -r win-x64 --self-contained true -p:PublishAot=true -p:SkipCliShim=true -p:TrimmerSingleWarn=false -o artifacts/publish/win-x64
 
       # Start the bundle CI has never started. NTILDE_APPDATA_ROOT points the app at an
