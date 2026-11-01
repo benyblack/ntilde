@@ -118,7 +118,7 @@ recording works. Stored in `Keybindings`, overrides only.
 |---|---|---|---|
 | Command assistant | `CommandAssistEnabled` | **off** | Turns Command Assist on: suggestions, history search, fixes and snippets ([Command Assist](command-assist.md)). |
 | Suggestion bubble while typing | `CommandAssistPassiveBubbleEnabled` | on | After two characters, shows the best match from your history above the prompt. Off keeps Command Assist silent until you open it with `Ctrl+Space` or `Ctrl+R`. |
-| Remember commands | `CommandAssistHistoryEnabled` | on | Records the commands you run so they can be suggested and searched. Arguments that look like secrets (`--password`, tokens, bearer headers) are redacted. **Clear history** deletes what is recorded. |
+| Remember commands | `CommandAssistHistoryEnabled` | on | Records the commands you run so they can be suggested and searched. Values matching the [supported secret patterns](../command-assist/CommandAssist.md#supported-secret-patterns) are redacted; this heuristic cannot detect every secret. **Clear history** deletes what is recorded. |
 | Shell integration | `CommandAssistShellIntegrationEnabled` | on | Lets Ntilde set up the local shells it starts so it knows where the prompt is, what you typed and how each command exited ([Shell integration](shell-integration.md)). Applies to shells started afterwards. |
 | Saved snippets | — | — | The commands you pinned with `Ctrl+Shift+S`, and any you add here. Kept in `command-assist/snippets.json`. |
 | Remote shell integration | — | — | Pick *bash / zsh*, *fish* or *PowerShell*, then **Copy installer** (or **Copy plain snippet**) and paste it into a shell on the remote host ([Shell integration](shell-integration.md#on-a-remote-host)). |
