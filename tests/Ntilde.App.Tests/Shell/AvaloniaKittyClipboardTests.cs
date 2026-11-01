@@ -11,13 +11,14 @@ public class AvaloniaKittyClipboardTests
     private sealed class Clipboard : IDisposable
     {
         private IAsyncDataTransfer? _stored;
-        public int Clears;
+        public int Clears, Acquisitions;
         public Task SetDataAsync(IAsyncDataTransfer? dataTransfer) { _stored?.Dispose(); _stored = dataTransfer; return Task.CompletedTask; }
         public Task ClearAsync() { Clears++; _stored?.Dispose(); _stored = null; return Task.CompletedTask; }
         public Task FlushAsync() => Task.CompletedTask;
         public Task<IAsyncDataTransfer?> TryGetInProcessDataAsync() => Task.FromResult(_stored);
         public async Task<IAsyncDataTransfer?> TryGetDataAsync()
         {
+            Acquisitions++;
             if (_stored == null) return null;
             var copy = new DataTransfer();
             var target = new DataTransferItem();
@@ -35,6 +36,15 @@ public class AvaloniaKittyClipboardTests
     }
 
     [Fact]
+    public void Encoder_output_limit_is_checked_before_the_buffer_grows()
+    {
+        using var stream = new ClipboardReadLimitStream(3);
+        stream.Write(new byte[] { 1, 2, 3 });
+        Assert.Throws<IOException>(() => stream.WriteByte(4));
+        Assert.Equal(new byte[] { 1, 2, 3 }, stream.ToArray());
+    }
+
+    [Fact]
     public async Task Binary_MIME_aliases_and_plain_text_round_trip_through_Avalonia_formats()
     {
         using var clipboard = new Clipboard();
@@ -46,17 +56,26 @@ public class AvaloniaKittyClipboardTests
             ["image/png"] = binary,
             ["application/x-ntilde-alias"] = binary
         });
-        string[] types = await adapter.GetTypesAsync();
-        Assert.Equal(3, types.Length);
+        using var snapshot = await adapter.OpenReadAsync();
+        var types = snapshot.Types;
+        Assert.Equal(3, types.Count);
         Assert.Contains("text/plain", types);
         Assert.Contains("image/png", types);
         Assert.Contains("application/x-ntilde-alias", types);
-        Assert.Equal(binary, await adapter.ReadAsync("image/png"));
-        Assert.Equal(binary, await adapter.ReadAsync("application/x-ntilde-alias"));
-        Assert.Equal("héllo", System.Text.Encoding.UTF8.GetString((await adapter.ReadAsync("text/plain"))!));
-        Assert.Equal(3, (await adapter.GetTypesAsync()).Length); // disposing read handles must not invalidate the clipboard's ownership
+        Assert.Equal(binary, await snapshot.ReadAsync("image/png"));
+        Assert.Equal(binary, await snapshot.ReadAsync("application/x-ntilde-alias"));
+        await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("image/png", maxBytes: 3));
+        await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("text/plain", maxBytes: 5));
+        Assert.Equal("héllo", System.Text.Encoding.UTF8.GetString((await snapshot.ReadAsync("text/plain"))!));
+        Assert.Equal(1, clipboard.Acquisitions);
+        Assert.Equal(3, snapshot.Types.Count);
         await adapter.WriteAsync(new Dictionary<string, byte[]>());
         Assert.Equal(1, clipboard.Clears);
-        Assert.Empty(await adapter.GetTypesAsync());
+        using var empty = await adapter.OpenReadAsync();
+        Assert.Empty(empty.Types);
+        // The read handle retains its original data even after the clipboard is replaced.
+        Assert.Equal(binary, await snapshot.ReadAsync("image/png"));
+        snapshot.Dispose();
+        Assert.Null(await snapshot.ReadAsync("image/png"));
     }
 }

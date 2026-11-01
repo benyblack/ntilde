@@ -11,6 +11,8 @@ public class KittyClipboardSessionTests
     {
         public DateTimeOffset Now = DateTimeOffset.UnixEpoch;
         public override DateTimeOffset GetUtcNow() => Now;
+        public override long TimestampFrequency => 1000;
+        public override long GetTimestamp() => Now.ToUnixTimeMilliseconds();
     }
     private sealed class FakeClipboard : IKittyClipboard
     {
@@ -18,10 +20,31 @@ public class KittyClipboardSessionTests
         public bool AllowRead;
         public int Prompts, Reads, Lists, Writes, ReadThread;
         public Exception? Failure;
+        public Action? OnRead;
+        public bool IgnoreReadBudget;
+        public int SnapshotsDisposed;
         public Func<CancellationToken, Task<bool>>? Confirmation;
         public Dictionary<string, byte[]> Values = new() { ["text/plain"] = Encoding.UTF8.GetBytes("private text"), ["image/png"] = new byte[8193] };
-        public Task<string[]> GetTypesAsync() { Lists++; return Task.FromResult(Values.Keys.ToArray()); }
-        public Task<byte[]?> ReadAsync(string mime) { ReadThread = Environment.CurrentManagedThreadId; Reads++; if (Failure != null) throw Failure; return Task.FromResult(Values.GetValueOrDefault(mime)); }
+        public Task<IKittyClipboardSnapshot> OpenReadAsync()
+        {
+            Lists++;
+            return Task.FromResult<IKittyClipboardSnapshot>(new Snapshot(this, Values.ToDictionary(p => p.Key, p => p.Value)));
+        }
+        private sealed class Snapshot(FakeClipboard owner, Dictionary<string, byte[]> values) : IKittyClipboardSnapshot
+        {
+            public IReadOnlyList<string> Types => values.Keys.ToArray();
+            public Task<byte[]?> ReadAsync(string mime, int maxBytes = KittyClipboardPacket.MaxDataBytes)
+            {
+                owner.ReadThread = Environment.CurrentManagedThreadId;
+                owner.Reads++;
+                owner.OnRead?.Invoke();
+                if (owner.Failure != null) throw owner.Failure;
+                byte[]? bytes = values.GetValueOrDefault(mime);
+                if (!owner.IgnoreReadBudget && bytes?.Length > maxBytes) throw new IOException("Read budget exceeded.");
+                return Task.FromResult(bytes);
+            }
+            public void Dispose() => owner.SnapshotsDisposed++;
+        }
         public Task WriteAsync(IReadOnlyDictionary<string, byte[]> data) { if (Failure != null) throw Failure; Writes++; Values = data.ToDictionary(p => p.Key, p => p.Value); return Task.CompletedTask; }
         public Task<bool> ConfirmReadAsync(string name, CancellationToken cancellation) { Prompts++; return Confirmation?.Invoke(cancellation) ?? Task.FromResult(AllowRead); }
     }
@@ -31,10 +54,22 @@ public class KittyClipboardSessionTests
         public readonly Clock Clock = new();
         public readonly List<string> Replies = [];
         public readonly List<int> ReplyThreads = [];
+        public Action<string>? OnReply;
+        public Func<string, bool>? TrySendOverride;
+        public Func<TimeSpan, CancellationToken, Task>? DelayOverride;
         public readonly Queue<Func<Task>> Work = new();
         public bool WriteAllowed = true, Alive = true;
         public readonly KittyClipboardSession Session;
-        public Harness() => Session = new(Clipboard, reply => { Replies.Add(reply); ReplyThreads.Add(Environment.CurrentManagedThreadId); }, work => { Work.Enqueue(work); return Task.CompletedTask; }, () => WriteAllowed, () => Alive, Clock);
+        public Harness(TimeSpan? replyTimeout = null) => Session = new(Clipboard, reply => TrySendOverride?.Invoke(reply) ?? Record(reply),
+            work => { Work.Enqueue(work); return Task.CompletedTask; }, () => WriteAllowed, () => Alive, Clock,
+            replyDelay: (delay, cancellation) => DelayOverride?.Invoke(delay, cancellation) ?? Task.Delay(delay, cancellation), replyTimeout: replyTimeout);
+        public bool Record(string reply)
+        {
+            Replies.Add(reply);
+            ReplyThreads.Add(Environment.CurrentManagedThreadId);
+            OnReply?.Invoke(reply);
+            return true;
+        }
         public void Send(string packet) => Session.Accept(packet);
         public async Task Drain() { while (Work.TryDequeue(out var work)) await work(); }
         public void Dispose() => Session.Dispose();
@@ -85,6 +120,126 @@ public class KittyClipboardSessionTests
     }
 
     [Fact]
+    public async Task An_empty_chunk_does_not_reopen_a_padded_base64_stream()
+    {
+        using var h = new Harness();
+        h.Send("type=write"); h.Send(Data("text/plain", "Zg=="));
+        h.Send(Data("text/plain", "")); h.Send(Data("text/plain", "AA==")); h.Send("type=wdata");
+        await h.Drain();
+        Assert.Equal(0, h.Clipboard.Writes);
+        Assert.Contains("status=EINVAL", Assert.Single(h.Replies));
+    }
+
+    [Theory]
+    [InlineData("type=wdata:loc=primary:mime=dGV4dC9wbGFpbg==;AA==")]
+    [InlineData("type=walias:loc=primary:mime=dGV4dC9wbGFpbg==;dGV4dC9odG1s")]
+    [InlineData("type=wdata:loc=primary")]
+    public async Task Primary_write_fragments_never_reach_the_system_clipboard(string fragment)
+    {
+        using var h = new Harness();
+        h.Send("type=write:id=owner"); h.Send(Data("text/plain", "SGk=")); h.Send(fragment); h.Send("type=wdata");
+        await h.Drain();
+        Assert.Equal(0, h.Clipboard.Writes);
+        Assert.Contains("status=ENOSYS:id=owner", Assert.Single(h.Replies));
+    }
+
+    [Fact]
+    public async Task Aggregate_read_over_64_MiB_fails_before_sending_any_DATA()
+    {
+        using var h = new Harness();
+        h.Clipboard.AllowRead = true;
+        h.Clipboard.IgnoreReadBudget = true; // exercise the session's backstop against a misbehaving provider
+        h.Clipboard.Values = new() { ["image/png"] = new byte[KittyClipboardPacket.MaxDataBytes], ["text/plain"] = [0] };
+        h.Send(Read("image/png text/plain")); await h.Drain();
+        Assert.Contains("status=EBUSY", Assert.Single(h.Replies));
+        Assert.Equal(1, h.Clipboard.SnapshotsDisposed);
+    }
+
+    [Fact]
+    public async Task A_slow_bounded_reply_queue_preserves_every_chunk_and_DONE()
+    {
+        using var h = new Harness();
+        h.Clipboard.AllowRead = true;
+        byte[] input = new byte[800 * 4096 + 1]; // exceeds the real PTY's 768-reply watermark
+        for (int i = 0; i < input.Length; i++) input[i] = (byte)(i % 251);
+        h.Clipboard.Values = new() { ["application/octet-stream"] = input };
+        var pending = new Queue<string>();
+        int waits = 0;
+        h.TrySendOverride = reply =>
+        {
+            if (pending.Count == 2) return false;
+            pending.Enqueue(reply);
+            return true;
+        };
+        h.DelayOverride = (delay, cancellation) =>
+        {
+            cancellation.ThrowIfCancellationRequested();
+            waits++;
+            h.Clock.Now += delay;
+            h.Record(pending.Dequeue());
+            return Task.CompletedTask;
+        };
+        h.Send(Read("application/octet-stream")); await h.Drain();
+        while (pending.TryDequeue(out string? reply)) h.Record(reply);
+        Assert.True(waits > 0);
+        Assert.Contains("status=DONE", h.Replies[^1]);
+        byte[] output = h.Replies.Where(reply => reply.Contains("status=DATA", StringComparison.Ordinal))
+            .SelectMany(reply => Convert.FromBase64String(reply[(reply.LastIndexOf(';') + 1)..^2])).ToArray();
+        Assert.Equal(input, output);
+    }
+
+    [Fact]
+    public async Task Reset_during_reply_backpressure_cancels_the_read_and_releases_the_gate()
+    {
+        using var h = new Harness();
+        h.Clipboard.AllowRead = true;
+        h.TrySendOverride = reply =>
+        {
+            if (reply.Contains("status=DATA", StringComparison.Ordinal)) return false;
+            return h.Record(reply);
+        };
+        h.DelayOverride = (_, cancellation) =>
+        {
+            h.Session.Reset();
+            return Task.FromCanceled(cancellation);
+        };
+        h.Send(Read("text/plain")); await h.Drain();
+        Assert.Contains("status=OK", Assert.Single(h.Replies));
+        using var other = new Harness();
+        other.Send(Read(".")); await other.Drain();
+        Assert.Equal(3, other.Replies.Count);
+    }
+
+    [Fact]
+    public async Task An_expired_write_does_not_block_a_later_read_forever()
+    {
+        using var h = new Harness();
+        h.Send("type=write:id=old");
+        h.Clock.Now = h.Clock.Now.AddMinutes(2);
+        h.Send(Read(".")); await h.Drain();
+        Assert.Contains("type=write:status=EBUSY:id=old", h.Replies[0]);
+        Assert.Contains("type=read:status=DONE", h.Replies[^1]);
+        Assert.Equal(1, h.Clipboard.Lists);
+    }
+
+    [Fact]
+    public async Task Reply_capacity_timeout_fails_the_read_instead_of_claiming_DONE()
+    {
+        using var h = new Harness(TimeSpan.FromMilliseconds(10));
+        h.Clipboard.AllowRead = true;
+        h.TrySendOverride = reply =>
+        {
+            if (reply.Contains("status=DATA", StringComparison.Ordinal)) return false;
+            return h.Record(reply);
+        };
+        h.DelayOverride = (delay, _) => { h.Clock.Now += delay; return Task.CompletedTask; };
+        h.Send(Read("text/plain")); await h.Drain();
+        Assert.Contains("status=EBUSY", h.Replies[^1]);
+        Assert.DoesNotContain(h.Replies, reply => reply.Contains("status=DONE", StringComparison.Ordinal));
+        Assert.DoesNotContain(h.Replies, reply => reply.Contains("status=DATA", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Denied_reads_never_fetch_data_and_listing_does_not_prompt()
     {
         using var h = new Harness();
@@ -112,6 +267,69 @@ public class KittyClipboardSessionTests
         byte[] output = h.Replies.Skip(1).Take(3).SelectMany(r => Convert.FromBase64String(r[(r.LastIndexOf(';') + 1)..^2])).ToArray();
         Assert.Equal(h.Clipboard.Values["image/png"], output);
         Assert.All(h.Replies.Skip(1).SkipLast(1), r => Assert.InRange(Convert.FromBase64String(r[(r.LastIndexOf(';') + 1)..^2]).Length, 0, 4096));
+    }
+
+    [Fact]
+    public async Task Multiple_MIME_reads_use_one_snapshot_even_if_the_clipboard_changes()
+    {
+        using var h = new Harness();
+        h.Clipboard.AllowRead = true;
+        byte[] originalPng = [1, 2, 3];
+        h.Clipboard.Values["image/png"] = originalPng;
+        h.Clipboard.OnRead = () => h.Clipboard.Values = new() { ["text/plain"] = Encoding.UTF8.GetBytes("changed"), ["image/png"] = [9] };
+        h.Send(Read("text/plain image/png")); await h.Drain();
+        Assert.Equal(1, h.Clipboard.Lists);
+        Assert.Equal(1, h.Clipboard.SnapshotsDisposed);
+        Assert.Contains(";" + B64("private text"), h.Replies[1]);
+        Assert.Contains(";" + Convert.ToBase64String(originalPng), h.Replies[2]);
+    }
+
+    [Fact]
+    public async Task A_request_keeps_its_slot_until_the_terminal_packet_is_admitted()
+    {
+        using var h = new Harness();
+        var waiting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool allowDone = false;
+        h.TrySendOverride = reply =>
+        {
+            if (!allowDone && reply.Contains("status=DONE", StringComparison.Ordinal)) return false;
+            return h.Record(reply);
+        };
+        h.DelayOverride = (_, cancellation) => { waiting.TrySetResult(); return resume.Task.WaitAsync(cancellation); };
+        h.Send(Read(".")); var first = h.Drain();
+        await waiting.Task;
+        h.Send(Read("."));
+        Assert.Empty(h.Work);
+        Assert.Contains("status=EBUSY", h.Replies[^1]);
+        allowDone = true;
+        resume.SetResult(); await first;
+        h.Send(Read(".")); await h.Drain();
+        Assert.Equal(2, h.Clipboard.Lists);
+    }
+
+    [Fact]
+    public async Task A_client_can_start_the_next_read_immediately_from_DONE()
+    {
+        using var h = new Harness();
+        bool followup = false;
+        Task? next = null;
+        h.OnReply = reply =>
+        {
+            if (!followup && reply.Contains("status=DONE", StringComparison.Ordinal))
+            {
+                followup = true;
+                next = Task.Run(() => h.Send(Read(".")));
+            }
+        };
+        h.Send(Read(".")); await h.Drain();
+        Assert.True(followup);
+        Assert.NotNull(next);
+        await next;
+        await h.Drain();
+        Assert.Equal(2, h.Clipboard.Lists);
+        Assert.Equal(6, h.Replies.Count);
+        Assert.DoesNotContain(h.Replies, reply => reply.Contains("status=EBUSY", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -6,10 +6,15 @@ namespace Ntilde.Shell.Clipboard;
 internal interface IKittyClipboard
 {
     bool Available { get; }
-    Task<string[]> GetTypesAsync();
-    Task<byte[]?> ReadAsync(string mime);
+    Task<IKittyClipboardSnapshot> OpenReadAsync();
     Task WriteAsync(IReadOnlyDictionary<string, byte[]> data);
     Task<bool> ConfirmReadAsync(string name, CancellationToken cancellation);
+}
+
+internal interface IKittyClipboardSnapshot : IDisposable
+{
+    IReadOnlyList<string> Types { get; }
+    Task<byte[]?> ReadAsync(string mime, int maxBytes = KittyClipboardPacket.MaxDataBytes);
 }
 
 /// <summary>
@@ -29,7 +34,7 @@ internal sealed class KittyClipboardSession : IDisposable
     private static readonly SemaphoreSlim ClipboardGate = new(1, 1);
     private readonly object _sync = new();
     private readonly IKittyClipboard _clipboard;
-    private readonly Action<string> _reply;
+    private readonly ClipboardReplyWriter _replies;
     private readonly Func<Func<Task>, Task> _schedule;
     private readonly Func<bool> _writeAllowed;
     private readonly Func<bool> _alive;
@@ -41,15 +46,17 @@ internal sealed class KittyClipboardSession : IDisposable
     private string? _pastePassword;
     private DateTimeOffset _pasteExpiry;
 
-    public KittyClipboardSession(IKittyClipboard clipboard, Action<string> reply, Func<Func<Task>, Task> schedule,
-        Func<bool> writeAllowed, Func<bool> alive, TimeProvider? clock = null)
+    public KittyClipboardSession(IKittyClipboard clipboard, Func<string, bool> reply, Func<Func<Task>, Task> schedule,
+        Func<bool> writeAllowed, Func<bool> alive, TimeProvider? clock = null,
+        Func<TimeSpan, CancellationToken, Task>? replyDelay = null, TimeSpan? replyTimeout = null)
     {
         _clipboard = clipboard;
-        _reply = reply;
+
         _schedule = schedule;
         _writeAllowed = writeAllowed;
         _alive = alive;
         _clock = clock ?? TimeProvider.System;
+        _replies = new ClipboardReplyWriter(reply, alive, _clock, replyDelay, replyTimeout, _sync);
     }
 
     public void Accept(string data)
@@ -64,23 +71,29 @@ internal sealed class KittyClipboardSession : IDisposable
                 else if (data.StartsWith("type=write", StringComparison.Ordinal)) Reply(WriteOperation, InvalidPacket, "");
                 return;
             }
+            if (_write != null && _clock.GetUtcNow() - _write.Started > TimeSpan.FromMinutes(1)) Abort(Busy);
             if (packet.Type == ReadOperation) { Read(packet); return; }
             if (packet.Type == WriteOperation) { StartWrite(packet); return; }
-            if (_write == null) return; // after error, ignore until the next start
-            if (_clock.GetUtcNow() - _write.Started > TimeSpan.FromMinutes(1)) { Abort(Busy); return; }
-            try
-            {
-                switch (packet.Type)
-                {
-                    case "wdata":
-                        if (packet.Mime.Length == 0 && packet.Payload.Length == 0) FinishWrite();
-                        else _write.Add(packet);
-                        break;
-                    case "walias": _write.Alias(packet); break;
-                }
-            }
-            catch (InvalidDataException error) { Abort(error.Message); }
+            if (_write is not WriteTransfer transfer) return; // after error, ignore until the next start
+            if (packet.Primary) { Abort(NotImplemented); return; }
+            ContinueWrite(packet, transfer);
         }
+    }
+
+    private void ContinueWrite(KittyClipboardPacket packet, WriteTransfer transfer)
+    {
+        try
+        {
+            switch (packet.Type)
+            {
+                case "wdata":
+                    if (packet.Mime.Length == 0 && packet.Payload.Length == 0) FinishWrite();
+                    else transfer.Add(packet);
+                    break;
+                case "walias": transfer.Alias(packet); break;
+            }
+        }
+        catch (InvalidDataException error) { Abort(error.Message); }
     }
 
     private void StartWrite(KittyClipboardPacket packet)
@@ -115,9 +128,9 @@ internal sealed class KittyClipboardSession : IDisposable
         int generation = _generation;
         _ = _schedule(() => PerformAsync(WriteOperation, id, generation, async () =>
         {
-            if (!_writeAllowed()) { Reply(WriteOperation, PermissionDenied, id); return; }
+            if (!_writeAllowed()) return PermissionDenied;
             await _clipboard.WriteAsync(values);
-            ReplyIfAlive(WriteOperation, "DONE", id, generation);
+            return "DONE";
         }));
     }
 
@@ -128,26 +141,54 @@ internal sealed class KittyClipboardSession : IDisposable
         return null;
     }
 
-    private async Task PerformAsync(string type, string id, int generation, Func<Task> action)
+    private async Task PerformAsync(string type, string id, int generation, Func<Task<string?>> action)
     {
         bool gate = false;
+        CancellationToken cancellation = CancellationToken.None;
+        string? status = null;
+        using var completion = new OperationCompletion(() =>
+        {
+            lock (_sync)
+            {
+                if (gate) ClipboardGate.Release();
+                _busy = false;
+            }
+        });
         try
         {
-            if (!IsAlive(generation)) return;
+            lock (_sync)
+            {
+                if (!IsAlive(generation)) return;
+                cancellation = _cancellation.Token;
+            }
             // An immediate try, with no queued waiter to outlive this request.
             gate = await ClipboardGate.WaitAsync(0, CancellationToken.None);
-            if (!gate) { Reply(type, Busy, id); return; }
-            await action();
+            status = gate ? await action() : Busy;
         }
         catch (Exception error)
         {
-            string status = ErrorStatus(type, error);
-            ReplyIfAlive(type, status, id, generation);
+            status = ErrorStatus(type, error);
         }
-        finally
+        // The terminal packet's admission and slot release share the same lock. A
+        // fast child cannot observe DONE while this request still owns either gate.
+        if (status != null) await SendTerminalAsync(type, status, id, generation, completion.Dispose, cancellation);
+    }
+
+    private async Task SendTerminalAsync(string type, string status, string id, int generation, Action completed, CancellationToken cancellation)
+    {
+        try
         {
-            if (gate) ClipboardGate.Release();
-            Complete();
+            await Task.Run(async () =>
+            {
+                if (!IsAlive(generation)) return;
+                bool sent = await _replies.SendAsync(KittyClipboardPacket.Response(type, status, id), cancellation, completed);
+                if (!sent && status == "DONE" && IsAlive(generation))
+                    await _replies.SendAsync(KittyClipboardPacket.Response(type, TransportFailure(type), id), cancellation, completed);
+            }, CancellationToken.None);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            // Reset/disposal canceled this request after its native resources were released.
         }
     }
 
@@ -155,13 +196,10 @@ internal sealed class KittyClipboardSession : IDisposable
     {
         if (error is NotSupportedException) return NotImplemented;
         if (error is UnauthorizedAccessException) return PermissionDenied;
-        return type == WriteOperation ? "EIO" : Busy;
+        return TransportFailure(type);
     }
 
-    private void ReplyIfAlive(string type, string status, string id, int generation)
-    {
-        if (IsAlive(generation)) Reply(type, status, id);
-    }
+    private static string TransportFailure(string type) => type == WriteOperation ? "EIO" : Busy;
 
     private void Read(KittyClipboardPacket packet)
     {
@@ -186,20 +224,21 @@ internal sealed class KittyClipboardSession : IDisposable
         {
             if (!listing && !granted && !await _clipboard.ConfirmReadAsync(SafeName(name), cancellation))
             {
-                ReplyIfAlive(ReadOperation, PermissionDenied, id, generation);
-                return;
+                return PermissionDenied;
             }
-            if (!IsAlive(generation)) return;
-            var values = await CollectReadValuesAsync(id, types, listing, generation);
-            if (values == null) return;
+            if (!IsAlive(generation)) return null;
+            var values = await CollectReadValuesAsync(types, listing, generation);
+            if (values == null) return null;
             // Clipboard API calls stay UI-affine; encoding and PTY transmission do not.
-            await Task.Run(() => SendData(id, values, generation: generation), CancellationToken.None);
+            bool sent = await Task.Run(() => SendDataAsync(id, values, generation, cancellation), CancellationToken.None);
+            return sent ? "DONE" : null;
         });
     }
 
-    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(string id, string[] types, bool listing, int generation)
+    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(string[] types, bool listing, int generation)
     {
-        var available = (await _clipboard.GetTypesAsync()).Where(KittyClipboardPacket.IsMime).Distinct(StringComparer.Ordinal).Take(KittyClipboardPacket.MaxTypes).ToArray();
+        using var snapshot = await _clipboard.OpenReadAsync();
+        var available = snapshot.Types.Where(KittyClipboardPacket.IsMime).Distinct(StringComparer.Ordinal).Take(KittyClipboardPacket.MaxTypes).ToArray();
         var values = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         if (listing)
         {
@@ -210,68 +249,75 @@ internal sealed class KittyClipboardSession : IDisposable
         foreach (string mime in types.Where(available.Contains))
         {
             if (!IsAlive(generation)) return null;
-            byte[]? bytes = await _clipboard.ReadAsync(mime);
+            byte[]? bytes = await snapshot.ReadAsync(mime, KittyClipboardPacket.MaxDataBytes - (int)total);
             if (bytes == null) continue;
             total += bytes.Length;
             if (total > KittyClipboardPacket.MaxDataBytes)
             {
-                ReplyIfAlive(ReadOperation, Busy, id, generation);
-                return null;
+                throw new IOException("Clipboard read exceeds the decoded-byte limit.");
             }
             values[mime] = bytes;
         }
         return values;
     }
 
-    public async Task NotifyPasteAsync()
+    public Task NotifyPasteAsync()
     {
         int generation;
+        CancellationToken cancellation;
         lock (_sync)
         {
-            if (_disposed) return;
-            if (_busy || _write != null) { Reply(ReadOperation, Busy, ""); return; }
+            if (_disposed) return Task.CompletedTask;
+            if (_busy || _write != null)
+                return Task.Run(() => Reply(ReadOperation, Busy, ""), CancellationToken.None);
             _busy = true;
             generation = _generation;
+            cancellation = _cancellation.Token;
         }
-        try
+        return PerformAsync(ReadOperation, "", generation, async () =>
         {
-            string[] types = await _clipboard.GetTypesAsync();
+            using var snapshot = await _clipboard.OpenReadAsync();
+            var types = snapshot.Types;
             string password = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
             lock (_sync)
             {
-                if (!IsAlive(generation)) return;
+                if (!IsAlive(generation)) return null;
                 _pastePassword = password;
                 _pasteExpiry = _clock.GetUtcNow().AddSeconds(15);
-                SendData("", new Dictionary<string, byte[]> { ["."] = Encoding.UTF8.GetBytes(string.Join(' ', types.Where(KittyClipboardPacket.IsMime).Distinct().Take(KittyClipboardPacket.MaxTypes))) }, ":pw=" + KittyClipboardPacket.Encode(password));
             }
-        }
-        catch (Exception) { if (IsAlive(generation)) Reply(ReadOperation, Busy, ""); }
-        finally
-        {
-            Complete();
-        }
+            var values = new Dictionary<string, byte[]>
+            {
+                ["."] = Encoding.UTF8.GetBytes(string.Join(' ', types.Where(KittyClipboardPacket.IsMime).Distinct().Take(KittyClipboardPacket.MaxTypes)))
+            };
+            bool sent = await Task.Run(() => SendDataAsync("", values, generation, cancellation, ":pw=" + KittyClipboardPacket.Encode(password)), CancellationToken.None);
+            return sent ? "DONE" : null;
+        });
     }
 
-    private void SendData(string id, IReadOnlyDictionary<string, byte[]> data, string metadata = "", int? generation = null)
+    private async Task<bool> SendDataAsync(string id, IReadOnlyDictionary<string, byte[]> data, int generation, CancellationToken cancellation, string metadata = "")
     {
-        if (generation is int initial && !IsAlive(initial)) return;
-        _reply(KittyClipboardPacket.Response(ReadOperation, "OK", id, metadata));
+        if (!IsAlive(generation)) return false;
+        await SendReadPacketAsync(KittyClipboardPacket.Response(ReadOperation, "OK", id, metadata), cancellation);
         foreach (var (mime, bytes) in data)
         {
             for (int offset = 0; offset < bytes.Length || offset == 0; offset += 4096)
             {
-                if (generation is int expected && !IsAlive(expected)) return;
+                if (!IsAlive(generation)) return false;
                 int count = Math.Min(4096, bytes.Length - offset);
-                _reply(KittyClipboardPacket.Response(ReadOperation, "DATA", id, ":mime=" + KittyClipboardPacket.Encode(mime), Convert.ToBase64String(bytes, offset, count)));
+                await SendReadPacketAsync(KittyClipboardPacket.Response(ReadOperation, "DATA", id, ":mime=" + KittyClipboardPacket.Encode(mime), Convert.ToBase64String(bytes, offset, count)), cancellation);
             }
         }
-        if (generation is not int current || IsAlive(current)) Reply(ReadOperation, "DONE", id);
+        return IsAlive(generation);
+    }
+
+    private async Task SendReadPacketAsync(string response, CancellationToken cancellation)
+    {
+        if (!await _replies.SendAsync(response, cancellation)) throw new IOException("Clipboard reply queue remained unavailable.");
     }
 
     private static string SafeName(string name) => new(name.Where(c => !char.IsControl(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).Take(80).ToArray());
-    private void Reply(string type, string status, string id) => _reply(KittyClipboardPacket.Response(type, status, id));
+    private void Reply(string type, string status, string id) => _replies.TrySend(KittyClipboardPacket.Response(type, status, id));
     private bool IsAlive(int generation) { lock (_sync) return !_disposed && generation == _generation && _alive(); }
-    private void Complete() { lock (_sync) _busy = false; }
     public void Reset()
     {
         lock (_sync)
@@ -294,6 +340,15 @@ internal sealed class KittyClipboardSession : IDisposable
             Reset();
             _disposed = true;
             _cancellation.Dispose();
+        }
+    }
+
+    private sealed class OperationCompletion(Action release) : IDisposable
+    {
+        private int _released;
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _released, 1) == 0) release();
         }
     }
 
@@ -320,7 +375,7 @@ internal sealed class KittyClipboardSession : IDisposable
             if (bytes.Length > KittyClipboardPacket.MaxDataBytes - _size) throw new InvalidDataException(TooLarge);
             _values[mime].Write(bytes);
             _size += bytes.Length;
-            _padded = encoded.AsSpan(0, full).Contains('=');
+            if (packet.Payload.Length > 0) _padded = encoded.AsSpan(0, full).Contains('=');
             _carry = encoded[full..];
             if (_padded && _carry.Length != 0) throw new InvalidDataException(InvalidPacket);
         }

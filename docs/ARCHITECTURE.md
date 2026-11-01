@@ -1186,3 +1186,12 @@ and an in-progress parser accumulator, like any other output. Replay/headless
 parsers have no clipboard callback. Mux and
 headless parsers do not advertise the desktop service. Clipboard writes use the
 existing AllowOsc52ClipboardWrite setting.
+
+An OSC 5522 read owns one disposable Avalonia data-transfer snapshot. A remaining
+byte budget is checked before Ntilde copies/encodes values; PNG output is bounded
+while encoding. Avalonia 12.1.3 exposes only value retrieval, with no length or
+stream preflight, so its initial native value materialization cannot be capped
+through that interface. This is a provider limit, not a hard process-memory bound.
+Clipboard DATA and terminal replies wait for bounded device-queue admission off
+the UI thread. The request slot and global gate are released atomically with
+terminal-packet admission; retries do not bypass the queue's keyboard reserve.

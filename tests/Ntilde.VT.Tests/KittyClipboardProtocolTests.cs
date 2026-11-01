@@ -26,6 +26,22 @@ public class KittyClipboardProtocolTests
     }
 
     [Fact]
+    public void DEC_reset_clears_MIME_paste_mode_at_every_input_split()
+    {
+        const string sequence = "\x1b[?5522h\x1b[?5522l\x1b[?5522$p";
+        for (int split = 0; split <= sequence.Length; split++)
+        {
+            var buffer = new TerminalBuffer(20, 4);
+            var parser = new AnsiParser(buffer) { KittyClipboardEnabled = true };
+            var replies = new List<string>();
+            parser.OnResponse = replies.Add;
+            parser.Process(sequence[..split]); parser.Process(sequence[split..]);
+            Assert.False(buffer.Modes.IsClipboardPasteMode);
+            Assert.Equal("\x1b[?5522;2$y", Assert.Single(replies));
+        }
+    }
+
+    [Fact]
     public void Headless_host_does_not_advertise_or_enable_desktop_clipboard()
     {
         var buffer = new TerminalBuffer(20, 4);

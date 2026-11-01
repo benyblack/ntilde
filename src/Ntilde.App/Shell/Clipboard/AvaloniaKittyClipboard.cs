@@ -28,35 +28,74 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
     private static IClipboard Require(Func<IClipboard?> get) => get() ?? throw new NotSupportedException("No clipboard is available.");
     public bool Available => true; // TopLevel is resolved only on the UI thread, when an operation runs.
 
-    public async Task<string[]> GetTypesAsync()
+    public async Task<IKittyClipboardSnapshot> OpenReadAsync()
     {
-        using var data = await _read();
-        return data?.Formats.Select(ToMime).OfType<string>().Distinct(StringComparer.Ordinal).ToArray() ?? [];
+        var data = await _read();
+        try { return new Snapshot(data); }
+        catch { data?.Dispose(); throw; }
     }
 
-    public async Task<byte[]?> ReadAsync(string mime)
+    private sealed class Snapshot : IKittyClipboardSnapshot
     {
-        using var data = await _read();
-        if (data == null) return null;
-        foreach (var format in data.Formats.Where(f => ToMime(f) == mime))
+        private IAsyncDataTransfer? _data;
+        private readonly Dictionary<string, DataFormat[]> _formats;
+        public IReadOnlyList<string> Types { get; }
+
+        public Snapshot(IAsyncDataTransfer? data)
         {
-            foreach (var item in data.Items)
+            _data = data;
+            _formats = (data?.Formats ?? []).Select(format => (Mime: ToMime(format), Format: format))
+                .Where(pair => pair.Mime != null).GroupBy(pair => pair.Mime ?? "", StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.Select(pair => pair.Format).ToArray(), StringComparer.Ordinal);
+            Types = _formats.Keys.ToArray();
+        }
+
+        public async Task<byte[]?> ReadAsync(string mime, int maxBytes = Ntilde.VT.KittyClipboardPacket.MaxDataBytes)
+        {
+            if (_data == null || !_formats.TryGetValue(mime, out var formats)) return null;
+            foreach (var format in formats)
             {
-                object? value = await item.TryGetRawAsync(format);
-                switch (value)
+                foreach (var item in _data.Items)
                 {
-                    case byte[] bytes: return bytes;
-                    case string text: return Encoding.UTF8.GetBytes(text);
-                    case Bitmap bitmap:
-                        using (var stream = new MemoryStream())
-                        {
-                            bitmap.Save(stream, PngBitmapEncoderOptions.Default);
-                            return stream.ToArray();
-                        }
+                    object? value = await item.TryGetRawAsync(format);
+                    byte[]? bytes = ToBytes(value, maxBytes);
+                    if (bytes != null) return bytes;
                 }
             }
+            return null;
         }
-        return null;
+
+        private static byte[]? ToBytes(object? value, int maxBytes)
+        {
+            switch (value)
+            {
+                case byte[] bytes:
+                    EnsureSize(bytes.Length, maxBytes);
+                    return bytes;
+                case string text:
+                    EnsureSize(Encoding.UTF8.GetByteCount(text), maxBytes);
+                    return Encoding.UTF8.GetBytes(text);
+                case Bitmap bitmap:
+                    EnsureSize((long)bitmap.PixelSize.Width * bitmap.PixelSize.Height * 4, maxBytes);
+                    using (var stream = new ClipboardReadLimitStream(maxBytes))
+                    {
+                        bitmap.Save(stream, PngBitmapEncoderOptions.Default);
+                        return stream.ToArray();
+                    }
+                default: return null;
+            }
+        }
+
+        private static void EnsureSize(long size, int maxBytes)
+        {
+            if (size > maxBytes) throw new IOException("Clipboard item exceeds the remaining read budget.");
+        }
+
+        public void Dispose()
+        {
+            _data?.Dispose();
+            _data = null;
+        }
     }
 
     public async Task WriteAsync(IReadOnlyDictionary<string, byte[]> data)

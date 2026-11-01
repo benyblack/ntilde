@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "78919a8a30ba833dad20c681ab17cc35615e425be2e6e747b405fba8e0d299f0",
+  "matrixSha256": "8fad4212dc89b5ad129d309b453d8c4990b86fc7112c6372f9bbb2074b2b961a",
   "summary": {
     "totalRows": 77,
     "supportedCount": 37,
@@ -1498,7 +1498,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
-      "knownDeviations": "Direct desktop/SSH panes: binary reads/writes, contiguous chunks and aliases; strict padded base64, 64 MiB decoded aggregate limit plus a 128 MiB native MIME/alias expansion budget, 128 MIME types, 8192-character packets and 2048-character metadata. Read data requires an explicit Allow once; MIME listings do not. Writes share \u0060AllowOsc52ClipboardWrite\u0060. Primary selection returns ENOSYS; mux/headless hosts do not advertise. Passwords authorize only a named, one-use paste event within 15 seconds; persistent password grants are not stored. Host-assembled transfers/grants are not snapshot state; raw client OSC packets can remain in recorded PTY output or an incomplete parser accumulator.",
+      "knownDeviations": "Direct desktop/SSH panes: binary reads/writes, contiguous chunks and aliases; strict padded base64, 64 MiB decoded write/retained-read budget plus a 128 MiB native MIME/alias expansion budget, 128 MIME types, 8192-character packets and 2048-character metadata. Read data requires an explicit Allow once; MIME listings do not. Writes share \u0060AllowOsc52ClipboardWrite\u0060. Primary selection returns ENOSYS; mux/headless hosts do not advertise. Passwords authorize only a named, one-use paste event within 15 seconds; persistent password grants are not stored. Host-assembled transfers/grants are not snapshot state; raw client OSC packets can remain in recorded PTY output or an incomplete parser accumulator. One native data snapshot serves each read. Replies wait for bounded queue admission (5 seconds per packet) and never claim DONE after a missing DATA chunk. Avalonia has no item-size preflight API: its first native value allocation is not covered by the managed conversion/retention budget.",
       "sourceLine": 164
     },
     {

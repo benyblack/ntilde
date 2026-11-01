@@ -9,6 +9,7 @@ namespace Ntilde.Controls;
 public partial class TerminalPane
 {
     private KittyClipboardSession? _kittyClipboard;
+    internal Func<Func<Task>, Task>? ClipboardSchedulerForTest { get; set; }
 
     private void WireKittyClipboard(bool muxBacked)
     {
@@ -19,17 +20,19 @@ public partial class TerminalPane
         var parser = Parser;
         parser.KittyClipboardEnabled = true;
         var clipboard = new AvaloniaKittyClipboard(() => TopLevel.GetTopLevel(this)?.Clipboard, ConfirmClipboardReadAsync);
-        var session = new KittyClipboardSession(clipboard, reply =>
+        bool Alive() => !_disposed && ReferenceEquals(Parser, parser) && Session?.IsProcessRunning == true;
+        bool TryReply(string reply)
         {
-            if (!_disposed && ReferenceEquals(Parser, parser))
-            {
-                _marklessSubmission.ObserveDeviceReply();
-                if (Session is Ntilde.Pty.ITerminalDeviceReplySink sink) sink.TrySendDeviceReply(reply);
-                else Session?.SendInput(reply);
-            }
-        }, work => Task.Run(() => Dispatcher.UIThread.InvokeAsync(work)),
-        () => _settings == null || BuildEffectiveSettings(_settings).AllowOsc52ClipboardWrite,
-        () => !_disposed && ReferenceEquals(Parser, parser) && Session?.IsProcessRunning == true);
+            if (!Alive()) return false;
+            _marklessSubmission.ObserveDeviceReply();
+            if (Session is Ntilde.Pty.ITerminalDeviceReplySink sink) return sink.TrySendDeviceReply(reply);
+            Session?.SendInput(reply);
+            return true;
+        }
+        var session = new KittyClipboardSession(clipboard, TryReply,
+            ClipboardSchedulerForTest ?? (work => Task.Run(() => Dispatcher.UIThread.InvokeAsync(work))),
+            () => _settings == null || BuildEffectiveSettings(_settings).AllowOsc52ClipboardWrite,
+            Alive);
         _kittyClipboard = session;
         parser.OnKittyClipboardPacket = session.Accept;
         parser.OnKittyClipboardReset = session.Reset;
@@ -52,7 +55,7 @@ public partial class TerminalPane
         {
             Title = "Clipboard access",
             Width = 460,
-            Height = 200,
+            Height = 300,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
@@ -63,16 +66,36 @@ public partial class TerminalPane
         var allow = new Button { Content = "Allow once", MinWidth = 110 };
         deny.Click += (_, _) => dialog.Close();
         allow.Click += (_, _) => { allowed = true; dialog.Close(); };
-        dialog.Content = new StackPanel
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 8,
+            Margin = new Thickness(0, 16, 0, 0),
+            Children = { deny, allow }
+        };
+        DockPanel.SetDock(actions, Dock.Bottom);
+        dialog.Content = new DockPanel
         {
             Margin = new Thickness(20),
-            Spacing = 16,
             Children =
             {
-                new TextBlock { Text = "Terminal: " + new string((Profile?.Name ?? ShellCommand ?? "This pane").Where(c => !char.IsControl(c)).Take(80).ToArray()), TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                new TextBlock { Text = "Allow this terminal program to read your clipboard?", TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                new TextBlock { Text = string.IsNullOrEmpty(name) ? "This request can read clipboard contents." : "Program-supplied name: " + name, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8, Children = { deny, allow } }
+                actions,
+                new ScrollViewer
+                {
+                    HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                    VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+                    Content = new StackPanel
+                    {
+                        Spacing = 16,
+                        Children =
+                        {
+                            new TextBlock { Text = "Terminal: " + new string((Profile?.Name ?? ShellCommand ?? "This pane").Where(c => !char.IsControl(c)).Take(80).ToArray()), TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                            new TextBlock { Text = "Allow this terminal program to read your clipboard?", TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                            new TextBlock { Text = string.IsNullOrEmpty(name) ? "This request can read clipboard contents." : "Program-supplied name: " + name, TextWrapping = Avalonia.Media.TextWrapping.Wrap }
+                        }
+                    }
+                }
             }
         };
         using var registration = cancellation.Register(() => Dispatcher.UIThread.Post(dialog.Close));
