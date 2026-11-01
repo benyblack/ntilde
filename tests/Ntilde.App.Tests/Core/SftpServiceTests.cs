@@ -424,14 +424,14 @@ public sealed class SftpServiceTests
     }
 
     [Fact]
-    public void BuildNativeTransferOptions_UnescapesShellEscapedRemoteSpaces()
+    public void BuildNativeTransferOptions_PreservesUnescapedRemoteSpaces()
     {
         var job = new TransferJob
         {
             Direction = TransferDirection.Download,
             Kind = TransferKind.File,
             LocalPath = @"D:\downloads\Gravity.2013.1080p.Farsi.Dubbed.MegaMoviBot.mkv",
-            RemotePath = "/mnt/box1/media/movies/Gravity\\ 2013/Gravity.2013.1080p.Farsi.Dubbed.MegaMoviBot.mkv"
+            RemotePath = "/mnt/box1/media/movies/Gravity 2013/Gravity.2013.1080p.Farsi.Dubbed.MegaMoviBot.mkv"
         };
 
         NativeSftpTransferOptions options = SftpService.BuildNativeTransferOptions(job);
@@ -503,6 +503,42 @@ public sealed class SftpServiceTests
         Assert.Contains(sut.Jobs, job => job.Id == completed.Id);
         Assert.DoesNotContain(sut.Jobs, job => job.Id == failed.Id);
         Assert.Contains(sut.Jobs, job => job.Id == running.Id);
+    }
+
+    [Theory]
+    [InlineData(TransferDirection.Upload, @"/tmp/literal\ file.txt")]
+    [InlineData(TransferDirection.Download, @"/tmp/literal\ file.txt")]
+    [InlineData(TransferDirection.Upload, @"/tmp/literal\[name].txt")]
+    [InlineData(TransferDirection.Download, @"/tmp/literal\[name].txt")]
+    [InlineData(TransferDirection.Upload, @"/tmp/literal\\name.txt")]
+    [InlineData(TransferDirection.Download, @"/tmp/literal\\name.txt")]
+    [InlineData(TransferDirection.Upload, @"/tmp/ñ😀\$name.txt")]
+    [InlineData(TransferDirection.Download, @"/tmp/ñ😀\$name.txt")]
+    public void BuildNativeTransferOptions_PreservesRawRemotePath(TransferDirection direction, string remotePath)
+    {
+        var job = new TransferJob { Direction = direction, RemotePath = remotePath, LocalPath = "local.txt" };
+        Assert.Equal(remotePath, SftpService.BuildNativeTransferOptions(job).RemotePath);
+    }
+
+    [Theory]
+    [InlineData(TransferDirection.Upload)]
+    [InlineData(TransferDirection.Download)]
+    public void ExecuteNativeSftpTransfer_SendsTheLiteralPathToInterop(TransferDirection direction)
+    {
+        var profile = new TerminalProfile
+        {
+            Type = ConnectionType.SSH,
+            SshBackendKind = SshBackendKind.Native,
+            SshHost = "example.invalid",
+            IdentityFilePath = "synthetic-identity",
+            UseSshAgent = false
+        };
+        var job = new TransferJob { Direction = direction, ProfileId = profile.Id, RemotePath = @"/tmp/literal\ [name]\$cash.txt", LocalPath = "local.txt" };
+        var interop = new CapturingNativeSshInterop();
+        SftpService.ExecuteNativeSftpTransfer(job, profile, new SshConnectionService(new InMemorySshProfileStore()),
+            interop: interop, passwordResolver: _ => throw new InvalidOperationException("Key transfer must not read a password."), cancellationToken: TestContext.Current.CancellationToken);
+        Assert.NotNull(interop.TransferOptions);
+        Assert.Equal(job.RemotePath, interop.TransferOptions.RemotePath);
     }
 
     [AvaloniaFact]

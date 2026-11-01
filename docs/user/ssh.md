@@ -165,6 +165,9 @@ On any SSH pane:
 These open a dialog for the remote path, which completes paths when the profile already has a
 native session open. They do nothing on a local pane.
 
+Enter remote paths as they appear on the server. Spaces do not need escaping or surrounding
+quotes; backslashes you enter are part of the path. Sidebar selections use the exact listed path.
+
 ### How transfers behave
 
 - Native profiles transfer over SFTP, trusting the same host keys and never falling back to

@@ -769,7 +769,7 @@ requires public test classes.
   local argv encoding, preserving `~`/`~/` home shorthand and refusing NUL/CR/LF (legacy protocol
   limits). Explicit PowerShell and Auto Windows drive/UNC paths retain their prior local-only
   encoding and its limitations; POSIX shell escapes must not rewrite Windows paths. Native SFTP
-  path normalization is separate.
+  paths are literal: spaces, backslashes and shell characters are never shell-unescaped.
 - Credential lifetime composition: the session registry clones passwords under its lock, callers dispose operation
   copies, and remote mux hosts wipe cached credentials on replacement, refusal and teardown. Keyring adapters
   read/write buffers; string adapters remain for UI and OpenSSH askpass. `LegacyProfilePasswordMigration`

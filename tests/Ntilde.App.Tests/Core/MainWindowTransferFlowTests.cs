@@ -108,6 +108,20 @@ public sealed class MainWindowTransferFlowTests
     }
 
     [AvaloniaFact]
+    public async Task SidebarTransfers_PreserveLiteralBackslashesThroughNativeOptions()
+    {
+        var window = new TestMainWindow { NextSavedLocalFilePath = "download.txt", NextPickedLocalFilePath = "upload.txt" };
+        const string remoteFile = @"/srv/literal\ [directory]/file.txt";
+        await window.StartSidebarDownloadForTest(CreateNativeProfile(), Guid.NewGuid(), remoteFile, TransferKind.File);
+        Assert.NotNull(window.QueuedJob);
+        Assert.Equal(remoteFile, SftpService.BuildNativeTransferOptions(window.QueuedJob).RemotePath);
+        const string remoteDirectory = @"/srv/upload\ directory";
+        await window.StartSidebarUploadForTest(CreateNativeProfile(), Guid.NewGuid(), remoteDirectory, TransferKind.File);
+        Assert.NotNull(window.QueuedJob);
+        Assert.Equal(remoteDirectory, SftpService.BuildNativeTransferOptions(window.QueuedJob).RemotePath);
+    }
+
+    [AvaloniaFact]
     public async Task SidebarUploadFolder_UsesLocalFolderPicker_AndCurrentRemoteDirectory()
     {
         var window = new TestMainWindow
