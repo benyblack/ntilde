@@ -12,6 +12,69 @@ namespace Ntilde.Platform.Tests.Ssh;
 
 public sealed class NativeSshConnectionPoolTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task A_new_lease_and_channel_survive_an_earlier_last_leases_pending_idle_close(bool connected, bool exec)
+    {
+        var interop = new SharingInterop();
+        var pool = new NativeSshConnectionPool();
+        SshProfile profile = CreateProfile();
+        // A logged-in connection closes immediately at persist=0. A connection
+        // still logging in closes immediately even with nonzero persistence.
+        profile.MuxOptions.ControlPersistSeconds = connected ? 0 : 600;
+        NativeSshConnectionOptions options = NativeSshConnectionOptionsFactory.Create(profile);
+        var opener = new NativeSshSharedConnection.Opener(interop, null, null, _ => { });
+        NativeSshSharedConnection.Lease first = pool.Acquire(profile, options, opener, _ => { }, out _);
+        NativeSshSharedConnection.Lease? joined = null;
+        NovaSshSafeHandle? channel = null;
+        using var idleDecision = new ManualResetEventSlim();
+        using var allowClose = new ManualResetEventSlim();
+        Task? release = null;
+        try
+        {
+            nint connection = interop.Connections.Single();
+            if (connected)
+            {
+                interop.Enqueue(connection, Connected());
+                await WaitUntilAsync(() => first.Connection.IsConnected);
+            }
+            first.Connection.BeforeIdleCloseForTest = () =>
+            {
+                idleDecision.Set();
+                Assert.True(allowClose.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+            };
+            release = Task.Run(first.Dispose, TestContext.Current.CancellationToken);
+            Assert.True(idleDecision.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+
+            // The last lease is gone, but the close has not marked the transport
+            // closed yet. A real pool acquisition successfully opens a new channel.
+            (joined, channel) = pool.AcquireAndOpen(profile, options, opener, _ => { },
+                shared => exec ? shared.OpenExec(options, "synthetic-command") : shared.OpenShell(options));
+            Assert.Same(first.Connection, joined.Connection);
+            Assert.Equal(1, interop.SharedConnectCount);
+            allowClose.Set();
+            await release;
+
+            Assert.DoesNotContain(connection, interop.ClosedHandles);
+            Assert.Equal(1, pool.Count);
+            using NovaSshSafeHandle stillUsable = joined.Connection.OpenExec(options, "still-usable");
+        }
+        finally
+        {
+            allowClose.Set();
+            if (release is not null) await release;
+            first.Connection.BeforeIdleCloseForTest = null;
+            channel?.Dispose();
+            joined?.Dispose();
+            first.Dispose();
+        }
+        Assert.Contains(interop.Connections.Single(), interop.ClosedHandles);
+        Assert.Equal(0, pool.Count);
+    }
+
     [Fact]
     public async Task TabsOfAMultiplexedProfile_ShareOneConnection()
     {

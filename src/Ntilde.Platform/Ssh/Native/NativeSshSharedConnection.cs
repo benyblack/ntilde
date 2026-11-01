@@ -191,6 +191,9 @@ internal sealed class NativeSshSharedConnection
         return lease;
     }
 
+    // Pause after the last-lease decision to exercise a joining acquisition deterministically.
+    internal Action? BeforeIdleCloseForTest { get; set; }
+
     private void Release(Lease lease)
     {
         bool closeNow;
@@ -212,7 +215,10 @@ internal sealed class NativeSshSharedConnection
 
         if (closeNow)
         {
-            Close();
+            BeforeIdleCloseForTest?.Invoke();
+            // A lease may have joined after the last-lease decision. Recheck under
+            // the same gate that marks the connection closed, as the timer does.
+            Close(onlyIfIdle: true);
         }
     }
 
@@ -269,7 +275,7 @@ internal sealed class NativeSshSharedConnection
     }
 
     /// <param name="onlyIfIdle">
-    /// The ControlPersist timer's close: skipped when a tab joined after the timer fired but before this ran. Checked
+    /// An idle close (immediate or ControlPersist): skipped when a tab joined after the idle decision. Checked
     /// under the same lock that marks the connection closed, so a joining tab either cancels the close or is refused
     /// its lease and gets a new connection.
     /// </param>
