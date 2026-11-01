@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Ntilde.Replay;
 
 namespace Ntilde.Pty
@@ -52,8 +53,13 @@ namespace Ntilde.Pty
     public interface ITerminalRecorder
     {
         bool IsRecording { get; }
+        Guid RecordingId => Guid.Empty;
         void StartRecording(string filePath);
         void StopRecording();
+        Task StartRecordingAsync(string filePath) { StartRecording(filePath); return Task.CompletedTask; }
+        Task StopRecordingAsync() { StopRecording(); return Task.CompletedTask; }
+        // Legacy session implementations have no asynchronous failure source.
+        event Action<RecordingFailure>? RecordingFailed { add { _ = value; } remove { _ = value; } }
     }
 
     /// <summary>

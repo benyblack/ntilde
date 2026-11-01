@@ -642,6 +642,12 @@ public sealed class MuxClient : IDisposable
     {
         switch (notification.Method)
         {
+            case MuxMethods.RecordingFailed:
+                {
+                    RecordingFailedNotification failure = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.RecordingFailedNotification);
+                    if (_sessions.TryGetValue(failure.SessionId, out MuxClientSession? session)) session.DeliverRecordingFailed(failure);
+                    break;
+                }
             case MuxMethods.Exited:
                 {
                     ExitedNotification exited = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.ExitedNotification);

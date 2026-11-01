@@ -907,7 +907,8 @@ namespace Ntilde.Pty
             }
         }
 
-        private Ntilde.Replay.ReplayWriter? _recorder;
+        private readonly SessionRecording _manualRecording = new();
+        private Ntilde.Replay.PtyRecorder? _recorder => _manualRecording.Current;
 
         // Flight recorder ring (agent replay export). Written from the read loop and
         // Resize; enabled/disabled from the App's agent-host lifecycle. Reference
@@ -915,7 +916,8 @@ namespace Ntilde.Pty
         // _recorder. Never records input — see ITerminalFlightRecorder.
         private Ntilde.Replay.FlightRecordingBuffer? _flightRecorder;
 
-        public bool IsRecording => _recorder != null;
+        public bool IsRecording => _recorder is { IsReady: true };
+        public Guid RecordingId => _recorder?.Id ?? Guid.Empty;
 
         public bool IsFlightRecording => _flightRecorder != null;
 
@@ -1031,57 +1033,31 @@ namespace Ntilde.Pty
             throw new ObjectDisposedException(nameof(RustPtySession));
         }
 
-        public void StartRecording(string filePath) => AtDecodedRecordingBoundary(() => { StartRecordingCore(filePath); return 0; }, allowStopped: false);
+        public event Action<Ntilde.Replay.RecordingFailure>? RecordingFailed;
 
-        private void StartRecordingCore(string filePath)
+        public void StartRecording(string filePath) => AtDecodedRecordingBoundary(() => StartRecordingCore(filePath), allowStopped: false);
+
+        public Task StartRecordingAsync(string filePath) => AtDecodedRecordingBoundary(() => StartRecordingCore(filePath).WaitUntilReadyAsync(), allowStopped: false);
+
+        private Ntilde.Replay.PtyRecorder StartRecordingCore(string filePath)
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0 || (_recordingDelivery.Mode == 2 && _outputConsumerStopped.Task.IsCompleted), this);
-            if (_recorder != null) return; // Already recording
-            var recorder = new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics);
-            try
+            var recorder = _manualRecording.Begin(
+                () => new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics),
+                failure => RecordingFailed?.Invoke(failure));
+            if (Volatile.Read(ref _disposed) != 0 || (_recordingDelivery.Mode == 2 && _outputConsumerStopped.Task.IsCompleted))
             {
-                recorder.RecordMarker("START");
+                _manualRecording.Discard(recorder);
+                throw new ObjectDisposedException(GetType().Name);
             }
-            catch (Exception ex)
-            {
-                PtyLogger.Warning($"[RustPtySession] Recording start marker failed: {ex.Message}");
-            }
-
-            _recorder = recorder;
-            if (Volatile.Read(ref _disposed) != 0)
-            {
-                if (ReferenceEquals(Interlocked.CompareExchange(ref _recorder, null, recorder), recorder)) recorder.Dispose();
-                throw new ObjectDisposedException(nameof(RustPtySession));
-            }
-            PtyLogger.Info($"[RustPtySession] Recording started to: {filePath}");
+            return recorder;
         }
 
-        public void StopRecording() => AtDecodedRecordingBoundary(() => { StopRecordingCore(); return 0; });
+        public Task StopRecordingAsync() => AtDecodedRecordingBoundary(_manualRecording.StopAsync);
 
-        private void StopRecordingCore()
-        {
-            var recorder = Interlocked.Exchange(ref _recorder, null);
-            if (recorder == null) return;
-            try
-            {
-                recorder.RecordMarker("END");
-            }
-            catch (Exception ex)
-            {
-                PtyLogger.Warning($"[RustPtySession] Recording stop marker failed: {ex.Message}");
-            }
+        public void StopRecording() => StopRecordingAsync().GetAwaiter().GetResult();
 
-            try
-            {
-                recorder.Dispose();
-            }
-            catch (Exception ex)
-            {
-                PtyLogger.Warning($"[RustPtySession] Recorder dispose failed: {ex.Message}");
-            }
-
-            PtyLogger.Info("[RustPtySession] Recording stopped.");
-        }
+        private void StopRecordingCore() => _manualRecording.Dispose();
 
         private void ReadLoop()
         {

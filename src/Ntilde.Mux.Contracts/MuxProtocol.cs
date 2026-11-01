@@ -43,6 +43,10 @@ public static class MuxErrorCodes
     public const string ClientTooSlow = "client_too_slow";
     public const string ProtocolError = "protocol_error";
     public const string SpawnFailed = "spawn_failed";
+    public const string RecordingOpenFailed = "recording_open_failed";
+    public const string RecordingWriteFailed = "recording_write_failed";
+    public const string RecordingOverflow = "recording_overflow";
+    public const string RecordingFlushTimeout = "recording_flush_timeout";
     public const string Internal = "internal_error";
 
     /// <summary>Refuses <see cref="MuxAttachMode.IfUnattached"/> when another interactive client is already attached.</summary>
@@ -66,6 +70,7 @@ public static class MuxMethods
     public const string Kill = "kill";
     public const string Resize = "resize";
     public const string SessionInfo = "sessionInfo";
+    public const string RecordingFailed = "recordingFailed";
     public const string StartRecording = "startRecording";
     public const string StopRecording = "stopRecording";
     public const string EnableFlightRecording = "enableFlightRecording";

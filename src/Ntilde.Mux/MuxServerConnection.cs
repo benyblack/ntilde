@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json.Serialization.Metadata;
 using Ntilde.Mux.Contracts;
 using Ntilde.Pty;
+using Ntilde.Replay;
 
 namespace Ntilde.Mux;
 
@@ -36,6 +37,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     /// Nothing else is decided from it: supersession and read-only state belong to the parse thread.
     /// </summary>
     private readonly HashSet<Guid> _attached = new();
+    private readonly HashSet<Guid> _recordingSessions = new();
     private readonly HashSet<Guid> _flightSessions = new(); // reader-thread cleanup, including pending enables
 
     /// <summary>
@@ -353,6 +355,8 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 }
 
                 _attached.Clear();
+                foreach (Guid id in _recordingSessions) _ = ReleaseRecordingObservationAsync(id);
+                _recordingSessions.Clear();
                 foreach (Guid id in _flightSessions) _ = ReleaseFlightOwnershipAsync(id);
                 _flightSessions.Clear();
                 if (!IsClosing) Abort(ReasonDisconnected);
@@ -546,7 +550,9 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.StartRecording:
                     {
                         StartRecordingParams p = Params(request, MuxJsonContext.Default.StartRecordingParams);
-                        _ = CompleteRecordingRequestAsync(request, LiveSession(p.SessionId).StartRecordingAsync(p.Path));
+                        var recordingSession = LiveSession(p.SessionId);
+                        _recordingSessions.Add(p.SessionId);
+                        _ = CompleteRecordingStartAsync(request, recordingSession.StartRecordingAsync(p.Path, this));
                         break;
                     }
                 case MuxMethods.StopRecording:
@@ -599,6 +605,13 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         }
     }
 
+    private async Task CompleteRecordingStartAsync(MuxRequest request, Task<StartRecordingResult> operation)
+    {
+        await Task.Yield();
+        try { Reply(request, await operation.ConfigureAwait(false), MuxJsonContext.Default.StartRecordingResult); }
+        catch (Exception ex) { ReplyRecordingFailure(request, ex); }
+    }
+
     private async Task CompleteRecordingRequestAsync(MuxRequest request, Task operation)
     {
         await Task.Yield(); // even an already-completed operation must not do completion work on the reader
@@ -616,7 +629,25 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     private void ReplyRecordingFailure(MuxRequest request, Exception ex)
     {
         SafeLog($"[MuxServer] connection {ConnectionId}: {Clip(request.Method)} failed: {ex}");
-        ReplyError(request, MuxErrorCodes.Internal, $"{ex.GetType().Name}: {Clip(ex.Message)}");
+        string code = ex is RecordingException recording ? recording.Failure.Kind switch
+        {
+            RecordingFailureKind.Open => MuxErrorCodes.RecordingOpenFailed,
+            RecordingFailureKind.Overflow => MuxErrorCodes.RecordingOverflow,
+            RecordingFailureKind.FlushTimeout => MuxErrorCodes.RecordingFlushTimeout,
+            _ => MuxErrorCodes.RecordingWriteFailed
+        } : MuxErrorCodes.Internal;
+        ReplyError(request, code, $"{ex.GetType().Name}: {Clip(ex.Message)}");
+    }
+
+    private async Task ReleaseRecordingObservationAsync(Guid sessionId)
+    {
+        await Task.Yield(); // Cleanup cannot hold the connection reader behind the parser queue.
+        try
+        {
+            if (_server.TryGetSession(sessionId, out HeadlessTerminalSession? session))
+                await session.RemoveRecordingObserverAsync(this).ConfigureAwait(false);
+        }
+        catch (Exception ex) { SafeLog($"[MuxServer] recording observer cleanup failed: {ex.Message}"); }
     }
 
     private async Task ReleaseFlightOwnershipAsync(Guid sessionId)

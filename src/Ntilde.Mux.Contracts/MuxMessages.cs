@@ -385,3 +385,18 @@ public sealed record MuxEndpointDescriptor
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? AppVersion { get; init; }
 }
+
+/// <summary>Manual recording stopped after an I/O failure or pending-byte overflow.</summary>
+public sealed record RecordingFailedNotification
+{
+    public Guid RecordingId { get; init; }
+    public Guid SessionId { get; init; }
+    public required string Kind { get; init; }
+    public required string Message { get; init; }
+}
+
+/// <summary>Identity of the recorder that successfully opened its output file.</summary>
+public sealed record StartRecordingResult
+{
+    public Guid RecordingId { get; init; }
+}

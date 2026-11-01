@@ -43,7 +43,8 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         remove => _rawOutput.Unsubscribe(value);
     }
 
-    private ReplayWriter? _recorder;
+    private readonly SessionRecording _manualRecording = new();
+    private PtyRecorder? _recorder => _manualRecording.Current;
 
     // Flight recorder ring (agent replay export) — same byte-level tap as _recorder,
     // never records input. See ITerminalFlightRecorder.
@@ -171,7 +172,8 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
     public bool IsProcessRunning => Volatile.Read(ref _isRunning) == 1;
     public bool HasActiveChildProcesses => false;
     public int? ExitCode => _exitCode;
-    public bool IsRecording => _recorder != null;
+    public bool IsRecording => _recorder is { IsReady: true };
+    public Guid RecordingId => _recorder?.Id ?? Guid.Empty;
     public bool IsFlightRecording => _flightRecorder != null;
 
     public void EnableFlightRecording(long maxTotalBytes) => AtDecodedRecordingBoundary(() => { EnableFlightRecordingCore(maxTotalBytes); return 0; });
@@ -383,40 +385,31 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         lock (_outputInvocationLock) return operation();
     }
 
-    public void StartRecording(string filePath) => AtDecodedRecordingBoundary(() => { StartRecordingCore(filePath); return 0; });
+    public event Action<Ntilde.Replay.RecordingFailure>? RecordingFailed;
 
-    private void StartRecordingCore(string filePath)
+    public void StartRecording(string filePath) => AtDecodedRecordingBoundary(() => StartRecordingCore(filePath));
+
+    public Task StartRecordingAsync(string filePath) => AtDecodedRecordingBoundary(() => StartRecordingCore(filePath).WaitUntilReadyAsync());
+
+    private Ntilde.Replay.PtyRecorder StartRecordingCore(string filePath)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _recordingDisposed) != 0, this);
-        if (_recorder != null)
-        {
-            return;
-        }
-
-        var recorder = new ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics);
-        recorder.RecordMarker("START");
-
-        _recorder = recorder;
+        var recorder = _manualRecording.Begin(
+            () => new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics),
+            failure => RecordingFailed?.Invoke(failure));
         if (Volatile.Read(ref _recordingDisposed) != 0)
         {
-            if (ReferenceEquals(Interlocked.CompareExchange(ref _recorder, null, recorder), recorder)) recorder.Dispose();
-            throw new ObjectDisposedException(nameof(NativeSshSession));
+            _manualRecording.Discard(recorder);
+            throw new ObjectDisposedException(GetType().Name);
         }
+        return recorder;
     }
 
-    public void StopRecording() => AtDecodedRecordingBoundary(() => { StopRecordingCore(); return 0; });
+    public Task StopRecordingAsync() => AtDecodedRecordingBoundary(_manualRecording.StopAsync);
 
-    private void StopRecordingCore()
-    {
-        var recorder = Interlocked.Exchange(ref _recorder, null);
-        if (recorder == null)
-        {
-            return;
-        }
+    public void StopRecording() => StopRecordingAsync().GetAwaiter().GetResult();
 
-        recorder.RecordMarker("END");
-        recorder.Dispose();
-    }
+    private void StopRecordingCore() => _manualRecording.Dispose();
 
     public void Dispose()
     {

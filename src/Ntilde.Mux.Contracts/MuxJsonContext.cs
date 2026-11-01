@@ -30,6 +30,8 @@ namespace Ntilde.Mux.Contracts;
 [JsonSerializable(typeof(ReadScreenParams))]
 [JsonSerializable(typeof(ReadScreenResult))]
 [JsonSerializable(typeof(StartRecordingParams))]
+[JsonSerializable(typeof(StartRecordingResult))]
+[JsonSerializable(typeof(RecordingFailedNotification))]
 [JsonSerializable(typeof(EnableFlightRecordingParams))]
 [JsonSerializable(typeof(ExportFlightResult))]
 [JsonSerializable(typeof(ExitedNotification))]

@@ -209,6 +209,20 @@ A focused module that owns the record/replay file format and the snapshot/byte-s
 
 `PtyRecorder`, `ReplayWriter`, `ReplayReader`, `ReplayRunner` live here. Goldens and regression suites consume `ReplayRunner`.
 
+Manual recording holds at most 16 MiB of serialized pending events, including the
+in-flight write and per-record bookkeeping. An oversized event, saturation, open/write
+failure or flush deadline stops acceptance and exposes a typed `RecordingFailure`;
+terminal output never waits for disk capacity. `WaitUntilReadyAsync` confirms the
+header is written, and `CompleteAsync` confirms the file was flushed and closed.
+Lifetime `Dispose` is best-effort; callers reporting a successful save must await
+completion. The pane and mux await these tasks outside parser ordering boundaries
+and publish failures; recorder identities keep historical failure notices from changing
+a replacement recording. Initiating mux connections observe recording failures even
+without attaching terminal output; disconnect cleanup follows start admission.
+Frozen flight exports write sequentially outside the live queue and propagate I/O
+errors, so an export larger than the live byte budget is still complete.
+
+
 The replay window restarts from a supported complete terminal/parser checkpoint, or
 reconstructs from its initial paired state and recorded raw prefix. Legacy viewport
 snapshots remain sequential read material, not independent restart cuts. The reader

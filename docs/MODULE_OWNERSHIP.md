@@ -118,6 +118,12 @@ invariant changes.
 - Replay is a pure function of `(byte stream, optional snapshots) → buffer state`
 - Cannot reference Pty, Rendering, App, Avalonia, or SkiaSharp
 - New recordings persist output and terminal state, never typed input; legacy input events remain readable
+- Manual recorder pending data is bounded by serialized bytes, including in-flight
+  writes and per-event overhead (16 MiB by default). Overflow fails visibly without
+  waiting for disk; it does not silently drop events. Failure stops producers.
+- Explicit recording start/stop await readiness/flush outside parser boundaries;
+  best-effort lifetime cleanup must never be treated as a successful save.
+- Frozen flight exports bypass the live queue and propagate write/close failures.
 - Snapshot format is forward-compatible within v2
 - Restart positions can resume after a physical snapshot record, preserving output with equal timestamps.
   Header validation remains active; App suppresses header geometry/metrics when a checkpoint
