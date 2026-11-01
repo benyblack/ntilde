@@ -9,7 +9,7 @@ separate domain and shared-renderer pixel evidence below.
 | Build | Source commit | Owned collection | Measured at (UTC) |
 |---|---|---|---|
 | Before | `52ed24cd4bb2eb8d69d747c6ba6ee063d372709e` | `owned-KlBHUy` | 12:31:08.706 |
-| After | `3e6bf01fc36f71804c24fb181025be08f3a38303` | `owned-SnVZfh` | 14:25:31.154 |
+| After | `8efc79850642c11ae6e63cc3f220e1184e9d1967` | `owned-ifD7hp` | 14:42:57.153 |
 
 Both builds are fresh uninstalled sidecars outside `.app` bundles. Their DLL
 informational versions contain the full source commit. The selected assembly
@@ -23,7 +23,7 @@ source and ownership/cleanup proof. No personal clipboard was read.
 Both runs use the same pinned collector revision, suite/probe hash, adapter,
 manifest/lock, runner sources and Node v24.22.1. Raw SHA-256 values were recomputed;
 both ownership proofs record completion and cleanup. The after cleanup completed
-at 14:25:31.184 UTC.
+at 14:42:57.180 UTC.
 
 ## Observed behavior
 
@@ -59,8 +59,8 @@ also failed with double shrinking and passes with font scaling applied once.
 Eleven shared-renderer pixel tests cover enlarged ink across rows, fractional
 font sizing/alignment, two small glyphs in one cell, compressed long text,
 visible lower fragments whose anchor is in history, cached-row refresh, italic baseline anchoring, and plain/styled underline policy.
-The full VT suite passes 1,406 tests. The earlier complete App gating rerun passed
-7,534 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
+The full VT suite passes 1,410 tests. The earlier complete App gating rerun passed
+7,542 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
 (40), shared golden PNG (8), mux (1,123 with 20 platform skips), architecture
 (178), and platform-boot (75 with 4 font-platform skips) checks pass locally.
 The [VT matrix](../../vt_coverage_matrix.md) records implementation scope.
@@ -81,8 +81,17 @@ retention; the allocation regression drops from more than 5 MiB over 20 refusals
 to below its 128 KiB ceiling. A separate valid, non-overlapping import fixture
 reaches the summed storage guard rather than the block-count guard. Legacy
 checkpoints retire only enough old rectangles to restore the visible checkpoint;
-without pressure, retained history remains. Three real TerminalView hover/click
-checks cover the beginning, middle and end of a sized URL block.
+without pressure, retained history remains. Six real TerminalView hover/click
+checks cover the beginning, middle and end of both rows of a sized URL block.
+
+The second review follow-up makes history reclamation independent of the active
+screen plane. A saturated-history alternate-screen checkpoint exports and imports
+again within the aggregate budget; this regression failed before the correction.
+ANSI export bootstraps clipped anchors with bounded scrolling before its viewport
+walk, including anchors evicted from history. Two mixed-height round trips failed
+before the fix and now preserve both fragments. Lower-row URL extraction maps to
+the same payload and physical width; three real view cases failed before the fix.
+All 77 focused App sizing, link and replay tests pass after these changes.
 
 ## Limits
 
