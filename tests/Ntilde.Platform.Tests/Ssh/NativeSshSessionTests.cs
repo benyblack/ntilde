@@ -15,6 +15,20 @@ public sealed class NativeSshSessionTests
     private static readonly int[] ExitCode23Only = [23];
     private static readonly string[] HelloOnly = ["hello"];
 
+    /// <summary>The App routing tests produce these frames; the managed SSH session must transmit them unchanged.</summary>
+    [Theory]
+    [InlineData("\x1b[97:65;6u")]
+    [InlineData("\x1b[1089::99;5u")]
+    [InlineData("\x1b[97::113;1:3u")]
+    public void Alternate_keyboard_frames_reach_the_native_write_boundary_unchanged(string frame)
+    {
+        var interop = new FakeNativeSshInterop();
+        using var session = new NativeSshSession(CreateProfile(), interop: interop);
+        session.SendInput(frame);
+        Assert.Equal(Encoding.UTF8.GetBytes(frame), Assert.Single(interop.Writes));
+        Assert.Empty(interop.DeviceReplies);
+    }
+
     [Fact]
     public void Device_replies_use_bounded_admission_and_never_fall_back_to_unbounded_input()
     {

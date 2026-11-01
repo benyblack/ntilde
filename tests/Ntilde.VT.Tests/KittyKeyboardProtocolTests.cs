@@ -77,11 +77,10 @@ public class KittyKeyboardProtocolTests
         var (_, parser, responses) = CreateTerminal();
 
         // crossterm/Codex asks for disambiguate|report-event-types|report-alternate-keys.
-        // We honor disambiguation and event types, so only those bits may be reported back - otherwise the
-        // client would wait for key release events that never arrive.
-        parser.Process("\x1b[>7u");
+        // We honor all three; all-key and associated-text reporting remain unsupported.
+        parser.Process("\x1b[>31u");
 
-        Assert.Equal("\x1b[?3u", Query(parser, responses));
+        Assert.Equal("\x1b[?7u", Query(parser, responses));
     }
 
     [Fact]
@@ -89,7 +88,7 @@ public class KittyKeyboardProtocolTests
     {
         var (_, parser, responses) = CreateTerminal();
 
-        parser.Process("\x1b[>28u");
+        parser.Process("\x1b[>24u");
 
         Assert.Equal("\x1b[?0u", Query(parser, responses));
     }

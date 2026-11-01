@@ -36,7 +36,7 @@ namespace Ntilde.Shell
         int Row,
         KeyModifiers Modifiers);
 
-    internal static class TerminalInputModeEncoder
+    internal static partial class TerminalInputModeEncoder
     {
         /// <summary>
         /// Encodes the cursor keys, Home/End, Insert/Delete, PageUp/PageDown and F1-F12, or
@@ -186,11 +186,16 @@ namespace Ntilde.Shell
         /// Text/IME/AltGr presses remain on OnTextInput and are never tracked for release.
         /// </summary>
         public static string? EncodeKittyKey(Key key, KeyModifiers modifiers, ModeState? modes, TerminalKeyEventKind eventKind)
+            => EncodeKittyKey(key, modifiers, modes, eventKind, default);
+
+        /// <summary>Enriches already encoded text keys with captured layout metadata when flag 4 is negotiated.</summary>
+        public static string? EncodeKittyKey(Key key, KeyModifiers modifiers, ModeState? modes, TerminalKeyEventKind eventKind, KittyKeyIdentity identity)
         {
             int flags = modes?.KittyKeyboard.Flags ?? 0;
             bool reportEvents = (flags & KittyKeyboardState.FlagReportEventTypes) != 0;
             bool disambiguate = (flags & KittyKeyboardState.FlagDisambiguateEscapeCodes) != 0;
-            if (flags == 0 || (eventKind == TerminalKeyEventKind.Release && !reportEvents)) return null;
+            if ((flags & (KittyKeyboardState.FlagDisambiguateEscapeCodes | KittyKeyboardState.FlagReportEventTypes)) == 0
+                || (eventKind == TerminalKeyEventKind.Release && !reportEvents)) return null;
             if (!reportEvents) eventKind = TerminalKeyEventKind.Press;
 
             int bits = GetKittyModifierBits(modifiers);
@@ -209,7 +214,8 @@ namespace Ntilde.Shell
 
             return IsKittyControlKey(key)
                 ? EncodeKittyControlKey(key, bits, disambiguate, eventKind)
-                : EncodeKittyTextKey(key, bits, disambiguate, eventKind);
+                : EncodeKittyTextKey(key, bits, disambiguate, eventKind,
+                    (flags & KittyKeyboardState.FlagReportAlternateKeys) != 0 ? identity : default);
         }
 
         private static bool IsKittyControlKey(Key key) => key is Key.Enter or Key.Tab or Key.Back or Key.Escape;
@@ -238,16 +244,16 @@ namespace Ntilde.Shell
             return null;
         }
 
-        private static string? EncodeKittyTextKey(Key key, int bits, bool disambiguate, TerminalKeyEventKind eventKind)
+        private static string? EncodeKittyTextKey(Key key, int bits, bool disambiguate, TerminalKeyEventKind eventKind, KittyKeyIdentity identity)
         {
-            int codepoint = GetUnshiftedCodepoint(key);
+            int codepoint = identity.Primary ?? GetUnshiftedCodepoint(key);
             if (codepoint < 0) return null;
             if (eventKind != TerminalKeyEventKind.Release)
             {
                 if ((bits & ~KittyShift) == 0) return null;
                 if (!disambiguate && eventKind == TerminalKeyEventKind.Press) return null;
             }
-            return FormatKittyEvent(codepoint, bits, 'u', eventKind);
+            return FormatKittyEvent(codepoint, bits, 'u', eventKind, identity.Format(codepoint, (bits & KittyShift) != 0));
         }
 
         private static (int Number, char Final) KittyFunctionalKey(Key key) => key switch
@@ -294,13 +300,13 @@ namespace Ntilde.Shell
             return bits;
         }
 
-        private static string FormatKittyEvent(int number, int modifierBits, char final, TerminalKeyEventKind eventKind)
+        private static string FormatKittyEvent(int number, int modifierBits, char final, TerminalKeyEventKind eventKind, string? keyFields = null)
         {
             bool hasEvent = eventKind != TerminalKeyEventKind.Press;
             bool hasModifiers = modifierBits != 0 || hasEvent;
             bool omitNumber = number == 1 && final is not ('u' or '~') && !hasModifiers;
             var culture = System.Globalization.CultureInfo.InvariantCulture;
-            return string.Concat("\x1b[", omitNumber ? "" : number.ToString(culture),
+            return string.Concat("\x1b[", omitNumber ? "" : keyFields ?? number.ToString(culture),
                 hasModifiers ? ";" + (modifierBits + 1).ToString(culture) : "",
                 hasEvent ? ":" + ((int)eventKind).ToString(culture) : "", final);
         }
@@ -309,8 +315,8 @@ namespace Ntilde.Shell
         /// Maps an Avalonia key to the unshifted ASCII codepoint the kitty protocol requires
         /// ("the codepoint used is always the lower-case (or more technically, un-shifted)
         /// version of the key"). Returns -1 for keys outside the spec's legacy-text set, which
-        /// keeps them on their legacy encodings. Punctuation is resolved against the US layout
-        /// because Avalonia's <see cref="Key"/> enum is itself a US-layout virtual key code.
+        /// keeps them on their legacy encodings. This is the legacy fallback when no usable layout
+        /// symbol is available; OEM virtual keys do not identify every layout's unshifted glyph.
         /// </summary>
         private static int GetUnshiftedCodepoint(Key key)
         {
