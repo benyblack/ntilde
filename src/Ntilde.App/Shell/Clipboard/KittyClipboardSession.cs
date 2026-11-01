@@ -49,6 +49,7 @@ internal sealed class KittyClipboardSession : IDisposable
     private int _generation;
     private CancellationTokenSource _cancellation = new();
     private PasteGrant? _pasteGrant;
+    private CancellationTokenSource? _pasteCancellation;
 
     public KittyClipboardSession(IKittyClipboard clipboard, Func<string, bool> reply, Func<Func<Task>, Task> schedule,
         Func<bool> writeAllowed, Func<bool> alive, TimeProvider? clock = null,
@@ -115,13 +116,13 @@ internal sealed class KittyClipboardSession : IDisposable
         _write = new WriteTransfer(packet.Id, _clock.GetUtcNow());
     }
 
-    private void Abort(string status)
+    private void Abort(string status, bool deferReply = false)
     {
         if (_write == null) return;
         string id = _write.Id;
         _write.Dispose();
         _write = null;
-        Reply(WriteOperation, status, id);
+        Reply(WriteOperation, status, id, deferReply);
     }
 
     private void FinishWrite()
@@ -148,7 +149,7 @@ internal sealed class KittyClipboardSession : IDisposable
         return null;
     }
 
-    private async Task PerformAsync(string type, string id, int generation, Func<Task<string?>> action)
+    private async Task PerformAsync(string type, string id, int generation, Func<Task<string?>> action, CancellationToken? operationCancellation = null)
     {
         bool gate = false;
         CancellationToken cancellation = CancellationToken.None;
@@ -166,7 +167,7 @@ internal sealed class KittyClipboardSession : IDisposable
             lock (_sync)
             {
                 if (!IsAlive(generation)) return;
-                cancellation = _cancellation.Token;
+                cancellation = operationCancellation ?? _cancellation.Token;
             }
             // An immediate try, with no queued waiter to outlive this request.
             gate = await ClipboardGate.WaitAsync(0, CancellationToken.None);
@@ -245,21 +246,19 @@ internal sealed class KittyClipboardSession : IDisposable
         });
     }
 
+    private async Task<Dictionary<string, byte[]>?> CapturePasteValuesAsync(int generation, CancellationToken cancellation)
+    {
+        using var snapshot = await _clipboard.OpenReadAsync();
+        return await CollectReadValuesAsync(snapshot, snapshot.Types.ToArray(), listing: false, generation, cancellation);
+    }
+
     private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(string[] types, bool listing, int generation)
     {
         using var snapshot = await _clipboard.OpenReadAsync();
         return await CollectReadValuesAsync(snapshot, types, listing, generation);
     }
 
-    private async Task<Dictionary<string, byte[]>?> CapturePasteValuesAsync(int generation)
-    {
-        using var snapshot = await _clipboard.OpenReadAsync();
-        var values = await CollectReadValuesAsync(snapshot, snapshot.Types.ToArray(), listing: false, generation);
-        // Providers may retain their byte arrays. A grant owns immutable copies.
-        return values?.ToDictionary(p => p.Key, p => p.Value.ToArray(), StringComparer.Ordinal);
-    }
-
-    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(IKittyClipboardSnapshot snapshot, string[] types, bool listing, int generation)
+    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(IKittyClipboardSnapshot snapshot, string[] types, bool listing, int generation, CancellationToken cancellation = default)
     {
         var available = snapshot.Types.Where(KittyClipboardPacket.IsMime).Distinct(StringComparer.Ordinal).Take(KittyClipboardPacket.MaxTypes).ToArray();
         var values = new Dictionary<string, byte[]>(StringComparer.Ordinal);
@@ -271,7 +270,7 @@ internal sealed class KittyClipboardSession : IDisposable
         long total = 0;
         foreach (string mime in types.Where(available.Contains))
         {
-            if (!IsAlive(generation)) return null;
+            if (!IsAlive(generation) || cancellation.IsCancellationRequested) return null;
             byte[]? bytes = await snapshot.ReadAsync(mime, KittyClipboardPacket.MaxDataBytes - (int)total);
             if (bytes == null) continue;
             total += bytes.Length;
@@ -279,7 +278,8 @@ internal sealed class KittyClipboardSession : IDisposable
             {
                 throw new IOException("Clipboard read exceeds the decoded-byte limit.");
             }
-            values[mime] = bytes;
+            // Copy borrowed buffers before another provider read can reuse them.
+            values[mime] = bytes.ToArray();
         }
         return values;
     }
@@ -292,22 +292,29 @@ internal sealed class KittyClipboardSession : IDisposable
         {
             if (_disposed) return Task.CompletedTask;
             _pasteGrant = null;
+            _pasteCancellation?.Cancel();
+            _pasteCancellation?.Dispose();
+            _pasteCancellation = CancellationTokenSource.CreateLinkedTokenSource(_cancellation.Token);
+            if (_write != null && _clock.GetUtcNow() - _write.Started > TimeSpan.FromMinutes(1)) Abort(Busy, deferReply: true);
             if (_busy || _write != null)
-                return Task.Run(() => Reply(ReadOperation, Busy, ""), CancellationToken.None);
+            {
+                Reply(ReadOperation, Busy, "", defer: true);
+                return Task.CompletedTask;
+            }
             _busy = true;
             generation = _generation;
-            cancellation = _cancellation.Token;
+            cancellation = _pasteCancellation.Token;
         }
         return PerformAsync(ReadOperation, "", generation, async () =>
         {
             // Capture all advertised values at the user's paste gesture, within the same
             // aggregate budget as an explicit read. No later clipboard state is authorized.
-            var captured = await CapturePasteValuesAsync(generation);
+            var captured = await CapturePasteValuesAsync(generation, cancellation);
             if (captured == null) return null;
             string password = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
             lock (_sync)
             {
-                if (!IsAlive(generation)) return null;
+                if (!IsAlive(generation) || cancellation.IsCancellationRequested) return null;
                 _pasteGrant = new PasteGrant(password, _clock.GetUtcNow().AddSeconds(15), captured);
             }
             var values = new Dictionary<string, byte[]>
@@ -316,7 +323,7 @@ internal sealed class KittyClipboardSession : IDisposable
             };
             bool sent = await Task.Run(() => SendDataAsync("", values, generation, cancellation, ":pw=" + KittyClipboardPacket.Encode(password)), CancellationToken.None);
             return sent ? "DONE" : null;
-        });
+        }, cancellation);
     }
 
     private async Task<bool> SendDataAsync(string id, IReadOnlyDictionary<string, byte[]> data, int generation, CancellationToken cancellation, string metadata = "")
@@ -341,13 +348,13 @@ internal sealed class KittyClipboardSession : IDisposable
     }
 
     private static string SafeName(string name) => new(name.Where(c => !char.IsControl(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).Take(80).ToArray());
-    private void Reply(string type, string status, string id)
+    private void Reply(string type, string status, string id, bool defer = false)
     {
         lock (_sync)
         {
             if (_disposed) return;
             string response = KittyClipboardPacket.Response(type, status, id);
-            if (!_errorPumpRunning && _replies.TrySend(response)) return;
+            if (!defer && !_errorPumpRunning && _replies.TrySend(response)) return;
             // A flooding client cannot create an unbounded number of pending tasks/IDs.
             if (_errors.Count >= MaxQueuedErrors) return;
             _errors.Enqueue(new PendingError(response, _generation, _cancellation.Token));
@@ -397,6 +404,9 @@ internal sealed class KittyClipboardSession : IDisposable
             _write = null;
             _errors.Clear();
             _pasteGrant = null;
+            _pasteCancellation?.Cancel();
+            _pasteCancellation?.Dispose();
+            _pasteCancellation = null;
         }
     }
     public void Dispose()

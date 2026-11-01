@@ -1,3 +1,7 @@
+using Avalonia;
+using Avalonia.Headless.XUnit;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Ntilde.Shell.Clipboard;
@@ -28,6 +32,7 @@ public class AvaloniaKittyClipboardTests
                     object? value = await item.TryGetRawAsync(format);
                     if (format is DataFormat<byte[]> bytes && value is byte[] data) target.Set(bytes, data);
                     if (format is DataFormat<string> text && value is string s) target.Set(text, s);
+                    if (format == DataFormat.Bitmap && value is Bitmap bitmap) target.Set(DataFormat.Bitmap, bitmap);
                 }
             copy.Add(target);
             return copy;
@@ -42,6 +47,32 @@ public class AvaloniaKittyClipboardTests
         stream.Write(new byte[] { 1, 2, 3 });
         Assert.Throws<IOException>(() => stream.WriteByte(4));
         Assert.Equal(new byte[] { 1, 2, 3 }, stream.ToArray());
+    }
+
+    [AvaloniaTheory]
+    [InlineData(3)]
+    [InlineData(4096)]
+    public async Task Bitmap_reads_encode_PNG_or_reject_the_pixel_budget_and_dispose_the_value(int budget)
+    {
+        using var clipboard = new Clipboard();
+        using var bitmap = new WriteableBitmap(new PixelSize(1, 1), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+        var transfer = new DataTransfer();
+        var item = new DataTransferItem();
+        item.Set(DataFormat.Bitmap, bitmap); transfer.Add(item);
+        await clipboard.SetDataAsync(transfer);
+        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(false));
+        using var snapshot = await adapter.OpenReadAsync();
+        Assert.Contains("image/png", snapshot.Types);
+        if (budget == 3) await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("image/png", maxBytes: budget));
+        else
+        {
+            byte[] png = Assert.IsType<byte[]>(await snapshot.ReadAsync("image/png", maxBytes: budget));
+            Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, png[..8]);
+            using var decoded = new Bitmap(new MemoryStream(png));
+            Assert.Equal(new PixelSize(1, 1), decoded.PixelSize);
+        }
+        using var output = new MemoryStream();
+        Assert.Throws<ObjectDisposedException>(() => bitmap.Save(output, PngBitmapEncoderOptions.Default));
     }
 
     [Fact]

@@ -20,15 +20,17 @@ public class KittyClipboardSessionTests
         public bool AllowRead;
         public int Prompts, Reads, Lists, Writes, ReadThread;
         public Exception? Failure;
+        public Task? ProviderWait;
         public Action? OnRead;
         public bool IgnoreReadBudget;
         public int SnapshotsDisposed;
         public Func<CancellationToken, Task<bool>>? Confirmation;
         public Dictionary<string, byte[]> Values = new() { ["text/plain"] = Encoding.UTF8.GetBytes("private text"), ["image/png"] = new byte[8193] };
-        public Task<IKittyClipboardSnapshot> OpenReadAsync()
+        public async Task<IKittyClipboardSnapshot> OpenReadAsync()
         {
             Lists++;
-            return Task.FromResult<IKittyClipboardSnapshot>(new Snapshot(this, Values.ToDictionary(p => p.Key, p => p.Value)));
+            if (ProviderWait != null) await ProviderWait;
+            return new Snapshot(this, Values.ToDictionary(p => p.Key, p => p.Value));
         }
         private sealed class Snapshot(FakeClipboard owner, Dictionary<string, byte[]> values) : IKittyClipboardSnapshot
         {
@@ -45,7 +47,13 @@ public class KittyClipboardSessionTests
             }
             public void Dispose() => owner.SnapshotsDisposed++;
         }
-        public Task WriteAsync(IReadOnlyDictionary<string, byte[]> data) { if (Failure != null) throw Failure; Writes++; Values = data.ToDictionary(p => p.Key, p => p.Value); return Task.CompletedTask; }
+        public async Task WriteAsync(IReadOnlyDictionary<string, byte[]> data)
+        {
+            if (ProviderWait != null) await ProviderWait;
+            if (Failure != null) throw Failure;
+            Writes++;
+            Values = data.ToDictionary(p => p.Key, p => p.Value);
+        }
         public Task<bool> ConfirmReadAsync(string name, CancellationToken cancellation) { Prompts++; return Confirmation?.Invoke(cancellation) ?? Task.FromResult(AllowRead); }
     }
     private sealed class Harness : IDisposable
@@ -481,6 +489,52 @@ public class KittyClipboardSessionTests
     }
 
     [Fact]
+    public async Task User_paste_expires_an_abandoned_write_without_another_child_packet()
+    {
+        using var h = new Harness();
+        h.Send("type=write:id=abandoned");
+        h.Send(Data("text/plain", B64("unfinished")));
+        h.Clock.Now += TimeSpan.FromMinutes(2);
+        await h.Session.NotifyPasteAsync();
+        await h.Drain();
+        Assert.Equal(0, h.Clipboard.Writes);
+        Assert.Contains(h.Replies, reply => reply.Contains("type=write:status=EBUSY:id=abandoned", StringComparison.Ordinal));
+        Assert.Contains(h.Replies, reply => reply.Contains(":pw=", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task An_uncancellable_native_call_retains_one_gate_owner_until_actual_completion(bool write)
+    {
+        using var h = new Harness();
+        using var other = new Harness();
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        h.Clipboard.ProviderWait = resume.Task;
+        if (write) { h.Send("type=write"); h.Send(Data("text/plain", "SGk=")); h.Send("type=wdata"); }
+        else h.Send(Read("."));
+        var operation = h.Drain();
+        try
+        {
+            Assert.False(operation.IsCompleted);
+            for (int i = 0; i < 10; i++) h.Session.Reset();
+            other.Send(Read(".")); await other.Drain();
+            Assert.Contains("status=EBUSY", Assert.Single(other.Replies));
+            Assert.Empty(h.Work);
+        }
+        finally
+        {
+            resume.TrySetResult();
+            await operation;
+        }
+        Assert.Empty(h.Replies); // no stale DATA, completion or reauthorization after reset
+        Assert.Equal(write ? 1 : 0, h.Clipboard.Writes);
+        Assert.Equal(write ? 0 : 1, h.Clipboard.SnapshotsDisposed);
+        other.Replies.Clear(); other.Send(Read(".")); await other.Drain();
+        Assert.Contains("status=DONE", other.Replies[^1]);
+    }
+
+    [Fact]
     public async Task Paste_token_is_single_use_tty_scoped_named_and_expires()
     {
         using var h = new Harness();
@@ -502,6 +556,63 @@ public class KittyClipboardSessionTests
         h.Clock.Now = h.Clock.Now.AddSeconds(16);
         h.Send("type=read:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain")); await h.Drain();
         Assert.Equal(3, h.Clipboard.Prompts);
+    }
+
+    [Fact]
+    public async Task A_later_busy_paste_invalidates_an_earlier_pending_capture()
+    {
+        using var h = new Harness();
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        h.Clipboard.ProviderWait = resume.Task;
+        var first = h.Session.NotifyPasteAsync();
+        try
+        {
+            Assert.False(first.IsCompleted);
+            await h.Session.NotifyPasteAsync(); // rejected as busy, but still supersedes the first gesture
+        }
+        finally { resume.TrySetResult(); await first; }
+        await h.Drain();
+        Assert.DoesNotContain(h.Replies, reply => reply.Contains(":pw=", StringComparison.Ordinal));
+        h.Clipboard.ProviderWait = null;
+        await h.Session.NotifyPasteAsync();
+        Assert.Contains(h.Replies, reply => reply.Contains(":pw=", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_later_busy_paste_cancels_an_earlier_notification_waiting_for_queue_capacity()
+    {
+        using var h = new Harness();
+        var waiting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        h.TrySendOverride = reply => reply.Contains(":pw=", StringComparison.Ordinal) ? false : h.Record(reply);
+        h.DelayOverride = (_, cancellation) => { waiting.TrySetResult(); return resume.Task.WaitAsync(cancellation); };
+        var first = h.Session.NotifyPasteAsync();
+        try
+        {
+            await waiting.Task;
+            await h.Session.NotifyPasteAsync();
+            await first;
+        }
+        finally { resume.TrySetResult(); }
+        await h.Drain();
+        Assert.DoesNotContain(h.Replies, reply => reply.Contains(":pw=", StringComparison.Ordinal) || reply.Contains("status=DONE", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Paste_capture_copies_each_borrowed_buffer_before_the_next_MIME_read()
+    {
+        using var h = new Harness();
+        byte[] shared = [0];
+        h.Clipboard.Values = new() { ["text/plain"] = shared, ["application/x-test"] = shared };
+        h.Clipboard.OnRead = () => shared[0] = (byte)(h.Clipboard.Reads * 17);
+        await h.Session.NotifyPasteAsync();
+        string token = h.Replies[0].Split(":pw=")[1][..^2];
+        h.Replies.Clear();
+        h.Send("type=read:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain application/x-test"));
+        await h.Drain();
+        Assert.Equal(2, h.Clipboard.Reads);
+        Assert.Contains(h.Replies, reply => reply.Contains(":mime=" + B64("text/plain") + ";EQ==", StringComparison.Ordinal));
+        Assert.Contains(h.Replies, reply => reply.Contains(":mime=" + B64("application/x-test") + ";Ig==", StringComparison.Ordinal));
     }
 
     [Fact]

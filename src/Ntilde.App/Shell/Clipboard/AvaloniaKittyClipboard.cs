@@ -76,9 +76,10 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
                     EnsureSize(Encoding.UTF8.GetByteCount(text), maxBytes);
                     return Encoding.UTF8.GetBytes(text);
                 case Bitmap bitmap:
-                    EnsureSize((long)bitmap.PixelSize.Width * bitmap.PixelSize.Height * 4, maxBytes);
-                    using (var stream = new ClipboardReadLimitStream(maxBytes))
+                    using (bitmap)
                     {
+                        EnsureSize((long)bitmap.PixelSize.Width * bitmap.PixelSize.Height * 4, maxBytes);
+                        using var stream = new ClipboardReadLimitStream(maxBytes);
                         bitmap.Save(stream, PngBitmapEncoderOptions.Default);
                         return stream.ToArray();
                     }
