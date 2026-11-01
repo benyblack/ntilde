@@ -54,12 +54,12 @@
     "cleanedUpAt": "2026-11-01T16:56:20.438Z"
   },
   "after": {
-    "sourceCommit": "ba2b1ebeba2e539e3e795df28e20b95a54419701",
-    "appVersion": "0.12.0+ba2b1ebeba2e539e3e795df28e20b95a54419701",
-    "measuredAt": "2026-11-01T17:15:35.296Z",
-    "localDirectory": "artifacts/terminfo/owned-q6V63U",
-    "rawSha256": "f0eb57d4702abbbfb237fd700c2b8e1f44a0470f016103ee895232131a947fa7",
-    "assemblySha256": "9d3c691392342ef77457977a4921d07f7c7067e6c96e56124cb14f315ffe4fe9",
+    "sourceCommit": "190eab1575087f3c5cd95ac5770ebd08b4e9ebb9",
+    "appVersion": "0.12.0+190eab1575087f3c5cd95ac5770ebd08b4e9ebb9",
+    "measuredAt": "2026-11-01T17:28:46.011Z",
+    "localDirectory": "artifacts/terminfo/owned-IlHkZI",
+    "rawSha256": "704fc0babb01c107d0b072213ce2e78fc2c3fd17dbeefaeb39440f9d7ebaf858",
+    "assemblySha256": "bfa237837abe6e62a0a770cbf9121baa50771cc1ab306efca99f8525a0e1ba16",
     "counts": {
       "inconclusive": 177,
       "supported": 78
@@ -69,8 +69,8 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "runId": "f05bbf38adf15a4defcc0e1d89de5a3c",
-    "ownerRunId": "db05af0df1da9b3cc2f251c2887495d0",
+    "runId": "d53bbd21e4f83239e11e26a1024de866",
+    "ownerRunId": "844e0923ed62d652cb18a444ff877c42",
     "suiteComplete": false,
     "ungradedDiagnostics": {
       "cursor.reverse-wrap": {
@@ -79,7 +79,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "cleanedUpAt": "2026-11-01T17:15:35.322Z"
+    "cleanedUpAt": "2026-11-01T17:28:46.037Z"
   },
   "unchangedOutcomeAndReasonCount": 254,
   "changes": [
@@ -165,5 +165,35 @@
     "Write wire-data budget is 64 MiB; materialized MIME/alias expansion is capped at 128 MiB. Packets/metadata/MIME counts are also bounded.",
     "Host-assembled transfers and grants are excluded from snapshots. Raw client OSC packets can occur in recorded PTY output and incomplete parser accumulators.",
     "177 inconclusive observations, an ungraded geometry diagnostic and suiteComplete=false remain. Zero unsupported observations is not a complete compatibility score."
+  ],
+  "intermediateAfters": [
+    {
+      "sourceCommit": "ba2b1ebeba2e539e3e795df28e20b95a54419701",
+      "appVersion": "0.12.0+ba2b1ebeba2e539e3e795df28e20b95a54419701",
+      "measuredAt": "2026-11-01T17:15:35.296Z",
+      "localDirectory": "artifacts/terminfo/owned-q6V63U",
+      "rawSha256": "f0eb57d4702abbbfb237fd700c2b8e1f44a0470f016103ee895232131a947fa7",
+      "assemblySha256": "9d3c691392342ef77457977a4921d07f7c7067e6c96e56124cb14f315ffe4fe9",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 78
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "f05bbf38adf15a4defcc0e1d89de5a3c",
+      "ownerRunId": "db05af0df1da9b3cc2f251c2887495d0",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T17:15:35.322Z"
+    }
   ]
 }

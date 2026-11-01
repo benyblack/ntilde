@@ -8,10 +8,10 @@ clipboard transfer permissions or native application interoperability.
 | Build | Source | Local evidence | Raw SHA-256 |
 |---|---|---|---|
 | Before | `04019dbacf1c02aa7ccd85c39fcd2670ec2905eb` | `artifacts/terminfo/owned-WTxDq5` | `5291400dfd56c2b67ef7011cbd275cba9a9dd261fb3664b0fed2e9fd1b159144` |
-| After | `ba2b1ebeba2e539e3e795df28e20b95a54419701` | `artifacts/terminfo/owned-q6V63U` | `f0eb57d4702abbbfb237fd700c2b8e1f44a0470f016103ee895232131a947fa7` |
+| After | `190eab1575087f3c5cd95ac5770ebd08b4e9ebb9` | `artifacts/terminfo/owned-IlHkZI` | `704fc0babb01c107d0b072213ce2e78fc2c3fd17dbeefaeb39440f9d7ebaf858` |
 
 The before probe ran at 2026-11-01T16:56:20.405Z and cleaned up at 2026-11-01T16:56:20.438Z.
-The after probe ran at 2026-11-01T17:15:35.296Z and cleaned up at 2026-11-01T17:15:35.322Z.
+The after probe ran at 2026-11-01T17:28:46.011Z and cleaned up at 2026-11-01T17:28:46.037Z.
 The [derived comparison](2026-11-01-clipboard-comparison.json) records the original
 query/reply traces, DLL hashes, source/input pins and ownership completion.
 The executable informational-version strings matched the stated source commits.
@@ -59,16 +59,18 @@ metadata, strict base64, host opt-in, reset and complete state transfer.
 `KittyClipboardSessionTests` covers binary/text chunks, forward aliases, bad
 padding, transaction abort/recovery, read denial, listing, reply chunking,
 primary-selection denial, live write settings, stale requests, global exclusion,
-prompt cancellation, paste-token scope/use/expiry, and both size budgets.
+prompt cancellation, paste-token scope/use/expiry, both size budgets, session-exit
+mode reset and response emission outside the clipboard/UI thread.
 `AvaloniaKittyClipboardTests` round-trips test-owned binary/text MIME formats
 through Avalonia DataTransfer values; macOS MIME/UTI conversion has a separate
 deterministic regression. `PaneParserWiringTests` checks direct/mux wiring.
 
-Local verification includes 1,488 VT tests, 61 focused app tests, platform boot
+Local verification includes 1,488 VT tests, 57 focused clipboard/wiring tests,
+6 conformance/report tests, platform boot
 75 passed / 4 skipped, architecture 178, mux 1,123 passed / 20 skipped, and MCP
-223. The first full app main run passed 7,632 cases and skipped 56; a generated
-report mismatch after the coverage-doc edit was corrected and its targeted
-regression passed. Latest-head CI supplies the full platform gate.
+223. The full app main lane passed 7,633 cases and skipped 56 before the
+review refinements; the later clipboard/wiring regressions also pass. Latest-head
+CI supplies the full platform gate.
 
 The owned collector has clipboard writes disabled and no clipboard fixture.
 All three OSC 52 probes remain policy-refused; the OSC 5522 query only proves
