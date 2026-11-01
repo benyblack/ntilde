@@ -51,11 +51,14 @@ public partial class TerminalView
     {
         // Unicode packet keys have no logical identity; their two text callbacks
         // may be separated by packet key events. A real new key ends that fragment.
-        if (key != Key.None || (!string.IsNullOrEmpty(keySymbol)
-            && !(keySymbol.Length == 1 && char.IsLowSurrogate(keySymbol[0])))) ClearKittyTextFragment();
+        bool expiresFragment = key != Key.None || (!string.IsNullOrEmpty(keySymbol)
+            && !(keySymbol.Length == 1 && char.IsLowSurrogate(keySymbol[0])));
+        if (expiresFragment) ClearKittyTextFragment();
         // Sending a fallback can reenter keydown and queue another frame. Drain
         // those frames before replacing their correlation with this key's state.
         while (_pendingAssociatedKey != null) FlushPendingKittyAssociatedKey();
+        // A send callback may have created another fragment after the first reset.
+        if (expiresFragment && _pendingKittyHighSurrogate.HasValue) ClearKittyTextFragment();
     }
 
     /// <summary>One actual text callback owns the pending key or becomes a pure text event with code zero.</summary>
