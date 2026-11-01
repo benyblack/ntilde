@@ -130,7 +130,11 @@ fn directory_link(target: &Path, link: &Path) {
     std::os::unix::fs::symlink(target, link).unwrap();
     #[cfg(windows)]
     {
-        // Junctions need no developer-mode or symbolic-link privilege.
+        // Junctions need no developer-mode or symbolic-link privilege. Rebuild
+        // components with Windows separators: mklink treats a slash in a mixed
+        // separator path (e.g. link/deep) as a command option.
+        let link: PathBuf = link.components().collect();
+        let target: PathBuf = target.components().collect();
         let result = std::process::Command::new("cmd.exe")
             .args(["/d", "/c", "mklink", "/J"])
             .arg(link)
