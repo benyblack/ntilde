@@ -115,8 +115,11 @@ public sealed class JsonSshProfileStoreProcessTests : IDisposable
             Assert.True(File.Exists(dll), $"Profile test worker was not staged: {dll}");
             var start = new ProcessStartInfo(Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet")
             {
-                UseShellExecute = false, RedirectStandardInput = true, RedirectStandardOutput = true,
-                RedirectStandardError = true, CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
             };
             start.ArgumentList.Add(dll);
             start.ArgumentList.Add(path);
