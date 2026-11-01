@@ -9,6 +9,8 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 anyhow = "1.0"
 base64 = "0.22"
+cap-fs-ext = "4"
+cap-std = "4"
 libc = "0.2"
 russh = { version = "0.59.0", default-features = false, features = ["ring"] }
 russh-sftp = "2.1.1"
