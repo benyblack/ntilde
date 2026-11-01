@@ -308,14 +308,25 @@ jobs:
             tests/Ntilde.McpServer.Tests/bin/${{ env.CONFIGURATION }}
             tests/Ntilde.Mux.Tests/bin/${{ env.CONFIGURATION }}
 
+  # One job per (OS, shard). The headless App.Tests main lane - ~7,200 tests run strictly
+  # serially, about six minutes, the longest step on CI's critical path - is split across
+  # shards that run on separate runners in separate processes. Which tests each shard owns, and
+  # each shard's floor for the gate, live in scripts/ci/app-tests-shard.py; its last shard
+  # ("rest") is generated as "every namespace the others do not claim", so the shards always
+  # partition the lane (scripts/tests/app_tests_shard_tests.py checks it). The rest shard also
+  # carries the non-headless projects and the PlatformBoot lane, which each run once per OS.
+  # The `unit_tests` job below rolls the shards back up into one "Unit Tests (<os>)" result.
   build_and_unit_tests:
-    name: Unit Tests (${{ matrix.os }})
+    name: Unit Tests (${{ matrix.os }}, ${{ matrix.shard }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     needs: [build]
     strategy:
       fail-fast: false
       matrix:
+        # MUST MATCH `python scripts/ci/app-tests-shard.py --list`; the "Select the App.Tests
+        # shard" step fails on a name the script does not know.
+        shard: [assist-cli, core-shell, rest]
         # Same dispatch-conditional shape as `build` above, and for the same reason: macOS is
         # not worth the minutes on every PR, but it must be reachable WITHOUT cutting a
         # release. Until now `build` compiled on macOS while nothing ever ran the tests there,
@@ -432,8 +443,9 @@ jobs:
 
       # Gating lane: the non-headless test projects. These are deterministic and
       # MUST pass. The filter drops the lanes that run in their own jobs (replay,
-      # render-metrics, pty-smoke, stress, golden-shared-png).
+      # render-metrics, pty-smoke, stress, golden-shared-png). Once per OS, on the rest shard.
       - name: Test (unit — gating, non-headless projects)
+        if: matrix.shard == 'rest'
         env:
           SKIP_RUST_NATIVE_BUILD: '1'
         shell: bash
@@ -446,6 +458,24 @@ jobs:
               --filter "$filter" --logger "trx;LogFileName=unit_${proj}.trx"
             echo "::endgroup::"
           done
+
+      # Which part of the headless main lane this job runs: the filter is ANDed onto the lane's
+      # own exclusions in the headless test step below, and the floor goes to the gate. Self-tests the
+      # partition first, because a shard that silently owned nothing would pass its own gate.
+      #
+      # Expressions reach this job's run blocks through env, never by interpolation into the
+      # script text - the same rule release.yml follows (githubactions:S7630).
+      - name: Select the App.Tests shard
+        id: shard
+        shell: bash
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/app_tests_shard_tests.py > /dev/null || {
+            "$py" scripts/tests/app_tests_shard_tests.py; exit 1; }
+          "$py" scripts/ci/app-tests-shard.py "$SHARD" | tee -a "$GITHUB_OUTPUT"
 
       # The Avalonia-headless suite (Ntilde.App.Tests). BLOCKING - on failures, on hangs, and on
       # a non-zero exit nobody can account for - but the verdict is given by the gate step
@@ -473,11 +503,14 @@ jobs:
       # hung from 2026-09-04 until #416, 4 of 38 between #416 and #426, and 0 of 332 in the 161
       # runs after #426 (to 2026-09-23). So a hang now fails the gate like any other way of not
       # finishing, and the blame dump is still captured and uploaded to diagnose it.
+      #
+      # Each job runs one shard of this lane (see "Select the App.Tests shard" above).
       - name: Test (headless App.Tests — verdict in the gate step below)
         id: app_tests_main
         continue-on-error: true
         env:
           SKIP_RUST_NATIVE_BUILD: '1'
+          SHARD_FILTER: ${{ steps.shard.outputs.filter }}
         shell: bash
         run: |
           mkdir -p tests/Ntilde.App.Tests/TestResults/main
@@ -486,7 +519,7 @@ jobs:
           # the gate has to read the log to see them at all.
           set -o pipefail
           dotnet test tests/Ntilde.App.Tests -c "$CONFIGURATION" --no-build --no-restore \
-            --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot" \
+            --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot&$SHARD_FILTER" \
             --blame-hang-timeout 5m --blame-hang-dump-type mini \
             --results-directory tests/Ntilde.App.Tests/TestResults/main \
             --logger "trx;LogFileName=unit_app.trx" \
@@ -507,6 +540,7 @@ jobs:
       # SnapshotService.EnsureAvaloniaInitialized. Not sharing the process is what works.
       - name: Test (headless App.Tests, PlatformBoot lane — verdict in the gate step below)
         id: app_tests_platformboot
+        if: matrix.shard == 'rest'
         continue-on-error: true
         env:
           SKIP_RUST_NATIVE_BUILD: '1'
@@ -541,6 +575,11 @@ jobs:
       - name: Check App.Tests failures against the flake allowlist
         if: always()
         shell: bash
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARD_FLOOR: ${{ steps.shard.outputs.floor }}
+          MAIN_OUTCOME: ${{ steps.app_tests_main.outcome }}
+          PLATFORMBOOT_OUTCOME: ${{ steps.app_tests_platformboot.outcome }}
         run: |
           # windows-latest ships python.exe; ubuntu ships python3. Pick whichever exists.
           py=python3
@@ -561,10 +600,17 @@ jobs:
           # The fourth is the test step's outcome, the exit code continue-on-error keeps off the
           # job. The gate rejects an empty one rather than skipping the check, so a step id
           # misspelt here fails loudly instead of switching the check off.
+          #
+          # The main lane's floor is this shard's, from scripts/ci/app-tests-shard.py (the single
+          # lane's was 3300). The PlatformBoot lane runs on the rest shard only, so it is gated
+          # there only - elsewhere its step is skipped, which the gate would rightly call a lane
+          # that never ran.
           status=0
-          for lane in \
-            "main:unit_app:3300:${{ steps.app_tests_main.outcome }}" \
-            "platformboot:unit_app_platformboot:40:${{ steps.app_tests_platformboot.outcome }}"; do
+          lanes=("main:unit_app:$SHARD_FLOOR:$MAIN_OUTCOME")
+          if [ "$SHARD" = rest ]; then
+            lanes+=("platformboot:unit_app_platformboot:40:$PLATFORMBOOT_OUTCOME")
+          fi
+          for lane in "${lanes[@]}"; do
             IFS=: read -r dir trx floor outcome <<< "$lane"
             echo "::group::$trx"
             "$py" scripts/check-app-tests-baseline.py \
@@ -577,12 +623,24 @@ jobs:
           done
           exit $status
 
+      # Where this shard's time went, by namespace and class - the data for rebalancing the
+      # shard boundaries in scripts/ci/app-tests-shard.py. Diagnostic only; it never fails.
+      - name: App.Tests time by namespace
+        if: always()
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/app_tests_timing_tests.py > /dev/null || echo "::warning::the timing report's self-test failed"
+          shopt -s nullglob
+          "$py" scripts/ci/app-tests-timing.py tests/Ntilde.App.Tests/TestResults/*/*.trx || true
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           # runner.arch too, now that two legs of this matrix are Linux. Both would
-          # otherwise upload "unit-tests-Linux".
+          # otherwise upload "unit-tests-Linux". And the shard, now that each OS has several.
           #
           # Measured rather than assumed, because the documented behaviour and the observed
           # behaviour disagree: upload-artifact v4's README says names must be unique and a
@@ -595,7 +653,7 @@ jobs:
           # two same-named artifacts mean whoever downloads "unit-tests-Linux" gets one of
           # the two architectures with no way to tell which. Evidence you cannot attribute
           # is barely evidence.
-          name: unit-tests-${{ runner.os }}-${{ runner.arch }}
+          name: unit-tests-${{ runner.os }}-${{ runner.arch }}-${{ matrix.shard }}
           retention-days: 5
           # *.dmp captures the blame-hang minidump on a teardown hang (#81). console.log is
           # the tee'd App.Tests output, and it is here because it is the only place a
@@ -605,6 +663,30 @@ jobs:
             **/*.trx
             **/*.dmp
             **/TestResults/*/console.log
+
+  # The shards above, rolled back up into one result per OS under the name the job had before
+  # it was sharded - "Unit Tests (<os>)" - so a branch-protection rule or anything else that
+  # looks for that check keeps finding it. It fails unless every shard of every OS succeeded:
+  # `needs` sees the matrix only as a whole. A shard skipped because `build` failed counts as a
+  # failure here, not as the pass a skipped required check would otherwise report.
+  unit_tests:
+    name: Unit Tests (${{ matrix.os }})
+    needs: [build_and_unit_tests]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        # MUST STAY IDENTICAL to build_and_unit_tests' os matrix.
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || github.event_name == 'schedule' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || '["windows-latest","ubuntu-latest"]') }}
+    steps:
+      - name: Every shard passed
+        shell: bash
+        env:
+          result: ${{ needs.build_and_unit_tests.result }}
+        run: |
+          echo "Unit Tests shards: $result"
+          [ "$result" = success ] || { echo "::error::A Unit Tests shard did not succeed ($result); see the 'Unit Tests (<os>, <shard>)' jobs."; exit 1; }
 
   # Native SSH end-to-end against a real sshd in a container.
   #
@@ -825,8 +907,12 @@ jobs:
     name: Coverage (Ntilde.VT floor)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [build]
-
+    # No `needs: [build]`. This job compiles from source and consumes nothing `build` produces
+    # (see "Builds from source" below), so waiting for it only delayed the start: coverage began
+    # at minute ~6 and finished at ~11.4, as late as the sharded Unit Tests that end the run. It
+    # starts at minute 0 now. The one thing it reads that `build` writes is the native-bin cache,
+    # and that restore already tolerates a miss - on a PR that changes the Rust sources, MSBuild
+    # compiles the crates here as it always did.
     steps:
       - uses: actions/checkout@v4
 
