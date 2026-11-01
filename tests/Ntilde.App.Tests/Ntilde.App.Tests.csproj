@@ -39,6 +39,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Ntilde.CommandAssist.TestHost\Ntilde.CommandAssist.TestHost.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- Unit CI downloads only App.Tests/bin and runs without building. Stage the child
+       process, runtimeconfig and dependencies inside that artifact for real process tests. -->
+  <Target Name="CopyHistoryTestHost" AfterTargets="Build">
+    <ItemGroup>
+      <_HistoryTestHost Include="$(MSBuildThisFileDirectory)..\Ntilde.CommandAssist.TestHost\bin\$(Configuration)\$(TargetFramework)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_HistoryTestHost)"
+          DestinationFiles="@(_HistoryTestHost->'$(OutDir)HistoryWorker\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <ItemGroup>
     <!-- Mux test support, shared with Ntilde.Mux.Tests (Phase 2 plan, Task 5). -->
     <Compile Include="..\Ntilde.Mux.Tests\Support\ScriptedSessionFactory.cs" Link="MuxSupport\ScriptedSessionFactory.cs" />
     <Compile Include="..\Ntilde.Mux.Tests\Support\ScriptedTerminalSession.cs" Link="MuxSupport\ScriptedTerminalSession.cs" />

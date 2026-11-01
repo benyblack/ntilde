@@ -82,6 +82,14 @@ Concretely, from the `.csproj` graph:
 | `Ntilde.Cli` | App | Headless CLI shim (`vt-report`, `--replay`, askpass, `backup` verbs) |
 | `Ntilde.Conformance` | VtContract | VT conformance matrix tool used by tests and CI |
 
+Command Assist history remains a BCL-only leaf. Current app processes sharing the same local
+history path coordinate each operation through a stable sibling `.lock` file. Its exclusive
+lease covers cache refresh and all persistence, including compaction, migration and clear. A
+random revision is flushed before changing the log; peers reload changed revisions, while an
+unchanged revision keeps the cached index and append-only write path. Process exit releases the
+lease. The lock file stays in place and contains no commands; clear also removes known orphaned
+compaction files. See `JsonlHistoryProcessTests` for controlled two-process and restart coverage.
+
 ### Hard Rule
 
 > **No OS-specific logic in `Ntilde.VT`.** VT is the leaf — no Avalonia, no Skia, no native interop, no I/O. Enforced by `LayeringTests.Vt_must_be_a_leaf_assembly`.

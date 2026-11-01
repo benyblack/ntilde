@@ -41,16 +41,16 @@ namespace Ntilde.CommandAssist.Storage;
 /// <see cref="ReadFileUnsafeAsync"/>.
 /// </para>
 /// <para>
-/// <b>One instance per file, for the process lifetime.</b> This store is stateful (the index and
-/// the physical line count are cached), so two live instances over one file would each compact
-/// from their own partial view and clobber the other's appends. The retention cap is therefore
-/// mutable via <see cref="SetMaxEntries"/> rather than baked in at construction: a settings change
-/// must not become an instance swap.
+/// <b>Cooperating processes share a stable sibling lock file.</b> Every operation holds its
+/// exclusive lease through cache refresh, migration, append, compaction, or clear. A random
+/// revision in that file changes before every mutation, so another instance reloads its index
+/// before using it. Unchanged revisions retain the cached read and append paths. The OS releases
+/// the lease if a process exits; the lock file itself is never deleted (and contains no commands).
 /// </para>
 /// </remarks>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
-    Justification = "Its only disposable is a SemaphoreSlim gate, which holds no handle unless AvailableWaitHandle is read " +
-                    "(nothing here reads it), and disposing it under a caller still waiting would fault that caller.")]
+    Justification = "The semaphore has no wait handle unless AvailableWaitHandle is read. File leases are operation-owned " +
+                    "and disposed before releasing the gate; disposing the store while callers wait would fault them.")]
 public sealed class JsonlHistoryStore : IHistoryStore
 {
     /// <summary>Compact once at least this fraction of the file's lines are superseded or over cap.</summary>
@@ -62,6 +62,8 @@ public sealed class JsonlHistoryStore : IHistoryStore
     private readonly string _filePath;
     private readonly string? _legacyFilePath;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private HistoryFileLease? _activeLease;
+    private Guid? _cachedRevision;
 
     /// <summary>
     /// Retention cap. Volatile because <see cref="SetMaxEntries"/> publishes from whatever thread
@@ -87,8 +89,9 @@ public sealed class JsonlHistoryStore : IHistoryStore
 
     public JsonlHistoryStore(string filePath, int maxEntries, string? legacyJsonFilePath = null)
     {
-        _filePath = filePath;
-        _legacyFilePath = legacyJsonFilePath;
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        _filePath = Path.GetFullPath(filePath);
+        _legacyFilePath = string.IsNullOrWhiteSpace(legacyJsonFilePath) ? null : Path.GetFullPath(legacyJsonFilePath);
         _maxEntries = Math.Max(1, maxEntries);
     }
 
@@ -98,8 +101,8 @@ public sealed class JsonlHistoryStore : IHistoryStore
     /// </summary>
     /// <remarks>
     /// Exists so that a <c>CommandAssistMaxHistoryEntries</c> change never has to be expressed as a
-    /// new store instance. See the type remarks for why two instances over one file is a
-    /// data-losing arrangement.
+    /// new store instance. Keeping the instance preserves its cache and keeps all panes in this
+    /// process on the same cap; the shared file lease coordinates other instances and processes.
     /// </remarks>
     public void SetMaxEntries(int maxEntries)
     {
@@ -118,6 +121,7 @@ public sealed class JsonlHistoryStore : IHistoryStore
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            using var fileLease = await EnterFileLeaseUnsafeAsync(cancellationToken);
             Dictionary<string, CommandHistoryEntry> index = await EnsureLoadedUnsafeAsync(cancellationToken);
 
             // Disk first, then the index: a failed write must not leave a phantom entry that the
@@ -126,8 +130,14 @@ public sealed class JsonlHistoryStore : IHistoryStore
             index[entry.Id] = entry;
             await CompactIfNeededUnsafeAsync(cancellationToken);
         }
+        catch
+        {
+            InvalidateLocalCache();
+            throw;
+        }
         finally
         {
+            _activeLease = null;
             _gate.Release();
         }
     }
@@ -155,6 +165,7 @@ public sealed class JsonlHistoryStore : IHistoryStore
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            using var fileLease = await EnterFileLeaseUnsafeAsync(cancellationToken);
             Dictionary<string, CommandHistoryEntry> index = await EnsureLoadedUnsafeAsync(cancellationToken);
             string normalized = query.Trim();
 
@@ -165,8 +176,14 @@ public sealed class JsonlHistoryStore : IHistoryStore
                 .Take(Math.Max(0, maxCandidates))
                 .ToList();
         }
+        catch
+        {
+            InvalidateLocalCache();
+            throw;
+        }
         finally
         {
+            _activeLease = null;
             _gate.Release();
         }
     }
@@ -178,14 +195,21 @@ public sealed class JsonlHistoryStore : IHistoryStore
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            using var fileLease = await EnterFileLeaseUnsafeAsync(cancellationToken);
             Dictionary<string, CommandHistoryEntry> index = await EnsureLoadedUnsafeAsync(cancellationToken);
             return index.Values
                 .OrderByDescending(entry => entry.ExecutedAt)
                 .Take(Math.Min(Math.Max(0, maxResults), _maxEntries))
                 .ToList();
         }
+        catch
+        {
+            InvalidateLocalCache();
+            throw;
+        }
         finally
         {
+            _activeLease = null;
             _gate.Release();
         }
     }
@@ -228,14 +252,22 @@ public sealed class JsonlHistoryStore : IHistoryStore
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            using var fileLease = await EnterFileLeaseUnsafeAsync(cancellationToken);
             _index = new Dictionary<string, CommandHistoryEntry>(StringComparer.Ordinal);
             _loadIncomplete = false;
             _capChangePendingCompaction = false;
             await WriteAllUnsafeAsync(Array.Empty<CommandHistoryEntry>(), cancellationToken);
             DeleteLegacyFilesUnsafe();
+            DeleteOrphanedTempFilesUnsafe();
+        }
+        catch
+        {
+            InvalidateLocalCache();
+            throw;
         }
         finally
         {
+            _activeLease = null;
             _gate.Release();
         }
     }
@@ -326,6 +358,7 @@ public sealed class JsonlHistoryStore : IHistoryStore
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            using var fileLease = await EnterFileLeaseUnsafeAsync(cancellationToken);
             Dictionary<string, CommandHistoryEntry> index = await EnsureLoadedUnsafeAsync(cancellationToken);
 
             List<CommandHistoryEntry> targets = index.Values
@@ -356,8 +389,14 @@ public sealed class JsonlHistoryStore : IHistoryStore
             await CompactIfNeededUnsafeAsync(cancellationToken);
             return targets.Count;
         }
+        catch
+        {
+            InvalidateLocalCache();
+            throw;
+        }
         finally
         {
+            _activeLease = null;
             _gate.Release();
         }
     }
@@ -370,6 +409,7 @@ public sealed class JsonlHistoryStore : IHistoryStore
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            using var fileLease = await EnterFileLeaseUnsafeAsync(cancellationToken);
             Dictionary<string, CommandHistoryEntry> index = await EnsureLoadedUnsafeAsync(cancellationToken);
             if (!index.TryGetValue(entryId, out CommandHistoryEntry? existing))
             {
@@ -384,8 +424,14 @@ public sealed class JsonlHistoryStore : IHistoryStore
             await CompactIfNeededUnsafeAsync(cancellationToken);
             return true;
         }
+        catch
+        {
+            InvalidateLocalCache();
+            throw;
+        }
         finally
         {
+            _activeLease = null;
             _gate.Release();
         }
     }
@@ -670,18 +716,21 @@ public sealed class JsonlHistoryStore : IHistoryStore
 
     private async Task AppendLineUnsafeAsync(CommandHistoryEntry entry, CancellationToken cancellationToken)
     {
-        EnsureDirectory();
-
-        await using var stream = new FileStream(
-            _filePath,
-            FileMode.Append,
-            FileAccess.Write,
-            FileShare.Read);
-        await using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-
-        await writer.WriteLineAsync(Serialize(entry).AsMemory(), cancellationToken);
-        await writer.FlushAsync(cancellationToken);
-        _lineCount++;
+        try
+        {
+            Guid revision = PublishMutationUnsafe();
+            await using var stream = new FileStream(_filePath, FileMode.Append, FileAccess.Write, FileShare.Read);
+            await using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            await writer.WriteLineAsync(Serialize(entry).AsMemory(), cancellationToken);
+            await writer.FlushAsync(cancellationToken);
+            _lineCount++;
+            _cachedRevision = revision;
+        }
+        catch
+        {
+            InvalidateLocalCache();
+            throw;
+        }
     }
 
     private bool IsCompactionDue(int lineCount, int liveCount)
@@ -727,25 +776,82 @@ public sealed class JsonlHistoryStore : IHistoryStore
 
     private async Task WriteAllUnsafeAsync(IEnumerable<CommandHistoryEntry> entries, CancellationToken cancellationToken)
     {
-        EnsureDirectory();
-
-        string tempPath = _filePath + ".tmp";
+        string tempPath = _filePath + $".{Guid.NewGuid():N}.tmp";
         int written = 0;
-
-        await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-        await using (var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+        try
         {
-            foreach (CommandHistoryEntry entry in entries)
+            Guid revision = PublishMutationUnsafe();
+            await using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            await using (var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
             {
-                await writer.WriteLineAsync(Serialize(entry).AsMemory(), cancellationToken);
-                written++;
+                foreach (CommandHistoryEntry entry in entries)
+                {
+                    await writer.WriteLineAsync(Serialize(entry).AsMemory(), cancellationToken);
+                    written++;
+                }
+                await writer.FlushAsync(cancellationToken);
             }
-
-            await writer.FlushAsync(cancellationToken);
+            File.Move(tempPath, _filePath, overwrite: true);
+            _lineCount = written;
+            _cachedRevision = revision;
         }
+        catch
+        {
+            // Migration catches write errors internally too, so do not rely only on
+            // the public operation's catch to discard a cache pruned before this write.
+            InvalidateLocalCache();
+            throw;
+        }
+        finally
+        {
+            try { File.Delete(tempPath); }
+            catch { /* Cleanup must not hide the write failure or its cancellation. */ }
+        }
+    }
 
-        File.Move(tempPath, _filePath, overwrite: true);
-        _lineCount = written;
+    private async Task<HistoryFileLease> EnterFileLeaseUnsafeAsync(CancellationToken cancellationToken)
+    {
+        EnsureDirectory();
+        var lease = await HistoryFileLease.AcquireAsync(_filePath + ".lock", cancellationToken);
+        _activeLease = lease;
+        if (_cachedRevision != lease.Revision) InvalidateLocalCache();
+        _cachedRevision = lease.Revision;
+        return lease;
+    }
+
+    private Guid PublishMutationUnsafe()
+        => (_activeLease ?? throw new InvalidOperationException("History writes require the shared file lease.")).PublishMutation();
+
+    private void InvalidateLocalCache()
+    {
+        _index = null;
+        _lineCount = 0;
+        _loadIncomplete = true;
+    }
+
+    private void DeleteOrphanedTempFilesUnsafe()
+    {
+        // A killed writer cannot run its finally. Clear must remove those recorded commands
+        // too, while the lease guarantees that no cooperating writer has a live temp file.
+        string directory = Path.GetDirectoryName(_filePath)!;
+        string name = Path.GetFileName(_filePath);
+        StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        try
+        {
+            foreach (string path in Directory.EnumerateFiles(directory))
+            {
+                string candidate = Path.GetFileName(path);
+                bool legacy = candidate.Equals(name + ".tmp", comparison);
+                bool unique = candidate.Length == name.Length + 37
+                    && candidate.StartsWith(name + ".", comparison)
+                    && candidate.EndsWith(".tmp", comparison)
+                    && Guid.TryParseExact(candidate.AsSpan(name.Length + 1, 32), "N", out _);
+                if (!legacy && !unique) continue;
+                try { File.Delete(path); }
+                catch { /* Clearing the live log must survive an inaccessible orphan. */ }
+            }
+        }
+        catch { /* Best effort, just like legacy backup deletion. */ }
     }
 
     private static string Serialize(CommandHistoryEntry entry)
