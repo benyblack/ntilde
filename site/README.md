@@ -10,6 +10,8 @@ hosted on GitHub Pages.
   — kept in git, synced into the build by `scripts/sync-screenshots.mjs`
 - **User guide:** [`docs/user/`](../docs/user/) — published at `/docs/`, synced
   into `src/content/docs/` by `scripts/sync-docs.mjs`
+- **Blog:** [`src/content/posts/`](./src/content/posts/) — published at `/blog/`;
+  written here, not synced from anywhere
 
 ## User guide
 
@@ -84,6 +86,28 @@ runs on every push to `main`:
 - [`@astrojs/sitemap`](https://docs.astro.build/en/guides/integrations-guide/sitemap/)
   — emits `/sitemap-index.xml` so search engines can find the page.
 
+## Blog
+
+Posts live in [`src/content/posts/`](./src/content/posts/), one folder per post:
+`index.md` plus anything it embeds, linked relatively (`![...](./chart.svg)`). The
+folder name is the URL: `src/content/posts/my-post/` is `/blog/my-post/`. Each post
+starts with this frontmatter (the `posts` schema in
+[`src/content/config.ts`](./src/content/config.ts) checks it at build time):
+
+```yaml
+---
+title: "How we cut ntilde's CI time by 60%"
+description: "One or two sentences for the post list and link previews."
+date: 2026-11-01
+author: Behnam
+draft: false   # optional; true keeps it out of the published site
+---
+```
+
+The page renders the title, so the body starts below it. An image followed by a
+paragraph that is only italic text shows that text as the image's caption. A draft
+shows up in `npm run dev` but not in `npm run build`.
+
 ## Editing content
 
 - Page sections live in [`src/components/`](./src/components/). Each section
@@ -112,8 +136,13 @@ site/
 │   ├── components/            # One Astro file per page section
 │   ├── layouts/
 │   │   └── Base.astro
+│   ├── content/
+│   │   ├── config.ts          # Collection schemas (docs, posts)
+│   │   └── posts/             # Blog posts, one folder each
 │   ├── pages/
-│   │   └── index.astro        # Single-page entrypoint
+│   │   ├── index.astro        # Single-page entrypoint
+│   │   ├── docs/              # The user guide
+│   │   └── blog/              # The post list and one page per post
 │   └── styles/
 │       └── global.css         # Tailwind layers + design tokens
 └── README.md

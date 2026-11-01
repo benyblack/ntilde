@@ -1,0 +1,45 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+// One route per post, at /blog/<folder name>/. Drafts get no page in production builds.
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', ({ data }) => import.meta.env.DEV || !data.draft);
+  return posts.map((post) => ({ params: { slug: post.slug }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+
+const homeHref = (import.meta.env.BASE_URL ?? '/').replace(/\/?$/, '/');
+const isoDate = post.data.date.toISOString().slice(0, 10);
+const displayDate = post.data.date.toLocaleDateString('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+---
+
+<Base title={post.data.title} description={post.data.description}>
+  <div class="container-prose py-10 lg:py-14">
+    <div class="mx-auto max-w-3xl">
+      <p class="text-sm text-ink-400">
+        <a href={`${homeHref}blog/`}>Blog</a>
+        <span aria-hidden="true"> / </span>
+        <time datetime={isoDate}>{displayDate}</time>
+        <span aria-hidden="true"> · </span>
+        {post.data.author}
+      </p>
+
+      <article class="doc-prose mt-6">
+        <h1>{post.data.title}</h1>
+        <Content />
+      </article>
+
+      <p class="mt-12 border-t border-ink-800 pt-6 text-sm text-ink-400">
+        <a href={`${homeHref}blog/`}>More posts</a>
+      </p>
+    </div>
+  </div>
+</Base>
