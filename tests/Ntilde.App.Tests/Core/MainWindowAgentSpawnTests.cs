@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using Ntilde.AgentHost;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Storage;
+using Ntilde.Pty;
 using Ntilde.Shell;
 using Ntilde.Shell.Mux;
 using Ntilde.Tests.Controls;
@@ -103,6 +104,48 @@ public sealed class MainWindowAgentSpawnTests : IClassFixture<TestAppDataRoot>, 
         {
             store.DeleteProfile(ssh.Id);
         }
+    }
+
+    [AvaloniaFact]
+    public async Task LocalFallbackTemplateCannotOpenDeferredLegacySshProfile()
+    {
+        using var service = new AgentHostService(new AgentSessionRegistry());
+        using var scope = AgentHostService.OverrideInstanceForTesting(service);
+        var (window, settings, _) = CreateWindow();
+        TerminalProfile legacy = settings.Profiles.First(p => p.Type == ConnectionType.SSH);
+        TerminalProfile local = settings.Profiles.First(p => p.Type == ConnectionType.Local);
+        string templateName = $"agent_legacy_{Guid.NewGuid():N}";
+        var template = new NtildeSession
+        {
+            Tabs =
+            {
+                new TabSession
+                {
+                    Root = new PaneNode
+                    {
+                        Type = NodeType.Split,
+                        Children =
+                        {
+                            new PaneNode { Type = NodeType.Leaf, ProfileId = local.Id.ToString() },
+                            new PaneNode { Type = NodeType.Leaf, ProfileId = legacy.Id.ToString(), SshProfileId = legacy.Id.ToString() },
+                        },
+                        Sizes = { "1*", "1*" },
+                    },
+                },
+            },
+        };
+        Assert.True(WorkspaceManager.SaveWorkspaceTemplate(templateName, template));
+        settings.TabTemplateRules.Add(new TabTemplateRule { ProfileId = local.Id, TemplateName = templateName });
+        Guid[] existingPanes = window.AllPanesForTest().Select(p => p.PaneId).ToArray();
+
+        var (result, error) = await ((IAgentActionExecutor)window).SpawnAsync(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Null(error);
+        Assert.Equal("local", result?.Kind);
+        var added = window.AllPanesForTest().Where(p => !existingPanes.Contains(p.PaneId)).ToArray();
+        Assert.NotEmpty(added);
+        Assert.All(added, p => Assert.NotEqual(ConnectionType.SSH, p.Profile?.Type));
     }
 
     private static (MainWindow Window, TerminalSettings Settings, RecordingSessionFactory Factory) CreateWindow()
