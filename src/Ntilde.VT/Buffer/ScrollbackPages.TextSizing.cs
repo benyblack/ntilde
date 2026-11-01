@@ -8,13 +8,36 @@ public sealed partial class ScrollbackPages
         return page.GetTextSizingMap(row);
     }
 
-    internal void ClearImportedTextSizingCell(int logicalRow, int col)
+    internal void ClearCellForTextSizing(int logicalRow, int col)
     {
         var (page, row) = FindPage(logicalRow);
         page.GetRowSpan(row)[col] = TerminalCell.Default;
         page.GetExtendedTextMap(row)?.Remove(col);
         page.GetHyperlinkMap(row)?.Remove(col);
         page.GetUnderlineMap(row)?.Remove(col);
+    }
+
+    internal void TrimTextSizingWrittenColumns(int logicalRow, int columns, int vacatedEnd)
+    {
+        var (page, row) = FindPage(logicalRow);
+        int written = page.GetWrittenColumns(row);
+        if (written <= vacatedEnd) page.SetWrittenColumns(row, Math.Min(written, columns));
+    }
+
+    internal void MarkTextSizingWrap(int logicalRow, int columns, int vacatedEnd)
+    {
+        var (page, row) = FindPage(logicalRow);
+        int written = page.GetWrittenColumns(row);
+        if (written <= vacatedEnd) page.SetWrittenColumns(row, Math.Min(written, columns));
+        bool padding = columns >= page.GetWrittenColumns(row);
+        var cells = page.GetRowSpanReadOnly(row);
+        for (int col = columns; col < cells.Length && padding; col++)
+            padding = TerminalRow.IsWrapPaddingCell(cells[col])
+                && page.GetExtendedTextMap(row)?.TryGet(col, out _) != true
+                && page.GetHyperlinkMap(row)?.TryGet(col, out _) != true
+                && page.GetUnderlineMap(row)?.TryGet(col, out _) != true
+                && page.GetTextSizingMap(row)?.TryGet(col, out _) != true;
+        page.SetRowWrapped(row, true, padding ? columns : null);
     }
 
     internal void SetTextSizingCell(int logicalRow, int col, CellTextSizing piece)

@@ -184,7 +184,7 @@ public partial class TerminalBuffer
             int retainedRow = r - (state.ScrollbackRowCount - _scrollback.Count);
             if (retainedRow < 0) return;
             if (fits) _scrollback.SetTextSizingCell(retainedRow, c, piece);
-            else _scrollback.ClearImportedTextSizingCell(retainedRow, c);
+            else _scrollback.ClearCellForTextSizing(retainedRow, c);
             return;
         }
         int localRow = entry.Alt ? r : r - state.ScrollbackRowCount;

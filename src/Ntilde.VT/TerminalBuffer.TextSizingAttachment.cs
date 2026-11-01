@@ -84,14 +84,22 @@ public partial class TerminalBuffer
         bool followsEnd = _cursorRow == originalTop && _cursorCol == Math.Min(Cols - 1, x + piece.Block.Width)
             && _isPendingWrap == (Modes.IsAutoWrapMode && x + piece.Block.Width >= Cols);
         if (!ReserveTextSizingReplacement(piece.Block, replacement)) return true;
-        EraseTextSizingBlock(piece.Block, x, y);
+        bool wraps = Modes.IsAutoWrapMode && x + replacement.Width > Cols;
+        EraseTextSizingBlockInPlane(piece.Block, x, y, _isAltScreen, wraps ? TerminalCell.Default : null);
         if (x + replacement.Width > Cols)
         {
-            if (Modes.IsAutoWrapMode) { x = 0; y++; }
+            if (wraps)
+            {
+                TrimVacatedTextSizingExtents(x, y, piece.Block.Width, piece.Block.Height);
+                MarkTextSizingRelocationWrap(x, y, piece.Block.Width);
+                x = 0;
+                y++;
+            }
             else x = Cols - replacement.Width;
         }
         y = FitAttachedTextSizingHeight(originalTop, y, replacement.Height);
         EraseTextSizingRange(x, x + replacement.Width, y, y + replacement.Height);
+        EraseOrdinaryWideSizingBoundaries(x, y, replacement.Width, replacement.Height);
         StoreAttachedTextSizing(replacement, x, y, style);
         if (followsEnd)
         {

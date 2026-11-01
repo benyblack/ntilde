@@ -129,6 +129,7 @@ public partial class TerminalBuffer
         FitTextSizingHeight(height);
         int absTop = TextSizingAbsoluteRow(_cursorRow);
         EraseTextSizingRange(_cursorCol, _cursorCol + width, absTop, absTop + height);
+        EraseOrdinaryWideSizingBoundaries(_cursorCol, absTop, width, height);
         int top = _cursorRow;
         SyncPackedState();
         for (int dy = 0; dy < height; dy++)
@@ -368,15 +369,15 @@ public partial class TerminalBuffer
     private void EraseTextSizingBlock(TextSizingBlock block, int x, int y)
         => EraseTextSizingBlockInPlane(block, x, y, _isAltScreen);
 
-    private void EraseTextSizingBlockInPlane(TextSizingBlock block, int x, int y, bool alternate)
+    private void EraseTextSizingBlockInPlane(TextSizingBlock block, int x, int y, bool alternate, TerminalCell? replacementCell = null)
     {
         var (main, alt) = ResolveScreensNoLock();
         var rows = alternate ? alt : main;
         int historyCount = alternate ? 0 : _scrollback.Count;
         // The active pen applies to active-screen edits, never to retirement in the other screen.
-        var blank = alternate == _isAltScreen
+        var blank = replacementCell ?? (alternate == _isAltScreen
             ? new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground)
-            : TerminalCell.Default;
+            : TerminalCell.Default);
         bool changedHistory = false;
         int limit = historyCount + rows.Length;
         for (int row = Math.Max(0, y); row < Math.Min(limit, y + block.Height); row++)
