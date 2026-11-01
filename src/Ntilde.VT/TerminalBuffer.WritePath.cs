@@ -210,7 +210,7 @@ namespace Ntilde.VT
                     {
                         var target = _viewport[_cursorRow].Cells[searchCol];
 
-                        if (target.IsWideContinuation) { searchCol--; continue; }
+                        if (target.IsWideContinuation || _viewport[_cursorRow].GetTextSizing(searchCol) != null) { searchCol--; continue; }
                         if (target.HasExtendedText || (target.Character != ' ' && target.Character != '\0'))
                         {
                             attachCol = searchCol;

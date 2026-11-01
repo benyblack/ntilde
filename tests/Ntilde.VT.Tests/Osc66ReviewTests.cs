@@ -118,4 +118,61 @@ public sealed class Osc66ReviewTests
         Assert.Same(ordinaryMap, ordinaryEnds);
     }
 
+    [Theory]
+    [InlineData(5, 5)]
+    [InlineData(7, 5)]
+    public void Tall_blocks_below_short_margins_fit_against_the_screen_bottom(int startRow, int expectedRow)
+    {
+        var buffer = new TerminalBuffer(16, 8);
+        var parser = new AnsiParser(buffer);
+        parser.Process($"\x1b[2;3r\x1b[{startRow + 1};1H\x1b]66;s=3:w=1;M\a");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            var piece = Assert.IsType<CellTextSizing>(buffer.GetTextSizingAbsolute(2, expectedRow + 2));
+            Assert.Equal("M", piece.Block.Text);
+            Assert.Equal(2, piece.RowOffset);
+            Assert.Equal(expectedRow, buffer.CursorRow);
+            Assert.Equal(3, buffer.CursorCol);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void A_mark_after_an_ordinary_base_does_not_overwrite_the_next_sized_anchor()
+    {
+        var buffer = new TerminalBuffer(16, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b[1;2H\x1b]66;s=2;M\a\x1b[1;1H1");
+        parser.Process("\u0301");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal("1\u0301", buffer.GetGraphemeAbsolute(0, 0));
+            Assert.Equal("M", Assert.IsType<CellTextSizing>(buffer.GetTextSizingAbsolute(1, 0)).Block.Text);
+            Assert.Equal(1, buffer.CursorCol);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Clearing_a_history_fragment_changes_the_picture_cache_key(bool isolated)
+    {
+        var buffer = new TerminalBuffer(12, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("prefix\r\n\x1b]66;s=2;M\a\x1b[4;1H\n\n");
+        var request = new RenderSnapshotRequest { ViewportRows = 4, ViewportCols = 12, ScrollOffset = 1, Isolated = isolated };
+        using var before = buffer.CaptureRenderSnapshot(request, out _);
+        var oldRow = before.RowsData.Array[0];
+        parser.Process("\x1b[1;1H\x1b[X");
+        using var after = buffer.CaptureRenderSnapshot(request, out _);
+        var newRow = after.RowsData.Array[0];
+        Assert.True(oldRow.RowId != newRow.RowId || oldRow.Revision != newRow.Revision,
+            "history picture-cache identity must change after its stored cells change");
+        Assert.Null(newRow.Cells[0].TextSizing);
+        Assert.NotNull(oldRow.Cells[0].TextSizing);
+    }
+
 }

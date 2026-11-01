@@ -34,6 +34,22 @@ public sealed class Osc66BudgetReviewTests
     }
 
     [Fact]
+    public void Ordinary_output_does_not_allocate_an_erase_dictionary_for_a_retained_history_block()
+    {
+        static long Measure(TerminalBuffer buffer)
+        {
+            new AnsiParser(buffer).Process("\x1b[?7l");
+            for (int i = 0; i < 100; i++) buffer.Write("a");
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            for (int i = 0; i < 1000; i++) buffer.Write("a");
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+        long baseline = Measure(new TerminalBuffer(49, 7));
+        long retained = Measure(Retained(1));
+        Assert.True(retained < baseline + 16 * 1024, $"ordinary={baseline}, retained={retained}");
+    }
+
+    [Fact]
     public void Valid_non_overlapping_import_reaches_the_summed_storage_budget_check()
     {
         var source = Retained(600);

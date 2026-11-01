@@ -7,6 +7,8 @@ public partial class TerminalBuffer
     private const long MaxTextSizingStorage = 16L * 1024 * 1024;
     private HashSet<TextSizingBlock>? _textSizingBlocks;
     private long _textSizingStorage;
+    private uint _textSizingHistoryRevision;
+    private uint PagedRenderRevision => unchecked((uint)_renderThemeEpoch + _textSizingHistoryRevision);
     private bool _textSizingPruneRequired = true;
     private (long Generation, long Evicted) _textSizingPrunedHistory;
 
@@ -121,7 +123,8 @@ public partial class TerminalBuffer
     {
         int width = baseWidth * options.Scale;
         int height = options.Scale;
-        if (width > Cols || height > ScrollBottom - ScrollTop + 1) return;
+        int availableHeight = _cursorRow > ScrollBottom ? Rows : ScrollBottom - ScrollTop + 1;
+        if (width > Cols || height > availableHeight) return;
         var block = new TextSizingBlock(text, options, baseWidth);
         if (!ReserveTextSizing(block, _cursorCol, TextSizingAbsoluteRow(_cursorRow), IsTextSizingTargetStable(block))) return;
         FindTextSizingWritePosition(width);
@@ -271,7 +274,7 @@ public partial class TerminalBuffer
                 }
                 ReplaceSizedRowCell(GetRowAbsolute(row), col, previous, replacement);
             }
-        if (historyChanged) Array.Clear(_cachedRenderRowIds);
+        if (historyChanged) InvalidateTextSizingHistory();
         if (_textSizingBlocks?.Remove(previous) == true) _textSizingStorage -= previous.StorageCost;
     }
 
@@ -349,12 +352,22 @@ public partial class TerminalBuffer
     private void EraseTextSizingRange(int x0, int x1, int y0, int y1)
     {
         if (_textSizingBlocks == null || _textSizingBlocks.Count == 0) return;
-        var anchors = new Dictionary<TextSizingBlock, (int X, int Y)>();
+        Dictionary<TextSizingBlock, (int X, int Y)>? anchors = null;
         for (int row = Math.Max(0, y0); row < y1; row++)
             for (int col = Math.Max(0, x0); col < Math.Min(Cols, x1); col++)
                 if (GetTextSizingAbsolute(col, row) is { } piece)
+                {
+                    anchors ??= new();
                     anchors.TryAdd(piece.Block, (col - piece.ColumnOffset, row - piece.RowOffset));
+                }
+        if (anchors == null) return;
         foreach (var entry in anchors) EraseTextSizingBlock(entry.Key, entry.Value.X, entry.Value.Y);
+    }
+
+    private void InvalidateTextSizingHistory()
+    {
+        _textSizingHistoryRevision = unchecked(_textSizingHistoryRevision + 1);
+        Array.Clear(_cachedRenderRowIds);
     }
 
     private void EraseTextSizingBlock(TextSizingBlock block, int x, int y)
@@ -381,7 +394,7 @@ public partial class TerminalBuffer
                 EraseSizedRowCell(rows[row - historyCount], col, block, blank);
             }
         }
-        if (changedHistory) Array.Clear(_cachedRenderRowIds);
+        if (changedHistory) InvalidateTextSizingHistory();
         if (_textSizingBlocks?.Remove(block) == true) _textSizingStorage -= block.StorageCost;
     }
     private static void EraseSizedRowCell(TerminalRow? target, int col, TextSizingBlock block, TerminalCell blank)

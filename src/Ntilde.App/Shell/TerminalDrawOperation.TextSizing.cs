@@ -55,15 +55,17 @@ public sealed partial class TerminalDrawOperation
             float width = (right - left) * fraction;
             float height = rowHeight * heightScale;
             float blockTop = rowTop - piece.RowOffset * rowHeight;
-            float x = left + AlignedSizingOffset(right - left - width, block.Options.HorizontalAlignment);
             float y = blockTop + AlignedSizingOffset(block.Height * rowHeight - height, block.Options.VerticalAlignment);
             int missing = FindFirstMissingGlyphCodePoint(block.Text, primary);
             var resources = GetOrCreateShapingResources(missing == 0 ? primary : ResolveTypefaceForCodePoint(missing, primary));
             float naturalWidth = resources.Shaper.Shape(block.Text, resources.Font).Width;
             if (!(naturalWidth > 0)) return block.Width;
+            float horizontalScale = Math.Min(heightScale, (right - left) / naturalWidth);
+            float occupiedWidth = Math.Max(width, naturalWidth * horizontalScale);
+            float x = left + AlignedSizingOffset(Math.Max(0, right - left - occupiedWidth), block.Options.HorizontalAlignment);
             canvas.Translate(x, y);
             // Fraction scales the font once. Compress only text that exceeds the full block.
-            canvas.Scale(Math.Min(heightScale, (right - left) / naturalWidth), heightScale);
+            canvas.Scale(horizontalScale, heightScale);
             float localBaseline = baseline - rowTop;
             if (cell.IsItalic)
             {
@@ -75,7 +77,8 @@ public sealed partial class TerminalDrawOperation
             canvas.DrawShapedText(resources.Shaper, block.Text, 0, localBaseline, resources.Font, paint);
             IncrementShapedTextRun();
             IncrementTextDrawCall();
-            DrawSizedDecorations(canvas, cell, naturalWidth, localBaseline, rowHeight, fg, context);
+            DrawSizedDecorations(canvas, cell, (naturalWidth, (left - x) / horizontalScale, (right - left) / horizontalScale),
+                localBaseline, rowHeight, fg, context);
             return block.Width;
         }
         finally { canvas.Restore(); }
@@ -84,7 +87,8 @@ public sealed partial class TerminalDrawOperation
     private static float AlignedSizingOffset(float slack, int alignment)
         => alignment switch { 1 => slack, 2 => slack / 2, _ => 0 };
 
-    private void DrawSizedDecorations(SKCanvas canvas, RenderCellSnapshot cell, float width,
+    private void DrawSizedDecorations(SKCanvas canvas, RenderCellSnapshot cell,
+        (float TextWidth, float BlockLeft, float BlockWidth) geometry,
         float baseline, float rowHeight, SKColor fg, SizedTextRowPaint context)
     {
         _decoStrokePaint.Color = fg;
@@ -96,13 +100,15 @@ public sealed partial class TerminalDrawOperation
         {
             if (cell.Underline is { HasColor: true } underline)
                 _decoStrokePaint.Color = ResolveUnderlineColor(underline, context.Theme);
-            DrawUnderline(canvas, cell.Underline?.Style ?? UnderlineStyle.Single, 0, width,
+            float start = cell.Underline == null ? 0 : geometry.BlockLeft;
+            float width = cell.Underline == null ? geometry.TextWidth : geometry.BlockWidth;
+            DrawUnderline(canvas, cell.Underline?.Style ?? UnderlineStyle.Single, start, start + width,
                 Math.Min(rowHeight - stroke, baseline + stroke), rowHeight, stroke);
         }
         if (cell.IsStrikethrough)
         {
             _decoStrokePaint.Color = fg;
-            canvas.DrawLine(0, baseline - rowHeight * 0.3f, width, baseline - rowHeight * 0.3f, _decoStrokePaint);
+            canvas.DrawLine(0, baseline - rowHeight * 0.3f, geometry.TextWidth, baseline - rowHeight * 0.3f, _decoStrokePaint);
         }
     }
 }

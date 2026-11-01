@@ -123,6 +123,43 @@ public sealed class Osc66RenderTests
         Assert.True(line);
     }
 
+    [AvaloniaTheory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Compressed_fractional_text_fills_the_block_without_alignment_clipping(int alignment)
+    {
+        using var left = Render("\x1b]66;s=2:w=2:n=1:d=2;MMMMMMMMMMMMMMMM\a");
+        using var aligned = Render($"\x1b]66;s=2:w=2:n=1:d=2:h={alignment};MMMMMMMMMMMMMMMM\a");
+        Assert.Equal(left.Bytes, aligned.Bytes);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("\x1b[4:2m", true)]
+    [InlineData("\x1b[4:3m", true)]
+    [InlineData("\x1b[4;58:5:1m", true)]
+    [InlineData("\x1b[4m", false)]
+    public void Styled_underlines_cover_short_payloads_full_rectangles_while_plain_ones_follow_the_text(string style, bool full)
+    {
+        using var bitmap = Render(style + "\x1b]66;s=2:w=4;M\a");
+        Assert.Equal(full, Ink(bitmap).Right > (4 + Metrics.CellWidth * 7) * Scaling);
+    }
+
+    [AvaloniaFact]
+    public void Cached_history_pictures_refresh_after_a_visible_piece_is_erased()
+    {
+        using var cached = new DrawPathHarness(20, 4);
+        using var reference = new DrawPathHarness(20, 4, withRowCache: false);
+        foreach (var harness in new[] { cached, reference })
+        {
+            harness.Parser.Process("prefix\r\n\x1b]66;s=2;M\a\x1b[4;1H\n\n");
+            harness.ScrollOffset = 1;
+            harness.DrawFrame();
+            harness.Parser.Process("\x1b[1;1H\x1b[X");
+            harness.DrawFrame();
+        }
+        Assert.Equal(reference.Pixels(), cached.Pixels());
+    }
+
     private static SKRectI Ink(SKBitmap bitmap)
     {
         int left = bitmap.Width, right = 0, top = bitmap.Height, bottom = 0;
