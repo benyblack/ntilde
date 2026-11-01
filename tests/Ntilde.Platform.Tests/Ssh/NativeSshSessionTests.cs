@@ -768,9 +768,20 @@ public sealed class NativeSshSessionTests
         };
     }
 
+    // 30 s, not the 2 s this used to allow, and only as a ceiling: the loop returns the moment the
+    // predicate holds, and every caller waits for something that must happen, so a passing test
+    // never pays for it. Several of those somethings run on the thread pool, not the poll thread -
+    // NotifySessionEstablished hands the remote-forward requests to Task.Run on purpose, so a slow
+    // request cannot stall the loop answering auth prompts. On a 4-core CI runner the pool starts
+    // at four threads and injects more slowly when they are busy, so during the parallel start-up
+    // burst of this assembly a queued work item can wait past 2 s.
+    // RemoteForward_IsRequestedWhenTheConnectedEventArrives failed exactly so on main (windows,
+    // 3.7 s into the run, "Condition was not met before timeout.") with nothing wrong in the code
+    // under test. NativePortForwardSessionTests, which drives the same Task.Run path, already
+    // allows 30 s.
     private static async Task WaitUntilAsync(Func<bool> predicate)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(2);
+        var deadline = DateTime.UtcNow.AddSeconds(30);
         while (DateTime.UtcNow < deadline)
         {
             if (predicate())
