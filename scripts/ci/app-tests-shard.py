@@ -20,7 +20,12 @@ Each shard also carries its floor for the gate (scripts/check-app-tests-baseline
 minimum executed count below which a run is treated as truncated rather than green. As with the
 single lane's floor before it, lowering one is a decision, not a fix.
 
-Usage: app-tests-shard.py <shard>   prints `filter=...` and `floor=...` for $GITHUB_OUTPUT.
+A shard also says what it needs from its runner beyond the compiled test assemblies (NEEDS
+below), so a shard that owns no such test skips that setup. Moving a prefix moves its needs with
+it: they are worked out from the same filter, never named per shard in the workflow.
+
+Usage: app-tests-shard.py <shard>   prints `filter=`, `floor=` and one `<need>=1` or `<need>=`
+                                    line per NEEDS entry, for $GITHUB_OUTPUT.
        app-tests-shard.py --list    prints the shard names, one per line.
 The filter is ANDed onto the lane's own Category/Lane exclusions in ci.yml.
 """
@@ -50,6 +55,21 @@ SHARDS = [
 ]
 
 
+# What a shard's runner must provide beyond the build artifact, keyed by the output name the
+# workflow reads, each with the test-class prefixes that need it. A shard needs an entry when its
+# filter selects any class under one of those prefixes. scripts/tests/app_tests_shard_tests.py
+# checks the lists against the source, so a new class with the same need cannot be missed.
+NEEDS = {
+    # These tests run `dotnet build` of src/Ntilde.App or src/Ntilde.Cli (with --no-restore),
+    # so their shard needs `dotnet restore` and the NuGet package cache - about 35 s of setup on
+    # windows that no other shard needs, because the others only run the compiled assemblies.
+    "restore": ["Ntilde.Tests.VtReportCliTests."],
+    # These spawn real bash, zsh and fish; ubuntu runners have only bash, so the shard installs
+    # the other two (without them the zsh and fish tests skip rather than fail).
+    "shells": ["Ntilde.Tests.CommandAssist.ShellIntegration.Integration."],
+}
+
+
 def claimed() -> list[str]:
     return [prefix for name, prefixes, _ in SHARDS if name != REST for prefix in prefixes]
 
@@ -68,6 +88,24 @@ def floor_for(name: str) -> int:
     return next(floor for shard, _, floor in SHARDS if shard == name)
 
 
+def owns(name: str, fqn: str) -> bool:
+    """Whether shard `name`'s filter selects `fqn`, with VSTest's `~` (contains) semantics."""
+    for shard, prefixes, _ in SHARDS:
+        if shard == name:
+            if shard == REST:
+                return not any(p in fqn for p in claimed())
+            return any(p in fqn for p in prefixes)
+    raise KeyError(name)
+
+
+def needs_for(name: str) -> dict[str, bool]:
+    # A probe name inside each prefix. Claimed prefixes end in "." and match by containment, so
+    # the shard that selects the probe is the shard that selects the prefix's classes - unless a
+    # claimed prefix splits one of these namespaces, which the self-test rejects.
+    return {need: any(owns(name, prefix + "AnyClass.AnyMethod") for prefix in prefixes)
+            for need, prefixes in NEEDS.items()}
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print("usage: app-tests-shard.py <shard> | --list", file=sys.stderr)
@@ -80,6 +118,8 @@ def main() -> int:
     try:
         print(f"filter={filter_for(arg)}")
         print(f"floor={floor_for(arg)}")
+        for need, needed in needs_for(arg).items():
+            print(f"{need}={'1' if needed else ''}")
     except KeyError:
         names = ", ".join(name for name, _, _ in SHARDS)
         print(f"unknown shard {arg!r}; expected one of: {names}", file=sys.stderr)
