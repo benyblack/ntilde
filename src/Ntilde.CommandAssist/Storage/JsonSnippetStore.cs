@@ -22,7 +22,7 @@ public sealed class JsonSnippetStore : ISnippetStore
 
     public JsonSnippetStore(string filePath) : this(filePath,
         path => new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete),
-        path => new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        CreateTemporaryFile)
     {
     }
 
@@ -114,6 +114,21 @@ public sealed class JsonSnippetStore : ISnippetStore
         }
     }
 
+    private static Stream CreateTemporaryFile(string path)
+    {
+        var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None };
+        if (!OperatingSystem.IsWindows()) options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        return new FileStream(path, options);
+    }
+
+    private UnixFileMode? ReadExistingUnixMode()
+    {
+        if (OperatingSystem.IsWindows()) return null;
+        try { return File.GetUnixFileMode(_filePath); }
+        catch (FileNotFoundException) { return null; }
+        catch (DirectoryNotFoundException) { return null; }
+    }
+
     private async Task SaveSnippetsUnsafeAsync(List<CommandSnippet> snippets, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -123,17 +138,22 @@ public sealed class JsonSnippetStore : ISnippetStore
             Directory.CreateDirectory(directory);
         }
 
+        UnixFileMode? mode = ReadExistingUnixMode();
         string tempPath = _filePath + $".{Guid.NewGuid():N}.tmp";
         try
         {
             await using (Stream stream = _createWrite(tempPath))
             {
+                // Restrict the temporary file before any saved command text reaches it.
+                if (!OperatingSystem.IsWindows() && mode is { } unixMode) File.SetUnixFileMode(tempPath, unixMode);
                 await JsonSerializer.SerializeAsync(stream, snippets, CommandAssistJsonContext.Default.ListCommandSnippet, cancellationToken);
                 await stream.FlushAsync(cancellationToken);
             }
             // Commit only after serialization and disposal succeed. No cancellation is reported after commit.
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(tempPath, _filePath, overwrite: true);
+            // Replace retains destination metadata on Windows; a new file must not overwrite a peer.
+            if (File.Exists(_filePath)) File.Replace(tempPath, _filePath, destinationBackupFileName: null);
+            else File.Move(tempPath, _filePath);
         }
         finally
         {

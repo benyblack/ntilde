@@ -630,6 +630,8 @@ requires public test classes.
   empty store; cancellation, read errors and invalid JSON propagate to callers. Writes serialize,
   flush and close a unique sibling temporary file before atomically replacing `snippets.json`.
   The final cancellation check precedes replacement, and failed temporary files are cleaned up.
+  New Unix files are private to their owner; existing modes are applied before serializing commands.
+  Replacing an existing Windows file retains its destination metadata.
 - All types in `Ntilde.CommandAssist.*` (`Leaf_assembly_types_reside_in_its_own_namespace`);
   the App may only use that prefix for Views
   (`App_may_only_use_the_CommandAssist_prefix_for_Views`).

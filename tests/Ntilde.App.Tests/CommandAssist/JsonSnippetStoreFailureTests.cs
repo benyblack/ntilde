@@ -102,6 +102,85 @@ public sealed class JsonSnippetStoreFailureTests : IDisposable
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.GetAllAsync(cancel.Token));
     }
 
+    [Fact]
+    public async Task SuccessfulSavePreservesRestrictiveUnixPermissions()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix permissions only.");
+        }
+        else
+        {
+            var (path, _) = await SeedAsync();
+            UnixFileMode mode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            File.SetUnixFileMode(path, mode);
+
+            await new JsonSnippetStore(path).UpsertAsync(Snippet("new"), TestContext.Current.CancellationToken);
+
+            Assert.Equal(mode, File.GetUnixFileMode(path));
+        }
+    }
+
+    [Fact]
+    public async Task TemporaryFileIsRestrictedBeforeSerializingCommands()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix permissions only.");
+        }
+        else
+        {
+            var (path, _) = await SeedAsync();
+            UnixFileMode mode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            File.SetUnixFileMode(path, mode);
+            bool observedWrite = false;
+            var store = new JsonSnippetStore(path, File.OpenRead, destination =>
+            {
+                var stream = new ObservedWriteStream(destination, () =>
+                {
+                    if (!OperatingSystem.IsWindows()) Assert.Equal(mode, File.GetUnixFileMode(destination));
+                    observedWrite = true;
+                });
+                // Force an unsafe initial mode, independent of the test process's umask.
+                if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(destination, mode | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
+                return stream;
+            });
+
+            await store.UpsertAsync(Snippet("new"), TestContext.Current.CancellationToken);
+
+            Assert.True(observedWrite);
+            Assert.Equal(mode, File.GetUnixFileMode(path));
+        }
+    }
+
+    [Fact]
+    public async Task WindowsReplacementFailurePreservesTheOriginalAndCleansUp()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows file-sharing semantics only.");
+        }
+        else
+        {
+            var (path, original) = await SeedAsync();
+            // Reading still works, but this external reader denies deletion/replacement.
+            using var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            bool writeStarted = false;
+            var store = new JsonSnippetStore(path, File.OpenRead, destination =>
+            {
+                writeStarted = true;
+                return File.Create(destination);
+            });
+
+            Exception? failure = await Record.ExceptionAsync(() => store.UpsertAsync(Snippet("new"), TestContext.Current.CancellationToken));
+
+            Assert.True(writeStarted);
+            Assert.IsAssignableFrom<IOException>(failure);
+            Assert.Equal(original, await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken));
+            Assert.Empty(Directory.GetFiles(_root, "*.tmp"));
+        }
+    }
+
     private async Task<(string Path, byte[] Bytes)> SeedAsync()
     {
         string path = Path.Combine(_root, "snippets.json");
@@ -114,6 +193,15 @@ public sealed class JsonSnippetStoreFailureTests : IDisposable
 
     private static Task MutateAsync(JsonSnippetStore store, bool remove, CancellationToken token) =>
         remove ? store.RemoveAsync("old", token) : store.UpsertAsync(Snippet("new"), token);
+
+    private sealed class ObservedWriteStream(string path, Action observe) : FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None)
+    {
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            observe();
+            return base.WriteAsync(buffer, cancellationToken);
+        }
+    }
 
     private sealed class PartialFailureStream(string path) : FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None)
     {
