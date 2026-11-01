@@ -216,7 +216,9 @@ terminal output never waits for disk capacity. `WaitUntilReadyAsync` confirms th
 header is written, and `CompleteAsync` confirms the file was flushed and closed.
 Lifetime `Dispose` is best-effort; callers reporting a successful save must await
 completion. The pane and mux await these tasks outside parser ordering boundaries
-and publish failures; mux recorder identities reject stale failure notifications.
+and publish failures; recorder identities keep historical failure notices from changing
+a replacement recording. Initiating mux connections observe recording failures even
+without attaching terminal output; disconnect cleanup follows start admission.
 Frozen flight exports write sequentially outside the live queue and propagate I/O
 errors, so an export larger than the live byte budget is still complete.
 

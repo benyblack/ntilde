@@ -47,6 +47,8 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private int _recording;
     private readonly object _recordingGate = new();
     private Guid _activeRecordingId;
+    private readonly HashSet<Guid> _startedRecordingIds = new();
+    private readonly Queue<Guid> _startedRecordingOrder = new();
     // Only the latest pending start can publish state. Retain its observed failures until acknowledgement.
     private readonly Dictionary<Guid, RecordingFailure> _pendingRecordingFailures = new();
     private bool _recordingStartPending;
@@ -327,6 +329,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
                 if (_pendingRecordingFailuresOverflowed)
                     throw new RecordingException(new RecordingFailure(RecordingFailureKind.Write, "Too many recording state changes while waiting for start confirmation."));
                 _activeRecordingId = result.RecordingId;
+                RememberRecordingId(result.RecordingId);
                 Volatile.Write(ref _recording, 1);
             }
         }
@@ -341,6 +344,14 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
                 }
             }
         }
+    }
+
+    // Called under _recordingGate; bounded history permits late warnings without changing the active recorder.
+    private void RememberRecordingId(Guid id)
+    {
+        if (id == Guid.Empty || !_startedRecordingIds.Add(id)) return;
+        _startedRecordingOrder.Enqueue(id);
+        if (_startedRecordingOrder.Count > 64) _startedRecordingIds.Remove(_startedRecordingOrder.Dequeue());
     }
 
     public async Task StopRecordingAsync()
@@ -376,7 +387,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     internal void DeliverRecordingFailed(RecordingFailedNotification notification)
     {
         var failure = new RecordingFailure(Enum.TryParse<RecordingFailureKind>(notification.Kind, out var kind) ? kind : RecordingFailureKind.Write, notification.Message, notification.RecordingId);
-        bool active;
+        bool notify;
         lock (_recordingGate)
         {
             if (_recordingStartPending)
@@ -385,10 +396,11 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
                     _pendingRecordingFailures[notification.RecordingId] = failure;
                 else _pendingRecordingFailuresOverflowed = true;
             }
-            active = _activeRecordingId == notification.RecordingId;
+            bool active = _activeRecordingId == notification.RecordingId;
+            notify = active || _startedRecordingIds.Contains(notification.RecordingId);
             if (active) Volatile.Write(ref _recording, 0);
         }
-        if (active) PublishRecordingFailure(failure);
+        if (notify) PublishRecordingFailure(failure);
     }
 
     private void PublishRecordingFailure(RecordingFailure failure)

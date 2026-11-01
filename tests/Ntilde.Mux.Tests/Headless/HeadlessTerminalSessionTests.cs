@@ -38,6 +38,37 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task RecordingObserverCleanupCannotOvertakeAPendingStart()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        using (var release = new ManualResetEventSlim(false))
+        {
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Task parked = mux.InvokeAsync(() =>
+            {
+                entered.TrySetResult();
+                release.Wait(TestContext.Current.CancellationToken);
+                return 0;
+            });
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+                var sink = new RecordingFrameSink();
+                Task start = mux.StartRecordingAsync("test.nrec", sink);
+                // A connection's disconnect posts cleanup after admitting start, while the parser is blocked.
+                Task cleanup = mux.RemoveRecordingObserverAsync(sink);
+                release.Set();
+                await Task.WhenAll(parked, start, cleanup);
+                fake.FailRecording(RecordingFailureKind.Write);
+                await mux.InvokeAsync(() => 0); // ordered after the failure notification on the control queue
+                Assert.DoesNotContain(sink.Frames, frame => frame.IsNotification(MuxMethods.RecordingFailed));
+            }
+            finally { release.Set(); }
+        }
+    }
+
+    [Fact]
     public async Task Parses_the_tapped_bytes_on_its_own_dedicated_thread()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();

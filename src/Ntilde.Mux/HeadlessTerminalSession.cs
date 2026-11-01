@@ -571,7 +571,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     private readonly HashSet<IMuxFrameSink> _recordingObservers = new();
 
-    internal Task RemoveRecordingObserverAsync(IMuxFrameSink sink) => InvokeAsync(() => _recordingObservers.Remove(sink));
+    internal Task RemoveRecordingObserverAsync(IMuxFrameSink sink) => AtRecordingBoundaryAsync(() => _recordingObservers.Remove(sink));
 
     private void BroadcastRecordingFailure(MuxOutboundFrame frame)
     {

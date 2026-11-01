@@ -87,6 +87,41 @@ public sealed class RecordingFailureTests
     }
 
     [Fact]
+    public async Task HistoricalFailureWarnsWithoutStoppingNewRecording()
+    {
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connecting = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connecting;
+        using MuxClientSession session = client.OpenSession(Guid.NewGuid());
+        Guid old = Guid.NewGuid();
+        Guid current = Guid.NewGuid();
+        foreach (Guid id in new[] { old, current })
+        {
+            Task start = session.StartRecordingAsync("test.nrec");
+            MuxRequest request = await fake.ReadRequestAsync();
+            fake.Reply(request.Id, new StartRecordingResult { RecordingId = id }, MuxJsonContext.Default.StartRecordingResult);
+            await start;
+        }
+        var observed = new TaskCompletionSource<RecordingFailure>(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.RecordingFailed += failure => observed.TrySetResult(failure);
+        fake.Raw.Send(MuxFrames.Notification(new MuxNotification
+        {
+            Method = MuxMethods.RecordingFailed,
+            Params = MuxFrames.ToElement(new RecordingFailedNotification
+            {
+                SessionId = session.Id,
+                RecordingId = old,
+                Kind = "Write",
+                Message = "old disk full"
+            }, MuxJsonContext.Default.RecordingFailedNotification)
+        }));
+        Assert.Equal(old, (await observed.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct)).RecordingId);
+        Assert.True(session.IsRecording);
+        Assert.Equal(current, session.RecordingId);
+    }
+
+    [Fact]
     public async Task LateOldFaultCannotInvalidateNewStartAndEarlyCurrentFaultCannotResurrectIt()
     {
         using var fake = FakeMuxServerEnd.Create();

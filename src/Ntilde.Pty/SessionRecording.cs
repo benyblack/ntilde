@@ -19,7 +19,8 @@ public sealed class SessionRecording : IDisposable
         int delivered = 0;
         void Deliver(RecordingFailure failure)
         {
-            if (!ReferenceEquals(Current, recorder) || Interlocked.Exchange(ref delivered, 1) != 0) return;
+            // The ID identifies historical failures; notification must not mutate a replacement recorder.
+            if (Interlocked.Exchange(ref delivered, 1) != 0) return;
             try { onFailure(failure); }
             catch (Exception ex) { PtyLogger.Warning($"[SessionRecording] Failure observer: {ex.Message}"); }
         }

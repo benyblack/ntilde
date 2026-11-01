@@ -170,7 +170,7 @@ public sealed class RecorderFailureTests
     }
 
     [Fact]
-    public async Task SharedSessionLifecycleRejectsDelayedFailureFromReplacedRecorder()
+    public async Task SharedSessionLifecycleReportsHistoricalFailureWithoutStoppingReplacement()
     {
         using var state = new SessionRecording();
         using var release = new ManualResetEventSlim(false);
@@ -194,7 +194,8 @@ public sealed class RecorderFailureTests
             await second.WaitUntilReadyAsync();
             release.Set();
             await delivered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            Assert.Equal(0, notifications);
+            Assert.Equal(1, notifications);
+            Assert.Same(second, state.Current);
             Assert.True(state.Current!.IsReady);
             await state.StopAsync();
         }
