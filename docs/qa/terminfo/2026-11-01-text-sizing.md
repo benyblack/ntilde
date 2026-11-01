@@ -9,7 +9,7 @@ separate domain and shared-renderer pixel evidence below.
 | Build | Source commit | Owned collection | Measured at (UTC) |
 |---|---|---|---|
 | Before | `52ed24cd4bb2eb8d69d747c6ba6ee063d372709e` | `owned-KlBHUy` | 12:31:08.706 |
-| After | `47a29ceaa7728d06a19b7d3ef8b4f5d1c15baeb3` | `owned-NPPGS0` | 13:52:07.193 |
+| After | `3e6bf01fc36f71804c24fb181025be08f3a38303` | `owned-SnVZfh` | 14:25:31.154 |
 
 Both builds are fresh uninstalled sidecars outside `.app` bundles. Their DLL
 informational versions contain the full source commit. The selected assembly
@@ -23,7 +23,7 @@ source and ownership/cleanup proof. No personal clipboard was read.
 Both runs use the same pinned collector revision, suite/probe hash, adapter,
 manifest/lock, runner sources and Node v24.22.1. Raw SHA-256 values were recomputed;
 both ownership proofs record completion and cleanup. The after cleanup completed
-at 13:52:07.219 UTC.
+at 14:25:31.184 UTC.
 
 ## Observed behavior
 
@@ -56,10 +56,10 @@ replay; metadata budgets; ANSI export and bounded text-client fallback. Initial
 probe tests failed before implementation. A fractional-pair pixel regression
 also failed with double shrinking and passes with font scaling applied once.
 
-Six shared-renderer pixel tests cover enlarged ink across rows, fractional
+Eleven shared-renderer pixel tests cover enlarged ink across rows, fractional
 font sizing/alignment, two small glyphs in one cell, compressed long text,
-visible lower fragments whose anchor is in history, and cached-row refresh.
-The full VT suite passes 1,395 tests. The complete App gating rerun passes
+visible lower fragments whose anchor is in history, cached-row refresh, italic baseline anchoring, and plain/styled underline policy.
+The full VT suite passes 1,406 tests. The earlier complete App gating rerun passed
 7,534 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
 (40), shared golden PNG (8), mux (1,123 with 20 platform skips), architecture
 (178), and platform-boot (75 with 4 font-platform skips) checks pass locally.
@@ -69,7 +69,20 @@ The follow-up fixes two Codex findings: sized ANSI exports reset the column with
 CRLF independently of the receiving terminal's LNM mode, and complete replay
 checkpoints retain block metadata only in their complete state. Buffer-only
 checkpoints retain the optional legacy field. Both regressions fail before the
-fix and pass afterward. The comparison retains the initial after-run separately.
+fix and pass afterward. The comparison retains both earlier after-runs separately.
+
+The CodeRabbit follow-up covers DECALN cleanup, cursor-adjacent combining text,
+ordinary-cell attachment and split regional indicators, leading-mark fallback,
+full-width detected URL hit areas, strict alternate-screen import geometry, and
+checkpoint restoration under metadata pressure. New regressions reproduced eight
+domain failures and two pixel failures before the fixes. Live repeated budget
+refusals now reuse pruning until eviction/reset or screen replacement changes
+retention; the allocation regression drops from more than 5 MiB over 20 refusals
+to below its 128 KiB ceiling. A separate valid, non-overlapping import fixture
+reaches the summed storage guard rather than the block-count guard. Legacy
+checkpoints retire only enough old rectangles to restore the visible checkpoint;
+without pressure, retained history remains. Three real TerminalView hover/click
+checks cover the beginning, middle and end of a sized URL block.
 
 ## Limits
 

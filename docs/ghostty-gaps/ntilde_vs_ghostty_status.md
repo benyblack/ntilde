@@ -74,7 +74,7 @@ backend callbacks. See the [measurement, event evidence and limits](../qa/termin
 OSC 66 now owns bounded rectangular grid geometry and scaled/shaped GUI painting,
 including fractional sizing/alignment, whole-block editing, history fragments,
 state transfer and replay. The fresh owned probe verifies width and scale cursor
-advance; six shared-renderer pixel tests separately cover appearance. Resize
+advance; eleven shared-renderer pixel tests separately cover appearance. Resize
 barriers, ordinary cursor drawing and the unnegotiated text-client fallback are
 explicit limits in the [measurement report](../qa/terminfo/2026-11-01-text-sizing.md).
 

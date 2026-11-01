@@ -54,12 +54,12 @@
     "cleanedUpAt": "2026-11-01T12:31:08.733Z"
   },
   "after": {
-    "sourceCommit": "47a29ceaa7728d06a19b7d3ef8b4f5d1c15baeb3",
-    "appVersion": "0.12.0+47a29ceaa7728d06a19b7d3ef8b4f5d1c15baeb3",
-    "measuredAt": "2026-11-01T13:52:07.193Z",
-    "localDirectory": "artifacts/terminfo/owned-NPPGS0",
-    "rawSha256": "d54f08b4664ea9f264421f7641365b7f2b3cfc15c30c1efd02c928452bdbb13b",
-    "assemblySha256": "9063e4e3672e526add51aeb113d6b57d2b1827f5bd8aaed0a6f8378383bc0d16",
+    "sourceCommit": "3e6bf01fc36f71804c24fb181025be08f3a38303",
+    "appVersion": "0.12.0+3e6bf01fc36f71804c24fb181025be08f3a38303",
+    "measuredAt": "2026-11-01T14:25:31.154Z",
+    "localDirectory": "artifacts/terminfo/owned-SnVZfh",
+    "rawSha256": "f21d43a21609b2e6632ec88f3416c4c1e1f66bc46ffd86e97665007e62aa2d45",
+    "assemblySha256": "b583837567c130a5c217545fb04471b527bfbff803e9aa1817c722ac7fa30c9d",
     "counts": {
       "inconclusive": 177,
       "supported": 77,
@@ -70,8 +70,8 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "runId": "5b1fa4f5f7d9dac89f6b1265e8283690",
-    "ownerRunId": "3dc24ab2ea524b4464af5ecc9922bc80",
+    "runId": "c0ba5534bf5eeb7aa105c3e6f35ab339",
+    "ownerRunId": "b546861893d3d68f3593dcd60eddebd8",
     "suiteComplete": false,
     "ungradedDiagnostics": {
       "cursor.reverse-wrap": {
@@ -80,7 +80,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "cleanedUpAt": "2026-11-01T13:52:07.219Z"
+    "cleanedUpAt": "2026-11-01T14:25:31.184Z"
   },
   "unchangedOutcomeAndReasonCount": 254,
   "changes": [
@@ -289,7 +289,7 @@
   "limitations": [
     "Raw identity remains unverified; selected assembly informational versions and hashes bind the measured builds.",
     "The owned probe verifies width and scale cursor advance, not glyph appearance.",
-    "Six shared-renderer pixel tests separately cover scale, fractional font sizing/alignment, long text fitting, visible lower fragments and cache refresh.",
+    "Eleven shared-renderer pixel tests separately cover scale, fractional font sizing/alignment, long text fitting, visible lower fragments, cache refresh, italic baseline and underline policy.",
     "Sized rows are physical layout barriers on resize; clipped or oversized blocks are discarded whole.",
     "Cursor keeps its ordinary cell shape; unnegotiated mux text clients use a bounded normal-size fallback.",
     "177 inconclusive observations, one unsupported OSC 5522 observation and an ungraded geometry diagnostic remain."
@@ -323,6 +323,35 @@
         }
       },
       "cleanedUpAt": "2026-11-01T13:37:52.087Z"
+    },
+    {
+      "sourceCommit": "47a29ceaa7728d06a19b7d3ef8b4f5d1c15baeb3",
+      "appVersion": "0.12.0+47a29ceaa7728d06a19b7d3ef8b4f5d1c15baeb3",
+      "measuredAt": "2026-11-01T13:52:07.193Z",
+      "localDirectory": "artifacts/terminfo/owned-NPPGS0",
+      "rawSha256": "d54f08b4664ea9f264421f7641365b7f2b3cfc15c30c1efd02c928452bdbb13b",
+      "assemblySha256": "9063e4e3672e526add51aeb113d6b57d2b1827f5bd8aaed0a6f8378383bc0d16",
+      "counts": {
+        "inconclusive": 177,
+        "supported": 77,
+        "unsupported": 1
+      },
+      "reasons": {
+        "insufficient-evidence": 152,
+        "no-response": 22,
+        "policy-refused": 3
+      },
+      "runId": "5b1fa4f5f7d9dac89f6b1265e8283690",
+      "ownerRunId": "3dc24ab2ea524b4464af5ecc9922bc80",
+      "suiteComplete": false,
+      "ungradedDiagnostics": {
+        "cursor.reverse-wrap": {
+          "kind": "collector-error",
+          "name": "UndeclaredTerminalGeometry",
+          "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+        }
+      },
+      "cleanedUpAt": "2026-11-01T13:52:07.219Z"
     }
   ]
 }
