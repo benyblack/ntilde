@@ -3067,7 +3067,28 @@ jobs:
       # "<arch>-unknown-linux-gnu" triple name for both x86_64 and aarch64, so
       # no per-arch branch is needed - this runs unchanged on the
       # ubuntu-24.04-arm leg.
+      # The two native libraries this job ships, cached as finished files and keyed on both
+      # crates' sources and lock files - the build job's pattern (#682), with a key of its own:
+      # these are built in this ubuntu:22.04 container against its older glibc, so the build
+      # job's ubuntu-latest binaries are not interchangeable with them. On a hit the job skips
+      # installing Rust and cargo entirely. Before this, rusty_ssh compiled 164 crates from
+      # scratch on every run (~60 s): the incremental cache below only covered rusty_pty's
+      # workspace. Checking the files, not the cache-hit flag, means a partial payload builds.
+      - name: Restore native binaries
+        id: native-bin
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            src/Ntilde.App/native/target_linux/release/librusty_pty.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+          key: native-bin-container-ubuntu2204-v1-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
+
+      - name: Check the native libraries
+        id: native-libs
+        run: bash scripts/ci/native-libs-present.sh Linux >> "$GITHUB_OUTPUT"
+
       - name: Install Rust
+        if: steps.native-libs.outputs.skip != '1'
         run: |
           set -euo pipefail
           RUSTUP_VERSION=1.29.1
@@ -3081,6 +3102,7 @@ jobs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Verify cargo is on PATH
+        if: steps.native-libs.outputs.skip != '1'
         run: |
           set -euo pipefail
           command -v cargo
@@ -3090,17 +3112,35 @@ jobs:
       # Kept as-is: a node action, so it runs in the container, and it only needs
       # cargo on PATH - which the step above put there via $GITHUB_PATH.
       - name: Rust incremental build cache
+        if: steps.native-libs.outputs.skip != '1'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
-          workspaces: src/Ntilde.App/native
+          # Both workspaces: rusty_ssh is its own crate with its own target/, and it is the
+          # heavy one (ring, russh). Listing only native/ left it uncached.
+          workspaces: |
+            src/Ntilde.App/native
+            src/Ntilde.App/native/rusty_ssh
 
       - name: Build Rust native
+        if: steps.native-libs.outputs.skip != '1'
         run: |
           cd src/Ntilde.App/native
           cargo build --release --locked
           mkdir -p target_linux/release
           cp target/release/librusty_pty.so target_linux/release/
           cd rusty_ssh && cargo build --release --locked
+
+      # Saved as a step of its own, straight after the build, rather than in a post-job phase:
+      # post steps run in reverse order, and the incremental cache's own cleanup would get there
+      # first (#682 lost rusty_ssh from the build job's payload exactly that way).
+      - name: Save native binaries
+        if: steps.native-bin.outputs.cache-hit != 'true' && steps.native-libs.outputs.skip != '1'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            src/Ntilde.App/native/target_linux/release/librusty_pty.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+          key: ${{ steps.native-bin.outputs.cache-primary-key }}
 
       - name: Restore
         run: dotnet restore
