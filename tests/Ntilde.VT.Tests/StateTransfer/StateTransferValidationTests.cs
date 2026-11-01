@@ -150,7 +150,7 @@ public class StateTransferValidationTests
     /// </param>
     [Theory]
     [InlineData(0x7FFFFFFF, KittyKeyboardState.SupportedFlags)]
-    [InlineData(0b11110, KittyKeyboardState.FlagReportEventTypes)]
+    [InlineData(0b11110, KittyKeyboardState.FlagReportEventTypes | KittyKeyboardState.FlagReportAlternateKeys)]
     [InlineData(-559038737, 0)]
     public void BufferImport_MasksKittyKeyboardFlagsToTheSupportedBits(int corrupted, int expected)
     {
