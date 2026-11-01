@@ -45,12 +45,12 @@
     "cleanedUpAt": "2026-11-01T09:02:25.906Z"
   },
   "after": {
-    "sourceCommit": "ba425a268eaa0e22f04959421e09eb802fc06aff",
-    "appVersion": "0.12.0+ba425a268eaa0e22f04959421e09eb802fc06aff",
-    "measuredAt": "2026-11-01T09:03:44.074Z",
-    "localDirectory": "artifacts/terminfo/owned-oAWVP4",
-    "rawSha256": "282885e43cb8dbc354eede2d61c6a92586a87e0efe67ff17a1ecb9fda47915ee",
-    "assemblySha256": "e0714f7869ee6d32e9ed612cb83894ed12fc1bea9dc85002fb8364c474f96312",
+    "sourceCommit": "1ba8a4fad3064eb7f5cee214a217f10496423816",
+    "appVersion": "0.12.0+1ba8a4fad3064eb7f5cee214a217f10496423816",
+    "measuredAt": "2026-11-01T09:22:45.057Z",
+    "localDirectory": "artifacts/terminfo/owned-hJtZUh",
+    "rawSha256": "4bc068a905361624da88c33daa0208261394c5481421934f714a0e8376f25ac3",
+    "assemblySha256": "8f2c1004a16324b8ba7313e47660766151fddf9a1f1234b152efc58ecece7760",
     "counts": {
       "inconclusive": 177,
       "supported": 74,
@@ -61,7 +61,7 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "runId": "85c31d2e4f0694a138e5d7290ca2ce31",
+    "runId": "d425b4d39d392c0030b8f8ad4cd26b27",
     "suiteComplete": false,
     "ungradedDiagnostics": {
       "cursor.reverse-wrap": {
@@ -70,7 +70,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "cleanedUpAt": "2026-11-01T09:03:44.106Z"
+    "cleanedUpAt": "2026-11-01T09:22:45.086Z"
   },
   "unchangedOutcomeAndReasonCount": 254,
   "changes": [
@@ -225,5 +225,33 @@
     "Missing event symbols and unshifted punctuation retain the legacy primary.",
     "Flags 8 and 16, OSC 66 and OSC 5522 remain unsupported.",
     "177 inconclusive observations and the incomplete geometry diagnostic are retained."
-  ]
+  ],
+  "intermediateAfter": {
+    "sourceCommit": "ba425a268eaa0e22f04959421e09eb802fc06aff",
+    "appVersion": "0.12.0+ba425a268eaa0e22f04959421e09eb802fc06aff",
+    "measuredAt": "2026-11-01T09:03:44.074Z",
+    "localDirectory": "artifacts/terminfo/owned-oAWVP4",
+    "rawSha256": "282885e43cb8dbc354eede2d61c6a92586a87e0efe67ff17a1ecb9fda47915ee",
+    "assemblySha256": "e0714f7869ee6d32e9ed612cb83894ed12fc1bea9dc85002fb8364c474f96312",
+    "counts": {
+      "inconclusive": 177,
+      "supported": 74,
+      "unsupported": 4
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "runId": "85c31d2e4f0694a138e5d7290ca2ce31",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "cleanedUpAt": "2026-11-01T09:03:44.106Z"
+  }
 }
