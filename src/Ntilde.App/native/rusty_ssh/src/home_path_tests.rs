@@ -1,8 +1,14 @@
-use super::*;
+use super::{
+    PARTIAL_DOWNLOAD_COUNTER, SftpProgressEmitter, SftpTransferRequestBody, transfer_on_sftp,
+};
+use russh_sftp::client::SftpSession;
 use russh_sftp::protocol::{
     Attrs, Data, File, FileAttributes, Handle, Name, OpenFlags, Status, StatusCode,
 };
 use std::collections::{BTreeMap, HashSet};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
+use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
 struct RemoteTree {
@@ -176,9 +182,15 @@ impl Fixture {
             std::process::id(),
             PARTIAL_DOWNLOAD_COUNTER.fetch_add(1, Ordering::Relaxed)
         ));
-        std::fs::create_dir_all(local.join("upload")).unwrap();
-        std::fs::write(local.join("upload.txt"), b"upload bytes").unwrap();
-        std::fs::write(local.join("upload/part.txt"), b"upload bytes").unwrap();
+        tokio::fs::create_dir_all(local.join("upload"))
+            .await
+            .unwrap();
+        tokio::fs::write(local.join("upload.txt"), b"upload bytes")
+            .await
+            .unwrap();
+        tokio::fs::write(local.join("upload/part.txt"), b"upload bytes")
+            .await
+            .unwrap();
         let remote = Arc::new(Mutex::new(RemoteTree::default()));
         {
             let mut tree = remote.lock().unwrap();
