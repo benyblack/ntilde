@@ -556,6 +556,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Ntilde.App.Tests" />
     <InternalsVisibleTo Include="Ntilde.Cli" />
+    <InternalsVisibleTo Include="Ntilde.Shots" />
   </ItemGroup>
 
   <!-- Stamp the git short-SHA (with a +dirty marker for uncommitted changes) into an

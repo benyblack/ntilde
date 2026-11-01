@@ -518,8 +518,10 @@ src/Ntilde.App/native/target/
 src/Ntilde.App/native/target_linux/
 src/Ntilde.App/native/rusty_ssh/target/
 
-# claude
-.claude/
+# claude - session/local state stays untracked, but slash commands are project tooling and
+# need to be shared (see .claude/commands/shots.md).
+.claude/*
+!.claude/commands/
 
 # local research scratch
 .research/

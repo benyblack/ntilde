@@ -1,0 +1,511 @@
+using System.Globalization;
+using Ntilde.Shell;
+using Ntilde.Shots.Scenarios;
+using SkiaSharp;
+
+namespace Ntilde.Shots;
+
+public static class Program
+{
+    public static async Task<int> Main(string[] args)
+    {
+        if (args.Contains("--list"))
+        {
+            foreach (IScenario scenario in ScenarioCatalog.All().OrderBy(s => s.Spec.Tier))
+            {
+                Console.WriteLine($"{scenario.Spec.Tier}  {scenario.Spec.Name,-24}{scenario.Spec.Intent}");
+            }
+
+            return 0;
+        }
+
+        string outputDirectory = ArgumentValue(args, "--out")
+            ?? Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "shots");
+        double scale = ResolveScale(args);
+
+        // Names, not just a count: Publisher.Prune's incomplete-run guard needs to name the
+        // failed scenario(s) in its refusal so the warning is actionable rather than a bare
+        // number buried in ~two minutes of capture output. The single list is also the sole
+        // source of truth for "did this run fail anything" - see its use in the final return
+        // below - so it can never drift out of sync with a separately-incremented counter.
+        //
+        // Seeded with any unknown scenario name up front: ResolveScenarios reports these (rather
+        // than silently dropping them the way OfType used to), and an unresolvable name is a
+        // failure of this invocation exactly like a scenario that threw, so it belongs in the
+        // same list rather than a separate, easily-forgotten channel.
+        ScenarioResolution resolution = ResolveScenarios(args);
+        var failedScenarioNames = new List<string>();
+        foreach (string unknownName in resolution.UnknownNames)
+        {
+            Console.Error.WriteLine($"[shots] unknown scenario '{unknownName}'. Use --list to see them.");
+            failedScenarioNames.Add(unknownName);
+        }
+
+        IReadOnlyList<IScenario> requested = resolution.Scenarios;
+        if (requested.Count == 0)
+        {
+            if (failedScenarioNames.Count == 0)
+            {
+                Console.Error.WriteLine("No matching scenarios. Use --list to see them.");
+            }
+
+            return 1;
+        }
+
+        string baseDirectory = Path.Combine(Path.GetTempPath(), "ntilde-shots", Guid.NewGuid().ToString("N"));
+        using var world = DemoWorld.Create(baseDirectory);
+        world.SeedWorkspace();
+
+        var run = new ShotRun(outputDirectory, scale);
+
+        using ShotHost host = ShotHost.Start();
+
+        foreach (IScenario scenario in requested)
+        {
+            // Snapshotted before PrepareEnvironment runs and restored unconditionally below, so
+            // a scenario's process-environment change (e.g. ClipAgentScenario's NTILDE_SHOTS_PACE)
+            // cannot outlive its own iteration no matter where this iteration fails. Restoring
+            // this way - at the invocation site, around the whole loop body - does not depend on
+            // a scenario's own RunAsync being entered at all: PrepareEnvironment is invoked
+            // before `new MainWindow(...)`, and if construction, Show(), or host.RunAsync itself
+            // throws before a scenario's RunAsync (and its own try/finally) ever gets control,
+            // the catch below would otherwise swallow the exception with the environment change
+            // still live for every later scenario in this process - paced test scripts leaking
+            // into the still-capture path this whole mechanism exists to keep unpaced.
+            IReadOnlyDictionary<string, string?> environmentSnapshot = SnapshotEnvironmentVariables();
+
+            try
+            {
+                try
+                {
+                    // themes-grid is the one scenario that cannot run through the loop body below:
+                    // a theme only fully applies at MainWindow construction time (see
+                    // IScenario.Settings's remarks), so five different themes need five separate
+                    // windows in one pass, not one window whose scenario.RunAsync tries to re-theme
+                    // it mid-run. ScenarioCatalog.All() still lists it (for --list and "all"), so it
+                    // has to be excluded here rather than left out of the catalogue.
+                    if (scenario is ThemesGridScenario themesGrid)
+                    {
+                        await ComposeThemesGridAsync(host, world, run, themesGrid);
+                    }
+                    else
+                    {
+                        await RunScenarioAsync(host, world, run, scenario);
+                    }
+
+                    Console.WriteLine($"[shots] {scenario.Spec.Name} ok");
+                }
+                catch (Exception ex)
+                {
+                    failedScenarioNames.Add(scenario.Spec.Name);
+                    Console.Error.WriteLine($"[shots] {scenario.Spec.Name} FAILED: {ex.Message}");
+                }
+            }
+            finally
+            {
+                RestoreEnvironmentVariables(environmentSnapshot);
+            }
+        }
+
+        // Snapshotted before iterating: VariantBuilder.BuildAll records each variant it produces
+        // onto this same run, and iterating run.Assets live while it grows out from under the
+        // enumerator throws. Tier 3+ masters (ClipAgentScenario's clip-agent) are excluded - the
+        // brief scopes derived variants to Tier 1/2 masters only.
+        ShotAsset[] masters = run.Assets.Where(a => a.Tier <= 2).ToArray();
+        foreach (ShotAsset master in masters)
+        {
+            VariantBuilder.BuildAll(master, run);
+        }
+
+        run.WriteManifest();
+        Console.WriteLine($"[shots] {run.Assets.Count} asset(s) in {outputDirectory}");
+
+        if (args.Contains("--publish"))
+        {
+            // No --repo-root override: shots.ps1 (like every other wrapper in this repo) always
+            // invokes the tool from the repository root, which is also --out's own default base
+            // a few lines up.
+            string repositoryRoot = Directory.GetCurrentDirectory();
+            IReadOnlyList<string> published = Publisher.Publish(run, repositoryRoot);
+            foreach (string path in published)
+            {
+                Console.WriteLine($"[shots] published {path}");
+            }
+
+            // --prune is opt-in and never implied by --publish alone: existing invocations must
+            // see zero behaviour change. Nested inside the --publish block (not a sibling check)
+            // so --prune with no --publish is structurally a no-op rather than something that
+            // could run against a stale `published` list from a previous invocation.
+            if (args.Contains("--prune"))
+            {
+                // isFullCatalogueRun must reflect what THIS invocation actually resolved, not
+                // just the absence of scenario-name arguments - see Publisher.Prune's remarks on
+                // why a subset run must never reach the delete path.
+                //
+                // isFullCatalogueRun on its own is NOT enough: it reflects requested scope, not
+                // achieved output. A per-scenario failure above leaves `requested` (and therefore
+                // this bool) unchanged, but that scenario never called run.Record, so its assets
+                // are silently absent from `published` - and Prune's whitelist diff cannot tell
+                // that apart from a deliberate removal. Nor is failedScenarioNames the only such
+                // signal: ffmpeg being unavailable is a second, sanctioned way a scenario's
+                // clip goes unproduced without throwing (see ShotRun.ClipEncodingSkippedFor's
+                // remarks) - both are passed through unconditionally so Prune's own guard is what
+                // refuses, not a check duplicated here.
+                bool isFullCatalogueRun = requested
+                    .Select(s => s.Spec.Name)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase)
+                    .SetEquals(ScenarioCatalog.All().Select(s => s.Spec.Name));
+
+                bool dryRun = args.Contains("--dry-run");
+
+                IReadOnlyList<string> stale = Publisher.Prune(
+                    published, repositoryRoot, isFullCatalogueRun, dryRun,
+                    failedScenarioNames, run.ClipEncodingSkippedFor);
+                foreach (string path in stale)
+                {
+                    Console.WriteLine(dryRun ? $"[shots] would delete {path}" : $"[shots] pruned {path}");
+                }
+            }
+        }
+        else if (args.Contains("--prune"))
+        {
+            Console.Error.WriteLine("[shots] --prune has no effect without --publish; ignoring.");
+        }
+
+        return failedScenarioNames.Count == 0 ? 0 : 1;
+    }
+
+    /// <summary>
+    /// The service bundle every captured window is built from: <see cref="AppServices.BuildForDesigner"/>'s
+    /// startup and command-assist wiring, but carrying the settings this run actually seeded.
+    /// </summary>
+    /// <remarks>
+    /// BuildForDesigner deliberately supplies a fresh <c>new TerminalSettings()</c> and never calls
+    /// TerminalSettings.Load(), so designer previews and window-building tests cannot read the
+    /// developer's live settings.json (the #357/#365 settings-bleed pathology). That is right for
+    /// those callers and fatal here: DemoWorld.SeedSettings' whole job is to write a settings.json -
+    /// theme, font, font size, and each scenario's own overrides such as TabStripOrientation and
+    /// AgentAccessActEnabled - that the captured window is then supposed to render. Taking the
+    /// designer default instead meant every scenario silently photographed stock settings: the two
+    /// that assert on their own override (tabs-vertical, and the agent pair through act being
+    /// enabled) failed outright, and the rest produced wrong-but-plausible images.
+    ///
+    /// Loading here does not reintroduce what that guard protects against. DemoWorld redirects
+    /// NTILDE_APPDATA_ROOT at its own temporary profile root for the life of the run and AppPaths
+    /// resolves from it live, so this reads that world's seeded file. The developer's real
+    /// settings.json is not on this path at all.
+    /// </remarks>
+    private static AppServiceBundle BuildSeededServices()
+        => AppServices.BuildForDesigner() with { Settings = TerminalSettings.Load() };
+
+    /// <summary>
+    /// The normal one-window-per-scenario path: seed settings and the environment, construct a
+    /// fresh MainWindow, run the scenario's own body, and tear the window down again. Pulled out
+    /// of <see cref="Main"/>'s loop so <see cref="ComposeThemesGridAsync"/> can drive the same
+    /// window lifecycle several times in one iteration without duplicating it.
+    /// </summary>
+    private static async Task RunScenarioAsync(ShotHost host, DemoWorld world, ShotRun run, IScenario scenario)
+    {
+        // Re-seeded per scenario, before the window exists, so a scenario that needs a
+        // different theme or tab orientation gets it applied at construction time.
+        world.SeedSettings(scenario.Settings);
+
+        // And started from a clean window: the previous scenario's teardown saved its tabs,
+        // and MainWindow restores them on the next start.
+        world.ForgetPreviousSession();
+
+        // Also before construction, and for the same reason Settings is: MainWindow
+        // spawns (or restores) its startup tab's shell during construction/Show(), so an
+        // environment variable that shell must inherit has to be set before `new
+        // MainWindow(...)` runs, not from inside RunAsync - see PrepareEnvironment's
+        // remarks for why "inside RunAsync" is too late for every scenario's first pane.
+        scenario.PrepareEnvironment?.Invoke();
+
+        await host.RunAsync(async () =>
+        {
+            var window = new MainWindow(BuildSeededServices())
+            {
+                Width = scenario.Spec.LogicalWidth,
+                Height = scenario.Spec.LogicalHeight
+            };
+
+            var driver = new Driver(window);
+            var context = new ShotContext(window, driver, world, run, scenario);
+
+            try
+            {
+                window.Show();
+                driver.Pump(5);
+
+                await scenario.RunAsync(context);
+            }
+            finally
+            {
+                // Before Close(), not after and not instead: closing the window tears down
+                // timers and the agent host but leaves every pane - and every shell - alive,
+                // and this process outlives the scenario.
+                //
+                // window.Close() is nested in its own finally so it runs even if
+                // DisposePanes() throws (its WaitFor has a 30s deadline; InvokePrivate
+                // throws if DisposeAllTabs is ever renamed). Skipping Close() then skips
+                // PerformAppTeardown entirely, and its timers, global hotkey and
+                // agent-host hooks would stay live into the next scenario's MainWindow -
+                // which matters once a scenario drives the agent host.
+                try
+                {
+                    context.DisposePanes();
+                }
+                finally
+                {
+                    window.Close();
+                    driver.Pump(3);
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Renders themes-grid: one MainWindow per theme in <see cref="ThemesGridScenario.Themes"/>,
+    /// each replaying hero-single's transcript, tiled together at the end with
+    /// <see cref="PostProcess.Grid"/>. This is not a variant of <see cref="RunScenarioAsync"/>
+    /// because it needs several full window lifecycles - not one - inside a single manifest entry,
+    /// and it must capture each pass itself rather than through <see cref="ShotContext.Capture"/>,
+    /// which would write (and record) five separate PNGs nobody asked for.
+    /// </summary>
+    private static async Task ComposeThemesGridAsync(ShotHost host, DemoWorld world, ShotRun run, ThemesGridScenario scenario)
+    {
+        var tiles = new List<SKBitmap>();
+
+        try
+        {
+            foreach (string themeName in ThemesGridScenario.Themes)
+            {
+                world.SeedSettings(settings => settings.ThemeName = themeName);
+
+                // ThemeManager.GetTheme falls back to "Default" silently on a miss - see
+                // ThemesGridScenario.Themes's remarks. Checked here, immediately after seeding and
+                // before a window is even constructed, so a wrong name fails loudly and by name
+                // instead of producing a grid of plausible-but-wrong tiles. A fresh ThemeManager,
+                // not one pulled off some settings instance: it reads AppPaths.ThemesDirectory,
+                // which DemoWorld.Create already pointed at this world's isolated root via
+                // NTILDE_APPDATA_ROOT, so this sees exactly what MainWindow's own settings load
+                // will see once the window below is constructed.
+                string loadedThemeName = new ThemeManager().GetTheme(themeName).Name;
+                if (!string.Equals(loadedThemeName, themeName, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        $"Theme '{themeName}' did not load: ThemeManager.GetTheme silently returned " +
+                        $"'{loadedThemeName}' instead. Check that the name matches the theme JSON's " +
+                        "\"Name\" field exactly (spaces included), not its filename.");
+                }
+
+                world.ForgetPreviousSession();
+
+                await host.RunAsync(async () =>
+                {
+                    var window = new MainWindow(BuildSeededServices())
+                    {
+                        Width = scenario.Spec.LogicalWidth,
+                        Height = scenario.Spec.LogicalHeight
+                    };
+
+                    var driver = new Driver(window);
+                    var context = new ShotContext(window, driver, world, run, scenario);
+
+                    try
+                    {
+                        window.Show();
+                        driver.Pump(5);
+
+                        await HeroSingleScenario.PlayAsync(context);
+
+                        tiles.Add(Rasterizer.CaptureWindow(window, run.Scale));
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            context.DisposePanes();
+                        }
+                        finally
+                        {
+                            window.Close();
+                            driver.Pump(3);
+                        }
+                    }
+                });
+            }
+
+            using SKBitmap grid = PostProcess.Grid(
+                tiles,
+                columns: 2,
+                gap: 24,
+                background: new SKColor(0x0E, 0x10, 0x14));
+
+            string path = Path.Combine(run.OutputDirectory, $"{scenario.Spec.Name}@{run.Scale:0}x.png");
+            Rasterizer.WritePng(grid, path);
+
+            run.Record(new ShotAsset(
+                Name: scenario.Spec.Name,
+                Tier: scenario.Spec.Tier,
+                File: path,
+                Width: grid.Width,
+                Height: grid.Height,
+                Scenario: scenario.Spec.Name,
+                Commit: run.Commit,
+                Os: run.Os,
+                TimestampUtc: DateTime.UtcNow.ToString("O")));
+        }
+        finally
+        {
+            foreach (SKBitmap tile in tiles)
+            {
+                tile.Dispose();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Flags that consume the token immediately after them as a value. Everything else that
+    /// starts with <c>--</c> (<c>--publish</c>, <c>--prune</c>, <c>--dry-run</c>, <c>--list</c>)
+    /// is a bare boolean switch: it takes no value of its own, so the token following it is not
+    /// "spoken for" and must still be considered as a possible scenario name.
+    /// </summary>
+    /// <remarks>
+    /// Previously this skipped the token after *every* <c>--</c>-prefixed argument, boolean
+    /// switches included. That meant <c>shots.ps1 --publish hero-single</c> skipped
+    /// <c>hero-single</c> as if it were <c>--publish</c>'s value, resolved to an empty name list,
+    /// and fell through to "no names given" - which runs (and, with <c>--prune</c> added, deletes
+    /// down to) the entire catalogue instead of the one scenario asked for. Enumerating the
+    /// value-taking flags explicitly, instead of inferring "takes a value" from the presence of
+    /// <c>--</c>, is what keeps a new boolean switch from silently regressing back into this bug.
+    /// </remarks>
+    private static readonly string[] ValueTakingFlags = ["--out", "--scale"];
+
+    /// <summary>
+    /// The result of resolving the command line's scenario-name tokens: the scenarios that
+    /// matched, and the tokens that did not match anything in <see cref="ScenarioCatalog"/> - kept
+    /// separate (rather than silently discarded, as the previous <c>OfType&lt;IScenario&gt;()</c>
+    /// filter did) so a typo'd scenario name is reported and fails the run instead of quietly
+    /// shrinking the requested set.
+    /// </summary>
+    internal readonly record struct ScenarioResolution(
+        IReadOnlyList<IScenario> Scenarios,
+        IReadOnlyList<string> UnknownNames);
+
+    /// <summary>
+    /// The scenario names on the command line: every token that is neither a <c>--flag</c> nor
+    /// the value belonging to a value-taking one, resolved against <see cref="ScenarioCatalog"/>.
+    /// </summary>
+    internal static ScenarioResolution ResolveScenarios(string[] args)
+    {
+        var skip = new HashSet<int>();
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (Array.IndexOf(ValueTakingFlags, args[i]) >= 0 && i + 1 < args.Length)
+            {
+                skip.Add(i + 1);
+            }
+        }
+
+        string[] names = args
+            .Where((a, i) => !skip.Contains(i) && !a.StartsWith("--", StringComparison.Ordinal))
+            .ToArray();
+
+        if (names.Length == 0 || names.Contains("all", StringComparer.OrdinalIgnoreCase))
+        {
+            return new ScenarioResolution(ScenarioCatalog.All(), Array.Empty<string>());
+        }
+
+        var resolved = new List<IScenario>();
+        var unknown = new List<string>();
+        foreach (string name in names)
+        {
+            IScenario? scenario = ScenarioCatalog.Find(name);
+            if (scenario is null)
+            {
+                unknown.Add(name);
+            }
+            else
+            {
+                resolved.Add(scenario);
+            }
+        }
+
+        return new ScenarioResolution(resolved, unknown);
+    }
+
+    private static string? ArgumentValue(string[] args, string name)
+    {
+        int index = Array.IndexOf(args, name);
+        return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+    }
+
+    /// <summary>
+    /// Parses <c>--scale</c> with <see cref="CultureInfo.InvariantCulture"/> rather than the
+    /// ambient culture, so <c>--scale 1.5</c> resolves the same way on a machine whose culture
+    /// treats <c>,</c> as the decimal separator as it does everywhere else - a culture-sensitive
+    /// <c>double.TryParse</c> would silently fail to parse <c>1.5</c> there and fall back to the
+    /// default scale instead of the one actually requested.
+    /// </summary>
+    internal static double ResolveScale(string[] args) =>
+        double.TryParse(
+            ArgumentValue(args, "--scale"),
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out double parsed)
+            ? parsed
+            : 2.0;
+
+    /// <summary>
+    /// Captures every process environment variable's current value, so a later call to
+    /// <see cref="RestoreEnvironmentVariables"/> can put the whole environment back exactly as
+    /// it was - including undoing a variable a scenario's <see cref="IScenario.PrepareEnvironment"/>
+    /// added that did not exist before it ran.
+    /// </summary>
+    private static Dictionary<string, string?> SnapshotEnvironmentVariables()
+    {
+        var snapshot = new Dictionary<string, string?>();
+        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+        {
+            snapshot[(string)entry.Key] = (string?)entry.Value;
+        }
+
+        return snapshot;
+    }
+
+    /// <summary>
+    /// Puts the process environment back to exactly what <paramref name="snapshot"/> recorded:
+    /// restores anything a scenario changed and removes anything it added. This is the generic,
+    /// invocation-site backstop for <see cref="IScenario.PrepareEnvironment"/> - it does not know
+    /// or care which variables any given scenario touched, so it cannot be defeated by a scenario
+    /// that forgets to clean up after itself, or by an exception that skips that scenario's own
+    /// cleanup entirely (thrown from <c>new MainWindow(...)</c>, <c>window.Show()</c>, or
+    /// anywhere else in <c>host.RunAsync</c> before the scenario's own <c>RunAsync</c>, and its
+    /// own try/finally, is ever entered).
+    /// </summary>
+    private static void RestoreEnvironmentVariables(IReadOnlyDictionary<string, string?> snapshot)
+    {
+        var current = new Dictionary<string, string?>();
+        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+        {
+            current[(string)entry.Key] = (string?)entry.Value;
+        }
+
+        foreach (string name in current.Keys)
+        {
+            if (!snapshot.ContainsKey(name))
+            {
+                Environment.SetEnvironmentVariable(name, null);
+            }
+        }
+
+        foreach ((string name, string? value) in snapshot)
+        {
+            if (!current.TryGetValue(name, out string? currentValue) || currentValue != value)
+            {
+                Environment.SetEnvironmentVariable(name, value);
+            }
+        }
+    }
+}
