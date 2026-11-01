@@ -9,7 +9,7 @@ separate domain and shared-renderer pixel evidence below.
 | Build | Source commit | Owned collection | Measured at (UTC) |
 |---|---|---|---|
 | Before | `52ed24cd4bb2eb8d69d747c6ba6ee063d372709e` | `owned-KlBHUy` | 12:31:08.706 |
-| After | `6843c998837f402041144752a906f723fa66db5a` | `owned-DPo1I6` | 13:37:52.060 |
+| After | `47a29ceaa7728d06a19b7d3ef8b4f5d1c15baeb3` | `owned-NPPGS0` | 13:52:07.193 |
 
 Both builds are fresh uninstalled sidecars outside `.app` bundles. Their DLL
 informational versions contain the full source commit. The selected assembly
@@ -23,7 +23,7 @@ source and ownership/cleanup proof. No personal clipboard was read.
 Both runs use the same pinned collector revision, suite/probe hash, adapter,
 manifest/lock, runner sources and Node v24.22.1. Raw SHA-256 values were recomputed;
 both ownership proofs record completion and cleanup. The after cleanup completed
-at 13:37:52.087 UTC.
+at 13:52:07.219 UTC.
 
 ## Observed behavior
 
@@ -59,10 +59,17 @@ also failed with double shrinking and passes with font scaling applied once.
 Six shared-renderer pixel tests cover enlarged ink across rows, fractional
 font sizing/alignment, two small glyphs in one cell, compressed long text,
 visible lower fragments whose anchor is in history, and cached-row refresh.
-The full VT suite passes 1,395 tests. Separate App replay (30), render-metrics
+The full VT suite passes 1,395 tests. The complete App gating rerun passes
+7,534 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
 (40), shared golden PNG (8), mux (1,123 with 20 platform skips), architecture
 (178), and platform-boot (75 with 4 font-platform skips) checks pass locally.
 The [VT matrix](../../vt_coverage_matrix.md) records implementation scope.
+
+The follow-up fixes two Codex findings: sized ANSI exports reset the column with
+CRLF independently of the receiving terminal's LNM mode, and complete replay
+checkpoints retain block metadata only in their complete state. Buffer-only
+checkpoints retain the optional legacy field. Both regressions fail before the
+fix and pass afterward. The comparison retains the initial after-run separately.
 
 ## Limits
 
