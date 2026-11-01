@@ -3524,17 +3524,40 @@ where
     let channel = session.channel_open_session().await?;
     channel.request_subsystem(true, "sftp").await?;
     let sftp = SftpSession::new(channel.into_stream()).await?;
+    transfer_on_sftp(&sftp, transfer, progress).await?;
+    sftp.close().await?;
+    Ok(())
+}
+
+// Shared and standalone SSH connections dispatch through this same SFTP boundary.
+async fn transfer_on_sftp(
+    sftp: &SftpSession,
+    transfer: &SftpTransferRequestBody,
+    progress: SftpProgressEmitter,
+) -> anyhow::Result<()> {
     let direction = transfer.direction.trim().to_ascii_lowercase();
     let kind = transfer.kind.trim().to_ascii_lowercase();
     let cancellation_marker_path = transfer.cancellation_marker_path.as_deref();
     let mut copy_buffer = vec![0u8; COPY_BUFFER_SIZE];
     ensure_transfer_not_canceled(cancellation_marker_path)?;
 
+    // SFTP treats '~' literally. Resolve supported home shortcuts once for every mode,
+    // before destination selection (including the directory download's local basename).
+    let remote_path = if transfer.remote_path == "~" || transfer.remote_path.starts_with("~/") {
+        let home = sftp
+            .canonicalize(".")
+            .await
+            .map_err(|error| map_remote_transfer_error(".", error))?;
+        expand_remote_home_path(&transfer.remote_path, Some(&home))?
+    } else {
+        transfer.remote_path.clone()
+    };
+
     match (direction.as_str(), kind.as_str()) {
         ("download", "file") => {
             download_file_from_remote(
-                &sftp,
-                &transfer.remote_path,
+                sftp,
+                &remote_path,
                 Path::new(&transfer.local_path),
                 cancellation_marker_path,
                 progress,
@@ -3545,13 +3568,13 @@ where
         }
         ("upload", "file") => {
             let remote_target = resolve_upload_file_target(
-                &sftp,
+                sftp,
                 Path::new(&transfer.local_path),
-                &transfer.remote_path,
+                &remote_path,
             )
             .await?;
             upload_file_to_remote(
-                &sftp,
+                sftp,
                 Path::new(&transfer.local_path),
                 &remote_target,
                 cancellation_marker_path,
@@ -3562,10 +3585,10 @@ where
         }
         ("download", "directory") => {
             let local_root =
-                PathBuf::from(&transfer.local_path).join(remote_basename(&transfer.remote_path)?);
+                PathBuf::from(&transfer.local_path).join(remote_basename(&remote_path)?);
             download_directory_from_remote(
-                &sftp,
-                &transfer.remote_path,
+                sftp,
+                &remote_path,
                 &local_root,
                 cancellation_marker_path,
                 progress,
@@ -3576,9 +3599,9 @@ where
         ("upload", "directory") => {
             let local_root = PathBuf::from(&transfer.local_path);
             let remote_root =
-                resolve_upload_directory_target(&sftp, &local_root, &transfer.remote_path).await?;
+                resolve_upload_directory_target(sftp, &local_root, &remote_path).await?;
             upload_directory_to_remote(
-                &sftp,
+                sftp,
                 &local_root,
                 &remote_root,
                 cancellation_marker_path,
@@ -3594,7 +3617,6 @@ where
         ),
     }
 
-    sftp.close().await?;
     Ok(())
 }
 
@@ -4192,34 +4214,33 @@ fn resolve_upload_file_destination_path(
 }
 
 fn expand_remote_home_path(path: &str, home_directory: Option<&str>) -> anyhow::Result<String> {
-    let trimmed = path.trim();
-    if trimmed.is_empty() {
+    if path.trim().is_empty() {
         return Err(anyhow::Error::new(NativeSftpTransferError::new(
             NativeSftpTransferErrorKind::InvalidArgument,
             "Remote file path is required for native SFTP transfer.",
         )));
     }
 
-    if trimmed == "~" {
+    if path == "~" {
         return normalize_remote_directory_path(home_directory.ok_or_else(|| {
             anyhow::Error::new(NativeSftpTransferError::new(
                 NativeSftpTransferErrorKind::InvalidArgument,
-                "Remote home directory is unavailable for native SFTP upload.",
+                "Remote home directory is unavailable for native SFTP transfer.",
             ))
         })?);
     }
 
-    if let Some(relative_path) = trimmed.strip_prefix("~/") {
+    if let Some(relative_path) = path.strip_prefix("~/") {
         let home_directory = normalize_remote_directory_path(home_directory.ok_or_else(|| {
             anyhow::Error::new(NativeSftpTransferError::new(
                 NativeSftpTransferErrorKind::InvalidArgument,
-                "Remote home directory is unavailable for native SFTP upload.",
+                "Remote home directory is unavailable for native SFTP transfer.",
             ))
         })?)?;
         return Ok(join_remote_path(&home_directory, relative_path));
     }
 
-    Ok(trimmed.to_owned())
+    Ok(path.to_owned())
 }
 
 fn normalize_remote_directory_path(path: &str) -> anyhow::Result<String> {
@@ -11049,3 +11070,6 @@ mod shared_connection_e2e_tests {
 mod download_tests;
 
 mod download_destination;
+
+#[cfg(test)]
+mod home_path_tests;

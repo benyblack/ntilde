@@ -820,6 +820,10 @@ requires public test classes.
   limits). Explicit PowerShell and Auto Windows drive/UNC paths retain their prior local-only
   encoding and its limitations; POSIX shell escapes must not rewrite Windows paths. Native SFTP
   paths are literal: spaces, backslashes and shell characters are never shell-unescaped.
+- Native SFTP expands `~` and `~/` once at its common transfer boundary using the authenticated
+  server's home, for all upload/download modes and shared/standalone connections. Expansion
+  precedes destination and local-basename selection. File paths preserve literal spaces and
+  backslashes, including home-relative filename tails; they are never shell-unescaped.
 - Native SFTP directory downloads anchor filesystem authority to the selected local directory.
   The remote basename and descendants are single components; existing symlinks/junctions are
   refused with no-follow directory opens. Scratch creation, cleanup and atomic replacement use

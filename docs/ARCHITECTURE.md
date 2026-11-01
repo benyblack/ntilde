@@ -886,6 +886,11 @@ it).
   its prompt could reach the user's terminal. Reasons are worded from `MuxListingError`, remote titles
   are `RemoteOutputText.Quote`d, and each failure's own text goes to `logs/mux-ls-all.log`.
 
+Native SFTP resolves bare `~` and `~/` against the authenticated server's home at the common
+transfer boundary, for file/directory uploads and downloads on shared or standalone connections.
+Expansion precedes destination selection and the download basename. Ordinary file paths and
+home-relative filename tails retain literal spaces and backslashes; no shell unescaping occurs.
+
 Native SFTP directory downloads use capability-relative filesystem operations: the download root
 and each descendant open without following links, and scratch creation, cleanup and final rename
 stay on the same opened parent directory. Existing directory symlinks/junctions are refused rather
