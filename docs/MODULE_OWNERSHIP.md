@@ -46,7 +46,9 @@ invariant changes.
   the framework path. Regex matching keeps its 500 ms timeout and skips zero-length results.
 - **Wide pre-wrap padding is distinct from authored spaces.** A nullable row content-column
   count excludes only verified unused tail cells. It follows rows through pages, pooling,
-  resize/reflow and optional `wrap_cols` snapshot metadata. Writes extend the content boundary;
+  resize/reflow and optional `wrap_cols` snapshot metadata. An authored-column extent
+  (`written_cols` in snapshots) prevents cursor rewrites from turning typed spaces into padding.
+  Writes extend the content boundary;
   structural edits discard the special boundary. Missing legacy metadata means full-row content.
   Cell layout/ABI is unchanged; malformed transferred boundaries are refused before mutation.
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits

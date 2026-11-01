@@ -906,8 +906,15 @@ namespace Ntilde.VT
                 AddVisibleSearchSpans(matches[i], i == activeSearchIndex, bounds, active, ref inactive);
             var list = new List<SearchHighlightSnapshot>();
             AppendInactiveSearchHighlights(inactive, list);
-            // Draw the active result last, so overlapping inactive results cannot obscure it.
             list.AddRange(active);
+            // The renderer walks rows once; active spans paint last within each row.
+            list.Sort(static (left, right) =>
+            {
+                int order = left.AbsRow.CompareTo(right.AbsRow);
+                if (order != 0) return order;
+                order = left.IsActive.CompareTo(right.IsActive);
+                return order != 0 ? order : left.StartCol.CompareTo(right.StartCol);
+            });
             if (list.Count == 0) return PooledArray<SearchHighlightSnapshot>.Empty;
             var array = System.Buffers.ArrayPool<SearchHighlightSnapshot>.Shared.Rent(list.Count);
             list.CopyTo(array, 0);

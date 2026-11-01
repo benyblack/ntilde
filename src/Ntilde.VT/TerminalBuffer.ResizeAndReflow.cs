@@ -116,7 +116,7 @@ namespace Ntilde.VT
                                     _viewport[i].IsWrapped,
                                     _viewport[i].GetExtendedTextMap(),
                                     _viewport[i].GetHyperlinkMap(),
-                                    _viewport[i].GetUnderlineMap(), _viewport[i].WrappedColumns);
+                                    _viewport[i].GetUnderlineMap(), _viewport[i].WrappedColumns, _viewport[i].WrittenColumns);
                             }
 
                             var newVp = new TerminalRow[newRows];
@@ -205,6 +205,7 @@ namespace Ntilde.VT
                             // tables come straight across. Copying only Cells left the extended
                             // graphemes and OSC 8 links behind (#164).
                             _viewport[i].CopyRowMetadataFrom(oldAlt[i], copyCols);
+                            _viewport[i].WrittenColumns = Math.Min(oldAlt[i].WrittenColumns, newCols);
                             if (oldAlt[i].IsWrapped)
                                 _viewport[i].SetSoftWrap(Math.Min(oldAlt[i].WrappedColumns ?? oldCols, newCols));
                         }
@@ -287,14 +288,15 @@ namespace Ntilde.VT
                 for (int i = linesNeeded - 1; i >= 0; i--)
                 {
                     var row = new TerminalRow(Cols, Theme.Foreground, Theme.Background);
-                    if (_scrollback.TryPopLastRow(row.Cells, out var isWrapped, out var extendedText, out var hyperlinks, out var underlines, out var wrappedColumns))
+                    if (_scrollback.TryPopLastRow(row.Cells, out var isWrapped, out var extendedText, out var hyperlinks, out var underlines, out var wrappedColumns, out var writtenColumns))
                     {
                         // Restore the full row, not just cells: wrap flag and side
                         // tables (extended text, hyperlinks) must survive the
                         // shrink-then-grow round trip through scrollback.
                         row.IsWrapped = isWrapped;
-                        row.WrappedColumns = wrappedColumns;
                         row.RestoreSideTables(extendedText, hyperlinks, underlines);
+                        row.WrittenColumns = writtenColumns;
+                        row.WrappedColumns = wrappedColumns;
                         newViewport[i] = row;
                         pulled++;
                     }
@@ -340,7 +342,7 @@ namespace Ntilde.VT
                         _viewport[i].IsWrapped,
                         _viewport[i].GetExtendedTextMap(),
                         _viewport[i].GetHyperlinkMap(),
-                        _viewport[i].GetUnderlineMap(), _viewport[i].WrappedColumns);
+                        _viewport[i].GetUnderlineMap(), _viewport[i].WrappedColumns, _viewport[i].WrittenColumns);
                 }
 
                 Array.Copy(_viewport, linesToPush, newViewport, 0, newRows);
@@ -500,6 +502,7 @@ namespace Ntilde.VT
             var newRow = new TerminalRow(newWidth);
             newRow.Cells = newCells;
             newRow.IsWrapped = oldRow.IsWrapped;
+            newRow.WrittenColumns = Math.Min(oldRow.WrittenColumns, newWidth);
             newRow.WrappedColumns = oldRow.IsWrapped
                 ? Math.Min(oldRow.WrappedColumns ?? oldRow.Cells.Length, newWidth) : null;
 

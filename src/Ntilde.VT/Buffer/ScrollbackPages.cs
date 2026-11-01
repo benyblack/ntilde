@@ -146,13 +146,15 @@ namespace Ntilde.VT.Storage
             SmallMap<string>? extendedText,
             SmallMap<Ntilde.VT.Links.Hyperlink>? hyperlinks,
             SmallMap<Ntilde.VT.CellUnderline>? underlines,
-            int? wrappedColumns)
+            int? wrappedColumns, int? writtenColumns = null)
         {
             if (row.Length != _cols)
                 throw new ArgumentException($"Row length {row.Length} must equal Cols {_cols}.", nameof(row));
             if (wrappedColumns is < 0 || wrappedColumns > _cols || (wrappedColumns.HasValue && !isWrapped))
                 throw new ArgumentOutOfRangeException(nameof(wrappedColumns));
 
+            if (writtenColumns is < 0 || writtenColumns > _cols)
+                throw new ArgumentOutOfRangeException(nameof(writtenColumns));
             ValidateWrapTail(row, wrappedColumns, extendedText, hyperlinks, underlines);
 
             // Ensure there is a page with available space.
@@ -167,6 +169,7 @@ namespace Ntilde.VT.Storage
             int rowIndex = currentPage.UsedRows;
             row.CopyTo(currentPage.GetRowSpan(rowIndex));
             currentPage.SetRowWrapped(rowIndex, isWrapped, wrappedColumns);
+            currentPage.SetWrittenColumns(rowIndex, writtenColumns ?? wrappedColumns ?? _cols);
             if (extendedText != null && extendedText.Count > 0)
                 currentPage.SetExtendedTextFromMap(rowIndex, extendedText);
             if (hyperlinks != null && hyperlinks.Count > 0)
@@ -198,6 +201,12 @@ namespace Ntilde.VT.Storage
         {
             var (page, row) = FindPage(logicalIndex);
             return page.IsRowWrapped(row);
+        }
+
+        internal int GetWrittenColumns(int logicalIndex)
+        {
+            var (page, row) = FindPage(logicalIndex);
+            return page.GetWrittenColumns(row);
         }
 
         public int? GetWrappedColumns(int logicalIndex)
@@ -345,7 +354,13 @@ namespace Ntilde.VT.Storage
             out SmallMap<Ntilde.VT.Links.Hyperlink>? hyperlinks,
             out SmallMap<Ntilde.VT.CellUnderline>? underlines,
             out int? wrappedColumns)
+            => TryPopLastRow(destination, out isWrapped, out extendedText, out hyperlinks, out underlines, out wrappedColumns, out _);
+
+        internal bool TryPopLastRow(Span<TerminalCell> destination, out bool isWrapped,
+            out SmallMap<string>? extendedText, out SmallMap<Ntilde.VT.Links.Hyperlink>? hyperlinks,
+            out SmallMap<Ntilde.VT.CellUnderline>? underlines, out int? wrappedColumns, out int writtenColumns)
         {
+            writtenColumns = _cols;
             wrappedColumns = null;
             isWrapped = false;
             extendedText = null;
@@ -360,6 +375,7 @@ namespace Ntilde.VT.Storage
             page.GetRowSpanReadOnly(rowIndex).CopyTo(destination);
             isWrapped = page.IsRowWrapped(rowIndex);
             wrappedColumns = page.GetWrappedColumns(rowIndex);
+            writtenColumns = page.GetWrittenColumns(rowIndex);
             extendedText = page.GetExtendedTextMap(rowIndex);
             hyperlinks = page.GetHyperlinkMap(rowIndex);
             underlines = page.GetUnderlineMap(rowIndex);

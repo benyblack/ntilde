@@ -257,7 +257,7 @@ namespace Ntilde.VT
 
                         // Re-evaluate width of the merged cluster
                         int newWidth = GetGraphemeWidth(merged);
-                        if (row.HasWrapPadding) row.NoteColumnsWritten(Math.Min(Cols, attachCol + Math.Max(1, newWidth)));
+                        row.NoteColumnsWritten(Math.Min(Cols, attachCol + Math.Max(1, newWidth)));
 
                         // ALWAYS enforce wide flag and continuation for width >= 2
                         if (newWidth >= 2)
@@ -332,7 +332,7 @@ namespace Ntilde.VT
                 if (Modes.IsInsertMode) InsertCharactersInternal(width);
 
                 var row = _viewport[_cursorRow];
-                if (row.HasWrapPadding) row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + Math.Max(1, width)));
+                row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + Math.Max(1, width)));
 
                 SyncPackedState();
 
@@ -461,7 +461,7 @@ namespace Ntilde.VT
                     evictingRow.IsWrapped,
                     evictingRow.GetExtendedTextMap(),
                     evictingRow.GetHyperlinkMap(),
-                    evictingRow.GetUnderlineMap(), evictingRow.WrappedColumns);
+                    evictingRow.GetUnderlineMap(), evictingRow.WrappedColumns, evictingRow.WrittenColumns);
 
 
                 long newlyEvicted = _scrollback.TotalRowsEvicted - prevEvicted;
@@ -617,6 +617,7 @@ namespace Ntilde.VT
             int endCol = Math.Min(_cursorCol + count, Cols);
             var row = _viewport[_cursorRow];
             row.WrappedColumns = null;
+            row.WrittenColumns = Cols;
 
             // Shift characters to right
             // Start from end, move char at (c - count) to c
@@ -665,6 +666,7 @@ namespace Ntilde.VT
             int endCol = Cols - count;
             var row = _viewport[_cursorRow];
             row.WrappedColumns = null;
+            row.WrittenColumns = Cols;
 
             // Shift characters to left
             for (int c = _cursorCol; c < endCol; c++)

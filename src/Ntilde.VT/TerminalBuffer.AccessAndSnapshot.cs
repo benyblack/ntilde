@@ -433,6 +433,7 @@ namespace Ntilde.VT
                 }
 
                 resized[i].IsWrapped = source[i].IsWrapped;
+                resized[i].WrittenColumns = Math.Min(source[i].WrittenColumns, Cols);
                 resized[i].WrappedColumns = source[i].IsWrapped
                     ? Math.Min(source[i].WrappedColumns ?? source[i].Cells.Length, Cols) : null;
                 // Detached buffers are not reflowed either, so the side tables transfer by column
@@ -563,6 +564,7 @@ namespace Ntilde.VT
         {
             var row = _viewport[rowIndex];
             row.WrappedColumns = null;
+            row.WrittenColumns = 0;
             var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
             for (int i = 0; i < Cols; i++)
             {
@@ -1009,12 +1011,18 @@ namespace Ntilde.VT
             if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
                 throw new InvalidOperationException("Invalid replay geometry: columns and rows must be positive.");
             byte[]? cells = string.IsNullOrEmpty(snapshot.CellsBase64) ? null : Convert.FromBase64String(snapshot.CellsBase64);
+            if (snapshot.RowWrittenColumns is { } written)
+            {
+                if (written.Length != snapshot.Rows || Array.Exists(written, value => value < 0 || value > snapshot.Cols))
+                    throw new InvalidOperationException("Invalid replay written columns.");
+            }
             if (snapshot.RowWrapColumns is { } widths)
             {
                 ValidateWrappedColumns(new TerminalScreenState
                 {
                     RowWraps = snapshot.RowWraps,
                     RowWrapColumns = widths,
+                    RowWrittenColumns = snapshot.RowWrittenColumns,
                     ExtendedText = snapshot.ExtendedText
                 }, snapshot.Rows, snapshot.Cols, cells, "legacy replay");
                 if (snapshot.Underlines != null)
@@ -1102,6 +1110,8 @@ namespace Ntilde.VT
                             var row = _viewport[r];
                             Array.Copy(cellSpan.Slice(r * snapshot.Cols, colsToCopy).ToArray(), row.Cells, colsToCopy);
 
+                            row.WrittenColumns = Math.Min(snapshot.RowWrittenColumns?[r]
+                                ?? (snapshot.RowWrapColumns is { } known && known[r] >= 0 ? known[r] : snapshot.Cols), colsToCopy);
                             row.IsWrapped = snapshot.RowWraps != null && r < snapshot.RowWraps.Length && snapshot.RowWraps[r];
                             row.ClearExtendedText();
                             row.ClearHyperlinks();

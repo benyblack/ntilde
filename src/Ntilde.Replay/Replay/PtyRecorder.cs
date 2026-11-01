@@ -247,7 +247,8 @@ namespace Ntilde.Replay
                         IsStrikethrough = buffer.IsStrikethrough,
                         IsHidden = buffer.IsHidden,
                         ExtendedText = new Dictionary<int, string>(),
-                        RowWraps = new bool[rowCount]
+                        RowWraps = new bool[rowCount],
+                        RowWrittenColumns = new int[rowCount]
                     };
 
                     // Allocate a single array for all cells in viewport
@@ -257,6 +258,7 @@ namespace Ntilde.Replay
                     {
                         var row = rows[r];
                         snapshot.RowWraps[r] = row.IsWrapped;
+                        snapshot.RowWrittenColumns[r] = row.WrittenColumns;
                         if (row.WrappedColumns is int width)
                         {
                             if (snapshot.RowWrapColumns == null)

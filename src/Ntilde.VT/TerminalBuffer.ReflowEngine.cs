@@ -292,7 +292,7 @@ namespace Ntilde.VT
                     {
                         if (isHistory)
                         {
-                            newScrollback.AppendRow(row.Cells, row.IsWrapped, row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap(), row.WrappedColumns);
+                            newScrollback.AppendRow(row.Cells, row.IsWrapped, row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap(), row.WrappedColumns, row.WrittenColumns);
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
                             row.ClearUnderlines();
@@ -427,6 +427,7 @@ namespace Ntilde.VT
                                 // This prevents "Background Leakage" (e.g. blue/green bars) when resizing.
                                 for (int c = take; c < newCols; c++) row.Cells[c] = def;
 
+                                row.WrittenColumns = take;
                                 row.IsWrapped = remaining > newCols;
                                 row.WrappedColumns = row.IsWrapped ? take : null;
                                 EmitRow(row, isHistory);
@@ -460,8 +461,9 @@ namespace Ntilde.VT
                             int storeRow = i - oldRowsReleased;
                             _scrollback.GetRow(storeRow).CopyTo(scrollbackRow.Cells);
                             scrollbackRow.IsWrapped = _scrollback.IsRowWrapped(storeRow);
-                            scrollbackRow.WrappedColumns = _scrollback.GetWrappedColumns(storeRow);
                             scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(storeRow), _scrollback.GetHyperlinkMap(storeRow), _scrollback.GetUnderlineMap(storeRow));
+                            scrollbackRow.WrittenColumns = _scrollback.GetWrittenColumns(storeRow);
+                            scrollbackRow.WrappedColumns = _scrollback.GetWrappedColumns(storeRow);
                             physRow = scrollbackRow;
                         }
                         else
@@ -826,7 +828,7 @@ namespace Ntilde.VT
                             activeRows[i].IsWrapped,
                             activeRows[i].GetExtendedTextMap(),
                             activeRows[i].GetHyperlinkMap(),
-                            activeRows[i].GetUnderlineMap(), activeRows[i].WrappedColumns);
+                            activeRows[i].GetUnderlineMap(), activeRows[i].WrappedColumns, activeRows[i].WrittenColumns);
                     }
 
                     int discardedRows = (int)newScrollback.TotalRowsEvicted;

@@ -142,6 +142,11 @@ namespace Ntilde.VT
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int[]? RowWrapColumns { get; set; }
 
+        /// <summary>Conservative authored extent per row; absent legacy data retains every column.</summary>
+        [JsonPropertyName("written_cols")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int[]? RowWrittenColumns { get; set; }
+
         /// <summary>Underline styles and colors (#270) keyed by <c>row * cols + col</c>; absent when none.</summary>
         [JsonPropertyName("ul_cells")]
         public System.Collections.Generic.Dictionary<int, TerminalUnderlineEntry>? Underlines { get; set; }

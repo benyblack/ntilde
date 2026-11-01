@@ -153,6 +153,11 @@ namespace Ntilde.VT
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int[]? RowWrapColumns { get; set; }
 
+        /// <summary>Conservative authored extent per row; absent legacy data retains every column.</summary>
+        [JsonPropertyName("written_cols")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int[]? RowWrittenColumns { get; set; }
+
         /// <summary>Extended grapheme clusters keyed by <c>row * cols + col</c>.</summary>
         [JsonPropertyName("ext")] public Dictionary<int, string>? ExtendedText { get; set; }
 

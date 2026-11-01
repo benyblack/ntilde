@@ -21,8 +21,10 @@ public sealed class LogicalLineSearchHighlightTests
         Assert.Equal((1, 0, 1, true), (span.AbsRow, span.StartCol, span.EndCol, span.IsActive));
     }
 
-    [Fact]
-    public void ActiveIndexNamesALogicalResultRatherThanAPhysicalSpan()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void ActiveIndexNamesALogicalResultRatherThanAPhysicalSpan(int activeIndex)
     {
         var buffer = new TerminalBuffer(5, 4);
         new AnsiParser(buffer, false).Process("abcdefgh\r\nabcdefgh");
@@ -33,7 +35,7 @@ public sealed class LogicalLineSearchHighlightTests
             ViewportCols = 5,
             ViewportRows = 4,
             SearchMatches = matches,
-            ActiveSearchIndex = 1,
+            ActiveSearchIndex = activeIndex,
             Isolated = true
         }, out _);
         Assert.Equal(4, snapshot.SearchHighlights.Length);
@@ -41,7 +43,7 @@ public sealed class LogicalLineSearchHighlightTests
         {
             var span = snapshot.SearchHighlights.Array[i];
             Assert.Equal(i, span.AbsRow);
-            Assert.Equal(i >= 2, span.IsActive);
+            Assert.Equal(i / 2 == activeIndex, span.IsActive);
         }
     }
 

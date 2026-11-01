@@ -329,6 +329,7 @@ namespace Ntilde.VT
             Array.Fill(cells, TerminalCell.Default);
             var wraps = new bool[Math.Max(0, rowCount)];
             int[]? wrapColumns = null;
+            var writtenColumns = new int[wraps.Length];
             Dictionary<int, string>? extendedText = null;
             Dictionary<int, int>? linkIds = null;
             Dictionary<int, int>? underlineIds = null;
@@ -339,6 +340,7 @@ namespace Ntilde.VT
                 int copy = Math.Min(cols, row.Cells.Length);
                 Array.Copy(row.Cells, 0, cells, r * cols, copy);
                 wraps[r] = row.IsWrapped;
+                writtenColumns[r] = Math.Min(row.WrittenColumns, cols);
                 int? width = row.IsWrapped ? Math.Min(row.WrappedColumns ?? row.Cells.Length, cols) : null;
                 StoreWrappedColumns(ref wrapColumns, rowCount, r, width, cols);
 
@@ -365,6 +367,7 @@ namespace Ntilde.VT
                 CellsBase64 = EncodeCells(cells),
                 RowWraps = wraps,
                 RowWrapColumns = wrapColumns,
+                RowWrittenColumns = writtenColumns,
                 ExtendedText = extendedText,
                 LinkIds = linkIds,
                 UnderlineIds = underlineIds,
@@ -395,6 +398,7 @@ namespace Ntilde.VT
             {
                 TerminalRow row = rows[r];
                 row.IsWrapped = false;
+                row.WrittenColumns = 0;
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
                 row.ClearUnderlines();
@@ -422,6 +426,8 @@ namespace Ntilde.VT
                 source.Slice(r * sourceCols, Math.Min(colsToCopy, row.Cells.Length))
                       .CopyTo(row.Cells.AsSpan());
 
+                row.WrittenColumns = Math.Min(state.RowWrittenColumns?[r]
+                    ?? (state.RowWrapColumns is { } known && known[r] >= 0 ? known[r] : sourceCols), colsToCopy);
                 if (state.RowWraps != null && r < state.RowWraps.Length)
                 {
                     row.IsWrapped = state.RowWraps[r];
@@ -512,6 +518,7 @@ namespace Ntilde.VT
             var cells = new TerminalCell[keep * cols];
             var wraps = new bool[keep];
             int[]? wrapColumns = null;
+            var writtenColumns = new int[wraps.Length];
             Dictionary<int, string>? extendedText = null;
             Dictionary<int, int>? linkIds = null;
             Dictionary<int, int>? underlineIds = null;
@@ -531,6 +538,7 @@ namespace Ntilde.VT
                 }
 
                 wraps[i] = _scrollback.IsRowWrapped(logical);
+                writtenColumns[i] = Math.Min(_scrollback.GetWrittenColumns(logical), cols);
                 StoreWrappedColumns(ref wrapColumns, keep, i, _scrollback.GetWrappedColumns(logical), cols);
 
                 AppendSideTables(
@@ -551,6 +559,7 @@ namespace Ntilde.VT
                 CellsBase64 = EncodeCells(cells),
                 RowWraps = wraps,
                 RowWrapColumns = wrapColumns,
+                RowWrittenColumns = writtenColumns,
                 ExtendedText = extendedText,
                 LinkIds = linkIds,
                 UnderlineIds = underlineIds,
@@ -622,7 +631,7 @@ namespace Ntilde.VT
 
                 bool wrapped = state.RowWraps != null && i < state.RowWraps.Length && state.RowWraps[i];
                 int? wrappedColumns = state.RowWrapColumns is { } widths && widths[i] >= 0 ? widths[i] : null;
-                _scrollback.AppendRow(buffer, wrapped, extended, hyperlinks, rowUnderlines, wrappedColumns);
+                _scrollback.AppendRow(buffer, wrapped, extended, hyperlinks, rowUnderlines, wrappedColumns, state.RowWrittenColumns?[i] ?? wrappedColumns ?? sourceCols);
             }
         }
 
@@ -892,6 +901,13 @@ namespace Ntilde.VT
 
         private static void ValidateWrappedColumns(TerminalScreenState state, int rows, int cols, byte[]? blob, string what)
         {
+            if (state.RowWrittenColumns is { } written)
+            {
+                if (written.Length != rows)
+                    throw StateTransferValidation.Reject(what, "written column count does not match row count");
+                foreach (int count in written)
+                    StateTransferValidation.RequireInRange(count, 0, cols, $"{what} written columns");
+            }
             if (state.RowWrapColumns is not { } widths) return;
             if (widths.Length != rows)
                 throw StateTransferValidation.Reject(what, "wrap column count does not match row count");
@@ -903,6 +919,8 @@ namespace Ntilde.VT
                 int width = widths[row];
                 StateTransferValidation.RequireInRange(width, -1, cols, $"{what} wrap columns");
                 if (width < 0) continue;
+                if (width < cols && state.RowWrittenColumns is { } extents && extents[row] > width)
+                    throw StateTransferValidation.Reject(what, "wrap padding overlaps authored columns");
                 if (state.RowWraps == null || row >= state.RowWraps.Length || !state.RowWraps[row])
                     throw StateTransferValidation.Reject(what, "wrap columns require a soft-wrapped row");
                 ValidateWrapTail(state, cells.Slice(row * cols, cols), row * cols, width, what);

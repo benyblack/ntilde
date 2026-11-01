@@ -75,11 +75,17 @@ public sealed class LogicalLineSearchStateTests
     [InlineData("shortArray")]
     [InlineData("extendedTail")]
     [InlineData("styledTail")]
+    [InlineData("writtenCount")]
+    [InlineData("writtenRange")]
+    [InlineData("writtenOverlap")]
     public void MalformedWrapMetadataIsRejectedBeforeDestinationChanges(string kind)
     {
         var state = Source().ExportState(0);
         switch (kind)
         {
+            case "writtenCount": state.Main.RowWrittenColumns = [0]; break;
+            case "writtenRange": state.Main.RowWrittenColumns![0] = 5; break;
+            case "writtenOverlap": state.Main.RowWrittenColumns![0] = 4; break;
             case "negative": state.Main.RowWrapColumns![0] = -2; break;
             case "tooWide": state.Main.RowWrapColumns![0] = 5; break;
             case "hidesText": state.Main.RowWrapColumns![0] = 0; break;
@@ -116,6 +122,69 @@ public sealed class LogicalLineSearchStateTests
         var buffer = Source();
         new AnsiParser(buffer, false).Process("\u001b[1;1Hx");
         Assert.Single(buffer.FindMatches("c" + Emoji, false, true));
+    }
+
+    [Fact]
+    public void CarriageReturnDoesNotTurnAPreviouslyAuthoredSpaceIntoPadding()
+    {
+        var buffer = new TerminalBuffer(4, 2);
+        new AnsiParser(buffer, false).Process("abc \rabc" + Emoji + "!");
+        Assert.Empty(buffer.FindMatches("c" + Emoji, false, true));
+        Assert.Single(buffer.FindMatches("c " + Emoji, false, true));
+        buffer.Resize(8, 2);
+        Assert.Single(buffer.FindMatches("c " + Emoji, false, true));
+    }
+
+    [Fact]
+    public void ReflowInstallsIncomingSideTablesBeforeCheckingItsWrapBoundary()
+    {
+        var buffer = new TerminalBuffer(4, 2);
+        new AnsiParser(buffer, false).Process("\u001b]8;;https://example.test\u001b\\abcd\u001b]8;;\u001b\\\r\nabc" + Emoji + "!\r\ntail");
+        buffer.Resize(8, 2);
+        Assert.Single(buffer.FindMatches("c" + Emoji, false, true));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void FutureWrapAfterStateRestorePreservesAuthoredSpaces(bool authoredSpace, bool legacyReplay)
+    {
+        var source = new TerminalBuffer(4, 2);
+        new AnsiParser(source, false).Process(authoredSpace ? "abc \rabc" : "abc");
+        var state = source.ExportState(0);
+        var restored = new TerminalBuffer(4, 2);
+        if (legacyReplay)
+            restored.ApplySnapshot(new ReplaySnapshot
+            {
+                Cols = 4,
+                Rows = 2,
+                ScrollBottom = 1,
+                CursorCol = 3,
+                IsAutoWrapMode = true,
+                CellsBase64 = state.Main.CellsBase64,
+                RowWraps = state.Main.RowWraps,
+                RowWrittenColumns = state.Main.RowWrittenColumns
+            });
+        else
+            restored.ImportState(TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(state)));
+        new AnsiParser(restored, false).Process(Emoji + "!");
+        Assert.Single(restored.FindMatches("c" + (authoredSpace ? " " : "") + Emoji, false, true));
+        Assert.Empty(restored.FindMatches("c" + (authoredSpace ? "" : " ") + Emoji, false, true));
+    }
+
+    [Fact]
+    public void LegacyUnknownAuthoredExtentConservativelyRetainsSpaces()
+    {
+        var source = new TerminalBuffer(4, 2);
+        new AnsiParser(source, false).Process("abc \rabc");
+        var state = source.ExportState(0);
+        state.Main.RowWrittenColumns = null;
+        var restored = new TerminalBuffer(4, 2);
+        restored.ImportState(state);
+        new AnsiParser(restored, false).Process(Emoji + "!");
+        Assert.Single(restored.FindMatches("c " + Emoji, false, true));
     }
 
     [Fact]

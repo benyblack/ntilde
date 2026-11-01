@@ -216,7 +216,9 @@ ordinal comparison; common short queries retain its vectorized search. Regex sea
 A row may record its content-column count when a wide character wraps before the final cell.
 Only unused default tail cells qualify; actual spaces and styled/linked content remain data.
 This metadata survives scrollback, pooling, reflow, transfer and replay without changing the
-12-byte cell ABI. Optional `wrap_cols` arrays use `-1` for full-row/legacy interpretation. Missing
+12-byte cell ABI. A conservative authored-column extent preserves typed spaces after cursor
+rewrites; optional `written_cols` arrays carry that evidence through replay and state transfer.
+Absent authored extents conservatively retain full rows. Optional `wrap_cols` arrays use `-1` for full-row/legacy interpretation. Missing
 metadata retains legacy spacing, since old cells cannot distinguish authored spaces from padding.
 Incoming boundaries are validated before state changes, including rejection of hidden cell data.
 
