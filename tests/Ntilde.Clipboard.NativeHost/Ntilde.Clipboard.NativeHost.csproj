@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>false</IsTestProject>
+    <PublishAot>false</PublishAot>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Ntilde.App/Ntilde.App.csproj" />
+    <ProjectReference Include="../../src/Ntilde.Cli/Ntilde.Cli.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

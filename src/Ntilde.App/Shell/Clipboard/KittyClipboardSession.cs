@@ -201,6 +201,7 @@ internal sealed class KittyClipboardSession : IDisposable
 
     private static string ErrorStatus(string type, Exception error)
     {
+        if (type == WriteOperation && error is ClipboardSizeLimitException) return TooLarge;
         if (error is NotSupportedException) return NotImplemented;
         if (error is UnauthorizedAccessException) return PermissionDenied;
         return TransportFailure(type);

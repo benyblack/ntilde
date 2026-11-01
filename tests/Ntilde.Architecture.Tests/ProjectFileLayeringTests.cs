@@ -61,6 +61,47 @@ public class ProjectFileLayeringTests
             .ToArray();
     }
 
+    private static IEnumerable<string> RepositoryProjects()
+    {
+        string root = RepoRoot();
+        return new[] { "src", "tests" }.SelectMany(folder =>
+                Directory.EnumerateFiles(Path.Combine(root, folder), "*.csproj", SearchOption.AllDirectories))
+            .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
+            .Where(path => !path.Split('/').Any(part => part is "bin" or "obj"));
+    }
+
+    [Fact]
+    public void Only_explicit_runtime_and_test_boundaries_may_reference_the_App()
+    {
+        string[] allowed =
+        [
+            "src/Ntilde.Cli/Ntilde.Cli.csproj",
+            "tests/Ntilde.App.Tests/Ntilde.App.Tests.csproj",
+            "tests/Ntilde.Architecture.Tests/Ntilde.Architecture.Tests.csproj",
+            "tests/Ntilde.McpServer.Tests/Ntilde.McpServer.Tests.csproj",
+            "tests/Ntilde.Clipboard.NativeHost/Ntilde.Clipboard.NativeHost.csproj"
+        ];
+        var dependents = RepositoryProjects()
+            .Where(path => ProjectReferences(path).Contains("Ntilde.App"))
+            .ToArray();
+        Assert.Empty(dependents.Except(allowed, StringComparer.Ordinal));
+        Assert.Contains("tests/Ntilde.Clipboard.NativeHost/Ntilde.Clipboard.NativeHost.csproj", dependents);
+    }
+
+    [Fact]
+    public void Native_clipboard_host_remains_an_unshipped_test_executable()
+    {
+        const string host = "tests/Ntilde.Clipboard.NativeHost/Ntilde.Clipboard.NativeHost.csproj";
+        var project = XDocument.Load(Path.Combine(RepoRoot(), host));
+        Assert.Equal("false", project.Descendants("IsPackable").Single().Value);
+        Assert.Equal("false", project.Descendants("PublishAot").Single().Value);
+        Assert.Equal("false", project.Descendants("IsTestProject").Single().Value);
+        Assert.Equal("Exe", project.Descendants("OutputType").Single().Value);
+        // No incoming project edge: the host is launched in its own process, never linked
+        // into production or an xUnit testhost that would inherit its Avalonia globals.
+        Assert.DoesNotContain(RepositoryProjects(), path => ProjectReferences(path).Contains("Ntilde.Clipboard.NativeHost"));
+    }
+
     [Fact]
     public void Pty_csproj_must_not_reference_Vt()
     {
