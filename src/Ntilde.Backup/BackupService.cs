@@ -40,6 +40,10 @@ public sealed class BackupService
         _log = log ?? (static _ => { });
     }
 
+    internal TimeSpan MutationLeaseTimeout { get; set; } = TimeSpan.FromSeconds(5);
+    internal Action<string>? MutationLeaseContendedForTest { get; set; }
+    internal Action? BeforeCommitForTest { get; set; }
+
     public string RootDirectory { get; }
 
     public string BackupsDirectory => Path.Combine(RootDirectory, "backups");
@@ -199,14 +203,19 @@ public sealed class BackupService
         var (earlyReturn, selected) = ValidateAndSelect(bundlePath, categories);
         if (earlyReturn is not null) return earlyReturn;
 
-        if (Snapshot(SnapshotReason.PreImport) is null)
+        var (lease, failure) = EnterMutation(selected!);
+        if (failure is not null) return failure;
+        using (lease)
         {
-            return BackupOutcome.Fail(
-                BackupFailureKind.WriteFailed,
-                "Could not write a pre-import snapshot; refusing to import without a rollback point.");
-        }
+            if (Snapshot(SnapshotReason.PreImport) is null)
+            {
+                return BackupOutcome.Fail(
+                    BackupFailureKind.WriteFailed,
+                    "Could not write a pre-import snapshot; refusing to import without a rollback point.");
+            }
 
-        return ImportCore(bundlePath, mode, selected!);
+            return ImportCore(bundlePath, mode, selected!);
+        }
     }
 
     /// <summary>
@@ -271,19 +280,36 @@ public sealed class BackupService
             var (earlyReturn, selected) = ValidateAndSelect(tempBundle, categories: null);
             if (earlyReturn is not null) return earlyReturn;
 
-            if (Snapshot(SnapshotReason.PreRestore) is null)
+            var (lease, failure) = EnterMutation(selected!);
+            if (failure is not null) return failure;
+            using (lease)
             {
-                return BackupOutcome.Fail(
-                    BackupFailureKind.WriteFailed,
-                    "Could not write a pre-restore snapshot; refusing to restore without a rollback point.");
-            }
+                if (Snapshot(SnapshotReason.PreRestore) is null)
+                {
+                    return BackupOutcome.Fail(
+                        BackupFailureKind.WriteFailed,
+                        "Could not write a pre-restore snapshot; refusing to restore without a rollback point.");
+                }
 
-            return ImportCore(tempBundle, ImportMode.Replace, selected!, operationNoun: "Restored");
+                return ImportCore(tempBundle, ImportMode.Replace, selected!, operationNoun: "Restored");
+            }
         }
         finally
         {
             try { if (File.Exists(tempBundle)) File.Delete(tempBundle); }
             catch (Exception ex) { _log($"[backup] could not clean up restore staging copy: {ex.Message}"); }
+        }
+    }
+
+    private (BackupMutationLease? Lease, BackupOutcome? Failure) EnterMutation(BackupCategory[] selected)
+    {
+        try
+        {
+            return (BackupMutationLease.Acquire(RootDirectory, selected, MutationLeaseTimeout, MutationLeaseContendedForTest), null);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            return (null, BackupOutcome.Fail(BackupFailureKind.WriteFailed, $"Could not coordinate configuration import: {error.Message}"));
         }
     }
 
@@ -406,6 +432,7 @@ public sealed class BackupService
 
             try
             {
+                BeforeCommitForTest?.Invoke();
                 if (SimulateCommitPhaseFailureForTest is not null) throw SimulateCommitPhaseFailureForTest();
                 CommitWithUndo(plan, undo, _log);
             }
