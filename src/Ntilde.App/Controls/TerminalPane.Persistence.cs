@@ -631,8 +631,10 @@ namespace Ntilde.Controls
                 this.Dispatcher.Post(() =>
                 {
                     if (!IsCurrentMux(mux)) return;
-                    // Settings may have changed while the attach request was in flight.
-                    mux.UpdatePresentation(BuildMuxPresentation());
+                    // A newer daemon resize may still be in transit. Only resend when client
+                    // presentation settings changed during attach; geometry alone is stream state.
+                    MuxPresentation current = BuildMuxPresentation();
+                    if (MuxPresentationSettingsChanged(presentation, current)) mux.UpdatePresentationSettings(current);
                     _muxReattachAfterDrop = false; // the drop (if any) is over: this session is shown again
                     if (remote) RegisterRemoteMuxSession(mux);
                     if (previousLost)
@@ -700,6 +702,13 @@ namespace Ntilde.Controls
             TerminalLogger.Log($"[TerminalPane] adopted session {source.Id} is open in another window; closing this tab");
             WriteBanner($"\r\n\x1b[90m{MuxAdoptionLostBanner}\x1b[0m\r\n");
             MuxAdoptionLost?.Invoke(this);
+        }
+
+        private static bool MuxPresentationSettingsChanged(MuxPresentation before, MuxPresentation after)
+        {
+            // Records compare arrays by identity. Palette copies with equal colours are unchanged.
+            MuxPresentation comparable = after with { Cols = before.Cols, Rows = before.Rows, AnsiPalette = before.AnsiPalette };
+            return comparable != before || !(before.AnsiPalette ?? []).SequenceEqual(after.AnsiPalette ?? []);
         }
 
         /// <summary>

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
@@ -76,7 +77,7 @@ public sealed class MuxPaneSharingTests : IDisposable
     }).GetAwaiter().GetResult();
 
     [AvaloniaTheory]
-    [InlineData(true, 3)]
+    [InlineData(true, 7)]
     [InlineData(false, 0)]
     public void Spawn_carries_the_panes_keyboard_setting_before_attach(bool enabled, int flags)
     {
@@ -190,7 +191,7 @@ public sealed class MuxPaneSharingTests : IDisposable
     public void Keyboard_events_follow_the_daemons_interactive_capability_intersection()
     {
         MuxClientSession session = StartHostedPane();
-        PumpUntil(() => session.KittyKeyboardSupportedFlags == 3, "the new GUI advertised event reporting");
+        PumpUntil(() => session.KittyKeyboardSupportedFlags == Ntilde.VT.KittyKeyboardState.SupportedFlags, "the new GUI advertised its keyboard features");
         _mux.Fake(session.Id).Emit("\x1b[>3u");
         PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 3, "the GUI parsed the requested event flag");
         ClientPaneModel legacy = AttachOther(session.Id); // an older GUI omits supported flags
@@ -203,6 +204,32 @@ public sealed class MuxPaneSharingTests : IDisposable
         session.DeliverSessionChanged(new Ntilde.Mux.Contracts.SessionChangedNotification { SessionId = session.Id });
         Assert.Equal(3, _pane.Buffer.Modes.KittyKeyboard.Flags);
     }
+    [AvaloniaFact]
+    public void Alternate_key_bytes_reach_the_mux_child_and_follow_legacy_peer_downgrades()
+    {
+        MuxClientSession session = StartHostedPane();
+        var child = _mux.Fake(session.Id);
+        PumpUntil(() => session.KittyKeyboardSupportedFlags == 7, "the GUI advertised alternates");
+        child.Emit("\x1b[>7u");
+        PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 7, "the requested keyboard mode reached the GUI");
+
+        void PressAndCheck(string expected)
+        {
+            int before = child.SentInput.Count;
+            Assert.True(_pane!.TermView.HandleKeyDownCore(Key.A, KeyModifiers.Control, PhysicalKey.Q, "a"));
+            PumpUntil(() => child.SentInput.Count > before, "the encoded input reached the mux child");
+            Assert.Equal(expected, child.SentInput.ToArray()[before]);
+        }
+
+        PressAndCheck("\x1b[97::113;5u");
+        ClientPaneModel legacy = AttachOther(session.Id);
+        PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 1, "the old peer lowered the keyboard ceiling");
+        PressAndCheck("\x1b[97;5u");
+        legacy.Session.Dispose();
+        PumpUntil(() => _pane!.Buffer!.Modes.KittyKeyboard.Flags == 7, "the requested alternate mode recovered");
+        PressAndCheck("\x1b[97::113;5u");
+    }
+
     [AvaloniaFact]
     public void Hidden_mux_panes_release_replaced_source_and_keep_the_latest_frame_for_later_display()
     {

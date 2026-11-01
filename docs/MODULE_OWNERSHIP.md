@@ -331,6 +331,7 @@ invariant changes.
 - **Seq semantics:** `Output.seq` = raw offset before the chunk, `ResizeEvent.seq` = offset it applies at, snapshot `StreamSeq + DecoderTail.Length` = offset at capture, and clients drop the connection on any gap
 - **The mux answers device queries** and clients never do
 - Latest resize wins
+- Presentation-only updates preserve geometry and any pending resize, while retaining the existing per-sender history and keyboard coalescing. The welcome advertises `SupportsPresentationOnly`; clients send the optional resize `PresentationOnly` flag only to supporting daemons. Legacy daemons retain combined presentation/resize behavior. App attach completion sends nothing when presentation settings are unchanged.
 - Daemon-owned scrollback retention: optional spawn/presentation requests set a bounded row high-water policy. Interactive clients can raise it; lower requests and read-only observers cannot trim shared history. Coalesced resizes preserve the highest request per sender. The retained cell-byte ceiling survives all buffer resizes; attach row/frame/snapshot caps remain independent. Optional Welcome history limits advertise support without changing the protocol range.
 - No thread-pool work on the output path
 - A slow client is disconnected, never waited for (stream frames against the send budget, snapshots against their own separate bound)
@@ -346,6 +347,15 @@ invariant changes.
 - **`sessionChanged` coalescing lives in the parse loop, with no timer.** The bounded wait the
   parse loop already does between `Process()` calls drives the trailing flush; no `Timer`,
   `Task.Delay`, `ThreadPool` or `Task.Run` on this path
+- **Alternate-key data is input-host state.** App derives optional shifted and PC-101 base-layout
+  key fields from available scalar Avalonia symbols and physical positions. VT only owns flag 4
+  negotiation and stack state. The enhancement changes keys already encoded by another flag;
+  ordinary text, IME and AltGr stay on TextInput. A forwarded press captures its immutable
+  identity for repeats/releases; changes of session, buffer, focus or keyboard generation discard it.
+  Only Shift-held events contain the shifted field. Missing, control, combining, format, multi-scalar
+  or malformed symbols preserve the legacy primary;
+  shifted punctuation retains that primary when the framework cannot provide its unshifted glyph.
+  No guessed native keyboard-map queries, user input logging or new settings are introduced.
 - **Keyboard capabilities are ordered protocol state.** An explicit presentation mask opts a subscriber
   (including a v1 peer or read-only observer) into `keyboardCapabilities`, before its attach snapshot
   and subsequent output. Pending presentation bursts coalesce per sender; identical effective masks

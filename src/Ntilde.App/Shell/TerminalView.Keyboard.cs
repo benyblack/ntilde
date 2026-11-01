@@ -25,7 +25,7 @@ namespace Ntilde.Shell
             base.OnKeyDown(e);
             if (e.Handled) return;
 
-            if (HandleKeyDownCore(e.Key, e.KeyModifiers, e.PhysicalKey))
+            if (HandleKeyDownCore(e.Key, e.KeyModifiers, e.PhysicalKey, e.KeySymbol))
             {
                 e.Handled = true;
             }
@@ -42,24 +42,25 @@ namespace Ntilde.Shell
             if (HandleKeyUpCore(e.Key, e.KeyModifiers, e.PhysicalKey)) e.Handled = true;
         }
 
-        private readonly record struct ReportedKittyKey(Key Key, Ntilde.VT.KittyKeyboardState State, int Generation);
+        private readonly record struct ReportedKittyKey(Key Key, KittyKeyIdentity Identity, Ntilde.VT.KittyKeyboardState State, int Generation);
         private Dictionary<(PhysicalKey Physical, Key Logical), ReportedKittyKey>? _reportedKittyKeys;
 
         private static (PhysicalKey, Key) KeyIdentity(Key key, PhysicalKey physical)
             => physical == PhysicalKey.None ? (physical, key) : (physical, Key.None);
 
-        private TerminalKeyEventKind KittyEventKind(ref Key key, PhysicalKey physical)
+        private TerminalKeyEventKind KittyEventKind(ref Key key, PhysicalKey physical, ref KittyKeyIdentity identity)
         {
-            var identity = KeyIdentity(key, physical);
-            if (_reportedKittyKeys?.TryGetValue(identity, out var held) == true)
+            var keyId = KeyIdentity(key, physical);
+            if (_reportedKittyKeys?.TryGetValue(keyId, out var held) == true)
             {
                 if (ReferenceEquals(held.State, _buffer?.Modes.KittyKeyboard)
                     && held.Generation == held.State.Generation)
                 {
                     key = held.Key;
+                    identity = held.Identity;
                     return TerminalKeyEventKind.Repeat;
                 }
-                _reportedKittyKeys.Remove(identity);
+                _reportedKittyKeys.Remove(keyId);
             }
             return TerminalKeyEventKind.Press;
         }
@@ -70,7 +71,7 @@ namespace Ntilde.Shell
             if (!_enableKittyKeyboardProtocol || _session?.IsProcessRunning != true
                 || !ReferenceEquals(held.State, _buffer?.Modes.KittyKeyboard)
                 || held.Generation != held.State.Generation) return false;
-            string? sequence = TerminalInputModeEncoder.EncodeKittyKey(held.Key, modifiers, _buffer?.Modes, TerminalKeyEventKind.Release);
+            string? sequence = TerminalInputModeEncoder.EncodeKittyKey(held.Key, modifiers, _buffer?.Modes, TerminalKeyEventKind.Release, held.Identity);
             if (sequence == null) return false;
             // A release reports state, without snapping a scrolled viewport to the live line.
             _session.SendInput(sequence);
@@ -84,15 +85,15 @@ namespace Ntilde.Shell
         /// fire-and-forget transport contract: it cannot acknowledge delivery to the child.
         /// A thrown write acquires no release; a context change during the call also discards it.
         /// </summary>
-        private void SendKeyInput(Key key, KeyModifiers modifiers, PhysicalKey physical, string sequence)
+        private void SendKeyInput(Key key, KeyModifiers modifiers, PhysicalKey physical, string sequence, KittyKeyIdentity identity = default)
         {
             var session = _session;
             ReportedKittyKey? reported = null;
             if (_enableKittyKeyboardProtocol && _buffer?.Modes is { } modes && modes.KittyKeyboard.ReportEventTypes
-                && (key == Key.Escape || TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, modes, TerminalKeyEventKind.Repeat) != null))
+                && (key == Key.Escape || TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, modes, TerminalKeyEventKind.Repeat, identity) != null))
             {
                 var state = modes.KittyKeyboard;
-                reported = new(key, state, state.Generation);
+                reported = new(key, identity, state, state.Generation);
             }
             SendUserInput(sequence);
             if (reported is { } held && ReferenceEquals(session, _session)
@@ -103,14 +104,14 @@ namespace Ntilde.Shell
         }
 
         /// <summary>Negotiated unmodified recovery repeats retain the pane's input-observer contract.</summary>
-        private void SendKittyKeyInput(Key key, KeyModifiers modifiers, PhysicalKey physical, string sequence, TerminalKeyEventKind kind)
+        private void SendKittyKeyInput(Key key, KeyModifiers modifiers, PhysicalKey physical, string sequence, TerminalKeyEventKind kind, KittyKeyIdentity identity)
         {
             if (kind == TerminalKeyEventKind.Repeat && modifiers == KeyModifiers.None && key == Key.Enter)
             {
                 SendEnterKey(modifiers, physical, sequence);
                 return;
             }
-            SendKeyInput(key, modifiers, physical, sequence);
+            SendKeyInput(key, modifiers, physical, sequence, identity);
             if (kind == TerminalKeyEventKind.Repeat && modifiers == KeyModifiers.None && key == Key.Back)
                 BackspaceObserved?.Invoke();
         }
@@ -132,7 +133,7 @@ namespace Ntilde.Shell
             return isMacOS && key == expected && (modifiers & relevant) == KeyModifiers.Meta;
         }
 
-        internal bool HandleKeyDownCore(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey = PhysicalKey.None)
+        internal bool HandleKeyDownCore(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey = PhysicalKey.None, string? keySymbol = null)
         {
             if (KeyDownInterceptor?.Invoke(key, keyModifiers) == true)
             {
@@ -157,7 +158,9 @@ namespace Ntilde.Shell
                 return false;
             }
 
-            TerminalKeyEventKind eventKind = KittyEventKind(ref key, physicalKey);
+            KittyKeyIdentity identity = _enableKittyKeyboardProtocol && ((_buffer?.Modes.KittyKeyboard.Flags ?? 0) & Ntilde.VT.KittyKeyboardState.FlagReportAlternateKeys) != 0
+                ? TerminalInputModeEncoder.ResolveKittyKeyIdentity(key, keyModifiers, physicalKey, keySymbol) : default;
+            TerminalKeyEventKind eventKind = KittyEventKind(ref key, physicalKey, ref identity);
             ResetCursorBlink();
 
             // Kitty keyboard protocol (disambiguation and negotiated event reporting). Must run before every legacy path
@@ -169,9 +172,9 @@ namespace Ntilde.Shell
             // TerminalSettings.EnableKittyKeyboardProtocol). When false, this call is skipped
             // entirely so every key falls through to the legacy path below unconditionally,
             // even if a TUI already pushed Kitty flags onto the buffer's ModeState.
-            if (_enableKittyKeyboardProtocol && TryEncodeKittyKey(key, keyModifiers, eventKind, out string? kittySequence))
+            if (_enableKittyKeyboardProtocol && TryEncodeKittyKey(key, keyModifiers, eventKind, identity, out string? kittySequence))
             {
-                SendKittyKeyInput(key, keyModifiers, physicalKey, kittySequence, eventKind);
+                SendKittyKeyInput(key, keyModifiers, physicalKey, kittySequence, eventKind, identity);
                 return true;
             }
 
@@ -182,12 +185,12 @@ namespace Ntilde.Shell
                 string? altSequence = TerminalInputModeEncoder.EncodeAltKey(key, keyModifiers);
                 if (altSequence != null)
                 {
-                    SendKeyInput(key, keyModifiers, physicalKey, altSequence);
+                    SendKeyInput(key, keyModifiers, physicalKey, altSequence, identity);
                     return true;
                 }
             }
 
-            if (HandleLegacyKeyDown(key, keyModifiers, physicalKey)) return true;
+            if (HandleLegacyKeyDown(key, keyModifiers, physicalKey, identity)) return true;
 
             // Cursor, editing and function keys, with their modifiers (Ctrl+Left -> CSI 1;5D). Every
             // modifier combination not claimed by Kitty event reporting arrives here:
@@ -208,7 +211,7 @@ namespace Ntilde.Shell
         }
 
         /// <summary>Legacy control/recovery keys, after Kitty and Alt encoders decline them.</summary>
-        private bool HandleLegacyKeyDown(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey)
+        private bool HandleLegacyKeyDown(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey, KittyKeyIdentity identity)
         {
             switch (key)
             {
@@ -227,12 +230,12 @@ namespace Ntilde.Shell
                     SendKeyInput(key, keyModifiers, physicalKey, "\x1b");
                     return true;
                 case Key.C:
-                    return HandleLegacyControlC(keyModifiers, physicalKey);
+                    return HandleLegacyControlC(keyModifiers, physicalKey, identity);
                 case Key.V:
                     // Paste belongs to MainWindow's tunnel handler.
                     return false;
                 default:
-                    return SendLegacyControlKey(key, keyModifiers, physicalKey);
+                    return SendLegacyControlKey(key, keyModifiers, physicalKey, identity);
             }
         }
 
@@ -271,7 +274,7 @@ namespace Ntilde.Shell
         }
 
         /// <summary>Off macOS, Ctrl+C copies a selection; otherwise it sends the interrupt byte.</summary>
-        private bool HandleLegacyControlC(KeyModifiers keyModifiers, PhysicalKey physicalKey)
+        private bool HandleLegacyControlC(KeyModifiers keyModifiers, PhysicalKey physicalKey, KittyKeyIdentity identity)
         {
             if ((keyModifiers & (KeyModifiers.Control | KeyModifiers.Alt)) != KeyModifiers.Control) return false;
             if (HasSelection() && !UseMacOSClipboardChords)
@@ -281,18 +284,18 @@ namespace Ntilde.Shell
             }
             else
             {
-                SendKeyInput(Key.C, keyModifiers, physicalKey, "\x03");
+                SendKeyInput(Key.C, keyModifiers, physicalKey, "\x03", identity);
             }
             return true;
         }
 
         /// <summary>Encodes legacy Ctrl letters/punctuation, leaving AltGr text untouched.</summary>
-        private bool SendLegacyControlKey(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey)
+        private bool SendLegacyControlKey(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey, KittyKeyIdentity identity)
         {
             if ((keyModifiers & KeyModifiers.Control) == 0) return false;
             string? sequence = TerminalInputModeEncoder.EncodeLegacyControlKey(key, keyModifiers);
             if (sequence == null) return false;
-            SendKeyInput(key, keyModifiers, physicalKey, sequence);
+            SendKeyInput(key, keyModifiers, physicalKey, sequence, identity);
             return true;
         }
 
@@ -307,7 +310,7 @@ namespace Ntilde.Shell
         ///    as CSI 99;5u (the spec explicitly notes Ctrl+C stops raising SIGINT in this mode).
         ///    Not on macOS, where copy is Cmd+C and Ctrl+C is always the real key.
         /// </summary>
-        private bool TryEncodeKittyKey(Key key, KeyModifiers keyModifiers, TerminalKeyEventKind eventKind, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? sequence)
+        private bool TryEncodeKittyKey(Key key, KeyModifiers keyModifiers, TerminalKeyEventKind eventKind, KittyKeyIdentity identity, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? sequence)
         {
             sequence = null;
 
@@ -321,7 +324,7 @@ namespace Ntilde.Shell
                 return false;
             }
 
-            sequence = TerminalInputModeEncoder.EncodeKittyKey(key, keyModifiers, _buffer?.Modes, eventKind);
+            sequence = TerminalInputModeEncoder.EncodeKittyKey(key, keyModifiers, _buffer?.Modes, eventKind, identity);
             return sequence != null;
         }
         // Kill switch for the kitty keyboard protocol (Blocker 2, #277

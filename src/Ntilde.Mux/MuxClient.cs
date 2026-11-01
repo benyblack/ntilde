@@ -104,6 +104,7 @@ public sealed class MuxClient : IDisposable
 
     /// <summary>Null for an older daemon which does not accept a client retention policy.</summary>
     public MuxHistoryLimits? HistoryLimits { get; private set; }
+    public bool SupportsPresentationOnly { get; private set; }
 
     public bool IsConnected => Volatile.Read(ref _disconnected) == 0;
     public string? DisconnectReason => Volatile.Read(ref _disconnectReason);
@@ -151,6 +152,7 @@ public sealed class MuxClient : IDisposable
             if (welcome.HistoryLimits is { } limits && (limits.MaxRows < 0 || limits.MaxBytes <= 0 || limits.MaxAttachRows < 0))
                 throw new MuxProtocolException(MuxErrorCodes.ProtocolError, "Invalid history limits in Welcome.");
             client.HistoryLimits = welcome.HistoryLimits;
+            client.SupportsPresentationOnly = welcome.SupportsPresentationOnly;
             client.ServerVersion = welcome.ServerVersion;
             return client;
         }
@@ -365,8 +367,8 @@ public sealed class MuxClient : IDisposable
         SendInput(sessionId, text);
     }
 
-    internal void SendResize(Guid sessionId, int cols, int rows, MuxPresentation? presentation) =>
-        PostRequest(MuxMethods.Resize, new ResizeParams { SessionId = sessionId, Cols = cols, Rows = rows, Presentation = presentation },
+    internal void SendResize(Guid sessionId, int cols, int rows, MuxPresentation? presentation, bool presentationOnly = false) =>
+        PostRequest(MuxMethods.Resize, new ResizeParams { SessionId = sessionId, Cols = cols, Rows = rows, Presentation = presentation, PresentationOnly = presentationOnly },
             MuxJsonContext.Default.ResizeParams);
 
     internal void Detach(MuxClientSession session, bool userDetached = false)

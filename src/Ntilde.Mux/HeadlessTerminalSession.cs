@@ -395,11 +395,11 @@ public sealed class HeadlessTerminalSession : IDisposable
     /// that client's own (Phase 4 spec §4 item 5), so a burst keeps each sender's newest one: latest
     /// wins only for the size and the session-wide fields.
     /// </summary>
-    internal void PostResize(IMuxFrameSink? from, int cols, int rows, MuxPresentation? presentation)
+    internal void PostResize(IMuxFrameSink? from, int cols, int rows, MuxPresentation? presentation, bool presentationOnly = false)
     {
         lock (_pendingResizeGate)
         {
-            _pendingResize = (cols, rows);
+            if (!presentationOnly) _pendingResize = (cols, rows);
             if (presentation is not null)
             {
                 _pendingPresentation = presentation;
