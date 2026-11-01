@@ -33,19 +33,20 @@ REST = "rest"
 # A prefix can also name one class ("Ntilde.Tests.VtReportCliTests."), which is how a single
 # slow class that lives in a busy namespace gets moved.
 #
-# Balanced from the first sharded run (PR #694, run 41288590793), test-step seconds on
-# windows / ubuntu: Shell 56 / 59, CommandAssist ~70 / ~58, VtReportCliTests 68 / 108 (one
-# class spawning the CLI), Core ~146 / ~138, the rest of the lane ~68 / ~59 plus the
-# non-headless projects 79 / 86, which also run on REST.
+# Balanced from measured runs on PR #694 (41288590793 and 41289702045), test-step seconds on
+# windows / ubuntu: Core ~146 / ~130, VtReportCliTests 68-101 / ~108 (9 tests that drive the
+# CLI, the single heaviest class - whichever shard holds it carries it), CommandAssist ~69 / ~58,
+# Shell ~51 / ~59, the rest of the lane ~79 / ~59 plus the non-headless projects ~93 / ~80,
+# which also run on REST. Pairing VtReportCliTests with Shell left that shard the slowest
+# (235 s on windows); with CommandAssist the three shards land near 183 / 197 / 172 s.
 #
-# Floors are lower bounds from the declared test counts (every [Fact]/[Theory] yields at least
-# one result) until a run measures the new split; then they go to the measured counts less a
-# little headroom for OS skip differences, as the single lane's floor did.
+# Floors are the executed counts those runs measured (identical on windows and ubuntu: the
+# count includes skipped tests), less about 2% for churn: assist-cli 1,446, core-shell 2,793,
+# rest 3,088 - together 7,327, main's single-lane count at the same commit.
 SHARDS = [
-    ("shell-assist", ["Ntilde.Tests.Shell.", "Ntilde.Tests.CommandAssist.",
-                      "Ntilde.Tests.VtReportCliTests."], 2050),
-    ("core", ["Ntilde.Tests.Core."], 1250),
-    (REST, [], 3000),
+    ("assist-cli", ["Ntilde.Tests.CommandAssist.", "Ntilde.Tests.VtReportCliTests."], 1415),
+    ("core-shell", ["Ntilde.Tests.Core.", "Ntilde.Tests.Shell."], 2735),
+    (REST, [], 3025),
 ]
 
 
