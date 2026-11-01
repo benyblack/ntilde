@@ -39,6 +39,7 @@ namespace Ntilde.VT
             {
                 if (newCols == Cols && newRows == Rows) return;
 
+                PrepareTextSizingResize(newCols, newRows);
                 int oldCols = Cols;
                 int oldRows = Rows;
 
@@ -111,12 +112,7 @@ namespace Ntilde.VT
                                 // hyperlinks), matching the WritePath eviction; dropping
                                 // them corrupted emoji/multi-codepoint graphemes once a
                                 // resize pushed rows into scrollback.
-                                _scrollback.AppendRow(
-                                    _viewport[i].Cells,
-                                    _viewport[i].IsWrapped,
-                                    _viewport[i].GetExtendedTextMap(),
-                                    _viewport[i].GetHyperlinkMap(),
-                                    _viewport[i].GetUnderlineMap(), _viewport[i].WrappedColumns, _viewport[i].WrittenColumns);
+                                _scrollback.AppendRow(_viewport[i]);
                             }
 
                             var newVp = new TerminalRow[newRows];
@@ -288,13 +284,13 @@ namespace Ntilde.VT
                 for (int i = linesNeeded - 1; i >= 0; i--)
                 {
                     var row = new TerminalRow(Cols, Theme.Foreground, Theme.Background);
-                    if (_scrollback.TryPopLastRow(row.Cells, out var isWrapped, out var extendedText, out var hyperlinks, out var underlines, out var wrappedColumns, out var writtenColumns))
+                    if (_scrollback.TryPopCompleteRow(row.Cells, out var isWrapped, out RowSideTables metadata, out var wrappedColumns, out var writtenColumns))
                     {
                         // Restore the full row, not just cells: wrap flag and side
                         // tables (extended text, hyperlinks) must survive the
                         // shrink-then-grow round trip through scrollback.
                         row.IsWrapped = isWrapped;
-                        row.RestoreSideTables(extendedText, hyperlinks, underlines);
+                        row.RestoreSideTables(metadata.ExtendedText, metadata.Hyperlinks, metadata.Underlines, metadata.TextSizing);
                         row.WrittenColumns = writtenColumns;
                         row.WrappedColumns = wrappedColumns;
                         newViewport[i] = row;
@@ -337,12 +333,7 @@ namespace Ntilde.VT
                 {
                     // Same as the height-shrink redistribution path: keep wrap
                     // flag and side tables so extended graphemes survive.
-                    _scrollback.AppendRow(
-                        _viewport[i].Cells,
-                        _viewport[i].IsWrapped,
-                        _viewport[i].GetExtendedTextMap(),
-                        _viewport[i].GetHyperlinkMap(),
-                        _viewport[i].GetUnderlineMap(), _viewport[i].WrappedColumns, _viewport[i].WrittenColumns);
+                    _scrollback.AppendRow(_viewport[i]);
                 }
 
                 Array.Copy(_viewport, linesToPush, newViewport, 0, newRows);
@@ -418,6 +409,7 @@ namespace Ntilde.VT
         /// </remarks>
         private static bool IsRowPadding(TerminalRow row)
         {
+            if (row.GetTextSizingMap() is { Count: > 0 }) return false;
             bool rowHasLinks = row.GetHyperlinkMap() is { Count: > 0 };
             var cells = row.Cells;
 

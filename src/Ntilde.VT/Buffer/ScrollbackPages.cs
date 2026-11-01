@@ -36,7 +36,7 @@ namespace Ntilde.VT.Storage
     /// Memory is bounded by <see cref="MaxScrollbackBytes"/>. When the budget is exceeded the
     /// oldest pages are evicted and returned to the <see cref="TerminalPagePool"/>.
     /// </summary>
-    public sealed class ScrollbackPages
+    public sealed partial class ScrollbackPages
     {
         // ── Configuration ────────────────────────────────────────────────────────
         /// <summary>Maximum bytes of cell data to retain. Default: 128 MB.</summary>
@@ -141,13 +141,17 @@ namespace Ntilde.VT.Storage
             => AppendRow(row, isWrapped, extendedText, hyperlinks, underlines, null);
 
         internal long AppendRow(
-            ReadOnlySpan<TerminalCell> row,
-            bool isWrapped,
-            SmallMap<string>? extendedText,
-            SmallMap<Ntilde.VT.Links.Hyperlink>? hyperlinks,
-            SmallMap<Ntilde.VT.CellUnderline>? underlines,
+            ReadOnlySpan<TerminalCell> row, bool isWrapped, SmallMap<string>? extendedText,
+            SmallMap<Ntilde.VT.Links.Hyperlink>? hyperlinks, SmallMap<Ntilde.VT.CellUnderline>? underlines,
             int? wrappedColumns, int? writtenColumns = null)
+            => AppendRow(row, isWrapped, new(extendedText, hyperlinks, underlines, null), wrappedColumns, writtenColumns);
+
+        internal long AppendRow(ReadOnlySpan<TerminalCell> row, bool isWrapped, RowSideTables metadata,
+            int? wrappedColumns, int? writtenColumns)
         {
+            var extendedText = metadata.ExtendedText;
+            var hyperlinks = metadata.Hyperlinks;
+            var underlines = metadata.Underlines;
             if (row.Length != _cols)
                 throw new ArgumentException($"Row length {row.Length} must equal Cols {_cols}.", nameof(row));
             if (wrappedColumns is < 0 || wrappedColumns > _cols || (wrappedColumns.HasValue && !isWrapped))
@@ -155,7 +159,7 @@ namespace Ntilde.VT.Storage
 
             if (writtenColumns is < 0 || writtenColumns > _cols)
                 throw new ArgumentOutOfRangeException(nameof(writtenColumns));
-            ValidateWrapTail(row, wrappedColumns, extendedText, hyperlinks, underlines);
+            ValidateWrapTail(row, wrappedColumns, metadata);
 
             // Ensure there is a page with available space.
             if (_pages.Last == null || _pages.Last.Value.IsFull)
@@ -176,6 +180,7 @@ namespace Ntilde.VT.Storage
                 currentPage.SetHyperlinkFromMap(rowIndex, hyperlinks);
             if (underlines != null && underlines.Count > 0)
                 currentPage.SetUnderlineFromMap(rowIndex, underlines);
+            currentPage.SetTextSizingFromMap(rowIndex, metadata.TextSizing);
             currentPage.UsedRows++;
             _totalRowsAppended++;
 
@@ -183,13 +188,13 @@ namespace Ntilde.VT.Storage
             return _totalRowsAppended - 1; // absolute row index just appended
         }
 
-        private static void ValidateWrapTail(ReadOnlySpan<TerminalCell> row, int? columns, SmallMap<string>? extended,
-            SmallMap<Ntilde.VT.Links.Hyperlink>? links, SmallMap<Ntilde.VT.CellUnderline>? underlines)
+        private static void ValidateWrapTail(ReadOnlySpan<TerminalCell> row, int? columns, RowSideTables metadata)
         {
             if (columns is not int start) return;
             for (int col = start; col < row.Length; col++)
-                if (!TerminalRow.IsWrapPaddingCell(row[col]) || extended?.TryGet(col, out _) == true
-                    || links?.TryGet(col, out _) == true || underlines?.TryGet(col, out _) == true)
+                if (!TerminalRow.IsWrapPaddingCell(row[col]) || metadata.ExtendedText?.TryGet(col, out _) == true
+                    || metadata.Hyperlinks?.TryGet(col, out _) == true || metadata.Underlines?.TryGet(col, out _) == true
+                    || metadata.TextSizing?.TryGet(col, out _) == true)
                     throw new ArgumentException("Wrap columns would hide cell content or metadata.", nameof(columns));
         }
 
@@ -360,12 +365,20 @@ namespace Ntilde.VT.Storage
             out SmallMap<string>? extendedText, out SmallMap<Ntilde.VT.Links.Hyperlink>? hyperlinks,
             out SmallMap<Ntilde.VT.CellUnderline>? underlines, out int? wrappedColumns, out int writtenColumns)
         {
+            bool result = TryPopCompleteRow(destination, out isWrapped, out RowSideTables metadata, out wrappedColumns, out writtenColumns);
+            extendedText = metadata.ExtendedText;
+            hyperlinks = metadata.Hyperlinks;
+            underlines = metadata.Underlines;
+            return result;
+        }
+
+        internal bool TryPopCompleteRow(Span<TerminalCell> destination, out bool isWrapped,
+            out RowSideTables metadata, out int? wrappedColumns, out int writtenColumns)
+        {
             writtenColumns = _cols;
             wrappedColumns = null;
             isWrapped = false;
-            extendedText = null;
-            hyperlinks = null;
-            underlines = null;
+            metadata = default;
 
             if (_pages.Last == null || _pages.Last.Value.UsedRows == 0)
                 return false;
@@ -376,9 +389,8 @@ namespace Ntilde.VT.Storage
             isWrapped = page.IsRowWrapped(rowIndex);
             wrappedColumns = page.GetWrappedColumns(rowIndex);
             writtenColumns = page.GetWrittenColumns(rowIndex);
-            extendedText = page.GetExtendedTextMap(rowIndex);
-            hyperlinks = page.GetHyperlinkMap(rowIndex);
-            underlines = page.GetUnderlineMap(rowIndex);
+            metadata = new(page.GetExtendedTextMap(rowIndex), page.GetHyperlinkMap(rowIndex),
+                page.GetUnderlineMap(rowIndex), page.GetTextSizingMap(rowIndex));
             page.ClearRowMetadata(rowIndex);
 
             page.UsedRows--;

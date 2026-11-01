@@ -27,7 +27,7 @@ namespace Ntilde.VT.Export
                     for (int c = 0; c < buffer.Cols; c++)
                     {
                         var cell = buffer.GetCellAbsolute(c, screenTop + r);
-                        if (cell.IsWideContinuation) continue;
+                        if (cell.IsWideContinuation || buffer.GetTextSizingAbsolute(c, screenTop + r) is { IsAnchor: false }) continue;
 
                         string text = buffer.GetGrapheme(c, r);
                         rowSb.Append(text);
@@ -129,7 +129,7 @@ namespace Ntilde.VT.Export
             for (int c = 0; c < buffer.Cols; c++)
             {
                 var cell = buffer.GetCellAbsolute(c, absRow);
-                if (cell.IsWideContinuation) continue;
+                if (cell.IsWideContinuation || buffer.GetTextSizingAbsolute(c, absRow) is { IsAnchor: false }) continue;
 
                 string text = buffer.GetGrapheme(c, row);
                 rowSb.Append(text);
@@ -165,6 +165,7 @@ namespace Ntilde.VT.Export
                     {
                         var cell = buffer.GetCellAbsolute(eol, absRow);
                         if (cell.Character != ' ' || !cell.IsDefaultBackground
+                            || buffer.GetTextSizingAbsolute(eol, absRow) != null
                             || (cell.IsUnderline && buffer.GetUnderlineAbsolute(eol, absRow) != null))
                         {
                             break;
@@ -177,6 +178,13 @@ namespace Ntilde.VT.Export
                         var cell = buffer.GetCellAbsolute(c, absRow);
                         if (cell.IsWideContinuation) continue;
 
+                        var sizing = buffer.GetTextSizingAbsolute(c, absRow);
+                        if (sizing is { IsAnchor: false })
+                        {
+                            // Preserve a multi-row block already emitted on its top row.
+                            sb.Append("\x1b[C");
+                            continue;
+                        }
                         CellUnderline? underline = cell.IsUnderline ? buffer.GetUnderlineAbsolute(c, absRow) : null;
                         if (isFirstCell || StateChanged(lastCell, cell) || underline != lastUnderline)
                         {
@@ -186,7 +194,12 @@ namespace Ntilde.VT.Export
                             isFirstCell = false;
                         }
 
-                        sb.Append(buffer.GetGrapheme(c, r));
+                        if (sizing is { IsAnchor: true })
+                        {
+                            AnsiCellWriter.AppendTextSizing(sb, sizing.Block);
+                            c += sizing.Block.Width - 1;
+                        }
+                        else sb.Append(buffer.GetGrapheme(c, r));
                     }
 
                     // Reset at end of line if needed

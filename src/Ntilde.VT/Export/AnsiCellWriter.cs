@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Globalization;
 
 namespace Ntilde.VT.Export
 {
@@ -52,13 +53,45 @@ namespace Ntilde.VT.Export
                     haveStyle = true;
                 }
 
-                AppendCellText(sb, cell, clippedToSpace);
+                if (cell.TextSizing is { IsAnchor: true } sizing)
+                {
+                    width = Math.Min(sizing.Block.Width, limit - col);
+                    AppendSizedTextFallback(sb, sizing.Block.Text, width);
+                }
+                else AppendCellText(sb, cell, clippedToSpace);
 
                 col += width;
             }
 
             if (col > 0) sb.Append(Reset);
             return col;
+        }
+
+        // The outer terminal has not negotiated OSC 66. Keep its cursor and pane boundaries
+        // exact with a normal-size, grapheme-safe fallback, never an unbounded payload.
+        private static void AppendSizedTextFallback(StringBuilder sb, string text, int columns)
+        {
+            int used = 0;
+            var elements = StringInfo.GetTextElementEnumerator(text);
+            while (elements.MoveNext())
+            {
+                string element = elements.GetTextElement();
+                int width = UnicodeWidth.GetGraphemeWidth(element);
+                if (used + width > columns) break;
+                sb.Append(element);
+                used += width;
+            }
+            sb.Append(' ', columns - used);
+        }
+
+        /// <summary>Writes the validated block for an ANSI snapshot that preserves OSC 66 sizing.</summary>
+        public static void AppendTextSizing(StringBuilder sb, TextSizingBlock block)
+        {
+            var o = block.Options;
+            sb.Append("\x1b]66;s=").Append(o.Scale).Append(":w=").Append(block.BaseWidth)
+                .Append(":n=").Append(o.Numerator).Append(":d=").Append(o.Denominator)
+                .Append(":v=").Append(o.VerticalAlignment).Append(":h=").Append(o.HorizontalAlignment)
+                .Append(';').Append(block.Text).Append('\a');
         }
 
         private static void AppendCellText(StringBuilder sb, in RenderCellSnapshot cell, bool clippedToSpace)

@@ -72,6 +72,9 @@ namespace Ntilde.VT
 
     public class ReplaySnapshot
     {
+        [JsonPropertyName("text_sizing"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public System.Collections.Generic.List<TerminalTextSizingState>? TextSizing { get; set; }
+
         /// <summary>Complete terminal/parser cut, with no scrollback; legacy readers use the fields below.</summary>
         [JsonPropertyName("state"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public TerminalStateSnapshot? State { get; set; }

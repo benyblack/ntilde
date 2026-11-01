@@ -93,7 +93,7 @@ namespace Ntilde.VT
                 for (int col = colStart; col <= colEnd; col++)
                 {
                     var cell = buffer.GetCellAbsolute(col, row);
-                    if (cell.IsWideContinuation) continue;
+                    if (cell.IsWideContinuation || buffer.GetTextSizingAbsolute(col, row) is { IsAnchor: false }) continue;
                     sb.Append(buffer.GetGraphemeAbsolute(col, row));
                 }
 

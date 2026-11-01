@@ -58,7 +58,7 @@ public partial class TerminalBuffer
         }
 
         public void AppendMatches(string text, List<SearchColumn> columns, List<SearchRow> rows,
-            List<SearchMatch> matches, ref SearchMatchSpan[]? physicalSpans)
+            List<SearchMatch> matches, Dictionary<(int Row, int Col), int>? sizedEnds, ref SearchMatchSpan[]? physicalSpans)
         {
             int matched = 0;
             for (int index = 0; index < text.Length;)
@@ -69,7 +69,7 @@ public partial class TerminalBuffer
                 if (EqualsScalar(text, index, length, matched)) matched++;
                 if (matched == _scalars.Length)
                 {
-                    matches.Add(CreateSearchMatch(index + length - _query.Length, _query.Length, columns, rows, ref physicalSpans));
+                    matches.Add(CreateSearchMatch(index + length - _query.Length, _query.Length, columns, rows, sizedEnds, ref physicalSpans));
                     matched = _fallback[matched - 1];
                 }
                 index += length;

@@ -19,7 +19,7 @@ using Ntilde.Shell.Theming;
 
 namespace Ntilde.Shell
 {
-    public sealed class TerminalDrawOperation : ICustomDrawOperation
+    public sealed partial class TerminalDrawOperation : ICustomDrawOperation
     {
         // Throttle render-path error logging: a persistent draw failure fires every frame, so
         // rate-limit to avoid flooding the log (and previously, unbounded error.log growth).
@@ -1299,6 +1299,26 @@ namespace Ntilde.Shell
                 {
                     var cell = snapshot.Cells[c];
                     if (cell.IsWideContinuation || cell.IsHidden) continue;
+                    if (cell.TextSizing is { } sized)
+                    {
+                        if (sized.ColumnOffset == 0)
+                            cellsRendered += DrawSizedTextRow(canvas, cell, sized, c, new SizedTextRowPaint
+                            {
+                                RowTop = rowTopYDip,
+                                Baseline = baselineYDip,
+                                RowHeight = snappedCellHeight,
+                                Paint = fgPaint,
+                                ThemeFg = themeFg,
+                                ThemeBg = themeBg,
+                                Theme = themeSnapshot,
+                                Alpha = alpha,
+                                Primary = primaryTf,
+                                DrawBackgrounds = drawBackgrounds,
+                                ForegroundOverride = foregroundOverride,
+                                OverlayFill = overlayFill
+                            });
+                        continue;
+                    }
 
                     var cb = ResolveCellBackground(cell, themeBg, alpha, themeSnapshot);
                     var cf = ResolveCellForeground(cell, themeFg, alpha, themeSnapshot);
@@ -1330,6 +1350,7 @@ namespace Ntilde.Shell
                     while (k < snapshot.Cols)
                     {
                         var next = snapshot.Cells[k];
+                        if (next.TextSizing != null) break;
                         if (next.IsHidden || next.IsWideContinuation)
                         {
                             k++;

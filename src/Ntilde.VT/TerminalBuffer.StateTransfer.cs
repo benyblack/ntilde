@@ -81,12 +81,14 @@ namespace Ntilde.VT
                 // screen, while a buffer restored from the raw content would show the carried
                 // content in a now-correctly-shaped array that passes the very check that would
                 // have discarded it. ?1049h masks this by clearing; ?47h and ?1047h do not.
-                snapshot.Alt = ExportScreenNoLock(EnsureScreenShapeNoLock(altRows), links, underlines);
+                var exportedAltRows = EnsureScreenShapeNoLock(altRows);
+                snapshot.Alt = ExportScreenNoLock(exportedAltRows, links, underlines);
                 snapshot.Scrollback = ExportScrollbackNoLock(maxScrollbackRows, links, underlines, snapshot);
                 snapshot.CurrentHyperlinkId = links.IndexOf(_currentHyperlink);
                 snapshot.Hyperlinks = links.Entries;
                 snapshot.Underlines = underlines.Entries;
                 ExportSixelState(snapshot);
+                ExportTextSizingState(snapshot, mainRows, exportedAltRows);
                 return snapshot;
             }
             finally
@@ -166,6 +168,7 @@ namespace Ntilde.VT
                 _viewport = _isAltScreen ? _altScreen : _mainScreen;
 
                 ImportScrollbackNoLock(snapshot, scrollbackCells, links, underlines);
+                ImportTextSizingState(snapshot);
                 ImportTabStopsNoLock(snapshot.TabStops);
 
                 _cursorCol = Math.Clamp(snapshot.CursorCol, 0, Math.Max(0, Cols - 1));
@@ -402,6 +405,7 @@ namespace Ntilde.VT
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
                 row.ClearUnderlines();
+                row.ClearTextSizing();
                 for (int c = 0; c < row.Cells.Length; c++)
                 {
                     row.Cells[c] = TerminalCell.Default;
@@ -630,8 +634,9 @@ namespace Ntilde.VT
                 }
 
                 bool wrapped = state.RowWraps != null && i < state.RowWraps.Length && state.RowWraps[i];
-                int? wrappedColumns = state.RowWrapColumns is { } widths && widths[i] >= 0 ? widths[i] : null;
-                _scrollback.AppendRow(buffer, wrapped, extended, hyperlinks, rowUnderlines, wrappedColumns, state.RowWrittenColumns?[i] ?? wrappedColumns ?? sourceCols);
+                int? wrappedColumns = state.RowWrapColumns is { } widths && widths[i] >= 0 ? Math.Min(widths[i], Cols) : null;
+                _scrollback.AppendRow(buffer, wrapped, extended, hyperlinks, rowUnderlines, wrappedColumns,
+                    Math.Min(state.RowWrittenColumns?[i] ?? wrappedColumns ?? sourceCols, Cols));
             }
         }
 
@@ -896,6 +901,7 @@ namespace Ntilde.VT
             ValidateWrappedColumns(snapshot.Alt, snapshot.Rows, snapshot.Cols, altCells, "alternate screen");
             ValidateWrappedColumns(snapshot.Scrollback, snapshot.ScrollbackRowCount, snapshot.Cols, scrollbackCells, "scrollback");
 
+            ValidateTextSizingState(snapshot, mainCells, altCells, scrollbackCells);
             return new ValidatedBufferState(mainCells, altCells, scrollbackCells, lastSyncStart);
         }
 

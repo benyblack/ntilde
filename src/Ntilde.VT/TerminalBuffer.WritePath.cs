@@ -186,6 +186,7 @@ namespace Ntilde.VT
                 }
             }
             bool isZeroWidthComponent = UnicodeWidth.IsZeroWidthGraphemeComponent(firstRune);
+            if (_textSizingBlocks != null && (isZeroWidthComponent || _isAfterZwj) && TryAppendToSizedBlock(grapheme)) return;
 
 
             // ATTACHMENT LOGIC:
@@ -326,6 +327,8 @@ namespace Ntilde.VT
                 if (_cursorCol + width > Cols) _cursorCol = Math.Max(0, Cols - width);
             }
 
+            if (_textSizingBlocks != null) PrepareTextSizingOverwrite(width);
+
             // Write to buffer
             if (_cursorRow >= 0 && _cursorRow < Rows && _cursorCol >= 0 && _cursorCol < Cols)
             {
@@ -448,6 +451,15 @@ namespace Ntilde.VT
             // Check if we are scrolling the explicit region or full screen
             bool isFullScreenScroll = (ScrollTop == 0 && ScrollBottom == Rows - 1);
 
+            if (!isFullScreenScroll || _isAltScreen)
+            {
+                int top = TextSizingAbsoluteRow(ScrollTop);
+                int bottom = TextSizingAbsoluteRow(ScrollBottom + 1);
+                EraseTextSizingAcrossBoundary(top);
+                EraseTextSizingAcrossBoundary(bottom);
+                EraseTextSizingRange(0, Cols, top, top + 1);
+            }
+
             // 1. If full screen and main screen, add to scrollback
             if (isFullScreenScroll && !_isAltScreen)
             {
@@ -456,12 +468,7 @@ namespace Ntilde.VT
                 // This copies the cell array into the page-based store;
                 // No TerminalRow object is stored in scrollback anymore.
                 var evictingRow = _viewport[0];
-                _scrollback.AppendRow(
-                    evictingRow.Cells,
-                    evictingRow.IsWrapped,
-                    evictingRow.GetExtendedTextMap(),
-                    evictingRow.GetHyperlinkMap(),
-                    evictingRow.GetUnderlineMap(), evictingRow.WrappedColumns, evictingRow.WrittenColumns);
+                _scrollback.AppendRow(evictingRow);
 
 
                 long newlyEvicted = _scrollback.TotalRowsEvicted - prevEvicted;
@@ -559,6 +566,11 @@ namespace Ntilde.VT
 
         private void ScrollDownInternal()
         {
+            int sizedTop = TextSizingAbsoluteRow(ScrollTop);
+            int sizedBottom = TextSizingAbsoluteRow(ScrollBottom + 1);
+            EraseTextSizingAcrossBoundary(sizedTop);
+            EraseTextSizingAcrossBoundary(sizedBottom);
+            EraseTextSizingRange(0, Cols, sizedBottom - 1, sizedBottom);
             // Update images: Shift images in the region DOWN (CellY++)
             int absTop = _isAltScreen ? ScrollTop : (_scrollback.Count + ScrollTop);
             int absBottom = _isAltScreen ? ScrollBottom : (_scrollback.Count + ScrollBottom);
@@ -615,6 +627,7 @@ namespace Ntilde.VT
             if (_cursorRow < 0 || _cursorRow >= Rows) return;
 
             int endCol = Math.Min(_cursorCol + count, Cols);
+            EraseTextSizingForShift(insert: true, Math.Max(0, endCol - _cursorCol));
             var row = _viewport[_cursorRow];
             row.WrappedColumns = null;
             row.WrittenColumns = Cols;
@@ -664,6 +677,7 @@ namespace Ntilde.VT
             if (count > maxDeletable) count = maxDeletable;
 
             int endCol = Cols - count;
+            EraseTextSizingForShift(insert: false, count);
             var row = _viewport[_cursorRow];
             row.WrappedColumns = null;
             row.WrittenColumns = Cols;

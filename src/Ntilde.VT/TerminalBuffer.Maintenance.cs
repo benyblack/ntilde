@@ -276,6 +276,7 @@ namespace Ntilde.VT
 
         private void ClearScreenInternal(bool resetCursor)
         {
+            EraseTextSizingRange(0, Cols, TextSizingAbsoluteRow(0), TextSizingAbsoluteRow(Rows));
             // Remove images intersecting the visible screen of the ACTIVE buffer only.
             // On the main screen CellY is absolute (scrollback + viewport; see
             // ScrollUpInternal/InsertLines), so images living entirely in scrollback are

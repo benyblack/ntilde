@@ -35,6 +35,10 @@ namespace Ntilde.VT
     /// </remarks>
     public sealed class TerminalStateSnapshot
     {
+        /// <summary>Atomic OSC 66 rectangles. Main coordinates include the exported scrollback.</summary>
+        [JsonPropertyName("text_sizing"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<TerminalTextSizingState>? TextSizing { get; set; }
+
         /// <summary>Bump when a field's meaning changes, not when one is added.</summary>
         public const int CurrentVersion = 1;
 

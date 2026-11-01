@@ -141,6 +141,7 @@ namespace Ntilde.VT
     {
         public char Character;
         public string? Text;
+        public CellTextSizing? TextSizing;
         public TermColor Foreground;
         public TermColor Background;
         public bool IsInverse;

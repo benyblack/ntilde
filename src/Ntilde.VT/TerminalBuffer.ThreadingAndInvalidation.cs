@@ -757,6 +757,7 @@ namespace Ntilde.VT
         {
             return a.Character == b.Character &&
                    a.Text == b.Text &&
+                   Equals(a.TextSizing, b.TextSizing) &&
                    a.Foreground.Equals(b.Foreground) &&
                    a.Background.Equals(b.Background) &&
                    a.IsInverse == b.IsInverse &&
@@ -1020,6 +1021,7 @@ namespace Ntilde.VT
             // item 4). Fetched once per row rather than per cell.
             var extendedText = _scrollback.GetExtendedTextMap(absRow);
             var underlines = _scrollback.GetUnderlineMap(absRow);
+            var sizing = _scrollback.GetTextSizingMap(absRow);
 
             for (int c = 0; c < viewportCols; c++)
             {
@@ -1029,6 +1031,7 @@ namespace Ntilde.VT
                     rebuiltCells[c] = new RenderCellSnapshot
                     {
                         Character = cell.Character,
+                        TextSizing = sizing != null && sizing.TryGet(c, out CellTextSizing? piece) ? piece : null,
                         Text = cell.HasExtendedText && extendedText != null
                                && extendedText.TryGet(c, out string? graphemeText)
                             ? graphemeText

@@ -26,7 +26,7 @@ namespace Ntilde.VT.Links
                 for (int col = 0; col < cols; col++)
                 {
                     var cell = buffer.GetCellAbsolute(col, absRow);
-                    if (cell.IsWideContinuation) continue;
+                    if (cell.IsWideContinuation || buffer.GetTextSizingAbsolute(col, absRow) is { IsAnchor: false }) continue;
 
                     string g = buffer.GetGraphemeAbsolute(col, absRow);
                     if (string.IsNullOrEmpty(g)) g = " ";
