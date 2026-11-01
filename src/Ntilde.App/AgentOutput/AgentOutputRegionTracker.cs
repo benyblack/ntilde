@@ -21,7 +21,7 @@ namespace Ntilde.AgentOutput;
 /// </para>
 /// <para>
 /// <b>Threading.</b> <see cref="NotifyInvalidate"/> fires on the PTY parse thread for every chunk
-/// the parser writes; it does nothing but re-arm a debounce timer. The actual grid read runs on a
+/// the parser writes; it only requests a coalesced read. The actual grid read runs on a
 /// threadpool thread - <see cref="CommandOutputReader"/> takes the buffer read lock itself, and
 /// the render snapshot path already reads from off the parse thread the same way. Results cross
 /// back through the pane's UI dispatcher. The one synchronous read is <see cref="NotifyCommandFinished"/>:
@@ -72,9 +72,15 @@ public sealed class AgentOutputRegionTracker : IDisposable
     private readonly Action<Action> _dispatch;
     private readonly Action<string, bool> _onUpdate;
     private readonly Action<bool>? _markdownPresenceChanged;
-    private readonly Timer _debounceTimer;
+    private readonly ITimer _debounceTimer;
+    private readonly TimeProvider _timeProvider;
+    private readonly object _scheduleGate = new();
+    private bool _pendingRead;
+    private bool _readRunning;
+    private long _requestedAt;
+    private TimeSpan _requestedDelay;
 
-    private bool _enabled;
+    private volatile bool _enabled;
     private bool _regionActive;
     private ShellIntegrationMark? _heuristicStart;
     private ShellIntegrationMark? _previousHeuristicStart;
@@ -100,13 +106,25 @@ public sealed class AgentOutputRegionTracker : IDisposable
         Action<Action> dispatch,
         Action<string, bool> onUpdate,
         Action<bool>? markdownPresenceChanged = null)
+        : this(bufferProvider, commandOutputStartProvider, dispatch, onUpdate, markdownPresenceChanged, TimeProvider.System)
     {
+    }
+
+    internal AgentOutputRegionTracker(
+        Func<TerminalBuffer?> bufferProvider,
+        Func<ShellIntegrationMark?> commandOutputStartProvider,
+        Action<Action> dispatch,
+        Action<string, bool> onUpdate,
+        Action<bool>? markdownPresenceChanged,
+        TimeProvider timeProvider)
+    {
+        _timeProvider = timeProvider;
         _bufferProvider = bufferProvider;
         _commandOutputStartProvider = commandOutputStartProvider;
         _dispatch = dispatch;
         _onUpdate = onUpdate;
         _markdownPresenceChanged = markdownPresenceChanged;
-        _debounceTimer = new Timer(ReadScheduled, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        _debounceTimer = timeProvider.CreateTimer(ReadScheduled, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
     }
 
     /// <summary>
@@ -148,7 +166,7 @@ public sealed class AgentOutputRegionTracker : IDisposable
             // The panel is closed, so D delivered nothing - but this is exactly the moment the
             // MD button's fate changes: the finished output is on screen and the presence check
             // should see it promptly rather than wait out the lazy cadence.
-            _debounceTimer.Change(PresenceSoonDelay, Timeout.InfiniteTimeSpan);
+            ScheduleRead(PresenceSoonDelay);
             return;
         }
 
@@ -191,12 +209,12 @@ public sealed class AgentOutputRegionTracker : IDisposable
         {
             if (_regionActive || _heuristicStart.HasValue)
             {
-                _debounceTimer.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
+                ScheduleRead(DebounceDelay);
             }
         }
         else
         {
-            _debounceTimer.Change(PresenceDebounceDelay, Timeout.InfiniteTimeSpan);
+            ScheduleRead(PresenceDebounceDelay);
         }
     }
 
@@ -263,14 +281,16 @@ public sealed class AgentOutputRegionTracker : IDisposable
     /// <summary>Panel state changed. Enabled trackers read; disabled ones do nothing.</summary>
     public void SetEnabled(bool enabled)
     {
+        bool wasEnabled = _enabled;
         _enabled = enabled;
+        if (enabled && !wasEnabled) CancelPendingRead();
         if (!enabled)
         {
             // Stop any pending region read, then recompute the MD button's presence for the
             // just-closed panel: the toggle must reflect what is on screen now, not whatever
             // was true while the panel was open.
             AdvanceGeneration();
-            _debounceTimer.Change(PresenceSoonDelay, Timeout.InfiniteTimeSpan);
+            ScheduleRead(PresenceSoonDelay);
         }
     }
 
@@ -285,7 +305,7 @@ public sealed class AgentOutputRegionTracker : IDisposable
         if (_enabled)
         {
             Volatile.Write(ref _recentTailFallback, includeRecentTailFallback ? 1 : 0);
-            _debounceTimer.Change(TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+            ScheduleRead(TimeSpan.Zero);
         }
     }
 
@@ -314,9 +334,46 @@ public sealed class AgentOutputRegionTracker : IDisposable
             return;
         }
 
-        _debounceTimer.Dispose();
+        lock (_scheduleGate)
+        {
+            _pendingRead = false;
+            _debounceTimer.Dispose();
+        }
         _enabled = false;
         AdvanceGeneration();
+    }
+
+    private void ScheduleRead(TimeSpan delay)
+    {
+        lock (_scheduleGate)
+        {
+            if (Volatile.Read(ref _disposed) != 0) return;
+            // Preserve the first deadline; urgent flush/completion requests may move it earlier.
+            if (_pendingRead && RemainingDelayNoLock() <= delay) return;
+            _pendingRead = true;
+            _requestedAt = _timeProvider.GetTimestamp();
+            _requestedDelay = delay;
+            if (!_readRunning) _debounceTimer.Change(delay, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    private TimeSpan RemainingDelayNoLock()
+    {
+        TimeSpan remaining = _requestedDelay - _timeProvider.GetElapsedTime(_requestedAt);
+        return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+    }
+
+    private void CancelPendingRead()
+    {
+        lock (_scheduleGate) CancelPendingReadNoLock();
+    }
+
+    private void CancelPendingReadNoLock()
+    {
+        _pendingRead = false;
+        Volatile.Write(ref _recentTailFallback, 0);
+        if (Volatile.Read(ref _disposed) == 0)
+            _debounceTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
     }
 
     /// <remarks>
@@ -341,31 +398,44 @@ public sealed class AgentOutputRegionTracker : IDisposable
     /// </remarks>
     private void ReadScheduled(object? state)
     {
-        if (Volatile.Read(ref _disposed) != 0)
+        int generation;
+        bool enabled, fallback;
+        lock (_scheduleGate)
         {
-            return;
+            if (Volatile.Read(ref _disposed) != 0 || _readRunning || !_pendingRead) return;
+            TimeSpan remaining = RemainingDelayNoLock();
+            if (remaining > TimeSpan.Zero)
+            {
+                _debounceTimer.Change(remaining, Timeout.InfiniteTimeSpan);
+                return;
+            }
+            _pendingRead = false;
+            _readRunning = true;
+            generation = Volatile.Read(ref _generation);
+            enabled = _enabled;
+            fallback = enabled && Interlocked.Exchange(ref _recentTailFallback, 0) == 1;
         }
 
         try
         {
-            // While the panel is closed the timer drives markdown-presence detection instead of
-            // region reads: the MD button's visibility is the thing that needs updating, and
-            // ReadAndPostCore would refuse anyway. This covers the closed-panel ticks that now
-            // carry a remembered Enter row, which the earlier shape routed into that refusal.
-            if (!_enabled)
-            {
-                CheckMarkdownPresence(Volatile.Read(ref _generation));
-                return;
-            }
-
-            ReadAndPostCore(
-                streaming: true,
-                Volatile.Read(ref _generation),
-                fallbackToRecentTail: Interlocked.Exchange(ref _recentTailFallback, 0) == 1);
+            if (!enabled)
+                CheckMarkdownPresence(generation);
+            else
+                ReadAndPostCore(streaming: true, generation, fallbackToRecentTail: fallback);
         }
         catch (Exception ex)
         {
             AppLogger.Log($"[AgentOutputRegionTracker] read tick threw: {ex}");
+        }
+        finally
+        {
+            lock (_scheduleGate)
+            {
+                _readRunning = false;
+                // Invalidations received during the read owe one follow-up, even after a throw.
+                if (_pendingRead && Volatile.Read(ref _disposed) == 0)
+                    _debounceTimer.Change(RemainingDelayNoLock(), Timeout.InfiniteTimeSpan);
+            }
         }
     }
 
@@ -530,12 +600,13 @@ public sealed class AgentOutputRegionTracker : IDisposable
 
         bool looksLikeMarkdown = MarkdownPresenceDetector.LooksLikeMarkdown(text);
         int flag = looksLikeMarkdown ? 1 : 0;
-        if (Interlocked.Exchange(ref _lastPresence, flag) == flag)
+        _dispatch(() =>
         {
-            return;
-        }
-
-        _dispatch(() => _markdownPresenceChanged?.Invoke(looksLikeMarkdown));
+            if (Volatile.Read(ref _disposed) != 0 || Volatile.Read(ref _generation) != generation || _enabled)
+                return;
+            if (Interlocked.Exchange(ref _lastPresence, flag) != flag)
+                _markdownPresenceChanged?.Invoke(looksLikeMarkdown);
+        });
     }
 
     /// <summary>
@@ -553,7 +624,7 @@ public sealed class AgentOutputRegionTracker : IDisposable
     {
         _dispatch(() =>
         {
-            if (Volatile.Read(ref _generation) != generation)
+            if (Volatile.Read(ref _disposed) != 0 || Volatile.Read(ref _generation) != generation)
             {
                 return;
             }
@@ -597,7 +668,11 @@ public sealed class AgentOutputRegionTracker : IDisposable
     /// </remarks>
     private void AdvanceGeneration()
     {
-        Interlocked.Increment(ref _generation);
-        Volatile.Write(ref _dedupeStale, 1);
+        lock (_scheduleGate)
+        {
+            Interlocked.Increment(ref _generation);
+            Volatile.Write(ref _dedupeStale, 1);
+            CancelPendingReadNoLock();
+        }
     }
 }

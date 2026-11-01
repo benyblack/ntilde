@@ -7,7 +7,8 @@ you allow it, drive your terminal sessions over the Model Context Protocol (MCP)
 ## Agent Output panel
 
 Coding agents print a lot of markdown into a terminal, where it shows as raw `##` and backticks. The
-Agent Output panel renders that output beside the pane while it streams.
+Agent Output panel renders that output beside the pane while it streams. It refreshes periodically
+even when output keeps arriving, and shows the final result when the command finishes.
 
 **Opening it.** An **MD** button fades in at the top right of a pane when its recent output looks
 like markdown; click it to open the panel. If you open the panel with nothing tracked yet, it shows
