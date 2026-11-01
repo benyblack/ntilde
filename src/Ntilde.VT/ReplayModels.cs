@@ -137,6 +137,11 @@ namespace Ntilde.VT
         [JsonPropertyName("wrap")]
         public bool[]? RowWraps { get; set; }
 
+        /// <summary>Content columns of soft-wrapped rows; -1 means legacy/full row.</summary>
+        [JsonPropertyName("wrap_cols")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int[]? RowWrapColumns { get; set; }
+
         /// <summary>Underline styles and colors (#270) keyed by <c>row * cols + col</c>; absent when none.</summary>
         [JsonPropertyName("ul_cells")]
         public System.Collections.Generic.Dictionary<int, TerminalUnderlineEntry>? Underlines { get; set; }

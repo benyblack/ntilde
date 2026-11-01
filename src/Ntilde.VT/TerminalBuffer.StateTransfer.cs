@@ -328,6 +328,7 @@ namespace Ntilde.VT
             var cells = new TerminalCell[Math.Max(0, rowCount * cols)];
             Array.Fill(cells, TerminalCell.Default);
             var wraps = new bool[Math.Max(0, rowCount)];
+            int[]? wrapColumns = null;
             Dictionary<int, string>? extendedText = null;
             Dictionary<int, int>? linkIds = null;
             Dictionary<int, int>? underlineIds = null;
@@ -338,6 +339,8 @@ namespace Ntilde.VT
                 int copy = Math.Min(cols, row.Cells.Length);
                 Array.Copy(row.Cells, 0, cells, r * cols, copy);
                 wraps[r] = row.IsWrapped;
+                int? width = row.IsWrapped ? Math.Min(row.WrappedColumns ?? row.Cells.Length, cols) : null;
+                StoreWrappedColumns(ref wrapColumns, rowCount, r, width, cols);
 
                 if (!row.HasRowMetadata)
                 {
@@ -361,10 +364,22 @@ namespace Ntilde.VT
             {
                 CellsBase64 = EncodeCells(cells),
                 RowWraps = wraps,
+                RowWrapColumns = wrapColumns,
                 ExtendedText = extendedText,
                 LinkIds = linkIds,
                 UnderlineIds = underlineIds,
             };
+        }
+
+        private static void StoreWrappedColumns(ref int[]? values, int rows, int row, int? columns, int fullWidth)
+        {
+            if (columns is not int width || width >= fullWidth) return;
+            if (values == null)
+            {
+                values = new int[rows];
+                Array.Fill(values, -1);
+            }
+            values[row] = width;
         }
 
         private void ImportScreenNoLock(
@@ -410,6 +425,10 @@ namespace Ntilde.VT
                 if (state.RowWraps != null && r < state.RowWraps.Length)
                 {
                     row.IsWrapped = state.RowWraps[r];
+                    if (state.RowWrapColumns is { } widths && widths[r] >= 0)
+                        row.WrappedColumns = Math.Min(widths[r], colsToCopy);
+                    else if (row.IsWrapped && sourceCols < row.Cells.Length)
+                        row.WrappedColumns = sourceCols;
                 }
             }
 
@@ -492,6 +511,7 @@ namespace Ntilde.VT
 
             var cells = new TerminalCell[keep * cols];
             var wraps = new bool[keep];
+            int[]? wrapColumns = null;
             Dictionary<int, string>? extendedText = null;
             Dictionary<int, int>? linkIds = null;
             Dictionary<int, int>? underlineIds = null;
@@ -511,6 +531,7 @@ namespace Ntilde.VT
                 }
 
                 wraps[i] = _scrollback.IsRowWrapped(logical);
+                StoreWrappedColumns(ref wrapColumns, keep, i, _scrollback.GetWrappedColumns(logical), cols);
 
                 AppendSideTables(
                     _scrollback.GetExtendedTextMap(logical),
@@ -529,6 +550,7 @@ namespace Ntilde.VT
             {
                 CellsBase64 = EncodeCells(cells),
                 RowWraps = wraps,
+                RowWrapColumns = wrapColumns,
                 ExtendedText = extendedText,
                 LinkIds = linkIds,
                 UnderlineIds = underlineIds,
@@ -599,7 +621,8 @@ namespace Ntilde.VT
                 }
 
                 bool wrapped = state.RowWraps != null && i < state.RowWraps.Length && state.RowWraps[i];
-                _scrollback.AppendRow(buffer, wrapped, extended, hyperlinks, rowUnderlines);
+                int? wrappedColumns = state.RowWrapColumns is { } widths && widths[i] >= 0 ? widths[i] : null;
+                _scrollback.AppendRow(buffer, wrapped, extended, hyperlinks, rowUnderlines, wrappedColumns);
             }
         }
 
@@ -860,7 +883,41 @@ namespace Ntilde.VT
             ValidateCellBlobLength(
                 scrollbackCells, snapshot, snapshot.ScrollbackRowCount, "scrollback cells");
 
+            ValidateWrappedColumns(snapshot.Main, snapshot.Rows, snapshot.Cols, mainCells, "main screen");
+            ValidateWrappedColumns(snapshot.Alt, snapshot.Rows, snapshot.Cols, altCells, "alternate screen");
+            ValidateWrappedColumns(snapshot.Scrollback, snapshot.ScrollbackRowCount, snapshot.Cols, scrollbackCells, "scrollback");
+
             return new ValidatedBufferState(mainCells, altCells, scrollbackCells, lastSyncStart);
+        }
+
+        private static void ValidateWrappedColumns(TerminalScreenState state, int rows, int cols, byte[]? blob, string what)
+        {
+            if (state.RowWrapColumns is not { } widths) return;
+            if (widths.Length != rows)
+                throw StateTransferValidation.Reject(what, "wrap column count does not match row count");
+            ReadOnlySpan<TerminalCell> cells = MemoryMarshal.Cast<byte, TerminalCell>(blob.AsSpan());
+            if ((long)rows * cols > cells.Length)
+                throw StateTransferValidation.Reject(what, "wrap columns require complete cell data");
+            for (int row = 0; row < rows; row++)
+            {
+                int width = widths[row];
+                StateTransferValidation.RequireInRange(width, -1, cols, $"{what} wrap columns");
+                if (width < 0) continue;
+                if (state.RowWraps == null || row >= state.RowWraps.Length || !state.RowWraps[row])
+                    throw StateTransferValidation.Reject(what, "wrap columns require a soft-wrapped row");
+                ValidateWrapTail(state, cells.Slice(row * cols, cols), row * cols, width, what);
+            }
+        }
+
+        private static void ValidateWrapTail(TerminalScreenState state, ReadOnlySpan<TerminalCell> row, int firstCell, int width, string what)
+        {
+            for (int col = width; col < row.Length; col++)
+            {
+                int key = firstCell + col;
+                if (!TerminalRow.IsWrapPaddingCell(row[col]) || state.ExtendedText?.ContainsKey(key) == true
+                    || state.LinkIds?.ContainsKey(key) == true || state.UnderlineIds?.ContainsKey(key) == true)
+                    throw StateTransferValidation.Reject(what, "wrap columns would hide cell content or metadata");
+            }
         }
 
         /// <summary>

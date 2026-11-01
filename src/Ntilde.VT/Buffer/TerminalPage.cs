@@ -36,6 +36,8 @@ namespace Ntilde.VT.Storage
         public bool IsReturned => _returned;
 
         private ulong _isWrappedMask;
+        // Zero means full-row/legacy; otherwise the value is the content column count plus one.
+        private int[]? _wrappedColumns;
 
         // Sparse per-row metadata side-channels. null = no extended text/hyperlinks on any row in this page.
         // Indexed by rowIndex (0..RowsInPage-1). Each element is null if that row has no metadata.
@@ -113,6 +115,7 @@ namespace Ntilde.VT.Storage
             UsedRows = 0;
             _returned = false;
             _isWrappedMask = 0;
+            _wrappedColumns = null;
             _extendedText = null;
             _hyperlinks = null;
             _underlines = null;
@@ -128,6 +131,7 @@ namespace Ntilde.VT.Storage
             if (_returned) return;
             _returned = true;
             _isWrappedMask = 0;
+            _wrappedColumns = null;
             _extendedText = null;
             _hyperlinks = null;
             _underlines = null;
@@ -142,11 +146,28 @@ namespace Ntilde.VT.Storage
             return (_isWrappedMask & (1UL << rowIndex)) != 0;
         }
 
-        public void SetRowWrapped(int rowIndex, bool wrapped)
+        public void SetRowWrapped(int rowIndex, bool wrapped) => SetRowWrapped(rowIndex, wrapped, null);
+
+        internal void SetRowWrapped(int rowIndex, bool wrapped, int? wrappedColumns)
         {
             if ((uint)rowIndex >= (uint)RowsInPage) throw new ArgumentOutOfRangeException(nameof(rowIndex));
+            if (wrappedColumns is < 0 || wrappedColumns > Cols || (wrappedColumns.HasValue && !wrapped))
+                throw new ArgumentOutOfRangeException(nameof(wrappedColumns));
             if (wrapped) _isWrappedMask |= (1UL << rowIndex);
             else _isWrappedMask &= ~(1UL << rowIndex);
+            if (wrappedColumns is int columns && columns < Cols)
+            {
+                _wrappedColumns ??= new int[RowsInPage];
+                _wrappedColumns[rowIndex] = columns + 1;
+            }
+            else if (_wrappedColumns != null) _wrappedColumns[rowIndex] = 0;
+        }
+
+        public int? GetWrappedColumns(int rowIndex)
+        {
+            if ((uint)rowIndex >= (uint)RowsInPage) throw new ArgumentOutOfRangeException(nameof(rowIndex));
+            int encoded = _wrappedColumns?[rowIndex] ?? 0;
+            return encoded == 0 ? null : encoded - 1;
         }
 
         // ── Extended Text Metadata ───────────────────────────────────────────────

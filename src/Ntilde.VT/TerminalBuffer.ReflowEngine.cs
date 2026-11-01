@@ -292,7 +292,7 @@ namespace Ntilde.VT
                     {
                         if (isHistory)
                         {
-                            newScrollback.AppendRow(row.Cells, row.IsWrapped, row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap());
+                            newScrollback.AppendRow(row.Cells, row.IsWrapped, row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap(), row.WrappedColumns);
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
                             row.ClearUnderlines();
@@ -428,6 +428,7 @@ namespace Ntilde.VT
                                 for (int c = take; c < newCols; c++) row.Cells[c] = def;
 
                                 row.IsWrapped = remaining > newCols;
+                                row.WrappedColumns = row.IsWrapped ? take : null;
                                 EmitRow(row, isHistory);
                                 processed += take;
                             }
@@ -459,6 +460,7 @@ namespace Ntilde.VT
                             int storeRow = i - oldRowsReleased;
                             _scrollback.GetRow(storeRow).CopyTo(scrollbackRow.Cells);
                             scrollbackRow.IsWrapped = _scrollback.IsRowWrapped(storeRow);
+                            scrollbackRow.WrappedColumns = _scrollback.GetWrappedColumns(storeRow);
                             scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(storeRow), _scrollback.GetHyperlinkMap(storeRow), _scrollback.GetUnderlineMap(storeRow));
                             physRow = scrollbackRow;
                         }
@@ -508,7 +510,7 @@ namespace Ntilde.VT
                             outputStartInLogicalOffset = lineLen + os.Column;
                         }
 
-                        int validLen = physRow.Cells.Length;
+                        int validLen = physRow.WrappedColumns ?? physRow.Cells.Length;
 
                         // HEURISTIC: TUI Border Protection
                         // If a line is marked as Wrapped, but it ends with a box-drawing character OR a colored background,
@@ -824,7 +826,7 @@ namespace Ntilde.VT
                             activeRows[i].IsWrapped,
                             activeRows[i].GetExtendedTextMap(),
                             activeRows[i].GetHyperlinkMap(),
-                            activeRows[i].GetUnderlineMap());
+                            activeRows[i].GetUnderlineMap(), activeRows[i].WrappedColumns);
                     }
 
                     int discardedRows = (int)newScrollback.TotalRowsEvicted;

@@ -40,8 +40,8 @@ public sealed class GraphemeSearchTests
             buffer.Resize(20, 2);
             match = Assert.Single(buffer.FindMatches(query, regex, caseSensitive: true));
             Assert.Equal(0, match.AbsRow);
-            // Existing reflow retains the wide-glyph pre-wrap padding when widened again.
-            int widenedColumn = width == 2 ? 4 : 3;
+            // Reflow must not turn unused wide-character wrap padding into logical spaces.
+            int widenedColumn = 3;
             Assert.Equal(widenedColumn, match.StartCol);
             Assert.Equal(widenedColumn + width - 1, match.EndCol);
         }

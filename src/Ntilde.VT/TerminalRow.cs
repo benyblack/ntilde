@@ -10,7 +10,63 @@ namespace Ntilde.VT
         public TerminalCell[] Cells;
         // If true, this line ends because it wrapped automatically.
         // If false, it ends because of an explicit newline (or end of buffer).
-        public bool IsWrapped { get; set; }
+        private bool _isWrapped;
+        private int? _wrappedColumns;
+        public bool IsWrapped
+        {
+            get => _isWrapped;
+            set { _isWrapped = value; _wrappedColumns = null; }
+        }
+
+        /// <summary>
+        /// Content columns before a soft wrap, excluding unused wide-character padding.
+        /// Null retains the legacy full-row interpretation. Actual spaces remain content.
+        /// </summary>
+        public int? WrappedColumns
+        {
+            get => _wrappedColumns is int columns && columns < Cells.Length && CanExcludeWrapTail(columns) ? columns : null;
+            internal set
+            {
+                if (value is < 0 || value > Cells.Length)
+                    throw new System.ArgumentOutOfRangeException(nameof(value));
+                if (value.HasValue && !_isWrapped)
+                    throw new System.InvalidOperationException("Wrap columns require a soft-wrapped row.");
+                if (value is int columns && columns < Cells.Length && !CanExcludeWrapTail(columns))
+                    throw new System.InvalidOperationException("Wrapped columns would hide existing cell content.");
+                _wrappedColumns = value == Cells.Length ? null : value;
+            }
+        }
+
+        internal void SetSoftWrap(int columns)
+        {
+            IsWrapped = true;
+            if (columns < 0 || columns > Cells.Length)
+                throw new System.ArgumentOutOfRangeException(nameof(columns));
+            if (columns < Cells.Length && CanExcludeWrapTail(columns)) _wrappedColumns = columns;
+        }
+
+        internal static bool IsWrapPaddingCell(TerminalCell cell)
+        {
+            const ushort allowed = (ushort)(TerminalCellFlags.DefaultForeground | TerminalCellFlags.DefaultBackground | TerminalCellFlags.Dirty);
+            return cell.Character is ' ' or '\0' && cell.IsDefaultBackground && (cell.Flags & ~allowed) == 0;
+        }
+
+        private bool CanExcludeWrapTail(int columns)
+        {
+            for (int col = columns; col < Cells.Length; col++)
+                if (!IsWrapPaddingCell(Cells[col]) || GetExtendedText(col) != null || GetHyperlink(col) != null || GetUnderline(col) != null)
+                    return false;
+            return true;
+        }
+
+        internal bool HasWrapPadding => _wrappedColumns.HasValue;
+
+        internal void NoteColumnsWritten(int endExclusive)
+        {
+            if (_wrappedColumns is int width && endExclusive > width)
+                _wrappedColumns = endExclusive < Cells.Length ? endExclusive : null;
+        }
+
         public uint Revision { get; set; }
         public void TouchRevision() => Revision++;
 
@@ -41,6 +97,7 @@ namespace Ntilde.VT
             }
             _extendedText ??= new Storage.SmallMap<string>();
             _extendedText.Set(col, text);
+            NoteColumnsWritten(col + 1);
         }
 
         public void ClearExtendedText()
@@ -65,6 +122,7 @@ namespace Ntilde.VT
 
             _hyperlinks ??= new Storage.SmallMap<Links.Hyperlink>();
             _hyperlinks.Set(col, link);
+            NoteColumnsWritten(col + 1);
         }
 
         public void ClearHyperlinks()
@@ -89,6 +147,7 @@ namespace Ntilde.VT
 
             _underlines ??= new Storage.SmallMap<CellUnderline>();
             _underlines.Set(col, underline);
+            NoteColumnsWritten(col + 1);
         }
 
         public void ClearUnderlines()

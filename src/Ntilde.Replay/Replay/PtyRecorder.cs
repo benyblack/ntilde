@@ -257,6 +257,15 @@ namespace Ntilde.Replay
                     {
                         var row = rows[r];
                         snapshot.RowWraps[r] = row.IsWrapped;
+                        if (row.WrappedColumns is int width)
+                        {
+                            if (snapshot.RowWrapColumns == null)
+                            {
+                                snapshot.RowWrapColumns = new int[rowCount];
+                                Array.Fill(snapshot.RowWrapColumns, -1);
+                            }
+                            snapshot.RowWrapColumns[r] = width;
+                        }
 
                         // Copy cells
                         Array.Copy(row.Cells, 0, allCells, r * cols, cols);

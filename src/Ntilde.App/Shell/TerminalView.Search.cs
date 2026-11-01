@@ -67,6 +67,17 @@ namespace Ntilde.Shell
             int viewTop = totalLines - viewportRows - _scrollOffset;
             int viewBottom = totalLines - _scrollOffset;
 
+            int matchRows = match.LastAbsRow - match.AbsRow + 1;
+            if (match.SpanCount > 1 && matchRows <= viewportRows)
+            {
+                if (match.AbsRow < viewTop || match.LastAbsRow >= viewBottom)
+                {
+                    int top = Math.Clamp(match.AbsRow - (viewportRows - matchRows) / 2, 0, totalLines - viewportRows);
+                    ScrollOffset = totalLines - viewportRows - top;
+                }
+                return;
+            }
+
             if (match.AbsRow < viewTop || match.AbsRow >= viewBottom)
             {
                 // Put match in the middle if possible
