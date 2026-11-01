@@ -461,7 +461,7 @@ namespace Ntilde.VT
 
                         foreach (var (image, offsetInLine) in lineAnchors)
                         {
-                            var position = MapReflowImageOffset(targetRowOffsets!, offsetInLine, newCols);
+                            var position = MapReflowImageOffset(targetRowOffsets, offsetInLine, newCols);
                             imagePlacements.Add((image, startFlowIndex + position.Row, position.Column));
                         }
                     }
