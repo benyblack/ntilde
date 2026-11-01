@@ -596,6 +596,10 @@ invariant changes.
   Platform might one day pick up.
 - No secret material. A bundle carries connection profiles with their `RememberPasswordInVault`
   flag but never password/key material (issue #100) — `BackupService` never reads secret storage.
+  Every bundle path removes legacy profile Password fields from archived settings, including
+  duplicate/escaped/case-variant keys. Source and recovery files remain untouched. Unsafe JSON
+  or profile shapes fail closed; a required pre-import/restore snapshot then refuses the mutation.
+  Snapshot dedupe hashes the sanitized settings bytes, never preserved legacy credentials.
 - `BackupCommand` (the `backup` CLI verb) is the one caller-facing piece that stays behind in
   `Ntilde.App/Shell/Backup/`: it is the only consumer that needs `AppPaths`, and the CLI
   already lives in App (see the Task 7 dispatch guard on `Ntilde.App`, below). Moving it here

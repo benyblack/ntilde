@@ -78,7 +78,14 @@ public static class BundleWriter
     {
         var entry = zip.CreateEntry(bundlePath, CompressionLevel.Optimal);
         using var entryStream = entry.Open();
-        using var fileStream = File.OpenRead(sourceFile);
-        fileStream.CopyTo(entryStream);
+        if (bundlePath == SettingsBackupContent.BundlePath)
+        {
+            entryStream.Write(SettingsBackupContent.Read(sourceFile));
+        }
+        else
+        {
+            using var fileStream = File.OpenRead(sourceFile);
+            fileStream.CopyTo(entryStream);
+        }
     }
 }

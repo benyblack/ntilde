@@ -94,6 +94,11 @@ an uncached, read-only snapshot. That path cannot migrate, retire, repair, compa
 and cannot authorize a later mutation. See `JsonlHistoryProcessTests` and `JsonlHistoryReadOnlyTests`
 for controlled two-process, restart and read-only access coverage.
 
+Backup's common bundle writer removes legacy profile Password fields from settings without
+changing live/recovery files or accessing credential storage. Duplicate, escaped and case-variant
+keys are covered. Unsafe settings JSON/shapes fail closed, including mandatory pre-import/restore
+snapshots; snapshot dedupe uses sanitized bytes so its ids do not fingerprint those credentials.
+
 ### Hard Rule
 
 > **No OS-specific logic in `Ntilde.VT`.** VT is the leaf — no Avalonia, no Skia, no native interop, no I/O. Enforced by `LayeringTests.Vt_must_be_a_leaf_assembly`.
