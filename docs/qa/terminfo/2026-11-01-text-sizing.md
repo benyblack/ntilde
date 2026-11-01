@@ -9,7 +9,7 @@ separate domain and shared-renderer pixel evidence below.
 | Build | Source commit | Owned collection | Measured at (UTC) |
 |---|---|---|---|
 | Before | `52ed24cd4bb2eb8d69d747c6ba6ee063d372709e` | `owned-KlBHUy` | 12:31:08.706 |
-| After | `8efc79850642c11ae6e63cc3f220e1184e9d1967` | `owned-ifD7hp` | 14:42:57.153 |
+| After | `039555898794b9bdb645b53272f30150584c3a28` | `owned-uHfQB0` | 14:51:41.225 |
 
 Both builds are fresh uninstalled sidecars outside `.app` bundles. Their DLL
 informational versions contain the full source commit. The selected assembly
@@ -23,7 +23,7 @@ source and ownership/cleanup proof. No personal clipboard was read.
 Both runs use the same pinned collector revision, suite/probe hash, adapter,
 manifest/lock, runner sources and Node v24.22.1. Raw SHA-256 values were recomputed;
 both ownership proofs record completion and cleanup. The after cleanup completed
-at 14:42:57.180 UTC.
+at 14:51:41.255 UTC.
 
 ## Observed behavior
 
@@ -59,8 +59,8 @@ also failed with double shrinking and passes with font scaling applied once.
 Eleven shared-renderer pixel tests cover enlarged ink across rows, fractional
 font sizing/alignment, two small glyphs in one cell, compressed long text,
 visible lower fragments whose anchor is in history, cached-row refresh, italic baseline anchoring, and plain/styled underline policy.
-The full VT suite passes 1,410 tests. The earlier complete App gating rerun passed
-7,542 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
+The full VT suite passes 1,420 tests. The earlier complete App gating rerun passed
+7,545 tests (56 platform/environment skips), and the MCP suite passes 223. Separate App replay (30), render-metrics
 (40), shared golden PNG (8), mux (1,123 with 20 platform skips), architecture
 (178), and platform-boot (75 with 4 font-platform skips) checks pass locally.
 The [VT matrix](../../vt_coverage_matrix.md) records implementation scope.
@@ -92,6 +92,11 @@ walk, including anchors evicted from history. Two mixed-height round trips faile
 before the fix and now preserve both fragments. Lower-row URL extraction maps to
 the same payload and physical width; three real view cases failed before the fix.
 All 77 focused App sizing, link and replay tests pass after these changes.
+
+The next Codex review found invalid main-history blocks surviving an alternate-
+screen height resize. Main-history cleanup now retires the whole rectangle in
+its own plane. Two height cases failed before the fix; eight invalid resize cases
+across both active screens and two retained-fit controls now pass.
 
 ## Limits
 
