@@ -58,6 +58,13 @@ def main():
         check(proc.returncode == 0 and "3 results" in proc.stdout,
               "a broken or missing trx is skipped, never fatal")
 
+        bare = Path(tmp) / "bare.trx"
+        bare.write_text(TRX.replace(' xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"', ""),
+                        encoding="utf-8")
+        proc = subprocess.run([sys.executable, str(SCRIPT), str(bare)], capture_output=True, text=True)
+        check(proc.returncode == 0 and "3 results" in proc.stdout,
+              "elements are matched by local name, with or without the trx namespace")
+
         proc = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True)
         check(proc.returncode == 2, "no arguments is a usage error")
 

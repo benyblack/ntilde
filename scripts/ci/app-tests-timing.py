@@ -17,7 +17,6 @@ import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-NS = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
 TOP = 15
 
 
@@ -37,12 +36,14 @@ def namespace_of(class_name: str, depth: int) -> str:
 def read(path: str, per_class: dict, per_ns: dict) -> int:
     root = ET.parse(path).getroot()
     classes = {}
-    for test in root.iterfind(".//t:TestDefinitions/t:UnitTest", NS):
-        method = test.find("t:TestMethod", NS)
+    # `{*}` matches any XML namespace: trx files declare the TeamTest 2010 one, and matching by
+    # local name keeps working if a logger version changes or drops it.
+    for test in root.iterfind(".//{*}TestDefinitions/{*}UnitTest"):
+        method = test.find("{*}TestMethod")
         if method is not None:
             classes[test.get("id")] = method.get("className", "")
     count = 0
-    for result in root.iterfind(".//t:Results/t:UnitTestResult", NS):
+    for result in root.iterfind(".//{*}Results/{*}UnitTestResult"):
         cls = classes.get(result.get("testId"), "")
         took = seconds(result.get("duration", "0:0:0"))
         per_class[cls] += took
