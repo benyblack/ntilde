@@ -14,7 +14,13 @@ public sealed class MuxServerOptions
     public string? AppVersion { get; init; }
 
     /// <summary>Server-side cap on an attach's <c>maxScrollbackRows</c> (spec §7).</summary>
-    public int MaxAttachScrollbackRows { get; init; } = 20_000;
+    public int MaxAttachScrollbackRows { get; init; } = MuxHistoryLimits.DefaultMaxAttachRows;
+
+    /// <summary>Ceiling on each session's retained-row high-water policy; separate from attach transfer.</summary>
+    public int MaxSessionHistoryRows { get; init; } = MuxHistoryLimits.DefaultMaxRows;
+
+    /// <summary>Retained scrollback cell-byte ceiling, also enforced during resize/reflow. Excludes viewport/metadata.</summary>
+    public long MaxSessionScrollbackBytes { get; init; } = MuxHistoryLimits.DefaultMaxBytes;
 
     /// <summary>
     /// Stream bytes (Output, ResizeEvent, responses, notifications) queued-but-unwritten per client

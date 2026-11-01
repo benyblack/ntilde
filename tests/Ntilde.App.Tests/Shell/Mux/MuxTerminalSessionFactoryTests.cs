@@ -28,6 +28,19 @@ public sealed class MuxTerminalSessionFactoryTests
         return await MuxTestHost.AttachPaneAsync(c, id);
     }).GetAwaiter().GetResult();
 
+    [Fact]
+    public void LocalSpawnCarriesRetentionBeforeAnyAttach()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            var session = Assert.IsType<MuxClientSession>(factory.CreatePersistent(Local() with { MaxHistory = 42_000 }).Session);
+            Assert.False(session.IsAttached);
+            Assert.Equal(42_000, mux.Mux(session.Id).HistoryRetentionRows);
+            Assert.Equal(42_000, mux.Factory.Requests.Last().MaxHistory);
+        }
+    }
+
     [Theory]
     [InlineData(3)]
     [InlineData(0)]

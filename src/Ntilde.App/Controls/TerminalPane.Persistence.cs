@@ -622,7 +622,8 @@ namespace Ntilde.Controls
         private async Task AttachMuxAsync(MuxClientSession mux, bool previousLost)
         {
             MuxPresentation presentation = BuildMuxPresentation(); // UI thread, before the first await
-            int scrollback = Math.Clamp(_settings?.MaxHistory ?? 10_000, 0, 50_000);
+            int restoreLimit = Math.Min(50_000, mux.HistoryLimits?.MaxAttachRows ?? 50_000);
+            int scrollback = Math.Clamp(_settings?.MaxHistory ?? 10_000, 0, restoreLimit);
             bool remote = FollowsRemoteSession;
             try
             {
@@ -630,6 +631,8 @@ namespace Ntilde.Controls
                 this.Dispatcher.Post(() =>
                 {
                     if (!IsCurrentMux(mux)) return;
+                    // Settings may have changed while the attach request was in flight.
+                    mux.UpdatePresentation(BuildMuxPresentation());
                     _muxReattachAfterDrop = false; // the drop (if any) is over: this session is shown again
                     if (remote) RegisterRemoteMuxSession(mux);
                     if (previousLost)
@@ -715,6 +718,7 @@ namespace Ntilde.Controls
             {
                 Cols = cols,
                 Rows = rows,
+                MaxHistory = Math.Max(0, _settings?.MaxHistory ?? MuxHistoryLimits.DefaultRows),
                 CellWidthPx = (float)(TermView.Metrics.CellWidth * scale),
                 CellHeightPx = (float)(TermView.Metrics.CellHeight * scale),
                 SupportsSixelScrolling = true,

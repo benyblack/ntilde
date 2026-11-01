@@ -17,6 +17,7 @@ namespace Ntilde.Mux.Contracts;
 [JsonSerializable(typeof(MuxEmpty))]
 [JsonSerializable(typeof(HelloParams))]
 [JsonSerializable(typeof(WelcomeResult))]
+[JsonSerializable(typeof(MuxHistoryLimits))]
 [JsonSerializable(typeof(MuxPresentation))]
 [JsonSerializable(typeof(SpawnParams))]
 [JsonSerializable(typeof(SpawnResult))]

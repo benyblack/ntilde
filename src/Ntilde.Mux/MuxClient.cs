@@ -102,6 +102,9 @@ public sealed class MuxClient : IDisposable
     /// <summary>From Welcome: the daemon's build version; null for a server that reports none.</summary>
     public string? ServerVersion { get; private set; }
 
+    /// <summary>Null for an older daemon which does not accept a client retention policy.</summary>
+    public MuxHistoryLimits? HistoryLimits { get; private set; }
+
     public bool IsConnected => Volatile.Read(ref _disconnected) == 0;
     public string? DisconnectReason => Volatile.Read(ref _disconnectReason);
     public event Action<string?>? Disconnected;
@@ -145,6 +148,9 @@ public sealed class MuxClient : IDisposable
 
             client.ProtocolVersion = welcome.Version;
             client.ForceConPtyFiltering = welcome.ForceConPtyFiltering;
+            if (welcome.HistoryLimits is { } limits && (limits.MaxRows < 0 || limits.MaxBytes <= 0 || limits.MaxAttachRows < 0))
+                throw new MuxProtocolException(MuxErrorCodes.ProtocolError, "Invalid history limits in Welcome.");
+            client.HistoryLimits = welcome.HistoryLimits;
             client.ServerVersion = welcome.ServerVersion;
             return client;
         }

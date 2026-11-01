@@ -14,6 +14,9 @@ public sealed class MuxServerOptionsValidationTests
         "snapshot-over-frame" => new MuxServerOptions { MaxSnapshotBytes = MuxProtocol.MaxFrameBytes - MuxFrames.SnapshotHeaderBytes + 1 },
         "inbound-zero" => new MuxServerOptions { MaxInboundFrameBytes = 0 },
         "inbound-over-frame" => new MuxServerOptions { MaxInboundFrameBytes = MuxProtocol.MaxFrameBytes + 1 },
+        "retention-negative" => new MuxServerOptions { MaxSessionHistoryRows = -1 },
+        "retention-bytes-zero" => new MuxServerOptions { MaxSessionScrollbackBytes = 0 },
+        "retention-bytes-negative" => new MuxServerOptions { MaxSessionScrollbackBytes = -1 },
         "scrollback-negative" => new MuxServerOptions { MaxAttachScrollbackRows = -1 },
         "cells-zero" => new MuxServerOptions { MaxCells = 0 },
         "dimension-zero" => new MuxServerOptions { MaxDimension = 0 },
@@ -36,6 +39,9 @@ public sealed class MuxServerOptionsValidationTests
     [InlineData("inbound-zero")]
     [InlineData("inbound-over-frame")]
     [InlineData("scrollback-negative")]
+    [InlineData("retention-negative")]
+    [InlineData("retention-bytes-zero")]
+    [InlineData("retention-bytes-negative")]
     [InlineData("cells-zero")]
     [InlineData("dimension-zero")]
     [InlineData("input-queue-zero")]
@@ -60,6 +66,8 @@ public sealed class MuxServerOptionsValidationTests
             MaxSnapshotBytes = MuxProtocol.MaxFrameBytes - MuxFrames.SnapshotHeaderBytes,
             MaxInboundFrameBytes = MuxProtocol.MaxFrameBytes,
             MaxAttachScrollbackRows = 0,
+            MaxSessionHistoryRows = 0,
+            MaxSessionScrollbackBytes = 1,
             MaxCells = 1,
             MaxDimension = 1,
         };

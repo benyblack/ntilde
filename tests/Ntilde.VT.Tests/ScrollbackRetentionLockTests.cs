@@ -14,23 +14,25 @@ public class ScrollbackRetentionLockTests
         return buffer;
     }
 
-    private static void SetLimit(TerminalBuffer buffer, bool historyLimit)
+    private static void SetLimit(TerminalBuffer buffer, bool historyLimit, bool byteCeiling)
     {
-        if (historyLimit) buffer.MaxHistory = 1;
+        if (byteCeiling) buffer.MaxScrollbackBytesLimit = 1;
+        else if (historyLimit) buffer.MaxHistory = 1;
         else buffer.MaxScrollbackBytes = 1;
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void RetentionMutation_WaitsForAnExistingReader(bool historyLimit)
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public void RetentionMutation_WaitsForAnExistingReader(bool historyLimit, bool byteCeiling)
     {
         var buffer = FilledBuffer();
         using var completed = new ManualResetEventSlim();
         Exception? error = null;
         var writer = new Thread(() =>
         {
-            try { SetLimit(buffer, historyLimit); }
+            try { SetLimit(buffer, historyLimit, byteCeiling); }
             catch (Exception ex) { error = ex; }
             finally { completed.Set(); }
         })
@@ -42,6 +44,7 @@ public class ScrollbackRetentionLockTests
             int beforeCount = buffer.Scrollback.Count;
             int beforeHistory = buffer.MaxHistory;
             long beforeBudget = buffer.MaxScrollbackBytes;
+            long beforeCeiling = buffer.MaxScrollbackBytesLimit;
             var row = buffer.Scrollback.GetRow(0);
             char beforeCell = row[0].Character;
             writer.Start();
@@ -51,6 +54,7 @@ public class ScrollbackRetentionLockTests
             Assert.False(completed.IsSet, "Retention changed while another thread held a read lock.");
             Assert.Equal(beforeHistory, buffer.MaxHistory);
             Assert.Equal(beforeBudget, buffer.MaxScrollbackBytes);
+            Assert.Equal(beforeCeiling, buffer.MaxScrollbackBytesLimit);
             Assert.Equal(beforeCount, buffer.Scrollback.Count);
             Assert.Equal(beforeCell, row[0].Character);
         }
@@ -64,27 +68,29 @@ public class ScrollbackRetentionLockTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void RetentionMutation_ReusesTheCallersWriteLock(bool historyLimit)
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public void RetentionMutation_ReusesTheCallersWriteLock(bool historyLimit, bool byteCeiling)
     {
         var buffer = FilledBuffer();
         buffer.Lock.EnterWriteLock();
         try
         {
-            SetLimit(buffer, historyLimit);
+            SetLimit(buffer, historyLimit, byteCeiling);
             Assert.True(buffer.Lock.IsWriteLockHeld);
             Assert.Equal(0, buffer.Scrollback.Count);
-            SetLimit(buffer, historyLimit);
+            SetLimit(buffer, historyLimit, byteCeiling);
             Assert.True(buffer.Lock.IsWriteLockHeld);
         }
         finally { buffer.Lock.ExitWriteLock(); }
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void RetentionMutation_FromAReadLockThrowsBeforeChangingAnyState(bool historyLimit)
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public void RetentionMutation_FromAReadLockThrowsBeforeChangingAnyState(bool historyLimit, bool byteCeiling)
     {
         var buffer = FilledBuffer();
         buffer.Lock.EnterReadLock();
@@ -93,11 +99,13 @@ public class ScrollbackRetentionLockTests
             int beforeCount = buffer.Scrollback.Count;
             int beforeHistory = buffer.MaxHistory;
             long beforeBudget = buffer.MaxScrollbackBytes;
-            Assert.Throws<LockRecursionException>(() => SetLimit(buffer, historyLimit));
+            long beforeCeiling = buffer.MaxScrollbackBytesLimit;
+            Assert.Throws<LockRecursionException>(() => SetLimit(buffer, historyLimit, byteCeiling));
             Assert.True(buffer.Lock.IsReadLockHeld);
             Assert.Equal(beforeCount, buffer.Scrollback.Count);
             Assert.Equal(beforeHistory, buffer.MaxHistory);
             Assert.Equal(beforeBudget, buffer.MaxScrollbackBytes);
+            Assert.Equal(beforeCeiling, buffer.MaxScrollbackBytesLimit);
         }
         finally { buffer.Lock.ExitReadLock(); }
     }

@@ -555,6 +555,7 @@ namespace Ntilde.Controls
                         : null)
                 {
                     KittyKeyboardSupportedFlags = (_settings?.EnableKittyKeyboardProtocol ?? true) ? KittyKeyboardState.SupportedFlags : 0,
+                    MaxHistory = initialColors.MaxHistory,
                     CellWidthPx = initialCellSize.Width,
                     CellHeightPx = initialCellSize.Height,
                     DefaultBg = initialColors.DefaultBg,

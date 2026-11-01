@@ -27,6 +27,9 @@ namespace Ntilde.Mux;
 /// </remarks>
 public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabilities
 {
+    /// <summary>Daemon retention/attach limits; absent on legacy peers.</summary>
+    public MuxHistoryLimits? HistoryLimits => _client.HistoryLimits;
+
     private const int MaxIncompleteUtf8Bytes = 3;
     private static readonly long SessionInfoMaxAgeMs = 1000;
 

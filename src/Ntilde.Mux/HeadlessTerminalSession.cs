@@ -54,6 +54,8 @@ public sealed class HeadlessTerminalSession : IDisposable
     // Parse thread only: what each interactive subscriber last presented as KittyKeyboardEnabled. The
     // parser's enable flag is the AND, and its supported flags the intersection, over these (Phase 4 spec §4 item 5); see RecomputeKitty.
     private readonly Dictionary<IMuxFrameSink, MuxPresentation> _kittyBySink = new();
+    private readonly int _maxHistoryLimit;
+    private int _historyRetentionRows;
     private readonly HashSet<IMuxFrameSink> _keyboardCapabilitySinks = new(); // opt-in includes read-only observers
     private bool _keyboardCapabilitiesPending;
     private readonly HashSet<IMuxFrameSink> _sixelLayoutSinks = new();
@@ -111,6 +113,8 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly object _pendingResizeGate = new();
     private (int Cols, int Rows)? _pendingResize;
     private MuxPresentation? _pendingPresentation;
+    private int? _pendingHistory;
+    private Dictionary<IMuxFrameSink, int>? _pendingHistoryBySink;
     private Dictionary<IMuxFrameSink, MuxPresentation>? _pendingKitty; // each sender's newest Kitty presentation in the pending burst
     private bool _resizeQueued;
 
@@ -135,7 +139,15 @@ public sealed class HeadlessTerminalSession : IDisposable
         _cols = options.Cols;
         _rows = options.Rows;
         _maxQueuedInputBytes = options.MaxQueuedInputBytes;
-        _buffer = new TerminalBuffer(options.Cols, options.Rows);
+        if (options.MaxHistory < 0 || options.MaxHistoryLimit < 0 || options.MaxScrollbackBytes <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options), "Retention rows must be nonnegative and the cell-byte ceiling positive.");
+        _maxHistoryLimit = options.MaxHistoryLimit;
+        _historyRetentionRows = Math.Min(options.MaxHistory, _maxHistoryLimit);
+        _buffer = new TerminalBuffer(options.Cols, options.Rows)
+        {
+            MaxScrollbackBytesLimit = options.MaxScrollbackBytes,
+            MaxHistory = _historyRetentionRows,
+        };
         _buffer.Modes.KittyKeyboard.SetSupportedFlags(options.KittyKeyboardSupportedFlags ?? KittyKeyboardState.FlagDisambiguateEscapeCodes);
         float cellWidth = InitialCellMetric(options.CellWidthPx, 10);
         float cellHeight = InitialCellMetric(options.CellHeightPx, 20);
@@ -391,6 +403,15 @@ public sealed class HeadlessTerminalSession : IDisposable
             if (presentation is not null)
             {
                 _pendingPresentation = presentation;
+                if (presentation.MaxHistory is int history && history >= 0)
+                {
+                    if (from is null) _pendingHistory = Math.Max(_pendingHistory ?? 0, history);
+                    else
+                    {
+                        _pendingHistoryBySink ??= new();
+                        _pendingHistoryBySink[from] = Math.Max(_pendingHistoryBySink.GetValueOrDefault(from), history);
+                    }
+                }
                 if (from is not null) (_pendingKitty ??= new())[from] = presentation;
             }
 
@@ -405,18 +426,28 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         (int Cols, int Rows)? size;
         MuxPresentation? presentation;
+        int? history;
+        Dictionary<IMuxFrameSink, int>? historyBySink;
         Dictionary<IMuxFrameSink, MuxPresentation>? kitty;
         lock (_pendingResizeGate)
         {
             size = _pendingResize;
             presentation = _pendingPresentation;
+            history = _pendingHistory;
+            historyBySink = _pendingHistoryBySink;
             kitty = _pendingKitty;
             _pendingResize = null;
             _pendingPresentation = null;
+            _pendingHistory = null;
+            _pendingHistoryBySink = null;
             _pendingKitty = null;
             _resizeQueued = false;
         }
 
+        ApplyHistoryRetention(history);
+        if (historyBySink is not null)
+            foreach (var (sink, requested) in historyBySink)
+                if (_subscribers.Contains(sink) && !_readOnlySinks.Contains(sink)) ApplyHistoryRetention(requested);
         if (presentation is not null) ApplyPresentation(presentation);
         if (kitty is not null)
         {
@@ -950,6 +981,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         {
             try
             {
+                ApplyHistoryRetention(presentation.MaxHistory);
                 ApplyPresentation(presentation);
                 ApplyResize(presentation.Cols, presentation.Rows);
             }
@@ -1181,6 +1213,18 @@ public sealed class HeadlessTerminalSession : IDisposable
         // not abandon the item that called it halfway through its bookkeeping.
         try { sink.OnSubscriptionState(Id, subscribed, readOnly); }
         catch (Exception ex) { Log($"[Mux] session {Id}: reporting a subscription failed: {ex.Message}"); }
+    }
+
+    /// <summary>Chosen row high-water limit; page granularity and the cell-byte ceiling can retain fewer rows.</summary>
+    public int HistoryRetentionRows => Volatile.Read(ref _historyRetentionRows);
+
+    private void ApplyHistoryRetention(int? requested)
+    {
+        if (requested is not int rows || rows < 0) return;
+        int bounded = Math.Min(rows, _maxHistoryLimit);
+        if (bounded <= _historyRetentionRows) return;
+        _buffer.MaxHistory = bounded;
+        Volatile.Write(ref _historyRetentionRows, bounded);
     }
 
     private static float InitialCellMetric(float? value, float fallback) =>

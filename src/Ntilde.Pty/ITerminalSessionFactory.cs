@@ -69,6 +69,9 @@ namespace Ntilde.Pty
         /// </summary>
         public int? KittyKeyboardSupportedFlags { get; init; }
 
+        /// <summary>Requested persistent-session retained rows; opaque to ordinary process/stream backends.</summary>
+        public int? MaxHistory { get; init; }
+
         /// <summary>Initial effective background ARGB for persistent query replies; opaque to the process layer.</summary>
         public uint? DefaultBg { get; init; }
         public uint? DefaultFg { get; init; }
