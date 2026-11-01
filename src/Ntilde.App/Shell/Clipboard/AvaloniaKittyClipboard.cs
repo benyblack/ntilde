@@ -46,7 +46,8 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
             _data = data;
             _formats = (data?.Formats ?? []).Select(format => (Mime: ToMime(format), Format: format))
                 .Where(pair => pair.Mime != null).GroupBy(pair => pair.Mime ?? "", StringComparer.Ordinal)
-                .ToDictionary(group => group.Key, group => group.Select(pair => pair.Format).ToArray(), StringComparer.Ordinal);
+                .ToDictionary(group => group.Key, group => group.Select(pair => pair.Format)
+                    .OrderBy(format => format == DataFormat.Bitmap ? 1 : 0).ToArray(), StringComparer.Ordinal);
             Types = _formats.Keys.ToArray();
         }
 
@@ -58,6 +59,9 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
                 foreach (var item in _data.Items)
                 {
                     object? value = await item.TryGetRawAsync(format);
+                    if (OperatingSystem.IsWindows() && format.Kind == DataFormatKind.Platform &&
+                        format.Identifier.Equals(WindowsClipboardFormats.Html, StringComparison.OrdinalIgnoreCase) && value is byte[] html)
+                        return WindowsClipboardFormats.DecodeHtml(html, maxBytes);
                     byte[]? bytes = ToBytes(value, maxBytes);
                     if (bytes != null) return bytes;
                 }
@@ -103,14 +107,21 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
     {
         if (data.Count == 0) { await _clear(); return; }
         var transfer = new DataTransfer();
-        var item = new DataTransferItem();
-        foreach (var (mime, bytes) in data)
+        try
         {
-            item.Set(DataFormat.CreateBytesPlatformFormat(ClipboardMimeNames.ToPlatform(mime)), bytes);
-            if (mime == "text/plain") item.SetText(Encoding.UTF8.GetString(bytes));
+            var item = new DataTransferItem();
+            long nativeBytes = 0;
+            foreach (var (mime, bytes) in data)
+            {
+                byte[] encoded = OperatingSystem.IsWindows() && mime == "text/html" ? WindowsClipboardFormats.EncodeHtml(bytes) : bytes;
+                nativeBytes += encoded.Length;
+                if (nativeBytes > 2L * Ntilde.VT.KittyClipboardPacket.MaxDataBytes) throw new IOException("Native clipboard data exceeds the expansion budget.");
+                item.Set(DataFormat.CreateBytesPlatformFormat(ClipboardMimeNames.ToPlatform(mime)), encoded);
+                if (mime == "text/plain") item.SetText(Encoding.UTF8.GetString(bytes));
+            }
+            transfer.Add(item);
+            await _write(transfer);
         }
-        transfer.Add(item);
-        try { await _write(transfer); }
         catch { ((IDisposable)transfer).Dispose(); throw; } // ownership passes to Avalonia only on success
     }
 

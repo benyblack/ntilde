@@ -1,0 +1,68 @@
+name: Native clipboard qualification
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/clipboard-native.yml'
+      - 'scripts/clipboard-native/**'
+      - 'tests/Ntilde.Clipboard.NativeHost/**'
+      - 'src/Ntilde.App/Shell/Clipboard/**'
+      - 'src/Ntilde.App/AssemblyInfo.cs'
+      - 'src/Ntilde.App/Ntilde.App.csproj'
+      - 'Directory.Packages.props'
+      - 'Directory.Build.props'
+      - 'global.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clipboard-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-clipboard:
+    name: Native clipboard (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      CI: 'true'
+      DOTNET_CLI_USE_MSBUILD_SERVER: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Install Linux desktop peer
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb python3-gi gir1.2-gtk-4.0 libfontconfig1
+      - name: Build production clipboard host
+        shell: bash
+        run: scripts/build.sh build tests/Ntilde.Clipboard.NativeHost -c Release
+      - name: Test fixture isolation and causality guards
+        shell: bash
+        run: python scripts/clipboard-native/test_runner.py
+      - name: Compile independent AppKit peer
+        if: runner.os == 'macOS'
+        run: swiftc scripts/clipboard-native/peer-macos.swift -o /tmp/ntilde-clipboard-peer
+      - name: Qualify against GTK on an isolated X11 display
+        if: runner.os == 'Linux'
+        run: xvfb-run -a /usr/bin/python3 scripts/clipboard-native/run.py --host tests/Ntilde.Clipboard.NativeHost/bin/Release/net10.0/Ntilde.Clipboard.NativeHost.dll --peer scripts/clipboard-native/peer-linux.py --report artifacts/clipboard-native/result.json
+      - name: Qualify against AppKit
+        if: runner.os == 'macOS'
+        run: python3 scripts/clipboard-native/run.py --host tests/Ntilde.Clipboard.NativeHost/bin/Release/net10.0/Ntilde.Clipboard.NativeHost.dll --peer /tmp/ntilde-clipboard-peer --report artifacts/clipboard-native/result.json
+      - name: Qualify against Win32
+        if: runner.os == 'Windows'
+        run: python scripts/clipboard-native/run.py --host tests/Ntilde.Clipboard.NativeHost/bin/Release/net10.0/Ntilde.Clipboard.NativeHost.dll --peer scripts/clipboard-native/peer-windows.py --report artifacts/clipboard-native/result.json
+      - name: Retain native qualification result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clipboard-native-${{ matrix.os }}
+          path: artifacts/clipboard-native/result.json
+          if-no-files-found: warn
