@@ -101,7 +101,9 @@ A tab can be split into panes, each with its own shell.
 Drag the splitter between two panes to resize them; double-click it to make that split even.
 
 **Search** opens a box over the pane. Use its ▲ / ▼ buttons to go to the previous or next match and
-✕ to close it.
+✕ to close it. A match can span terminal soft wraps and still counts as one result; explicit
+newlines remain search boundaries. Every visible part of the current match is highlighted.
+Old restored snapshots without wrap-padding metadata retain their original spacing.
 
 **Closing a pane with a program running** asks first by default. `PaneClosePolicy` in
 `settings.json` changes that ([Settings with no page](settings.md#settings-with-no-page)). When a

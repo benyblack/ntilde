@@ -203,6 +203,25 @@ attach. Legacy callers omit it and retain the dark fallback until presentation a
 
 ---
 
+### Logical-line search and wrap padding
+
+VT joins only soft-wrapped rows for search and exposes one logical result with all physical
+cell spans. App owns result navigation and scroll positioning; snapshot highlights clip each
+span, merge inactive coverage and draw the active result last. Overlapping results share one
+immutable row map, keeping representation linear in transcript rows plus match count. Long
+well-formed literal needles use scalar-aware linear overlap matching with the framework's exact
+ordinal comparison; common short queries retain its vectorized search. Regex searches retain a
+500 ms timeout and ignore zero-length results.
+
+A row may record its content-column count when a wide character wraps before the final cell.
+Only unused default tail cells qualify; actual spaces and styled/linked content remain data.
+This metadata survives scrollback, pooling, reflow, transfer and replay without changing the
+12-byte cell ABI. A conservative authored-column extent preserves typed spaces after cursor
+rewrites; optional `written_cols` arrays carry that evidence through replay and state transfer.
+Absent authored extents conservatively retain full rows. Optional `wrap_cols` arrays use `-1` for full-row/legacy interpretation. Missing
+metadata retains legacy spacing, since old cells cannot distinguish authored spaces from padding.
+Incoming boundaries are validated before state changes, including rejection of hidden cell data.
+
 ## 4. Recording / Playback — `Ntilde.Replay`
 
 A focused module that owns the record/replay file format and the snapshot/byte-stream coupling. References VT for snapshot types (`BufferSnapshot`), but is independent of Pty, Rendering, and App.

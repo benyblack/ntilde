@@ -173,6 +173,17 @@ namespace Ntilde.Replay
             TryEnqueue(new ReplayEvent { Type = "sixelCellSize", TimeOffsetMs = timeOffsetMs, SixelCellWidthPx = width, SixelCellHeightPx = height });
         }
 
+        private static void StoreWrapColumns(ReplaySnapshot snapshot, TerminalRow row, int index, int rowCount)
+        {
+            if (row.WrappedColumns is not int width) return;
+            if (snapshot.RowWrapColumns == null)
+            {
+                snapshot.RowWrapColumns = new int[rowCount];
+                Array.Fill(snapshot.RowWrapColumns, -1);
+            }
+            snapshot.RowWrapColumns[index] = width;
+        }
+
         /// <summary>
         /// Captures viewport fields and, when a parser is supplied, a complete terminal/parser cut.
         /// Buffer-only snapshots preserve the replay parser's existing continuation; callers
@@ -247,7 +258,8 @@ namespace Ntilde.Replay
                         IsStrikethrough = buffer.IsStrikethrough,
                         IsHidden = buffer.IsHidden,
                         ExtendedText = new Dictionary<int, string>(),
-                        RowWraps = new bool[rowCount]
+                        RowWraps = new bool[rowCount],
+                        RowWrittenColumns = new int[rowCount]
                     };
 
                     // Allocate a single array for all cells in viewport
@@ -257,6 +269,8 @@ namespace Ntilde.Replay
                     {
                         var row = rows[r];
                         snapshot.RowWraps[r] = row.IsWrapped;
+                        snapshot.RowWrittenColumns[r] = row.WrittenColumns;
+                        StoreWrapColumns(snapshot, row, r, rowCount);
 
                         // Copy cells
                         Array.Copy(row.Cells, 0, allCells, r * cols, cols);

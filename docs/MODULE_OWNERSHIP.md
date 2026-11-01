@@ -38,6 +38,19 @@ invariant changes.
 - Deterministic parsing — same byte stream produces the same semantic ops
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops content
+- **Search groups soft wraps into logical lines.** Hard newlines and the active screen remain
+  boundaries. Each result owns logical identity while exposing inclusive physical spans; row maps
+  are shared across overlapping results. Highlight snapshots clip and union inactive coverage,
+  then paint the active result last. Long valid UTF-16 literal needles use scalar-aware linear
+  overlap matching with exact framework ordinal comparison; short/lone-surrogate needles retain
+  the framework path. Regex matching keeps its 500 ms timeout and skips zero-length results.
+- **Wide pre-wrap padding is distinct from authored spaces.** A nullable row content-column
+  count excludes only verified unused tail cells. It follows rows through pages, pooling,
+  resize/reflow and optional `wrap_cols` snapshot metadata. An authored-column extent
+  (`written_cols` in snapshots) prevents cursor rewrites from turning typed spaces into padding.
+  Writes extend the content boundary;
+  structural edits discard the special boundary. Missing legacy metadata means full-row content.
+  Cell layout/ABI is unchanged; malformed transferred boundaries are refused before mutation.
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
 - **Cursor save state is shared by DECSC/DECRC and modes 1048/1049.** The per-screen banks
   retain position, rendition, pending wrap, origin mode and G0-G3/GL. Saved character sets

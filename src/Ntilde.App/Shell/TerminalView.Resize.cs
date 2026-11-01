@@ -56,7 +56,7 @@ namespace Ntilde.Shell
         {
             Dispatcher.UIThread.VerifyAccess();
             if (_buffer is not { } buffer) return;
-            RecordDispatchedGrid(buffer.Cols, buffer.Rows);
+            RecordDispatchedGrid(buffer.Cols, buffer.Rows, forceSearchRefresh: true);
             ResetMouseMotionTracking();
             _renderCaches.Rows.MaxEntries = Math.Max(buffer.Rows * 3, 50);
             _renderCaches.Rows.RequestClear();
@@ -273,11 +273,13 @@ namespace Ntilde.Shell
         /// stale flag is not harmless, because the next restore would then reconcile against a
         /// grid the font path had legitimately chosen and resize away from it.
         /// </remarks>
-        private void RecordDispatchedGrid(int cols, int rows)
+        private void RecordDispatchedGrid(int cols, int rows, bool forceSearchRefresh = false)
         {
+            bool changed = cols != _lastDispatchedCols || rows != _lastDispatchedRows;
             _lastDispatchedCols = cols;
             _lastDispatchedRows = rows;
             _resizeDispatchCancelled = false;
+            if (changed || forceSearchRefresh) RefreshSearchAfterResize();
         }
 
         /// <summary>

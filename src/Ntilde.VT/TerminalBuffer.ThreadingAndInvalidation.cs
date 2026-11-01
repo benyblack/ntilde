@@ -401,7 +401,7 @@ namespace Ntilde.VT
                 }
 
                 selectionRows = BuildSelectionRows(req.Selection, absDisplayStart, viewportRows, viewportCols);
-                searchHighlights = BuildSearchHighlights(req.SearchMatches, req.ActiveSearchIndex, absDisplayStart, viewportRows);
+                searchHighlights = BuildSearchHighlights(req.SearchMatches, req.ActiveSearchIndex, absDisplayStart, viewportRows, viewportCols);
 
                 return new TerminalRenderSnapshot
                 {
@@ -889,39 +889,85 @@ namespace Ntilde.VT
             return PooledArray<SelectionRowSnapshot>.Empty;
         }
 
-        private static PooledArray<SearchHighlightSnapshot> BuildSearchHighlights(IReadOnlyList<SearchMatch>? matches, int activeSearchIndex, int absDisplayStart, int viewportRows)
+        private readonly record struct SearchInterval(int Start, int End);
+        private static readonly IComparer<SearchInterval> SearchIntervalOrder =
+            Comparer<SearchInterval>.Create(static (left, right) => left.Start.CompareTo(right.Start));
+
+        private static PooledArray<SearchHighlightSnapshot> BuildSearchHighlights(IReadOnlyList<SearchMatch>? matches,
+            int activeSearchIndex, int absDisplayStart, int viewportRows, int viewportCols)
         {
-            if (matches == null || matches.Count == 0 || viewportRows <= 0)
-            {
+            if (matches == null || matches.Count == 0 || viewportRows <= 0 || viewportCols <= 0)
                 return PooledArray<SearchHighlightSnapshot>.Empty;
-            }
-
             int absEnd = absDisplayStart + viewportRows;
-            var list = new List<SearchHighlightSnapshot>();
+            Dictionary<int, List<SearchInterval>>? inactive = null;
+            var active = new List<SearchHighlightSnapshot>();
+            var bounds = new SearchHighlightBounds(absDisplayStart, absEnd, viewportCols);
             for (int i = 0; i < matches.Count; i++)
+                AddVisibleSearchSpans(matches[i], i == activeSearchIndex, bounds, active, ref inactive);
+            var list = new List<SearchHighlightSnapshot>();
+            AppendInactiveSearchHighlights(inactive, list);
+            list.AddRange(active);
+            // The renderer walks rows once; active spans paint last within each row.
+            list.Sort(static (left, right) =>
             {
-                var match = matches[i];
-                if (match.AbsRow < absDisplayStart || match.AbsRow >= absEnd)
+                int order = left.AbsRow.CompareTo(right.AbsRow);
+                if (order != 0) return order;
+                order = left.IsActive.CompareTo(right.IsActive);
+                return order != 0 ? order : left.StartCol.CompareTo(right.StartCol);
+            });
+            if (list.Count == 0) return PooledArray<SearchHighlightSnapshot>.Empty;
+            var array = System.Buffers.ArrayPool<SearchHighlightSnapshot>.Shared.Rent(list.Count);
+            list.CopyTo(array, 0);
+            return new PooledArray<SearchHighlightSnapshot>(array, list.Count);
+        }
+
+        private readonly record struct SearchHighlightBounds(int FirstRow, int EndRow, int Columns);
+
+        private static void AddVisibleSearchSpans(SearchMatch match, bool isActive, SearchHighlightBounds bounds,
+            List<SearchHighlightSnapshot> active, ref Dictionary<int, List<SearchInterval>>? inactive)
+        {
+            for (int index = match.FirstSpanAtOrAfter(bounds.FirstRow); index < match.SpanCount; index++)
+            {
+                var span = match.GetSpan(index);
+                if (span.AbsRow >= bounds.EndRow) break;
+                int start = Math.Max(0, span.StartCol), end = Math.Min(bounds.Columns - 1, span.EndCol);
+                if (end < start) continue;
+                if (isActive)
+                    active.Add(new SearchHighlightSnapshot { AbsRow = span.AbsRow, StartCol = start, EndCol = end, IsActive = true });
+                else
                 {
-                    continue;
+                    inactive ??= new Dictionary<int, List<SearchInterval>>();
+                    if (!inactive.TryGetValue(span.AbsRow, out var intervals))
+                    {
+                        intervals = new List<SearchInterval>();
+                        inactive.Add(span.AbsRow, intervals);
+                    }
+                    MergeSearchInterval(intervals, start, end);
                 }
-
-                list.Add(new SearchHighlightSnapshot
-                {
-                    AbsRow = match.AbsRow,
-                    StartCol = match.StartCol,
-                    EndCol = match.EndCol,
-                    IsActive = i == activeSearchIndex
-                });
             }
+        }
 
-            if (list.Count > 0)
+        private static void AppendInactiveSearchHighlights(Dictionary<int, List<SearchInterval>>? inactive,
+            List<SearchHighlightSnapshot> output)
+        {
+            if (inactive == null) return;
+            foreach (var row in inactive)
+                foreach (var interval in row.Value)
+                    output.Add(new SearchHighlightSnapshot { AbsRow = row.Key, StartCol = interval.Start, EndCol = interval.End });
+        }
+
+        private static void MergeSearchInterval(List<SearchInterval> intervals, int start, int end)
+        {
+            int index = intervals.BinarySearch(new SearchInterval(start, end), SearchIntervalOrder);
+            if (index < 0) index = ~index;
+            if (index > 0 && intervals[index - 1].End >= start - 1) index--;
+            while (index < intervals.Count && intervals[index].Start <= end + 1)
             {
-                var arr = System.Buffers.ArrayPool<SearchHighlightSnapshot>.Shared.Rent(list.Count);
-                list.CopyTo(arr, 0);
-                return new PooledArray<SearchHighlightSnapshot>(arr, list.Count);
+                start = Math.Min(start, intervals[index].Start);
+                end = Math.Max(end, intervals[index].End);
+                intervals.RemoveAt(index);
             }
-            return PooledArray<SearchHighlightSnapshot>.Empty;
+            intervals.Insert(index, new SearchInterval(start, end));
         }
 
         private RenderCellSnapshot[] GetOrBuildCachedPagedRenderRowCells_NoLock(int rowIndex, int absRow, long rowId, int viewportCols, int themeEpoch)

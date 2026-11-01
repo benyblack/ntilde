@@ -257,6 +257,7 @@ namespace Ntilde.VT
 
                         // Re-evaluate width of the merged cluster
                         int newWidth = GetGraphemeWidth(merged);
+                        row.NoteColumnsWritten(Math.Min(Cols, attachCol + Math.Max(1, newWidth)));
 
                         // ALWAYS enforce wide flag and continuation for width >= 2
                         if (newWidth >= 2)
@@ -301,7 +302,7 @@ namespace Ntilde.VT
             // Handle Pending Wrap State (M1.3)
             if (_isPendingWrap && !isZeroWidthComponent && !_isAfterZwj)
             {
-                if (_cursorRow >= 0 && _cursorRow < Rows) _viewport[_cursorRow].IsWrapped = true;
+                if (_cursorRow >= 0 && _cursorRow < Rows) _viewport[_cursorRow].SetSoftWrap(Cols);
                 _cursorCol = 0;
                 AdvanceCursorRowForLineFeed();
                 _isPendingWrap = false;
@@ -312,7 +313,7 @@ namespace Ntilde.VT
             {
                 if (_cursorCol + width > Cols)
                 {
-                    if (_cursorRow >= 0 && _cursorRow < Rows) _viewport[_cursorRow].IsWrapped = true;
+                    if (_cursorRow >= 0 && _cursorRow < Rows) _viewport[_cursorRow].SetSoftWrap(_cursorCol);
                     _cursorCol = 0;
                     AdvanceCursorRowForLineFeed();
                     _isPendingWrap = false;
@@ -331,6 +332,7 @@ namespace Ntilde.VT
                 if (Modes.IsInsertMode) InsertCharactersInternal(width);
 
                 var row = _viewport[_cursorRow];
+                row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + Math.Max(1, width)));
 
                 SyncPackedState();
 
@@ -459,7 +461,7 @@ namespace Ntilde.VT
                     evictingRow.IsWrapped,
                     evictingRow.GetExtendedTextMap(),
                     evictingRow.GetHyperlinkMap(),
-                    evictingRow.GetUnderlineMap());
+                    evictingRow.GetUnderlineMap(), evictingRow.WrappedColumns, evictingRow.WrittenColumns);
 
 
                 long newlyEvicted = _scrollback.TotalRowsEvicted - prevEvicted;
@@ -614,6 +616,8 @@ namespace Ntilde.VT
 
             int endCol = Math.Min(_cursorCol + count, Cols);
             var row = _viewport[_cursorRow];
+            row.WrappedColumns = null;
+            row.WrittenColumns = Cols;
 
             // Shift characters to right
             // Start from end, move char at (c - count) to c
@@ -661,6 +665,8 @@ namespace Ntilde.VT
 
             int endCol = Cols - count;
             var row = _viewport[_cursorRow];
+            row.WrappedColumns = null;
+            row.WrittenColumns = Cols;
 
             // Shift characters to left
             for (int c = _cursorCol; c < endCol; c++)

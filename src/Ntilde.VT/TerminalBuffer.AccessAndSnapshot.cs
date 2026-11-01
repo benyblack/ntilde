@@ -332,6 +332,7 @@ namespace Ntilde.VT
             {
                 var row = _viewport[i];
                 row.IsWrapped = false;
+                row.WrittenColumns = 0;
                 for (int c = 0; c < Cols; c++)
                 {
                     row.Cells[c] = TerminalCell.Default;
@@ -433,6 +434,9 @@ namespace Ntilde.VT
                 }
 
                 resized[i].IsWrapped = source[i].IsWrapped;
+                resized[i].WrittenColumns = Math.Min(source[i].WrittenColumns, Cols);
+                resized[i].WrappedColumns = source[i].IsWrapped
+                    ? Math.Min(source[i].WrappedColumns ?? source[i].Cells.Length, Cols) : null;
                 // Detached buffers are not reflowed either, so the side tables transfer by column
                 // (#164). Copying Cells and IsWrapped alone lost extended graphemes and links.
                 resized[i].CopyRowMetadataFrom(source[i], copyCols);
@@ -491,6 +495,7 @@ namespace Ntilde.VT
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 var row = _viewport[_cursorRow];
+                if (_cursorCol >= 0 && _cursorCol < Cols) row.NoteColumnsWritten(Cols);
                 for (int i = _cursorCol; i < Cols; i++)
                 {
                     row.Cells[i] = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
@@ -514,6 +519,7 @@ namespace Ntilde.VT
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 var row = _viewport[_cursorRow];
+                row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + 1));
                 for (int i = 0; i <= _cursorCol; i++)
                 {
                     if (i >= Cols) break;
@@ -558,6 +564,8 @@ namespace Ntilde.VT
         private void ClearRowInternal(int rowIndex)
         {
             var row = _viewport[rowIndex];
+            row.WrappedColumns = null;
+            row.WrittenColumns = 0;
             var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
             for (int i = 0; i < Cols; i++)
             {
@@ -576,6 +584,8 @@ namespace Ntilde.VT
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 var row = _viewport[_cursorRow];
+                if (count > 0 && _cursorCol >= 0 && _cursorCol < Cols)
+                    row.NoteColumnsWritten((int)Math.Min(Cols, (long)_cursorCol + count));
 
                 for (int i = 0; i < count; i++)
                 {
@@ -891,115 +901,6 @@ namespace Ntilde.VT
         private static int SearchCellEnd(ReadOnlySpan<TerminalCell> cells, int column) =>
             column + 1 < cells.Length && cells[column + 1].IsWideContinuation ? column + 1 : column;
 
-        public List<SearchMatch> FindMatches(string query, bool useRegex, bool caseSensitive)
-        {
-            if (string.IsNullOrEmpty(query)) return new List<SearchMatch>();
-
-            var matches = new List<SearchMatch>();
-            Lock.EnterReadLock();
-            try
-            {
-                System.Text.RegularExpressions.Regex? regex = null;
-                if (useRegex)
-                {
-                    try
-                    {
-                        var options = caseSensitive ? System.Text.RegularExpressions.RegexOptions.None : System.Text.RegularExpressions.RegexOptions.IgnoreCase;
-                        // The pattern is user-supplied (csharpsquid:S6444): the timeout bounds
-                        // catastrophic backtracking while the read lock below is held.
-                        regex = new System.Text.RegularExpressions.Regex(query, options, TimeSpan.FromMilliseconds(500));
-                    }
-                    catch
-                    {
-                        // Invalid regex - return empty or treat as literal?
-                        // For now, return empty to indicate error/no match
-                        return matches;
-                    }
-                }
-
-                int totalRows = _scrollback.Count + Rows;
-                for (int r = 0; r < totalRows; r++)
-                {
-                    // Build row string
-                    ReadOnlySpan<TerminalCell> cells;
-                    SmallMap<string>? extendedText;
-                    if (r < _scrollback.Count)
-                    {
-                        cells = _scrollback.GetRow(r);
-                        extendedText = _scrollback.GetExtendedTextMap(r);
-                    }
-                    else
-                    {
-                        var row = _viewport[r - _scrollback.Count];
-                        cells = row.Cells;
-                        extendedText = row.GetExtendedTextMap();
-                    }
-
-                    // Build row string with mapping for wide/complex characters
-                    var sb = new StringBuilder();
-                    var colMapping = new List<int>(); // Maps each UTF-16 unit to its leading cell
-
-                    for (int c = 0; c < Cols; c++)
-                    {
-                        var cell = cells[c];
-                        if (cell.IsWideContinuation) continue;
-
-                        string? text = cell.HasExtendedText && extendedText != null
-                            && extendedText.TryGet(c, out string? graphemeText) ? graphemeText : null;
-                        text ??= cell.Character.ToString();
-                        sb.Append(text);
-                        for (int k = 0; k < text.Length; k++) colMapping.Add(c);
-                    }
-                    string lineText = sb.ToString();
-
-                    if (useRegex && regex != null)
-                    {
-                        // Regex Search
-                        try
-                        {
-                            foreach (System.Text.RegularExpressions.Match m in regex.Matches(lineText))
-                            {
-                                // Zero-length matches (patterns like "a*", "()" or "\b") have no
-                                // cells to highlight, and would index colMapping at -1 (or past the
-                                // end for a match at end-of-line). See #150.
-                                if (m.Length == 0) continue;
-
-                                int startCol = colMapping[m.Index];
-                                int endCol = SearchCellEnd(cells, colMapping[m.Index + m.Length - 1]);
-                                matches.Add(new SearchMatch(r, startCol, endCol));
-                            }
-                        }
-                        catch (System.Text.RegularExpressions.RegexMatchTimeoutException)
-                        {
-                            // The pattern hit its match timeout (csharpsquid:S6444): report no
-                            // matches, exactly like the invalid-pattern path above, instead of
-                            // holding the read lock while backtracking runs away.
-                            matches.Clear();
-                            return matches;
-                        }
-                    }
-                    else
-                    {
-                        // Text Search
-                        var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-                        int index = lineText.IndexOf(query, comparison);
-                        while (index != -1)
-                        {
-                            int startCol = colMapping[index];
-                            int endCol = SearchCellEnd(cells, colMapping[index + query.Length - 1]);
-                            matches.Add(new SearchMatch(r, startCol, endCol));
-                            index = lineText.IndexOf(query, index + 1, comparison);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-            return matches;
-        }
-
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
             Justification = "Part of the buffer's API: the reflow engine and the width tests ask the buffer that lays the text out. It delegates to UnicodeWidth today.")]
         public int GetGraphemeWidth(ReadOnlySpan<char> textElement)
@@ -1111,7 +1012,25 @@ namespace Ntilde.VT
             ArgumentNullException.ThrowIfNull(snapshot);
             if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
                 throw new InvalidOperationException("Invalid replay geometry: columns and rows must be positive.");
-            if (!string.IsNullOrEmpty(snapshot.CellsBase64)) _ = Convert.FromBase64String(snapshot.CellsBase64);
+            byte[]? cells = string.IsNullOrEmpty(snapshot.CellsBase64) ? null : Convert.FromBase64String(snapshot.CellsBase64);
+            ValidateWrittenColumns(snapshot.RowWrittenColumns, snapshot.Rows, snapshot.Cols, "legacy replay");
+            if (snapshot.RowWrapColumns is { } widths)
+            {
+                ValidateWrappedColumns(new TerminalScreenState
+                {
+                    RowWraps = snapshot.RowWraps,
+                    RowWrapColumns = widths,
+                    RowWrittenColumns = snapshot.RowWrittenColumns,
+                    ExtendedText = snapshot.ExtendedText
+                }, snapshot.Rows, snapshot.Cols, cells, "legacy replay");
+                if (snapshot.Underlines != null)
+                    foreach (int key in snapshot.Underlines.Keys)
+                    {
+                        int row = key / snapshot.Cols, col = key % snapshot.Cols;
+                        if (row >= 0 && row < widths.Length && widths[row] >= 0 && col >= widths[row])
+                            throw StateTransferValidation.Reject("legacy replay", "wrap padding carries underline metadata");
+                    }
+            }
         }
 
         public void ApplySnapshot(ReplaySnapshot snapshot)
@@ -1189,10 +1108,14 @@ namespace Ntilde.VT
                             var row = _viewport[r];
                             Array.Copy(cellSpan.Slice(r * snapshot.Cols, colsToCopy).ToArray(), row.Cells, colsToCopy);
 
-                            if (snapshot.RowWraps != null && r < snapshot.RowWraps.Length)
-                            {
-                                row.IsWrapped = snapshot.RowWraps[r];
-                            }
+                            row.WrittenColumns = Math.Min(snapshot.RowWrittenColumns?[r]
+                                ?? (snapshot.RowWrapColumns is { } known && known[r] >= 0 ? known[r] : snapshot.Cols), colsToCopy);
+                            row.IsWrapped = snapshot.RowWraps != null && r < snapshot.RowWraps.Length && snapshot.RowWraps[r];
+                            row.ClearExtendedText();
+                            row.ClearHyperlinks();
+                            row.ClearUnderlines();
+                            if (snapshot.RowWrapColumns is { } widths && widths[r] >= 0)
+                                row.WrappedColumns = Math.Min(widths[r], colsToCopy);
                             row.TouchRevision();
                             row.ClearExtendedText();
                             row.ClearHyperlinks();

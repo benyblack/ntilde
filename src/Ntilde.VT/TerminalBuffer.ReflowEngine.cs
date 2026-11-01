@@ -8,6 +8,15 @@ namespace Ntilde.VT
 {
     public partial class TerminalBuffer
     {
+        private static (int Row, int Column) MapReflowImageOffset(List<int>? rowStarts, int offset, int columns)
+        {
+            ArgumentNullException.ThrowIfNull(rowStarts);
+            int row = rowStarts.BinarySearch(offset);
+            if (row < 0) row = Math.Max(0, ~row - 1);
+            int column = offset - rowStarts[row];
+            return (row + column / columns, column % columns);
+        }
+
         private sealed class ReflowEngineContext
         {
             private readonly SavedCursorStates _savedCursors;
@@ -258,6 +267,10 @@ namespace Ntilde.VT
                         if (img != null && !img.IsAltScreenImage) unanchoredImages.Add(img);
                     }
                     var imagePlacements = new List<(TerminalImage Image, int NewY, int NewX)>();
+                    // Only image-bearing buffers need row-prefix maps. Wide pre-wrap gaps do not
+                    // contribute to the logical stream on either side of the reflow.
+                    var sourceRowOffsets = unanchoredImages.Count > 0 ? new List<int>() : null;
+                    var targetRowOffsets = unanchoredImages.Count > 0 ? new List<int>() : null;
                     var lineAnchors = new List<(TerminalImage Image, int OffsetInLogicalLine)>();
 
                     // 5. Distribution state
@@ -292,7 +305,7 @@ namespace Ntilde.VT
                     {
                         if (isHistory)
                         {
-                            newScrollback.AppendRow(row.Cells, row.IsWrapped, row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap());
+                            newScrollback.AppendRow(row.Cells, row.IsWrapped, row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap(), row.WrappedColumns, row.WrittenColumns);
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
                             row.ClearUnderlines();
@@ -314,19 +327,23 @@ namespace Ntilde.VT
 
                         // 5b. Anchor Images to Logical Positions
                         lineAnchors.Clear();
+                        targetRowOffsets?.Clear();
                         for (int k = unanchoredImages.Count - 1; k >= 0; k--)
                         {
                             var img = unanchoredImages[k];
                             if (img.CellY >= startPhys && img.CellY < endPhysExclusive)
                             {
                                 int rowOffset = img.CellY - startPhys;
-                                lineAnchors.Add((img, rowOffset * oldCols + img.CellX));
+                                int rowStart = sourceRowOffsets != null && rowOffset < sourceRowOffsets.Count
+                                    ? sourceRowOffsets[rowOffset] : rowOffset * oldCols;
+                                lineAnchors.Add((img, rowStart + img.CellX));
                                 unanchoredImages.RemoveAt(k);
                             }
                         }
 
                         if (lineCount == 0)
                         {
+                            targetRowOffsets?.Add(0);
                             // If this is the WIPED prompt, place cursor here
                             if (i == cursorLogicalIdx) { newCursorPhysRow = flowedRows; newCursorPhysCol = 0; }
                             if (i == mainSavedLogicalIdx) { newMainSavedPhysRow = flowedRows; newMainSavedPhysCol = 0; }
@@ -335,6 +352,7 @@ namespace Ntilde.VT
                             if (i == outputStartLogicalIdx) { newOutputStartPhysRow = flowedRows; newOutputStartPhysCol = 0; }
                             if (isHistory)
                             {
+                                historyRow.WrittenColumns = 0;
                                 for (int c = 0; c < newCols; c++) historyRow.Cells[c] = def;
                                 EmitRow(historyRow, isHistory: true);
                             }
@@ -348,6 +366,7 @@ namespace Ntilde.VT
                             int processed = 0;
                             while (processed < lineCount)
                             {
+                                targetRowOffsets?.Add(processed);
                                 int remaining = lineCount - processed;
                                 int take = Math.Min(remaining, newCols);
 
@@ -427,7 +446,9 @@ namespace Ntilde.VT
                                 // This prevents "Background Leakage" (e.g. blue/green bars) when resizing.
                                 for (int c = take; c < newCols; c++) row.Cells[c] = def;
 
+                                row.WrittenColumns = take;
                                 row.IsWrapped = remaining > newCols;
+                                row.WrappedColumns = row.IsWrapped ? take : null;
                                 EmitRow(row, isHistory);
                                 processed += take;
                             }
@@ -441,7 +462,8 @@ namespace Ntilde.VT
 
                         foreach (var (image, offsetInLine) in lineAnchors)
                         {
-                            imagePlacements.Add((image, startFlowIndex + (offsetInLine / newCols), offsetInLine % newCols));
+                            var position = MapReflowImageOffset(targetRowOffsets, offsetInLine, newCols);
+                            imagePlacements.Add((image, startFlowIndex + position.Row, position.Column));
                         }
                     }
 
@@ -460,6 +482,8 @@ namespace Ntilde.VT
                             _scrollback.GetRow(storeRow).CopyTo(scrollbackRow.Cells);
                             scrollbackRow.IsWrapped = _scrollback.IsRowWrapped(storeRow);
                             scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(storeRow), _scrollback.GetHyperlinkMap(storeRow), _scrollback.GetUnderlineMap(storeRow));
+                            scrollbackRow.WrittenColumns = _scrollback.GetWrittenColumns(storeRow);
+                            scrollbackRow.WrappedColumns = _scrollback.GetWrappedColumns(storeRow);
                             physRow = scrollbackRow;
                         }
                         else
@@ -472,7 +496,9 @@ namespace Ntilde.VT
                         {
                             lineStartPhys = i;
                             lineLen = 0;
+                            sourceRowOffsets?.Clear();
                         }
+                        sourceRowOffsets?.Add(lineLen);
 
                         // One physical row adds at most its own cells plus a right-prompt fill up to newCols.
                         EnsureLineCapacity(lineLen + physRow.Cells.Length + newCols + 4);
@@ -508,7 +534,7 @@ namespace Ntilde.VT
                             outputStartInLogicalOffset = lineLen + os.Column;
                         }
 
-                        int validLen = physRow.Cells.Length;
+                        int validLen = physRow.WrappedColumns ?? physRow.Cells.Length;
 
                         // HEURISTIC: TUI Border Protection
                         // If a line is marked as Wrapped, but it ends with a box-drawing character OR a colored background,
@@ -824,7 +850,7 @@ namespace Ntilde.VT
                             activeRows[i].IsWrapped,
                             activeRows[i].GetExtendedTextMap(),
                             activeRows[i].GetHyperlinkMap(),
-                            activeRows[i].GetUnderlineMap());
+                            activeRows[i].GetUnderlineMap(), activeRows[i].WrappedColumns, activeRows[i].WrittenColumns);
                     }
 
                     int discardedRows = (int)newScrollback.TotalRowsEvicted;
