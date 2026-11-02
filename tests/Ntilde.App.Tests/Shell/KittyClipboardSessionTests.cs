@@ -105,8 +105,10 @@ public class KittyClipboardSessionTests
         Assert.Contains("status=DONE:id=primary", Assert.Single(h.Replies));
         Assert.Equal(new byte[] { 0, 1, 2, 255 }, primary.Values["application/x-alias"]);
         Assert.Equal(1, primary.Writes); Assert.Equal(0, h.Clipboard.Writes);
+        h.Send("type=write:loc=primary"); h.Send("type=wdata"); await h.Drain();
+        Assert.Empty(primary.Values); Assert.Equal(2, primary.Writes); Assert.Equal(0, h.Clipboard.Writes);
         h.WriteAllowed = false; h.Send("type=write:loc=primary"); await h.Drain();
-        Assert.Contains("status=EPERM", h.Replies[^1]); Assert.Equal(1, primary.Writes);
+        Assert.Contains("status=EPERM", h.Replies[^1]); Assert.Equal(2, primary.Writes);
     }
 
     [Fact]

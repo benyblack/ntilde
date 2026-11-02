@@ -88,6 +88,15 @@ internal sealed class ClipboardScenario(Window window, string root)
         }
         session.Accept("type=wdata");
         await WaitUntilAsync(() => _replies.Any(r => r.Contains("status=DONE:id=qa-write", StringComparison.Ordinal)));
+        var beforePeer = (Sent: 0, Received: 0);
+        if (Program.Primary)
+        {
+            using var own = await primary.OpenReadAsync();
+            byte[]? binary = await own.ReadAsync("application/x-ntilde-qa");
+            if (binary == null || !binary.SequenceEqual(values["application/x-ntilde-qa"])) throw new InvalidDataException("PRIMARY self-read did not preserve bytes.");
+            beforePeer = await primary.TransferCountsAsync();
+            if (beforePeer.Sent == 0 || beforePeer.Received == 0) throw new InvalidDataException("PRIMARY self-read did not exercise INCR.");
+        }
         Signal("host-write.ready");
         // Runner allows 25 s for peer read + 25 s for peer write; this handoff covers both.
         await WaitUntilAsync(() => File.Exists(Path.Combine(root, "peer-write.ready")), TimeSpan.FromSeconds(55));
@@ -118,7 +127,13 @@ internal sealed class ClipboardScenario(Window window, string root)
         VerifyRead(peerFixture.ToDictionary(p => p.Key, p => Convert.FromBase64String(p.Value)));
         if (Program.Primary)
         {
-            var counts = await primary.TransferCountsAsync();
+            _replies.Clear();
+            session.Accept("type=write:loc=primary:id=qa-clear"); session.Accept("type=wdata");
+            await WaitUntilAsync(() => _replies.Any(r => r.Contains("status=DONE:id=qa-clear", StringComparison.Ordinal)));
+            using var cleared = await primary.OpenReadAsync();
+            if (cleared.Types.Count != 0) throw new InvalidDataException("PRIMARY empty write did not clear the peer's selection.");
+            var totals = await primary.TransferCountsAsync();
+            var counts = (Sent: totals.Sent - beforePeer.Sent, Received: totals.Received - beforePeer.Received);
             if (counts.Sent == 0 || counts.Received == 0) throw new InvalidDataException("PRIMARY qualification did not exercise INCR in both directions: " + counts);
             await File.WriteAllTextAsync(Path.Combine(root, "primary-incr.verified"), "sent=" + counts.Sent + ",received=" + counts.Received, CancellationToken.None);
             using var snapshot = await adapter.OpenReadAsync();

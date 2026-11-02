@@ -1,7 +1,8 @@
 # OSC 5522 primary selection
 
 Direct Linux/X11 desktop and SSH panes can use `loc=primary` to read and write
-PRIMARY independently of the regular clipboard. The initial write packet chooses
+PRIMARY independently of the regular clipboard. An empty write clears PRIMARY,
+including a selection currently owned by another application. The initial write packet chooses
 the location; subsequent data and alias packets inherit it. Writes honor
 `AllowOsc52ClipboardWrite`. Reads require explicit consent or a remembered grant
 for that same location. The permission dialog names the primary selection.

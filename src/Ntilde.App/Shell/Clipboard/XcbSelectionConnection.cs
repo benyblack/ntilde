@@ -177,7 +177,8 @@ internal sealed class XcbSelectionConnection : IDisposable
     {
         if (values.Count == 0)
         {
-            if (Owner() == _window) _ = XcbNative.SetOwner(_connection, 0, Primary, 0);
+            _ = XcbNative.SetOwner(_connection, 0, Primary, 0);
+            if (Owner() != 0) throw new IOException("Could not clear PRIMARY.");
             _owned.Clear(); Flush(); return;
         }
         if (values.Count > KittyClipboardPacket.MaxTypes || values.Any(p => !KittyClipboardPacket.IsMime(p.Key)) ||
