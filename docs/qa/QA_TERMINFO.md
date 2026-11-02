@@ -227,13 +227,12 @@ shared-renderer pixel tests cover the implemented geometry and appearance.
 The [2026-11-01 clipboard follow-up](terminfo/2026-11-01-clipboard.md) measured
 78 supported / 0 unsupported / 177 inconclusive observations. The changed probe
 establishes mode-5522 recognition only; binary transfers, permission boundaries
-and paste grants have separate test-owned backend evidence. Native cross-app
-the collector measurement does not qualify clipboard interoperability. The
+and paste grants have separate test-owned backend evidence. The collector
+measurement does not qualify native cross-app clipboard interoperability. The
 separate [native clipboard qualification](clipboard-native.md) exercises real
 AppKit/Win32/GTK interchange on disposable CI desktops; [session-only read
 approvals](clipboard-permissions.md) are documented separately. Neither regrades
 these collector observations.
-
 
 The [2026-11-02 inconclusive-observation triage](terminfo/2026-11-02-inconclusive-triage.md)
 and [machine-readable inventory](terminfo/2026-11-02-inconclusive-triage.json) cover
