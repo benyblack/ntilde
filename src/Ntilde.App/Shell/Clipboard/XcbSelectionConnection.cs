@@ -18,6 +18,7 @@ internal sealed class XcbSelectionConnection : IDisposable
     private readonly HashSet<uint> _localWindows = [];
     private readonly PrimaryTransferRegistry _outgoing;
     private readonly PrimarySelectionOwnership _ownership = new();
+    private PrimaryOperationDeadline? _captureDeadline, _targetDeadline;
     internal int LastAdvertisedTargetCount { get; private set; }
     internal int IncrementalSends { get; private set; }
     internal int IncrementalReceives { get; private set; }
@@ -62,6 +63,7 @@ internal sealed class XcbSelectionConnection : IDisposable
 
     private void CheckConnection()
     {
+        _captureDeadline?.Check(); _targetDeadline?.Check();
         if (_connection == 0 || XcbNative.HasError(_connection) != 0) throw new NotSupportedException("X11 PRIMARY connection is unavailable.");
     }
 
@@ -100,7 +102,17 @@ internal sealed class XcbSelectionConnection : IDisposable
 
     public IKittyClipboardSnapshot CaptureSnapshot(IReadOnlyList<string>? requestedTypes)
     {
+        _captureDeadline = new PrimaryOperationDeadline(TimeSpan.FromMinutes(1));
+        try { return CaptureSnapshotCore(requestedTypes); }
+        finally { _captureDeadline = null; _targetDeadline = null; }
+    }
+
+    private PrimarySelectionSnapshot CaptureSnapshotCore(IReadOnlyList<string>? requestedTypes)
+    {
+        _targetDeadline = new PrimaryOperationDeadline(TimeSpan.FromSeconds(10));
         var targets = CaptureTargets(requestedTypes);
+        CheckConnection();
+        _targetDeadline = null;
         if (requestedTypes?.Count == 0) return PrimarySelectionSnapshot.Capture(targets.Formats, [], (_, _) => throw new InvalidOperationException("Listing cannot read data."));
         uint? timestamp = targets.HasTimestamp ? ReadTimestamp(targets.Owner) : null;
         var snapshot = PrimarySelectionSnapshot.Capture(targets.Formats, requestedTypes, (atom, budget) => Read(targets.Owner, atom, budget));

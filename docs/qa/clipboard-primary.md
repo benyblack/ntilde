@@ -44,6 +44,10 @@ subscription; local read-window subscriptions remain until that read ends. A
 stale SelectionClear cannot erase data successfully reacquired on the worker.
 Reads use ten-second reply/idle waits and a one-minute overall INCR limit. A failed receive destroys
 its private request window, rather than leaving an incomplete INCR handshake.
+Each snapshot shares a one-minute cumulative deadline across TARGETS, atom-name
+lookups, timestamps and all requested MIME conversions. Target discovery also
+has a ten-second cumulative deadline. Native reply polling checks both budgets,
+so separate replies, MIME types and atom names cannot each restart the clock.
 
 The native worker admits at most one waiting command. A stalled connection
 initialization can hold that worker and the existing global clipboard gate;

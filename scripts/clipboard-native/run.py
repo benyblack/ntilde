@@ -78,7 +78,7 @@ def main():
               "binaryFraming": "uint32 big-endian payload length followed by payload; Win32 allocation padding excluded",
               "pngComparison": "validated container and decoded pixel; native compression/metadata may differ",
               "scope": "Production OSC 5522 service and native adapter versus an independent OS clipboard peer; no PTY or manual application UI qualification.",
-              "primaryChecks": "large binary and alias bytes verified; INCR observed in both peer directions; 200 extra targets; same-owner snapshot freeze; explicit clear of peer selection; default clipboard sentinel unchanged" if args.selection == "primary" else None}
+              "primaryChecks": "large binary and alias bytes verified; INCR observed in both peer directions; TARGETS count >144 verified (fixture: 200 extra targets); same-owner snapshot freeze; explicit clear of peer selection; default clipboard sentinel unchanged" if args.selection == "primary" else None}
     with tempfile.TemporaryDirectory(prefix="ntilde-native-clipboard-") as temporary:
         root = Path(temporary)
         (root / "fixture.json").write_text(json.dumps({k: base64.b64encode(v).decode() for k, v in values.items()}))
