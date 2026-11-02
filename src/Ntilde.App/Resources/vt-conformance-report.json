@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "883e8672a8c1f5038efdfdecba5f4558fa00ca23ef2b748030f501d5307e51c3",
+  "matrixSha256": "5cd36208c5c68ffa11ba5ef39c813ec07d072ffea8b1f0982ae6ece49096e16d",
   "summary": {
     "totalRows": 80,
     "supportedCount": 39,
@@ -705,15 +705,17 @@
       "feature": "Animated whole-line wheel scrolling",
       "status": "\u2705 Supported",
       "specOrNotes": "SmoothScrolling setting, enabled by default",
-      "evidenceText": "App: \u0060tests/Ntilde.App.Tests/Input/TerminalViewSmoothScrollTests.cs\u0060",
-      "evidenceKinds": [],
+      "evidenceText": "Unit (App): \u0060tests/Ntilde.App.Tests/Input/TerminalViewSmoothScrollTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
       "evidenceLinks": [
         {
           "path": "tests/Ntilde.App.Tests/Input/TerminalViewSmoothScrollTests.cs",
           "exists": true
         }
       ],
-      "hasAutomatedEvidenceSignal": false,
+      "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "\u0060src/Ntilde.App/Shell/TerminalView.Scrolling.cs\u0060",
       "knownDeviations": "Wheel targets are eased through integer row offsets. This is visible animation, with mid-gesture accumulation and cancellation tests; it does not provide continuous pixel offsets or DECSCLM.",
@@ -898,7 +900,7 @@
       "feature": "Focus event reporting",
       "status": "\u2705 Supported",
       "specOrNotes": "Emits \u0060CSI I\u0060 / \u0060CSI O\u0060 on focus transitions",
-      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/DecModeTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/DecModeTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs\u0060; Unit (App): \u0060tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -977,7 +979,7 @@
       "feature": "Cursor style",
       "status": "\u2705 Supported",
       "specOrNotes": "DECSCUSR block/beam/underline \u002B blink state",
-      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/OscUxTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/CursorStyleInvalidationTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/Core/TerminalViewCursorBlinkTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/OscUxTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/CursorStyleInvalidationTests.cs\u0060; Unit (App): \u0060tests/Ntilde.App.Tests/Core/TerminalViewCursorBlinkTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -1006,7 +1008,7 @@
       "feature": "Color-scheme query",
       "status": "\u2705 Supported",
       "specOrNotes": "Contour dark/light preference",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs\u0060; Unit (App): \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -1035,7 +1037,7 @@
       "feature": "Color-scheme notifications",
       "status": "\u2705 Supported",
       "specOrNotes": "Opt-in background preference updates",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessColorSchemeTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ColorSchemeReportingTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs\u0060; Unit (App): \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessColorSchemeTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -1323,7 +1325,7 @@
       "feature": "256-color",
       "status": "\u26A0 Partial",
       "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/RuntimeColorTests.cs\u0060; Render: \u0060tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/RuntimeColorTests.cs\u0060; Unit (render): \u0060tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -1444,7 +1446,7 @@
       "feature": "OSC 0/2",
       "status": "\u26A0 Partial",
       "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/StringSequenceCapTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/StringSequenceCapTests.cs\u0060; Unit (App): \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -1461,7 +1463,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "VT\u002BApp UI",
-      "knownDeviations": "Title callback, bounded accumulation and handler wiring are tested; native window-title presentation and all OSC 2 variants lack dedicated qualification. App presentation can apply its own title policy.",
+      "knownDeviations": "Title callback, bounded accumulation and handler wiring are tested; OSC 2 lacks dedicated qualification and native window-title presentation is outside this test scope. Empty/whitespace-only titles are ignored and surrounding whitespace is trimmed; App presentation can apply its own title policy.",
       "sourceLine": 162
     },
     {
@@ -1682,8 +1684,9 @@
       "feature": "OSC 5522",
       "status": "\u26A0 Partial",
       "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/KittyClipboardProtocolTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Shell/KittyClipboardSessionTests.cs\u0060; Native: \u0060docs/qa/clipboard-native.md\u0060, \u0060docs/qa/clipboard-primary.md\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/KittyClipboardProtocolTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Shell/KittyClipboardSessionTests.cs\u0060; External (native): \u0060docs/qa/clipboard-native.md\u0060, \u0060docs/qa/clipboard-primary.md\u0060",
       "evidenceKinds": [
+        "external",
         "unit"
       ],
       "evidenceLinks": [
@@ -1878,7 +1881,7 @@
       "feature": "Placement, z-index, scrolling",
       "status": "\u26A0 Partial",
       "specOrNotes": "Complex interactions",
-      "evidenceText": "Unit: \u0060tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs\u0060; App: \u0060tests/Ntilde.App.Tests/RenderTests/RetiredImageDisposalTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs\u0060; Unit (App): \u0060tests/Ntilde.App.Tests/RenderTests/RetiredImageDisposalTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -1986,8 +1989,10 @@
       "feature": "Selection model",
       "status": "\u26A0 Partial",
       "specOrNotes": "UI behavior",
-      "evidenceText": "App: \u0060tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs\u0060; Render: \u0060tests/Ntilde.App.Tests/RenderTests/ThemeRenderColorPixelTests.cs\u0060",
-      "evidenceKinds": [],
+      "evidenceText": "Unit (App): \u0060tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs\u0060; Unit (render): \u0060tests/Ntilde.App.Tests/RenderTests/ThemeRenderColorPixelTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
       "evidenceLinks": [
         {
           "path": "tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs",
@@ -1998,9 +2003,9 @@
           "exists": true
         }
       ],
-      "hasAutomatedEvidenceSignal": false,
+      "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
-      "ownership": "App\u002BRendering",
+      "ownership": "App",
       "knownDeviations": "Programmatically established selections exercise copy shortcuts and selection pixels. These tests do not qualify pointer-driven word/line/drag selection or native clipboard delivery on every desktop.",
       "sourceLine": 204
     },
