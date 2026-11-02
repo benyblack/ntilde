@@ -18,6 +18,12 @@ PROVENANCE_SHA = "a669a5cf5f0a447a8d549cace813abe1e0244f403c645141dd294a59dd223c
 OBSERVATIONS_SHA = "627af96ede7c271c8eee02be66bd87458c06a108a1bf26f2831ecee88ba900cb"
 
 
+VT_CSI = "src/Ntilde.VT/AnsiParser.Csi.cs"
+VT_OSC = "src/Ntilde.VT/AnsiParser.Osc.cs"
+VT_IMAGES = "src/Ntilde.VT/AnsiParser.Images.cs"
+VT_KITTY_GRAPHICS = "src/Ntilde.VT/AnsiParser.KittyGraphics.cs"
+VT_MATRIX = "docs/vt_coverage_matrix.md"
+
 def action(title, owner, next_measurement, files):
     return {"title": title, "owner": owner, "nextMeasurement": next_measurement, "sourceFiles": files}
 
@@ -25,40 +31,40 @@ def action(title, owner, next_measurement, files):
 ACTIONS = {
     "Q01": action("Observe cells, geometry and history", "VT + App QA",
                   "Use a disposable pane with independently confirmed rows/columns; compare cell contents, cursor, margins and scrollback before/after, then retain the observation and cleanup receipt. CPR alone cannot prove content or erasure.",
-                  ["src/Ntilde.VT/AnsiParser.Csi.cs", "src/Ntilde.VT/TerminalBuffer.cs", "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs", "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs"]),
+                  [VT_CSI, "src/Ntilde.VT/TerminalBuffer.cs", "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs", "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs"]),
     "Q02": action("Observe attributes and rendered pixels", "VT + Rendering + App QA",
                   "Assert decoded cell attributes/charset mapping and independently capture controlled rendered pixels. Use a controlled clock for blink; preserve the input, capture hashes and restored fixture state. Cursor advance is insufficient.",
                   ["src/Ntilde.VT/AnsiParser.Sgr.cs", "tests/Ntilde.App.Tests/SgrAttributeTests.cs", "tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs", "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs"]),
     "Q03": action("Observe host metadata and UI effects", "App QA + VT callbacks",
                   "Read the private pane's title, cwd, hyperlink/shell-marker metadata or notification/progress presentation through an independent host observer. Record private setting/focus preconditions and verify restoration. A consumed marker or DA sentinel is insufficient.",
-                  ["src/Ntilde.VT/AnsiParser.Osc.cs", "tests/Ntilde.App.Tests/OscShellIntegrationTests.cs", "tests/Ntilde.VT.Tests/Osc9NotificationProgressTests.cs", "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs"]),
+                  [VT_OSC, "tests/Ntilde.App.Tests/OscShellIntegrationTests.cs", "tests/Ntilde.VT.Tests/Osc9NotificationProgressTests.cs", "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs"]),
     "Q04": action("Observe image pixels and playback", "Rendering + App QA",
                   "Capture decoded/rendered pixels and placement in a private fixture; animation requires timed frame evidence. Do not infer pixel output, placeholders or playback from query recognition or cursor movement.",
-                  ["src/Ntilde.VT/AnsiParser.Images.cs", "src/Ntilde.VT/AnsiParser.KittyGraphics.cs", "tests/Ntilde.App.Tests/GraphicsTests.cs", "tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs"]),
+                  [VT_IMAGES, VT_KITTY_GRAPHICS, "tests/Ntilde.App.Tests/GraphicsTests.cs", "tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs"]),
     "Q05": action("Generate and validate input events", "App input + QA",
                   "Inject a controlled key/keypad/mouse event in an owned pane and compare the actual encoded child-input report, including coordinates and modifiers. A mode response does not prove input encoding.",
-                  ["src/Ntilde.VT/AnsiParser.Csi.cs", "tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs", "tests/Ntilde.App.Tests/MouseReportingTests.cs"]),
+                  [VT_CSI, "tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs", "tests/Ntilde.App.Tests/MouseReportingTests.cs"]),
     "Q06": action("Observe saved/restored terminal state", "VT + App QA",
                   "Compare complete main/alternate buffer contents, saved cursor and relevant mode/attribute state before entry, while active, and after restoration. A responsive cursor after exit is insufficient.",
-                  ["src/Ntilde.VT/AnsiParser.Csi.cs", "src/Ntilde.VT/TerminalBuffer.StateTransfer.cs", "tests/Ntilde.App.Tests/AlternateScreenTests.cs", "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs"]),
+                  [VT_CSI, "src/Ntilde.VT/TerminalBuffer.StateTransfer.cs", "tests/Ntilde.App.Tests/AlternateScreenTests.cs", "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs"]),
     "Q07": action("Unimplemented query variant", "VT protocol backlog",
                   "The reviewed dispatcher has no reply for this exact query variant. Add a narrowly scoped contract and request/reply regression before implementation, or explicitly document the variant as intentionally unavailable. Rerun the owned query after any change; retain the original inconclusive grade.",
-                  ["src/Ntilde.VT/AnsiParser.Csi.cs", "src/Ntilde.VT/AnsiParser.Osc.cs", "src/Ntilde.VT/AnsiParser.Images.cs", "docs/vt_coverage_matrix.md"]),
+                  [VT_CSI, VT_OSC, VT_IMAGES, VT_MATRIX]),
     "Q08": action("Conditional selection-color query", "VT colors + App theme QA",
                   "OSC 17/19 are implemented, but unset derived selection colors can be null and intentionally produce no concrete reply. In a private fixture, set a known override, query it, restore it and verify restoration; test host-derived defaults separately.",
-                  ["src/Ntilde.VT/AnsiParser.Colors.cs", "src/Ntilde.VT/TerminalBuffer.RuntimeColors.cs", "tests/Ntilde.VT.Tests/RuntimeColorTests.cs", "docs/vt_coverage_matrix.md"]),
+                  ["src/Ntilde.VT/AnsiParser.Colors.cs", "src/Ntilde.VT/TerminalBuffer.RuntimeColors.cs", "tests/Ntilde.VT.Tests/RuntimeColorTests.cs", VT_MATRIX]),
     "Q09": action("Kitty image-number/acknowledgement gap", "VT graphics + App ownership QA",
                   "The probe sends uppercase I image numbers. The reviewed implementation reads lowercase i and emits replies for a=q, not correlated allocation acknowledgements for these a=t/T probes. Add image-number allocation/ack/cleanup contract tests; existing basic image decoding is separate evidence.",
-                  ["src/Ntilde.VT/AnsiParser.KittyGraphics.cs", "tests/Ntilde.App.Tests/GraphicsTests.cs", "tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs", "docs/vt_coverage_matrix.md"]),
+                  [VT_KITTY_GRAPHICS, "tests/Ntilde.App.Tests/GraphicsTests.cs", "tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs", VT_MATRIX]),
     "Q10": action("Source-reviewed limited or missing variant", "VT/App protocol backlog",
                   "The exact spelling/variant has a source limitation listed with this row. Add a focused state/effect contract and owned observer, implement separately if desired, and rerun; do not equate related supported protocols with this variant.",
-                  ["src/Ntilde.VT/AnsiParser.Csi.cs", "src/Ntilde.VT/AnsiParser.Osc.cs", "src/Ntilde.VT/AnsiParser.KittyGraphics.cs", "docs/vt_coverage_matrix.md"]),
+                  [VT_CSI, VT_OSC, VT_KITTY_GRAPHICS, VT_MATRIX]),
     "Q11": action("Keep clipboard ownership refusal", "App native QA + collector policy",
                   "These OSC 52 packets were not sent. Keep them refused until the owned collector itself has a disposable clipboard and verified restoration/cleanup. Separate native CI interchange results do not retroactively qualify these observations. OSC 52 reads intentionally return denial.",
-                  ["src/Ntilde.VT/AnsiParser.Osc.cs", "scripts/terminfo/ownership.mjs", "docs/qa/clipboard-native.md", "docs/qa/terminfo/2026-11-01-clipboard.md"]),
+                  [VT_OSC, "scripts/terminfo/ownership.mjs", "docs/qa/clipboard-native.md", "docs/qa/terminfo/2026-11-01-clipboard.md"]),
     "Q12": action("Negative query response is not a full capability result", "VT protocol QA",
                   "DECRQSS and XTGETTCAP return well-formed failure responses for the requested setting/name. Preserve that evidence; enumerate and test individual supported/unsupported settings before claiming the whole query family.",
-                  ["src/Ntilde.VT/AnsiParser.Images.cs", "docs/vt_coverage_matrix.md"]),
+                  [VT_IMAGES, VT_MATRIX]),
     "Q13": action("Collector API/legacy evidence gap", "QA adapter",
                   "This is an adapter/API observation, not proof of missing VT behavior. Add an owned reset/state readback adapter or replace the legacy feature hint with explicit assertions. Do not invoke an unowned app reset or use a legacy hint as support evidence.",
                   ["scripts/terminfo/collector.mjs", "scripts/terminfo/ownership.mjs", "src/Ntilde.VT/AnsiParser.cs"]),
@@ -92,7 +98,7 @@ limits("input.modify-other-keys input.modify-other-keys-3 input.pixel-mouse inpu
        "Xterm modifyOtherKeys and pixel/urxvt mouse encodings are not implemented; Kitty keyboard and legacy X10/SGR mouse paths are different contracts.")
 
 
-SPECIAL_ACTIONS = {feature: "Q10" for feature in LIMITS}
+SPECIAL_ACTIONS = dict.fromkeys(LIMITS, "Q10")
 SPECIAL_ACTIONS.update({
     "device.decrqss": "Q12", "device.xtgettcap": "Q12", "device.term-features": "Q13", "reset.method": "Q13",
     "modes.application-keypad": "Q05", "extensions.truecolor": "Q02", "reset.sgr": "Q02", "cursor.hide": "Q02", "cursor.shape": "Q02",
