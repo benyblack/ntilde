@@ -56,12 +56,16 @@ fixture deletion.
 
 ## Verification and limits
 
-The local suite passed 115 tests with zero skips, including real-app collection,
+The local suite passed 116 tests with zero skips, including real-app collection,
 retained-source hashes, completion-receipt hashes, interruption during preparation
 and cleanup, repeated signals, and a worker that ignores SIGTERM. The
 portable regressions reject missing barriers and an incorrect nonce cursor;
 the published report is also re-derived and digest-checked offline in CI.
 The Release App build completed with zero warnings and errors.
+The pinned dependency inputs also survive a real Git `autocrlf=true` checkout;
+removing their LF attributes reproduces the digest failure. Real-app tests need
+an awake display: a repeat after display sleep aborted in Avalonia's native
+RenderTimer (`-6661`) and produced no completion receipts.
 
 This is ASCII viewport buffer/cursor evidence. The existing projection trims
 trailing whitespace and skips wide-cell continuations. No wide/combining text,

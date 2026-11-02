@@ -30,6 +30,8 @@ ignored `artifacts/terminfo/tool` directory on first use. It uses the checked-in
 digests; a changed manifest, package version, archive URL or integrity digest
 is refused before npm or the collector can run. Refresh these files and their
 pins together when intentionally upgrading the collector.
+Git attributes preserve LF bytes for both pinned inputs on Windows as well;
+validation never normalizes a modified cache to make its digest pass.
 
 Preparation executes `npm-cli.js` from the selected Node installation directly,
 without searching `PATH`: `../lib/node_modules/npm/bin` from the Node executable
@@ -96,7 +98,7 @@ To permit behavioral probes, launch a separate disposable desktop instance:
 node scripts/terminfo-owned.mjs --executable /absolute/path/to/Ntilde --app-version 0.12.0
 ```
 
-This runner requires macOS, Node 24+, npm, and the pinned collector prepared above.
+This runner requires an awake macOS desktop, Node 24+, npm, and the pinned collector prepared above.
 It runs from an ordinary shell; it does not need an existing Ntilde tab or agent
 access enabled. The executable must be an **uninstalled sidecar outside any
 `.app` bundle**. Packaged macOS apps and aliases pointing into their bundles
