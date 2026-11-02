@@ -84,6 +84,11 @@ class TerminfoTriageTests(unittest.TestCase):
     def test_markdown_is_regenerated_from_the_validated_inventory(self):
         self.assertEqual(triage.STEM.with_suffix(".md").read_text(encoding="utf-8"), triage.markdown(self.report))
 
+    def test_insert_replace_mode_has_observable_cell_effects_instead_of_screen_save_restore(self):
+        row = next(row for row in self.report["observations"] if row["original"]["featureId"] == "modes.insert-replace")
+        self.assertEqual("Q01", row["action"])
+        self.assertIn("shifted versus overwritten cells", self.report["actions"]["Q01"]["nextMeasurement"])
+
     def test_substituted_raw_input_is_rejected_before_any_source_command(self):
         with tempfile.TemporaryDirectory() as temporary:
             raw = Path(temporary) / "raw.json"

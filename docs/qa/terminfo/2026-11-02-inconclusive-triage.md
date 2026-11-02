@@ -10,7 +10,7 @@ The 22 missing replies split into 18 unimplemented exact query variants, two con
 
 ### Q01 — Observe cells, geometry and history
 
-**30 observations; owner: VT + App QA.** Use a disposable pane with independently confirmed rows/columns; compare cell contents, cursor, margins and scrollback before/after, then retain the observation and cleanup receipt. CPR alone cannot prove content or erasure.
+**31 observations; owner: VT + App QA.** Use a disposable pane with independently confirmed rows/columns; compare cell contents, cursor, margins and scrollback before/after, then retain the observation and cleanup receipt. For insert/replace mode, write controlled text under SM/RM 4 and compare shifted versus overwritten cells after each transition. CPR alone cannot prove content or erasure.
 
 Source context: [AnsiParser.Csi.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/src/Ntilde.VT/AnsiParser.Csi.cs), [TerminalBuffer.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/src/Ntilde.VT/TerminalBuffer.cs), [EraseInDisplayTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.VT.Tests/EraseInDisplayTests.cs), [ScrollAndWrapCorrectnessTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs).
 
@@ -40,7 +40,7 @@ Source context: [AnsiParser.Csi.cs](https://github.com/benyblack/ntilde/blob/c1b
 
 ### Q06 — Observe saved/restored terminal state
 
-**4 observations; owner: VT + App QA.** Compare complete main/alternate buffer contents, saved cursor and relevant mode/attribute state before entry, while active, and after restoration. A responsive cursor after exit is insufficient.
+**3 observations; owner: VT + App QA.** Compare complete main/alternate buffer contents, saved cursor and relevant mode/attribute state before entry, while active, and after restoration. A responsive cursor after exit is insufficient.
 
 Source context: [AnsiParser.Csi.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/src/Ntilde.VT/AnsiParser.Csi.cs), [TerminalBuffer.StateTransfer.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/src/Ntilde.VT/TerminalBuffer.StateTransfer.cs), [AlternateScreenTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.App.Tests/AlternateScreenTests.cs), [SoftResetAndCursorSaveTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs).
 
@@ -212,7 +212,7 @@ Every row below retains its original inconclusive outcome. Source-limit notes de
 | `modes.application-keypad` | insufficient-evidence | Q05 | See the original note/trace and work package; no support inference. |
 | `modes.deccolm` | insufficient-evidence | Q10 | The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior. |
 | `modes.decsclm` | insufficient-evidence | Q10 | The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior. |
-| `modes.insert-replace` | insufficient-evidence | Q06 | See the original note/trace and work package; no support inference. |
+| `modes.insert-replace` | insufficient-evidence | Q01 | See the original note/trace and work package; no support inference. |
 | `modes.left-right-margin` | insufficient-evidence | Q10 | The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior. |
 | `modes.reverse-video` | insufficient-evidence | Q10 | The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior. |
 | `modes.utf8-mouse-1005` | insufficient-evidence | Q10 | The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior. |

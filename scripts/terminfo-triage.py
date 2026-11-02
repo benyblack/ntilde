@@ -30,7 +30,7 @@ def action(title, owner, next_measurement, files):
 
 ACTIONS = {
     "Q01": action("Observe cells, geometry and history", "VT + App QA",
-                  "Use a disposable pane with independently confirmed rows/columns; compare cell contents, cursor, margins and scrollback before/after, then retain the observation and cleanup receipt. CPR alone cannot prove content or erasure.",
+                  "Use a disposable pane with independently confirmed rows/columns; compare cell contents, cursor, margins and scrollback before/after, then retain the observation and cleanup receipt. For insert/replace mode, write controlled text under SM/RM 4 and compare shifted versus overwritten cells after each transition. CPR alone cannot prove content or erasure.",
                   [VT_CSI, "src/Ntilde.VT/TerminalBuffer.cs", "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs", "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs"]),
     "Q02": action("Observe attributes and rendered pixels", "VT + Rendering + App QA",
                   "Assert decoded cell attributes/charset mapping and independently capture controlled rendered pixels. Use a controlled clock for blink; preserve the input, capture hashes and restored fixture state. For OSC 104/110/111/112/117/119, save prior colors and host defaults, set known overrides, issue the exact reset, then compare palette/default/cursor/selection state and pixels against the known defaults. Query where a concrete reply exists; an unset selection default may have no concrete reply. Restore prior state and verify restoration. Cursor advance is insufficient.",
@@ -101,7 +101,7 @@ limits("input.modify-other-keys input.modify-other-keys-3 input.pixel-mouse inpu
 SPECIAL_ACTIONS = dict.fromkeys(LIMITS, "Q10")
 SPECIAL_ACTIONS.update({
     "device.decrqss": "Q12", "device.xtgettcap": "Q12", "device.term-features": "Q13", "reset.method": "Q13",
-    "modes.application-keypad": "Q05", "extensions.truecolor": "Q02", "reset.sgr": "Q02", "cursor.hide": "Q02", "cursor.shape": "Q02",
+    "modes.application-keypad": "Q05", "modes.insert-replace": "Q01", "extensions.truecolor": "Q02", "reset.sgr": "Q02", "cursor.hide": "Q02", "cursor.shape": "Q02",
     "extensions.reflow": "Q01", "reset.decaln": "Q01", "extensions.sixel": "Q04", "extensions.iterm2-images": "Q04",
 })
 SPECIAL_ACTIONS.update(dict.fromkeys((

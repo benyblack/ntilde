@@ -19,7 +19,7 @@
     "Q01": {
       "title": "Observe cells, geometry and history",
       "owner": "VT + App QA",
-      "nextMeasurement": "Use a disposable pane with independently confirmed rows/columns; compare cell contents, cursor, margins and scrollback before/after, then retain the observation and cleanup receipt. CPR alone cannot prove content or erasure.",
+      "nextMeasurement": "Use a disposable pane with independently confirmed rows/columns; compare cell contents, cursor, margins and scrollback before/after, then retain the observation and cleanup receipt. For insert/replace mode, write controlled text under SM/RM 4 and compare shifted versus overwritten cells after each transition. CPR alone cannot prove content or erasure.",
       "sourceFiles": [
         "src/Ntilde.VT/AnsiParser.Csi.cs",
         "src/Ntilde.VT/TerminalBuffer.cs",
@@ -1708,7 +1708,7 @@
         "note": "Cursor advance does not measure whether X displaced the existing cells",
         "rawReplyRef": "modes.insert-replace"
       },
-      "action": "Q06",
+      "action": "Q01",
       "traceSha256": "67f52efec9924e6aede5cac98f733f04c18e07ef5f474fc6208378ccb15407ba"
     },
     {
