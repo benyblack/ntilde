@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { snapshotHash } from './agent-observer.mjs';
 import { buildRgbReport, collectRgb } from './rgb.mjs';
 
@@ -92,4 +94,30 @@ test('writes remain serial, match literal experiments and restore the main scree
     }
     assert.ok(writes.at(-1).endsWith('\x1b[?1049l'));
     assert.equal(reads.at(-1), 'rgb-finish');
+});
+
+
+test('published RGB/underline evidence re-derives and matches the final shared cleanup receipt', () => {
+    const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-02-rgb-underline.json', import.meta.url)));
+    const report = published.rgbReport, receipt = published.completionReceipt;
+    assert.deepEqual(buildRgbReport(report.snapshots, report.runId), report);
+    assert.equal(createHash('sha256').update(JSON.stringify(report, null, 2) + '\n').digest('hex'), receipt.rgbEvidence.sha256);
+    assert.equal(report.runId, receipt.runId);
+    assert.equal(receipt.rgbEvidence.runId, report.runId);
+    assert.equal(receipt.rgbEvidence.suiteId, report.suiteId);
+    assert.equal(receipt.rgbEvidence.file, 'rgb-observations.json');
+    assert.deepEqual(receipt.rgbEvidence.counts, { passed: 20 });
+    assert.equal(receipt.fixtureRemoved, true);
+    for (const [field, metadata] of [['cellEvidence', receipt], ['sgrEvidence', receipt.sgrEvidence]]) {
+        const evidence = published[field];
+        assert.equal(evidence.runId, metadata.runId);
+        assert.equal(evidence.file, metadata.file);
+        assert.equal(evidence.suiteId, metadata.suiteId);
+        assert.equal(evidence.sha256, metadata.sha256);
+        assert.deepEqual(evidence.counts, metadata.counts);
+    }
+    assert.deepEqual(published.cellEvidence.counts, { passed: 8 });
+    assert.deepEqual(published.sgrEvidence.counts, { passed: 17 });
+    assert.deepEqual(published.stockCollector.counts, { inconclusive: 177, supported: 78 });
+    assert.equal(published.stockCollector.rawSha256, receipt.rawSha256);
 });
