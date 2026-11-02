@@ -18,9 +18,10 @@ const combinedSequence = sgr('38;2;1;128;255;48;2;254;2;0;4:3;58;2;12;34;56') + 
 function colors(channel, syntax) {
     const samples = [[1, 128, 255], [254, 2, 0], [0, 0, 0], [255, 255, 255]];
     const prefix = channel === 'fg' ? 38 : 48;
+    const colorspace = syntax === 'colon-colorspace' ? ':' : '';
     const sequence = samples.map((rgb, index) => {
         const code = syntax === 'semicolon' ? `${prefix};2;${rgb.join(';')}`
-            : `${prefix}:2:${syntax === 'colon-colorspace' ? ':' : ''}${rgb.join(':')}`;
+            : `${prefix}:2:${colorspace}${rgb.join(':')}`;
         return sgr(code) + String.fromCodePoint(65 + index);
     }).join('');
     const details = samples.map(([r, g, b]) => literal(channel, 0xff000000 + r * 65536 + g * 256 + b));
@@ -70,8 +71,8 @@ export function buildRgbReport(snapshots, runId) {
             return { sequence, expected, snapshot: target.index, passed: matchesRgb(target.screen, expected) };
         });
         const ready = matchesRgb(before.screen, view('', []));
-        return { featureId: item.id, before: before.index, assertions,
-            result: ready ? (assertions.every(value => value.passed) ? 'passed' : 'failed') : 'inconclusive' };
+        const qualified = assertions.every(value => value.passed) ? 'passed' : 'failed';
+        return { featureId: item.id, before: before.index, assertions, result: ready ? qualified : 'inconclusive' };
     });
     return { schemaVersion: 1, suiteId: rgbSuiteId, runId, complete: true,
         scope: 'Live App stored ARGB, default/palette markers and underline metadata; complete physical-cell runs. No resolved theme colors, pixels or stock grades.',

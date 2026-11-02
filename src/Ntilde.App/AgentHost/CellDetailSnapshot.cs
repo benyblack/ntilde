@@ -18,20 +18,7 @@ internal static class CellDetailSnapshot
         {
             for (var col = 0; col < buffer.Cols; col++)
             {
-                var cell = row.Cells[col];
-                var underline = cell.IsUnderline ? row.GetUnderline(col) : null;
-                var value = new CellDetailRunDto
-                {
-                    Count = 1,
-                    Flags = (ushort)(cell.Flags & ~(ushort)TerminalCellFlags.Dirty),
-                    Fg = cell.FgIndex,
-                    Bg = cell.BgIndex,
-                    ForegroundArgb = cell.IsDefaultForeground || cell.IsPaletteForeground ? null : cell.Fg,
-                    BackgroundArgb = cell.IsDefaultBackground || cell.IsPaletteBackground ? null : cell.Bg,
-                    UnderlineStyle = cell.IsUnderline ? (byte)(underline?.Style ?? UnderlineStyle.Single) : (byte)0,
-                    UnderlineColorIndex = underline?.ColorIndex ?? -1,
-                    UnderlineArgb = underline?.Color?.ToUint(),
-                };
+                var value = Project(row, col);
                 if (value == previous)
                 {
                     count++;
@@ -47,4 +34,23 @@ internal static class CellDetailSnapshot
         details = runs.ToArray();
         return true;
     }
+
+    private static CellDetailRunDto Project(TerminalRow row, int col)
+    {
+        var cell = row.Cells[col];
+        var underline = cell.IsUnderline ? row.GetUnderline(col) : null;
+        return new CellDetailRunDto
+        {
+            Count = 1,
+            Flags = (ushort)(cell.Flags & ~(ushort)TerminalCellFlags.Dirty),
+            Fg = cell.FgIndex,
+            Bg = cell.BgIndex,
+            ForegroundArgb = cell.IsDefaultForeground || cell.IsPaletteForeground ? null : cell.Fg,
+            BackgroundArgb = cell.IsDefaultBackground || cell.IsPaletteBackground ? null : cell.Bg,
+            UnderlineStyle = cell.IsUnderline ? (byte)(underline?.Style ?? UnderlineStyle.Single) : (byte)0,
+            UnderlineColorIndex = underline?.ColorIndex ?? -1,
+            UnderlineArgb = underline?.Color?.ToUint(),
+        };
+    }
+
 }
