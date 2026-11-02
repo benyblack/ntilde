@@ -4,13 +4,20 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { adapterId } from './collector.mjs';
 import { assertPrivateFile, processRecord, requestOwner, verifyNtildeOutput } from './ownership.mjs';
+import { collectCells } from './cells.mjs';
+import { terminalFence } from './terminal-fence.mjs';
 
 let config;
 try {
     assertPrivateFile(process.argv[2]);
     config = JSON.parse(readFileSync(process.argv[2], 'utf8'));
     // Establish the real process/PTY relation before loading the probe engine.
-    await verifyNtildeOutput(config, process.stdout);
+    const binding = await verifyNtildeOutput(config, process.stdout);
+    const fence = terminalFence(process.stdin, process.stdout);
+    try {
+        await collectCells({ config, fence, owner: (kind, barrier = null) =>
+            requestOwner(config, kind, { tty: binding.tabTty, barrier }) });
+    } finally { fence.dispose(); }
     const source = readFileSync(config.bundle);
     const digest = createHash('sha256').update(source).digest('hex');
     if (digest !== config.adapterBundleSha256) throw new Error('Local adapter bundle changed.');

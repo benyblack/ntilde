@@ -30,6 +30,8 @@ ignored `artifacts/terminfo/tool` directory on first use. It uses the checked-in
 digests; a changed manifest, package version, archive URL or integrity digest
 is refused before npm or the collector can run. Refresh these files and their
 pins together when intentionally upgrading the collector.
+Git attributes preserve LF bytes for both pinned inputs on Windows as well;
+validation never normalizes a modified cache to make its digest pass.
 
 Preparation executes `npm-cli.js` from the selected Node installation directly,
 without searching `PATH`: `../lib/node_modules/npm/bin` from the Node executable
@@ -96,7 +98,7 @@ To permit behavioral probes, launch a separate disposable desktop instance:
 node scripts/terminfo-owned.mjs --executable /absolute/path/to/Ntilde --app-version 0.12.0
 ```
 
-This runner requires macOS, Node 24+, npm, and the pinned collector prepared above.
+This runner requires an awake macOS desktop, Node 24+, npm, and the pinned collector prepared above.
 It runs from an ordinary shell; it does not need an existing Ntilde tab or agent
 access enabled. The executable must be an **uninstalled sidecar outside any
 `.app` bundle**. Packaged macOS apps and aliases pointing into their bundles
@@ -118,11 +120,12 @@ under `~/.ntilde-qa`, including its isolated dependency installation, which is
 removed during cleanup. It verifies that the parent is owned by the current user,
 is not a symlink, and has no group/other permissions. A long home path that
 cannot fit the macOS socket limit is rejected before launching the app.
-Persistence, updates, hotkeys, clipboard writes and agent access are disabled
-for that instance. It launches the exact executable with a unique
+Persistence, updates, hotkeys, clipboard writes and agent Act access are disabled
+for that instance. Observe access is enabled only in this private app-data root
+for the supplemental cell suite below. It launches the exact executable with a unique
 run marker. A private socket capability binds the worker to that launch; both
 ends verify its live app parent, executable, user, controlling TTY and output
-device. Geometry reads repeat the ownership/device check. Cleanup terminates
+device. Geometry and cell reads repeat the ownership/device check. Cleanup terminates
 only the launched process and its verified worker and removes the private root.
 Worker cleanup checks the recorded process identity and unique run marker even
 if an app crash has reparented it. It waits up to two seconds after `SIGTERM`,
@@ -131,7 +134,7 @@ for exit. Cleanup is recorded and the fixture removed only after the worker
 has exited. If identity cannot be verified or termination fails, the run fails
 and retains the fixture with cleanup-failure evidence; app and socket shutdown
 are still attempted. Ownership replies share a four-second budget
-for their process queries within the existing five-second response timeout.
+for their process queries and observer RPCs within the existing five-second response timeout.
 Early exit and interruption retain failure evidence and still clean up. Signal
 handlers cover fixture creation through app exit, socket closure and fixture
 removal, and remain installed for repeated signals during teardown.
@@ -148,7 +151,8 @@ Results go to `artifacts/terminfo/owned-*`, with initial settings, app/binary an
 adapter hashes, the upstream receipt/lock, raw replies, summary, and measured
 ownership/cleanup evidence. `collector-adapter.mjs` retains the exact derived
 bundle after its private installation is deleted. `sources/` retains the runner,
-collector transformation, ownership, worker and runtime source files, plus the
+collector transformation, ownership, worker, runtime, cell observer, suite and
+ordering-barrier source files, plus the
 pinned dependency inputs; context
 hashes bind each snapshot to the run. `adapterSourceSha256` identifies the
 collector transformation, while `runnerSourceSha256` identifies the launcher.
@@ -159,11 +163,59 @@ diagnostic or `suiteComplete: false` must remain visible; it is not a terminal
 failure. See the [first owned run](terminfo/2026-10-30-macos-owned.md) and the
 [refreshed before/after run](terminfo/2026-10-31-macos-owned.md).
 
+### Supplemental ASCII cell observations
+
+The owned runner also measures eight local text/cursor experiments through the
+App's existing observe-only `readScreen` buffer projection. These are a separate
+suite, `ntilde-owned-ascii-cells-v1`. They do not change the original collector's
+probes, evidence requirements, grades or raw JSON. The inline runner does not
+run this suite.
+
+Discovery is restricted to the private fixture's descriptor and socket, with
+the launched PID, current user and private filesystem permissions checked. The
+fixture must have exactly one local, non-windowless pane with its unique worker
+profile. The worker enters the alternate screen and writes a fresh run nonce;
+the parent binds that nonce and cursor position to the observed pane before
+accepting experiment snapshots. Every read checks pane identity and dimensions
+before and after the snapshot. No normal app endpoint is consulted.
+
+Each write ends with a fresh DA query/reply as an ordering barrier. This reply
+does not establish text or cursor behavior: the parent's actual before/after
+snapshots supply those assertions. Each case has a known control, and expected
+unaffected rows must remain intact. A bad control is inconclusive; a qualified
+mismatch is a failed local assertion, not a stock `unsupported` grade. The suite
+covers ASCII writes, overwrite, absolute cursor movement, CUP with origin mode
+off/on and a scroll region, EL 0/1/2, and insert followed by replace mode.
+
+Only viewports of 3–128 rows and 48–256 columns are accepted, with at most 64
+snapshot attempts and 512 KiB per response. Wide/combining characters, colors,
+attributes, glyph pixels and scrollback are outside this suite. `readScreen`
+trims trailing whitespace; blank cells are asserted through that projection.
+The worker restores its input mode and the main-screen text, cursor and cursor
+visibility must match the initial snapshot before collection can complete.
+
+Additional files in each owned evidence directory:
+
+- `cell-snapshots.jsonl`: the parent's incremental snapshot journal.
+- `cell-observations.json`: the complete snapshots, controls and derived local
+  assertions. It stays provisional until cleanup completes.
+- `cell-receipt.json`: written only after worker/app shutdown and private fixture
+  deletion. It binds the report, context, raw collector run and ownership proof
+  with SHA-256 hashes. Failed or interrupted runs have no completion receipt.
+
+Keep these with the other run evidence. The
+[2026-11-02 cell measurement](terminfo/2026-11-02-ascii-cells.md) records the first
+successful run and its limits.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh
 node --test scripts/terminfo/*.test.mjs
 ```
+
+The portable cell, observer, ordering-barrier and runtime helper tests also run
+in CI's script self-tests. CI does not launch a desktop or install the collector;
+Unix filesystem checks are explicitly skipped on Windows.
 
 The changed-dependency regression runs when the cache is prepared and
 `NTILDE_TERMINFO_NPM_CLI` explicitly selects a usable npm CLI. The real-app

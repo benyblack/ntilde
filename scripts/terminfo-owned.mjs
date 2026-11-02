@@ -2,13 +2,15 @@
 // Launches a private macOS desktop instance; never attaches to an existing pane.
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import { chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
 import { assertProcessOwnership, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
+import { OwnedCellObserver } from './terminfo/agent-observer.mjs';
+import { buildCellReport, cellSuiteId } from './terminfo/cells.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -79,6 +81,9 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
         adapterSourceSha256: join(repo, 'scripts', 'terminfo', 'collector.mjs'),
         ownershipSourceSha256: ownerModule, workerSourceSha256: workerScript,
         runtimeSourceSha256: join(repo, 'scripts', 'terminfo', 'runtime.mjs'),
+        observerSourceSha256: join(repo, 'scripts', 'terminfo', 'agent-observer.mjs'),
+        cellSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'cells.mjs'),
+        cellFenceSourceSha256: join(repo, 'scripts', 'terminfo', 'terminal-fence.mjs'),
         collectorManifestSha256: join(repo, 'scripts', 'terminfo', 'collector-package.json'),
         collectorLockSha256: join(repo, 'scripts', 'terminfo', 'collector-package-lock.json'),
     };
@@ -89,6 +94,29 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
         digests[field] = hash(bytes);
     }
     return digests;
+}
+
+function retainCellReport(output, observer, runId) {
+    if (!observer?.restored) throw new Error('Owned cell observation or restoration did not complete.');
+    const report = buildCellReport(observer.frames, runId);
+    const file = 'cell-observations.json';
+    writeJson(join(output, file), report);
+    const counts = {};
+    for (const item of report.observations) counts[item.result] = (counts[item.result] ?? 0) + 1;
+    return { runId, suiteId: cellSuiteId, file, sha256: hash(readFileSync(join(output, file))), counts,
+        provisionalUntil: 'cell-receipt.json' };
+}
+
+function completeCellReceipt(output, scratch, evidence) {
+    const proofBytes = readFileSync(join(output, 'ownership-proof.json'));
+    const proof = JSON.parse(proofBytes);
+    if (!proof.completed || !proof.cleanedUpAt || proof.cleanupError || existsSync(scratch)) {
+        throw new Error('Owned cell evidence has no completed cleanup.');
+    }
+    writeJson(join(output, 'cell-receipt.json'), { schemaVersion: 1, ...evidence,
+        ownershipProofSha256: hash(proofBytes), contextSha256: hash(readFileSync(join(output, 'context.json'))),
+        rawSha256: hash(readFileSync(join(output, 'raw.json'))), fixtureRemoved: true,
+        completedAt: new Date().toISOString() });
 }
 
 async function terminateLaunchedApp(app) {
@@ -159,6 +187,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let scratch;
     let output;
     let preserveScratch = false;
+    let cellEvidence;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
@@ -175,19 +204,20 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const token = randomBytes(32).toString('hex');
         const configPath = join(scratch, 'worker.json');
         const workerScript = join(repo, 'scripts', 'terminfo', 'worker.mjs');
-        const config = { runId, token, appData, output, executable, bundle,
+        const profileName = `terminfo disposable worker ${runId}`;
+        const config = { runId, token, appData, output, executable, bundle, profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
         const command = join(scratch, 'worker.sh');
         writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
         const profileId = randomUUID();
         const settings = {
-            Profiles: [{ Id: profileId, Name: 'terminfo disposable worker', Command: command, Arguments: '', StartingDirectory: scratch, Type: 0 }],
+            Profiles: [{ Id: profileId, Name: profileName, Command: command, Arguments: '', StartingDirectory: scratch, Type: 0 }],
             DefaultProfileId: profileId, SessionPersistence: 'Off', ShellExitPolicy: 'Always', PaneClosePolicy: 'Always',
             QuakeModeEnabled: false, AutomaticUpdateChecks: false, AllowOsc52ClipboardWrite: false,
             BellAudioEnabled: false, BellVisualEnabled: false, SmoothScrolling: false,
             CommandAssistEnabled: false, CommandAssistShellIntegrationEnabled: false,
-            CommandAssistPowerShellIntegrationEnabled: false, AgentAccessObserveEnabled: false, AgentAccessActEnabled: false,
+            CommandAssistPowerShellIntegrationEnabled: false, AgentAccessObserveEnabled: true, AgentAccessActEnabled: false,
         };
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
@@ -196,6 +226,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
 
         let app;
         let workerIdentity;
+        let cellObserver;
         let completed = false;
         const proofs = [];
         const image = statSync(executable);
@@ -208,12 +239,14 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             ...retainCollectorEvidence(output, bundle, adapterBundleSha256, ownerModule, workerScript),
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
             clipboard: 'disabled; no clipboard fixture', pixels: 'no pixel capture adapter',
+            cells: 'private observe-only AgentHost; nonce-bound pane; separate ASCII cell-state suite',
         };
+        writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         const server = createServer(socket => {
             let buffer = '';
             socket.setTimeout(5000, () => socket.destroy());
             socket.on('error', () => {});
-            socket.on('data', chunk => {
+            socket.on('data', async chunk => {
                 buffer += chunk;
                 if (buffer.length > 8192) return socket.destroy();
                 if (!buffer.includes('\n')) return;
@@ -236,6 +269,13 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
+                    if (['cell-start', 'cell-bind', 'cell-read', 'cell-finish'].includes(request.kind)) {
+                        cellObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName, nonce: config.cellNonce });
+                        const result = await cellObserver.handle(request.kind, queryTimeout, request.barrier);
+                        appendFileSync(join(output, 'cell-snapshots.jsonl'), JSON.stringify(cellObserver.frames.at(-1)) + '\n');
+                        socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
+                        return;
+                    }
                     if (request.kind === 'prove') {
                         // Retain the measured proof, never the capability token.
                         if (proofs.length === 0) proofs.push({ app: owner, worker, tty: request.tty, at: new Date().toISOString() });
@@ -274,6 +314,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             console.log(`Collecting in disposable Ntilde pid ${app.pid}; results: ${output}`);
             await done;
             const summary = collectionSummary(output, args[3]);
+            cellEvidence = retainCellReport(output, cellObserver, runId);
+            summary.cellEvidence = cellEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
@@ -301,6 +343,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
         throw interruption;
     }
+    try { completeCellReceipt(output, scratch, cellEvidence); }
+    catch (error) { retainPreparationFailure(output, error); throw error; }
 }
 
 try {
