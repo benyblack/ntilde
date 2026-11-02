@@ -93,6 +93,11 @@ public sealed record ReadScreenParams
     [JsonPropertyName("includeCellDetails")]
     public bool IncludeCellDetails { get; init; }
 
+    /// <summary>Include overline booleans in cell details; only effective with IncludeCellDetails.
+    /// Explicit opt-in preserves canonical run boundaries for older clients.</summary>
+    [JsonPropertyName("includeOverline")]
+    public bool IncludeOverline { get; init; }
+
     /// <summary>Include stored cursor style/blink/default modes, without resolving host preferences or blink phase.</summary>
     [JsonPropertyName("includeCursorMode")]
     public bool IncludeCursorMode { get; init; }
@@ -194,6 +199,10 @@ public sealed record CellDetailRunDto
 
     [JsonPropertyName("underlineArgb")]
     public uint? UnderlineArgb { get; init; }
+
+    /// <summary>Stored SGR 53 state, present only when includeOverline was requested.</summary>
+    [JsonPropertyName("overline"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Overline { get; init; }
 }
 
 /// <summary>Params for <c>captureScreen</c> (A5).</summary>

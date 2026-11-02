@@ -290,15 +290,22 @@ retains the first qualified run and its limits.
 ### Supplemental remaining rendition, charsets and cursor modes
 
 After RGB collection restores (or records its initial typed budget refusal),
-the worker runs `ntilde-owned-rendition-charsets-v2`: 16 experiments and 40
-parent-owned frames. These measure faint, hidden, strikethrough and blink flags;
+the worker runs `ntilde-owned-rendition-charsets-v3`: 19 experiments and 50
+parent-owned frames. Three additional experiments observe SGR 53/55, independence
+from underline style/color and SGR 24, and SGR 0 reset. The explicit
+`readScreen(includeCellDetails=true, includeOverline=true)` opt-in includes a
+boolean per run. Without it, overline is omitted from both values and run
+boundaries, preserving canonical projections for older clients. These observations
+prove stored state; focused renderer tests separately exercise the painted top stroke. These measure faint, hidden, strikethrough and blink flags;
 their selective resets and SGR 0; BMP, combining, wide and supplementary Unicode;
 DEC line drawing/special graphics; and G0/G1 SI/SO switching. Complete physical
 cell details include wide-continuation and extended-text flags. Combining and
 wide cases use independent cursor-width expectations. Each charset sequence
 restores ASCII designation and shift, then writes lowercase probes to verify it.
 The first retained v1 mapping measurement predates those post-restoration probes
-and remains reproducible with its explicitly selected suite revision. Hidden text is
+and remains reproducible with its explicitly selected suite revision. The retained
+v2 measurement also remains reproducible, with its original 16 experiments and
+40 frames; it contains no overline observations. Hidden text is
 recorded buffer content; blink is a stored flag. Neither proves painted output.
 
 `ntilde-owned-cursor-modes-v1` follows with nine experiments and 22 frames.

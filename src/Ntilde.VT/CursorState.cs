@@ -25,6 +25,7 @@ namespace Ntilde.VT
         public bool IsFaint { get; set; }
         public bool IsItalic { get; set; }
         public bool IsUnderline { get; set; }
+        public bool IsOverline { get; set; }
         public UnderlineStyle UnderlineStyle { get; set; } = UnderlineStyle.Single;
         public TermColor? UnderlineColor { get; set; }
         public short UnderlineColorIndex { get; set; } = -1;
@@ -53,6 +54,7 @@ namespace Ntilde.VT
                 IsFaint = this.IsFaint,
                 IsItalic = this.IsItalic,
                 IsUnderline = this.IsUnderline,
+                IsOverline = this.IsOverline,
                 UnderlineStyle = this.UnderlineStyle,
                 UnderlineColor = this.UnderlineColor,
                 UnderlineColorIndex = this.UnderlineColorIndex,

@@ -131,6 +131,9 @@ The terminal engine is the **single source of truth** for terminal semantics. Th
   separately capped at 16 MiB, carries payload/options through history, render snapshots,
   complete state transfer and replay without growing the 12-byte packed cell. VT owns geometry
   and edit semantics; App paints scaled/shaped glyphs and decorations through each row's clip.
+  Overline (SGR 53/55) also uses sparse row decoration metadata, independently of underline,
+  through saved pens, reflow, history, state transfer and replay. App paints its top stroke
+  in the foreground; AgentHost cell runs include it only when explicitly requested.
   The mux text client uses a bounded normal-size fallback until the outer terminal negotiates
   sizing; ordinary text extraction emits each block payload once. Detected URL hit areas carry
   coherent start/end column maps for the full top-row block width. Legacy replay restores the

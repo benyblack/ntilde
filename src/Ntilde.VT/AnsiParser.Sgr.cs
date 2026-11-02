@@ -18,6 +18,7 @@ namespace Ntilde.VT
                 _buffer.IsFaint = false;
                 _buffer.IsItalic = false;
                 _buffer.IsUnderline = false;
+                _buffer.IsOverline = false;
                 _buffer.UnderlineStyle = UnderlineStyle.Single;
                 _buffer.UnderlineColor = null;
                 _buffer.UnderlineColorIndex = -1;
@@ -42,6 +43,7 @@ namespace Ntilde.VT
                     _buffer.IsFaint = false;
                     _buffer.IsItalic = false;
                     _buffer.IsUnderline = false;
+                    _buffer.IsOverline = false;
                     _buffer.UnderlineStyle = UnderlineStyle.Single;
                     _buffer.UnderlineColor = null;
                     _buffer.UnderlineColorIndex = -1;
@@ -205,6 +207,14 @@ namespace Ntilde.VT
                 {
                     _buffer.IsItalic = false;
                 }
+                else if (code == 53)
+                {
+                    _buffer.IsOverline = true;
+                }
+                else if (code == 55)
+                {
+                    _buffer.IsOverline = false;
+                }
                 else if (code == 24) // No Underline
                 {
                     _buffer.IsUnderline = false;
@@ -231,6 +241,7 @@ namespace Ntilde.VT
             _buffer.IsFaint = false;
             _buffer.IsItalic = false;
             _buffer.IsUnderline = false;
+            _buffer.IsOverline = false;
             _buffer.UnderlineStyle = UnderlineStyle.Single;
             _buffer.UnderlineColor = null;
             _buffer.UnderlineColorIndex = -1;

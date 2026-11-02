@@ -281,6 +281,7 @@ namespace Ntilde.VT
             target.IsFaint = IsFaint;
             target.IsItalic = IsItalic;
             target.IsUnderline = IsUnderline;
+            target.IsOverline = IsOverline;
             target.UnderlineStyle = UnderlineStyle;
             target.UnderlineColor = UnderlineColor;
             target.UnderlineColorIndex = UnderlineColorIndex;
@@ -305,6 +306,7 @@ namespace Ntilde.VT
             IsFaint = source.IsFaint;
             IsItalic = source.IsItalic;
             IsUnderline = source.IsUnderline;
+            IsOverline = source.IsOverline;
             UnderlineStyle = source.UnderlineStyle;
             UnderlineColor = source.UnderlineColor;
             UnderlineColorIndex = source.UnderlineColorIndex;
@@ -363,6 +365,7 @@ namespace Ntilde.VT
             IsFaint = false;
             IsItalic = false;
             IsUnderline = false;
+            IsOverline = false;
             UnderlineStyle = UnderlineStyle.Single;
             UnderlineColor = null;
             UnderlineColorIndex = -1;
@@ -392,6 +395,7 @@ namespace Ntilde.VT
             state.IsFaint = false;
             state.IsItalic = false;
             state.IsUnderline = false;
+            state.IsOverline = false;
             state.UnderlineStyle = UnderlineStyle.Single;
             state.UnderlineColor = null;
             state.UnderlineColorIndex = -1;
@@ -979,7 +983,7 @@ namespace Ntilde.VT
                     IsFaint = cell.IsFaint,
                     IsItalic = cell.IsItalic,
                     IsUnderline = cell.IsUnderline,
-                    Underline = cell.IsUnderline ? row.GetUnderline(c) : null,
+                    Underline = row.GetUnderline(c),
                     IsBlink = cell.IsBlink,
                     IsStrikethrough = cell.IsStrikethrough,
                     FgIndex = cell.FgIndex,
@@ -1108,6 +1112,7 @@ namespace Ntilde.VT
                 IsFaint = snapshot.IsFaint;
                 IsItalic = snapshot.IsItalic;
                 IsUnderline = snapshot.IsUnderline;
+                IsOverline = snapshot.IsOverline;
                 // A recording is read from disk, so a value no SGR could have set falls back to the default.
                 UnderlineStyle = snapshot.UnderlineStyle is >= 1 and <= 5 ? (UnderlineStyle)snapshot.UnderlineStyle : UnderlineStyle.Single;
                 UnderlineColor = snapshot.UnderlineColor is { } penColor ? TermColor.FromUint(penColor) : null;
@@ -1169,7 +1174,7 @@ namespace Ntilde.VT
                 // become one instance, as the cells written with one pen shared one.
                 if (snapshot.Underlines != null && snapshot.Cols > 0)
                 {
-                    var interned = new Dictionary<(byte, uint?, short), CellUnderline?>();
+                    var interned = new Dictionary<(byte, uint?, short, bool), CellUnderline?>();
                     foreach (var kvp in snapshot.Underlines)
                     {
                         TerminalUnderlineEntry? entry = kvp.Value;
@@ -1179,14 +1184,14 @@ namespace Ntilde.VT
                         int c = kvp.Key % snapshot.Cols;
                         if (r >= _viewport.Length || c >= Cols) continue;
 
-                        var key = (entry.Style, entry.Color, entry.ColorIndex);
+                        var key = (entry.Style, entry.Color, entry.ColorIndex, entry.Overline);
                         if (!interned.TryGetValue(key, out CellUnderline? underline))
                         {
                             // None for a straight underline in the text color, as on the live path.
                             underline = CellUnderline.For(
                                 (UnderlineStyle)entry.Style,
                                 entry.Color is { } rgb ? TermColor.FromUint(rgb) : null,
-                                entry.ColorIndex);
+                                entry.ColorIndex, entry.Overline);
                             interned[key] = underline;
                         }
 

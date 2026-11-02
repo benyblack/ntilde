@@ -47,11 +47,11 @@ export const rgbCases = Object.freeze([
 ]);
 
 /** Compare every physical cell and the text/cursor control, including unaffected defaults. */
-export function matchesRgb(screen, expected) {
+export function matchesRgb(screen, expected, includeOverline = false) {
     if (!matchesCells(screen, expected)) return false;
-    const actual = expandCellDetails(screen.cellDetails, screen.rows * screen.cols);
+    const actual = expandCellDetails(screen.cellDetails, screen.rows * screen.cols, includeOverline);
     return actual.every((cell, index) => {
-        const wanted = expected.details[index] ?? normal();
+        const wanted = { ...(includeOverline ? { overline: false } : {}), ...(expected.details[index] ?? normal()) };
         return Object.keys(wanted).every(key => cell[key] === wanted[key]);
     });
 }

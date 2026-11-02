@@ -251,3 +251,30 @@ test('cursor observer requests mode state and refuses restoration that changes o
     value = initial;
     await observer.handle('cursor-finish', () => 1000, barrier);
 });
+
+
+test('overline observer opts in explicitly, retains booleans and includes them in restoration proof', async () => {
+    const initial = { ...blank(), cellDetails: [{ count: 180, flags: 768, fg: -1, bg: -1, underlineStyle: 0, underlineColorIndex: -1, overline: false }] };
+    let value = structuredClone(initial);
+    const observer = new OwnedCellObserver({ appData: '/never/discover', ownerPid: 42, profileName: 'fixture', nonce: 'nonce',
+        includeCellDetails: true, includeOverline: true, prefix: 'rendition', expectedPaneId: paneId, endpoint: () => 'fixture-only',
+        rpc: async (_, method, params) => {
+            if (method === 'listSessions') return { sessions: [{ paneId, profileName: 'fixture', kind: 'local', rows: 3, cols: 60 }] };
+            assert.equal(params.includeOverline, true);
+            assert.equal(params.includeCellDetails, true);
+            return value;
+        } });
+    await observer.handle('rendition-start', () => 1000);
+    value = { ...structuredClone(initial), lines: ['nonce', '', ''], cursorCol: 5 };
+    await observer.handle('rendition-bind', () => 1000, barrier);
+    value = structuredClone(initial);
+    value.cellDetails[0].overline = true;
+    await observer.handle('rendition-read', () => 1000, barrier);
+    value.cellDetails[0].overline = false;
+    assert.equal(observer.frames.at(-1).screen.cellDetails[0].overline, true);
+    value.cellDetails[0].overline = true;
+    await assert.rejects(observer.handle('rendition-finish', () => 1000, barrier), /restoration failed/);
+    value = initial;
+    await observer.handle('rendition-finish', () => 1000, barrier);
+    assert.equal(observer.restored, true);
+});

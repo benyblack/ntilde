@@ -77,6 +77,13 @@ namespace Ntilde.VT
 
         public bool IsUnderline { get => _isUnderline; set { _isUnderline = value; _isStyleDirty = true; } }
 
+        /// <summary>Whether subsequently written cells carry SGR 53 overline.</summary>
+        public bool IsOverline
+        {
+            get => _state.IsOverline;
+            set { _state.IsOverline = value; RefreshCurrentUnderline(); }
+        }
+
         /// <summary>The style of the underline <see cref="IsUnderline"/> draws (SGR 4:x, 21); straight by default.</summary>
         public UnderlineStyle UnderlineStyle
         {
@@ -104,12 +111,20 @@ namespace Ntilde.VT
         /// </summary>
         private void RefreshCurrentUnderline()
         {
-            CellUnderline? next = CellUnderline.For(_state.UnderlineStyle, _state.UnderlineColor, _state.UnderlineColorIndex);
+            CellUnderline? next = CellUnderline.For(_state.UnderlineStyle, _state.UnderlineColor, _state.UnderlineColorIndex, IsOverline);
             if (!Equals(next, _currentUnderline)) _currentUnderline = next;
         }
 
-        /// <summary>What the next written cell's underline side entry is: none unless it is underlined.</summary>
-        private CellUnderline? UnderlineForWrite => _isUnderline ? _currentUnderline : null;
+        /// <summary>Sparse decoration for the next written cell; plain underline remains flag-only.</summary>
+        private CellUnderline? UnderlineForWrite
+        {
+            get
+            {
+                if (_isUnderline) return _currentUnderline;
+                if (IsOverline) return CellUnderline.OverlineOnly;
+                return null;
+            }
+        }
 
         public bool IsBlink { get => _isBlink; set { _isBlink = value; _isStyleDirty = true; } }
 

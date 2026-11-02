@@ -72,6 +72,15 @@
       "matrixFeature": "MIME clipboard paste notifications",
       "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
       "contractCase": "mime-clipboard-paste"
+    },
+    {
+      "key": "SGR:53/55",
+      "mnemonic": "Overline",
+      "support": "supported",
+      "description": "Enable or disable overline independently of underline; SGR 0 resets both.",
+      "matrixFeature": "Overline",
+      "evidencePath": "tests/Ntilde.VT.Tests/OverlineTests.cs",
+      "contractCase": "sgr-overline"
     }
   ]
 }

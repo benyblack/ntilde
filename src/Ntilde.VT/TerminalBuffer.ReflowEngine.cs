@@ -682,7 +682,7 @@ namespace Ntilde.VT
                                 var cell = physRow.Cells[scan];
                                 if ((cell.Character != ' ' && cell.Character != '\0') || !cell.IsDefaultBackground || cell.HasExtendedText
                                     || (rowHasLinks && physRow.GetHyperlink(scan) != null)
-                                    || (rowHasUnderlines && cell.IsUnderline && physRow.GetUnderline(scan) != null))
+                                    || (rowHasUnderlines && physRow.GetUnderline(scan) != null))
                                 {
                                     lastContentIdx = scan;
                                 }

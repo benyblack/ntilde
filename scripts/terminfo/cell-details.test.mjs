@@ -59,3 +59,15 @@ test('rejects missing/noncanonical runs and enforces both budgets at the boundar
     assert.equal(copyCellDetails(runs.slice(0, 1024), 1024).length, 1024);
     assert.throws(() => copyCellDetails(runs, 1025));
 });
+
+
+test('overline is validated only on explicit opt-in and splits canonical runs without changing legacy copies', () => {
+    const plain = { ...normal(90), overline: false }, above = { ...normal(90), overline: true };
+    assert.deepEqual(copyCellDetails([above], 90), copyCellDetails([normal(90)], 90));
+    const runs = copyCellDetails([plain, above], 180, true);
+    assert.equal(runs[0].overline, false);
+    assert.equal(runs[1].overline, true);
+    assert.throws(() => copyCellDetails([plain, above], 180), /Noncanonical/);
+    for (const value of [undefined, null, 1, 'false'])
+        assert.throws(() => copyCellDetails([{ ...plain, overline: value }], 90, true), /overline/);
+});

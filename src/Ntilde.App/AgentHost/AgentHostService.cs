@@ -1550,7 +1550,7 @@ namespace Ntilde.AgentHost
             buffer.Lock.EnterReadLock();
             try
             {
-                if (parameters.IncludeCellDetails && !CellDetailSnapshot.TryCapture(buffer, out details))
+                if (parameters.IncludeCellDetails && !CellDetailSnapshot.TryCapture(buffer, out details, parameters.IncludeOverline))
                 {
                     return Error(requestId, AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable,
                         $"Complete cell details require at most {AgentHostProtocol.MaxCellDetailCells} cells and {AgentHostProtocol.MaxCellDetailRuns} runs.");
