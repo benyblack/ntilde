@@ -4168,6 +4168,6 @@
     "Supplemental local experiments; frozen triage and stock collector grades are unchanged.",
     "Complete ASCII viewport flags and palette indices only; no RGB values, underline style/color metadata, glyph pixels, blink timing, wide text or scrollback.",
     "All eight ASCII experiments also passed; their companion report and original raw/context/ownership files remain local with hashes recorded here.",
-    "App version comes from build metadata, not independent attestation; original collector identity remains unverified."
+    "App version is an operator-supplied argument selected from local build metadata; the runner does not verify the assembly informational version. Original collector identity remains unverified."
   ]
 }

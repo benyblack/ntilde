@@ -14,7 +14,7 @@ local; their recorded hashes support checking those originals.
 
 | Measurement | Value |
 |---|---|
-| Build informational version | `0.13.0+a4dd764ec1bc85cb358e670ef0a0a8b40f0a8da4` |
+| Operator-supplied app version | `0.13.0+a4dd764ec1bc85cb358e670ef0a0a8b40f0a8da4` |
 | App assembly SHA-256 | `55573ea14b9d4a0a1c3a17214ffc226b27a9d18d4406f9d2adb29b557f35b9d6` |
 | Runtime / collector | Node `v24.22.1` / pinned `terminfo.dev@4.0.0` |
 | Local evidence | `artifacts/terminfo/owned-jEXXfL` |
@@ -23,9 +23,11 @@ local; their recorded hashes support checking those originals.
 | SGR report SHA-256 | `e06e029f51ef2092388b9065c1ccc8c623846478cb6993898e0e94a34c7cc602` |
 | Stock raw SHA-256 | `957f39eeb8ae0ba7f0afd8a1ee90a5c12312037f35e93add7b6834ec2bc4932c` |
 
-The version comes from the built assembly. Raw collector identity stays
-`unverified`; process/parent/PTY ownership and the exact executable are checked
-separately. Only the private fixture enables Observe access; Act access is off.
+The operator supplied the version argument using local build metadata. The
+runner does not read or independently verify the assembly's informational
+version. Raw collector identity stays `unverified`; process/parent/PTY ownership
+and the exact executable are checked separately. Only the private fixture
+enables Observe access; Act access is off.
 
 ## Observed state
 
