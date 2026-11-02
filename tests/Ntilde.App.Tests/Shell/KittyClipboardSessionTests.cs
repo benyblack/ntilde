@@ -150,6 +150,10 @@ public class KittyClipboardSessionTests
     [InlineData("", "password")]
     [InlineData("Editor", "")]
     [InlineData("   ", "password")]
+    [InlineData("\u034f\ufe0f", "password")]
+    [InlineData("\U000e0100", "password")]
+    [InlineData("\u115f\u1160\u3164\uffa0", "password")]
+    [InlineData("\u2800", "password")]
     [InlineData("\u00a0\u2003\t", "password")]
     [InlineData("\u0000\u202e", "password")]
     public async Task Missing_or_invisible_identity_never_offers_or_stores_a_session_grant(string name, string password)
@@ -159,6 +163,20 @@ public class KittyClipboardSessionTests
         Assert.False(h.Clipboard.LastRequest!.CanRemember);
         h.Send(NamedRead(name, password)); await h.Drain();
         Assert.Equal(2, h.Clipboard.Prompts);
+    }
+
+    [Theory]
+    [InlineData("Editor\ufe0f")]
+    [InlineData("é\u0301ditor")]
+    [InlineData("\U0001f9ea")]
+    public async Task Visible_names_with_shaping_marks_or_supplementary_symbols_can_be_remembered(string name)
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead(name)); await h.Drain();
+        Assert.True(h.Clipboard.LastRequest!.CanRemember);
+        Assert.Equal(name, h.Clipboard.LastRequest.Name);
+        h.Send(NamedRead(name)); await h.Drain();
+        Assert.Equal(1, h.Clipboard.Prompts);
     }
 
     [Fact]

@@ -225,14 +225,14 @@ internal sealed class KittyClipboardSession : IDisposable
         _busy = true;
         int generation = _generation;
         CancellationToken cancellation = _cancellation.Token;
-        _ = _schedule(() => ReadAsync(packet.Id, types, listing, name, password, grant, generation, cancellation));
+        _ = _schedule(() => ReadAsync(packet.Id, types, listing, new ReadAuthorization(name, password), grant, generation, cancellation));
     }
 
-    private Task ReadAsync(string id, string[] types, bool listing, string name, string password, PasteGrant? grant, int generation, CancellationToken cancellation)
+    private Task ReadAsync(string id, string[] types, bool listing, ReadAuthorization authorization, PasteGrant? grant, int generation, CancellationToken cancellation)
     {
         return PerformAsync(ReadOperation, id, generation, async () =>
         {
-            if (!listing && grant == null && !await AuthorizeReadAsync(name, password, generation, cancellation))
+            if (!listing && grant == null && !await AuthorizeReadAsync(authorization, generation, cancellation))
             {
                 return PermissionDenied;
             }
@@ -247,10 +247,10 @@ internal sealed class KittyClipboardSession : IDisposable
         }, cancellation);
     }
 
-    private async Task<bool> AuthorizeReadAsync(string name, string password, int generation, CancellationToken cancellation)
+    private async Task<bool> AuthorizeReadAsync(ReadAuthorization authorization, int generation, CancellationToken cancellation)
     {
-        string displayName = SafeName(name);
-        string? key = string.IsNullOrWhiteSpace(displayName) ? null : ClipboardSessionPermissions.Key(name, password);
+        string displayName = ClipboardProgramName.Display(authorization.Name);
+        string? key = ClipboardProgramName.CanRemember(displayName) ? ClipboardSessionPermissions.Key(authorization.Name, authorization.Password) : null;
         lock (_sync)
         {
             if (!IsAlive(generation) || cancellation.IsCancellationRequested) return false;
@@ -367,7 +367,7 @@ internal sealed class KittyClipboardSession : IDisposable
         if (!await _replies.SendAsync(response, cancellation)) throw new IOException("Clipboard reply queue remained unavailable.");
     }
 
-    private static string SafeName(string name) => new(name.Where(c => !char.IsControl(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).ToArray());
+    private sealed record ReadAuthorization(string Name, string Password);
     private void Reply(string type, string status, string id, bool defer = false)
     {
         lock (_sync)
