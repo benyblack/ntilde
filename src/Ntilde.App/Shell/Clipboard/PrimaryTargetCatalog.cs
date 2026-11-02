@@ -41,7 +41,7 @@ internal sealed class PrimaryTargetCatalog(uint utf8, uint plain, Func<uint, str
 
     private void AddText(HashSet<uint> available, Dictionary<string, uint> formats)
     {
-        foreach (uint atom in new[] { plain, utf8, 31u })
-            if (atom != 0 && available.Contains(atom)) { formats[TextMime] = atom; return; }
+        uint atom = new[] { plain, utf8, 31u }.FirstOrDefault(candidate => candidate != 0 && available.Contains(candidate));
+        if (atom != 0) formats[TextMime] = atom;
     }
 }

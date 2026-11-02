@@ -46,6 +46,12 @@ def stop(process):
             process.wait(timeout=5)
 
 
+def verify_primary_result(report, root):
+    report["primaryTransferStats"] = (root / "primary-incr.verified").read_text()
+    if not (root / "primary-freeze.verified").exists():
+        raise RuntimeError("PRIMARY snapshot freeze was not verified")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", required=True, type=Path)
@@ -95,9 +101,7 @@ def main():
                 if host.returncode != 0 or not (root / "host-read.verified").exists():
                     raise RuntimeError("Production clipboard host did not verify the native read.")
                 if args.selection == "primary":
-                    report["primaryTransferStats"] = (root / "primary-incr.verified").read_text()
-                    if not (root / "primary-freeze.verified").exists():
-                        raise RuntimeError("PRIMARY snapshot freeze was not verified")
+                    verify_primary_result(report, root)
                 report["passed"] = True
         except Exception as error:
             report["failure"] = f"{type(error).__name__}: {error}"
