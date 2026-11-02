@@ -46,7 +46,9 @@ function withCollectorFixture(receipt, lockfile, action) {
     // Clone the small runner fixture so tests never mutate the real tool cache.
     const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
     try {
-        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs', 'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
+        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
+            'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs',
+            'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
             copyFileSync(join(repo, 'scripts', file), target);
@@ -146,6 +148,8 @@ function assertRetainedCollector(output) {
         ['runnerSourceSha256', 'terminfo-owned.mjs'], ['adapterSourceSha256', 'terminfo/collector.mjs'],
         ['ownershipSourceSha256', 'terminfo/ownership.mjs'], ['workerSourceSha256', 'terminfo/worker.mjs'],
         ['runtimeSourceSha256', 'terminfo/runtime.mjs'],
+        ['observerSourceSha256', 'terminfo/agent-observer.mjs'], ['cellSuiteSourceSha256', 'terminfo/cells.mjs'],
+        ['cellFenceSourceSha256', 'terminfo/terminal-fence.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
     ]) {
@@ -168,6 +172,7 @@ function assertCleaned(result) {
     const proof = JSON.parse(readFileSync(resolve(directory, 'ownership-proof.json')));
     assert.equal(proof.completed, false);
     assert.ok(existsSync(resolve(directory, 'failure.json')));
+    assert.ok(!existsSync(resolve(directory, 'cell-receipt.json')), 'A failed run cannot finalize cell evidence.');
 }
 
 test('an early app exit fails promptly and removes the private fixture', { skip: !prepared }, async () => {
@@ -218,6 +223,7 @@ for (const [phase, initialInterrupt, collected] of [
                 assertRetainedCollector(output);
                 assert.equal(JSON.parse(readFileSync(join(output, 'ownership-proof.json'))).completed, true);
                 assert.match(JSON.parse(readFileSync(join(output, 'failure.json'))).error, /Interrupted by SIGINT/);
+                assert.ok(!existsSync(join(output, 'cell-receipt.json')), 'Interruption after collection cannot finalize cell evidence.');
             }
         } finally { rmSync(root, { recursive: true, force: true }); }
     });
@@ -291,6 +297,21 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assertRetainedCollector(output);
         const settings = JSON.parse(readFileSync(join(output, 'initial-settings.json')));
         assert.ok(!existsSync(dirname(settings.Profiles[0].Command)));
+        assert.equal(settings.AgentAccessObserveEnabled, true);
+        assert.equal(settings.AgentAccessActEnabled, false);
+        const receipt = JSON.parse(readFileSync(join(output, 'cell-receipt.json')));
+        const digest = file => createHash('sha256').update(readFileSync(join(output, file))).digest('hex');
+        assert.equal(receipt.fixtureRemoved, true);
+        assert.equal(receipt.sha256, digest(receipt.file));
+        assert.equal(receipt.contextSha256, digest('context.json'));
+        assert.equal(receipt.ownershipProofSha256, digest('ownership-proof.json'));
+        assert.equal(receipt.rawSha256, digest('raw.json'));
+        const report = JSON.parse(readFileSync(join(output, receipt.file)));
+        assert.equal(report.runId, receipt.runId);
+        assert.equal(report.observations.length, 8);
+        assert.deepEqual(report.snapshots, readFileSync(join(output, 'cell-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+        assert.deepEqual(report.snapshots[0].screen, report.snapshots.at(-1).screen);
+        assert.ok(report.observations.every(item => item.result === 'passed'), JSON.stringify(report.observations));
     } finally {
         if (existsSync(log)) {
             const events = readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line));

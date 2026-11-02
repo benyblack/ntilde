@@ -104,6 +104,7 @@ export async function terminateRecordedWorker(recorded, runId) {
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(config.socket);
+        socket.setEncoding('utf8');
         let buffer = '';
         const finish = (error, result) => {
             socket.destroy();
@@ -116,7 +117,8 @@ export function requestOwner(config, kind, extra = {}) {
         }) + '\n'));
         socket.on('data', chunk => {
             buffer += chunk;
-            if (buffer.length > 16384) return finish(new Error('Oversized owner response.'));
+            const limit = kind.startsWith('cell-') ? 512 * 1024 : 16384;
+            if (Buffer.byteLength(buffer) > limit) return finish(new Error('Oversized owner response.'));
             if (!buffer.includes('\n')) return;
             try {
                 const response = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
