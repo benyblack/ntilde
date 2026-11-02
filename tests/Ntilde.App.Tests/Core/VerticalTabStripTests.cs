@@ -157,6 +157,88 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
         Assert.NotEqual("PREVIEW_SENTINEL", GetTabHeaderTextOf(window, tab));
     }
 
+    // A powerline prompt as the preview line receives it: separator, branch glyph, and a
+    // Nerd Font icon from the wider private-use block.
+    private const string PowerlinePrompt = "dev@demo \uE0B0 ~/ntilde-demo \uE0B0 \uE0A0 main \uF418";
+
+    /// <summary>
+    /// Shapes <paramref name="text"/> in <paramref name="block"/> and returns each glyph run's
+    /// text, the typeface family it landed in, and whether any glyph is notdef. Shaping, not
+    /// the FontFamily string, is what decides between a glyph and tofu.
+    /// </summary>
+    private static List<(string Text, string Family, bool HasNotdef)> ShapeRuns(TextBlock block, string text)
+    {
+        block.Text = text;
+        block.InvalidateMeasure();
+        block.Measure(new Size(2000, 100));
+        return block.TextLayout.TextLines
+            .SelectMany(line => line.TextRuns.OfType<Avalonia.Media.TextFormatting.ShapedTextRun>())
+            .Select(run => (run.Text.ToString(), run.GlyphRun.GlyphTypeface.FamilyName,
+                run.GlyphRun.GlyphInfos.Any(g => g.GlyphIndex == 0)))
+            .ToList();
+    }
+
+    private static void AssertDrawsPowerlineGlyphsInUiFace(TextBlock block)
+    {
+        // The face ordinary chrome text gets: the Fluent theme's control font, which every
+        // other TextBlock in the window inherits. Same weight and style as the block under
+        // test, since a selected tab's title is SemiBold.
+        var reference = new TextBlock
+        {
+            FontFamily = (Avalonia.Media.FontFamily)Application.Current!.FindResource("ContentControlThemeFontFamily")!,
+            FontWeight = block.FontWeight,
+            FontStyle = block.FontStyle
+        };
+        string uiFace = ShapeRuns(reference, "dev").Single().Family;
+
+        var runs = ShapeRuns(block, PowerlinePrompt);
+
+        foreach (char pua in new[] { '\uE0B0', '\uE0A0', '\uF418' })
+        {
+            var iconRuns = runs.Where(r => r.Text.Contains(pua, StringComparison.Ordinal)).ToList();
+            Assert.NotEmpty(iconRuns);
+            Assert.All(iconRuns, r => Assert.Equal(BundledFontCatalog.SymbolsFontFamily, r.Family));
+            Assert.All(iconRuns, r => Assert.False(r.HasNotdef, $"U+{(int)pua:X4} shaped to notdef"));
+        }
+
+        // The UI face is unchanged: everything that is not an icon still shapes in it.
+        Assert.All(runs.Where(r => r.Text.All(c => c < '\uE000')), r => Assert.Equal(uiFace, r.Family));
+    }
+
+    [AvaloniaFact]
+    public void VerticalHeader_PreviewAndTitle_DrawPowerlineGlyphsFromTheBundledSymbolsFont()
+    {
+        // Regression: the preview line used the bare UI face, which has no Nerd Font glyphs and
+        // maps U+E0B0 to an unrelated glyph of its own, so a powerline prompt read as tofu.
+        var window = CreateShownWindow();
+        GetSettings(window).TabStripOrientation = "Vertical";
+        window.ApplyTabLayout();
+        Dispatcher.UIThread.RunJobs();
+
+        var tab = window.FindControl<TabControl>("Tabs")!.Items.Cast<TabItem>().First();
+        var preview = Ntilde.MainWindow.FindTabHeaderDescendant<TextBlock>(tab.Header, "TabPreviewLine");
+        Assert.NotNull(preview);
+        AssertDrawsPowerlineGlyphsInUiFace(preview!);
+        AssertDrawsPowerlineGlyphsInUiFace(FindFirstTextBlock(tab.Header)!);
+    }
+
+    [AvaloniaFact]
+    public void HorizontalHeader_Title_DrawsPowerlineGlyphsFromTheBundledSymbolsFont()
+    {
+        var window = CreateShownWindow();
+        GetSettings(window).TabStripOrientation = "Horizontal";
+        window.ApplyTabLayout();
+        Dispatcher.UIThread.RunJobs();
+
+        var tab = window.FindControl<TabControl>("Tabs")!.Items.Cast<TabItem>().First();
+        AssertDrawsPowerlineGlyphsInUiFace(FindFirstTextBlock(tab.Header)!);
+    }
+
+    private static TextBlock? FindFirstTextBlock(object? header)
+        => (TextBlock?)typeof(Ntilde.MainWindow)
+            .GetMethod("FindTabHeaderTextBlock", BindingFlags.Static | BindingFlags.NonPublic)!
+            .Invoke(null, new[] { header });
+
     private static string GetTabHeaderTextOf(Ntilde.MainWindow window, TabItem tab)
         => (string)typeof(Ntilde.MainWindow)
             .GetMethod("GetTabHeaderText", BindingFlags.Instance | BindingFlags.NonPublic)!

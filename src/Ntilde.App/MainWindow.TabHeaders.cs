@@ -70,6 +70,8 @@ namespace Ntilde
             {
                 Text = text,
                 FontSize = 12,
+                // Shell-set titles can carry Nerd Font icons; see ShellTextUiFontFamily.
+                FontFamily = BundledFontCatalog.ShellTextUiFontFamily,
                 VerticalAlignment = VerticalAlignment.Center
             };
 
@@ -106,16 +108,20 @@ namespace Ntilde
             {
                 Text = text,
                 FontSize = 12,
+                FontFamily = BundledFontCatalog.ShellTextUiFontFamily,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 VerticalAlignment = VerticalAlignment.Center
             };
 
+            // The preview is the pane's last line, so a powerline prompt lands here verbatim;
+            // without the symbols font its separators and branch glyph drew as tofu.
             var previewText = new TextBlock
             {
                 Name = "TabPreviewLine",
                 Text = string.Empty,
                 Foreground = ThemeBrush(ThemeKeys.TabPreviewFg),
                 FontSize = 10,
+                FontFamily = BundledFontCatalog.ShellTextUiFontFamily,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(0, 2, 0, 0)
             };
