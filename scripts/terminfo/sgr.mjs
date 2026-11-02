@@ -15,7 +15,7 @@ const colored = sgr('1;3;4;7;31;44') + 'A';
 
 function colors(channel, family, indices) {
     const attributes = indices.map(index => channel === 'fg' ? attribute(0, index) : attribute(0, -1, index));
-    const text = indices.map((_, index) => String.fromCharCode(65 + index)).join('');
+    const text = indices.map((_, index) => String.fromCodePoint(65 + index)).join('');
     const sequence = indices.map((index, position) => {
         const base = channel === 'fg' ? 30 : 40;
         let code;

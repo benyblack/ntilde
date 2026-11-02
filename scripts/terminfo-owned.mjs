@@ -248,6 +248,17 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         };
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        const observeCells = async (request, budget) => {
+            const attributes = request.kind.startsWith('sgr-');
+            if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
+            if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                nonce: `NTILDE_SG_${runId}`, includeAttributes: true, prefix: 'sgr', expectedPaneId: cellObserver.paneId });
+            else cellObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName, nonce: config.cellNonce });
+            const observer = attributes ? sgrObserver : cellObserver;
+            const result = await observer.handle(request.kind, budget, request.barrier);
+            appendFileSync(join(output, attributes ? 'sgr-snapshots.jsonl' : 'cell-snapshots.jsonl'), JSON.stringify(observer.frames.at(-1)) + '\n');
+            return result;
+        };
         const server = createServer(socket => {
             let buffer = '';
             socket.setTimeout(5000, () => socket.destroy());
@@ -276,14 +287,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
                     if (/^(?:cell|sgr)-(?:start|bind|read|finish)$/.test(request.kind)) {
-                        const attributes = request.kind.startsWith('sgr-');
-                        if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
-                        if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
-                            nonce: `NTILDE_SG_${runId}`, includeAttributes: true, prefix: 'sgr', expectedPaneId: cellObserver.paneId });
-                        else cellObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName, nonce: config.cellNonce });
-                        const observer = attributes ? sgrObserver : cellObserver;
-                        const result = await observer.handle(request.kind, queryTimeout, request.barrier);
-                        appendFileSync(join(output, attributes ? 'sgr-snapshots.jsonl' : 'cell-snapshots.jsonl'), JSON.stringify(observer.frames.at(-1)) + '\n');
+                        const result = await observeCells(request, queryTimeout);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
                         return;
                     }

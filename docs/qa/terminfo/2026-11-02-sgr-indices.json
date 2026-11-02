@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "buildSource": "a4dd764ec1bc85cb358e670ef0a0a8b40f0a8da4",
-  "localEvidence": "artifacts/terminfo/owned-ua8jr5",
+  "localEvidence": "artifacts/terminfo/owned-jEXXfL",
   "context": {
     "adapter": "ntilde-owned-macos-v1",
     "adapterBundleSha256": "87e28f31543d1e7ee618d9a88dd3ccf427c1f92582a853cf10d2444074a89ef9",
@@ -12,9 +12,9 @@
     "assemblySha256": "55573ea14b9d4a0a1c3a17214ffc226b27a9d18d4406f9d2adb29b557f35b9d6",
     "nodeVersion": "v24.22.1",
     "dependencyInstall": "isolated npm ci --ignore-scripts",
-    "startedAt": "2026-11-02T16:32:38.116Z",
-    "runId": "61a15d82a12f78e88fd3d8d52caf8bc3",
-    "runnerSourceSha256": "0be9bb5a059c50d77a29ce72d77839eea8a99e1bce944f87023e26336217a826",
+    "startedAt": "2026-11-02T16:40:02.674Z",
+    "runId": "8380a7e8e6ddf99559a207031d970869",
+    "runnerSourceSha256": "e32f980531e5b7743751f8af856374a8d8b71f8ccd4c039f04ebaba6034b52c6",
     "adapterSourceSha256": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
     "ownershipSourceSha256": "d3b1c58b90e2b4990aa48a19082e876a5745501895cb418d333d1c9782554d03",
     "workerSourceSha256": "5d7d0378c3640bf4c27e9cc79691e9ee7333cc9588a5958f2247a996e263f9df",
@@ -23,7 +23,7 @@
     "cellSuiteSourceSha256": "47ed883ed0572042b6b966e6c80f16fff9dd7ac87219900242fd6116a81a5325",
     "cellFenceSourceSha256": "dc4653e83458ab41ef335171e44878b0e028deabb95c43839dfbddcca58daa85",
     "attributeSourceSha256": "90d872a3d079c28db2259ef2157aa50cf28e8f4902563c533588b1beabacfe07",
-    "sgrSuiteSourceSha256": "e7ab02dc9185ebaed8895bd2febc44d7edb118e569037de23af1fbda3413afea",
+    "sgrSuiteSourceSha256": "1013d77bf909a2c4d34d9c948d8337150ef8f7e0162b62de064c0bd94efead1f",
     "collectorManifestSha256": "56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e",
     "collectorLockSha256": "837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508",
     "retainedAdapterBundle": "collector-adapter.mjs",
@@ -34,7 +34,7 @@
     "attributes": "separate ASCII SGR flags and palette-index suite; no RGB, underline metadata or pixels"
   },
   "stockCollector": {
-    "runId": "f22d52e7426c8ccb7b7cce539d6237a0",
+    "runId": "d4aa6bb2bb5937a6acd0885516984cdc",
     "suiteId": "16a690f34c0e",
     "suiteComplete": false,
     "ungradedDiagnostics": {
@@ -44,7 +44,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "measuredAt": "2026-11-02T16:32:45.016Z",
+    "measuredAt": "2026-11-02T16:40:10.230Z",
     "target": {
       "kind": "app",
       "id": "ntilde",
@@ -71,13 +71,13 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "rawSha256": "4b63a2e4b115f4000ba3d13d2a8ad529c4ad8296d18c92947c9179a7b0753aa3"
+    "rawSha256": "957f39eeb8ae0ba7f0afd8a1ee90a5c12312037f35e93add7b6834ec2bc4932c"
   },
   "cellEvidence": {
-    "runId": "61a15d82a12f78e88fd3d8d52caf8bc3",
+    "runId": "8380a7e8e6ddf99559a207031d970869",
     "suiteId": "ntilde-owned-ascii-cells-v1",
     "file": "cell-observations.json",
-    "sha256": "46e70f8e5a8423c81a309f6862cdcfd8ccfafa0028f8f698b76a9b4d72daff05",
+    "sha256": "0690e3830c783e2dd1bfa199e04d565be955406621682d8dd9afd26788a474c7",
     "counts": {
       "passed": 8
     },
@@ -85,34 +85,34 @@
   },
   "completionReceipt": {
     "schemaVersion": 1,
-    "runId": "61a15d82a12f78e88fd3d8d52caf8bc3",
+    "runId": "8380a7e8e6ddf99559a207031d970869",
     "suiteId": "ntilde-owned-ascii-cells-v1",
     "file": "cell-observations.json",
-    "sha256": "46e70f8e5a8423c81a309f6862cdcfd8ccfafa0028f8f698b76a9b4d72daff05",
+    "sha256": "0690e3830c783e2dd1bfa199e04d565be955406621682d8dd9afd26788a474c7",
     "counts": {
       "passed": 8
     },
     "provisionalUntil": "cell-receipt.json",
     "sgrEvidence": {
-      "runId": "61a15d82a12f78e88fd3d8d52caf8bc3",
+      "runId": "8380a7e8e6ddf99559a207031d970869",
       "suiteId": "ntilde-owned-sgr-indices-v1",
       "file": "sgr-observations.json",
-      "sha256": "b73ffa20450d00fd9231344e94551c483b015415debe5de6e2a947445013e2c7",
+      "sha256": "e06e029f51ef2092388b9065c1ccc8c623846478cb6993898e0e94a34c7cc602",
       "counts": {
         "passed": 17
       },
       "provisionalUntil": "cell-receipt.json"
     },
-    "ownershipProofSha256": "ff236e8c21c9934cd09020fc0aadc33583789117a83c3dbf93399c6f53e0da89",
-    "contextSha256": "7d1d76c537eb631fc7c7309a8eef17649823a0b61e1753264c4cffe383c5c2ad",
-    "rawSha256": "4b63a2e4b115f4000ba3d13d2a8ad529c4ad8296d18c92947c9179a7b0753aa3",
+    "ownershipProofSha256": "20c2aebc2256b1d76284789622bf80bdd7ccf1602ec9bc32776de7f417b4b81a",
+    "contextSha256": "6f20301a51d9c2b66f9489dbe0b08d630ab5f2ddfddd9dcb9dcb8a0dde61b992",
+    "rawSha256": "957f39eeb8ae0ba7f0afd8a1ee90a5c12312037f35e93add7b6834ec2bc4932c",
     "fixtureRemoved": true,
-    "completedAt": "2026-11-02T16:32:45.556Z"
+    "completedAt": "2026-11-02T16:40:10.741Z"
   },
   "sgrReport": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-sgr-indices-v1",
-    "runId": "61a15d82a12f78e88fd3d8d52caf8bc3",
+    "runId": "8380a7e8e6ddf99559a207031d970869",
     "complete": true,
     "scope": "Live App ASCII cell flags and palette indices; lossless row-major attribute runs. No RGB, underline metadata, pixels or stock grades.",
     "initialSnapshot": 0,
@@ -121,7 +121,7 @@
       {
         "index": 0,
         "kind": "sgr-start",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": null,
         "screen": {
           "rows": 41,
@@ -186,13 +186,13 @@
       {
         "index": 1,
         "kind": "sgr-bind",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
           "cols": 140,
           "lines": [
-            "NTILDE_SG_61a15d82a12f78e88fd3d8d52caf8bc3",
+            "NTILDE_SG_8380a7e8e6ddf99559a207031d970869",
             "",
             "",
             "",
@@ -246,12 +246,12 @@
             }
           ]
         },
-        "sha256": "ff1d11b483bc47294979227f32bd9ded6487589c1df9e1e56594a688371ce877"
+        "sha256": "395094b61077c64c4e8c1bfaefc4c117476d7f03f02f7d600e38bf34b1c26622"
       },
       {
         "index": 2,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -316,7 +316,7 @@
       {
         "index": 3,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -387,7 +387,7 @@
       {
         "index": 4,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -452,7 +452,7 @@
       {
         "index": 5,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -523,7 +523,7 @@
       {
         "index": 6,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -588,7 +588,7 @@
       {
         "index": 7,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -659,7 +659,7 @@
       {
         "index": 8,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -724,7 +724,7 @@
       {
         "index": 9,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -795,7 +795,7 @@
       {
         "index": 10,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -860,7 +860,7 @@
       {
         "index": 11,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -931,7 +931,7 @@
       {
         "index": 12,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1008,7 +1008,7 @@
       {
         "index": 13,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1073,7 +1073,7 @@
       {
         "index": 14,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1144,7 +1144,7 @@
       {
         "index": 15,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1221,7 +1221,7 @@
       {
         "index": 16,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1286,7 +1286,7 @@
       {
         "index": 17,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1357,7 +1357,7 @@
       {
         "index": 18,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1434,7 +1434,7 @@
       {
         "index": 19,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1499,7 +1499,7 @@
       {
         "index": 20,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1570,7 +1570,7 @@
       {
         "index": 21,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1647,7 +1647,7 @@
       {
         "index": 22,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1712,7 +1712,7 @@
       {
         "index": 23,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1783,7 +1783,7 @@
       {
         "index": 24,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1854,7 +1854,7 @@
       {
         "index": 25,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1919,7 +1919,7 @@
       {
         "index": 26,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2032,7 +2032,7 @@
       {
         "index": 27,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2097,7 +2097,7 @@
       {
         "index": 28,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2210,7 +2210,7 @@
       {
         "index": 29,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2275,7 +2275,7 @@
       {
         "index": 30,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2382,7 +2382,7 @@
       {
         "index": 31,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2447,7 +2447,7 @@
       {
         "index": 32,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2560,7 +2560,7 @@
       {
         "index": 33,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2625,7 +2625,7 @@
       {
         "index": 34,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2738,7 +2738,7 @@
       {
         "index": 35,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2803,7 +2803,7 @@
       {
         "index": 36,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2910,7 +2910,7 @@
       {
         "index": 37,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2975,7 +2975,7 @@
       {
         "index": 38,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -3046,7 +3046,7 @@
       {
         "index": 39,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -3123,7 +3123,7 @@
       {
         "index": 40,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -3188,7 +3188,7 @@
       {
         "index": 41,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -3259,7 +3259,7 @@
       {
         "index": 42,
         "kind": "sgr-read",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -3336,7 +3336,7 @@
       {
         "index": 43,
         "kind": "sgr-finish",
-        "paneId": "22dcef8a-effc-4207-a9e2-716600e59fd3",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,

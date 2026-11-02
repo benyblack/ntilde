@@ -17,11 +17,11 @@ local; their recorded hashes support checking those originals.
 | Build informational version | `0.13.0+a4dd764ec1bc85cb358e670ef0a0a8b40f0a8da4` |
 | App assembly SHA-256 | `55573ea14b9d4a0a1c3a17214ffc226b27a9d18d4406f9d2adb29b557f35b9d6` |
 | Runtime / collector | Node `v24.22.1` / pinned `terminfo.dev@4.0.0` |
-| Local evidence | `artifacts/terminfo/owned-ua8jr5` |
-| Started / cleanup completed | `2026-11-02T16:32:38.116Z` / `2026-11-02T16:32:45.556Z` |
+| Local evidence | `artifacts/terminfo/owned-jEXXfL` |
+| Started / cleanup completed | `2026-11-02T16:40:02.674Z` / `2026-11-02T16:40:10.741Z` |
 | Viewport | 41 rows × 140 columns |
-| SGR report SHA-256 | `b73ffa20450d00fd9231344e94551c483b015415debe5de6e2a947445013e2c7` |
-| Stock raw SHA-256 | `4b63a2e4b115f4000ba3d13d2a8ad529c4ad8296d18c92947c9179a7b0753aa3` |
+| SGR report SHA-256 | `e06e029f51ef2092388b9065c1ccc8c623846478cb6993898e0e94a34c7cc602` |
+| Stock raw SHA-256 | `957f39eeb8ae0ba7f0afd8a1ee90a5c12312037f35e93add7b6834ec2bc4932c` |
 
 The version comes from the built assembly. Raw collector identity stays
 `unverified`; process/parent/PTY ownership and the exact executable are checked

@@ -115,9 +115,16 @@ test('published SGR evidence re-derives and matches its final receipt', () => {
     assert.deepEqual(buildSgrReport(report.snapshots, report.runId), report);
     assert.equal(createHash('sha256').update(JSON.stringify(report, null, 2) + '\n').digest('hex'), receipt.sgrEvidence.sha256);
     assert.equal(report.runId, receipt.runId);
+    assert.equal(receipt.sgrEvidence.runId, report.runId);
+    assert.equal(receipt.sgrEvidence.suiteId, report.suiteId);
+    assert.equal(receipt.sgrEvidence.file, 'sgr-observations.json');
     assert.equal(receipt.fixtureRemoved, true);
     assert.deepEqual(receipt.sgrEvidence.counts, { passed: 17 });
     assert.deepEqual(published.cellEvidence.counts, { passed: 8 });
+    assert.equal(published.cellEvidence.runId, receipt.runId);
+    assert.equal(published.cellEvidence.suiteId, receipt.suiteId);
+    assert.equal(published.cellEvidence.file, receipt.file);
+    assert.equal(published.cellEvidence.sha256, receipt.sha256);
     assert.deepEqual(published.stockCollector.counts, { inconclusive: 177, supported: 78 });
     assert.equal(published.stockCollector.rawSha256, receipt.rawSha256);
 });
