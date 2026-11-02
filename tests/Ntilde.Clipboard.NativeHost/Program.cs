@@ -166,18 +166,23 @@ internal sealed class ClipboardScenario(Window window, string root)
     {
         using var connection = new XcbSelectionConnection();
         connection.Write(new Dictionary<string, byte[]> { [BinaryMime] = new byte[256 * 1024] });
-        for (int attempt = 0; attempt < 20; attempt++)
+        const int attempts = 20;
+        int before = connection.TransferCounts().Received;
+        var receivedCounts = new List<int>();
+        for (int attempt = 0; attempt < attempts; attempt++)
         {
-            int before = connection.TransferCounts().Received;
-            bool refused = false;
-            try
-            {
-                _ = connection.ReadWithBudgetForTest(BinaryMime, 1);
-            }
-            catch (IOException) { refused = true; }
-            if (!refused || connection.TransferCounts().Received != before + 1)
-                throw new InvalidDataException("Aborted PRIMARY self-reads exhausted outgoing stream slots.");
+            RequireBudgetRejection(connection);
+            receivedCounts.Add(connection.TransferCounts().Received);
         }
+        if (!receivedCounts.SequenceEqual(Enumerable.Range(before + 1, attempts)))
+            throw new InvalidDataException("Aborted PRIMARY self-reads exhausted outgoing stream slots.");
+    }
+
+    private static void RequireBudgetRejection(XcbSelectionConnection connection)
+    {
+        try { _ = connection.ReadWithBudgetForTest(BinaryMime, 1); }
+        catch (IOException) { return; }
+        throw new InvalidDataException("Over-budget PRIMARY self-read unexpectedly succeeded.");
     }
 
     private async Task VerifyPrimaryResultAsync(KittyClipboardSession session, XcbPrimaryClipboard primary,
