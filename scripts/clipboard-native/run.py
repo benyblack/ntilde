@@ -15,12 +15,12 @@ import zlib
 from frames import frame_binary
 
 
-def fixture(peer=False):
+def fixture(peer=False, large=False):
     def chunk(kind, data):
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
     png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0))
     png += chunk(b"IDAT", zlib.compress(b"\0\x65\x43\x21\xff" if peer else b"\0\x12\x34\x56\xff")) + chunk(b"IEND", b"")
-    binary = frame_binary(bytes(reversed(range(256)) if peer else range(256)) * 3 + b"\0\xff")
+    binary = frame_binary(bytes(reversed(range(256)) if peer else range(256)) * (1024 if large else 3) + b"\0\xff")
     return {"text/plain": ("native peer héllo 🧪" if peer else "Ntilde héllo 🧪").encode(), "image/png": png,
             "text/html": ("<i>native peer héllo</i>" if peer else "<b>Ntilde héllo</b>").encode(),
             "application/x-ntilde-qa": binary, "application/x-ntilde-qa-alias": binary}
@@ -51,13 +51,18 @@ def main():
     parser.add_argument("--host", required=True, type=Path)
     parser.add_argument("--peer", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
+    parser.add_argument("--selection", choices=["clipboard", "primary"], default="clipboard")
     args = parser.parse_args()
     if os.environ.get("CI") != "true":
         parser.error("Requires an isolated CI desktop. Do not set CI=true on a personal desktop.")
-    values = fixture()
-    peer_values = fixture(peer=True)
+    if args.selection == "primary" and platform.system() != "Linux":
+        parser.error("PRIMARY qualification requires Linux/X11")
+    child_env = os.environ.copy()
+    child_env["NTILDE_CLIPBOARD_SELECTION"] = args.selection
+    values = fixture(large=args.selection == "primary")
+    peer_values = fixture(peer=True, large=args.selection == "primary")
     args.report.parent.mkdir(parents=True, exist_ok=True)
-    report = {"schemaVersion": 1, "platform": platform.platform(), "passed": False,
+    report = {"schemaVersion": 1, "platform": platform.platform(), "selection": args.selection, "passed": False,
               "hostSha256": hashlib.sha256(args.host.read_bytes()).hexdigest(),
               "productionAppSha256": hashlib.sha256(args.host.with_name("Ntilde.dll").read_bytes()).hexdigest(),
               "sourceRevision": os.environ.get("GITHUB_SHA"),
@@ -66,7 +71,8 @@ def main():
               "peerFixtureSha256": {k: hashlib.sha256(v).hexdigest() for k, v in peer_values.items()},
               "binaryFraming": "uint32 big-endian payload length followed by payload; Win32 allocation padding excluded",
               "pngComparison": "validated container and decoded pixel; native compression/metadata may differ",
-              "scope": "Production OSC 5522 service and Avalonia native adapter versus an independent OS clipboard peer; no PTY or manual application UI qualification."}
+              "scope": "Production OSC 5522 service and native adapter versus an independent OS clipboard peer; no PTY or manual application UI qualification.",
+              "primaryChecks": "256 KiB binary/alias INCR in both directions; default clipboard sentinel unchanged" if args.selection == "primary" else None}
     with tempfile.TemporaryDirectory(prefix="ntilde-native-clipboard-") as temporary:
         root = Path(temporary)
         (root / "fixture.json").write_text(json.dumps({k: base64.b64encode(v).decode() for k, v in values.items()}))
@@ -77,17 +83,19 @@ def main():
         processes = []
         try:
             with (root / "host.log").open("w+") as host_log, (root / "peer.log").open("w+") as peer_log:
-                host = subprocess.Popen(["dotnet", str(args.host.resolve()), "--isolated-desktop", str(root)], stdout=host_log, stderr=subprocess.STDOUT)
+                host = subprocess.Popen(["dotnet", str(args.host.resolve()), "--isolated-desktop", str(root)], stdout=host_log, stderr=subprocess.STDOUT, env=child_env)
                 processes.append(host)
                 wait_file(root / "host-write.ready", [host], time.monotonic() + 40)
-                subprocess.run(peer + ["read", str(root)], check=True, timeout=25, stdout=peer_log, stderr=subprocess.STDOUT)
-                writer = subprocess.Popen(peer + ["write", str(root)], stdout=peer_log, stderr=subprocess.STDOUT)
+                subprocess.run(peer + ["read", str(root)], check=True, timeout=25, stdout=peer_log, stderr=subprocess.STDOUT, env=child_env)
+                writer = subprocess.Popen(peer + ["write", str(root)], stdout=peer_log, stderr=subprocess.STDOUT, env=child_env)
                 processes.append(writer)
                 wait_file(root / "peer-write.ready", processes, time.monotonic() + 25)
                 # Host may finish immediately after publishing its final verification marker.
                 host.wait(timeout=35)
                 if host.returncode != 0 or not (root / "host-read.verified").exists():
                     raise RuntimeError("Production clipboard host did not verify the native read.")
+                if args.selection == "primary":
+                    report["primaryTransferStats"] = (root / "primary-incr.verified").read_text()
                 report["passed"] = True
         except Exception as error:
             report["failure"] = f"{type(error).__name__}: {error}"

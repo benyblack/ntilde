@@ -21,8 +21,9 @@ recorded PTY output or the parser's incomplete input accumulator.
 
 Allow once and Deny never create a reusable grant. A password without a visible
 name cannot be remembered. MIME listings still require no prompt. Read approval
-does not override `AllowOsc52ClipboardWrite`, enable OSC 52 reads, authorize
-primary selection, or enable clipboard I/O in mux/headless hosts.
+does not override `AllowOsc52ClipboardWrite`, enable OSC 52 reads or enable clipboard I/O in mux/headless hosts. Linux/X11
+[primary selection](clipboard-primary.md) requires a separate approval for that
+location; an approval for the regular clipboard cannot be reused for PRIMARY.
 
 User paste tokens remain separate: they authorize one read of values captured
 at that paste gesture, for 15 seconds on that terminal. Using a paste token does

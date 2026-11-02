@@ -64,11 +64,15 @@ Runner self-tests, which do not open a clipboard, run with:
 python3 scripts/clipboard-native/test_runner.py
 ```
 
+The Linux job also runs the [PRIMARY qualification](clipboard-primary.md) on a
+separate private Xvfb display, with larger fixtures, observed INCR counts in both
+directions and a sentinel proving the regular clipboard remains unchanged.
+
 ## Limits
 
 This is native data-format interchange with independent peers. It does not
 exercise a PTY, the permission dialog's buttons, manual paste into arbitrary
-editors, rich-text rendering, Wayland, or primary selection. It is separate from
+editors, rich-text rendering, Wayland. PRIMARY has its own Linux/X11 scenario above. It is separate from
 the terminfo.dev recognition measurement; it does not change any of that suite's
 inconclusive grades. Qualification requires actual successful workflow results,
 not merely the existence of this harness.

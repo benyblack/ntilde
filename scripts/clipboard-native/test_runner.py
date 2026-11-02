@@ -25,6 +25,14 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(b"\x89PNG\r\n\x1a\n", values["image/png"][:8])
             self.assertIn("🧪", values["text/plain"].decode())
 
+    def test_primary_binary_fixture_exceeds_a_native_chunk_and_keeps_directional_causality(self):
+        host, peer = runner.fixture(large=True), runner.fixture(peer=True, large=True)
+        for values in [host, peer]:
+            payload = binary_payload(values["application/x-ntilde-qa"])
+            self.assertGreater(len(payload), 256 * 1024)
+            self.assertEqual(values["application/x-ntilde-qa"], values["application/x-ntilde-qa-alias"])
+        self.assertNotEqual(host["application/x-ntilde-qa"], peer["application/x-ntilde-qa"])
+
     def test_binary_frames_distinguish_payload_from_native_allocation_padding(self):
         payload = b"\0\xffbinary\0"
         framed = frame_binary(payload)

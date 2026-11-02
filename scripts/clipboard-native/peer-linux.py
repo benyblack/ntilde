@@ -21,7 +21,7 @@ Gtk.init()
 display = Gdk.Display.get_default()
 if display is None:
     raise RuntimeError("No isolated display")
-clipboard = display.get_clipboard()
+clipboard = display.get_primary_clipboard() if os.environ.get("NTILDE_CLIPBOARD_SELECTION") == "primary" else display.get_clipboard()
 loop = GLib.MainLoop()
 reader = None
 

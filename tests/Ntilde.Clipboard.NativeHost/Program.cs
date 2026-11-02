@@ -14,12 +14,13 @@ namespace Ntilde.ClipboardQa;
 internal static class Program
 {
     internal static string Root { get; private set; } = "";
+    internal static bool Primary => Environment.GetEnvironmentVariable("NTILDE_CLIPBOARD_SELECTION") == "primary";
 
     [STAThread]
     public static int Main(string[] args)
     {
         // CI provides a fresh OS clipboard; never default to a developer's desktop.
-        if (Environment.GetEnvironmentVariable("CI") != "true" || args.Length != 2 || args[0] != "--isolated-desktop")
+        if (Environment.GetEnvironmentVariable("CI") != "true" || args.Length != 2 || args[0] != "--isolated-desktop" || (Primary && !OperatingSystem.IsLinux()))
         {
             Console.Error.WriteLine("Requires CI=true and --isolated-desktop <private fixture directory>. Do not run on a personal desktop.");
             return 2;
@@ -66,10 +67,15 @@ internal sealed class ClipboardScenario(Window window, string root)
             ?? throw new InvalidDataException("Missing fixture.");
         var values = fixture.ToDictionary(p => p.Key, p => Convert.FromBase64String(p.Value));
         var adapter = new AvaloniaKittyClipboard(() => window.Clipboard, (_, _) => Task.FromResult(ClipboardReadConsent.Deny));
-        using var session = new KittyClipboardSession(adapter, reply => { _replies.Enqueue(reply); return true; },
+        bool allowPrimaryRead = false;
+        string location = Program.Primary ? ":loc=primary" : "";
+        const string sentinel = "Ntilde isolated default clipboard sentinel";
+        if (Program.Primary) await adapter.WriteAsync(new Dictionary<string, byte[]> { ["text/plain"] = System.Text.Encoding.UTF8.GetBytes(sentinel) });
+        var primary = new XcbPrimaryClipboard((_, _) => Task.FromResult(allowPrimaryRead ? ClipboardReadConsent.AllowOnce : ClipboardReadConsent.Deny));
+        using var session = new KittyClipboardSession(new ClipboardLocations(adapter, primary), reply => { _replies.Enqueue(reply); return true; },
             work => Task.Run(() => Dispatcher.UIThread.InvokeAsync(work), CancellationToken.None), () => true, () => true);
 
-        session.Accept("type=write:id=qa-write");
+        session.Accept("type=write:id=qa-write" + location);
         foreach (var (mime, bytes) in values)
         {
             if (mime == "application/x-ntilde-qa-alias")
@@ -77,7 +83,8 @@ internal sealed class ClipboardScenario(Window window, string root)
                 session.Accept("type=walias:mime=" + KittyClipboardPacket.Encode("application/x-ntilde-qa") + ";" + KittyClipboardPacket.Encode(mime));
                 continue;
             }
-            session.Accept("type=wdata:mime=" + KittyClipboardPacket.Encode(mime) + ";" + Convert.ToBase64String(bytes));
+            for (int offset = 0; offset < bytes.Length || offset == 0; offset += 3072)
+                session.Accept("type=wdata:mime=" + KittyClipboardPacket.Encode(mime) + ";" + Convert.ToBase64String(bytes, offset, Math.Min(3072, bytes.Length - offset)));
         }
         session.Accept("type=wdata");
         await WaitUntilAsync(() => _replies.Any(r => r.Contains("status=DONE:id=qa-write", StringComparison.Ordinal)));
@@ -86,21 +93,38 @@ internal sealed class ClipboardScenario(Window window, string root)
         await WaitUntilAsync(() => File.Exists(Path.Combine(root, "peer-write.ready")), TimeSpan.FromSeconds(55));
 
         _replies.Clear();
-        session.Accept("type=read:id=denied;" + KittyClipboardPacket.Encode("text/plain"));
+        session.Accept("type=read:id=denied" + location + ";" + KittyClipboardPacket.Encode("text/plain"));
         await WaitUntilAsync(() => _replies.Any(r => r.Contains("status=EPERM:id=denied", StringComparison.Ordinal)));
         if (_replies.Any(r => r.Contains("status=DATA", StringComparison.Ordinal))) throw new InvalidDataException("Denied read emitted data.");
 
         _replies.Clear();
-        await session.NotifyPasteAsync();
-        string notification = _replies.First(r => r.Contains(":pw=", StringComparison.Ordinal));
-        string password = notification.Split(":pw=", StringSplitOptions.None)[1][..^2];
-        _replies.Clear();
-        session.Accept("type=read:id=qa-read:pw=" + password + ":name=" + KittyClipboardPacket.Encode("Paste event") + ";" + KittyClipboardPacket.Encode(string.Join(' ', values.Keys)));
+        if (Program.Primary)
+        {
+            allowPrimaryRead = true;
+            session.Accept("type=read:id=qa-read" + location + ";" + KittyClipboardPacket.Encode(string.Join(' ', values.Keys)));
+        }
+        else
+        {
+            await session.NotifyPasteAsync();
+            string notification = _replies.First(r => r.Contains(":pw=", StringComparison.Ordinal));
+            string password = notification.Split(":pw=", StringSplitOptions.None)[1][..^2];
+            _replies.Clear();
+            session.Accept("type=read:id=qa-read:pw=" + password + ":name=" + KittyClipboardPacket.Encode("Paste event") + ";" + KittyClipboardPacket.Encode(string.Join(' ', values.Keys)));
+        }
         await WaitUntilAsync(() => _replies.Any(r => r.Contains("status=DONE:id=qa-read", StringComparison.Ordinal)));
         string peerJson = await File.ReadAllTextAsync(Path.Combine(root, "peer-fixture.json"), CancellationToken.None);
         var peerFixture = JsonSerializer.Deserialize(peerJson, QaJson.Default.DictionaryStringString)
             ?? throw new InvalidDataException("Missing native peer fixture.");
         VerifyRead(peerFixture.ToDictionary(p => p.Key, p => Convert.FromBase64String(p.Value)));
+        if (Program.Primary)
+        {
+            var counts = await primary.TransferCountsAsync();
+            if (counts.Sent == 0 || counts.Received == 0) throw new InvalidDataException("PRIMARY qualification did not exercise INCR in both directions: " + counts);
+            await File.WriteAllTextAsync(Path.Combine(root, "primary-incr.verified"), "sent=" + counts.Sent + ",received=" + counts.Received, CancellationToken.None);
+            using var snapshot = await adapter.OpenReadAsync();
+            byte[]? text = await snapshot.ReadAsync("text/plain");
+            if (text == null || System.Text.Encoding.UTF8.GetString(text) != sentinel) throw new InvalidDataException("PRIMARY modified the default clipboard.");
+        }
         Signal("host-read.verified");
     }
 
