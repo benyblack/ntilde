@@ -73,7 +73,7 @@ test('initial known refusal performs no writes; other errors remain fatal', asyn
 });
 
 
-for (const filename of ['2026-11-02-rendition-cursor.json', '2026-11-02-rendition-cursor-restoration.json'])
+for (const filename of ['2026-11-02-rendition-cursor.json', '2026-11-02-rendition-cursor-restoration.json', '2026-11-03-overline.json'])
 test('published renditionReport re-derives and matches the shared cleanup receipt: ' + filename, () => {
     const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/' + filename, import.meta.url)));
     const report = published.renditionReport, receipt = published.completionReceipt;
@@ -82,7 +82,7 @@ test('published renditionReport re-derives and matches the shared cleanup receip
     assert.equal(report.runId, receipt.runId);
     assert.equal(receipt.renditionEvidence.runId, report.runId);
     assert.equal(receipt.renditionEvidence.suiteId, report.suiteId);
-    assert.deepEqual(receipt.renditionEvidence.counts, { passed: 16 });
+    assert.deepEqual(receipt.renditionEvidence.counts, { passed: report.suiteId === 'ntilde-owned-rendition-charsets-v3' ? 19 : 16 });
     assert.equal(receipt.fixtureRemoved, true);
     assert.equal(published.stockCollector.rawSha256, receipt.rawSha256);
     assert.deepEqual(published.stockCollector.counts, { inconclusive: 177, supported: 78 });

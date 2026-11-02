@@ -369,7 +369,7 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        for (const [prefix, count] of [['rendition', 16], ['cursor', 9]]) {
+        for (const [prefix, count] of [['rendition', 19], ['cursor', 9]]) {
             assert.equal(receipt[prefix + 'Evidence'].sha256, digest(prefix + '-observations.json'));
             const extra = JSON.parse(readFileSync(join(output, prefix + '-observations.json')));
             assert.equal(extra.runId, receipt.runId);

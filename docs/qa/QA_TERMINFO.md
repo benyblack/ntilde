@@ -308,6 +308,9 @@ v2 measurement also remains reproducible, with its original 16 experiments and
 40 frames; it contains no overline observations. Hidden text is
 recorded buffer content; blink is a stored flag. Neither proves painted output.
 
+The [2026-11-03 overline measurement](terminfo/2026-11-03-overline.md) retains
+the qualified v3 run and its limits.
+
 `ntilde-owned-cursor-modes-v1` follows with nine experiments and 22 frames.
 `readScreen(includeCursorMode=true)` adds an optional `cursorMode` object with
 stored `style` (0 block, 1 bar, 2 underline), `blink` and `isDefault`. It shares
