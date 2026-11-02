@@ -25,12 +25,11 @@ internal sealed class CommandPaletteScenario : IScenario
 
         context.Driver.InvokePrivate(context.Window, "ToggleCommandPalette");
 
-        // "split" only ever matches two commands (Split Horizontal, Split Vertical) - real
-        // filtering, but not enough rows to show what "several matching commands" in the Intent
-        // means. "tab" matches over a dozen (New Tab, Close Tab, Tab: Next (MRU), Tabs: Toggle
-        // Vertical Tab Sidebar, ...), all with real shortcuts, so the list actually reads as a
-        // filtered palette rather than two isolated hits.
-        context.Driver.TypeText("tab");
+        // "split" only ever matches two commands - real filtering, but not enough rows to show what
+        // "several matching commands" in the Intent means. "tab" matches over a dozen, but its list
+        // overflows the palette and its Cmd+Shift+PageDown shortcuts clip on macOS. "pane" lands in
+        // between: a handful of real matches, every shortcut short enough to read in full.
+        context.Driver.TypeText("pane");
         context.Driver.Pump(5);
 
         context.Driver.WaitFor(

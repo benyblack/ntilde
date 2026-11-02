@@ -26,10 +26,33 @@ public sealed class DemoWorld : IDisposable
     /// It opens by setting the window title (OSC 0), which is where the tab label comes from:
     /// ConPTY titles a new pane with the child's full command line, so without this the tab strip
     /// reads "C:\Program Files\Git\bin\bash.exe" in every screenshot.
+    ///
+    /// The rest is a powerline prompt - user, path and git segments joined by solid arrows, the
+    /// kind most people who care what their terminal looks like actually run. The arrow (U+E0B0) and
+    /// branch (U+E0A0) glyphs come from the Symbols Nerd Font the app bundles as a fallback, so they
+    /// render without anything installed on the capturing machine. The path is shortened to
+    /// <c>~/ntilde-demo</c> so the wider prompt and a command still fit one line of a split pane.
+    /// Each segment's arrow is drawn in that segment's background over the next one's, as
+    /// agnoster-style themes do.
     /// </summary>
     private const string DemoPrompt =
         "\\[\\e]0;ntilde-demo\\a\\]" +
-        "\\[\\e[32m\\]dev@demo \\[\\e[33m\\]~/projects/ntilde-demo \\[\\e[36m\\](feat/sixel-decoder)\\[\\e[0m\\] $ ";
+        "\\[" + UserSegment + "\\] dev@demo " +
+        "\\[" + UserToPath + "\\]" + PowerlineArrow + "\\[" + PathSegment + "\\] ~/ntilde-demo " +
+        "\\[" + PathToGit + "\\]" + PowerlineArrow + "\\[" + GitSegment + "\\] " + BranchGlyph + " feat/sixel-decoder \u00B1 " +
+        "\\[" + GitToEnd + "\\]" + PowerlineArrow + "\\[\\e[0m\\] ";
+
+    private const string PowerlineArrow = "\uE0B0";
+    private const string BranchGlyph = "\uE0A0";
+
+    // Truecolor, so the prompt reads the same in every theme the catalogue shows: slate, blue and
+    // amber backgrounds with text dark or light enough to stay legible on each.
+    private const string UserSegment = "\\e[48;2;75;85;99;38;2;229;231;235m";
+    private const string UserToPath = "\\e[48;2;59;158;255;38;2;75;85;99m";
+    private const string PathSegment = "\\e[38;2;11;18;32m";
+    private const string PathToGit = "\\e[48;2;229;165;10;38;2;59;158;255m";
+    private const string GitSegment = "\\e[38;2;26;20;5m";
+    private const string GitToEnd = "\\e[0;38;2;229;165;10m";
 
     private readonly string _baseDirectory;
     private readonly Dictionary<string, string?> _environmentToRestore = [];
@@ -179,6 +202,12 @@ public sealed class DemoWorld : IDisposable
         // macOS's /bin/bash prints a three-line "default interactive shell is now zsh" notice at the
         // top of any pane whose rc files run (command-assist's does).
         SetEnvironment("BASH_SILENCE_DEPRECATION_WARNING", "1");
+        // macOS's bash 3.2 intermittently printed "child setpgid (...): Operation not permitted" above
+        // the first command's output when it raced the PTY for a job's process group. A demo shell never
+        // needs job control, and PROMPT_COMMAND runs before the first prompt, so nothing is ever started
+        // with it on. (A +m argument is not enough: interactive startup turns monitor mode back on.)
+        // Shell integration prepends its own hooks to this rather than replacing it.
+        SetEnvironment("PROMPT_COMMAND", "set +m");
         // Darwin has no C.UTF-8 locale (bash warns that it cannot change to it); en_US.UTF-8 is
         // present on every macOS install and on mainstream Linux.
         string utf8Locale = OperatingSystem.IsMacOS() ? "en_US.UTF-8" : "C.UTF-8";
@@ -237,7 +266,7 @@ public sealed class DemoWorld : IDisposable
     /// bash on Windows too, rather than pwsh, for two reasons. The scenarios run
     /// <c>bash scripts/ntilde-banner.sh</c>, which reads naturally in a marketing image and must
     /// not mean "boot WSL"; and the prompt the spec asks for
-    /// (<c>dev@demo ~/projects/ntilde-demo (feat/sixel-decoder) $</c>) is a <c>PS1</c>, which an
+    /// (a <c>dev@demo</c> / <c>~/ntilde-demo</c> / <c>feat/sixel-decoder</c> powerline) is a <c>PS1</c>, which an
     /// inherited environment variable can set outright. PowerShell has no equivalent lever from
     /// outside the process: with <c>-NoProfile</c> there is no hook to define <c>prompt</c> in, and
     /// redefining it from inside the session would replace the shell-integration wrapper.

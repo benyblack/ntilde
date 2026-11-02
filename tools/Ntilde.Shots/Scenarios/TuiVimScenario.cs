@@ -22,8 +22,10 @@ internal sealed class TuiVimScenario : IScenario
     // nothing outside this one process launch. The replacement statusline keeps every clause of
     // the original except the timestamp one: filename, flags, fileformat, then a right-aligned
     // line/column/percent position.
+    // macOS ships no system vimrc that turns on syntax highlighting or an always-on status line, so
+    // both are asked for here too rather than inherited from the capturing machine.
     private const string VimCommand =
-        "vim -c 'set statusline=%f%h%m%r\\ [%{&ff}]%=%l,%c%V\\ %P' src/sixel-decoder.rs";
+        "vim -c 'syntax on' -c 'set laststatus=2' -c 'set statusline=%f%h%m%r\\ [%{&ff}]%=%l,%c%V\\ %P' src/sixel-decoder.rs";
 
     public ShotSpec Spec { get; } = new(
         Name: "tui-vim",

@@ -149,7 +149,11 @@ internal static class InlineImageDecoding
             }
 
             TerminalCell[] cells = buffer.ViewportRows[viewportRow].Cells;
-            int firstInked = Array.FindIndex(cells, c => c.Character != ' ' && !char.IsWhiteSpace(c.Character));
+            // A blank cell on a painted background is ink too: the powerline prompt opens with a
+            // padding space on its user segment's colour, and that space is where the text starts.
+            int firstInked = Array.FindIndex(
+                cells,
+                c => (c.Character != '\0' && !char.IsWhiteSpace(c.Character)) || !c.IsDefaultBackground);
 
             if (firstInked < 0)
             {

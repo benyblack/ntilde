@@ -20,6 +20,8 @@ pace() {
   fi
 }
 
+# Sized to fit a 31-row pane at the harness's 18pt font: 29 lines in all. Taller, and the alternate
+# screen scrolls the header and gauges off the top.
 draw_frame() {
   printf '\033[H\033[2J'
   printf '\033[7m demo-monitor - 4 cores  load average: 0.42 0.38 0.31  uptime 4 days \033[0m\n'
@@ -46,13 +48,6 @@ draw_frame() {
   printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1240" "dev" " 0.9" " 0.4" "sleeping" "00:00:06" "update-check"
   printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1247" "dev" " 0.8" " 0.4" "sleeping" "00:00:05" "clip-store"
   printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1254" "dev" " 0.7" " 0.3" "sleeping" "00:00:04" "net-bridge"
-  printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1119" "dev" " 0.6" " 0.4" "sleeping" "00:00:04" "watchdog"
-  printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1261" "dev" " 0.5" " 0.3" "sleeping" "00:00:03" "clip-encoder"
-  printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1268" "dev" " 0.4" " 0.3" "sleeping" "00:00:03" "glyph-cache"
-  printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1275" "dev" " 0.3" " 0.2" "sleeping" "00:00:02" "search-index"
-  printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1282" "dev" " 0.2" " 0.2" "sleeping" "00:00:01" "scroll-cache"
-  printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1289" "dev" " 0.2" " 0.2" "sleeping" "00:00:01" "codec-mux"
-  printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1296" "dev" " 0.1" " 0.1" "sleeping" "00:00:01" "shader-warm"
   printf '%6s %-8s %5s %5s %-9s %-8s %s\n' "1140" "dev" " 0.1" " 0.2" "sleeping" "00:00:01" "bash"
   printf '\n\033[2mF1Help  F2Setup  F3Search  F5Tree  F6SortBy  F9Kill  F10Quit\033[0m\n'
 }

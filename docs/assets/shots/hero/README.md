@@ -26,7 +26,7 @@ isolated `DemoWorld` (fake `$HOME`, fake prompt, fake workspace); a real window 
 of that, so **you** are the leak check. Do it twice:
 
 1. **Before you press capture** — look at the arranged window yourself and confirm:
-   - The prompt reads `dev@demo ~/projects/ntilde-demo (feat/sixel-decoder) $` — not your
+   - The prompt is the powerline `dev@demo` › `~/ntilde-demo` › `feat/sixel-decoder ±` — not your
      real user, host, or working directory.
    - The tab title reads `ntilde-demo`, not a real path or executable name.
    - The title bar (if your build shows one) has no path in it.
@@ -125,10 +125,11 @@ Then, in Settings → Appearance:
 
 Open a new tab with the **Hero Demo** profile for each shot. The very first thing you
 type in the pane, before anything else, sets the fabricated prompt (because the profile
-uses `--norc`, nothing else will):
+uses `--norc`, nothing else will). It is the same powerline prompt `DemoWorld.DemoPrompt` sets for
+the headless shots, glyphs included; the arrows need a Nerd Font, which Ntilde bundles as a fallback:
 
 ```bash
-export PS1='\[\e]0;ntilde-demo\a\]\[\e[32m\]dev@demo \[\e[33m\]~/projects/ntilde-demo \[\e[36m\](feat/sixel-decoder)\[\e[0m\] $ '
+export PS1='\[\e]0;ntilde-demo\a\]\[\e[48;2;75;85;99;38;2;229;231;235m\] dev@demo \[\e[48;2;59;158;255;38;2;75;85;99m\]\[\e[38;2;11;18;32m\] ~/ntilde-demo \[\e[48;2;229;165;10;38;2;59;158;255m\]\[\e[38;2;26;20;5m\]  feat/sixel-decoder ± \[\e[0;38;2;229;165;10m\]\[\e[0m\] '
 clear
 ```
 

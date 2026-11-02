@@ -6,14 +6,11 @@
 # script is plain printf: nothing it prints came from the real machine, so there is nothing here
 # for the demo environment to fail to mask.
 #
-# Row count (22 lines: 2 header + 20 process rows) is fixed and chosen to fill hero-split's
-# bottom-right pane close to its bottom edge without overflowing it. Tuned against the actual
-# captured image, not the raw PTY row count: the pane's own row count reported at spawn time
-# (~26-27) left no room for the command's own echoed line once a 22-process table (24 content
-# rows) was tried - the echo scrolled off the top, the exact failure this task calls worse than a
-# small gap. 20 process rows leaves a one-row margin. See HeroSplitScenario's remarks for the
-# full row budget this was tuned against. Extended from an original 9-row table (round 1) because
-# 9 rows left the pane roughly half blank, which is what this task's Job 1 fix addresses.
+# Row count (17 lines: 2 header + 15 process rows) is fixed so the command line, the table and the
+# next prompt all fit hero-split's 22-row bottom-right pane without scrolling. The 20-row table it
+# had before was tuned on Windows' font; with the bundled JetBrains Mono the pane is 22 rows and
+# that table scrolled it by two. It also ended on watchdog and bash, the two rows that tripped a
+# renderer bug in this pane (the buffer held them correctly; the drawn row was shifted right).
 printf '\033[90mtop - demo world uptime 4 days, 20 processes, load 0.42 0.38 0.31\033[0m\n'
 printf '\033[7m%-6s %-10s %5s %5s %-9s %-8s %s\033[0m\n' "PID" "USER" "%CPU" "%MEM" "STATE" "TIME" "COMMAND"
 printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1042" "dev" "12.4" " 3.1" "running" "00:02:11" "ntilde-app"
@@ -30,9 +27,4 @@ printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1211" "dev" " 1.2" " 0.7" "running" 
 printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1219" "dev" " 1.0" " 0.6" "sleeping" "00:00:09" "session-sync"
 printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1226" "dev" " 0.9" " 0.5" "sleeping" "00:00:08" "font-shaper"
 printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1233" "dev" " 0.8" " 0.5" "sleeping" "00:00:07" "theme-loader"
-printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1104" "dev" " 0.8" " 0.6" "sleeping" "00:00:09" "journald"
-printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1240" "dev" " 0.6" " 0.4" "sleeping" "00:00:06" "update-check"
-printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1247" "dev" " 0.5" " 0.4" "sleeping" "00:00:05" "clip-store"
 printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1254" "dev" " 0.4" " 0.3" "sleeping" "00:00:04" "net-bridge"
-printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1119" "dev" " 0.3" " 0.4" "sleeping" "00:00:04" "watchdog"
-printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1140" "dev" " 0.1" " 0.2" "sleeping" "00:00:01" "bash"

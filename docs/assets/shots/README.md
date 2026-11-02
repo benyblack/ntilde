@@ -6,8 +6,12 @@ isolated fake workspace (`DemoWorld`), drives each scenario, and rasterizes the 
 here should be edited by hand — regenerate it instead:
 
 ```bash
-scripts/shots.ps1 all --scale 2 --publish --prune
+scripts/shots.sh all --scale 2 --publish --prune
 ```
+
+(`scripts/shots.ps1` takes the same arguments on Windows.) Runs on Windows and macOS. On a Mac,
+main-window captures get the traffic lights AppKit would draw in the space Ntilde leaves for them;
+on Windows they show no caption buttons, as before.
 
 `--prune` deletes committed files under this directory that the run did not (re)publish — the
 cleanup for a renamed scenario, a dropped variant, or a WebP sibling that stopped qualifying
@@ -20,9 +24,8 @@ scenario's stated `Intent` before publishing, and reports what changed.
 
 ## Where things live
 
-- **This directory** — the *published* variants: PNGs (and, for 16 of the 28 variants, a
-  smaller lossless WebP sibling — only emitted where it actually beats the PNG) sized for their
-  destination:
+- **This directory** — the *published* variants: PNGs (and, where it actually beats the PNG, a
+  smaller lossless WebP sibling) sized for their destination:
   - `<name>-readme.png[.webp]` — 1280px wide, for `README.md`.
   - `<name>-site.png[.webp]` — 2400px wide, for the marketing site (`site/public/shots/`).
   - `og-card.png` (1200×630) and `social-square.png` (1080×1080) — social-preview cards, derived
@@ -43,17 +46,12 @@ scenario's stated `Intent` before publishing, and reports what changed.
 
 ## Scenarios you won't find here
 
-The harness's `ScenarioCatalog` deliberately does not register four scenarios, so they produce no
-assets — if you're looking for the sixel or iTerm2 inline-image screenshot, or a connection
-manager / remote files shot, this is why there isn't one:
-
-- **`sixel-graphics`**, **`iterm2-inline-image`** — implemented and testable, but no production
-  code under `src/` wires an actual image decoder onto `AnsiParser` yet (it recognizes both
-  protocols but decodes neither). Screenshotting them would demonstrate a capability the shipped
-  app doesn't have.
-- **`connection-manager`**, **`remote-files`** — the SSH profile store bypasses this harness's
-  config sandbox and reads/writes the developer's real, unsandboxed profile file; `remote-files`
-  additionally needs a live, connected SSH session the offline harness has no way to provide.
+- **`hero-split`** — registered and runnable, but held back from publishing. At 2x scale the
+  bottom-right pane draws its last rows shifted to the right edge even though the terminal buffer
+  holds them correctly; 1x renders clean. That is a renderer bug in the app, not in this harness,
+  and a published hero image should not show it. Publish it again once the bug is fixed.
+- **`remote-files`** — needs a live, connected SSH session the offline harness has no way to
+  provide, so `ScenarioCatalog` does not register it.
 
 Each scenario's own source file under `tools/Ntilde.Shots/Scenarios/` documents the
 evidence trail in detail, and `ScenarioCatalog.cs` explains what re-enabling one would require.

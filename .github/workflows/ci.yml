@@ -430,6 +430,7 @@ jobs:
             tests/Ntilde.Rendering.Tests/bin/${{ env.CONFIGURATION }}
             tests/Ntilde.McpServer.Tests/bin/${{ env.CONFIGURATION }}
             tests/Ntilde.Mux.Tests/bin/${{ env.CONFIGURATION }}
+            tests/Ntilde.Shots.Tests/bin/${{ env.CONFIGURATION }}
 
   # The analyzer and code-style gate (Directory.Build.props: AnalysisLevel latest-recommended,
   # EnforceCodeStyleInBuild, TreatWarningsAsErrors), as its own job so it runs beside `build`
@@ -705,8 +706,10 @@ jobs:
         shell: bash
         run: |
           set -e
-          filter="Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng"
-          for proj in VT Rendering Architecture Platform McpServer Mux; do
+          # ShotsSmoke boots a headless Avalonia session per test, which cannot share a process
+          # with the rest of the Shots suite; the harness itself only ever starts one.
+          filter="Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Category!=ShotsSmoke"
+          for proj in VT Rendering Architecture Platform McpServer Mux Shots; do
             echo "::group::Ntilde.$proj.Tests"
             dotnet test "tests/Ntilde.$proj.Tests/bin/$CONFIGURATION/net10.0/Ntilde.$proj.Tests.dll" \
               --filter "$filter" --results-directory "tests/Ntilde.$proj.Tests/TestResults" \

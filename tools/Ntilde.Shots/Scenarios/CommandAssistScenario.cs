@@ -72,6 +72,14 @@ internal sealed class CommandAssistScenario : IScenario
         TerminalProfile commandAssistProfile = BuildCommandAssistProfile(context.World.DemoProfile);
         TerminalPane pane = context.OpenTab(commandAssistProfile);
 
+        // OpenTab added this profile beside the startup tab, and two tabs of the same shell get
+        // ~xxxx suffixes to tell them apart. The startup tab plays no part here, so it goes.
+        TabControl tabs = context.Driver.Require<TabControl>("Tabs");
+        foreach (TabItem other in tabs.Items.OfType<TabItem>().Where(tab => tab != tabs.SelectedItem).ToArray())
+        {
+            context.Driver.InvokePrivate(context.Window, "CloseTab", other);
+        }
+
         foreach (string command in SeedCommands)
         {
             await context.RunCommandAsync(pane, command);
@@ -83,7 +91,18 @@ internal sealed class CommandAssistScenario : IScenario
         // Real keystrokes into the live PTY (TerminalView.OnTextInput -> NotifyTypedTextObserved),
         // not a direct session write: Command Assist's ranking is triggered from that UI-level
         // event, so bypassing it would leave the popup exactly as empty as before this line.
+        Grid overlayHost = context.Driver.RequireIn<Grid>(pane, "CommandAssistOverlayHost");
+        CommandAssistPopupView popup = context.Driver.RequireIn<CommandAssistPopupView>(pane, "CommandAssistPopup");
+        ItemsControl suggestionsList = context.Driver.RequireIn<ItemsControl>(popup, "PopupSuggestionsList");
+
         context.Driver.TypeText(TypedPrefix);
+
+        // Ranking is asynchronous. A Down that lands before the ranked rows exist is swallowed and
+        // leaves only the one-line passive bubble on screen, so wait for the rows first.
+        context.Driver.WaitFor(
+            () => suggestionsList.ItemCount > 1,
+            TimeSpan.FromSeconds(5),
+            "command assist to rank more than one suggestion from real shell-integration history");
 
         // Down opens the full popup (CommandAssistController.MoveSelectionDown sets
         // IsPopupOpen = true) - the same key a user presses to browse past the single-row
@@ -91,15 +110,8 @@ internal sealed class CommandAssistScenario : IScenario
         // transition pinned at the controller.
         context.Driver.PressKey(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
 
-        Grid overlayHost = context.Driver.RequireIn<Grid>(pane, "CommandAssistOverlayHost");
-        CommandAssistPopupView popup = context.Driver.RequireIn<CommandAssistPopupView>(pane, "CommandAssistPopup");
-        // Either surface may be the one carrying the ranked rows on screen; the list below is the
-        // shared source of both.
-        Control bubble = context.Driver.RequireIn<Control>(pane, "CommandAssistBubble");
-        ItemsControl suggestionsList = context.Driver.RequireIn<ItemsControl>(popup, "PopupSuggestionsList");
-
         context.Driver.WaitFor(
-            () => overlayHost.IsVisible && (popup.IsVisible || bubble.IsVisible) && suggestionsList.ItemCount > 1,
+            () => overlayHost.IsVisible && popup.IsVisible && suggestionsList.ItemCount > 1,
             TimeSpan.FromSeconds(5),
             "the command assist popup to open with more than one ranked suggestion, built from real " +
             "shell-integration history");

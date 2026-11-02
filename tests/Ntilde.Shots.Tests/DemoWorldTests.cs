@@ -170,7 +170,7 @@ public sealed class DemoWorldTests
         // stripping those groups leaves exactly the characters the prompt puts on screen.
         string prompt = Environment.GetEnvironmentVariable("PS1") ?? string.Empty;
         string rendered = System.Text.RegularExpressions.Regex.Replace(prompt, @"\\\[.*?\\\]", string.Empty);
-        Assert.Equal("dev@demo ~/projects/ntilde-demo (feat/sixel-decoder) $ ", rendered);
+        Assert.Equal(" dev@demo \uE0B0 ~/ntilde-demo \uE0B0 \uE0A0 feat/sixel-decoder \u00B1 \uE0B0 ", rendered);
 
         // The prompt escapes that would print the real account, machine and working directory.
         Assert.DoesNotContain(@"\u", prompt, StringComparison.Ordinal);
