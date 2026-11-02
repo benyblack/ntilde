@@ -1530,8 +1530,9 @@ namespace Ntilde.AgentHost
                 return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'.");
             }
 
-            TryNoteRead(registration);
-            return ScreenResult(request.Id, registration.Buffer, p);
+            var response = ScreenResult(request.Id, registration.Buffer, p);
+            if (response.Error == null) TryNoteRead(registration);
+            return response;
         }
 
         /// <summary>

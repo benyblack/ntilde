@@ -289,8 +289,11 @@ public class AgentHostServiceTests : IDisposable
         var registry = new AgentSessionRegistry();
         var registration = Register(registry, buffer);
         using var service = NewService(registry);
+        Assert.Equal(AgentAttentionTier.Idle, registration.AttentionMachine.Snapshot().Tier);
         var response = Handle(service, RequestLine(AgentHostProtocol.Methods.ReadScreen,
             paramsObj: new ReadScreenParams { PaneId = registration.PaneId, IncludeCellDetails = true }));
+        Assert.Equal(allowed ? AgentAttentionTier.Watched : AgentAttentionTier.Idle,
+            registration.AttentionMachine.Snapshot().Tier);
         if (allowed)
         {
             var runs = ResultOf(response, AgentHostJsonContext.Default.ScreenSnapshotDto).CellDetails!;
@@ -308,6 +311,7 @@ public class AgentHostServiceTests : IDisposable
             paramsObj: new ReadScreenParams { PaneId = registration.PaneId }));
         Assert.Null(plain.Error);
         Assert.False(plain.Result!.Value.TryGetProperty("cellDetails", out _));
+        Assert.Equal(AgentAttentionTier.Watched, registration.AttentionMachine.Snapshot().Tier);
     }
 
     [Fact]

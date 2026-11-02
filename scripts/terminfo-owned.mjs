@@ -19,6 +19,12 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writeJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
 const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 
+/** Preserve only the known optional App refusal in the private owner response. */
+function ownerFailure(error) {
+    return { ok: false, error: error.message,
+        ...(error.code === 'screenDetailsUnavailable' ? { code: error.code } : {}) };
+}
+
 function validateInvocation(args) {
     if (args.length !== 4 || args[0] !== '--executable' || args[2] !== '--app-version'
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
@@ -337,8 +343,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     } else throw new Error('Unknown owner request.');
                     socket.end(JSON.stringify({ ok: true, ownerPid: app.pid }) + '\n');
                 } catch (error) {
-                    socket.end(JSON.stringify({ ok: false, error: error.message,
-                        ...(error.code === 'screenDetailsUnavailable' ? { code: error.code } : {}) }) + '\n');
+                    socket.end(JSON.stringify(ownerFailure(error)) + '\n');
                 }
             });
         });

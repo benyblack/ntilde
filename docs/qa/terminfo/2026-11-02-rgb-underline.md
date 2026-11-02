@@ -92,3 +92,8 @@ the qualified observation above or its recorded source hashes.
 After the review fixes, all 199 Node tests passed with zero skips, and the
 199 focused AgentHost tests passed again. The strengthened canonical-run test
 also checks that uniform rows merge into a single cross-row run.
+
+A further protocol regression checks attention state: either budget refusal
+leaves an idle pane idle, while a successful detailed or plain read marks it
+watched. Both refusal cases failed before deferring the attention notification,
+and all 199 AgentHost tests passed after the fix.
