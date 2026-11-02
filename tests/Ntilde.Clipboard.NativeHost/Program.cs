@@ -65,7 +65,7 @@ internal sealed class ClipboardScenario(Window window, string root)
         var fixture = JsonSerializer.Deserialize(fixtureJson, QaJson.Default.DictionaryStringString)
             ?? throw new InvalidDataException("Missing fixture.");
         var values = fixture.ToDictionary(p => p.Key, p => Convert.FromBase64String(p.Value));
-        var adapter = new AvaloniaKittyClipboard(() => window.Clipboard, (_, _) => Task.FromResult(false));
+        var adapter = new AvaloniaKittyClipboard(() => window.Clipboard, (_, _) => Task.FromResult(ClipboardReadConsent.Deny));
         using var session = new KittyClipboardSession(adapter, reply => { _replies.Enqueue(reply); return true; },
             work => Task.Run(() => Dispatcher.UIThread.InvokeAsync(work), CancellationToken.None), () => true, () => true);
 

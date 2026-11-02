@@ -48,24 +48,24 @@ public partial class TerminalPane
         return true;
     }
 
-    private async Task<bool> ConfirmClipboardReadAsync(string name, CancellationToken cancellation)
+    private async Task<ClipboardReadConsent> ConfirmClipboardReadAsync(ClipboardReadRequest request, CancellationToken cancellation)
     {
-        if (TopLevel.GetTopLevel(this) is not Window owner) return false;
+        if (TopLevel.GetTopLevel(this) is not Window owner) return ClipboardReadConsent.Deny;
         var dialog = new Window
         {
             Title = "Clipboard access",
-            Width = 460,
-            Height = 300,
+            Width = 560,
+            Height = 360,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
         Ntilde.Shell.UiScale.FitWindow(dialog);
         Ntilde.Shell.Theming.ThemedWindowChrome.Apply(dialog);
-        bool allowed = false;
+        var consent = ClipboardReadConsent.Deny;
         var deny = new Button { Content = "Deny", MinWidth = 90 };
         var allow = new Button { Content = "Allow once", MinWidth = 110 };
         deny.Click += (_, _) => dialog.Close();
-        allow.Click += (_, _) => { allowed = true; dialog.Close(); };
+        allow.Click += (_, _) => { consent = ClipboardReadConsent.AllowOnce; dialog.Close(); };
         var actions = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -74,6 +74,12 @@ public partial class TerminalPane
             Margin = new Thickness(0, 16, 0, 0),
             Children = { deny, allow }
         };
+        if (request.CanRemember)
+        {
+            var remember = new Button { Content = "Allow this session", MinWidth = 150 };
+            remember.Click += (_, _) => { consent = ClipboardReadConsent.AllowSession; dialog.Close(); };
+            actions.Children.Add(remember);
+        }
         DockPanel.SetDock(actions, Dock.Bottom);
         dialog.Content = new DockPanel
         {
@@ -92,15 +98,16 @@ public partial class TerminalPane
                         {
                             new TextBlock { Text = "Terminal: " + new string((Profile?.Name ?? ShellCommand ?? "This pane").Where(c => !char.IsControl(c)).Take(80).ToArray()), TextWrapping = Avalonia.Media.TextWrapping.Wrap },
                             new TextBlock { Text = "Allow this terminal program to read your clipboard?", TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                            new TextBlock { Text = string.IsNullOrEmpty(name) ? "This request can read clipboard contents." : "Program-supplied name: " + name, TextWrapping = Avalonia.Media.TextWrapping.Wrap }
+                            new TextBlock { Text = string.IsNullOrEmpty(request.Name) ? "This request can read clipboard contents." : "Program-supplied name: " + request.Name, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                            new TextBlock { IsVisible = request.CanRemember, Text = "Allow this session lets any program on this terminal using this name and password read the clipboard until you reset or close this session. Nothing is saved to disk.", TextWrapping = Avalonia.Media.TextWrapping.Wrap }
                         }
                     }
                 }
             }
         };
         using var registration = cancellation.Register(() => Dispatcher.UIThread.Post(dialog.Close));
-        if (cancellation.IsCancellationRequested) return false;
+        if (cancellation.IsCancellationRequested) return ClipboardReadConsent.Deny;
         await dialog.ShowDialog(owner);
-        return allowed;
+        return cancellation.IsCancellationRequested ? ClipboardReadConsent.Deny : consent;
     }
 }

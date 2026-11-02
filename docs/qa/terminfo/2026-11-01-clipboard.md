@@ -125,3 +125,12 @@ platform interoperability limit. No other terminal emulator was measured here.
 The 177 inconclusive observations, an ungraded reverse-wrap geometry diagnostic
 and `suiteComplete=false` remain. Zero unsupported observations is not a complete
 terminal compatibility score.
+
+
+## Follow-up reports
+
+This report describes the initial OSC 5522 implementation and owned collector
+measurement above. Subsequent native inter-application qualification is described
+in [Native clipboard qualification](../clipboard-native.md); session-only read
+approvals are described in [Clipboard read permissions](../clipboard-permissions.md).
+Those changes do not regrade any of the 177 inconclusive collector observations.

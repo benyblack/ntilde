@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "8fad4212dc89b5ad129d309b453d8c4990b86fc7112c6372f9bbb2074b2b961a",
+  "matrixSha256": "1f651f9cff91cb26fa83a8bb0ec6f4abc77eb09b70155af23510e5e3415a529f",
   "summary": {
     "totalRows": 77,
     "supportedCount": 37,
@@ -1498,7 +1498,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
-      "knownDeviations": "Direct desktop/SSH panes: binary reads/writes, contiguous chunks and aliases; strict padded base64, 64 MiB decoded write/retained-read budget plus a 128 MiB native MIME/alias expansion budget, 128 MIME types, 8192-character packets and 2048-character metadata. Read data requires an explicit Allow once; MIME listings do not. Writes share \u0060AllowOsc52ClipboardWrite\u0060. Primary selection returns ENOSYS; mux/headless hosts do not advertise. Passwords authorize only a named, one-use paste event within 15 seconds; persistent password grants are not stored. Host-assembled transfers/grants are not snapshot state; raw client OSC packets can remain in recorded PTY output or an incomplete parser accumulator. One native data snapshot serves each read. Replies wait for bounded queue admission (5 seconds per packet) and never claim DONE after a missing DATA chunk. Avalonia has no item-size preflight API: its first native value allocation is not covered by the managed conversion/retention budget.",
+      "knownDeviations": "Direct desktop/SSH panes: binary reads/writes, contiguous chunks and aliases; strict padded base64, 64 MiB decoded write/retained-read budget plus a 128 MiB native MIME/alias expansion budget, 128 MIME types, 8192-character packets and 2048-character metadata. Read data requires explicit consent; Allow once stays the default and named password requests can be approved for this terminal session. MIME listings do not. Writes share \u0060AllowOsc52ClipboardWrite\u0060. Primary selection returns ENOSYS; mux/headless hosts do not advertise. Session read grants match the full program-supplied name and password, retain only bounded hashes in memory (32 grants), and are revoked on terminal reset, replacement or disposal. Paste event passwords remain separate, content-bound and single-use within 15 seconds. No password grants are saved to disk. Host-assembled transfers/grants are not snapshot state; raw client OSC packets can remain in recorded PTY output or an incomplete parser accumulator. One native data snapshot serves each read. Replies wait for bounded queue admission (5 seconds per packet) and never claim DONE after a missing DATA chunk. Avalonia has no item-size preflight API: its first native value allocation is not covered by the managed conversion/retention budget.",
       "sourceLine": 164
     },
     {

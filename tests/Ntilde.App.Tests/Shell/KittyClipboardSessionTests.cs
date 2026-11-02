@@ -18,6 +18,8 @@ public class KittyClipboardSessionTests
     {
         public bool Available { get; set; } = true;
         public bool AllowRead;
+        public ClipboardReadConsent? Consent;
+        public ClipboardReadRequest? LastRequest;
         public int Prompts, Reads, Lists, Writes, ReadThread;
         public Exception? Failure;
         public Task? ProviderWait;
@@ -54,7 +56,12 @@ public class KittyClipboardSessionTests
             Writes++;
             Values = data.ToDictionary(p => p.Key, p => p.Value);
         }
-        public Task<bool> ConfirmReadAsync(string name, CancellationToken cancellation) { Prompts++; return Confirmation?.Invoke(cancellation) ?? Task.FromResult(AllowRead); }
+        public async Task<ClipboardReadConsent> ConfirmReadAsync(ClipboardReadRequest request, CancellationToken cancellation)
+        {
+            Prompts++; LastRequest = request;
+            bool allowed = Confirmation == null ? AllowRead : await Confirmation(cancellation);
+            return Consent ?? (allowed ? ClipboardReadConsent.AllowOnce : ClipboardReadConsent.Deny);
+        }
     }
     private sealed class Harness : IDisposable
     {
@@ -85,6 +92,142 @@ public class KittyClipboardSessionTests
     private static string B64(string value) => KittyClipboardPacket.Encode(value);
     private static string Data(string mime, string value) => "type=wdata:mime=" + B64(mime) + ";" + value;
     private static string Read(string mime) => "type=read:id=request;" + B64(mime);
+
+    private static string NamedRead(string name = "Editor", string password = "per-launch random password", string mime = "text/plain") =>
+        "type=read:name=" + B64(name) + ":pw=" + B64(password) + ";" + B64(mime);
+
+    [Fact]
+    public async Task Explicit_session_consent_reuses_only_the_same_name_and_password_on_this_TTY()
+    {
+        using var h = new Harness();
+        using var other = new Harness();
+        h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead()); await h.Drain();
+        Assert.True(h.Clipboard.LastRequest!.CanRemember);
+        Assert.Equal("Editor", h.Clipboard.LastRequest.Name);
+        h.Clipboard.Consent = ClipboardReadConsent.Deny;
+        h.Clipboard.Values["text/plain"] = Encoding.UTF8.GetBytes("updated clipboard");
+        h.Send(NamedRead()); await h.Drain();
+        Assert.Equal(1, h.Clipboard.Prompts);
+        Assert.Contains("status=DONE", h.Replies[^1]);
+        Assert.Contains(h.Replies, r => r.Contains(B64("updated clipboard"), StringComparison.Ordinal));
+        h.Send(NamedRead(password: "different")); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+        h.Send(NamedRead(name: "Different editor")); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+        Assert.Equal(3, h.Clipboard.Prompts);
+        other.Send(NamedRead()); await other.Drain();
+        Assert.Equal(1, other.Clipboard.Prompts);
+        Assert.Contains("status=EPERM", other.Replies[^1]);
+    }
+
+    [Fact]
+    public async Task Consent_shows_the_full_name_including_suffixes_after_a_shared_long_prefix()
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        string prefix = new('x', 100);
+        h.Send(NamedRead(name: prefix + "first")); await h.Drain();
+        Assert.Equal(prefix + "first", h.Clipboard.LastRequest!.Name);
+        h.Send(NamedRead(name: prefix + "second")); await h.Drain();
+        Assert.Equal(prefix + "second", h.Clipboard.LastRequest!.Name);
+        Assert.Equal(2, h.Clipboard.Prompts);
+    }
+
+    [Theory]
+    [InlineData((int)ClipboardReadConsent.Deny)]
+    [InlineData((int)ClipboardReadConsent.AllowOnce)]
+    public async Task Denial_and_allow_once_never_create_a_remembered_grant(int consent)
+    {
+        using var h = new Harness(); h.Clipboard.Consent = (ClipboardReadConsent)consent;
+        h.Send(NamedRead()); await h.Drain();
+        h.Clipboard.Consent = ClipboardReadConsent.Deny;
+        h.Send(NamedRead()); await h.Drain();
+        Assert.Equal(2, h.Clipboard.Prompts);
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+    }
+
+    [Theory]
+    [InlineData("", "password")]
+    [InlineData("Editor", "")]
+    [InlineData("   ", "password")]
+    [InlineData("\u034f\ufe0f", "password")]
+    [InlineData("\U000e0100", "password")]
+    [InlineData("\u115f\u1160\u3164\uffa0", "password")]
+    [InlineData("\u2800", "password")]
+    [InlineData("\u00a0\u2003\t", "password")]
+    [InlineData("\u0000\u202e", "password")]
+    public async Task Missing_or_invisible_identity_never_offers_or_stores_a_session_grant(string name, string password)
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead(name, password)); await h.Drain();
+        Assert.False(h.Clipboard.LastRequest!.CanRemember);
+        h.Send(NamedRead(name, password)); await h.Drain();
+        Assert.Equal(2, h.Clipboard.Prompts);
+    }
+
+    [Theory]
+    [InlineData("Editor\ufe0f")]
+    [InlineData("é\u0301ditor")]
+    [InlineData("\U0001f9ea")]
+    public async Task Visible_names_with_shaping_marks_or_supplementary_symbols_can_be_remembered(string name)
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead(name)); await h.Drain();
+        Assert.True(h.Clipboard.LastRequest!.CanRemember);
+        Assert.Equal(name, h.Clipboard.LastRequest.Name);
+        h.Send(NamedRead(name)); await h.Drain();
+        Assert.Equal(1, h.Clipboard.Prompts);
+    }
+
+    [Fact]
+    public async Task Reset_revokes_session_grants_and_late_approval_cannot_restore_them()
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead()); await h.Drain();
+        h.Session.Reset(); h.Clipboard.Consent = ClipboardReadConsent.Deny;
+        h.Send(NamedRead()); await h.Drain();
+        Assert.Equal(2, h.Clipboard.Prompts);
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+        var consent = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        h.Clipboard.Confirmation = _ => consent.Task;
+        h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead()); var waiting = h.Drain();
+        h.Session.Reset(); consent.SetResult(true); await waiting;
+        h.Clipboard.Confirmation = null; h.Clipboard.Consent = ClipboardReadConsent.Deny;
+        h.Send(NamedRead()); await h.Drain();
+        Assert.Equal(4, h.Clipboard.Prompts);
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+    }
+
+    [Fact]
+    public async Task Session_read_grant_never_overrides_the_write_setting_or_authorizes_primary_selection()
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead()); await h.Drain(); h.WriteAllowed = false;
+        h.Send("type=write:name=" + B64("Editor") + ":pw=" + B64("per-launch random password")); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+        Assert.Equal(0, h.Clipboard.Writes);
+        h.Send(NamedRead().Replace("type=read", "type=read:loc=primary", StringComparison.Ordinal)); await h.Drain();
+        Assert.Contains("status=ENOSYS", h.Replies[^1]);
+        Assert.Equal(1, h.Clipboard.Prompts);
+    }
+
+    [Fact]
+    public async Task Session_permission_capacity_evicts_oldest_without_silently_accepting_new_credentials()
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        for (int i = 0; i <= ClipboardSessionPermissions.Capacity; i++)
+        {
+            h.Send(NamedRead(password: "credential-" + i)); await h.Drain();
+        }
+        Assert.Equal(ClipboardSessionPermissions.Capacity + 1, h.Clipboard.Prompts);
+        h.Clipboard.Consent = ClipboardReadConsent.Deny;
+        h.Send(NamedRead(password: "credential-1")); await h.Drain();
+        Assert.Contains("status=DONE", h.Replies[^1]);
+        h.Send(NamedRead(password: "credential-0")); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+        Assert.Equal(ClipboardSessionPermissions.Capacity + 2, h.Clipboard.Prompts);
+    }
 
     [Fact]
     public async Task Writes_binary_and_text_atomically_with_split_base64_and_forward_aliases()

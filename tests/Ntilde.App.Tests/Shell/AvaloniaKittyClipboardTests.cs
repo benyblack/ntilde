@@ -60,7 +60,7 @@ public class AvaloniaKittyClipboardTests
         item.Set(DataFormat.CreateBytesPlatformFormat("text/html"), html);
         item.SetText("plain fallback"); data.Add(item);
         await clipboard.SetDataAsync(data);
-        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(false));
+        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(ClipboardReadConsent.Deny));
         using var snapshot = await adapter.OpenReadAsync();
         Assert.Equal(html, await snapshot.ReadAsync("text/html"));
         Assert.Equal("plain fallback", System.Text.Encoding.UTF8.GetString((await snapshot.ReadAsync("text/plain"))!));
@@ -78,7 +78,7 @@ public class AvaloniaKittyClipboardTests
         item.Set(DataFormat.CreateBytesPlatformFormat(ClipboardPng.OriginalFormat), native);
         item.Set(DataFormat.CreateBytesPlatformFormat("image/png"), new byte[] { 9 });
         data.Add(item); await clipboard.SetDataAsync(data);
-        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(false));
+        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(ClipboardReadConsent.Deny));
         using var snapshot = await adapter.OpenReadAsync();
         Assert.Equal(original, await snapshot.ReadAsync("image/png", original.Length));
         await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("image/png", original.Length - 1));
@@ -95,7 +95,7 @@ public class AvaloniaKittyClipboardTests
         item.Set(DataFormat.CreateBytesPlatformFormat(ClipboardPng.OriginalFormat), malformed);
         item.Set(DataFormat.CreateBytesPlatformFormat("image/png"), new byte[] { 1, 2 });
         data.Add(item); await clipboard.SetDataAsync(data);
-        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(false));
+        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(ClipboardReadConsent.Deny));
         using var snapshot = await adapter.OpenReadAsync();
         Assert.Equal(new byte[] { 1, 2 }, await snapshot.ReadAsync("image/png", 2));
     }
@@ -111,7 +111,7 @@ public class AvaloniaKittyClipboardTests
         var item = new DataTransferItem();
         item.Set(DataFormat.Bitmap, bitmap); transfer.Add(item);
         await clipboard.SetDataAsync(transfer);
-        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(false));
+        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(ClipboardReadConsent.Deny));
         using var snapshot = await adapter.OpenReadAsync();
         Assert.Contains("image/png", snapshot.Types);
         if (budget == 3) await Assert.ThrowsAsync<IOException>(() => snapshot.ReadAsync("image/png", maxBytes: budget));
@@ -130,7 +130,7 @@ public class AvaloniaKittyClipboardTests
     public async Task Binary_MIME_aliases_and_plain_text_round_trip_through_Avalonia_formats()
     {
         using var clipboard = new Clipboard();
-        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(false));
+        var adapter = new AvaloniaKittyClipboard(clipboard.TryGetDataAsync, clipboard.SetDataAsync, clipboard.ClearAsync, (_, _) => Task.FromResult(ClipboardReadConsent.Deny));
         byte[] binary = [0, 1, 2, 255];
         await adapter.WriteAsync(new Dictionary<string, byte[]>
         {

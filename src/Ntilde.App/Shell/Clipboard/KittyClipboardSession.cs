@@ -8,7 +8,7 @@ internal interface IKittyClipboard
     bool Available { get; }
     Task<IKittyClipboardSnapshot> OpenReadAsync();
     Task WriteAsync(IReadOnlyDictionary<string, byte[]> data);
-    Task<bool> ConfirmReadAsync(string name, CancellationToken cancellation);
+    Task<ClipboardReadConsent> ConfirmReadAsync(ClipboardReadRequest request, CancellationToken cancellation);
 }
 
 internal interface IKittyClipboardSnapshot : IDisposable
@@ -48,6 +48,7 @@ internal sealed class KittyClipboardSession : IDisposable
     private bool _busy, _disposed;
     private int _generation;
     private CancellationTokenSource _cancellation = new();
+    private readonly ClipboardSessionPermissions _permissions = new();
     private PasteGrant? _pasteGrant;
     private CancellationTokenSource? _pasteCancellation;
 
@@ -224,14 +225,14 @@ internal sealed class KittyClipboardSession : IDisposable
         _busy = true;
         int generation = _generation;
         CancellationToken cancellation = _cancellation.Token;
-        _ = _schedule(() => ReadAsync(packet.Id, types, listing, name, grant, generation, cancellation));
+        _ = _schedule(() => ReadAsync(packet.Id, types, listing, new ReadAuthorization(name, password), grant, generation, cancellation));
     }
 
-    private Task ReadAsync(string id, string[] types, bool listing, string name, PasteGrant? grant, int generation, CancellationToken cancellation)
+    private Task ReadAsync(string id, string[] types, bool listing, ReadAuthorization authorization, PasteGrant? grant, int generation, CancellationToken cancellation)
     {
         return PerformAsync(ReadOperation, id, generation, async () =>
         {
-            if (!listing && grant == null && !await _clipboard.ConfirmReadAsync(SafeName(name), cancellation))
+            if (!listing && grant == null && !await AuthorizeReadAsync(authorization, generation, cancellation))
             {
                 return PermissionDenied;
             }
@@ -244,6 +245,25 @@ internal sealed class KittyClipboardSession : IDisposable
             bool sent = await Task.Run(() => SendDataAsync(id, values, generation, cancellation), CancellationToken.None);
             return sent ? "DONE" : null;
         }, cancellation);
+    }
+
+    private async Task<bool> AuthorizeReadAsync(ReadAuthorization authorization, int generation, CancellationToken cancellation)
+    {
+        string displayName = ClipboardProgramName.Display(authorization.Name);
+        string? key = ClipboardProgramName.CanRemember(displayName) ? ClipboardSessionPermissions.Key(authorization.Name, authorization.Password) : null;
+        lock (_sync)
+        {
+            if (!IsAlive(generation) || cancellation.IsCancellationRequested) return false;
+            if (key != null && _permissions.Contains(key)) return true;
+        }
+        var consent = await _clipboard.ConfirmReadAsync(new ClipboardReadRequest(displayName, key != null), cancellation);
+        lock (_sync)
+        {
+            // A dismissed/cancelled prompt cannot resurrect a grant after reset or pane replacement.
+            if (!IsAlive(generation) || cancellation.IsCancellationRequested) return false;
+            if (consent == ClipboardReadConsent.AllowSession && key != null) _permissions.Allow(key);
+            return consent is ClipboardReadConsent.AllowOnce or ClipboardReadConsent.AllowSession;
+        }
     }
 
     private async Task<Dictionary<string, byte[]>?> CapturePasteValuesAsync(int generation, CancellationToken cancellation)
@@ -347,7 +367,7 @@ internal sealed class KittyClipboardSession : IDisposable
         if (!await _replies.SendAsync(response, cancellation)) throw new IOException("Clipboard reply queue remained unavailable.");
     }
 
-    private static string SafeName(string name) => new(name.Where(c => !char.IsControl(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).Take(80).ToArray());
+    private sealed record ReadAuthorization(string Name, string Password);
     private void Reply(string type, string status, string id, bool defer = false)
     {
         lock (_sync)
@@ -403,6 +423,7 @@ internal sealed class KittyClipboardSession : IDisposable
             _write?.Dispose();
             _write = null;
             _errors.Clear();
+            _permissions.Clear();
             _pasteGrant = null;
             _pasteCancellation?.Cancel();
             _pasteCancellation?.Dispose();
