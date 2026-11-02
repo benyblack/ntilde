@@ -165,6 +165,14 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/analyzer_gate_tests.py
 
+      - name: Self-test the pinned terminfo triage inventory
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/terminfo_triage_tests.py
+          "$py" scripts/terminfo-triage.py --check
+
       # The check below decides whether dotnet build may skip compiling the Rust libraries, so a
       # wrong "skip" would ship a build with none: scripts/ci/native-libs-present.sh, tested here.
       - name: Self-test the native library presence check

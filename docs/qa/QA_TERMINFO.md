@@ -228,4 +228,18 @@ The [2026-11-01 clipboard follow-up](terminfo/2026-11-01-clipboard.md) measured
 78 supported / 0 unsupported / 177 inconclusive observations. The changed probe
 establishes mode-5522 recognition only; binary transfers, permission boundaries
 and paste grants have separate test-owned backend evidence. Native cross-app
-clipboard interoperability remains unqualified.
+the collector measurement does not qualify clipboard interoperability. The
+separate [native clipboard qualification](clipboard-native.md) exercises real
+AppKit/Win32/GTK interchange on disposable CI desktops; [session-only read
+approvals](clipboard-permissions.md) are documented separately. Neither regrades
+these collector observations.
+
+
+The [2026-11-02 inconclusive-observation triage](terminfo/2026-11-02-inconclusive-triage.md)
+and [machine-readable inventory](terminfo/2026-11-02-inconclusive-triage.json) cover
+all 177 unchanged observations, with a next measurement and source context for
+each: 152 evidence-limited, 22 missing matching replies, and three deliberately
+unsent clipboard probes. Source limitations and measurement gaps are kept
+separate from original grades. Validate the inventory offline with
+`python3 scripts/terminfo-triage.py --check`; no private artifact or live terminal
+is needed for that check.
