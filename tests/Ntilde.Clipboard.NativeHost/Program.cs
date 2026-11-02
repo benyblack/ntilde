@@ -57,6 +57,7 @@ internal sealed class ClipboardQaApplication : Application
 
 internal sealed class ClipboardScenario(Window window, string root)
 {
+    private const string TextMime = "text/plain";
     private const string BinaryMime = "application/x-ntilde-qa";
     private const string AliasMime = "application/x-ntilde-qa-alias";
     private readonly ConcurrentQueue<string> _replies = new();
@@ -73,7 +74,7 @@ internal sealed class ClipboardScenario(Window window, string root)
         bool allowPrimaryRead = false;
         string location = Program.Primary ? ":loc=primary" : "";
         const string sentinel = "Ntilde isolated default clipboard sentinel";
-        if (Program.Primary) await adapter.WriteAsync(new Dictionary<string, byte[]> { ["text/plain"] = System.Text.Encoding.UTF8.GetBytes(sentinel) });
+        if (Program.Primary) await adapter.WriteAsync(new Dictionary<string, byte[]> { [TextMime] = System.Text.Encoding.UTF8.GetBytes(sentinel) });
         var primary = new XcbPrimaryClipboard((_, _) => Task.FromResult(allowPrimaryRead ? ClipboardReadConsent.AllowOnce : ClipboardReadConsent.Deny));
         using var session = new KittyClipboardSession(new ClipboardLocations(adapter, primary), reply => { _replies.Enqueue(reply); return true; },
             work => Task.Run(() => Dispatcher.UIThread.InvokeAsync(work), CancellationToken.None), () => true, () => true);
@@ -86,8 +87,9 @@ internal sealed class ClipboardScenario(Window window, string root)
         // Runner allows 25 s for peer read + 25 s for peer write; this handoff covers both.
         await WaitUntilAsync(() => File.Exists(Path.Combine(root, "peer-write.ready")), TimeSpan.FromSeconds(55));
 
+        if (Program.Primary) await VerifyPrimaryListingAsync(session, primary);
         _replies.Clear();
-        session.Accept("type=read:id=denied" + location + ";" + KittyClipboardPacket.Encode("text/plain"));
+        session.Accept("type=read:id=denied" + location + ";" + KittyClipboardPacket.Encode(TextMime));
         await WaitUntilAsync(() => _replies.Any(r => r.Contains("status=EPERM:id=denied", StringComparison.Ordinal)));
         if (_replies.Any(r => r.Contains("status=DATA", StringComparison.Ordinal))) throw new InvalidDataException("Denied read emitted data.");
 
@@ -109,9 +111,41 @@ internal sealed class ClipboardScenario(Window window, string root)
         string peerJson = await File.ReadAllTextAsync(Path.Combine(root, "peer-fixture.json"), CancellationToken.None);
         var peerFixture = JsonSerializer.Deserialize(peerJson, QaJson.Default.DictionaryStringString)
             ?? throw new InvalidDataException("Missing native peer fixture.");
-        VerifyRead(peerFixture.ToDictionary(p => p.Key, p => Convert.FromBase64String(p.Value)));
+        var expected = peerFixture.ToDictionary(p => p.Key, p => Convert.FromBase64String(p.Value));
+        VerifyRead(expected);
+        if (Program.Primary) await VerifyPrimaryFreezeAsync(primary, expected);
         if (Program.Primary) await VerifyPrimaryResultAsync(session, primary, adapter, beforePeer, sentinel);
         Signal("host-read.verified");
+    }
+
+    private async Task VerifyPrimaryListingAsync(KittyClipboardSession session, XcbPrimaryClipboard primary)
+    {
+        _replies.Clear(); session.Accept("type=read:loc=primary:id=listing;" + KittyClipboardPacket.Encode("."));
+        await WaitUntilAsync(() => _replies.Any(r => r.Contains("status=DONE:id=listing", StringComparison.Ordinal)));
+        string prefix = ":mime=" + KittyClipboardPacket.Encode(".") + ";";
+        byte[] payload = _replies.Where(r => r.Contains(prefix, StringComparison.Ordinal))
+            .SelectMany(r => Convert.FromBase64String(r[(r.IndexOf(prefix, StringComparison.Ordinal) + prefix.Length)..^2])).ToArray();
+        string[] types = System.Text.Encoding.UTF8.GetString(payload).Split(' ');
+        if (await primary.AdvertisedTargetCountForTestAsync() <= 144) throw new InvalidDataException("TARGETS fixture did not exceed the old raw atom limit.");
+        if (!types.Contains(TextMime) || types.Length > KittyClipboardPacket.MaxTypes) throw new InvalidDataException("Large TARGETS listing lost text or exceeded the MIME cap.");
+    }
+
+    private async Task VerifyPrimaryFreezeAsync(XcbPrimaryClipboard primary, Dictionary<string, byte[]> expected)
+    {
+        uint owner = await primary.OwnerWindowForTestAsync();
+        using var snapshot = await primary.OpenReadAsync(expected.Keys.ToArray());
+        Signal("peer-republish.request");
+        await WaitUntilAsync(() => File.Exists(Path.Combine(root, "peer-republish.ready")));
+        if (await primary.OwnerWindowForTestAsync() != owner) throw new InvalidDataException("Snapshot fixture did not republish on the same owner window.");
+        foreach (var (mime, bytes) in expected)
+        {
+            byte[]? retained = await snapshot.ReadAsync(mime);
+            if (retained == null || !retained.SequenceEqual(bytes)) throw new InvalidDataException("PRIMARY snapshot changed after republish: " + mime);
+        }
+        using var current = await primary.OpenReadAsync([TextMime]);
+        byte[]? fresh = await current.ReadAsync(TextMime);
+        if (fresh == null || fresh.SequenceEqual(expected[TextMime])) throw new InvalidDataException("PRIMARY new snapshot did not observe republished data.");
+        Signal("primary-freeze.verified");
     }
 
     private static async Task<(int Sent, int Received)> VerifyPrimarySelfReadAsync(XcbPrimaryClipboard primary, Dictionary<string, byte[]> values)
@@ -137,7 +171,7 @@ internal sealed class ClipboardScenario(Window window, string root)
         if (counts.Sent == 0 || counts.Received == 0) throw new InvalidDataException("PRIMARY qualification did not exercise INCR in both directions: " + counts);
         await File.WriteAllTextAsync(Path.Combine(root, "primary-incr.verified"), "sent=" + counts.Sent + ",received=" + counts.Received, CancellationToken.None);
         using var snapshot = await adapter.OpenReadAsync();
-        byte[]? text = await snapshot.ReadAsync("text/plain");
+        byte[]? text = await snapshot.ReadAsync(TextMime);
         if (text == null || System.Text.Encoding.UTF8.GetString(text) != sentinel) throw new InvalidDataException("PRIMARY modified the default clipboard.");
     }
 

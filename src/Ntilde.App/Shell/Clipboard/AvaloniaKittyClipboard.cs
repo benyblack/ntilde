@@ -28,7 +28,7 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
     private static IClipboard Require(Func<IClipboard?> get) => get() ?? throw new NotSupportedException("No clipboard is available.");
     public bool Available => true; // TopLevel is resolved only on the UI thread, when an operation runs.
 
-    public async Task<IKittyClipboardSnapshot> OpenReadAsync()
+    public async Task<IKittyClipboardSnapshot> OpenReadAsync(IReadOnlyList<string>? requestedTypes = null)
     {
         var data = await _read();
         try { return new Snapshot(data); }

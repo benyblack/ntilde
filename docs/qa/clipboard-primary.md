@@ -7,6 +7,12 @@ the location; subsequent data and alias packets inherit it. Writes honor
 `AllowOsc52ClipboardWrite`. Reads require explicit consent or a remembered grant
 for that same location. The permission dialog names the primary selection.
 
+Data reads capture the requested MIME values before the snapshot opens, within
+the aggregate read budget. Later reads use owned copies, even if the same X11
+owner republishes. MIME-only listings fetch no content. Owner and, when
+available, TIMESTAMP checks detect changes during capture; X11 does not offer an
+atomic multi-format snapshot for arbitrary third-party owners.
+
 Primary and regular clipboard approvals are distinct. Default-clipboard paste
 notifications and their one-use, captured-content tokens never authorize PRIMARY.
 Reset, pane/parser replacement, process exit and disposal revoke the terminal's
@@ -27,7 +33,10 @@ aliases retain exact bytes. MULTIPLE conversions reject duplicate/invalid
 properties. Large values use ICCCM INCR in either direction.
 
 Reads retain at most the existing 64 MiB aggregate MIME budget. Native property
-requests use 64 KiB chunks. Writes retain at most 128 MiB of materialized MIME and
+requests use 64 KiB chunks. TARGETS accepts up to 64 KiB of atoms before MIME
+filtering; listings prioritize standard text, scan at most 512 optional names
+and expose at most 128 MIME types. Explicit reads resolve requested MIME atoms
+directly without creating new atoms. Writes retain at most 128 MiB of materialized MIME and
 alias values, sharing immutable alias buffers. At most 16 outgoing INCR streams
 and 128 MiB of referenced stream payloads can remain active; streams expire after
 10 seconds. The last stream on each foreign requestor window releases its event
@@ -55,8 +64,9 @@ requestors, shared/local subscriptions, expiry/destruction, stream/payload caps,
 and stale ownership loss with in-flight bytes retained. Local-display parsing
 has deterministic cases.
 The disposable Linux/Xvfb native workflow exchanges text, HTML, PNG, binary and
-aliases with an independent GTK primary-selection peer. Large binary fixtures
-exercise INCR; the host requires observed sends and receives and verifies that
+aliases with an independent GTK primary-selection peer. The host verifies large binary/alias bytes, a TARGETS list exceeding 144 atoms,
+and stable snapshots across same-owner republication. It requires observed
+INCR sends and receives with the peer and verifies that
 a regular-clipboard sentinel survives all PRIMARY operations. Reports retain the
 source revision, host/App DLL hashes and both directional fixture hashes.
 

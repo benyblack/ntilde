@@ -14,10 +14,11 @@ internal sealed class XcbSelectionConnection : IDisposable
     private const int ChunkBytes = 64 * 1024;
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(10);
     private readonly nint _connection;
-    private readonly uint _root, _window, _targets, _timestamp, _multiple, _atomPair, _incr, _property, _utf8;
+    private readonly uint _root, _window, _targets, _timestamp, _multiple, _atomPair, _incr, _property, _utf8, _plain;
     private readonly HashSet<uint> _localWindows = [];
     private readonly PrimaryTransferRegistry _outgoing;
     private readonly PrimarySelectionOwnership _ownership = new();
+    internal int LastAdvertisedTargetCount { get; private set; }
     internal int IncrementalSends { get; private set; }
     internal int IncrementalReceives { get; private set; }
 
@@ -35,7 +36,7 @@ internal sealed class XcbSelectionConnection : IDisposable
             _window = CreateWindow();
             _targets = Intern("TARGETS"); _timestamp = Intern("TIMESTAMP"); _multiple = Intern("MULTIPLE");
             _atomPair = Intern("ATOM_PAIR"); _incr = Intern("INCR"); _utf8 = Intern("UTF8_STRING");
-            _property = Intern("_NTILDE_PRIMARY_TRANSFER");
+            _property = Intern("_NTILDE_PRIMARY_TRANSFER"); _plain = Intern("text/plain");
         }
         catch
         {
@@ -63,9 +64,9 @@ internal sealed class XcbSelectionConnection : IDisposable
         if (_connection == 0 || XcbNative.HasError(_connection) != 0) throw new NotSupportedException("X11 PRIMARY connection is unavailable.");
     }
 
-    private uint Intern(string name)
+    private uint Intern(string name, bool onlyIfExists = false)
     {
-        uint cookie = XcbNative.InternAtom(_connection, 0, checked((ushort)Encoding.UTF8.GetByteCount(name)), name);
+        uint cookie = XcbNative.InternAtom(_connection, onlyIfExists ? (byte)1 : (byte)0, checked((ushort)Encoding.UTF8.GetByteCount(name)), name);
         using var reply = Reply(cookie);
         return ReadU32(reply.Pointer, 8);
     }
@@ -77,37 +78,41 @@ internal sealed class XcbSelectionConnection : IDisposable
         return length <= KittyClipboardPacket.MaxMimeChars ? Encoding.UTF8.GetString(Copy(reply.Pointer + 32, length)) : "";
     }
 
-    private uint Owner()
+    internal uint Owner()
     {
         using var reply = Reply(XcbNative.GetOwner(_connection, Primary));
         return ReadU32(reply.Pointer, 8);
     }
 
-    public XcbSelectionTargets CaptureTargets()
+    private XcbSelectionTargets CaptureTargets(IReadOnlyList<string>? requestedTypes)
     {
         uint owner = Owner();
-        var formats = new Dictionary<string, uint>(StringComparer.Ordinal);
-        if (owner == 0) return new(owner, formats);
-        byte[] bytes = Convert(owner, _targets, (KittyClipboardPacket.MaxTypes + 16) * sizeof(uint), 32, Atom);
+        LastAdvertisedTargetCount = 0;
+        if (owner == 0) return new(owner, [], false);
+        byte[] bytes = Convert(owner, _targets, ChunkBytes, 32, Atom);
         if (bytes.Length % sizeof(uint) != 0) throw new IOException("Malformed PRIMARY targets.");
-        foreach (uint target in Atoms(bytes))
-        {
-            string mime = target == _utf8 || target == 31 ? "text/plain" : AtomName(target);
-            if (!KittyClipboardPacket.IsMime(mime)) continue;
-            if (formats.TryGetValue(mime, out uint previous))
-            {
-                if (Priority(target) < Priority(previous)) formats[mime] = target;
-            }
-            else if (formats.Count < KittyClipboardPacket.MaxTypes) formats.Add(mime, target);
-        }
-        return new(owner, formats);
+        uint[] atoms = Atoms(bytes);
+        LastAdvertisedTargetCount = atoms.Length;
+        var catalog = new PrimaryTargetCatalog(_utf8, _plain, AtomName, mime => Intern(mime, onlyIfExists: true));
+        return new(owner, catalog.Select(atoms, requestedTypes), atoms.Contains(_timestamp));
     }
 
-    private int Priority(uint target)
+    public IKittyClipboardSnapshot CaptureSnapshot(IReadOnlyList<string>? requestedTypes)
     {
-        if (target == 31) return 2;
-        return target == _utf8 ? 1 : 0;
+        var targets = CaptureTargets(requestedTypes);
+        if (requestedTypes?.Count == 0) return PrimarySelectionSnapshot.Capture(targets.Formats, [], (_, _) => throw new InvalidOperationException("Listing cannot read data."));
+        uint? timestamp = targets.HasTimestamp ? ReadTimestamp(targets.Owner) : null;
+        var snapshot = PrimarySelectionSnapshot.Capture(targets.Formats, requestedTypes, (atom, budget) => Read(targets.Owner, atom, budget));
+        try
+        {
+            if (Owner() != targets.Owner || (timestamp.HasValue && ReadTimestamp(targets.Owner) != timestamp.Value))
+                throw new IOException("PRIMARY changed while capturing the snapshot.");
+            return snapshot;
+        }
+        catch { snapshot.Dispose(); throw; }
     }
+
+    private uint ReadTimestamp(uint owner) => BitConverter.ToUInt32(Convert(owner, _timestamp, sizeof(uint), 32, Integer));
 
     public byte[] Read(uint owner, uint target, int budget)
     {

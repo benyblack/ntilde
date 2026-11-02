@@ -6,7 +6,8 @@ namespace Ntilde.Shell.Clipboard;
 internal interface IKittyClipboard
 {
     bool Available { get; }
-    Task<IKittyClipboardSnapshot> OpenReadAsync();
+    // null captures all values (paste); [] lists types without accessing content.
+    Task<IKittyClipboardSnapshot> OpenReadAsync(IReadOnlyList<string>? requestedTypes = null);
     Task WriteAsync(IReadOnlyDictionary<string, byte[]> data);
     Task<ClipboardReadConsent> ConfirmReadAsync(ClipboardReadRequest request, CancellationToken cancellation);
 }
@@ -291,7 +292,7 @@ internal sealed class KittyClipboardSession : IDisposable
 
     private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(IKittyClipboard clipboard, string[] types, bool listing, int generation, CancellationToken cancellation)
     {
-        using var snapshot = await clipboard.OpenReadAsync();
+        using var snapshot = await clipboard.OpenReadAsync(listing ? [] : types);
         return await CollectReadValuesAsync(snapshot, types, listing, generation, cancellation);
     }
 

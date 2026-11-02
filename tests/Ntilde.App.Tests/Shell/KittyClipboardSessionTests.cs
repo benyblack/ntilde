@@ -20,6 +20,7 @@ public class KittyClipboardSessionTests
         public bool AllowRead;
         public ClipboardReadConsent? Consent;
         public ClipboardReadRequest? LastRequest;
+        public IReadOnlyList<string>? RequestedTypes;
         public int Prompts, Reads, Lists, Writes, ReadThread;
         public Exception? Failure;
         public Task? ProviderWait;
@@ -28,8 +29,9 @@ public class KittyClipboardSessionTests
         public int SnapshotsDisposed;
         public Func<CancellationToken, Task<bool>>? Confirmation;
         public Dictionary<string, byte[]> Values = new() { ["text/plain"] = Encoding.UTF8.GetBytes("private text"), ["image/png"] = new byte[8193] };
-        public async Task<IKittyClipboardSnapshot> OpenReadAsync()
+        public async Task<IKittyClipboardSnapshot> OpenReadAsync(IReadOnlyList<string>? requestedTypes = null)
         {
+            RequestedTypes = requestedTypes;
             Lists++;
             if (ProviderWait != null) await ProviderWait;
             return new Snapshot(this, Values.ToDictionary(p => p.Key, p => p.Value));
@@ -92,6 +94,20 @@ public class KittyClipboardSessionTests
     private static string B64(string value) => KittyClipboardPacket.Encode(value);
     private static string Data(string mime, string value) => "type=wdata:mime=" + B64(mime) + ";" + value;
     private static string Read(string mime) => "type=read:id=request;" + B64(mime);
+
+    [Fact]
+    public async Task Primary_listing_opens_a_metadata_scope_and_approved_read_requests_only_its_MIMEs()
+    {
+        var primary = new FakeClipboard();
+        using var h = new Harness(primary: primary);
+        h.Send("type=read:loc=primary;" + B64(".")); await h.Drain();
+        Assert.NotNull(primary.RequestedTypes); Assert.Empty(primary.RequestedTypes);
+        Assert.Equal(0, primary.Reads); Assert.Equal(0, primary.Prompts);
+        primary.AllowRead = true;
+        h.Send("type=read:loc=primary;" + B64("text/plain")); await h.Drain();
+        Assert.Equal(new[] { "text/plain" }, primary.RequestedTypes);
+        Assert.Equal(1, primary.Reads); Assert.Equal(1, primary.Prompts);
+    }
 
     [Fact]
     public async Task Primary_write_inherits_initial_location_across_chunks_and_aliases()

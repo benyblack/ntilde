@@ -22,23 +22,16 @@ internal sealed class XcbPrimaryClipboard(Func<ClipboardReadRequest, Cancellatio
     private Task<T> Run<T>(Func<XcbSelectionConnection, T> work) => Available
         ? Shared.Value.Run(work) : Task.FromException<T>(new NotSupportedException("X11 PRIMARY is unavailable."));
 
+    internal Task<int> AdvertisedTargetCountForTestAsync() => Run(c => c.LastAdvertisedTargetCount);
+
+    internal Task<uint> OwnerWindowForTestAsync() => Run(c => c.Owner());
+
     internal Task<(int Sent, int Received)> TransferCountsAsync() => Run(c => (c.IncrementalSends, c.IncrementalReceives));
 
-    public async Task<IKittyClipboardSnapshot> OpenReadAsync() => new Snapshot(this, await Run(c => c.CaptureTargets()));
+    public async Task<IKittyClipboardSnapshot> OpenReadAsync(IReadOnlyList<string>? requestedTypes = null) =>
+        await Run(c => c.CaptureSnapshot(requestedTypes));
     public async Task WriteAsync(IReadOnlyDictionary<string, byte[]> data) => await Run(c => { c.Write(data); return true; });
     public Task<ClipboardReadConsent> ConfirmReadAsync(ClipboardReadRequest request, CancellationToken cancellation) => confirm(request, cancellation);
-
-    private sealed class Snapshot(XcbPrimaryClipboard clipboard, XcbSelectionTargets targets) : IKittyClipboardSnapshot
-    {
-        private bool _disposed;
-        public IReadOnlyList<string> Types { get; } = targets.Formats.Keys.ToArray();
-        public Task<byte[]?> ReadAsync(string mime, int maxBytes = VT.KittyClipboardPacket.MaxDataBytes)
-        {
-            if (_disposed || !targets.Formats.TryGetValue(mime, out uint target)) return Task.FromResult<byte[]?>(null);
-            return clipboard.Run<byte[]?>(c => c.Read(targets.Owner, target, maxBytes));
-        }
-        public void Dispose() => _disposed = true;
-    }
 
     private sealed class Worker : IDisposable
     {
@@ -103,4 +96,4 @@ internal sealed class XcbPrimaryClipboard(Func<ClipboardReadRequest, Cancellatio
     }
 }
 
-internal sealed record XcbSelectionTargets(uint Owner, Dictionary<string, uint> Formats);
+internal sealed record XcbSelectionTargets(uint Owner, Dictionary<string, uint> Formats, bool HasTimestamp);
