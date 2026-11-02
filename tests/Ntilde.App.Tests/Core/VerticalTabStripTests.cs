@@ -166,11 +166,11 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
     /// text, the typeface family it landed in, and whether any glyph is notdef. Shaping, not
     /// the FontFamily string, is what decides between a glyph and tofu.
     /// </summary>
-    private static List<(string Text, string Family, bool HasNotdef)> ShapeRuns(TextBlock block, string text)
+    private static List<(string Text, string Family, bool HasNotdef)> ShapeRuns(TextBlock block, string text, double width = 2000)
     {
         block.Text = text;
         block.InvalidateMeasure();
-        block.Measure(new Size(2000, 100));
+        block.Measure(new Size(width, 100));
         return block.TextLayout.TextLines
             .SelectMany(line => line.TextRuns.OfType<Avalonia.Media.TextFormatting.ShapedTextRun>())
             .Select(run => (run.Text.ToString(), run.GlyphRun.GlyphTypeface.FamilyName,
@@ -223,6 +223,34 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
     }
 
     [AvaloniaFact]
+    public void VerticalHeader_PreviewAndTitle_TrimWithARealEllipsis()
+    {
+        // Regression: Avalonia shapes the trimming ellipsis in the FIRST face of the family list,
+        // with no fallback. Once the symbols font led the list, every trimmed preview or title
+        // ended in tofu, private-use characters or not.
+        var window = CreateShownWindow();
+        GetSettings(window).TabStripOrientation = "Vertical";
+        window.ApplyTabLayout();
+        Dispatcher.UIThread.RunJobs();
+
+        var tab = window.FindControl<TabControl>("Tabs")!.Items.Cast<TabItem>().First();
+        var preview = Ntilde.MainWindow.FindTabHeaderDescendant<TextBlock>(tab.Header, "TabPreviewLine")!;
+        foreach (var block in new[] { preview, FindFirstTextBlock(tab.Header)! })
+        {
+            foreach (string text in new[] { "F1Help F2Setup F3Search F5Tree F10Quit", PowerlinePrompt })
+            {
+                var runs = ShapeRuns(block, text, width: 60);
+                var ellipsis = runs.Where(r => r.Text.Contains('\u2026', StringComparison.Ordinal)).ToList();
+                Assert.NotEmpty(ellipsis);
+                Assert.All(ellipsis, r => Assert.False(r.HasNotdef, $"ellipsis drew as notdef in {r.Family}"));
+            }
+
+            // Trimming must not undo the icons: untrimmed, they still come from the symbols font.
+            AssertDrawsPowerlineGlyphsInUiFace(block);
+        }
+    }
+
+    [AvaloniaFact]
     public void HorizontalHeader_Title_DrawsPowerlineGlyphsFromTheBundledSymbolsFont()
     {
         var window = CreateShownWindow();
@@ -231,7 +259,58 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
         Dispatcher.UIThread.RunJobs();
 
         var tab = window.FindControl<TabControl>("Tabs")!.Items.Cast<TabItem>().First();
-        AssertDrawsPowerlineGlyphsInUiFace(FindFirstTextBlock(tab.Header)!);
+        var title = FindFirstTextBlock(tab.Header)!;
+        AssertDrawsPowerlineGlyphsInUiFace(title);
+        AssertEllipsisIsAGlyph(title);
+    }
+
+    [AvaloniaFact]
+    public void TabListMenuItem_DrawsPowerlineGlyphsAndARealEllipsis()
+    {
+        var window = CreateShownWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+
+        // The overflow-pill path: the menu lands in a flyout this test can reach, built by the
+        // same item code as the title-bar paths.
+        typeof(Ntilde.MainWindow)
+            .GetMethod("PopulateTabListMenu", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(window, new object?[] { true, tabs });
+        Dispatcher.UIThread.RunJobs();
+        var flyout = (Avalonia.Controls.MenuFlyout)typeof(Ntilde.MainWindow)
+            .GetField("_tabOverflowPillFlyout", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(window)!;
+
+        try
+        {
+            var item = flyout.Items.OfType<MenuItem>().First();
+            string header = (string)item.Header!;
+            var label = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(item)
+                .OfType<TextBlock>()
+                .First(tb => tb.Text == header);
+            AssertDrawsPowerlineGlyphsInUiFace(label);
+            AssertEllipsisIsAGlyph(label);
+        }
+        finally
+        {
+            flyout.Hide();
+        }
+    }
+
+    /// <summary>
+    /// Horizontal titles and tab list labels are cut in the string (TruncateTabLabel appends
+    /// U+2026) rather than by TextTrimming; either way the "…" must be a real glyph.
+    /// </summary>
+    private static void AssertEllipsisIsAGlyph(TextBlock block)
+    {
+        string truncated = Ntilde.MainWindow.TruncateTabLabel(PowerlinePrompt + " and then some more", 24);
+        foreach (double width in new[] { 2000.0, 60.0 })
+        {
+            var ellipsis = ShapeRuns(block, truncated, width)
+                .Where(r => r.Text.Contains('\u2026', StringComparison.Ordinal))
+                .ToList();
+            Assert.NotEmpty(ellipsis);
+            Assert.All(ellipsis, r => Assert.False(r.HasNotdef, $"ellipsis drew as notdef in {r.Family}"));
+        }
     }
 
     private static TextBlock? FindFirstTextBlock(object? header)

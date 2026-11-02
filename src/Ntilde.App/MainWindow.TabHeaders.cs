@@ -109,7 +109,7 @@ namespace Ntilde
                 Text = text,
                 FontSize = 12,
                 FontFamily = BundledFontCatalog.ShellTextUiFontFamily,
-                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextTrimming = UiFaceCharacterEllipsis.Instance,
                 VerticalAlignment = VerticalAlignment.Center
             };
 
@@ -122,7 +122,7 @@ namespace Ntilde
                 Foreground = ThemeBrush(ThemeKeys.TabPreviewFg),
                 FontSize = 10,
                 FontFamily = BundledFontCatalog.ShellTextUiFontFamily,
-                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextTrimming = UiFaceCharacterEllipsis.Instance,
                 Margin = new Thickness(0, 2, 0, 0)
             };
 
