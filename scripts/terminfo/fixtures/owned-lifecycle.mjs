@@ -41,6 +41,19 @@ fs.mkdtempSync = (...args) => {
     return path;
 };
 
+// A smaller font enlarges the real private viewport past the optional detail budget.
+const write = fs.writeFileSync;
+fs.writeFileSync = (path, data, ...args) => {
+    if (process.env.NTILDE_TERMINFO_TEST_RGB_BUDGET === '1' && typeof path === 'string'
+        && ((path.startsWith(prefix) && path.endsWith('/appdata/settings.json'))
+            || (path.startsWith(join(process.cwd(), 'artifacts', 'terminfo', 'owned-')) && path.endsWith('/initial-settings.json')))) {
+        const settings = JSON.parse(data);
+        settings.FontSize = 10;
+        data = JSON.stringify(settings) + '\n';
+    }
+    return write(path, data, ...args);
+};
+
 const spawn = childProcess.spawn;
 childProcess.spawn = (...args) => {
     const child = spawn(...args);

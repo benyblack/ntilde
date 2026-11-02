@@ -96,6 +96,30 @@ test('writes remain serial, match literal experiments and restore the main scree
     assert.equal(reads.at(-1), 'rgb-finish');
 });
 
+test('initial cell-detail budget refusal leaves the fixture untouched and permits subsequent stock collection', async () => {
+    const writes = [], reads = [];
+    const result = await collectRgb({ config: { runId }, owner: async kind => {
+        reads.push(kind); throw Object.assign(new Error('Observer refused the read.'), { code: 'screenDetailsUnavailable' });
+    }, fence: { write: async value => { writes.push(value); } } });
+    assert.deepEqual(result, { status: 'unavailable', reason: 'screenDetailsUnavailable' });
+    assert.deepEqual(reads, ['rgb-start']);
+    assert.deepEqual(writes, []);
+});
+
+test('unrelated initial errors and a budget refusal after fixture entry remain fatal', async () => {
+    const writes = [];
+    await assert.rejects(collectRgb({ config: { runId }, owner: async () => { throw new Error('wrong pane'); },
+        fence: { write: async value => { writes.push(value); } } }), /wrong pane/);
+    assert.deepEqual(writes, []);
+    const reads = [];
+    await assert.rejects(collectRgb({ config: { runId }, owner: async kind => {
+        reads.push(kind);
+        if (kind === 'rgb-bind') throw Object.assign(new Error('later refusal'), { code: 'screenDetailsUnavailable' });
+    }, fence: { write: async value => { writes.push(value); return '\x1b[?62;4;22c'; } } }), /later refusal/);
+    assert.deepEqual(reads, ['rgb-start', 'rgb-bind', 'rgb-finish']);
+    assert.ok(writes.at(-1).endsWith('\x1b[?1049l'), 'Even a refused in-fixture capture must attempt restoration.');
+});
+
 
 test('published RGB/underline evidence re-derives and matches the final shared cleanup receipt', () => {
     const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-02-rgb-underline.json', import.meta.url)));

@@ -7,6 +7,7 @@ namespace Ntilde.AgentHost;
 /// <summary>Opt-in stored attributes; the caller holds the buffer read lock throughout the capture.</summary>
 internal static class CellDetailSnapshot
 {
+    /// <summary>Capture a complete canonical viewport or refuse before returning any partial data.</summary>
     internal static bool TryCapture(TerminalBuffer buffer, out CellDetailRunDto[]? details)
     {
         details = null;
@@ -35,6 +36,7 @@ internal static class CellDetailSnapshot
         return true;
     }
 
+    /// <summary>Copy stored attributes without resolving defaults, palette colors or renderer effects.</summary>
     private static CellDetailRunDto Project(TerminalRow row, int col)
     {
         var cell = row.Cells[col];

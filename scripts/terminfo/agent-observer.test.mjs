@@ -9,6 +9,18 @@ import { agentRequest, observerEndpoint, OwnedCellObserver, screenSnapshot } fro
 
 const paneId = '11111111-1111-1111-1111-111111111111', barrier = '\x1b[?62;4;22c';
 const blank = () => ({ rows: 3, cols: 60, lines: ['', '', ''], cursorRow: 0, cursorCol: 0, cursorVisible: true });
+
+test('observer preserves a correlated App refusal code without trusting an uncorrelated refusal', async () => {
+    let frame = { v: 1, id: 1, error: { code: 'screenDetailsUnavailable', message: 'budget' } };
+    const server = createServer(socket => { socket.once('data', () => socket.end(JSON.stringify(frame) + '\n')); });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+        const endpoint = { host: '127.0.0.1', port: server.address().port };
+        await assert.rejects(agentRequest(endpoint, 'readScreen', {}, 1000), error => error.code === 'screenDetailsUnavailable');
+        frame = { ...frame, id: 2 };
+        await assert.rejects(agentRequest(endpoint, 'readScreen', {}, 1000), error => error.code === undefined && /Uncorrelated/.test(error.message));
+    } finally { await new Promise(resolve => server.close(resolve)); }
+});
 function fixture() {
     let value = blank(), sessions = [{ paneId, profileName: 'fixture', kind: 'local', rows: 3, cols: 60 }];
     let calls = 0;
@@ -143,8 +155,8 @@ test('agent RPC accepts only read-only versioned correlated frames', async () =>
 });
 
 for (const [name, data, error] of [
-    ['wrong version', '{"v":2,"id":1,"result":{}}\n', /refused/],
-    ['wrong request', '{"v":1,"id":2,"result":{}}\n', /refused/],
+    ['wrong version', '{"v":2,"id":1,"result":{}}\n', /Uncorrelated/],
+    ['wrong request', '{"v":1,"id":2,"result":{}}\n', /Uncorrelated/],
     ['an error', '{"v":1,"id":1,"error":{"code":"disabled"}}\n', /refused/],
     ['a partial frame', '{"v":1', /Incomplete/],
     ['oversized data', 'x'.repeat(512 * 1024 + 1), /Oversized/],

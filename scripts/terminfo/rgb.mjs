@@ -15,6 +15,7 @@ const combined = detail({ flags: 8, foregroundArgb: 0xff0180ff, backgroundArgb: 
     underlineStyle: 3, underlineArgb: 0xff0c2238 });
 const combinedSequence = sgr('38;2;1;128;255;48;2;254;2;0;4:3;58;2;12;34;56') + 'A';
 
+/** Construct literal RGB experiments with separately recorded stored-ARGB expectations. */
 function colors(channel, syntax) {
     const samples = [[1, 128, 255], [254, 2, 0], [0, 0, 0], [255, 255, 255]];
     const prefix = channel === 'fg' ? 38 : 48;
@@ -45,6 +46,7 @@ export const rgbCases = Object.freeze([
     fixture('rgb.underline.reset', [[combinedSequence, view('A', [combined])], [sgr(0) + 'B', view('AB', [combined, normal()])]]),
 ]);
 
+/** Compare every physical cell and the text/cursor control, including unaffected defaults. */
 export function matchesRgb(screen, expected) {
     if (!matchesCells(screen, expected)) return false;
     const actual = expandCellDetails(screen.cellDetails, screen.rows * screen.cols);
@@ -54,11 +56,19 @@ export function matchesRgb(screen, expected) {
     });
 }
 
-export function collectRgb(options) {
-    return collectCells({ ...options, config: { ...options.config, cellNonce: `NTILDE_RG_${options.config.runId}` },
-        fixtures: rgbCases, prefix: 'rgb' });
+/** Only an explicit initial budget refusal can skip RGB; no fixture has started then. */
+export async function collectRgb(options) {
+    try { await options.owner('rgb-start'); }
+    catch (error) {
+        if (error.code === 'screenDetailsUnavailable') return { status: 'unavailable', reason: error.code };
+        throw error;
+    }
+    await collectCells({ ...options, config: { ...options.config, cellNonce: `NTILDE_RG_${options.config.runId}` },
+        fixtures: rgbCases, prefix: 'rgb', started: true });
+    return { status: 'completed' };
 }
 
+/** Derive local results from validated retained frames; bad controls remain inconclusive. */
 export function buildRgbReport(snapshots, runId) {
     validateFrames(snapshots, runId, { fixtures: rgbCases, prefix: 'rgb', noncePrefix: 'NTILDE_RG_', includeCellDetails: true });
     let offset = 2;

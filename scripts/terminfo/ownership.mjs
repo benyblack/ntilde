@@ -101,6 +101,7 @@ export async function terminateRecordedWorker(recorded, runId) {
     throw new Error(`Owned worker ${recorded.pid} did not exit after SIGKILL.`);
 }
 
+/** Exchange a bounded private capability request; only the known initial RGB refusal can be optional. */
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(config.socket);
@@ -122,7 +123,11 @@ export function requestOwner(config, kind, extra = {}) {
             if (!buffer.includes('\n')) return;
             try {
                 const response = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
-                if (!response.ok) return finish(new Error(response.error ?? 'Ntilde ownership refused.'));
+                if (!response.ok) {
+                    const error = new Error(response.error ?? 'Ntilde ownership refused.');
+                    if (response.code === 'screenDetailsUnavailable') error.code = response.code;
+                    return finish(error);
+                }
                 finish(null, response);
             } catch (error) { finish(error); }
         });

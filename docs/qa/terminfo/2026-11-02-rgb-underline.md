@@ -82,3 +82,13 @@ selection, underline pixels, glyphs, blink timing, SSH, mux runtime, clipboard
 or other emulators. Windowless import is covered by API tests, not this desktop
 run. No VT/parser or renderer implementation changed. These 20 local experiments
 are not 20 regraded stock observations; the frozen triage remains intact.
+
+Review follow-up: an initial `screenDetailsUnavailable` refusal now records a
+separate, hashed unavailable marker and allows stock collection to continue.
+A real private viewport above 8,192 cells exercised this path, retained stock
+raw results and finalized cleanup without starting an RGB fixture. Refusals
+after fixture entry and unrelated errors remain fatal. This does not rewrite
+the qualified observation above or its recorded source hashes.
+After the review fixes, all 199 Node tests passed with zero skips, and the
+199 focused AgentHost tests passed again. The strengthened canonical-run test
+also checks that uniform rows merge into a single cross-row run.

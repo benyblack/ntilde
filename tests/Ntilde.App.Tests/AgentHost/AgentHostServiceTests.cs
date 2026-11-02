@@ -292,7 +292,13 @@ public class AgentHostServiceTests : IDisposable
         var response = Handle(service, RequestLine(AgentHostProtocol.Methods.ReadScreen,
             paramsObj: new ReadScreenParams { PaneId = registration.PaneId, IncludeCellDetails = true }));
         if (allowed)
-            Assert.Equal(rows * cols, ResultOf(response, AgentHostJsonContext.Default.ScreenSnapshotDto).CellDetails!.Sum(run => run.Count));
+        {
+            var runs = ResultOf(response, AgentHostJsonContext.Default.ScreenSnapshotDto).CellDetails!;
+            Assert.Equal(rows * cols, runs.Sum(run => run.Count));
+            foreach (var (first, second) in runs.Zip(runs.Skip(1)))
+                Assert.NotEqual(first with { Count = 0 }, second with { Count = 0 });
+            if (!alternating) Assert.Single(runs);
+        }
         else
         {
             Assert.Equal(AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable, response.Error?.Code);

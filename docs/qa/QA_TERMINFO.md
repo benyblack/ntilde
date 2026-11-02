@@ -276,6 +276,14 @@ SGR evidence, only after verified worker exit and fixture removal. Suite and
 decoder sources are archived and hashed. Each suite retains a separate
 64-snapshot ceiling. DA replies order operations; they do not prove colors.
 Stock collector definitions, grades and the frozen 177-item triage are unchanged.
+If the first requested RGB baseline returns `screenDetailsUnavailable`, the
+worker has not started that alternate-screen fixture. The parent records a
+hashed `rgb-unavailable.json` with no fabricated experiment outcomes, then
+continues the stock collection. The final receipt marks `rgbEvidence.status`
+as `unavailable` only after normal ownership and cleanup verification. Other
+errors, or any refusal after fixture entry, still fail the run and attempt
+restoration; a missing/partial projection is never treated as a pass.
+
 The [2026-11-02 RGB/underline measurement](terminfo/2026-11-02-rgb-underline.md)
 retains the first qualified run and its limits.
 

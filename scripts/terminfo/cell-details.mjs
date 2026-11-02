@@ -4,6 +4,7 @@ const uint = value => Number.isSafeInteger(value) && value >= 0 && value <= 0xff
 const index = value => Number.isSafeInteger(value) && value >= -1 && value <= 255;
 const same = (a, b) => Object.keys(a).every(key => key === 'count' || a[key] === b[key]);
 
+/** Distinguish inherited, indexed and literal storage without resolving host/theme colors. */
 function colorValid(flags, defaultFlag, paletteFlag, paletteIndex, argb) {
     if (!index(paletteIndex)) return false;
     const inherited = (flags & defaultFlag) !== 0, palette = (flags & paletteFlag) !== 0;
@@ -12,6 +13,7 @@ function colorValid(flags, defaultFlag, paletteFlag, paletteIndex, argb) {
     return paletteIndex === -1 && (inherited ? argb == null : uint(argb));
 }
 
+/** Validate one complete stored attribute tuple and normalize omitted optional ARGB values. */
 function copyRun(run) {
     if (!run || !Number.isSafeInteger(run.count) || run.count < 1
         || !Number.isSafeInteger(run.flags) || run.flags < 0 || run.flags > 65535 || (run.flags & 1024)
@@ -29,6 +31,7 @@ function copyRun(run) {
         underlineStyle: run.underlineStyle, underlineColorIndex: run.underlineColorIndex, underlineArgb: run.underlineArgb ?? null };
 }
 
+/** Require a canonical, complete physical viewport within both App API budgets. */
 export function copyCellDetails(runs, cells) {
     if (!Number.isSafeInteger(cells) || cells < 1 || cells > 8192
         || !Array.isArray(runs) || !runs.length || runs.length > Math.min(cells, 1024)) throw new Error('Invalid cell detail budget.');
@@ -44,6 +47,7 @@ export function copyCellDetails(runs, cells) {
     return result;
 }
 
+/** Expand only validated bounded runs into independent per-cell objects. */
 export function expandCellDetails(runs, cells) {
     return copyCellDetails(runs, cells).flatMap(({ count, ...value }) => Array.from({ length: count }, () => ({ ...value })));
 }

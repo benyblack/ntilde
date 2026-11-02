@@ -29,8 +29,9 @@ export function matchesCells(screen, expected) {
         && screen.lines.every((line, row) => line === expectedLine(row));
 }
 
-export async function collectCells({ config, owner, fence, fixtures = cellCases, prefix = 'cell' }) {
-    await owner(prefix + '-start');
+/** Run serial writes and reads with restoration; started requires an already accepted baseline. */
+export async function collectCells({ config, owner, fence, fixtures = cellCases, prefix = 'cell', started = false }) {
+    if (!started) await owner(prefix + '-start');
     try {
         const barrier = await fence.write('\x1b[?1049h' + reset + config.cellNonce);
         await owner(prefix + '-bind', barrier);
@@ -46,6 +47,7 @@ export async function collectCells({ config, owner, fence, fixtures = cellCases,
     }
 }
 
+/** Validate complete state, provenance, identity and the ordering barrier for one frame. */
 function validateFrame(frame, index, baseline, includeAttributes, includeCellDetails) {
     screenSnapshot(frame.screen, includeAttributes, includeCellDetails);
     if (frame.index !== index || frame.sha256 !== snapshotHash(frame.screen) || frame.paneId !== baseline.paneId
@@ -57,6 +59,7 @@ function validateFrame(frame, index, baseline, includeAttributes, includeCellDet
     }
 }
 
+/** Check exact fixture ordering, nonce binding, geometry and main-screen restoration. */
 export function validateFrames(snapshots, runId, { fixtures = cellCases, prefix = 'cell', noncePrefix = 'NTILDE_QA_', includeAttributes = false, includeCellDetails = false } = {}) {
     const count = 3 + fixtures.reduce((sum, fixture) => sum + 1 + fixture.steps.length, 0);
     if (snapshots.length !== count || snapshots[0].kind !== prefix + '-start' || snapshots[1].kind !== prefix + '-bind'

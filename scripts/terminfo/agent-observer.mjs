@@ -29,6 +29,7 @@ export function observerEndpoint(appData, ownerPid) {
     return endpoint;
 }
 
+/** Read one correlated response from the private read-only endpoint; preserve typed refusals. */
 export function agentRequest(endpoint, method, params, timeoutMs) {
     if (!['listSessions', 'readScreen'].includes(method)) throw new Error('Observer method is not read-only.');
     return new Promise((resolve, reject) => {
@@ -50,7 +51,13 @@ export function agentRequest(endpoint, method, params, timeoutMs) {
             if (!buffer.includes('\n')) return;
             try {
                 const frame = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
-                if (frame.v !== 1 || frame.id !== 1 || frame.error || !frame.result) throw new Error('Observer refused the read.');
+                if (frame.v !== 1 || frame.id !== 1) throw new Error('Uncorrelated observer response.');
+                if (frame.error) {
+                    const error = new Error('Observer refused the read.');
+                    if (typeof frame.error.code === 'string' && /^[a-zA-Z]{1,64}$/.test(frame.error.code)) error.code = frame.error.code;
+                    throw error;
+                }
+                if (!frame.result) throw new Error('Observer returned no result.');
                 finish(null, frame.result);
             } catch (error) { finish(error); }
         });
@@ -58,6 +65,7 @@ export function agentRequest(endpoint, method, params, timeoutMs) {
     });
 }
 
+/** Copy and bound only requested state; absent or malformed evidence never becomes a successful snapshot. */
 export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false) {
     if (!Number.isSafeInteger(value?.rows) || value.rows < 3 || value.rows > 128
         || !Number.isSafeInteger(value.cols) || value.cols < 48 || value.cols > 256
@@ -95,6 +103,7 @@ export class OwnedCellObserver {
         return pane;
     }
 
+    /** Capture one coherent singleton pane under the shared deadline, including requested complete details. */
     async capture(budget) {
         if (++this.snapshots > 64) throw new Error('Cell snapshot budget exhausted.');
         const before = await this.session(budget);
@@ -114,6 +123,7 @@ export class OwnedCellObserver {
         return screen;
     }
 
+    /** Journal a fenced operation only after successful observation, retaining immutable snapshot hashes. */
     async handle(kind, budget, barrier = null) {
         if (this.busy || this.restored) throw new Error('Cell observation is busy or already complete.');
         const operation = kind.startsWith(this.prefix + '-') ? kind.slice(this.prefix.length + 1) : '';
@@ -130,6 +140,7 @@ export class OwnedCellObserver {
         } finally { this.busy = false; }
     }
 
+    /** Enforce start, nonce binding and restoration before exposing fixture observations. */
     async observe(kind, budget) {
         if (kind === 'cell-start') {
             if (this.baseline) throw new Error('Cell fixture already started.');
