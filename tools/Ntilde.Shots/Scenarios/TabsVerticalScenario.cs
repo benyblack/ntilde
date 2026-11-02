@@ -22,7 +22,7 @@ namespace Ntilde.Shots.Scenarios;
 internal sealed class TabsVerticalScenario : IScenario
 {
     private static readonly string[] TabNames =
-        ["claude-code", "codex", "build", "logs", "ssh · edge-01"];
+        ["claude-code", "codex", "vim", "monitor", "build"];
 
     /// <summary>
     /// The tab that receives an agent-delivered command, so the sidebar's "carrying agent
@@ -107,7 +107,13 @@ internal sealed class TabsVerticalScenario : IScenario
                 ?? throw new InvalidOperationException($"No tab is selected after opening '{name}'.");
 
             SetTabTitle(context, tab, name);
-            await context.RunCommandAsync(pane, "bash scripts/demo-test.sh");
+            // A different, fitting command per tab, so each tab's preview line differs and the selected
+            // tab - the last one opened - fills its pane. vim and the monitor stay in the alternate
+            // screen behind their tabs, as they would for a real user.
+            foreach (string command in CommandsFor(name))
+            {
+                await context.RunCommandAsync(pane, command);
+            }
 
             if (string.Equals(name, AgentTabName, StringComparison.Ordinal))
             {
@@ -129,6 +135,15 @@ internal sealed class TabsVerticalScenario : IScenario
     /// deterministic backstop rather than the only path - the image must not depend on winning a
     /// race with a background dispatcher post.
     /// </summary>
+    private static string[] CommandsFor(string tabName) => tabName switch
+    {
+        "claude-code" => ["git log --oneline -6"],
+        "codex" => ["git diff --stat"],
+        "vim" => [TuiVimScenario.VimCommand],
+        "monitor" => ["bash scripts/demo-monitor.sh"],
+        _ => ["bash scripts/ntilde-banner.sh", "bash scripts/demo-test.sh"]
+    };
+
     private static async Task MarkAgentActivityAsync(ShotContext context, TerminalPane pane)
     {
         context.Driver.WaitFor(

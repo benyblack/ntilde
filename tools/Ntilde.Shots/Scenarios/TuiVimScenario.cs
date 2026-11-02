@@ -24,7 +24,7 @@ internal sealed class TuiVimScenario : IScenario
     // line/column/percent position.
     // macOS ships no system vimrc that turns on syntax highlighting or an always-on status line, so
     // both are asked for here too rather than inherited from the capturing machine.
-    private const string VimCommand =
+    internal const string VimCommand =
         "vim -c 'syntax on' -c 'set laststatus=2' -c 'set statusline=%f%h%m%r\\ [%{&ff}]%=%l,%c%V\\ %P' src/sixel-decoder.rs";
 
     public ShotSpec Spec { get; } = new(
