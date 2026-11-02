@@ -26,7 +26,7 @@ internal sealed class XcbPrimaryClipboard(Func<ClipboardReadRequest, Cancellatio
 
     internal Task<uint> OwnerWindowForTestAsync() => Run(c => c.Owner());
 
-    internal Task<(int Sent, int Received)> TransferCountsAsync() => Run(c => (c.IncrementalSends, c.IncrementalReceives));
+    internal Task<(int Sent, int Received)> TransferCountsAsync() => Run(c => c.TransferCounts());
 
     public async Task<IKittyClipboardSnapshot> OpenReadAsync(IReadOnlyList<string>? requestedTypes = null) =>
         await Run(c => c.CaptureSnapshot(requestedTypes));

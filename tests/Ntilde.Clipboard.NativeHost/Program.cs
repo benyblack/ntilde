@@ -168,14 +168,14 @@ internal sealed class ClipboardScenario(Window window, string root)
         connection.Write(new Dictionary<string, byte[]> { [BinaryMime] = new byte[256 * 1024] });
         for (int attempt = 0; attempt < 20; attempt++)
         {
-            int before = connection.IncrementalReceives;
+            int before = connection.TransferCounts().Received;
             bool refused = false;
             try
             {
                 _ = connection.ReadWithBudgetForTest(BinaryMime, 1);
             }
             catch (IOException) { refused = true; }
-            if (!refused || connection.IncrementalReceives != before + 1)
+            if (!refused || connection.TransferCounts().Received != before + 1)
                 throw new InvalidDataException("Aborted PRIMARY self-reads exhausted outgoing stream slots.");
         }
     }

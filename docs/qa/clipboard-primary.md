@@ -42,7 +42,7 @@ and 128 MiB of referenced stream payloads can remain active; streams expire afte
 10 seconds without progress or one minute overall. The last stream on each foreign requestor window releases its event
 subscription; local read-window subscriptions remain until that read ends. A
 stale SelectionClear cannot erase data successfully reacquired on the worker.
-Reads have bounded reply/transfer waits. A failed receive destroys
+Reads use ten-second reply/idle waits and a one-minute overall INCR limit. A failed receive destroys
 its private request window, rather than leaving an incomplete INCR handshake.
 
 The native worker admits at most one waiting command. A stalled connection

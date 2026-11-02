@@ -21,6 +21,7 @@ internal sealed class XcbSelectionConnection : IDisposable
     internal int LastAdvertisedTargetCount { get; private set; }
     internal int IncrementalSends { get; private set; }
     internal int IncrementalReceives { get; private set; }
+    internal (int Sent, int Received) TransferCounts() => (IncrementalSends, IncrementalReceives);
 
     public XcbSelectionConnection()
     {
@@ -146,14 +147,18 @@ internal sealed class XcbSelectionConnection : IDisposable
             if (BitConverter.ToUInt32(first.Data) > Math.Max(0, budget)) throw new IOException("PRIMARY exceeds the read budget.");
             _ = XcbNative.DeleteProperty(_connection, window, _property);
             using var result = new MemoryStream();
+            var receiveDeadline = new PrimaryReceiveDeadline();
+            receiveDeadline.Progress();
             while (true)
             {
-                Wait(e => e.Kind == 28 && e.Field(4) == window && e.Field(8) == _property && e.Data[16] == 0, started);
+                Wait(e => e.Kind == 28 && e.Field(4) == window && e.Field(8) == _property && e.Data[16] == 0, started, receiveDeadline);
                 var chunk = ReadProperty(window, _property, budget - checked((int)result.Length), allowIncr: false);
                 byte[] bytes = Validate(chunk, format, expectedType);
                 _ = XcbNative.DeleteProperty(_connection, window, _property);
+                receiveDeadline.Check();
                 if (bytes.Length == 0) break;
                 result.Write(bytes);
+                receiveDeadline.Progress();
                 XcbPrimaryClipboard.TraceForTest?.Invoke($"INCR received bytes={bytes.Length} total={result.Length}");
             }
             if (Owner() != owner) throw new IOException("PRIMARY owner changed during the read.");
@@ -342,12 +347,14 @@ internal sealed class XcbSelectionConnection : IDisposable
         return new(reply);
     }
 
-    private Event Wait(Func<Event, bool> matches, long started)
+    private Event Wait(Func<Event, bool> matches, long started, PrimaryReceiveDeadline? receiveDeadline = null)
     {
         Flush();
         while (true)
         {
-            CheckConnection(); CheckDeadline(started);
+            CheckConnection();
+            if (receiveDeadline == null) CheckDeadline(started);
+            else receiveDeadline.Check();
             if (TakeEvent() is Event item)
             {
                 if (matches(item)) return item;
