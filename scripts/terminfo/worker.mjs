@@ -8,6 +8,8 @@ import { collectCells } from './cells.mjs';
 import { terminalFence } from './terminal-fence.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
+import { collectRendition } from './rendition.mjs';
+import { collectCursor } from './cursor.mjs';
 
 let config;
 try {
@@ -21,6 +23,8 @@ try {
         await collectCells({ config, fence, owner });
         await collectSgr({ config, fence, owner });
         await collectRgb({ config, fence, owner });
+        await collectRendition({ config, fence, owner });
+        await collectCursor({ config, fence, owner });
     } finally { fence.dispose(); }
     const source = readFileSync(config.bundle);
     const digest = createHash('sha256').update(source).digest('hex');

@@ -287,6 +287,54 @@ restoration; a missing/partial projection is never treated as a pass.
 The [2026-11-02 RGB/underline measurement](terminfo/2026-11-02-rgb-underline.md)
 retains the first qualified run and its limits.
 
+### Supplemental remaining rendition, charsets and cursor modes
+
+After RGB collection restores (or records its initial typed budget refusal),
+the worker runs `ntilde-owned-rendition-charsets-v2`: 16 experiments and 40
+parent-owned frames. These measure faint, hidden, strikethrough and blink flags;
+their selective resets and SGR 0; BMP, combining, wide and supplementary Unicode;
+DEC line drawing/special graphics; and G0/G1 SI/SO switching. Complete physical
+cell details include wide-continuation and extended-text flags. Combining and
+wide cases use independent cursor-width expectations. Each charset sequence
+restores ASCII designation and shift, then writes lowercase probes to verify it.
+The first retained v1 mapping measurement predates those post-restoration probes
+and remains reproducible with its explicitly selected suite revision. Hidden text is
+recorded buffer content; blink is a stored flag. Neither proves painted output.
+
+`ntilde-owned-cursor-modes-v1` follows with nine experiments and 22 frames.
+`readScreen(includeCursorMode=true)` adds an optional `cursorMode` object with
+stored `style` (0 block, 1 bar, 2 underline), `blink` and `isDefault`. It shares
+the snapshot read lock and remains omitted by default. `isDefault=true` means
+the host may use its configured presentation; the numeric style is not a
+resolved UI preference. This readback does not measure blink phase or pixels.
+
+The cursor suite requires an empty default-attribute main viewport at home,
+visible cursor, and stored default underline/blinking modes before any writes.
+It tests visibility, all DECSCUSR parameters 0..6 and an ignored invalid 7.
+Every control normalizes to explicit steady block. Leaving the alternate screen
+and sending DECSTR restores the recorded default cursor modes without clearing
+main-screen text. Initial/restored snapshots must match completely, including
+cursor modes; the reset is used only inside this verified private fixture.
+This does not qualify every saved mode, history field or reset protocol.
+
+Both suites preserve the same pane, ownership, nonce, ordering and cleanup
+checks. Reports/journals use `rendition-*` and `cursor-*` filenames; the shared
+final receipt additionally binds `renditionEvidence` and `cursorEvidence`.
+The production receipt finalizer rehashes every required suite report/marker,
+binds each to the same run, refuses remaining fixture entries and never overwrites
+a final receipt. Its portable tests run in CI without a desktop or collector.
+
+Initial `screenDetailsUnavailable` refusals produce separate hashed unavailable
+markers, no invented outcomes, and permit subsequent suites/stock collection.
+Unrelated errors and any refusal after fixture entry remain fatal.
+
+Overline has no current VT state or renderer path. It remains open under #762
+for a separate implementation and qualification; no constant or consumed-input
+hint is substituted for an observation. Stock grades and frozen triage stay
+unchanged. Controlled pixels and blink timing remain subsequent work. The
+[2026-11-02 rendition/cursor measurement](terminfo/2026-11-02-rendition-cursor.md)
+retains the qualified run and its exact limits.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh
@@ -374,3 +422,7 @@ unsent clipboard probes. Source limitations and measurement gaps are kept
 separate from original grades. Validate the inventory offline with
 `python3 scripts/terminfo-triage.py --check`; no private artifact or live terminal
 is needed for that check.
+
+The [revision-2 charset restoration measurement](terminfo/2026-11-02-rendition-cursor-restoration.md)
+adds lowercase post-reset probes and the portable production receipt finalizer.
+The original v1 mapping measurement remains unchanged.

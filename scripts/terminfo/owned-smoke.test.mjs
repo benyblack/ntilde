@@ -48,7 +48,7 @@ function withCollectorFixture(receipt, lockfile, action) {
     try {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
             'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs',
-            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs',
+            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs',
             'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
@@ -154,6 +154,8 @@ function assertRetainedCollector(output) {
         ['cellFenceSourceSha256', 'terminfo/terminal-fence.mjs'],
         ['attributeSourceSha256', 'terminfo/attributes.mjs'], ['sgrSuiteSourceSha256', 'terminfo/sgr.mjs'],
         ['cellDetailsSourceSha256', 'terminfo/cell-details.mjs'], ['rgbSuiteSourceSha256', 'terminfo/rgb.mjs'],
+        ['renditionSuiteSourceSha256', 'terminfo/rendition.mjs'], ['cursorSuiteSourceSha256', 'terminfo/cursor.mjs'],
+        ['receiptSourceSha256', 'terminfo/receipt.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
     ]) {
@@ -176,6 +178,8 @@ test('an oversized real viewport records RGB unavailable while retaining stock r
         const unavailable = JSON.parse(readFileSync(join(output, receipt.rgbEvidence.file)));
         assert.equal(receipt.rgbEvidence.status, 'unavailable');
         assert.equal(receipt.rgbEvidence.reason, 'screenDetailsUnavailable');
+        assert.equal(receipt.renditionEvidence.status, 'unavailable');
+        assert.equal(receipt.cursorEvidence.status, 'unavailable');
         assert.deepEqual(receipt.rgbEvidence.counts, {});
         assert.equal(unavailable.fixtureStarted, false);
         assert.equal(unavailable.plannedExperiments, 20);
@@ -365,6 +369,16 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
+        for (const [prefix, count] of [['rendition', 16], ['cursor', 9]]) {
+            assert.equal(receipt[prefix + 'Evidence'].sha256, digest(prefix + '-observations.json'));
+            const extra = JSON.parse(readFileSync(join(output, prefix + '-observations.json')));
+            assert.equal(extra.runId, receipt.runId);
+            assert.equal(extra.observations.length, count);
+            assert.deepEqual(extra.snapshots, readFileSync(join(output, prefix + '-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+            assert.deepEqual(extra.snapshots[0].screen, extra.snapshots.at(-1).screen);
+            assert.equal(extra.snapshots[0].paneId, report.snapshots[0].paneId);
+            assert.ok(extra.observations.every(item => item.result === 'passed'), JSON.stringify(extra.observations));
+        }
     } finally {
         if (existsSync(log)) {
             const events = readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line));

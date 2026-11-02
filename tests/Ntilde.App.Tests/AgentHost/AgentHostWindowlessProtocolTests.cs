@@ -191,11 +191,11 @@ public class AgentHostWindowlessProtocolTests
     public void ReadScreen_windowless_cell_details_preserve_imported_rgb_and_underline_metadata()
     {
         var source = new StubWindowlessSource();
-        var session = source.Add("\x1b[38;2;12;34;56;4:3;58;5;123mA", cols: 90, rows: 20);
+        var session = source.Add("\x1b[38;2;12;34;56;4:3;58;5;123mA\x1b[6 q", cols: 90, rows: 20);
         using var service = NewService(new AgentSessionRegistry(), new AgentActivityJournal());
         service.SetWindowlessSource(source);
         var line = Line(AgentHostProtocol.Methods.ReadScreen,
-            JsonSerializer.Serialize(new ReadScreenParams { PaneId = session.SessionId, IncludeCellDetails = true },
+            JsonSerializer.Serialize(new ReadScreenParams { PaneId = session.SessionId, IncludeCellDetails = true, IncludeCursorMode = true },
                 AgentHostJsonContext.Default.ReadScreenParams));
         var screen = Result(Handle(service, line), AgentHostJsonContext.Default.ScreenSnapshotDto);
         var first = screen.CellDetails![0];
@@ -204,6 +204,7 @@ public class AgentHostWindowlessProtocolTests
         Assert.Equal(123, first.UnderlineColorIndex);
         Assert.Null(first.UnderlineArgb);
         Assert.Equal(1800, screen.CellDetails.Sum(run => run.Count));
+        Assert.Equal(new CursorModeDto { Style = 1, Blink = false, IsDefault = false }, screen.CursorMode);
     }
 
     [Fact]
