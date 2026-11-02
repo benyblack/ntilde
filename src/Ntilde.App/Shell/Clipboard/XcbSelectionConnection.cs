@@ -249,6 +249,7 @@ internal sealed class XcbSelectionConnection : IDisposable
         XcbPrimaryClipboard.TraceForTest?.Invoke($"request window={requestor} target={target} property={property}");
         if (property == 0) property = target;
         bool served = request.Field(8) == _window && request.Field(16) == Primary &&
+            _ownership.AcceptsRequest(request.Field(4)) && Owner() == _window &&
             (target == _multiple ? ServeMultiple(requestor, property) : ServeTarget(requestor, target, property));
         byte[] notify = new byte[32]; notify[0] = 31;
         Put(notify, 4, request.Field(4)); Put(notify, 8, requestor); Put(notify, 12, Primary);
@@ -320,8 +321,10 @@ internal sealed class XcbSelectionConnection : IDisposable
                 {
                     if (error != 0)
                     {
+                        byte code = Marshal.ReadByte(error, 1);
                         XcbNative.Free(error);
                         if (reply != 0) XcbNative.Free(reply);
+                        if (code == 5) throw new PrimaryInvalidAtomException();
                         throw new IOException("X11 PRIMARY request was refused.");
                     }
                     if (reply == 0) throw new IOException("X11 PRIMARY returned no reply.");

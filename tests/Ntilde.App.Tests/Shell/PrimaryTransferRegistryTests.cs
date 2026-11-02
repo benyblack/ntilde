@@ -98,4 +98,29 @@ public class PrimaryTransferRegistryTests
         Assert.Empty(ownership.Values);
         Assert.Equal(new byte[] { 2, 3 }, registry.Find(99, 1)!.Payload);
     }
+    [Fact]
+    public void Republished_selection_rejects_requests_from_before_the_current_interval()
+    {
+        var ownership = new PrimarySelectionOwnership();
+        ownership.Publish(new() { [10] = [1] }, 100);
+        Assert.True(ownership.AcceptsRequest(150));
+        ownership.Publish(new() { [10] = [2] }, 200);
+        Assert.False(ownership.AcceptsRequest(150));
+        Assert.True(ownership.AcceptsRequest(200));
+        Assert.True(ownership.AcceptsRequest(201));
+        Assert.True(ownership.AcceptsRequest(0)); // X11 CurrentTime is accepted for interoperable clients.
+        ownership.Clear();
+        Assert.False(ownership.AcceptsRequest(0));
+    }
+
+    [Fact]
+    public void Request_timestamp_order_uses_X11_modular_32_bit_time()
+    {
+        var ownership = new PrimarySelectionOwnership();
+        ownership.Publish(new() { [10] = [1] }, uint.MaxValue - 10);
+        Assert.True(ownership.AcceptsRequest(5));
+        Assert.False(ownership.AcceptsRequest(uint.MaxValue - 11));
+        ownership.Publish(new() { [10] = [2] }, 10);
+        Assert.False(ownership.AcceptsRequest(uint.MaxValue - 5));
+    }
 }

@@ -18,10 +18,16 @@ internal sealed class PrimaryTargetCatalog(uint utf8, uint plain, Func<uint, str
         foreach (uint atom in targets.Distinct().Take(MaxNameLookups))
         {
             if (formats.Count == KittyClipboardPacket.MaxTypes) break;
-            string mime = atom == utf8 || atom == 31 ? TextMime : name(atom);
+            string mime = TargetName(atom);
             if (KittyClipboardPacket.IsMime(mime)) formats.TryAdd(mime, atom);
         }
         return formats;
+    }
+
+    private string TargetName(uint atom)
+    {
+        try { return atom == utf8 || atom == 31 ? TextMime : name(atom); }
+        catch (PrimaryInvalidAtomException) { return ""; }
     }
 
     private Dictionary<string, uint> SelectRequested(HashSet<uint> available, IReadOnlyList<string> requested)
@@ -45,3 +51,7 @@ internal sealed class PrimaryTargetCatalog(uint utf8, uint plain, Func<uint, str
         if (atom != 0) formats[TextMime] = atom;
     }
 }
+
+// Only a server BadAtom is recoverable during the optional target-name scan.
+// Connection failures and deadlines must still abort the operation.
+internal sealed class PrimaryInvalidAtomException : IOException;

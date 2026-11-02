@@ -57,6 +57,8 @@ internal sealed class PrimarySelectionOwnership
     public uint Timestamp { get; private set; }
     public void Publish(Dictionary<uint, byte[]> values, uint timestamp) { Values = values; Timestamp = timestamp; }
     public void Clear() => Values = [];
+    public bool AcceptsRequest(uint timestamp) => Values.Count > 0 &&
+        (timestamp == 0 || unchecked((int)(timestamp - Timestamp)) >= 0);
     public void SelectionCleared(uint currentOwner, uint ownWindow)
     {
         // Owner queries and publication are serialized on the XCB worker. A queued

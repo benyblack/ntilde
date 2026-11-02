@@ -32,4 +32,20 @@ public class PrimaryTargetCatalogTests
         Assert.Equal(101u, catalog.Select([31, 100, 101], ["text/plain"])["text/plain"]);
         Assert.Equal(100u, catalog.Select([31, 100], ["text/plain"])["text/plain"]);
     }
+    [Fact]
+    public void Undefined_atoms_are_skipped_without_hiding_valid_text_or_later_MIME_targets()
+    {
+        var catalog = new PrimaryTargetCatalog(100, 101,
+            atom => atom == 999 ? throw new PrimaryInvalidAtomException() : "application/valid", _ => 0);
+        var formats = catalog.Select([999, 100, 102], []);
+        Assert.Equal(100u, formats["text/plain"]);
+        Assert.Equal(102u, formats["application/valid"]);
+    }
+
+    [Fact]
+    public void Connection_failures_do_not_turn_into_silently_partial_listings()
+    {
+        var catalog = new PrimaryTargetCatalog(100, 101, _ => throw new IOException("connection lost"), _ => 0);
+        Assert.Throws<IOException>(() => catalog.Select([102], []));
+    }
 }
