@@ -243,6 +243,9 @@ For build steps, jump to [Build & test](#build--test) below.
   separate from the terminal font size, with terminal text rasterized sharp at the scale
 
 <p align="center">
+  <picture><source srcset="docs/assets/shots/tabs-vertical-readme.webp" type="image/webp" /><img width="80%" alt="The vertical tab sidebar: five named tabs, each with a live preview of its last line - powerline prompts, vim's status line, a process monitor - one carrying an agent-activity marker, and the selected build tab showing the banner and a test run" src="docs/assets/shots/tabs-vertical-readme.png" /></picture>
+</p>
+<p align="center">
   <picture><source srcset="docs/assets/shots/settings-appearance-tab-readme.webp" type="image/webp" /><img width="80%" alt="The Settings window on its Appearance page: a sidebar of pages, the theme picker and a live preview in the selected theme" src="docs/assets/shots/settings-appearance-tab-readme.png" /></picture>
 </p>
 
