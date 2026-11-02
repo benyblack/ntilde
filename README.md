@@ -242,6 +242,10 @@ For build steps, jump to [Build & test](#build--test) below.
 - Interface scale (Settings → Appearance → Window, 80%–200%): one zoom for the whole window,
   separate from the terminal font size, with terminal text rasterized sharp at the scale
 
+<p align="center">
+  <picture><source srcset="docs/assets/shots/settings-appearance-tab-readme.webp" type="image/webp" /><img width="80%" alt="The Settings window on its Appearance page: a sidebar of pages, the theme picker and a live preview in the selected theme" src="docs/assets/shots/settings-appearance-tab-readme.png" /></picture>
+</p>
+
 ### Command Assist
 
 Suggestions anchored to what the shell actually reports, rather than to a guess
@@ -291,6 +295,14 @@ the flip.
 - Disconnect state surfaced in the terminal pane
 - Runtime password memory (opt-in, session-scoped)
 - Native SFTP transfers and a pane-local remote-files sidebar
+
+<p align="center">
+  <picture><source srcset="docs/assets/shots/connection-manager-window-readme.webp" type="image/webp" /><img width="80%" alt="The Connection Manager: SSH profiles grouped and searchable, with the selected host's connection details and launch preview" src="docs/assets/shots/connection-manager-window-readme.png" /></picture>
+</p>
+<p align="center">
+  <picture><source srcset="docs/assets/shots/remote-files-readme.webp" type="image/webp" /><img width="49%" alt="A native SSH tab to dev@edge-01 with the remote files sidebar listing the remote home directory" src="docs/assets/shots/remote-files-readme.png" /></picture>
+  <picture><source srcset="docs/assets/shots/remote-files-transfers-readme.webp" type="image/webp" /><img width="49%" alt="The transfer centre over the SSH tab: a 1.8 GB download and a 1.4 GB upload part way through, beside a finished download" src="docs/assets/shots/remote-files-transfers-readme.png" /></picture>
+</p>
 
 ### Persistent sessions
 
