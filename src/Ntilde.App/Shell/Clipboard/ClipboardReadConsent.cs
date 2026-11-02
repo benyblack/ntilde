@@ -5,7 +5,7 @@ namespace Ntilde.Shell.Clipboard;
 
 internal enum ClipboardReadConsent { Deny, AllowOnce, AllowSession }
 
-internal sealed record ClipboardReadRequest(string Name, bool CanRemember);
+internal sealed record ClipboardReadRequest(string Name, bool CanRemember, bool Primary = false);
 
 /// <summary>Bounded, memory-only read grants belonging to one terminal session.</summary>
 internal sealed class ClipboardSessionPermissions

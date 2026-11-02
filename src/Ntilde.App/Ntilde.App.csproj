@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <RootNamespace>Ntilde</RootNamespace>
+    <!-- Required by source-generated, blittable XCB interop; VT remains managed-only. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>Ntilde</AssemblyName>
     <OutputType>WinExe</OutputType>
     <ApplicationIcon>Assets\ntilde_icon.ico</ApplicationIcon>

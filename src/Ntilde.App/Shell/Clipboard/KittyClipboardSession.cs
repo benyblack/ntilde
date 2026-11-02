@@ -6,10 +6,13 @@ namespace Ntilde.Shell.Clipboard;
 internal interface IKittyClipboard
 {
     bool Available { get; }
-    Task<IKittyClipboardSnapshot> OpenReadAsync();
+    // null captures all values (paste); [] lists types without accessing content.
+    Task<IKittyClipboardSnapshot> OpenReadAsync(IReadOnlyList<string>? requestedTypes = null);
     Task WriteAsync(IReadOnlyDictionary<string, byte[]> data);
     Task<ClipboardReadConsent> ConfirmReadAsync(ClipboardReadRequest request, CancellationToken cancellation);
 }
+
+internal sealed record ClipboardLocations(IKittyClipboard Clipboard, IKittyClipboard? Primary = null);
 
 internal interface IKittyClipboardSnapshot : IDisposable
 {
@@ -34,6 +37,7 @@ internal sealed class KittyClipboardSession : IDisposable
     private static readonly SemaphoreSlim ClipboardGate = new(1, 1);
     private readonly object _sync = new();
     private readonly IKittyClipboard _clipboard;
+    private readonly IKittyClipboard? _primary;
     private readonly ClipboardReplyWriter _replies;
     private const int MaxQueuedErrors = 64;
     private readonly Queue<PendingError> _errors = new();
@@ -53,10 +57,14 @@ internal sealed class KittyClipboardSession : IDisposable
     private CancellationTokenSource? _pasteCancellation;
 
     public KittyClipboardSession(IKittyClipboard clipboard, Func<string, bool> reply, Func<Func<Task>, Task> schedule,
-        Func<bool> writeAllowed, Func<bool> alive, TimeProvider? clock = null,
-        ClipboardReplyPolicy? replyPolicy = null)
+        Func<bool> writeAllowed, Func<bool> alive, TimeProvider? clock = null, ClipboardReplyPolicy? replyPolicy = null)
+        : this(new ClipboardLocations(clipboard), reply, schedule, writeAllowed, alive, clock, replyPolicy) { }
+
+    public KittyClipboardSession(ClipboardLocations locations, Func<string, bool> reply, Func<Func<Task>, Task> schedule,
+        Func<bool> writeAllowed, Func<bool> alive, TimeProvider? clock = null, ClipboardReplyPolicy? replyPolicy = null)
     {
-        _clipboard = clipboard;
+        _clipboard = locations.Clipboard;
+        _primary = locations.Primary;
 
         _schedule = schedule;
         _writeAllowed = writeAllowed;
@@ -83,7 +91,7 @@ internal sealed class KittyClipboardSession : IDisposable
             if (packet.Type == ReadOperation) { Read(packet); return; }
             if (packet.Type == WriteOperation) { StartWrite(packet); return; }
             if (_write is not WriteTransfer transfer) return; // after error, ignore until the next start
-            if (packet.Primary) { Abort(NotImplemented); return; }
+            if (packet.Primary && !transfer.Primary) { Abort(NotImplemented); return; }
             ContinueWrite(packet, transfer);
         }
     }
@@ -114,7 +122,7 @@ internal sealed class KittyClipboardSession : IDisposable
         if (error != null) { Reply(WriteOperation, error, packet.Id); return; }
         if (packet.Payload.Length != 0 || !KittyClipboardPacket.TryDecodeText(packet.Password, out _) ||
             !KittyClipboardPacket.TryDecodeText(packet.Name, out _)) { Reply(WriteOperation, InvalidPacket, packet.Id); return; }
-        _write = new WriteTransfer(packet.Id, _clock.GetUtcNow());
+        _write = new WriteTransfer(packet.Id, _clock.GetUtcNow(), packet.Primary);
     }
 
     private void Abort(string status, bool deferReply = false)
@@ -131,6 +139,7 @@ internal sealed class KittyClipboardSession : IDisposable
         if (_write is not WriteTransfer transfer) return;
         var values = transfer.Finish();
         string id = transfer.Id;
+        var clipboard = GetClipboard(transfer.Primary);
         transfer.Dispose();
         _write = null;
         _busy = true;
@@ -139,17 +148,19 @@ internal sealed class KittyClipboardSession : IDisposable
         _ = _schedule(() => PerformAsync(WriteOperation, id, generation, async () =>
         {
             if (!_writeAllowed()) return PermissionDenied;
-            await _clipboard.WriteAsync(values);
+            await clipboard.WriteAsync(values);
             return "DONE";
         }, cancellation));
     }
 
     private string? Unavailable(bool primary, bool includeWrite)
     {
-        if (primary || !_clipboard.Available) return NotImplemented;
+        if ((primary ? _primary : _clipboard)?.Available != true) return NotImplemented;
         if (_busy || (includeWrite && _write != null)) return Busy;
         return null;
     }
+
+    private IKittyClipboard GetClipboard(bool primary) => primary ? _primary ?? throw new NotSupportedException("PRIMARY is unavailable.") : _clipboard;
 
     private async Task PerformAsync(string type, string id, int generation, Func<Task<string?>> action, CancellationToken cancellation)
     {
@@ -220,25 +231,26 @@ internal sealed class KittyClipboardSession : IDisposable
         string? error = Unavailable(packet.Primary, includeWrite: true);
         if (error != null) { Reply(ReadOperation, error, packet.Id); return; }
         ExpirePasteGrant();
-        var grant = !listing && name.Length > 0 && password.Length > 0 && password == _pasteGrant?.Password ? _pasteGrant : null;
+        var grant = !packet.Primary && !listing && name.Length > 0 && password.Length > 0 && password == _pasteGrant?.Password ? _pasteGrant : null;
         if (grant != null) _pasteGrant = null; // consume the captured content before any await, once on this TTY
         _busy = true;
         int generation = _generation;
         CancellationToken cancellation = _cancellation.Token;
-        _ = _schedule(() => ReadAsync(packet.Id, types, listing, new ReadAuthorization(name, password), grant, generation, cancellation));
+        _ = _schedule(() => ReadAsync(packet.Id, types, listing, new ReadAuthorization(name, password, packet.Primary), grant, generation, cancellation));
     }
 
     private Task ReadAsync(string id, string[] types, bool listing, ReadAuthorization authorization, PasteGrant? grant, int generation, CancellationToken cancellation)
     {
+        var clipboard = GetClipboard(authorization.Primary);
         return PerformAsync(ReadOperation, id, generation, async () =>
         {
-            if (!listing && grant == null && !await AuthorizeReadAsync(authorization, generation, cancellation))
+            if (!listing && grant == null && !await AuthorizeReadAsync(clipboard, authorization, generation, cancellation))
             {
                 return PermissionDenied;
             }
             if (!IsAlive(generation)) return null;
             var values = grant == null
-                ? await CollectReadValuesAsync(types, listing, generation, cancellation)
+                ? await CollectReadValuesAsync(clipboard, types, listing, generation, cancellation)
                 : grant.Values.Where(p => types.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
             if (values == null) return null;
             // Clipboard API calls stay UI-affine; encoding and PTY transmission do not.
@@ -247,16 +259,22 @@ internal sealed class KittyClipboardSession : IDisposable
         }, cancellation);
     }
 
-    private async Task<bool> AuthorizeReadAsync(ReadAuthorization authorization, int generation, CancellationToken cancellation)
+    private async Task<bool> AuthorizeReadAsync(IKittyClipboard clipboard, ReadAuthorization authorization, int generation, CancellationToken cancellation)
     {
         string displayName = ClipboardProgramName.Display(authorization.Name);
-        string? key = ClipboardProgramName.CanRemember(displayName) ? ClipboardSessionPermissions.Key(authorization.Name, authorization.Password) : null;
+        string? credential = ClipboardProgramName.CanRemember(displayName) ? ClipboardSessionPermissions.Key(authorization.Name, authorization.Password) : null;
+        string? key = null;
+        if (credential != null)
+        {
+            string location = authorization.Primary ? "primary:" : "clipboard:";
+            key = location + credential;
+        }
         lock (_sync)
         {
             if (!IsAlive(generation) || cancellation.IsCancellationRequested) return false;
             if (key != null && _permissions.Contains(key)) return true;
         }
-        var consent = await _clipboard.ConfirmReadAsync(new ClipboardReadRequest(displayName, key != null), cancellation);
+        var consent = await clipboard.ConfirmReadAsync(new ClipboardReadRequest(displayName, key != null, authorization.Primary), cancellation);
         lock (_sync)
         {
             // A dismissed/cancelled prompt cannot resurrect a grant after reset or pane replacement.
@@ -272,9 +290,9 @@ internal sealed class KittyClipboardSession : IDisposable
         return await CollectReadValuesAsync(snapshot, snapshot.Types.ToArray(), listing: false, generation, cancellation);
     }
 
-    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(string[] types, bool listing, int generation, CancellationToken cancellation)
+    private async Task<Dictionary<string, byte[]>?> CollectReadValuesAsync(IKittyClipboard clipboard, string[] types, bool listing, int generation, CancellationToken cancellation)
     {
-        using var snapshot = await _clipboard.OpenReadAsync();
+        using var snapshot = await clipboard.OpenReadAsync(listing ? [] : types);
         return await CollectReadValuesAsync(snapshot, types, listing, generation, cancellation);
     }
 
@@ -367,7 +385,7 @@ internal sealed class KittyClipboardSession : IDisposable
         if (!await _replies.SendAsync(response, cancellation)) throw new IOException("Clipboard reply queue remained unavailable.");
     }
 
-    private sealed record ReadAuthorization(string Name, string Password);
+    private sealed record ReadAuthorization(string Name, string Password, bool Primary);
     private void Reply(string type, string status, string id, bool defer = false)
     {
         lock (_sync)
@@ -457,9 +475,10 @@ internal sealed class KittyClipboardSession : IDisposable
         }
     }
 
-    private sealed class WriteTransfer(string id, DateTimeOffset started) : IDisposable
+    private sealed class WriteTransfer(string id, DateTimeOffset started, bool primary) : IDisposable
     {
         public string Id { get; } = id;
+        public bool Primary { get; } = primary;
         public DateTimeOffset Started { get; } = started;
         private readonly Dictionary<string, MemoryStream> _values = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _aliases = new(StringComparer.Ordinal);

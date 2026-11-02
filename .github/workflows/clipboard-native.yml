@@ -54,6 +54,16 @@ jobs:
       - name: Qualify against GTK on an isolated X11 display
         if: runner.os == 'Linux'
         run: xvfb-run -a /usr/bin/python3 scripts/clipboard-native/run.py --host tests/Ntilde.Clipboard.NativeHost/bin/Release/net10.0/Ntilde.Clipboard.NativeHost.dll --peer scripts/clipboard-native/peer-linux.py --report artifacts/clipboard-native/result.json
+      - name: Qualify PRIMARY and INCR against GTK on an isolated X11 display
+        if: runner.os == 'Linux'
+        run: xvfb-run -a /usr/bin/python3 scripts/clipboard-native/run.py --selection primary --host tests/Ntilde.Clipboard.NativeHost/bin/Release/net10.0/Ntilde.Clipboard.NativeHost.dll --peer scripts/clipboard-native/peer-linux.py --report artifacts/clipboard-native-primary/result.json
+      - name: Retain PRIMARY qualification result
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clipboard-native-primary
+          path: artifacts/clipboard-native-primary/result.json
+          if-no-files-found: warn
       - name: Qualify against AppKit
         if: runner.os == 'macOS'
         run: python3 scripts/clipboard-native/run.py --host tests/Ntilde.Clipboard.NativeHost/bin/Release/net10.0/Ntilde.Clipboard.NativeHost.dll --peer /tmp/ntilde-clipboard-peer --report artifacts/clipboard-native/result.json

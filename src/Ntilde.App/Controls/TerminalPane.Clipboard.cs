@@ -29,7 +29,7 @@ public partial class TerminalPane
             Session?.SendInput(reply);
             return true;
         }
-        var session = new KittyClipboardSession(clipboard, TryReply,
+        var session = new KittyClipboardSession(new ClipboardLocations(clipboard, new XcbPrimaryClipboard(ConfirmClipboardReadAsync)), TryReply,
             ClipboardSchedulerForTest ?? (work => Task.Run(() => Dispatcher.UIThread.InvokeAsync(work))),
             () => _settings == null || BuildEffectiveSettings(_settings).AllowOsc52ClipboardWrite,
             Alive);
@@ -53,7 +53,7 @@ public partial class TerminalPane
         if (TopLevel.GetTopLevel(this) is not Window owner) return ClipboardReadConsent.Deny;
         var dialog = new Window
         {
-            Title = "Clipboard access",
+            Title = request.Primary ? "Primary selection access" : "Clipboard access",
             Width = 560,
             Height = 360,
             CanResize = false,
@@ -61,6 +61,7 @@ public partial class TerminalPane
         };
         Ntilde.Shell.UiScale.FitWindow(dialog);
         Ntilde.Shell.Theming.ThemedWindowChrome.Apply(dialog);
+        string location = request.Primary ? "primary selection" : "clipboard";
         var consent = ClipboardReadConsent.Deny;
         var deny = new Button { Content = "Deny", MinWidth = 90 };
         var allow = new Button { Content = "Allow once", MinWidth = 110 };
@@ -97,9 +98,9 @@ public partial class TerminalPane
                         Children =
                         {
                             new TextBlock { Text = "Terminal: " + new string((Profile?.Name ?? ShellCommand ?? "This pane").Where(c => !char.IsControl(c)).Take(80).ToArray()), TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                            new TextBlock { Text = "Allow this terminal program to read your clipboard?", TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                            new TextBlock { Text = string.IsNullOrEmpty(request.Name) ? "This request can read clipboard contents." : "Program-supplied name: " + request.Name, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                            new TextBlock { IsVisible = request.CanRemember, Text = "Allow this session lets any program on this terminal using this name and password read the clipboard until you reset or close this session. Nothing is saved to disk.", TextWrapping = Avalonia.Media.TextWrapping.Wrap }
+                            new TextBlock { Text = "Allow this terminal program to read your " + location + "?", TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                            new TextBlock { Text = string.IsNullOrEmpty(request.Name) ? "This request can read " + location + " contents." : "Program-supplied name: " + request.Name, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                            new TextBlock { IsVisible = request.CanRemember, Text = "Allow this session lets any program on this terminal using this name and password read the " + location + " until you reset or close this session. Nothing is saved to disk.", TextWrapping = Avalonia.Media.TextWrapping.Wrap }
                         }
                     }
                 }
