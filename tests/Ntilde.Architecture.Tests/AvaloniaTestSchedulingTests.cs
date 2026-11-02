@@ -418,6 +418,10 @@ public class AvaloniaTestSchedulingTests
                 continue;
             }
 
+            // This is an independent GUI executable, never loaded by an xUnit testhost.
+            // ProjectFileLayeringTests pins that executable boundary and prevents shipping it.
+            if (relative == "tests/Ntilde.Clipboard.NativeHost/Program.cs") continue;
+
             bool boots = false;
             foreach (string call in PlatformBootCalls)
             {

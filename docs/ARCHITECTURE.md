@@ -1256,3 +1256,10 @@ resets to accumulate uncancellable provider operations. This is an explicit
 availability limitation; it does not imply cancellation of the native call.
 User paste checks the one-minute expiry of an unfinished wire write even when
 the child sends no further packet; its abort reply uses the bounded error pump.
+
+The native clipboard qualification host is a non-packable test executable under
+`tests/Ntilde.Clipboard.NativeHost`. It may reference App to exercise the exact
+production clipboard service in a real desktop process. No production project
+may reference that host. The permitted App dependents (Cli, App.Tests,
+McpServer.Tests, Architecture.Tests and this host) are enforced from project manifests by
+`ProjectFileLayeringTests`, including unused declared project edges.

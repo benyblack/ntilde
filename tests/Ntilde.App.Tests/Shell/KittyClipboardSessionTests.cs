@@ -673,6 +673,16 @@ public class KittyClipboardSessionTests
         Assert.Contains("status=EBUSY", h.Replies[^1]);
     }
 
+    [Fact]
+    public async Task Native_pixel_or_representation_limit_reports_EFBIG_without_success()
+    {
+        using var h = new Harness();
+        h.Clipboard.Failure = new ClipboardSizeLimitException("Native clipboard budget exceeded.");
+        h.Send("type=write:id=large"); h.Send(Data("application/octet-stream", "AA==")); h.Send("type=wdata");
+        await h.Drain();
+        Assert.Contains("status=EFBIG:id=large", Assert.Single(h.Replies));
+    }
+
     [Theory]
     [InlineData("type=walias:mime=dGV4dC9wbGFpbg==;dGV4dC9wbGFpbg==")]
     [InlineData("type=walias:mime=aW1hZ2UvcG5n;dGV4dC9odG1s")]
