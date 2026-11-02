@@ -207,13 +207,49 @@ Keep these with the other run evidence. The
 [2026-11-02 cell measurement](terminfo/2026-11-02-ascii-cells.md) records the first
 successful run and its limits.
 
+### Supplemental SGR flags and palette indices
+
+After the ASCII suite restores the main screen, the same owned worker runs
+`ntilde-owned-sgr-indices-v1` in a fresh alternate-screen fixture. A separate
+`NTILDE_SG_` nonce binds it to the same pane; process/PTY ownership, singleton
+profile, geometry, DA ordering and restore checks apply to every snapshot.
+Observe access requests the App's existing `readScreen(includeAttributes=true)`.
+Act access remains disabled.
+
+Seventeen experiments measure bold, italic, underline-enabled and inverse flags;
+SGR 22/23/24/27 selective resets; SGR 0 for those flags and indexed colors;
+foreground/background standard and bright indices; seven sample indices for
+each `38;5`/`48;5` path; and SGR 39/49 default markers. Selective resets must
+preserve unrelated styles/colors and previous cells. Every control and target
+checks the complete ASCII viewport, including unaffected blank cells.
+
+The App supplies one `FLAGS:FG/BG|` token per ASCII cell. The parent validates
+all rows/columns, 16-bit flags and indices from -1 through 255, then records a
+lossless row-major run-length encoding: `attributeRuns` entries contain `count`,
+`flags`, `fg` and `bg`. Runs can cross row boundaries; their counts must cover
+exactly `rows * cols`. This retains every cell without repeating thousands of
+identical default tokens. Each suite keeps its own 64-snapshot limit.
+
+`sgr-snapshots.jsonl` journals those parent-owned snapshots;
+`sgr-observations.json` retains the complete observations. The final
+`cell-receipt.json` additionally binds the SGR report's hash and counts under
+`sgrEvidence`, so both suites finalize with one cleanup receipt. Their sources,
+including the attribute decoder, are archived and hashed with the run.
+
+Only flags and palette indices are visible in this API projection. RGB values,
+underline style/color metadata, appearance, blink timing and font rendering
+remain unmeasured. In particular, a default marker is not a measured default
+RGB value, and an underline flag is not proof of a particular painted style.
+The [2026-11-02 SGR measurement](terminfo/2026-11-02-sgr-indices.md) records the
+first run. Neither supplemental suite changes stock grades or the frozen triage.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh
 node --test scripts/terminfo/*.test.mjs
 ```
 
-The portable cell, observer, ordering-barrier and runtime helper tests also run
+The portable cell, SGR, attribute decoder, observer, ordering-barrier and runtime helper tests also run
 in CI's script self-tests. CI does not launch a desktop or install the collector;
 Unix filesystem checks are explicitly skipped on Windows.
 

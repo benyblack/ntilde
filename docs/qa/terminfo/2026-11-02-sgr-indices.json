@@ -1,0 +1,4173 @@
+{
+  "schemaVersion": 1,
+  "buildSource": "a4dd764ec1bc85cb358e670ef0a0a8b40f0a8da4",
+  "localEvidence": "artifacts/terminfo/owned-jEXXfL",
+  "context": {
+    "adapter": "ntilde-owned-macos-v1",
+    "adapterBundleSha256": "87e28f31543d1e7ee618d9a88dd3ccf427c1f92582a853cf10d2444074a89ef9",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "appVersion": "0.13.0+a4dd764ec1bc85cb358e670ef0a0a8b40f0a8da4",
+    "appVersionSource": "operator supplied; not independently verified",
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "55573ea14b9d4a0a1c3a17214ffc226b27a9d18d4406f9d2adb29b557f35b9d6",
+    "nodeVersion": "v24.22.1",
+    "dependencyInstall": "isolated npm ci --ignore-scripts",
+    "startedAt": "2026-11-02T16:40:02.674Z",
+    "runId": "8380a7e8e6ddf99559a207031d970869",
+    "runnerSourceSha256": "e32f980531e5b7743751f8af856374a8d8b71f8ccd4c039f04ebaba6034b52c6",
+    "adapterSourceSha256": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
+    "ownershipSourceSha256": "d3b1c58b90e2b4990aa48a19082e876a5745501895cb418d333d1c9782554d03",
+    "workerSourceSha256": "5d7d0378c3640bf4c27e9cc79691e9ee7333cc9588a5958f2247a996e263f9df",
+    "runtimeSourceSha256": "671ab41d750f94fd6b454e2092aa834dcbec44bb312a950f7541f8cd2a49246f",
+    "observerSourceSha256": "8a6ee18cece6e5b91d831e7976d65e37b93d7034c0f3188ffd2535f17500fc7b",
+    "cellSuiteSourceSha256": "47ed883ed0572042b6b966e6c80f16fff9dd7ac87219900242fd6116a81a5325",
+    "cellFenceSourceSha256": "dc4653e83458ab41ef335171e44878b0e028deabb95c43839dfbddcca58daa85",
+    "attributeSourceSha256": "90d872a3d079c28db2259ef2157aa50cf28e8f4902563c533588b1beabacfe07",
+    "sgrSuiteSourceSha256": "1013d77bf909a2c4d34d9c948d8337150ef8f7e0162b62de064c0bd94efead1f",
+    "collectorManifestSha256": "56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e",
+    "collectorLockSha256": "837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508",
+    "retainedAdapterBundle": "collector-adapter.mjs",
+    "retainedSources": "sources",
+    "clipboard": "disabled; no clipboard fixture",
+    "pixels": "no pixel capture adapter",
+    "cells": "private observe-only AgentHost; nonce-bound pane; separate ASCII cell-state suite",
+    "attributes": "separate ASCII SGR flags and palette-index suite; no RGB, underline metadata or pixels"
+  },
+  "stockCollector": {
+    "runId": "d4aa6bb2bb5937a6acd0885516984cdc",
+    "suiteId": "16a690f34c0e",
+    "suiteComplete": false,
+    "ungradedDiagnostics": {
+      "cursor.reverse-wrap": {
+        "kind": "collector-error",
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    "measuredAt": "2026-11-02T16:40:10.230Z",
+    "target": {
+      "kind": "app",
+      "id": "ntilde",
+      "version": "0.13.0+a4dd764ec1bc85cb358e670ef0a0a8b40f0a8da4",
+      "os": "macos",
+      "osVersion": "27.0.1",
+      "outerTerminal": null,
+      "mux": null,
+      "config": null,
+      "permissions": null
+    },
+    "adapter": {
+      "id": "ntilde-owned-macos-v1",
+      "bundleSha256": "87e28f31543d1e7ee618d9a88dd3ccf427c1f92582a853cf10d2444074a89ef9",
+      "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+    },
+    "observations": 255,
+    "counts": {
+      "inconclusive": 177,
+      "supported": 78
+    },
+    "reasons": {
+      "insufficient-evidence": 152,
+      "no-response": 22,
+      "policy-refused": 3
+    },
+    "rawSha256": "957f39eeb8ae0ba7f0afd8a1ee90a5c12312037f35e93add7b6834ec2bc4932c"
+  },
+  "cellEvidence": {
+    "runId": "8380a7e8e6ddf99559a207031d970869",
+    "suiteId": "ntilde-owned-ascii-cells-v1",
+    "file": "cell-observations.json",
+    "sha256": "0690e3830c783e2dd1bfa199e04d565be955406621682d8dd9afd26788a474c7",
+    "counts": {
+      "passed": 8
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "completionReceipt": {
+    "schemaVersion": 1,
+    "runId": "8380a7e8e6ddf99559a207031d970869",
+    "suiteId": "ntilde-owned-ascii-cells-v1",
+    "file": "cell-observations.json",
+    "sha256": "0690e3830c783e2dd1bfa199e04d565be955406621682d8dd9afd26788a474c7",
+    "counts": {
+      "passed": 8
+    },
+    "provisionalUntil": "cell-receipt.json",
+    "sgrEvidence": {
+      "runId": "8380a7e8e6ddf99559a207031d970869",
+      "suiteId": "ntilde-owned-sgr-indices-v1",
+      "file": "sgr-observations.json",
+      "sha256": "e06e029f51ef2092388b9065c1ccc8c623846478cb6993898e0e94a34c7cc602",
+      "counts": {
+        "passed": 17
+      },
+      "provisionalUntil": "cell-receipt.json"
+    },
+    "ownershipProofSha256": "20c2aebc2256b1d76284789622bf80bdd7ccf1602ec9bc32776de7f417b4b81a",
+    "contextSha256": "6f20301a51d9c2b66f9489dbe0b08d630ab5f2ddfddd9dcb9dcb8a0dde61b992",
+    "rawSha256": "957f39eeb8ae0ba7f0afd8a1ee90a5c12312037f35e93add7b6834ec2bc4932c",
+    "fixtureRemoved": true,
+    "completedAt": "2026-11-02T16:40:10.741Z"
+  },
+  "sgrReport": {
+    "schemaVersion": 1,
+    "suiteId": "ntilde-owned-sgr-indices-v1",
+    "runId": "8380a7e8e6ddf99559a207031d970869",
+    "complete": true,
+    "scope": "Live App ASCII cell flags and palette indices; lossless row-major attribute runs. No RGB, underline metadata, pixels or stock grades.",
+    "initialSnapshot": 0,
+    "restoredSnapshot": 43,
+    "snapshots": [
+      {
+        "index": 0,
+        "kind": "sgr-start",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": null,
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "dd5a48668a5d931048bcd6fcd6007f63e71104ec54706e1b9759aed470829d56"
+      },
+      {
+        "index": 1,
+        "kind": "sgr-bind",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "NTILDE_SG_8380a7e8e6ddf99559a207031d970869",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 42,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "395094b61077c64c4e8c1bfaefc4c117476d7f03f02f7d600e38bf34b1c26622"
+      },
+      {
+        "index": 2,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 3,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 769,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "9f5d6370bb4c44507251c62d83179c364994add2c99cb25c082ab405ac49c3ae"
+      },
+      {
+        "index": 4,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 5,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 772,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "26b1c37df77a8a482744993a443d52785508d702b16ff1f19a28108e6f1020cf"
+      },
+      {
+        "index": 6,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 7,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 776,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "0f06bb68049100bf6d59922e0683d08756b2f7fada3b63523f2298e39bf4a2ef"
+      },
+      {
+        "index": 8,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 9,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 770,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "9df909377de2bfa90a22cfc8d7c32abc3ff4f12ed7278b0ba3c6b2e781b1607d"
+      },
+      {
+        "index": 10,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 11,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "17f94b96b00175d7f81b3a2a32a8f7fc8fb16a3211aa8beef8f528b18914aa12"
+      },
+      {
+        "index": 12,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "AB",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 2,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 1,
+              "flags": 49166,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5738,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "0b23077f6dd49b47e873b5afaa5c4146e862646495b7d02ed5578b7efa1df348"
+      },
+      {
+        "index": 13,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 14,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "17f94b96b00175d7f81b3a2a32a8f7fc8fb16a3211aa8beef8f528b18914aa12"
+      },
+      {
+        "index": 15,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "AB",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 2,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 1,
+              "flags": 49163,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5738,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "946f5c962105264eebfb49f7e63ddeb276efb1f6b70b02b034aa9aaf64dfe013"
+      },
+      {
+        "index": 16,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 17,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "17f94b96b00175d7f81b3a2a32a8f7fc8fb16a3211aa8beef8f528b18914aa12"
+      },
+      {
+        "index": 18,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "AB",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 2,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 1,
+              "flags": 49159,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5738,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "68f80d94b5bb3e13276da80bde4eeeccd4bf6e6241c68336f7d234ed0fc88941"
+      },
+      {
+        "index": 19,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 20,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "17f94b96b00175d7f81b3a2a32a8f7fc8fb16a3211aa8beef8f528b18914aa12"
+      },
+      {
+        "index": 21,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "AB",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 2,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 1,
+              "flags": 49165,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5738,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "4be04dceb109d781574f2045cf11935d161c987ee6405cb029c6422a80972796"
+      },
+      {
+        "index": 22,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 23,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "17f94b96b00175d7f81b3a2a32a8f7fc8fb16a3211aa8beef8f528b18914aa12"
+      },
+      {
+        "index": 24,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "AB",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 2,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "69fc7b7d47d2f8a4e81eaedb12e49f91475438841c7a00341ec7518915b5dfcb"
+      },
+      {
+        "index": 25,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 26,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "ABCDEFGH",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 8,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 0,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 1,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 2,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 3,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 4,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 5,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 6,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 7,
+              "bg": -1
+            },
+            {
+              "count": 5732,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "61cf904ce2c8524677cd958f16665c5221598bbcdf5366f8e91df044248deaf9"
+      },
+      {
+        "index": 27,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 28,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "ABCDEFGH",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 8,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 8,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 9,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 10,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 11,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 12,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 13,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 14,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 15,
+              "bg": -1
+            },
+            {
+              "count": 5732,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "0cf1d26aa5ba9ad2f90626975c8840a9f9b5e356173d28cf89d74f94ebee208b"
+      },
+      {
+        "index": 29,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 30,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "ABCDEFG",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 7,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 0,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 1,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 15,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 16,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 231,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 232,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 255,
+              "bg": -1
+            },
+            {
+              "count": 5733,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "eba92c3a3b37f526fdc6f4e63037d60308b4c9af0f242fc9861e6e2a5bacba67"
+      },
+      {
+        "index": 31,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 32,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "ABCDEFGH",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 8,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 0
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 1
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 2
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 3
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 4
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 5
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 6
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 7
+            },
+            {
+              "count": 5732,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "fef187cd5baaff2e37846424bfbaab7febbe8c43a04e0e9a5b0af4fc892b39d0"
+      },
+      {
+        "index": 33,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 34,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "ABCDEFGH",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 8,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 8
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 9
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 10
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 11
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 12
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 13
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 14
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 15
+            },
+            {
+              "count": 5732,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "b820922ac17c4850a70914ea329ced13575a7461c79440a5e2be3dac139df2fd"
+      },
+      {
+        "index": 35,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 36,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "ABCDEFG",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 7,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 0
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 1
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 15
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 16
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 231
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 232
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 255
+            },
+            {
+              "count": 5733,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "c850c12cfa1d11222bce73caf2c5f8e42b7f747e472480dc392a3e9195efc700"
+      },
+      {
+        "index": 37,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 38,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "17f94b96b00175d7f81b3a2a32a8f7fc8fb16a3211aa8beef8f528b18914aa12"
+      },
+      {
+        "index": 39,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "AB",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 2,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 1,
+              "flags": 33039,
+              "fg": -1,
+              "bg": 4
+            },
+            {
+              "count": 5738,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "aa381a9f99e752c8d5dec1c7256d415a62e415c3cb08e5ea913ca56e9cbb59cc"
+      },
+      {
+        "index": 40,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "610abaeba6d1db9cd451eca061c5bbf46cf53646fe2913442166268f6a7d35e9"
+      },
+      {
+        "index": 41,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "A",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 5739,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "17f94b96b00175d7f81b3a2a32a8f7fc8fb16a3211aa8beef8f528b18914aa12"
+      },
+      {
+        "index": 42,
+        "kind": "sgr-read",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "AB",
+            "KEEP!",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 2,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 49167,
+              "fg": 1,
+              "bg": 4
+            },
+            {
+              "count": 1,
+              "flags": 16911,
+              "fg": 1,
+              "bg": -1
+            },
+            {
+              "count": 5738,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "b604cc5dd26a49af96edb7abe2a0506c6b00546c561207a2d2f11c947155aa4a"
+      },
+      {
+        "index": 43,
+        "kind": "sgr-finish",
+        "paneId": "a76e946e-58dd-47b7-9cdc-e4945224e31f",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 41,
+          "cols": 140,
+          "lines": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5740,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "dd5a48668a5d931048bcd6fcd6007f63e71104ec54706e1b9759aed470829d56"
+      }
+    ],
+    "observations": [
+      {
+        "featureId": "sgr.bold",
+        "before": 2,
+        "assertions": [
+          {
+            "sequence": "\u001b[1mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 769,
+                  "fg": -1,
+                  "bg": -1
+                }
+              ]
+            },
+            "snapshot": 3,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.italic",
+        "before": 4,
+        "assertions": [
+          {
+            "sequence": "\u001b[3mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 772,
+                  "fg": -1,
+                  "bg": -1
+                }
+              ]
+            },
+            "snapshot": 5,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.underline",
+        "before": 6,
+        "assertions": [
+          {
+            "sequence": "\u001b[4mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 776,
+                  "fg": -1,
+                  "bg": -1
+                }
+              ]
+            },
+            "snapshot": 7,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.inverse",
+        "before": 8,
+        "assertions": [
+          {
+            "sequence": "\u001b[7mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 770,
+                  "fg": -1,
+                  "bg": -1
+                }
+              ]
+            },
+            "snapshot": 9,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.selective-reset.bold",
+        "before": 10,
+        "assertions": [
+          {
+            "sequence": "\u001b[1;3;4;7;31;44mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 11,
+            "passed": true
+          },
+          {
+            "sequence": "\u001b[22mB",
+            "expected": {
+              "first": "AB",
+              "row": 0,
+              "col": 2,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                },
+                {
+                  "flags": 49166,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 12,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.selective-reset.italic",
+        "before": 13,
+        "assertions": [
+          {
+            "sequence": "\u001b[1;3;4;7;31;44mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 14,
+            "passed": true
+          },
+          {
+            "sequence": "\u001b[23mB",
+            "expected": {
+              "first": "AB",
+              "row": 0,
+              "col": 2,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                },
+                {
+                  "flags": 49163,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 15,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.selective-reset.underline",
+        "before": 16,
+        "assertions": [
+          {
+            "sequence": "\u001b[1;3;4;7;31;44mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 17,
+            "passed": true
+          },
+          {
+            "sequence": "\u001b[24mB",
+            "expected": {
+              "first": "AB",
+              "row": 0,
+              "col": 2,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                },
+                {
+                  "flags": 49159,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 18,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.selective-reset.inverse",
+        "before": 19,
+        "assertions": [
+          {
+            "sequence": "\u001b[1;3;4;7;31;44mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 20,
+            "passed": true
+          },
+          {
+            "sequence": "\u001b[27mB",
+            "expected": {
+              "first": "AB",
+              "row": 0,
+              "col": 2,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                },
+                {
+                  "flags": 49165,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 21,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.reset",
+        "before": 22,
+        "assertions": [
+          {
+            "sequence": "\u001b[1;3;4;7;31;44mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 23,
+            "passed": true
+          },
+          {
+            "sequence": "\u001b[0mB",
+            "expected": {
+              "first": "AB",
+              "row": 0,
+              "col": 2,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                },
+                {
+                  "flags": 768,
+                  "fg": -1,
+                  "bg": -1
+                }
+              ]
+            },
+            "snapshot": 24,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.fg.standard",
+        "before": 25,
+        "assertions": [
+          {
+            "sequence": "\u001b[30mA\u001b[31mB\u001b[32mC\u001b[33mD\u001b[34mE\u001b[35mF\u001b[36mG\u001b[37mH",
+            "expected": {
+              "first": "ABCDEFGH",
+              "row": 0,
+              "col": 8,
+              "attributes": [
+                {
+                  "flags": 16896,
+                  "fg": 0,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 1,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 2,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 3,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 4,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 5,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 6,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 7,
+                  "bg": -1
+                }
+              ]
+            },
+            "snapshot": 26,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.fg.bright",
+        "before": 27,
+        "assertions": [
+          {
+            "sequence": "\u001b[90mA\u001b[91mB\u001b[92mC\u001b[93mD\u001b[94mE\u001b[95mF\u001b[96mG\u001b[97mH",
+            "expected": {
+              "first": "ABCDEFGH",
+              "row": 0,
+              "col": 8,
+              "attributes": [
+                {
+                  "flags": 16896,
+                  "fg": 8,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 9,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 10,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 11,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 12,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 13,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 14,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 15,
+                  "bg": -1
+                }
+              ]
+            },
+            "snapshot": 28,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.fg.256",
+        "before": 29,
+        "assertions": [
+          {
+            "sequence": "\u001b[38;5;0mA\u001b[38;5;1mB\u001b[38;5;15mC\u001b[38;5;16mD\u001b[38;5;231mE\u001b[38;5;232mF\u001b[38;5;255mG",
+            "expected": {
+              "first": "ABCDEFG",
+              "row": 0,
+              "col": 7,
+              "attributes": [
+                {
+                  "flags": 16896,
+                  "fg": 0,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 1,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 15,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 16,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 231,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 232,
+                  "bg": -1
+                },
+                {
+                  "flags": 16896,
+                  "fg": 255,
+                  "bg": -1
+                }
+              ]
+            },
+            "snapshot": 30,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.bg.standard",
+        "before": 31,
+        "assertions": [
+          {
+            "sequence": "\u001b[40mA\u001b[41mB\u001b[42mC\u001b[43mD\u001b[44mE\u001b[45mF\u001b[46mG\u001b[47mH",
+            "expected": {
+              "first": "ABCDEFGH",
+              "row": 0,
+              "col": 8,
+              "attributes": [
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 0
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 1
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 2
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 3
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 4
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 5
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 6
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 7
+                }
+              ]
+            },
+            "snapshot": 32,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.bg.bright",
+        "before": 33,
+        "assertions": [
+          {
+            "sequence": "\u001b[100mA\u001b[101mB\u001b[102mC\u001b[103mD\u001b[104mE\u001b[105mF\u001b[106mG\u001b[107mH",
+            "expected": {
+              "first": "ABCDEFGH",
+              "row": 0,
+              "col": 8,
+              "attributes": [
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 8
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 9
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 10
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 11
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 12
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 13
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 14
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 15
+                }
+              ]
+            },
+            "snapshot": 34,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.bg.256",
+        "before": 35,
+        "assertions": [
+          {
+            "sequence": "\u001b[48;5;0mA\u001b[48;5;1mB\u001b[48;5;15mC\u001b[48;5;16mD\u001b[48;5;231mE\u001b[48;5;232mF\u001b[48;5;255mG",
+            "expected": {
+              "first": "ABCDEFG",
+              "row": 0,
+              "col": 7,
+              "attributes": [
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 0
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 1
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 15
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 16
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 231
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 232
+                },
+                {
+                  "flags": 33024,
+                  "fg": -1,
+                  "bg": 255
+                }
+              ]
+            },
+            "snapshot": 36,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.fg.default",
+        "before": 37,
+        "assertions": [
+          {
+            "sequence": "\u001b[1;3;4;7;31;44mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 38,
+            "passed": true
+          },
+          {
+            "sequence": "\u001b[39mB",
+            "expected": {
+              "first": "AB",
+              "row": 0,
+              "col": 2,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                },
+                {
+                  "flags": 33039,
+                  "fg": -1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 39,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      },
+      {
+        "featureId": "sgr.bg.default",
+        "before": 40,
+        "assertions": [
+          {
+            "sequence": "\u001b[1;3;4;7;31;44mA",
+            "expected": {
+              "first": "A",
+              "row": 0,
+              "col": 1,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                }
+              ]
+            },
+            "snapshot": 41,
+            "passed": true
+          },
+          {
+            "sequence": "\u001b[49mB",
+            "expected": {
+              "first": "AB",
+              "row": 0,
+              "col": 2,
+              "attributes": [
+                {
+                  "flags": 49167,
+                  "fg": 1,
+                  "bg": 4
+                },
+                {
+                  "flags": 16911,
+                  "fg": 1,
+                  "bg": -1
+                }
+              ]
+            },
+            "snapshot": 42,
+            "passed": true
+          }
+        ],
+        "result": "passed"
+      }
+    ]
+  },
+  "limits": [
+    "Supplemental local experiments; frozen triage and stock collector grades are unchanged.",
+    "Complete ASCII viewport flags and palette indices only; no RGB values, underline style/color metadata, glyph pixels, blink timing, wide text or scrollback.",
+    "All eight ASCII experiments also passed; their companion report and original raw/context/ownership files remain local with hashes recorded here.",
+    "App version is an operator-supplied argument selected from local build metadata; the runner does not verify the assembly informational version. Original collector identity remains unverified."
+  ]
+}

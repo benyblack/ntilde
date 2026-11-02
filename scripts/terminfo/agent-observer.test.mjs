@@ -82,6 +82,47 @@ test('refuses malformed screen sizes, line counts and cursor coordinates', () =>
     }
 });
 
+test('SGR observer requests complete attributes, binds the prior pane and retains independent flag runs', async () => {
+    const initial = { ...blank(), attributeLines: Array(3).fill('0300:-1/-1|'.repeat(60)) };
+    let value = structuredClone(initial);
+    const observer = new OwnedCellObserver({ appData: '/never/discover', ownerPid: 42, profileName: 'fixture', nonce: 'nonce',
+        includeAttributes: true, prefix: 'sgr', expectedPaneId: paneId, endpoint: () => 'fixture-only',
+        rpc: async (_, method, params) => {
+            if (method === 'listSessions') return { sessions: [{ paneId, profileName: 'fixture', kind: 'local', rows: 3, cols: 60 }] };
+            assert.equal(params.includeAttributes, true); return value;
+        } });
+    await observer.handle('sgr-start', () => 1000);
+    value = { ...structuredClone(initial), lines: ['nonce', '', ''], cursorCol: 5 };
+    await observer.handle('sgr-bind', () => 1000, barrier);
+    value.lines[0] = 'A'; value.cursorCol = 1;
+    value.attributeLines[0] = '0301:-1/-1|' + '0300:-1/-1|'.repeat(59);
+    await observer.handle('sgr-read', () => 1000, barrier);
+    value.attributeLines[0] = initial.attributeLines[0];
+    assert.equal(observer.frames.at(-1).screen.attributeRuns[0].flags, 769);
+    await assert.rejects(observer.handle('cell-read', () => 1000, barrier), /Unknown/);
+    value = { ...blank() };
+    await assert.rejects(observer.handle('sgr-read', () => 1000, barrier), /attribute rows/);
+    value = structuredClone(initial);
+    value.attributeLines[0] = '0301:-1/-1|' + '0300:-1/-1|'.repeat(59);
+    await assert.rejects(observer.handle('sgr-finish', () => 1000, barrier), /restoration failed/);
+    assert.equal(observer.restored, undefined);
+    value = structuredClone(initial);
+    await observer.handle('sgr-finish', () => 1000, barrier);
+    assert.equal(observer.restored, true);
+});
+
+test('SGR refuses a different pane before reading any attributes', async () => {
+    let reads = 0;
+    const observer = new OwnedCellObserver({ appData: '/never/discover', ownerPid: 42, profileName: 'fixture', nonce: 'nonce',
+        includeAttributes: true, prefix: 'sgr', expectedPaneId: '22222222-2222-2222-2222-222222222222', endpoint: () => 'fixture-only',
+        rpc: async (_, method) => {
+            if (method === 'readScreen') reads++;
+            return { sessions: [{ paneId, profileName: 'fixture', kind: 'local', rows: 3, cols: 60 }] };
+        } });
+    await assert.rejects(observer.handle('sgr-start', () => 1000), /pane changed/);
+    assert.equal(reads, 0);
+});
+
 async function withServer(handler, action) {
     const sockets = new Set();
     const server = createServer(socket => { sockets.add(socket); socket.on('error', () => {}); socket.on('close', () => sockets.delete(socket)); handler(socket); });

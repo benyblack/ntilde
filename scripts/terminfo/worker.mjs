@@ -6,6 +6,7 @@ import { adapterId } from './collector.mjs';
 import { assertPrivateFile, processRecord, requestOwner, verifyNtildeOutput } from './ownership.mjs';
 import { collectCells } from './cells.mjs';
 import { terminalFence } from './terminal-fence.mjs';
+import { collectSgr } from './sgr.mjs';
 
 let config;
 try {
@@ -15,8 +16,9 @@ try {
     const binding = await verifyNtildeOutput(config, process.stdout);
     const fence = terminalFence(process.stdin, process.stdout);
     try {
-        await collectCells({ config, fence, owner: (kind, barrier = null) =>
-            requestOwner(config, kind, { tty: binding.tabTty, barrier }) });
+        const owner = (kind, barrier = null) => requestOwner(config, kind, { tty: binding.tabTty, barrier });
+        await collectCells({ config, fence, owner });
+        await collectSgr({ config, fence, owner });
     } finally { fence.dispose(); }
     const source = readFileSync(config.bundle);
     const digest = createHash('sha256').update(source).digest('hex');

@@ -29,25 +29,25 @@ export function matchesCells(screen, expected) {
         && screen.lines.every((line, row) => line === expectedLine(row));
 }
 
-export async function collectCells({ config, owner, fence }) {
-    await owner('cell-start');
+export async function collectCells({ config, owner, fence, fixtures = cellCases, prefix = 'cell' }) {
+    await owner(prefix + '-start');
     try {
         const barrier = await fence.write('\x1b[?1049h' + reset + config.cellNonce);
-        await owner('cell-bind', barrier);
-        const sequences = cellCases.flatMap(fixture => {
+        await owner(prefix + '-bind', barrier);
+        const sequences = fixtures.flatMap(fixture => {
             const setup = reset + at(1, 0) + 'KEEP!' + at(0, 0) + fixture.seed + at(...fixture.cursor);
             return [setup, ...fixture.steps.map(([sequence]) => sequence)];
         });
         // Each write/reply/read must complete before the next write changes state.
-        const sample = async sequence => owner('cell-read', await fence.write(sequence));
+        const sample = async sequence => owner(prefix + '-read', await fence.write(sequence));
         await sequences.reduce((previous, sequence) => previous.then(() => sample(sequence)), Promise.resolve());
     } finally {
-        await owner('cell-finish', await fence.write(reset + '\x1b[?1049l'));
+        await owner(prefix + '-finish', await fence.write(reset + '\x1b[?1049l'));
     }
 }
 
-function validateFrame(frame, index, baseline) {
-    screenSnapshot(frame.screen);
+function validateFrame(frame, index, baseline, includeAttributes) {
+    screenSnapshot(frame.screen, includeAttributes);
     if (frame.index !== index || frame.sha256 !== snapshotHash(frame.screen) || frame.paneId !== baseline.paneId
         || frame.screen.rows !== baseline.screen.rows || frame.screen.cols !== baseline.screen.cols) {
         throw new Error('Changed owned cell snapshot evidence.');
@@ -57,14 +57,14 @@ function validateFrame(frame, index, baseline) {
     }
 }
 
-function validateFrames(snapshots, runId) {
-    const count = 3 + cellCases.reduce((sum, fixture) => sum + 1 + fixture.steps.length, 0);
-    if (snapshots.length !== count || snapshots[0].kind !== 'cell-start' || snapshots[1].kind !== 'cell-bind'
-        || snapshots.at(-1).kind !== 'cell-finish') throw new Error('Incomplete owned cell snapshot sequence.');
-    for (const [index, frame] of snapshots.entries()) validateFrame(frame, index, snapshots[0]);
+export function validateFrames(snapshots, runId, { fixtures = cellCases, prefix = 'cell', noncePrefix = 'NTILDE_QA_', includeAttributes = false } = {}) {
+    const count = 3 + fixtures.reduce((sum, fixture) => sum + 1 + fixture.steps.length, 0);
+    if (snapshots.length !== count || snapshots[0].kind !== prefix + '-start' || snapshots[1].kind !== prefix + '-bind'
+        || snapshots.at(-1).kind !== prefix + '-finish') throw new Error('Incomplete owned cell snapshot sequence.');
+    for (const [index, frame] of snapshots.entries()) validateFrame(frame, index, snapshots[0], includeAttributes);
     const binding = snapshots[1].screen;
-    if (!/^[a-f\d]{32}$/.test(runId) || binding.lines[0] !== `NTILDE_QA_${runId}`
-        || binding.cursorRow !== 0 || binding.cursorCol !== `NTILDE_QA_${runId}`.length) {
+    if (!/^[a-f\d]{32}$/.test(runId) || binding.lines[0] !== noncePrefix + runId
+        || binding.cursorRow !== 0 || binding.cursorCol !== (noncePrefix + runId).length) {
         throw new Error('Cell evidence is not bound to this run.');
     }
     if (snapshots[0].sha256 !== snapshots.at(-1).sha256) throw new Error('Cell fixture was not restored.');
