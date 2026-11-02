@@ -382,7 +382,10 @@ namespace Ntilde
 
             var tabs = this.FindControl<TabControl>("Tabs");
             title.Text = tabs?.SelectedItem is TabItem selected ? GetTabHeaderText(selected) : "";
+            // Shell-set titles can carry Nerd Font icons; the font and its trimming travel together
+            // (see ShellTextUiFontFamily), which is why the XAML's CharacterEllipsis is replaced here.
             title.FontFamily = Shell.BundledFontCatalog.ShellTextUiFontFamily;
+            title.TextTrimming = Shell.UiFaceCharacterEllipsis.Instance;
             // The title-bar ink token (the title-bar buttons' NtFg); the instance recolours on a theme switch.
             title.Foreground = ThemeBrush(ThemeKeys.Fg);
 

@@ -62,10 +62,18 @@ namespace Ntilde.Shell
         /// is never consulted for them. Leading is safe: the symbols font has no ASCII and
         /// no space, so every ordinary character still shapes in Inter and the line keeps
         /// Inter's metrics - the UI face does not change, only who draws the icons.
+        ///
+        /// One catch: Avalonia shapes a trimming ellipsis in the first face of the list with
+        /// no fallback, so a trimmed block using this family must trim with
+        /// <see cref="UiFaceCharacterEllipsis"/>, not <c>TextTrimming.CharacterEllipsis</c>.
         /// </summary>
-        internal const string ShellTextUiFontFamilyName = SymbolsFontAssetUri + ", fonts:Inter#Inter, $Default";
+        internal const string ShellTextUiFontFamilyName = SymbolsFontAssetUri + ", " + UiFontFamilyName;
+
+        /// <summary>The Fluent theme's control face, <c>ContentControlThemeFontFamily</c>.</summary>
+        internal const string UiFontFamilyName = "fonts:Inter#Inter, $Default";
 
         private static FontFamily? _shellTextUiFontFamily;
+        private static FontFamily? _uiFontFamily;
 
         /// <summary>
         /// <see cref="ShellTextUiFontFamilyName"/> as one shared instance. Lazy rather than a
@@ -74,6 +82,10 @@ namespace Ntilde.Shell
         /// </summary>
         internal static FontFamily ShellTextUiFontFamily =>
             _shellTextUiFontFamily ??= new FontFamily(ShellTextUiFontFamilyName);
+
+        /// <summary><see cref="UiFontFamilyName"/> as one shared instance; lazy for the same reason.</summary>
+        internal static FontFamily UiFontFamily =>
+            _uiFontFamily ??= new FontFamily(UiFontFamilyName);
 
         private sealed record BundledFont(string Family, string FileName, bool Selectable)
         {
