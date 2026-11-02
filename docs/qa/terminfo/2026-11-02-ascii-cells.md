@@ -18,11 +18,11 @@ those originals, not independent app-identity attestation.
 | Build informational version | `0.13.0+633e333e0af7dc2f5aed95b4f5b84ff3fbd374e5` |
 | App assembly SHA-256 | `ac181caa80be8f2d95bd4dd44de73bb16fc8ad3af5dca10d1c901b7108c86919` |
 | Runtime / collector | Node `v24.22.1` / pinned `terminfo.dev@4.0.0` |
-| Local evidence | `artifacts/terminfo/owned-J9es1x` |
-| Started / cleanup completed | `2026-11-02T14:02:31.777Z` / `2026-11-02T14:02:39.908Z` |
+| Local evidence | `artifacts/terminfo/owned-58OQD0` |
+| Started / cleanup completed | `2026-11-02T14:09:35.186Z` / `2026-11-02T14:09:42.307Z` |
 | Viewport | 41 rows × 140 columns |
-| Cell report SHA-256 | `84d6b06cff597c53b18423f2b2dc5d140d1c312f8151f6d67cef66de55c10e67` |
-| Stock raw SHA-256 | `5ddcfd9256496bdd385db00f53127cc22d026d5fd93dcc75274b6f978372a72a` |
+| Cell report SHA-256 | `7ab0c14df6bc91261c421411d0f8afb7b599698ed6e41b1c60fb594e652f0da5` |
+| Stock raw SHA-256 | `469f6332c2df4fcb20b160877222ce5d91f4bfdf49611c9f62f99bf903442824` |
 
 Version metadata came from the built assembly. The collector's raw identity
 remains `unverified`; the runner verifies the launched executable, parent/worker
@@ -56,7 +56,7 @@ fixture deletion.
 
 ## Verification and limits
 
-The local suite passed 114 tests with zero skips, including real-app collection,
+The local suite passed 115 tests with zero skips, including real-app collection,
 retained-source hashes, completion-receipt hashes, interruption during preparation
 and cleanup, repeated signals, and a worker that ignores SIGTERM. The
 portable regressions reject missing barriers and an incorrect nonce cursor;

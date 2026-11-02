@@ -21,8 +21,12 @@ export const cellCases = Object.freeze([
 ]);
 
 export function matchesCells(screen, expected) {
+    const expectedLine = row => {
+        if (row === 0) return expected.first;
+        return row === 1 ? 'KEEP!' : '';
+    };
     return screen.cursorRow === expected.row && screen.cursorCol === expected.col
-        && screen.lines.every((line, row) => line === (row === 0 ? expected.first : row === 1 ? 'KEEP!' : ''));
+        && screen.lines.every((line, row) => line === expectedLine(row));
 }
 
 export async function collectCells({ config, owner, fence }) {
@@ -30,11 +34,13 @@ export async function collectCells({ config, owner, fence }) {
     try {
         const barrier = await fence.write('\x1b[?1049h' + reset + config.cellNonce);
         await owner('cell-bind', barrier);
-        for (const fixture of cellCases) {
+        const sequences = cellCases.flatMap(fixture => {
             const setup = reset + at(1, 0) + 'KEEP!' + at(0, 0) + fixture.seed + at(...fixture.cursor);
-            await owner('cell-read', await fence.write(setup));
-            for (const [sequence] of fixture.steps) await owner('cell-read', await fence.write(sequence));
-        }
+            return [setup, ...fixture.steps.map(([sequence]) => sequence)];
+        });
+        // Each write/reply/read must complete before the next write changes state.
+        const sample = async sequence => owner('cell-read', await fence.write(sequence));
+        await sequences.reduce((previous, sequence) => previous.then(() => sample(sequence)), Promise.resolve());
     } finally {
         await owner('cell-finish', await fence.write(reset + '\x1b[?1049l'));
     }
@@ -76,8 +82,8 @@ export function buildCellReport(snapshots, runId) {
         });
         if (before.kind !== 'cell-read') throw new Error('Missing cell control.');
         const ready = matchesCells(before.screen, view(fixture.seed, ...fixture.cursor));
-        return { featureId: fixture.id, before: before.index, assertions,
-            result: !ready ? 'inconclusive' : assertions.every(a => a.passed) ? 'passed' : 'failed' };
+        const qualified = assertions.every(a => a.passed) ? 'passed' : 'failed';
+        return { featureId: fixture.id, before: before.index, assertions, result: ready ? qualified : 'inconclusive' };
     });
     return { schemaVersion: 1, suiteId: cellSuiteId, runId, complete: true,
         scope: 'Live App readScreen buffer projection: ASCII text and cursor state only; not pixels or stock collector grades.',

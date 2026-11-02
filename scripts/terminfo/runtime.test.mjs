@@ -6,7 +6,8 @@ import { test } from 'node:test';
 import { checkoutRevision, createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, readPinnedCollectorInputs, resolveNpmCli, resolveOwnedExecutable } from './runtime.mjs';
 
 function fixture(callback) {
-    const root = realpathSync(mkdtempSync(join(tmpdir(), 'nt-test-')));
+    // Darwin's per-user temp root can exceed the deliberately short socket budget.
+    const root = realpathSync(mkdtempSync(join(process.platform === 'darwin' ? '/tmp' : tmpdir(), 'nt-test-')));
     try { callback(root); } finally { rmSync(root, { recursive: true, force: true }); }
 }
 
@@ -120,6 +121,25 @@ test('long private fixture paths are rejected before creating scratch data', { s
     assert.ok(existsSync(parent));
     assert.deepEqual(readdirSync(parent), []);
 }));
+
+test('socket path preflight accepts the exact observer limit and refuses a fitting owner with an oversized observer', {
+    skip: process.platform === 'win32',
+}, () => {
+    const root = realpathSync(mkdtempSync('/tmp/nt-path-'));
+    try {
+        const suffix = '/nt-123456/appdata/agent.sock';
+        const maximum = 103 - Buffer.byteLength(suffix);
+        // Include a multi-byte component so characters cannot stand in for bytes.
+        const parent = join(root, 'é' + 'x'.repeat(maximum - Buffer.byteLength(root) - 3));
+        assert.equal(Buffer.byteLength(join(parent, suffix.slice(1))), 103);
+        const scratch = createPrivateScratch(parent);
+        assert.equal(Buffer.byteLength(join(scratch, 'appdata', 'agent.sock')), 103);
+        const tooLong = parent + 'x';
+        assert.ok(Buffer.byteLength(join(tooLong, 'nt-123456', 'owner.sock')) <= 103);
+        assert.throws(() => createPrivateScratch(tooLong), /observer socket/);
+        assert.deepEqual(readdirSync(tooLong), []);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
 
 function lockedPackage(overrides = {}) {
     return Buffer.from(JSON.stringify({ lockfileVersion: 3, packages: {

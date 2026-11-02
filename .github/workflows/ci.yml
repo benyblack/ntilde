@@ -180,7 +180,7 @@ jobs:
 
       - name: Self-test terminfo cell observations without a desktop or collector installation
         shell: bash
-        run: node --test scripts/terminfo/agent-observer.test.mjs scripts/terminfo/cells.test.mjs scripts/terminfo/terminal-fence.test.mjs
+        run: node --test scripts/terminfo/agent-observer.test.mjs scripts/terminfo/cells.test.mjs scripts/terminfo/terminal-fence.test.mjs scripts/terminfo/runtime.test.mjs
 
       # The check below decides whether dotnet build may skip compiling the Rust libraries, so a
       # wrong "skip" would ship a build with none: scripts/ci/native-libs-present.sh, tested here.

@@ -211,9 +211,9 @@ Adapter tests use Node's built-in test runner:
 node --test scripts/terminfo/*.test.mjs
 ```
 
-The portable cell, observer and ordering-barrier tests also run in CI's script
-self-tests. CI does not launch a desktop or install the collector; Unix endpoint
-permission checks are explicitly skipped on Windows.
+The portable cell, observer, ordering-barrier and runtime helper tests also run
+in CI's script self-tests. CI does not launch a desktop or install the collector;
+Unix filesystem checks are explicitly skipped on Windows.
 
 The changed-dependency regression runs when the cache is prepared and
 `NTILDE_TERMINFO_NPM_CLI` explicitly selects a usable npm CLI. The real-app

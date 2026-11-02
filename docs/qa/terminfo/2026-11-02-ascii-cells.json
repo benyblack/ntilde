@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "buildSource": "633e333e0af7dc2f5aed95b4f5b84ff3fbd374e5",
-  "localEvidence": "artifacts/terminfo/owned-J9es1x",
+  "localEvidence": "artifacts/terminfo/owned-58OQD0",
   "context": {
     "adapter": "ntilde-owned-macos-v1",
     "adapterBundleSha256": "2a5bc96dca139fbd45ce87c5738af452b27c62a396bb5114c7b1b6be5725fda1",
@@ -12,15 +12,15 @@
     "assemblySha256": "ac181caa80be8f2d95bd4dd44de73bb16fc8ad3af5dca10d1c901b7108c86919",
     "nodeVersion": "v24.22.1",
     "dependencyInstall": "isolated npm ci --ignore-scripts",
-    "startedAt": "2026-11-02T14:02:31.777Z",
-    "runId": "4776f2a5be576ce56caee52d5ec8d2a0",
+    "startedAt": "2026-11-02T14:09:35.186Z",
+    "runId": "b9a497199959cf85dfda7d010d251195",
     "runnerSourceSha256": "9a0cf47a34af179abe66b50f30588390b98e8457d2fd8642ed290676945d0ff2",
     "adapterSourceSha256": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
     "ownershipSourceSha256": "8766e06cf71b44e83d6cd079be648204e1ef60e9acc190af40ad503f0de20735",
     "workerSourceSha256": "0c820f3f60d93b29b08af0f02935318412f8529bfadceae70c077c93872503e2",
-    "runtimeSourceSha256": "8199c0373ae9f423c2f2333f9166ce0f301dd6e5df238b78d1bdb317e3abfdd4",
+    "runtimeSourceSha256": "671ab41d750f94fd6b454e2092aa834dcbec44bb312a950f7541f8cd2a49246f",
     "observerSourceSha256": "54d3235e97de3b9839cde2448ed6c87b1d7ca6eabb7bb444da67e81ac965fff7",
-    "cellSuiteSourceSha256": "194ef9930b9cd2eae72be34edf95541b107ab7782cc1c1849a1784f361a191bb",
+    "cellSuiteSourceSha256": "3ddc2a4c47c0969e84f35d1d82d067f9ec1cf78a1b2df2df03817a251fb6764b",
     "cellFenceSourceSha256": "dc4653e83458ab41ef335171e44878b0e028deabb95c43839dfbddcca58daa85",
     "collectorManifestSha256": "56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e",
     "collectorLockSha256": "837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508",
@@ -31,7 +31,7 @@
     "cells": "private observe-only AgentHost; nonce-bound pane; separate ASCII cell-state suite"
   },
   "stockCollector": {
-    "runId": "8dde5fb08cd3fbc7d0698a599cb8593f",
+    "runId": "022cab739af1d80223b63bdcd99344e9",
     "suiteId": "16a690f34c0e",
     "suiteComplete": false,
     "ungradedDiagnostics": {
@@ -41,7 +41,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "measuredAt": "2026-11-02T14:02:39.399Z",
+    "measuredAt": "2026-11-02T14:09:41.829Z",
     "target": {
       "kind": "app",
       "id": "ntilde",
@@ -68,28 +68,28 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "rawSha256": "5ddcfd9256496bdd385db00f53127cc22d026d5fd93dcc75274b6f978372a72a"
+    "rawSha256": "469f6332c2df4fcb20b160877222ce5d91f4bfdf49611c9f62f99bf903442824"
   },
   "cellReceipt": {
     "schemaVersion": 1,
-    "runId": "4776f2a5be576ce56caee52d5ec8d2a0",
+    "runId": "b9a497199959cf85dfda7d010d251195",
     "suiteId": "ntilde-owned-ascii-cells-v1",
     "file": "cell-observations.json",
-    "sha256": "84d6b06cff597c53b18423f2b2dc5d140d1c312f8151f6d67cef66de55c10e67",
+    "sha256": "7ab0c14df6bc91261c421411d0f8afb7b599698ed6e41b1c60fb594e652f0da5",
     "counts": {
       "passed": 8
     },
     "provisionalUntil": "cell-receipt.json",
-    "ownershipProofSha256": "522a3be56023d22f42daeb3911d232f92843a091ba9b85e61a87e6f94645ba2d",
-    "contextSha256": "c099399852d4fcf444874300492d276b000c49c8d400bf874e210c5de57f6d20",
-    "rawSha256": "5ddcfd9256496bdd385db00f53127cc22d026d5fd93dcc75274b6f978372a72a",
+    "ownershipProofSha256": "3884b00bdd5be7e45993159bca18bcb3c54bb848c5b812ab4123198853b420b4",
+    "contextSha256": "1bcf71c711b799ec19d3e9a58c6e943aa8aeb4478f27fba6d6d51eb68bbf7094",
+    "rawSha256": "469f6332c2df4fcb20b160877222ce5d91f4bfdf49611c9f62f99bf903442824",
     "fixtureRemoved": true,
-    "completedAt": "2026-11-02T14:02:39.908Z"
+    "completedAt": "2026-11-02T14:09:42.307Z"
   },
   "cellReport": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-ascii-cells-v1",
-    "runId": "4776f2a5be576ce56caee52d5ec8d2a0",
+    "runId": "b9a497199959cf85dfda7d010d251195",
     "complete": true,
     "scope": "Live App readScreen buffer projection: ASCII text and cursor state only; not pixels or stock collector grades.",
     "initialSnapshot": 0,
@@ -98,7 +98,7 @@
       {
         "index": 0,
         "kind": "cell-start",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": null,
         "screen": {
           "rows": 41,
@@ -155,13 +155,13 @@
       {
         "index": 1,
         "kind": "cell-bind",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
           "cols": 140,
           "lines": [
-            "NTILDE_QA_4776f2a5be576ce56caee52d5ec8d2a0",
+            "NTILDE_QA_b9a497199959cf85dfda7d010d251195",
             "",
             "",
             "",
@@ -207,12 +207,12 @@
           "cursorCol": 42,
           "cursorVisible": true
         },
-        "sha256": "2723e5f91ba4d0e692d449614811398b2ba2e5b97a7071f5df390f371ff3958d"
+        "sha256": "da3118bfa3c2ee56caa8e3d8c17fc51deac5552c94e17ecf47e223f49c766608"
       },
       {
         "index": 2,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -269,7 +269,7 @@
       {
         "index": 3,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -326,7 +326,7 @@
       {
         "index": 4,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -383,7 +383,7 @@
       {
         "index": 5,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -440,7 +440,7 @@
       {
         "index": 6,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -497,7 +497,7 @@
       {
         "index": 7,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -554,7 +554,7 @@
       {
         "index": 8,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -611,7 +611,7 @@
       {
         "index": 9,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -668,7 +668,7 @@
       {
         "index": 10,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -725,7 +725,7 @@
       {
         "index": 11,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -782,7 +782,7 @@
       {
         "index": 12,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -839,7 +839,7 @@
       {
         "index": 13,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -896,7 +896,7 @@
       {
         "index": 14,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -953,7 +953,7 @@
       {
         "index": 15,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1010,7 +1010,7 @@
       {
         "index": 16,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1067,7 +1067,7 @@
       {
         "index": 17,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1124,7 +1124,7 @@
       {
         "index": 18,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1181,7 +1181,7 @@
       {
         "index": 19,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1238,7 +1238,7 @@
       {
         "index": 20,
         "kind": "cell-read",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1295,7 +1295,7 @@
       {
         "index": 21,
         "kind": "cell-finish",
-        "paneId": "c31d4c05-ed31-4944-81aa-41bccec4f3fb",
+        "paneId": "83f274cc-502f-4e86-96a0-3f682430ad5f",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
