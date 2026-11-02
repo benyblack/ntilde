@@ -30,12 +30,15 @@
     "Q02": {
       "title": "Observe attributes and rendered pixels",
       "owner": "VT + Rendering + App QA",
-      "nextMeasurement": "Assert decoded cell attributes/charset mapping and independently capture controlled rendered pixels. Use a controlled clock for blink; preserve the input, capture hashes and restored fixture state. Cursor advance is insufficient.",
+      "nextMeasurement": "Assert decoded cell attributes/charset mapping and independently capture controlled rendered pixels. Use a controlled clock for blink; preserve the input, capture hashes and restored fixture state. For OSC 104/110/111/112/117/119, save prior colors and host defaults, set known overrides, issue the exact reset, then compare palette/default/cursor/selection state and pixels against the known defaults. Query where a concrete reply exists; an unset selection default may have no concrete reply. Restore prior state and verify restoration. Cursor advance is insufficient.",
       "sourceFiles": [
         "src/Ntilde.VT/AnsiParser.Sgr.cs",
         "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
         "tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs",
-        "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs"
+        "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs",
+        "src/Ntilde.VT/AnsiParser.Colors.cs",
+        "src/Ntilde.VT/TerminalBuffer.RuntimeColors.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
       ]
     },
     "Q03": {
@@ -579,7 +582,7 @@
         "note": "OSC 104 palette reset was not attempted; this probe has no effect readback or prior-state restoration",
         "rawReplyRef": "extensions.osc104-reset-palette"
       },
-      "action": "Q03",
+      "action": "Q02",
       "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
     },
     {
@@ -591,7 +594,7 @@
         "note": "OSC 110 foreground reset was not attempted; this probe has no effect readback or prior-state restoration",
         "rawReplyRef": "extensions.osc110-reset-fg"
       },
-      "action": "Q03",
+      "action": "Q02",
       "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
     },
     {
@@ -603,7 +606,7 @@
         "note": "OSC 111 background reset was not attempted; this probe has no effect readback or prior-state restoration",
         "rawReplyRef": "extensions.osc111-reset-bg"
       },
-      "action": "Q03",
+      "action": "Q02",
       "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
     },
     {
@@ -615,7 +618,7 @@
         "note": "OSC 112 cursor-color reset was not attempted; this probe has no effect readback or prior-state restoration",
         "rawReplyRef": "extensions.osc112-reset-cursor"
       },
-      "action": "Q03",
+      "action": "Q02",
       "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
     },
     {
@@ -627,7 +630,7 @@
         "note": "Cursor answered; highlight background was not read back",
         "rawReplyRef": "extensions.osc117-reset-highlight-bg"
       },
-      "action": "Q03",
+      "action": "Q02",
       "traceSha256": "942478031d910a5d4db6367c643ec01053dac959d2d370f097e65864d99d4fe2"
     },
     {
@@ -639,7 +642,7 @@
         "note": "Cursor answered; highlight foreground was not read back",
         "rawReplyRef": "extensions.osc119-reset-highlight-fg"
       },
-      "action": "Q03",
+      "action": "Q02",
       "traceSha256": "2c2afb804bc5efcc1a558a590a825937c8a73982ef6cbc08acf9890aa1f0ba3a"
     },
     {

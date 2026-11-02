@@ -16,13 +16,13 @@ Source context: [AnsiParser.Csi.cs](https://github.com/benyblack/ntilde/blob/c1b
 
 ### Q02 — Observe attributes and rendered pixels
 
-**40 observations; owner: VT + Rendering + App QA.** Assert decoded cell attributes/charset mapping and independently capture controlled rendered pixels. Use a controlled clock for blink; preserve the input, capture hashes and restored fixture state. Cursor advance is insufficient.
+**46 observations; owner: VT + Rendering + App QA.** Assert decoded cell attributes/charset mapping and independently capture controlled rendered pixels. Use a controlled clock for blink; preserve the input, capture hashes and restored fixture state. For OSC 104/110/111/112/117/119, save prior colors and host defaults, set known overrides, issue the exact reset, then compare palette/default/cursor/selection state and pixels against the known defaults. Query where a concrete reply exists; an unset selection default may have no concrete reply. Restore prior state and verify restoration. Cursor advance is insufficient.
 
-Source context: [AnsiParser.Sgr.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/src/Ntilde.VT/AnsiParser.Sgr.cs), [SgrAttributeTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.App.Tests/SgrAttributeTests.cs), [DecSpecialGraphicsTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs), [RuntimeColorRenderTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs).
+Source context: [AnsiParser.Sgr.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/src/Ntilde.VT/AnsiParser.Sgr.cs), [SgrAttributeTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.App.Tests/SgrAttributeTests.cs), [DecSpecialGraphicsTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs), [RuntimeColorRenderTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs), [AnsiParser.Colors.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/src/Ntilde.VT/AnsiParser.Colors.cs), [TerminalBuffer.RuntimeColors.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/src/Ntilde.VT/TerminalBuffer.RuntimeColors.cs), [RuntimeColorTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.VT.Tests/RuntimeColorTests.cs).
 
 ### Q03 — Observe host metadata and UI effects
 
-**17 observations; owner: App QA + VT callbacks.** Read the private pane's title, cwd, hyperlink/shell-marker metadata or notification/progress presentation through an independent host observer. Record private setting/focus preconditions and verify restoration. A consumed marker or DA sentinel is insufficient.
+**11 observations; owner: App QA + VT callbacks.** Read the private pane's title, cwd, hyperlink/shell-marker metadata or notification/progress presentation through an independent host observer. Record private setting/focus preconditions and verify restoration. A consumed marker or DA sentinel is insufficient.
 
 Source context: [AnsiParser.Osc.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/src/Ntilde.VT/AnsiParser.Osc.cs), [OscShellIntegrationTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.App.Tests/OscShellIntegrationTests.cs), [Osc9NotificationProgressTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.VT.Tests/Osc9NotificationProgressTests.cs), [PaneParserWiringTests.cs](https://github.com/benyblack/ntilde/blob/c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b/tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs).
 
@@ -147,14 +147,14 @@ Every row below retains its original inconclusive outcome. Source-limit notes de
 | `extensions.osc-633-vscode` | insufficient-evidence | Q10 | OSC 633 has no matching dispatch case; OSC 133 shell markers are a different protocol. |
 | `extensions.osc0-icon-title` | insufficient-evidence | Q10 | OSC 0/2 route to window-title changes; there is no separate OSC 1 icon-name handler/state. The combined icon/title variant is partial. |
 | `extensions.osc1-icon` | insufficient-evidence | Q10 | OSC 0/2 route to window-title changes; there is no separate OSC 1 icon-name handler/state. The combined icon/title variant is partial. |
-| `extensions.osc104-reset-palette` | insufficient-evidence | Q03 | See the original note/trace and work package; no support inference. |
-| `extensions.osc110-reset-fg` | insufficient-evidence | Q03 | See the original note/trace and work package; no support inference. |
-| `extensions.osc111-reset-bg` | insufficient-evidence | Q03 | See the original note/trace and work package; no support inference. |
-| `extensions.osc112-reset-cursor` | insufficient-evidence | Q03 | See the original note/trace and work package; no support inference. |
+| `extensions.osc104-reset-palette` | insufficient-evidence | Q02 | See the original note/trace and work package; no support inference. |
+| `extensions.osc110-reset-fg` | insufficient-evidence | Q02 | See the original note/trace and work package; no support inference. |
+| `extensions.osc111-reset-bg` | insufficient-evidence | Q02 | See the original note/trace and work package; no support inference. |
+| `extensions.osc112-reset-cursor` | insufficient-evidence | Q02 | See the original note/trace and work package; no support inference. |
 | `extensions.osc113-reset-pointer-fg` | insufficient-evidence | Q10 | The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect. |
 | `extensions.osc114-reset-pointer-bg` | insufficient-evidence | Q10 | The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect. |
-| `extensions.osc117-reset-highlight-bg` | insufficient-evidence | Q03 | See the original note/trace and work package; no support inference. |
-| `extensions.osc119-reset-highlight-fg` | insufficient-evidence | Q03 | See the original note/trace and work package; no support inference. |
+| `extensions.osc117-reset-highlight-bg` | insufficient-evidence | Q02 | See the original note/trace and work package; no support inference. |
+| `extensions.osc119-reset-highlight-fg` | insufficient-evidence | Q02 | See the original note/trace and work package; no support inference. |
 | `extensions.osc133-a` | insufficient-evidence | Q03 | See the original note/trace and work package; no support inference. |
 | `extensions.osc133-b` | insufficient-evidence | Q03 | See the original note/trace and work package; no support inference. |
 | `extensions.osc133-c` | insufficient-evidence | Q03 | See the original note/trace and work package; no support inference. |

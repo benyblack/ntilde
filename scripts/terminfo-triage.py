@@ -33,8 +33,8 @@ ACTIONS = {
                   "Use a disposable pane with independently confirmed rows/columns; compare cell contents, cursor, margins and scrollback before/after, then retain the observation and cleanup receipt. CPR alone cannot prove content or erasure.",
                   [VT_CSI, "src/Ntilde.VT/TerminalBuffer.cs", "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs", "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs"]),
     "Q02": action("Observe attributes and rendered pixels", "VT + Rendering + App QA",
-                  "Assert decoded cell attributes/charset mapping and independently capture controlled rendered pixels. Use a controlled clock for blink; preserve the input, capture hashes and restored fixture state. Cursor advance is insufficient.",
-                  ["src/Ntilde.VT/AnsiParser.Sgr.cs", "tests/Ntilde.App.Tests/SgrAttributeTests.cs", "tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs", "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs"]),
+                  "Assert decoded cell attributes/charset mapping and independently capture controlled rendered pixels. Use a controlled clock for blink; preserve the input, capture hashes and restored fixture state. For OSC 104/110/111/112/117/119, save prior colors and host defaults, set known overrides, issue the exact reset, then compare palette/default/cursor/selection state and pixels against the known defaults. Query where a concrete reply exists; an unset selection default may have no concrete reply. Restore prior state and verify restoration. Cursor advance is insufficient.",
+                  ["src/Ntilde.VT/AnsiParser.Sgr.cs", "tests/Ntilde.App.Tests/SgrAttributeTests.cs", "tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs", "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs", "src/Ntilde.VT/AnsiParser.Colors.cs", "src/Ntilde.VT/TerminalBuffer.RuntimeColors.cs", "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"]),
     "Q03": action("Observe host metadata and UI effects", "App QA + VT callbacks",
                   "Read the private pane's title, cwd, hyperlink/shell-marker metadata or notification/progress presentation through an independent host observer. Record private setting/focus preconditions and verify restoration. A consumed marker or DA sentinel is insufficient.",
                   [VT_OSC, "tests/Ntilde.App.Tests/OscShellIntegrationTests.cs", "tests/Ntilde.VT.Tests/Osc9NotificationProgressTests.cs", "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs"]),
@@ -104,6 +104,10 @@ SPECIAL_ACTIONS.update({
     "modes.application-keypad": "Q05", "extensions.truecolor": "Q02", "reset.sgr": "Q02", "cursor.hide": "Q02", "cursor.shape": "Q02",
     "extensions.reflow": "Q01", "reset.decaln": "Q01", "extensions.sixel": "Q04", "extensions.iterm2-images": "Q04",
 })
+SPECIAL_ACTIONS.update(dict.fromkeys((
+    "extensions.osc104-reset-palette", "extensions.osc110-reset-fg", "extensions.osc111-reset-bg",
+    "extensions.osc112-reset-cursor", "extensions.osc117-reset-highlight-bg", "extensions.osc119-reset-highlight-fg",
+), "Q02"))
 NO_RESPONSE_ACTIONS = {"extensions.kitty-graphics.transmit": "Q09", "extensions.kitty-graphics.display": "Q09",
                        "extensions.osc17-highlight-bg": "Q08", "extensions.osc19-highlight-fg": "Q08"}
 PREFIX_ACTIONS = (("input.", "Q05"), ("modes.", "Q06"), (("sgr.", "charsets."), "Q02"),

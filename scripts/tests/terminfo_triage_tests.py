@@ -69,6 +69,18 @@ class TerminfoTriageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Trace evidence manifest"):
             triage.validate(changed)
 
+    def test_dynamic_color_resets_have_color_state_and_render_validation(self):
+        rows = {row["original"]["featureId"]: row for row in self.report["observations"]}
+        for feature in ("extensions.osc104-reset-palette", "extensions.osc110-reset-fg", "extensions.osc111-reset-bg",
+                        "extensions.osc112-reset-cursor", "extensions.osc117-reset-highlight-bg", "extensions.osc119-reset-highlight-fg"):
+            self.assertEqual("Q02", rows[feature]["action"])
+            self.assertEqual("inconclusive", rows[feature]["original"]["outcome"])
+        colors = self.report["actions"]["Q02"]
+        self.assertIn("src/Ntilde.VT/AnsiParser.Colors.cs", colors["sourceFiles"])
+        self.assertIn("src/Ntilde.VT/TerminalBuffer.RuntimeColors.cs", colors["sourceFiles"])
+        self.assertIn("set known overrides", colors["nextMeasurement"])
+        self.assertIn("issue the exact reset", colors["nextMeasurement"])
+
     def test_markdown_is_regenerated_from_the_validated_inventory(self):
         self.assertEqual(triage.STEM.with_suffix(".md").read_text(encoding="utf-8"), triage.markdown(self.report))
 
