@@ -1,0 +1,50 @@
+using System.Collections.Generic;
+using Ntilde.AgentHost.Contracts;
+using Ntilde.VT;
+
+namespace Ntilde.AgentHost;
+
+/// <summary>Opt-in stored attributes; the caller holds the buffer read lock throughout the capture.</summary>
+internal static class CellDetailSnapshot
+{
+    internal static bool TryCapture(TerminalBuffer buffer, out CellDetailRunDto[]? details)
+    {
+        details = null;
+        if ((long)buffer.Rows * buffer.Cols > AgentHostProtocol.MaxCellDetailCells) return false;
+        var runs = new List<CellDetailRunDto>();
+        CellDetailRunDto? previous = null;
+        var count = 0;
+        foreach (var row in buffer.ViewportRows)
+        {
+            for (var col = 0; col < buffer.Cols; col++)
+            {
+                var cell = row.Cells[col];
+                var underline = cell.IsUnderline ? row.GetUnderline(col) : null;
+                var value = new CellDetailRunDto
+                {
+                    Count = 1,
+                    Flags = (ushort)(cell.Flags & ~(ushort)TerminalCellFlags.Dirty),
+                    Fg = cell.FgIndex,
+                    Bg = cell.BgIndex,
+                    ForegroundArgb = cell.IsDefaultForeground || cell.IsPaletteForeground ? null : cell.Fg,
+                    BackgroundArgb = cell.IsDefaultBackground || cell.IsPaletteBackground ? null : cell.Bg,
+                    UnderlineStyle = cell.IsUnderline ? (byte)(underline?.Style ?? UnderlineStyle.Single) : (byte)0,
+                    UnderlineColorIndex = underline?.ColorIndex ?? -1,
+                    UnderlineArgb = underline?.Color?.ToUint(),
+                };
+                if (value == previous)
+                {
+                    count++;
+                    continue;
+                }
+                if (previous != null) runs.Add(previous with { Count = count });
+                if (runs.Count >= AgentHostProtocol.MaxCellDetailRuns) return false;
+                previous = value;
+                count = 1;
+            }
+        }
+        if (previous != null) runs.Add(previous with { Count = count });
+        details = runs.ToArray();
+        return true;
+    }
+}

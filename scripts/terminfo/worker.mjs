@@ -7,6 +7,7 @@ import { assertPrivateFile, processRecord, requestOwner, verifyNtildeOutput } fr
 import { collectCells } from './cells.mjs';
 import { terminalFence } from './terminal-fence.mjs';
 import { collectSgr } from './sgr.mjs';
+import { collectRgb } from './rgb.mjs';
 
 let config;
 try {
@@ -19,6 +20,7 @@ try {
         const owner = (kind, barrier = null) => requestOwner(config, kind, { tty: binding.tabTty, barrier });
         await collectCells({ config, fence, owner });
         await collectSgr({ config, fence, owner });
+        await collectRgb({ config, fence, owner });
     } finally { fence.dispose(); }
     const source = readFileSync(config.bundle);
     const digest = createHash('sha256').update(source).digest('hex');

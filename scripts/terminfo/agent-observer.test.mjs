@@ -180,3 +180,31 @@ test('discovery refuses another app, outside sockets, symlinks and shared permis
         assert.throws(() => observerEndpoint(root, 42), /private observer/);
     } finally { server.close(); await once(server, 'close'); rmSync(root, { recursive: true, force: true }); }
 });
+
+
+test('RGB observer opts into details, copies complete runs and refuses missing or unrestored metadata', async () => {
+    const initial = { ...blank(), cellDetails: [{ count: 180, flags: 768, fg: -1, bg: -1, underlineStyle: 0, underlineColorIndex: -1 }] };
+    let value = structuredClone(initial);
+    const observer = new OwnedCellObserver({ appData: '/never/discover', ownerPid: 42, profileName: 'fixture', nonce: 'nonce',
+        includeCellDetails: true, prefix: 'rgb', expectedPaneId: paneId, endpoint: () => 'fixture-only',
+        rpc: async (_, method, params) => {
+            if (method === 'listSessions') return { sessions: [{ paneId, profileName: 'fixture', kind: 'local', rows: 3, cols: 60 }] };
+            assert.equal(params.includeCellDetails, true);
+            assert.equal(params.includeAttributes, false);
+            return value;
+        } });
+    await observer.handle('rgb-start', () => 1000);
+    value = { ...structuredClone(initial), lines: ['nonce', '', ''], cursorCol: 5 };
+    await observer.handle('rgb-bind', () => 1000, barrier);
+    value = { ...blank(), cellDetails: [{ count: 180, flags: 520, fg: -1, bg: -1,
+        foregroundArgb: 0xff010203, underlineStyle: 3, underlineColorIndex: 123 }] };
+    await observer.handle('rgb-read', () => 1000, barrier);
+    value.cellDetails[0].foregroundArgb = 0xff040506;
+    assert.equal(observer.frames.at(-1).screen.cellDetails[0].foregroundArgb, 0xff010203);
+    await assert.rejects(observer.handle('rgb-finish', () => 1000, barrier), /restoration failed/);
+    value = blank();
+    await assert.rejects(observer.handle('rgb-read', () => 1000, barrier), /budget/);
+    value = initial;
+    await observer.handle('rgb-finish', () => 1000, barrier);
+    assert.equal(observer.restored, true);
+});

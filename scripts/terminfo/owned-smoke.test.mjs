@@ -48,7 +48,7 @@ function withCollectorFixture(receipt, lockfile, action) {
     try {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
             'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs',
-            'terminfo/attributes.mjs', 'terminfo/sgr.mjs',
+            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs',
             'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
@@ -152,6 +152,7 @@ function assertRetainedCollector(output) {
         ['observerSourceSha256', 'terminfo/agent-observer.mjs'], ['cellSuiteSourceSha256', 'terminfo/cells.mjs'],
         ['cellFenceSourceSha256', 'terminfo/terminal-fence.mjs'],
         ['attributeSourceSha256', 'terminfo/attributes.mjs'], ['sgrSuiteSourceSha256', 'terminfo/sgr.mjs'],
+        ['cellDetailsSourceSha256', 'terminfo/cell-details.mjs'], ['rgbSuiteSourceSha256', 'terminfo/rgb.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
     ]) {
@@ -322,6 +323,14 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(attributes.snapshots[0].screen, attributes.snapshots.at(-1).screen);
         assert.equal(attributes.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(attributes.observations.every(item => item.result === 'passed'), JSON.stringify(attributes.observations));
+        assert.equal(receipt.rgbEvidence.sha256, digest('rgb-observations.json'));
+        const rgb = JSON.parse(readFileSync(join(output, 'rgb-observations.json')));
+        assert.equal(rgb.runId, receipt.runId);
+        assert.equal(rgb.observations.length, 20);
+        assert.deepEqual(rgb.snapshots, readFileSync(join(output, 'rgb-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+        assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
+        assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
+        assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
     } finally {
         if (existsSync(log)) {
             const events = readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line));

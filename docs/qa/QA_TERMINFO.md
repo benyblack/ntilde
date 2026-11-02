@@ -243,13 +243,47 @@ RGB value, and an underline flag is not proof of a particular painted style.
 The [2026-11-02 SGR measurement](terminfo/2026-11-02-sgr-indices.md) records the
 first run. Neither supplemental suite changes stock grades or the frozen triage.
 
+### Supplemental RGB and underline metadata
+
+After SGR restoration, `ntilde-owned-rgb-underline-v1` binds a fresh `NTILDE_RG_`
+nonce to the same pane and requests `readScreen(includeCellDetails=true)`.
+The default read remains unchanged. This optional projection is captured with
+text, geometry and cursor state under one buffer read lock. It includes every
+physical cell, including wide continuations, as canonical row-major runs.
+The API refuses viewports exceeding 8,192 cells or 1,024 runs with
+`screenDetailsUnavailable`; it never returns a partial projection.
+
+Each run contains `count`, flags without the transient Dirty bit, `fg`/`bg`
+indices, optional literal `foregroundArgb`/`backgroundArgb`, `underlineStyle`
+(0 off, 1 single, 2 double, 3 curly, 4 dotted, 5 dashed),
+`underlineColorIndex` and optional `underlineArgb`. Literal values are unsigned
+packed ARGB, alpha in the high byte. Default/palette colors omit ARGB; an
+underline with index -1 and no ARGB inherits the text color. These are stored
+buffer values. They do not resolve palette/default colors, inverse, faint,
+selection, theme changes or rendered pixels.
+
+Twenty experiments measure foreground/background truecolor in semicolon and
+both colon forms, black/white/component edge values, selective 39/49 resets,
+five underline styles plus SGR 21, SGR 58 indexed and RGB colors, SGR 59,
+SGR 24 and SGR 0. Every control and target checks all cells, text and cursor;
+selective resets preserve preceding cells and unrelated metadata. Bad controls
+remain inconclusive; a qualified mismatch is a failed local assertion.
+
+`rgb-snapshots.jsonl` retains the 48 parent-owned frames and
+`rgb-observations.json` retains the derived report. The one final
+`cell-receipt.json` binds this report under `rgbEvidence`, alongside ASCII and
+SGR evidence, only after verified worker exit and fixture removal. Suite and
+decoder sources are archived and hashed. Each suite retains a separate
+64-snapshot ceiling. DA replies order operations; they do not prove colors.
+Stock collector definitions, grades and the frozen 177-item triage are unchanged.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh
 node --test scripts/terminfo/*.test.mjs
 ```
 
-The portable cell, SGR, attribute decoder, observer, ordering-barrier and runtime helper tests also run
+The portable cell, SGR, RGB/underline, decoder, observer, ordering-barrier and runtime helper tests also run
 in CI's script self-tests. CI does not launch a desktop or install the collector;
 Unix filesystem checks are explicitly skipped on Windows.
 

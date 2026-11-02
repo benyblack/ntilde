@@ -117,7 +117,7 @@ export function requestOwner(config, kind, extra = {}) {
         }) + '\n'));
         socket.on('data', chunk => {
             buffer += chunk;
-            const limit = /^(?:cell|sgr)-/.test(kind) ? 512 * 1024 : 16384;
+            const limit = /^(?:cell|sgr|rgb)-/.test(kind) ? 512 * 1024 : 16384;
             if (Buffer.byteLength(buffer) > limit) return finish(new Error('Oversized owner response.'));
             if (!buffer.includes('\n')) return;
             try {

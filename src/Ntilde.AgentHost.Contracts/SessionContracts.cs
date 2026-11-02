@@ -84,13 +84,21 @@ public sealed record ReadScreenParams
     /// <summary>When true, per-row attribute lines are included (BufferSnapshot format).</summary>
     [JsonPropertyName("includeAttributes")]
     public bool IncludeAttributes { get; init; }
+
+    /// <summary>
+    /// Include bounded, row-major runs of stored cell colors and underline metadata.
+    /// These are buffer values, not resolved theme colors or rendered pixels. A viewport exceeding
+    /// the cell or run budget returns <c>screenDetailsUnavailable</c>, never a partial projection.
+    /// </summary>
+    [JsonPropertyName("includeCellDetails")]
+    public bool IncludeCellDetails { get; init; }
 }
 
 /// <summary>
 /// Result payload for <c>readScreen</c>: a 1:1 projection of the deterministic
 /// <c>Ntilde.Replay.BufferSnapshot</c> capture plus cursor state. The A1
 /// parity test asserts this equals a direct <c>BufferSnapshot.Capture</c> of
-/// the same buffer.
+/// the same buffer. Optional cell details extend this projection when explicitly requested.
 /// </summary>
 public sealed record ScreenSnapshotDto
 {
@@ -101,6 +109,13 @@ public sealed record ScreenSnapshotDto
     /// <summary>Per-row attribute encoding; present only when requested.</summary>
     [JsonPropertyName("attributeLines")]
     public string[]? AttributeLines { get; init; }
+
+    /// <summary>
+    /// Canonical runs covering every physical viewport cell, including wide-character continuation cells.
+    /// Present only when requested; captured under the same read lock as lines and cursor state.
+    /// </summary>
+    [JsonPropertyName("cellDetails")]
+    public CellDetailRunDto[]? CellDetails { get; init; }
 
     /// <summary>Cursor row in viewport coordinates (0-based).</summary>
     [JsonPropertyName("cursorRow")]
@@ -118,6 +133,45 @@ public sealed record ScreenSnapshotDto
 
     [JsonPropertyName("cols")]
     public required int Cols { get; init; }
+}
+
+/// <summary>
+/// One row-major run of identical stored cell attributes. Flags exclude the transient Dirty bit.
+/// Default and palette flags distinguish inherited colors and indexed colors from literal ARGB.
+/// Literal colors are unsigned packed ARGB (alpha in the high byte); defaults and palette entries
+/// omit ARGB, without resolving themes, inverse, faint, selection or renderer effects.
+/// </summary>
+public sealed record CellDetailRunDto
+{
+    [JsonPropertyName("count")]
+    public required int Count { get; init; }
+
+    [JsonPropertyName("flags")]
+    public required ushort Flags { get; init; }
+
+    /// <summary>Palette index 0..255, or -1 for default/literal colors.</summary>
+    [JsonPropertyName("fg")]
+    public required short Fg { get; init; }
+
+    [JsonPropertyName("bg")]
+    public required short Bg { get; init; }
+
+    [JsonPropertyName("foregroundArgb")]
+    public uint? ForegroundArgb { get; init; }
+
+    [JsonPropertyName("backgroundArgb")]
+    public uint? BackgroundArgb { get; init; }
+
+    /// <summary>0 when disabled; otherwise single=1, double=2, curly=3, dotted=4, dashed=5.</summary>
+    [JsonPropertyName("underlineStyle")]
+    public required byte UnderlineStyle { get; init; }
+
+    /// <summary>Underline palette index, or -1. -1 with no ARGB inherits the text color.</summary>
+    [JsonPropertyName("underlineColorIndex")]
+    public required short UnderlineColorIndex { get; init; }
+
+    [JsonPropertyName("underlineArgb")]
+    public uint? UnderlineArgb { get; init; }
 }
 
 /// <summary>Params for <c>captureScreen</c> (A5).</summary>

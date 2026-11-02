@@ -46,8 +46,8 @@ export async function collectCells({ config, owner, fence, fixtures = cellCases,
     }
 }
 
-function validateFrame(frame, index, baseline, includeAttributes) {
-    screenSnapshot(frame.screen, includeAttributes);
+function validateFrame(frame, index, baseline, includeAttributes, includeCellDetails) {
+    screenSnapshot(frame.screen, includeAttributes, includeCellDetails);
     if (frame.index !== index || frame.sha256 !== snapshotHash(frame.screen) || frame.paneId !== baseline.paneId
         || frame.screen.rows !== baseline.screen.rows || frame.screen.cols !== baseline.screen.cols) {
         throw new Error('Changed owned cell snapshot evidence.');
@@ -57,11 +57,11 @@ function validateFrame(frame, index, baseline, includeAttributes) {
     }
 }
 
-export function validateFrames(snapshots, runId, { fixtures = cellCases, prefix = 'cell', noncePrefix = 'NTILDE_QA_', includeAttributes = false } = {}) {
+export function validateFrames(snapshots, runId, { fixtures = cellCases, prefix = 'cell', noncePrefix = 'NTILDE_QA_', includeAttributes = false, includeCellDetails = false } = {}) {
     const count = 3 + fixtures.reduce((sum, fixture) => sum + 1 + fixture.steps.length, 0);
     if (snapshots.length !== count || snapshots[0].kind !== prefix + '-start' || snapshots[1].kind !== prefix + '-bind'
         || snapshots.at(-1).kind !== prefix + '-finish') throw new Error('Incomplete owned cell snapshot sequence.');
-    for (const [index, frame] of snapshots.entries()) validateFrame(frame, index, snapshots[0], includeAttributes);
+    for (const [index, frame] of snapshots.entries()) validateFrame(frame, index, snapshots[0], includeAttributes, includeCellDetails);
     const binding = snapshots[1].screen;
     if (!/^[a-f\d]{32}$/.test(runId) || binding.lines[0] !== noncePrefix + runId
         || binding.cursorRow !== 0 || binding.cursorCol !== (noncePrefix + runId).length) {

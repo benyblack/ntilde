@@ -12,6 +12,7 @@ import { createPrivateScratch, createProcessBudget, installLockedCollector, read
 import { OwnedCellObserver } from './terminfo/agent-observer.mjs';
 import { buildCellReport } from './terminfo/cells.mjs';
 import { buildSgrReport } from './terminfo/sgr.mjs';
+import { buildRgbReport } from './terminfo/rgb.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -87,6 +88,8 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
         cellFenceSourceSha256: join(repo, 'scripts', 'terminfo', 'terminal-fence.mjs'),
         attributeSourceSha256: join(repo, 'scripts', 'terminfo', 'attributes.mjs'),
         sgrSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'sgr.mjs'),
+        cellDetailsSourceSha256: join(repo, 'scripts', 'terminfo', 'cell-details.mjs'),
+        rgbSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'rgb.mjs'),
         collectorManifestSha256: join(repo, 'scripts', 'terminfo', 'collector-package.json'),
         collectorLockSha256: join(repo, 'scripts', 'terminfo', 'collector-package-lock.json'),
     };
@@ -191,6 +194,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let preserveScratch = false;
     let cellEvidence;
     let sgrEvidence;
+    let rgbEvidence;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
@@ -231,6 +235,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let workerIdentity;
         let cellObserver;
         let sgrObserver;
+        let rgbObserver;
         let completed = false;
         const proofs = [];
         const image = statSync(executable);
@@ -244,11 +249,21 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
             clipboard: 'disabled; no clipboard fixture', pixels: 'no pixel capture adapter',
             cells: 'private observe-only AgentHost; nonce-bound pane; separate ASCII cell-state suite',
-            attributes: 'separate ASCII SGR flags and palette-index suite; no RGB, underline metadata or pixels',
+            attributes: 'separate ASCII SGR flags and palette-index suite',
+            cellDetails: 'separate stored ARGB and underline-metadata suite; no theme resolution or pixels',
         };
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'rgb-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         const observeCells = async (request, budget) => {
+            if (request.kind.startsWith('rgb-')) {
+                if (!sgrObserver?.restored) throw new Error('SGR suite must restore before RGB/underline observations.');
+                rgbObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_RG_${runId}`, includeCellDetails: true, prefix: 'rgb', expectedPaneId: sgrObserver.paneId });
+                const result = await rgbObserver.handle(request.kind, budget, request.barrier);
+                appendFileSync(join(output, 'rgb-snapshots.jsonl'), JSON.stringify(rgbObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             const attributes = request.kind.startsWith('sgr-');
             if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
             if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
@@ -286,7 +301,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (/^(?:cell|sgr)-(?:start|bind|read|finish)$/.test(request.kind)) {
+                    if (/^(?:cell|sgr|rgb)-(?:start|bind|read|finish)$/.test(request.kind)) {
                         const result = await observeCells(request, queryTimeout);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
                         return;
@@ -331,6 +346,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             const summary = collectionSummary(output, args[3]);
             cellEvidence = retainCellReport(output, cellObserver, runId);
             sgrEvidence = retainCellReport(output, sgrObserver, runId, buildSgrReport, 'sgr-observations.json');
+            rgbEvidence = retainCellReport(output, rgbObserver, runId, buildRgbReport, 'rgb-observations.json');
+            summary.rgbEvidence = rgbEvidence;
             summary.cellEvidence = cellEvidence;
             summary.sgrEvidence = sgrEvidence;
             writeJson(join(output, 'summary.json'), summary);
@@ -360,7 +377,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
         throw interruption;
     }
-    try { completeCellReceipt(output, scratch, { ...cellEvidence, sgrEvidence }); }
+    try { completeCellReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence }); }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
 

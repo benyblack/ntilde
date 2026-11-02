@@ -5,6 +5,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { join } from 'node:path';
 import { copyAttributeRuns, readAttributeRuns } from './attributes.mjs';
+import { copyCellDetails } from './cell-details.mjs';
 
 export const snapshotHash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
@@ -57,7 +58,7 @@ export function agentRequest(endpoint, method, params, timeoutMs) {
     });
 }
 
-export function screenSnapshot(value, includeAttributes = false) {
+export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false) {
     if (!Number.isSafeInteger(value?.rows) || value.rows < 3 || value.rows > 128
         || !Number.isSafeInteger(value.cols) || value.cols < 48 || value.cols > 256
         || !Array.isArray(value.lines) || value.lines.length !== value.rows
@@ -68,12 +69,13 @@ export function screenSnapshot(value, includeAttributes = false) {
     const result = { rows: value.rows, cols: value.cols, lines: [...value.lines],
         cursorRow: value.cursorRow, cursorCol: value.cursorCol, cursorVisible: value.cursorVisible };
     if (includeAttributes) result.attributeRuns = copyAttributeRuns(value.attributeRuns, value.rows * value.cols);
+    if (includeCellDetails) result.cellDetails = copyCellDetails(value.cellDetails, value.rows * value.cols);
     return result;
 }
 
 export class OwnedCellObserver {
-    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
-        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, prefix, rpc, endpoint });
+    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
+        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, prefix, rpc, endpoint });
         this.paneId = expectedPaneId;
         this.snapshots = 0;
         this.frames = [];
@@ -96,10 +98,12 @@ export class OwnedCellObserver {
     async capture(budget) {
         if (++this.snapshots > 64) throw new Error('Cell snapshot budget exhausted.');
         const before = await this.session(budget);
-        const raw = await this.request('readScreen', { paneId: before.paneId, includeAttributes: this.includeAttributes }, budget);
+        const raw = await this.request('readScreen', { paneId: before.paneId, includeAttributes: this.includeAttributes,
+            ...(this.includeCellDetails ? { includeCellDetails: true } : {}) }, budget);
         const projection = screenSnapshot(raw);
         if (this.includeAttributes) projection.attributeRuns = readAttributeRuns(raw.attributeLines, projection.rows, projection.cols);
-        const screen = screenSnapshot(projection, this.includeAttributes);
+        if (this.includeCellDetails) projection.cellDetails = raw.cellDetails;
+        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails);
         const after = await this.session(budget);
         if (before.paneId !== after.paneId || before.rows !== screen.rows || before.cols !== screen.cols
             || after.rows !== screen.rows || after.cols !== screen.cols

@@ -1531,7 +1531,7 @@ namespace Ntilde.AgentHost
             }
 
             TryNoteRead(registration);
-            return Ok(request.Id, ScreenResult(registration.Buffer, p.IncludeAttributes));
+            return ScreenResult(request.Id, registration.Buffer, p);
         }
 
         /// <summary>
@@ -1539,15 +1539,21 @@ namespace Ntilde.AgentHost
         /// session's screen was imported into. Read under the buffer's read lock, through the deterministic
         /// <see cref="BufferSnapshot"/> path.
         /// </summary>
-        private static JsonElement ScreenResult(TerminalBuffer buffer, bool includeAttributes)
+        private static AgentHostResponse ScreenResult(long requestId, TerminalBuffer buffer, ReadScreenParams parameters)
         {
             BufferSnapshot snapshot;
+            CellDetailRunDto[]? details = null;
             bool cursorVisible;
             int rows, cols;
             buffer.Lock.EnterReadLock();
             try
             {
-                snapshot = BufferSnapshot.Capture(buffer, includeAttributes);
+                if (parameters.IncludeCellDetails && !CellDetailSnapshot.TryCapture(buffer, out details))
+                {
+                    return Error(requestId, AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable,
+                        $"Complete cell details require at most {AgentHostProtocol.MaxCellDetailCells} cells and {AgentHostProtocol.MaxCellDetailRuns} runs.");
+                }
+                snapshot = BufferSnapshot.Capture(buffer, parameters.IncludeAttributes);
                 cursorVisible = buffer.IsCursorVisible;
                 rows = buffer.Rows;
                 cols = buffer.Cols;
@@ -1561,13 +1567,14 @@ namespace Ntilde.AgentHost
             {
                 Lines = snapshot.Lines,
                 AttributeLines = snapshot.AttributeLines,
+                CellDetails = details,
                 CursorRow = snapshot.CursorRow,
                 CursorCol = snapshot.CursorCol,
                 CursorVisible = cursorVisible,
                 Rows = rows,
                 Cols = cols,
             };
-            return JsonSerializer.SerializeToElement(dto, AgentHostJsonContext.Default.ScreenSnapshotDto);
+            return Ok(requestId, JsonSerializer.SerializeToElement(dto, AgentHostJsonContext.Default.ScreenSnapshotDto));
         }
 
         private async Task<AgentHostResponse> HandleReadScrollbackAsync(AgentHostRequest request, CancellationToken cancellationToken)
@@ -1694,7 +1701,7 @@ namespace Ntilde.AgentHost
             var screen = await source.ReadScreenAsync(p.PaneId, 0, cancellationToken).ConfigureAwait(false);
             var (buffer, failure) = ImportScreen(request.Id, p.PaneId, AgentHostProtocol.Methods.ReadScreen, screen);
             return WindowlessRead(request, AgentHostProtocol.Methods.ReadScreen, p.PaneId, screen,
-                failure ?? Ok(request.Id, ScreenResult(buffer!, p.IncludeAttributes)));
+                failure ?? ScreenResult(request.Id, buffer!, p));
         }
 
         private async Task<AgentHostResponse> WindowlessScrollbackAsync(

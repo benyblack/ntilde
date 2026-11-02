@@ -14,6 +14,10 @@ namespace Ntilde.AgentHost.Contracts;
 /// </summary>
 public static class AgentHostProtocol
 {
+    /// <summary>Limits for the explicitly requested stored-cell projection of readScreen.</summary>
+    public const int MaxCellDetailCells = 8192;
+    public const int MaxCellDetailRuns = 1024;
+
     /// <summary>
     /// Wire protocol version. The server rejects requests whose version does
     /// not match with <see cref="ErrorCodes.VersionMismatch"/>.
@@ -204,6 +208,9 @@ public static class AgentHostProtocol
         public const string UnknownMethod = "unknownMethod";
         public const string SessionNotFound = "sessionNotFound";
         public const string Internal = "internal";
+
+        /// <summary>The requested complete cell-detail projection exceeds its cell or run budget.</summary>
+        public const string ScreenDetailsUnavailable = "screenDetailsUnavailable";
 
         /// <summary>
         /// A4: <c>exportReplay</c> was called but the user has not enabled
