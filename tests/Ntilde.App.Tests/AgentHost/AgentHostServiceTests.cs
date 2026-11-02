@@ -173,6 +173,8 @@ public class AgentHostServiceTests : IDisposable
         Assert.Equal(40, dto.Cols);
         Assert.Equal("hello world", dto.Lines[0]);
         Assert.Null(dto.CellDetails);
+        Assert.Null(dto.CursorMode);
+        Assert.False(response.Result!.Value.TryGetProperty("cursorMode", out _));
         Assert.False(response.Result!.Value.TryGetProperty("cellDetails", out _));
     }
 
@@ -312,6 +314,40 @@ public class AgentHostServiceTests : IDisposable
         Assert.Null(plain.Error);
         Assert.False(plain.Result!.Value.TryGetProperty("cellDetails", out _));
         Assert.Equal(AgentAttentionTier.Watched, registration.AttentionMachine.Snapshot().Tier);
+    }
+
+    [Theory]
+    [InlineData(0, 0, true)]
+    [InlineData(1, 0, true)]
+    [InlineData(2, 0, false)]
+    [InlineData(3, 2, true)]
+    [InlineData(4, 2, false)]
+    [InlineData(5, 1, true)]
+    [InlineData(6, 1, false)]
+    public void ReadScreen_optional_cursor_mode_matches_stored_state_and_is_detached(int parameter, int style, bool blink)
+    {
+        var buffer = new TerminalBuffer(40, 10);
+        var parser = new AnsiParser(buffer);
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, buffer);
+        using var service = NewService(registry);
+        var request = RequestLine(AgentHostProtocol.Methods.ReadScreen, paramsObj: new ReadScreenParams
+        {
+            PaneId = registration.PaneId, IncludeCursorMode = true,
+        });
+        var initial = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.Equal(new CursorModeDto { Style = 2, Blink = true, IsDefault = true }, initial.CursorMode);
+        parser.Process($"AB\x1b[{parameter} q\x1b[?25l");
+        var screen = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.Equal(new CursorModeDto { Style = style, Blink = blink, IsDefault = false }, screen.CursorMode);
+        Assert.Null(screen.CellDetails); // independent opt-ins
+        Assert.False(screen.CursorVisible);
+        Assert.Equal("AB", screen.Lines[0]);
+        Assert.Equal(2, screen.CursorCol);
+        parser.Process("\x1b[2 q\x1b[?25h");
+        Assert.Equal(style, screen.CursorMode!.Style);
+        Assert.Equal(blink, screen.CursorMode.Blink);
+        Assert.False(screen.CursorVisible);
     }
 
     [Fact]

@@ -30,26 +30,26 @@ export function matchesCells(screen, expected) {
 }
 
 /** Run serial writes and reads with restoration; started requires an already accepted baseline. */
-export async function collectCells({ config, owner, fence, fixtures = cellCases, prefix = 'cell', started = false }) {
+export async function collectCells({ config, owner, fence, fixtures = cellCases, prefix = 'cell', started = false, restore = reset + '\x1b[?1049l' }) {
     if (!started) await owner(prefix + '-start');
     try {
         const barrier = await fence.write('\x1b[?1049h' + reset + config.cellNonce);
         await owner(prefix + '-bind', barrier);
         const sequences = fixtures.flatMap(fixture => {
-            const setup = reset + at(1, 0) + 'KEEP!' + at(0, 0) + fixture.seed + at(...fixture.cursor);
+            const setup = reset + (fixture.setup ?? '') + at(1, 0) + 'KEEP!' + at(0, 0) + fixture.seed + at(...fixture.cursor);
             return [setup, ...fixture.steps.map(([sequence]) => sequence)];
         });
         // Each write/reply/read must complete before the next write changes state.
         const sample = async sequence => owner(prefix + '-read', await fence.write(sequence));
         await sequences.reduce((previous, sequence) => previous.then(() => sample(sequence)), Promise.resolve());
     } finally {
-        await owner(prefix + '-finish', await fence.write(reset + '\x1b[?1049l'));
+        await owner(prefix + '-finish', await fence.write(restore));
     }
 }
 
 /** Validate complete state, provenance, identity and the ordering barrier for one frame. */
-function validateFrame(frame, index, baseline, includeAttributes, includeCellDetails) {
-    screenSnapshot(frame.screen, includeAttributes, includeCellDetails);
+function validateFrame(frame, index, baseline, includeAttributes, includeCellDetails, includeCursorMode) {
+    screenSnapshot(frame.screen, includeAttributes, includeCellDetails, includeCursorMode);
     if (frame.index !== index || frame.sha256 !== snapshotHash(frame.screen) || frame.paneId !== baseline.paneId
         || frame.screen.rows !== baseline.screen.rows || frame.screen.cols !== baseline.screen.cols) {
         throw new Error('Changed owned cell snapshot evidence.');
@@ -60,11 +60,11 @@ function validateFrame(frame, index, baseline, includeAttributes, includeCellDet
 }
 
 /** Check exact fixture ordering, nonce binding, geometry and main-screen restoration. */
-export function validateFrames(snapshots, runId, { fixtures = cellCases, prefix = 'cell', noncePrefix = 'NTILDE_QA_', includeAttributes = false, includeCellDetails = false } = {}) {
+export function validateFrames(snapshots, runId, { fixtures = cellCases, prefix = 'cell', noncePrefix = 'NTILDE_QA_', includeAttributes = false, includeCellDetails = false, includeCursorMode = false } = {}) {
     const count = 3 + fixtures.reduce((sum, fixture) => sum + 1 + fixture.steps.length, 0);
     if (snapshots.length !== count || snapshots[0].kind !== prefix + '-start' || snapshots[1].kind !== prefix + '-bind'
         || snapshots.at(-1).kind !== prefix + '-finish') throw new Error('Incomplete owned cell snapshot sequence.');
-    for (const [index, frame] of snapshots.entries()) validateFrame(frame, index, snapshots[0], includeAttributes, includeCellDetails);
+    for (const [index, frame] of snapshots.entries()) validateFrame(frame, index, snapshots[0], includeAttributes, includeCellDetails, includeCursorMode);
     const binding = snapshots[1].screen;
     if (!/^[a-f\d]{32}$/.test(runId) || binding.lines[0] !== noncePrefix + runId
         || binding.cursorRow !== 0 || binding.cursorCol !== (noncePrefix + runId).length) {

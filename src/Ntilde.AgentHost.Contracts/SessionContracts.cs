@@ -92,6 +92,10 @@ public sealed record ReadScreenParams
     /// </summary>
     [JsonPropertyName("includeCellDetails")]
     public bool IncludeCellDetails { get; init; }
+
+    /// <summary>Include stored cursor style/blink/default modes, without resolving host preferences or blink phase.</summary>
+    [JsonPropertyName("includeCursorMode")]
+    public bool IncludeCursorMode { get; init; }
 }
 
 /// <summary>
@@ -117,6 +121,10 @@ public sealed record ScreenSnapshotDto
     [JsonPropertyName("cellDetails")]
     public CellDetailRunDto[]? CellDetails { get; init; }
 
+    /// <summary>Stored cursor modes, captured under the same read lock; present only when requested.</summary>
+    [JsonPropertyName("cursorMode")]
+    public CursorModeDto? CursorMode { get; init; }
+
     /// <summary>Cursor row in viewport coordinates (0-based).</summary>
     [JsonPropertyName("cursorRow")]
     public required int CursorRow { get; init; }
@@ -133,6 +141,20 @@ public sealed record ScreenSnapshotDto
 
     [JsonPropertyName("cols")]
     public required int Cols { get; init; }
+}
+
+/// <summary>Stored cursor mode, not resolved UI appearance or a measured blink phase.</summary>
+public sealed record CursorModeDto
+{
+    /// <summary>0 block, 1 bar, 2 underline. When IsDefault is true, the host may present its configured style.</summary>
+    [JsonPropertyName("style")]
+    public required int Style { get; init; }
+
+    [JsonPropertyName("blink")]
+    public required bool Blink { get; init; }
+
+    [JsonPropertyName("isDefault")]
+    public required bool IsDefault { get; init; }
 }
 
 /// <summary>

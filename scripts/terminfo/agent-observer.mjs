@@ -66,7 +66,7 @@ export function agentRequest(endpoint, method, params, timeoutMs) {
 }
 
 /** Copy and bound only requested state; absent or malformed evidence never becomes a successful snapshot. */
-export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false) {
+export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false) {
     if (!Number.isSafeInteger(value?.rows) || value.rows < 3 || value.rows > 128
         || !Number.isSafeInteger(value.cols) || value.cols < 48 || value.cols > 256
         || !Array.isArray(value.lines) || value.lines.length !== value.rows
@@ -78,12 +78,18 @@ export function screenSnapshot(value, includeAttributes = false, includeCellDeta
         cursorRow: value.cursorRow, cursorCol: value.cursorCol, cursorVisible: value.cursorVisible };
     if (includeAttributes) result.attributeRuns = copyAttributeRuns(value.attributeRuns, value.rows * value.cols);
     if (includeCellDetails) result.cellDetails = copyCellDetails(value.cellDetails, value.rows * value.cols);
+    if (includeCursorMode) {
+        const mode = value.cursorMode;
+        if (!mode || !Number.isSafeInteger(mode.style) || mode.style < 0 || mode.style > 2
+            || typeof mode.blink !== 'boolean' || typeof mode.isDefault !== 'boolean') throw new Error('Invalid stored cursor mode.');
+        result.cursorMode = { style: mode.style, blink: mode.blink, isDefault: mode.isDefault };
+    }
     return result;
 }
 
 export class OwnedCellObserver {
-    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
-        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, prefix, rpc, endpoint });
+    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
+        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, prefix, rpc, endpoint });
         this.paneId = expectedPaneId;
         this.snapshots = 0;
         this.frames = [];
@@ -108,11 +114,13 @@ export class OwnedCellObserver {
         if (++this.snapshots > 64) throw new Error('Cell snapshot budget exhausted.');
         const before = await this.session(budget);
         const raw = await this.request('readScreen', { paneId: before.paneId, includeAttributes: this.includeAttributes,
-            ...(this.includeCellDetails ? { includeCellDetails: true } : {}) }, budget);
+            ...(this.includeCellDetails ? { includeCellDetails: true } : {}),
+            ...(this.includeCursorMode ? { includeCursorMode: true } : {}) }, budget);
         const projection = screenSnapshot(raw);
         if (this.includeAttributes) projection.attributeRuns = readAttributeRuns(raw.attributeLines, projection.rows, projection.cols);
         if (this.includeCellDetails) projection.cellDetails = raw.cellDetails;
-        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails);
+        if (this.includeCursorMode) projection.cursorMode = raw.cursorMode;
+        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode);
         const after = await this.session(budget);
         if (before.paneId !== after.paneId || before.rows !== screen.rows || before.cols !== screen.cols
             || after.rows !== screen.rows || after.cols !== screen.cols

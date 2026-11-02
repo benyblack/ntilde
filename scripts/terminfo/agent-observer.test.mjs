@@ -220,3 +220,34 @@ test('RGB observer opts into details, copies complete runs and refuses missing o
     await observer.handle('rgb-finish', () => 1000, barrier);
     assert.equal(observer.restored, true);
 });
+
+
+test('cursor mode projection is opt-in, validates all stored fields and detaches returned state', () => {
+    const raw = { ...blank(), cursorMode: { style: 2, blink: true, isDefault: true } };
+    assert.equal(screenSnapshot(raw).cursorMode, undefined);
+    const snapshot = screenSnapshot(raw, false, false, true);
+    raw.cursorMode.style = 0;
+    assert.equal(snapshot.cursorMode.style, 2);
+    for (const cursorMode of [null, {}, { style: 3, blink: true, isDefault: true },
+        { style: 1, blink: null, isDefault: false }, { style: 1, blink: false, isDefault: null }])
+        assert.throws(() => screenSnapshot({ ...blank(), cursorMode }, false, false, true), /cursor mode/);
+});
+
+test('cursor observer requests mode state and refuses restoration that changes only a stored mode', async () => {
+    const initial = { ...blank(), cellDetails: [{ count: 180, flags: 768, fg: -1, bg: -1, underlineStyle: 0, underlineColorIndex: -1 }],
+        cursorMode: { style: 2, blink: true, isDefault: true } };
+    let value = structuredClone(initial);
+    const observer = new OwnedCellObserver({ appData: '/never/discover', ownerPid: 42, profileName: 'fixture', nonce: 'nonce',
+        includeCellDetails: true, includeCursorMode: true, prefix: 'cursor', expectedPaneId: paneId, endpoint: () => 'fixture-only',
+        rpc: async (_, method, params) => {
+            if (method === 'listSessions') return { sessions: [{ paneId, profileName: 'fixture', kind: 'local', rows: 3, cols: 60 }] };
+            assert.equal(params.includeCursorMode, true); return value;
+        } });
+    await observer.handle('cursor-start', () => 1000);
+    value = { ...structuredClone(initial), lines: ['nonce', '', ''], cursorCol: 5 };
+    await observer.handle('cursor-bind', () => 1000, barrier);
+    value = { ...structuredClone(initial), cursorMode: { style: 2, blink: true, isDefault: false } };
+    await assert.rejects(observer.handle('cursor-finish', () => 1000, barrier), /restoration failed/);
+    value = initial;
+    await observer.handle('cursor-finish', () => 1000, barrier);
+});

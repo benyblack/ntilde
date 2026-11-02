@@ -1544,6 +1544,7 @@ namespace Ntilde.AgentHost
         {
             BufferSnapshot snapshot;
             CellDetailRunDto[]? details = null;
+            CursorModeDto? cursorMode = null;
             bool cursorVisible;
             int rows, cols;
             buffer.Lock.EnterReadLock();
@@ -1555,6 +1556,15 @@ namespace Ntilde.AgentHost
                         $"Complete cell details require at most {AgentHostProtocol.MaxCellDetailCells} cells and {AgentHostProtocol.MaxCellDetailRuns} runs.");
                 }
                 snapshot = BufferSnapshot.Capture(buffer, parameters.IncludeAttributes);
+                if (parameters.IncludeCursorMode)
+                {
+                    cursorMode = new CursorModeDto
+                    {
+                        Style = (int)buffer.Modes.CursorStyle,
+                        Blink = buffer.Modes.IsCursorBlinkEnabled,
+                        IsDefault = buffer.Modes.CursorStyleIsDefault,
+                    };
+                }
                 cursorVisible = buffer.IsCursorVisible;
                 rows = buffer.Rows;
                 cols = buffer.Cols;
@@ -1569,6 +1579,7 @@ namespace Ntilde.AgentHost
                 Lines = snapshot.Lines,
                 AttributeLines = snapshot.AttributeLines,
                 CellDetails = details,
+                CursorMode = cursorMode,
                 CursorRow = snapshot.CursorRow,
                 CursorCol = snapshot.CursorCol,
                 CursorVisible = cursorVisible,
