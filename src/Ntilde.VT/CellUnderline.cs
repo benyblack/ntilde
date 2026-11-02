@@ -41,8 +41,10 @@ namespace Ntilde.VT
         /// needs nothing beyond the cell's flag.
         /// </summary>
         public static CellUnderline? For(UnderlineStyle style, TermColor? color, short colorIndex, bool overline = false)
-            => style == UnderlineStyle.Single && !color.HasValue && colorIndex < 0 && !overline
-                ? null
-                : new CellUnderline(style, colorIndex >= 0 ? null : color, colorIndex, overline);
+        {
+            if (style == UnderlineStyle.Single && !color.HasValue && colorIndex < 0 && !overline) return null;
+            if (colorIndex >= 0) color = null;
+            return new CellUnderline(style, color, colorIndex, overline);
+        }
     }
 }

@@ -74,13 +74,22 @@
       "contractCase": "mime-clipboard-paste"
     },
     {
-      "key": "SGR:53/55",
-      "mnemonic": "Overline",
+      "key": "CSI:53m",
+      "mnemonic": "Overline on",
       "support": "supported",
-      "description": "Enable or disable overline independently of underline; SGR 0 resets both.",
-      "matrixFeature": "Overline",
+      "description": "Enable overline independently of underline; SGR 0 resets both.",
+      "matrixFeature": "Overline on",
       "evidencePath": "tests/Ntilde.VT.Tests/OverlineTests.cs",
-      "contractCase": "sgr-overline"
+      "contractCase": "sgr-overline-on"
+    },
+    {
+      "key": "CSI:55m",
+      "mnemonic": "Overline off",
+      "support": "supported",
+      "description": "Disable overline without changing underline style or color.",
+      "matrixFeature": "Overline off",
+      "evidencePath": "tests/Ntilde.VT.Tests/OverlineTests.cs",
+      "contractCase": "sgr-overline-off"
     }
   ]
 }

@@ -40,7 +40,8 @@ public sealed class VtCapabilityContractTests
             ["color-scheme-query"] = AssertColorSchemeQuery,
             ["color-scheme-notifications"] = AssertColorSchemeNotifications,
             ["mime-clipboard-paste"] = AssertMimeClipboardPaste,
-            ["sgr-overline"] = AssertOverline,
+            ["sgr-overline-on"] = AssertOverline,
+            ["sgr-overline-off"] = AssertOverline,
         };
 
     private static readonly Dictionary<string, string> ContractSequences =
@@ -54,7 +55,8 @@ public sealed class VtCapabilityContractTests
             ["color-scheme-query"] = "\x1b[?996n",
             ["color-scheme-notifications"] = "\x1b[?2031h\x1b[?2031$p",
             ["mime-clipboard-paste"] = "\x1b[?5522h\x1b[?5522$p",
-            ["sgr-overline"] = "\x1b[53mA\x1b[55mB",
+            ["sgr-overline-on"] = "\x1b[53mA",
+            ["sgr-overline-off"] = "\x1b[53mA\x1b[55mB",
         };
 
     private static void AssertOverline()
