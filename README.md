@@ -16,11 +16,15 @@ Built with:
 
 Supported platforms: **Windows · Linux · macOS**
 
-<img width="250" alt="3" src="https://github.com/user-attachments/assets/f871a580-9857-4546-98d0-0356b3176dc4" />
-<img width="250" alt="2" src="https://github.com/user-attachments/assets/82d9d37f-5370-446f-9a94-1e58a3665986" />
-<img width="250" alt="1" src="https://github.com/user-attachments/assets/a0c52576-73e5-4bce-a6df-69877b53032f" />
-<img width="250" alt="5" src="https://github.com/user-attachments/assets/ea279510-57af-4af5-9f84-ebff05a34364" />
-<img width="250" alt="4" src="https://github.com/user-attachments/assets/9354d0fb-54ff-4080-a81c-5b49fded6d53" />
+<p align="center">
+  <picture><source srcset="docs/assets/shots/hero-split-readme.webp" type="image/webp" /><img width="100%" alt="Ntilde on macOS with three panes: a test run, the NTILDE banner and Rust source on the left, a git graph top-right and a process table bottom-right, each under a powerline prompt" src="docs/assets/shots/hero-split-readme.png" /></picture>
+</p>
+<p align="center">
+  <img width="49%" alt="The command palette filtering pane commands, each with its keyboard shortcut" src="docs/assets/shots/command-palette-readme.png" />
+  <picture><source srcset="docs/assets/shots/tui-vim-readme.webp" type="image/webp" /><img width="49%" alt="Vim full-screen inside Ntilde, editing Rust with syntax colouring" src="docs/assets/shots/tui-vim-readme.png" /></picture>
+  <img width="49%" alt="A sixel chart rendered inline between two shell prompts" src="docs/assets/shots/sixel-graphics-readme.png" />
+  <picture><source srcset="docs/assets/shots/themes-grid-readme.webp" type="image/webp" /><img width="49%" alt="Five built-in themes rendering the same transcript" src="docs/assets/shots/themes-grid-readme.png" /></picture>
+</p>
 
 ---
 
@@ -42,6 +46,8 @@ Most terminal emulators optimize for speed or features. Ntilde focuses on someth
     An opt-in MCP server lets Claude Code and other agents observe your live terminal sessions --- and, behind a separate opt-in, drive them.
 -   🔁 **Persistent sessions**\
     Shells keep running when you close the window, reattach when you reopen, and SSH tabs survive network drops.
+
+<p align="center"><img width="80%" alt="An MCP agent typing into a live pane: the status bar lights 'agent typed' and the activity journal grows with each command" src="docs/assets/shots/clip-agent.gif" /></p>
 
 > **Terminal correctness is enforced by automated tests, not guesswork.**
 
