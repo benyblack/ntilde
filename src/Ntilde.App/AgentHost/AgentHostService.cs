@@ -1700,8 +1700,12 @@ namespace Ntilde.AgentHost
         {
             var screen = await source.ReadScreenAsync(p.PaneId, 0, cancellationToken).ConfigureAwait(false);
             var (buffer, failure) = ImportScreen(request.Id, p.PaneId, AgentHostProtocol.Methods.ReadScreen, screen);
-            return WindowlessRead(request, AgentHostProtocol.Methods.ReadScreen, p.PaneId, screen,
-                failure ?? ScreenResult(request.Id, buffer, p));
+            if (failure == null)
+            {
+                ArgumentNullException.ThrowIfNull(buffer);
+                failure = ScreenResult(request.Id, buffer, p);
+            }
+            return WindowlessRead(request, AgentHostProtocol.Methods.ReadScreen, p.PaneId, screen, failure);
         }
 
         private async Task<AgentHostResponse> WindowlessScrollbackAsync(
