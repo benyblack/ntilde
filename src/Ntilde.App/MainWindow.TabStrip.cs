@@ -865,6 +865,7 @@ namespace Ntilde
                 var item = new MenuItem
                 {
                     Header = GetTabMenuLabel(tab, index),
+                    FontFamily = Shell.BundledFontCatalog.ShellTextUiFontFamily,
                     IsChecked = tabs.SelectedItem == tab,
                     ToggleType = MenuItemToggleType.Radio,
                     StaysOpenOnClick = false

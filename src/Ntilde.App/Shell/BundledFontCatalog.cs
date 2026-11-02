@@ -47,6 +47,34 @@ namespace Ntilde.Shell
         internal const string DefaultTerminalFontAssetUri =
             "avares://Ntilde/Assets/Fonts/JetBrainsMonoNL-Regular.ttf#JetBrains Mono NL";
 
+        internal const string SymbolsFontAssetUri =
+            "avares://Ntilde/Assets/Fonts/SymbolsNerdFontMono-Regular.ttf#" + SymbolsFontFamily;
+
+        /// <summary>
+        /// Family list for chrome text that echoes the shell (tab titles, the vertical tab
+        /// preview line, the tab list, the focus-mode strip): the Fluent UI face
+        /// (<c>ContentControlThemeFontFamily</c>, Inter then <c>$Default</c>) with the
+        /// symbols font named explicitly, so a powerline/Nerd Font prompt draws its icons
+        /// instead of tofu.
+        ///
+        /// The symbols font goes FIRST, not last, because Inter maps some powerline code
+        /// points (U+E0B0, U+E0B2) to unrelated glyphs of its own, so a trailing fallback
+        /// is never consulted for them. Leading is safe: the symbols font has no ASCII and
+        /// no space, so every ordinary character still shapes in Inter and the line keeps
+        /// Inter's metrics - the UI face does not change, only who draws the icons.
+        /// </summary>
+        internal const string ShellTextUiFontFamilyName = SymbolsFontAssetUri + ", fonts:Inter#Inter, $Default";
+
+        private static FontFamily? _shellTextUiFontFamily;
+
+        /// <summary>
+        /// <see cref="ShellTextUiFontFamilyName"/> as one shared instance. Lazy rather than a
+        /// static initializer: this class is touched while the AppBuilder is still being
+        /// configured, before any font manager exists.
+        /// </summary>
+        internal static FontFamily ShellTextUiFontFamily =>
+            _shellTextUiFontFamily ??= new FontFamily(ShellTextUiFontFamilyName);
+
         private sealed record BundledFont(string Family, string FileName, bool Selectable)
         {
             internal string AssetPath => $"avares://Ntilde/Assets/Fonts/{FileName}";
