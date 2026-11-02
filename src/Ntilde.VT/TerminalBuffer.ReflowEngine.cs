@@ -257,7 +257,7 @@ namespace Ntilde.VT
                                 break;
                             }
                         }
-                        if (!isEmpty || row.GetTextSizingMap() is { Count: > 0 } || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
+                        if (!isEmpty || row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
                     }
 
                     int vpRowsToTake = lastActiveVpRow + 1;
@@ -1012,7 +1012,8 @@ namespace Ntilde.VT
                             if (!nextRow.IsWrapped)
                             {
                                 // Check if row has any actual content
-                                bool hasContent = nextRow.GetTextSizingMap() is { Count: > 0 };
+                                bool hasContent = nextRow.GetTextSizingMap() is { Count: > 0 }
+                                    || nextRow.GetUnderlineMap() is { Count: > 0 };
                                 for (int c = 0; c < nextRow.Cells.Length; c++)
                                 {
                                     if (nextRow.Cells[c].Character != ' ' && nextRow.Cells[c].Character != '\0')

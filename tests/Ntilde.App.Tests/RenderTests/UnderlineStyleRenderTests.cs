@@ -193,16 +193,9 @@ public class UnderlineStyleRenderTests
     public void Overline_HiddenCellsDoNotBridgeAdjacentRuns()
     {
         using SKBitmap bitmap = Render("\x1b[53m  \x1b[8m  \x1b[28m  ");
-        bool LitAt(int column)
-        {
-            int x = Bitmap(4 + column * Metrics.CellWidth);
-            for (int y = 0; y < Bitmap(3); y++)
-                if (IsLit(bitmap.GetPixel(x, y))) return true;
-            return false;
-        }
-        Assert.True(LitAt(1));
-        Assert.False(LitAt(3));
-        Assert.True(LitAt(5));
+        Assert.True(LitTopAt(bitmap, 1));
+        Assert.False(LitTopAt(bitmap, 3));
+        Assert.True(LitTopAt(bitmap, 5));
     }
 
     [AvaloniaTheory]
@@ -212,6 +205,24 @@ public class UnderlineStyleRenderTests
     {
         using SKBitmap bitmap = Render("\x1b[53m" + reset + new string(' ', TextCells));
         Assert.False(IsLit(BrightestPixel(bitmap, 0, Bitmap(3))));
+    }
+
+    [AvaloniaTheory]
+    [InlineData("\x1b[55m")]
+    [InlineData("\x1b[0m")]
+    public void Overline_ResetPreservesEarlierOverlinedCells(string reset)
+    {
+        using SKBitmap bitmap = Render("\x1b[53m  " + reset + "  ");
+        Assert.True(LitTopAt(bitmap, 1));
+        Assert.False(LitTopAt(bitmap, 3));
+    }
+
+    private static bool LitTopAt(SKBitmap bitmap, int column)
+    {
+        int x = Bitmap(4 + column * Metrics.CellWidth);
+        for (int y = 0; y < Bitmap(3); y++)
+            if (IsLit(bitmap.GetPixel(x, y))) return true;
+        return false;
     }
 
     // ---------------------------------------------------------------- rendering

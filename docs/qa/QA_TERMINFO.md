@@ -338,12 +338,14 @@ Initial `screenDetailsUnavailable` refusals produce separate hashed unavailable
 markers, no invented outcomes, and permit subsequent suites/stock collection.
 Unrelated errors and any refusal after fixture entry remain fatal.
 
-Overline has no current VT state or renderer path. It remains open under #762
-for a separate implementation and qualification; no constant or consumed-input
-hint is substituted for an observation. Stock grades and frozen triage stay
-unchanged. Controlled pixels and blink timing remain subsequent work. The
+Overline now has VT state and an App rendering path, with stored state qualified
+by the [v3 measurement](terminfo/2026-11-03-overline.md). No constant or
+consumed-input hint substitutes for an observation. Stock grades and frozen
+triage stay unchanged. The live frames qualify stored state and decoded cells;
+controlled pixel observations and blink timing remain #763, and live
+Windows/Linux qualification remains #775. The earlier
 [2026-11-02 rendition/cursor measurement](terminfo/2026-11-02-rendition-cursor.md)
-retains the qualified run and its exact limits.
+retains its historical scope and exact limits.
 
 Adapter tests use Node's built-in test runner:
 

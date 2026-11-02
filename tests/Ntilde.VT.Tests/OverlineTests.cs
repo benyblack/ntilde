@@ -227,4 +227,41 @@ public class OverlineTests
         }
         finally { File.Delete(path); }
     }
+
+    [Theory]
+    [InlineData(3, false, "\x1b[53m")]
+    [InlineData(1, true, "\x1b[53m")]
+    [InlineData(3, false, "\x1b[4:3m")]
+    [InlineData(1, true, "\x1b[4:3m")]
+    public void Reflow_PreservesDecoratedBlankRowsBelowTheCursor(int row, bool laterText, string style)
+    {
+        var buffer = new TerminalBuffer(20, 6);
+        var parser = new AnsiParser(buffer);
+        parser.Process($"\x1b[{row + 1};1H{style}   \x1b[0m");
+        if (laterText) parser.Process($"\x1b[{row + 2};1HZ");
+        parser.Process("\x1b[H");
+        var expected = At(buffer, 0, row);
+        Assert.NotNull(expected);
+        buffer.Resize(10, 6);
+        for (int col = 0; col < 3; col++) Assert.Equal(expected, At(buffer, col, row));
+        Assert.Equal(0, buffer.CursorRow);
+        Assert.Equal(0, buffer.CursorCol);
+    }
+
+    [Theory]
+    [InlineData("55")]
+    [InlineData("0")]
+    public void SplitInput_PreservesEarlierOverlineAndTheResetCell(string reset)
+    {
+        string sequence = "\x1b[53mA\x1b[" + reset + "mB";
+        for (int split = 1; split < sequence.Length; split++)
+        {
+            var buffer = new TerminalBuffer(20, 3);
+            var parser = new AnsiParser(buffer);
+            parser.Process(sequence[..split]);
+            parser.Process(sequence[split..]);
+            Assert.Equal(CellUnderline.OverlineOnly, At(buffer, 0));
+            Assert.Null(At(buffer, 1));
+        }
+    }
 }
