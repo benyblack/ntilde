@@ -6,7 +6,8 @@ internal sealed class PrimaryTransferRegistry(Action<uint, bool> subscribe, Func
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
     private readonly List<PrimaryOutgoingTransfer> _streams = [];
     private readonly HashSet<uint> _subscriptions = [];
-    internal static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(10);
+    internal static readonly TimeSpan IdleLifetime = TimeSpan.FromSeconds(10);
+    internal static readonly TimeSpan MaxLifetime = TimeSpan.FromMinutes(1);
     internal int SubscriptionCount => _subscriptions.Count;
 
     public bool TryStart(uint window, uint property, uint target, byte[] bytes)
@@ -21,6 +22,8 @@ internal sealed class PrimaryTransferRegistry(Action<uint, bool> subscribe, Func
 
     public PrimaryOutgoingTransfer? Find(uint window, uint property) => _streams.FirstOrDefault(s => s.Window == window && s.Property == property);
 
+    public void Progress(PrimaryOutgoingTransfer stream) => stream.LastProgress = _clock.GetTimestamp();
+
     public void Retire(PrimaryOutgoingTransfer stream)
     {
         if (!_streams.Remove(stream)) return;
@@ -30,12 +33,14 @@ internal sealed class PrimaryTransferRegistry(Action<uint, bool> subscribe, Func
 
     public void Expire()
     {
-        foreach (var stream in _streams.Where(s => _clock.GetElapsedTime(s.Started) >= Lifetime).ToArray()) Retire(stream);
+        foreach (var stream in _streams.Where(s => _clock.GetElapsedTime(s.LastProgress) >= IdleLifetime ||
+            _clock.GetElapsedTime(s.Started) >= MaxLifetime).ToArray()) Retire(stream);
     }
 
     public void Destroyed(uint window)
     {
-        // The server already removed this connection's event mask with the window.
+        // Window destruction removes its server mask; local aborted reads call
+        // this explicitly before destroying their window, without a native call.
         _subscriptions.Remove(window);
         _streams.RemoveAll(s => s.Window == window);
     }
@@ -47,7 +52,8 @@ internal sealed class PrimaryOutgoingTransfer(uint window, uint property, uint t
     public uint Property => property;
     public uint Target => target;
     public byte[] Payload => payload;
-    public long Started => started;
+    public long Started { get; } = started;
+    public long LastProgress = started;
     public int Offset;
 }
 

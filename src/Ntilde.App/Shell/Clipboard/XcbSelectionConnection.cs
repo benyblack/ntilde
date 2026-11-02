@@ -114,6 +114,8 @@ internal sealed class XcbSelectionConnection : IDisposable
 
     private uint ReadTimestamp(uint owner) => BitConverter.ToUInt32(Convert(owner, _timestamp, sizeof(uint), 32, Integer));
 
+    internal byte[] ReadWithBudgetForTest(string mime, int budget) => Read(Owner(), Intern(mime, onlyIfExists: true), budget);
+
     public byte[] Read(uint owner, uint target, int budget)
     {
         byte[] bytes = Convert(owner, target, budget, 8, target);
@@ -157,7 +159,7 @@ internal sealed class XcbSelectionConnection : IDisposable
             if (Owner() != owner) throw new IOException("PRIMARY owner changed during the read.");
             return result.ToArray();
         }
-        finally { _localWindows.Remove(window); _ = XcbNative.DestroyWindow(_connection, window); Flush(); }
+        finally { _outgoing.Destroyed(window); _localWindows.Remove(window); _ = XcbNative.DestroyWindow(_connection, window); Flush(); }
     }
 
     private static byte[] Validate(NativeProperty value, byte format, uint type)
@@ -295,6 +297,7 @@ internal sealed class XcbSelectionConnection : IDisposable
         int count = Math.Min(ChunkBytes, stream.Payload.Length - stream.Offset);
         Change(window, property, stream.Target, 8, stream.Payload.AsSpan(stream.Offset, count).ToArray());
         stream.Offset += count;
+        _outgoing.Progress(stream);
         XcbPrimaryClipboard.TraceForTest?.Invoke($"INCR send window={window} property={property} bytes={count} offset={stream.Offset}");
         if (count == 0) _outgoing.Retire(stream);
         Flush();
@@ -318,22 +321,25 @@ internal sealed class XcbSelectionConnection : IDisposable
             {
                 CheckConnection();
                 if (XcbNative.PollReply(_connection, sequence, out nint reply, out nint error) != 0)
-                {
-                    if (error != 0)
-                    {
-                        byte code = Marshal.ReadByte(error, 1);
-                        XcbNative.Free(error);
-                        if (reply != 0) XcbNative.Free(reply);
-                        if (code == 5) throw new PrimaryInvalidAtomException();
-                        throw new IOException("X11 PRIMARY request was refused.");
-                    }
-                    if (reply == 0) throw new IOException("X11 PRIMARY returned no reply.");
-                    return new(reply);
-                }
+                    return CheckedReply(reply, error);
                 CheckDeadline(started); Thread.Sleep(1);
             }
         }
         catch { XcbNative.DiscardReply(_connection, sequence); throw; }
+    }
+
+    private static ReplyMemory CheckedReply(nint reply, nint error)
+    {
+        if (error != 0)
+        {
+            byte code = Marshal.ReadByte(error, 1);
+            XcbNative.Free(error);
+            if (reply != 0) XcbNative.Free(reply);
+            if (code == 5) throw new PrimaryInvalidAtomException();
+            throw new IOException("X11 PRIMARY request was refused.");
+        }
+        if (reply == 0) throw new IOException("X11 PRIMARY returned no reply.");
+        return new(reply);
     }
 
     private Event Wait(Func<Event, bool> matches, long started)

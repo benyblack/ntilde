@@ -123,4 +123,53 @@ public class PrimaryTransferRegistryTests
         ownership.Publish(new() { [10] = [2] }, 10);
         Assert.False(ownership.AcceptsRequest(uint.MaxValue - 5));
     }
+    [Fact]
+    public void Responsive_streams_survive_the_old_start_deadline_but_idle_streams_expire()
+    {
+        var clock = new Clock();
+        var registry = new PrimaryTransferRegistry((_, _) => { }, _ => false, clock);
+        Assert.True(registry.TryStart(1, 1, 2, [1]));
+        var stream = registry.Find(1, 1)!;
+        for (int step = 1; step <= 5; step++)
+        {
+            clock.Now = step * 9000;
+            registry.Expire();
+            Assert.Same(stream, registry.Find(1, 1));
+            registry.Progress(stream);
+        }
+        clock.Now += 10000;
+        registry.Expire();
+        Assert.Null(registry.Find(1, 1));
+    }
+
+    [Fact]
+    public void Progress_cannot_retain_a_stream_beyond_the_overall_limit()
+    {
+        var clock = new Clock();
+        var registry = new PrimaryTransferRegistry((_, _) => { }, _ => false, clock);
+        Assert.True(registry.TryStart(1, 1, 2, [1]));
+        var stream = registry.Find(1, 1)!;
+        for (int step = 1; step <= 6; step++)
+        {
+            clock.Now = step * 9000;
+            registry.Expire(); registry.Progress(stream);
+        }
+        clock.Now = 60000;
+        registry.Expire();
+        Assert.Null(registry.Find(1, 1));
+    }
+
+    [Fact]
+    public void Repeated_aborted_local_reads_release_stream_slots_without_foreign_subscriptions()
+    {
+        var registry = new PrimaryTransferRegistry((_, _) => throw new InvalidOperationException("local window subscription"), _ => true);
+        for (uint window = 1; window <= 1000; window++)
+        {
+            Assert.True(registry.TryStart(window, 1, 2, [1]));
+            Assert.True(registry.TryStart(window, 3, 2, [1]));
+            registry.Destroyed(window); // Convert's finally calls this before destroying its receive window.
+            Assert.Null(registry.Find(window, 1)); Assert.Null(registry.Find(window, 3));
+        }
+        Assert.Equal(0, registry.SubscriptionCount);
+    }
 }

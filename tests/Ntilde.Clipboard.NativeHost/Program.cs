@@ -74,7 +74,11 @@ internal sealed class ClipboardScenario(Window window, string root)
         bool allowPrimaryRead = false;
         string location = Program.Primary ? ":loc=primary" : "";
         const string sentinel = "Ntilde isolated default clipboard sentinel";
-        if (Program.Primary) await adapter.WriteAsync(new Dictionary<string, byte[]> { [TextMime] = System.Text.Encoding.UTF8.GetBytes(sentinel) });
+        if (Program.Primary)
+        {
+            await adapter.WriteAsync(new Dictionary<string, byte[]> { [TextMime] = System.Text.Encoding.UTF8.GetBytes(sentinel) });
+            VerifyAbortedPrimarySelfReads();
+        }
         var primary = new XcbPrimaryClipboard((_, _) => Task.FromResult(allowPrimaryRead ? ClipboardReadConsent.AllowOnce : ClipboardReadConsent.Deny));
         using var session = new KittyClipboardSession(new ClipboardLocations(adapter, primary), reply => { _replies.Enqueue(reply); return true; },
             work => Task.Run(() => Dispatcher.UIThread.InvokeAsync(work), CancellationToken.None), () => true, () => true);
@@ -156,6 +160,24 @@ internal sealed class ClipboardScenario(Window window, string root)
         var counts = await primary.TransferCountsAsync();
         if (counts.Sent == 0 || counts.Received == 0) throw new InvalidDataException("PRIMARY self-read did not exercise INCR.");
         return counts;
+    }
+
+    private static void VerifyAbortedPrimarySelfReads()
+    {
+        using var connection = new XcbSelectionConnection();
+        connection.Write(new Dictionary<string, byte[]> { [BinaryMime] = new byte[256 * 1024] });
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            int before = connection.IncrementalReceives;
+            bool refused = false;
+            try
+            {
+                _ = connection.ReadWithBudgetForTest(BinaryMime, 1);
+            }
+            catch (IOException) { refused = true; }
+            if (!refused || connection.IncrementalReceives != before + 1)
+                throw new InvalidDataException("Aborted PRIMARY self-reads exhausted outgoing stream slots.");
+        }
     }
 
     private async Task VerifyPrimaryResultAsync(KittyClipboardSession session, XcbPrimaryClipboard primary,

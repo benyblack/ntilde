@@ -39,7 +39,7 @@ and expose at most 128 MIME types. Explicit reads resolve requested MIME atoms
 directly without creating new atoms. Writes retain at most 128 MiB of materialized MIME and
 alias values, sharing immutable alias buffers. At most 16 outgoing INCR streams
 and 128 MiB of referenced stream payloads can remain active; streams expire after
-10 seconds. The last stream on each foreign requestor window releases its event
+10 seconds without progress or one minute overall. The last stream on each foreign requestor window releases its event
 subscription; local read-window subscriptions remain until that read ends. A
 stale SelectionClear cannot erase data successfully reacquired on the worker.
 Reads have bounded reply/transfer waits. A failed receive destroys
@@ -63,6 +63,10 @@ and paste-token separation. `PrimaryTransferRegistryTests` covers 1,000 persiste
 requestors, shared/local subscriptions, expiry/destruction, stream/payload caps,
 and stale ownership loss with in-flight bytes retained. Local-display parsing
 has deterministic cases.
+Registry tests use a fake clock to distinguish activity from inactivity and
+enforce the overall limit. The native host performs 20 deliberately over-budget
+self-reads before the peer exchange, exceeding the stream-slot cap unless each
+aborted receive retires its local outgoing stream.
 The disposable Linux/Xvfb native workflow exchanges text, HTML, PNG, binary and
 aliases with an independent GTK primary-selection peer. The host verifies large binary/alias bytes, a TARGETS list exceeding 144 atoms,
 and stable snapshots across same-owner republication. It requires observed
