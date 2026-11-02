@@ -39,7 +39,7 @@ Act and clipboard writes stay off.
 | Selective 22/28/29/25 resets | The new `B` drops only the selected rendition; 22 also clears bold. Other flags, literal foreground/background, underline style/color and earlier `A` survive |
 | SGR 0 | The new cell returns the tested flags/colors/underline metadata to defaults while earlier cells survive |
 | Unicode | Exact BMP, combining, wide and supplementary content, physical continuation/extended flags and independently expected cursor widths |
-| DEC charsets | Line drawing and special symbols; G0/G1 SI/SO mapping with ASCII designation/shift restored before subsequent fixtures |
+| DEC charsets | Line drawing and special symbols; G0/G1 SI/SO mapping; reset spellings sent without a lowercase post-reset probe in v1 |
 | Cursor visibility | DECTCEM hide/show changes the recorded visibility without changing cells, cursor position or style |
 | DECSCUSR 0..6 | Exact stored block/bar/underline style and blinking/steady mode, with explicit style overriding the host-default marker |
 | Invalid DECSCUSR 7 | The normalized stored mode remains unchanged |
@@ -89,3 +89,8 @@ After adding the two published-data checks and the unaffected-visibility
 regression, the complete Node suite passed 218 tests with zero skips.
 The main App lane passed 7,776 tests with 56 platform-specific skips; the
 separate PlatformBoot lane passed 75 with four platform-specific skips.
+
+This first rendition record uses suite v1 and verifies DEC mapping. Its reset
+sequences were sent, but no lowercase post-reset probe independently verified
+designation restoration. A subsequent v2 measurement adds those explicit
+probes; v1 snapshots and hashes remain unchanged.

@@ -20,6 +20,7 @@ export function stateScreen(first = '', details = [], { col = first.length, cont
 export function stateFrames(prefix, nonce, initial, samples, control, binding) {
     const values = [initial, binding(nonce + runId), ...samples.flatMap(([, steps]) => [control(),
         ...steps.map(([, screen]) => screen)]), structuredClone(initial)];
+    /** Keep lifecycle ordering explicit in independent test frames. */
     const kind = index => {
         if (index === 0) return prefix + '-start';
         if (index === 1) return prefix + '-bind';

@@ -1,7 +1,8 @@
 import { collectCells, validateFrames } from './cells.mjs';
 import { matchesRgb } from './rgb.mjs';
 
-export const renditionSuiteId = 'ntilde-owned-rendition-charsets-v1';
+export const renditionSuiteId = 'ntilde-owned-rendition-charsets-v2';
+const legacySuiteId = 'ntilde-owned-rendition-charsets-v1';
 const normal = changes => ({ flags: 768, fg: -1, bg: -1, foregroundArgb: null, backgroundArgb: null,
     underlineStyle: 0, underlineColorIndex: -1, underlineArgb: null, ...changes });
 const view = (first, col, details = []) => ({ first, row: 0, col, details });
@@ -23,10 +24,18 @@ export const renditionCases = Object.freeze([
     fixture('charsets.utf8.combining', [['e\u0301', view('e\u0301', 1, [normal({ flags: 8960 })])]]),
     fixture('charsets.utf8.wide', [['中', view('中', 2, [normal({ flags: 2816 }), normal({ flags: 4864 })])]]),
     fixture('charsets.utf8.supplementary', [['😀', view('😀', 2, [normal({ flags: 11008 }), normal({ flags: 4864 })])]]),
-    fixture('charsets.dec-line-drawing', [['\x1b(0lqk\x1b(B', view('┌─┐', 3)]]),
-    fixture('charsets.dec-special', [['\x1b(0ABfg\x1b(B', view('AB°±', 4)]]),
-    fixture('charsets.g0-g1-switching', [['\x1b(B\x1b)0A\x0eqx\x0fB\x1b)B', view('A─│B', 4)]]),
+    fixture('charsets.dec-line-drawing', [['\x1b(0lqk\x1b(Bqx', view('┌─┐qx', 5)]]),
+    fixture('charsets.dec-special', [['\x1b(0ABfg\x1b(Bqx', view('AB°±qx', 6)]]),
+    fixture('charsets.g0-g1-switching', [['\x1b(B\x1b)0A\x0eqx\x0fB\x1b)B\x0eqx\x0f', view('A─│Bqx', 6)]]),
 ]);
+
+/** Preserve the first retained mapping measurement without inventing later ASCII probes. */
+const legacyCases = renditionCases.map(item => {
+    if (item.id === 'charsets.dec-line-drawing') return fixture(item.id, [['\x1b(0lqk\x1b(B', view('┌─┐', 3)]]);
+    if (item.id === 'charsets.dec-special') return fixture(item.id, [['\x1b(0ABfg\x1b(B', view('AB°±', 4)]]);
+    if (item.id === 'charsets.g0-g1-switching') return fixture(item.id, [['\x1b(B\x1b)0A\x0eqx\x0fB\x1b)B', view('A─│B', 4)]]);
+    return item;
+});
 
 /** Bind a separate owned alternate screen; every charset case restores ASCII designation/shift. */
 export async function collectRendition(options) {
@@ -40,10 +49,12 @@ export async function collectRendition(options) {
 }
 
 /** Derive only observed state; appearance, overline and blink timing remain separate. */
-export function buildRenditionReport(snapshots, runId) {
-    validateFrames(snapshots, runId, { fixtures: renditionCases, prefix: 'rendition', noncePrefix: 'NTILDE_RD_', includeCellDetails: true });
+export function buildRenditionReport(snapshots, runId, suiteId = renditionSuiteId) {
+    if (![renditionSuiteId, legacySuiteId].includes(suiteId)) throw new Error('Unknown rendition evidence revision.');
+    const fixtures = suiteId === legacySuiteId ? legacyCases : renditionCases;
+    validateFrames(snapshots, runId, { fixtures, prefix: 'rendition', noncePrefix: 'NTILDE_RD_', includeCellDetails: true });
     let offset = 2;
-    const observations = renditionCases.map(item => {
+    const observations = fixtures.map(item => {
         const before = snapshots[offset++];
         if (before.kind !== 'rendition-read') throw new Error('Missing rendition control.');
         const assertions = item.steps.map(([sequence, expected]) => {
@@ -55,7 +66,7 @@ export function buildRenditionReport(snapshots, runId) {
         const qualified = assertions.every(value => value.passed) ? 'passed' : 'failed';
         return { featureId: item.id, before: before.index, assertions, result: ready ? qualified : 'inconclusive' };
     });
-    return { schemaVersion: 1, suiteId: renditionSuiteId, runId, complete: true,
+    return { schemaVersion: 1, suiteId, runId, complete: true,
         scope: 'Stored faint/hidden/strikethrough/blink flags and decoded Unicode/DEC charset cells. No overline, pixels, blink timing or stock grades.',
         initialSnapshot: 0, restoredSnapshot: snapshots.length - 1, snapshots, observations };
 }

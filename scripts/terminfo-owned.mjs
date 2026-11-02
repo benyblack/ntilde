@@ -15,6 +15,7 @@ import { buildSgrReport } from './terminfo/sgr.mjs';
 import { buildRgbReport, rgbCases, rgbSuiteId } from './terminfo/rgb.mjs';
 import { buildRenditionReport, renditionCases, renditionSuiteId } from './terminfo/rendition.mjs';
 import { buildCursorReport, cursorCases, cursorSuiteId } from './terminfo/cursor.mjs';
+import { completeOwnedReceipt } from './terminfo/receipt.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -101,6 +102,7 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
         rgbSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'rgb.mjs'),
         renditionSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'rendition.mjs'),
         cursorSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'cursor.mjs'),
+        receiptSourceSha256: join(repo, 'scripts', 'terminfo', 'receipt.mjs'),
         collectorManifestSha256: join(repo, 'scripts', 'terminfo', 'collector-package.json'),
         collectorLockSha256: join(repo, 'scripts', 'terminfo', 'collector-package-lock.json'),
     };
@@ -124,17 +126,6 @@ function retainCellReport(output, observer, runId, buildReport = buildCellReport
         provisionalUntil: 'cell-receipt.json' };
 }
 
-function completeCellReceipt(output, scratch, evidence) {
-    const proofBytes = readFileSync(join(output, 'ownership-proof.json'));
-    const proof = JSON.parse(proofBytes);
-    if (!proof.completed || !proof.cleanedUpAt || proof.cleanupError || existsSync(scratch)) {
-        throw new Error('Owned cell evidence has no completed cleanup.');
-    }
-    writeJson(join(output, 'cell-receipt.json'), { schemaVersion: 1, ...evidence,
-        ownershipProofSha256: hash(proofBytes), contextSha256: hash(readFileSync(join(output, 'context.json'))),
-        rawSha256: hash(readFileSync(join(output, 'raw.json'))), fixtureRemoved: true,
-        completedAt: new Date().toISOString() });
-}
 
 async function terminateLaunchedApp(app) {
     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return;
@@ -431,7 +422,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
         throw interruption;
     }
-    try { completeCellReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence }); }
+    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence }); }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
 

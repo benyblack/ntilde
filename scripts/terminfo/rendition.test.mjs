@@ -20,9 +20,9 @@ const samples = [
     ['charsets.utf8.combining', [['e\u0301', stateScreen('e\u0301', [[8960, -1, -1, null, null, 0, -1, null]], { col: 1 })]]],
     ['charsets.utf8.wide', [['中', stateScreen('中', [[2816, -1, -1, null, null, 0, -1, null], [4864, -1, -1, null, null, 0, -1, null]], { col: 2 })]]],
     ['charsets.utf8.supplementary', [['😀', stateScreen('😀', [[11008, -1, -1, null, null, 0, -1, null], [4864, -1, -1, null, null, 0, -1, null]], { col: 2 })]]],
-    ['charsets.dec-line-drawing', [['\x1b(0lqk\x1b(B', stateScreen('┌─┐')]]],
-    ['charsets.dec-special', [['\x1b(0ABfg\x1b(B', stateScreen('AB°±')]]],
-    ['charsets.g0-g1-switching', [['\x1b(B\x1b)0A\x0eqx\x0fB\x1b)B', stateScreen('A─│B')]]],
+    ['charsets.dec-line-drawing', [['\x1b(0lqk\x1b(Bqx', stateScreen('┌─┐qx')]]],
+    ['charsets.dec-special', [['\x1b(0ABfg\x1b(Bqx', stateScreen('AB°±qx')]]],
+    ['charsets.g0-g1-switching', [['\x1b(B\x1b)0A\x0eqx\x0fB\x1b)B\x0eqx\x0f', stateScreen('A─│Bqx')]]],
 ];
 const frames = () => stateFrames('rendition', 'NTILDE_RD_', stateScreen('', [], { control: '' }), samples,
     () => stateScreen(), nonce => stateScreen(nonce, [], { control: '' }));
@@ -41,7 +41,7 @@ for (const [name, change, result] of [
     ['unaffected cell style changes', f => { f[3].screen.cellDetails.at(-1).flags |= 1; }, 'failed'],
 ]) test(name, () => { const input = frames(); change(input); rehash(input); assert.equal(buildRenditionReport(input, runId).observations[0].result, result); });
 
-test('wrong combining width or lost supplementary metadata fails qualified assertions', () => {
+test('wrong combining width fails qualified assertions', () => {
     const input = frames();
     const before = buildRenditionReport(input, runId);
     const combining = before.observations.find(value => value.featureId === 'charsets.utf8.combining');
@@ -74,7 +74,7 @@ test('initial known refusal performs no writes; other errors remain fatal', asyn
 test('published renditionReport re-derives and matches the shared cleanup receipt', () => {
     const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-02-rendition-cursor.json', import.meta.url)));
     const report = published.renditionReport, receipt = published.completionReceipt;
-    assert.deepEqual(buildRenditionReport(report.snapshots, report.runId), report);
+    assert.deepEqual(buildRenditionReport(report.snapshots, report.runId, report.suiteId), report);
     assert.equal(createHash('sha256').update(JSON.stringify(report, null, 2) + '\n').digest('hex'), receipt.renditionEvidence.sha256);
     assert.equal(report.runId, receipt.runId);
     assert.equal(receipt.renditionEvidence.runId, report.runId);
@@ -91,4 +91,17 @@ test('published renditionReport re-derives and matches the shared cleanup receip
     assert.equal(ascii.sha256, receipt.sha256);
     assert.equal(ascii.runId, receipt.runId);
     assert.deepEqual(ascii.counts, { passed: 8 });
+});
+
+
+test('post-restoration probes detect an ignored G0 or G1 ASCII designation', () => {
+    for (const id of ['charsets.dec-line-drawing', 'charsets.dec-special', 'charsets.g0-g1-switching']) {
+        const input = frames(), report = buildRenditionReport(input, runId);
+        const observation = report.observations.find(value => value.featureId === id);
+        const target = input[observation.assertions[0].snapshot];
+        assert.ok(target.screen.lines[0].endsWith('qx'));
+        target.screen.lines[0] = target.screen.lines[0].slice(0, -2) + '─│';
+        rehash(input);
+        assert.equal(buildRenditionReport(input, runId).observations.find(value => value.featureId === id).result, 'failed');
+    }
 });
