@@ -422,3 +422,7 @@ unsent clipboard probes. Source limitations and measurement gaps are kept
 separate from original grades. Validate the inventory offline with
 `python3 scripts/terminfo-triage.py --check`; no private artifact or live terminal
 is needed for that check.
+
+The [revision-2 charset restoration measurement](terminfo/2026-11-02-rendition-cursor-restoration.md)
+adds lowercase post-reset probes and the portable production receipt finalizer.
+The original v1 mapping measurement remains unchanged.

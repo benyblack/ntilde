@@ -71,8 +71,9 @@ test('initial known refusal performs no writes; other errors remain fatal', asyn
 });
 
 
-test('published renditionReport re-derives and matches the shared cleanup receipt', () => {
-    const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-02-rendition-cursor.json', import.meta.url)));
+for (const filename of ['2026-11-02-rendition-cursor.json', '2026-11-02-rendition-cursor-restoration.json'])
+test('published renditionReport re-derives and matches the shared cleanup receipt: ' + filename, () => {
+    const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/' + filename, import.meta.url)));
     const report = published.renditionReport, receipt = published.completionReceipt;
     assert.deepEqual(buildRenditionReport(report.snapshots, report.runId, report.suiteId), report);
     assert.equal(createHash('sha256').update(JSON.stringify(report, null, 2) + '\n').digest('hex'), receipt.renditionEvidence.sha256);

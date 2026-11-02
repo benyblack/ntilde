@@ -68,8 +68,9 @@ test('known initial budget refusal performs no reset, unrelated errors remain fa
 });
 
 
-test('published cursorReport re-derives and matches the shared cleanup receipt', () => {
-    const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-02-rendition-cursor.json', import.meta.url)));
+for (const filename of ['2026-11-02-rendition-cursor.json', '2026-11-02-rendition-cursor-restoration.json'])
+test('published cursorReport re-derives and matches the shared cleanup receipt: ' + filename, () => {
+    const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/' + filename, import.meta.url)));
     const report = published.cursorReport, receipt = published.completionReceipt;
     assert.deepEqual(buildCursorReport(report.snapshots, report.runId), report);
     assert.equal(createHash('sha256').update(JSON.stringify(report, null, 2) + '\n').digest('hex'), receipt.cursorEvidence.sha256);
