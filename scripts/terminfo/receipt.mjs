@@ -8,7 +8,12 @@ const suites = ['sgr', 'rgb', 'rendition', 'cursor'];
 /** Refuse any remaining fixture entry, including a dangling symlink. */
 function fixtureRemains(scratch) {
     try { lstatSync(scratch); return true; }
-    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+    catch (error) {
+        if (error.code === 'ENOENT') {
+            return false;
+        }
+        throw error;
+    }
 }
 
 /** Bind every required report or unavailable marker to this run and its exact retained bytes. */
