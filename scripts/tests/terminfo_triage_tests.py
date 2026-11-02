@@ -119,6 +119,47 @@ class TerminfoTriageTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Raw SHA-256"):
                     triage.build(raw)
 
+    def test_successful_regeneration_preserves_records_routes_traces_and_provenance(self):
+        observations = [
+            {"featureId": "extensions.osc104-reset-palette", "outcome": "inconclusive", "reason": "insufficient-evidence", "rawReplyRef": "reset"},
+            {"featureId": "extensions.osc633-a", "outcome": "inconclusive", "reason": "insufficient-evidence", "rawReplyRef": "limited"},
+            {"featureId": "extensions.osc52-read", "outcome": "inconclusive", "reason": "policy-refused"},
+            {"featureId": "text.basic", "outcome": "supported"},
+        ]
+        raw = {"sourceRevision": triage.COLLECTOR_REVISION, "target": {"version": "0.12.0+" + triage.APP_SOURCE_HINT},
+               "measuredAt": "2026-11-02T00:00:00Z", "identity": "unverified", "suiteComplete": False,
+               "observations": observations, "rawReplies": {"reset": "reset trace", "limited": "limited trace"}}
+        raw_bytes = json.dumps(raw).encode("utf-8")
+        source_bytes = b"synthetic frozen source\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "raw.json"
+            path.write_bytes(raw_bytes)
+            # This small fixture tests construction; the other tests enforce the real 177-row pins.
+            with patch.object(triage, "RAW_SHA", triage.digest(raw_bytes)), \
+                    patch.object(triage.subprocess, "run", return_value=triage.subprocess.CompletedProcess([], 0, stdout=source_bytes)) as git, \
+                    patch.object(triage, "validate") as validate:
+                report = triage.build(path)
+                validate.assert_called_once_with(report)
+        self.assertEqual(observations[:3], [row["original"] for row in report["observations"]])
+        self.assertEqual(["Q02", "Q10", "Q11"], [row["action"] for row in report["observations"]])
+        self.assertEqual([triage.digest(b"reset trace"), triage.digest(b"limited trace"), None],
+                         [row["traceSha256"] for row in report["observations"]])
+        self.assertIn("OSC 633", report["observations"][1]["sourceLimitation"])
+        self.assertNotIn("sourceLimitation", report["observations"][0])
+        self.assertEqual({"supported": 1, "unsupported": 0, "inconclusive": 3}, report["originalOutcomes"])
+        self.assertEqual(raw["sourceRevision"], report["collectorSourceRevision"])
+        self.assertEqual(triage.APP_SOURCE_HINT, report["appSourceHint"])
+        self.assertEqual(triage.AUDIT_REVISION, report["sourceAuditRevision"])
+        self.assertEqual(raw["target"]["version"], report["appVersionHint"])
+        self.assertEqual(raw["measuredAt"], report["measuredAt"])
+        self.assertEqual("unverified", report["identity"])
+        self.assertFalse(report["suiteComplete"])
+        self.assertEqual(triage.digest(raw_bytes), report["rawSha256"])
+        files = {path for item in triage.ACTIONS.values() for path in item["sourceFiles"]}
+        self.assertEqual({path: triage.digest(source_bytes) for path in files}, report["sourceFileSha256"])
+        self.assertEqual(len(files), git.call_count)
+        self.assertTrue(all(call.args[0][2].startswith(triage.AUDIT_REVISION + ":") for call in git.call_args_list))
+
 
 if __name__ == "__main__":
     unittest.main()
