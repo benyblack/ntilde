@@ -10,7 +10,8 @@ import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, valid
 import { assertProcessOwnership, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
 import { OwnedCellObserver } from './terminfo/agent-observer.mjs';
-import { buildCellReport, cellSuiteId } from './terminfo/cells.mjs';
+import { buildCellReport } from './terminfo/cells.mjs';
+import { buildSgrReport } from './terminfo/sgr.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -84,6 +85,8 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
         observerSourceSha256: join(repo, 'scripts', 'terminfo', 'agent-observer.mjs'),
         cellSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'cells.mjs'),
         cellFenceSourceSha256: join(repo, 'scripts', 'terminfo', 'terminal-fence.mjs'),
+        attributeSourceSha256: join(repo, 'scripts', 'terminfo', 'attributes.mjs'),
+        sgrSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'sgr.mjs'),
         collectorManifestSha256: join(repo, 'scripts', 'terminfo', 'collector-package.json'),
         collectorLockSha256: join(repo, 'scripts', 'terminfo', 'collector-package-lock.json'),
     };
@@ -96,14 +99,13 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
     return digests;
 }
 
-function retainCellReport(output, observer, runId) {
+function retainCellReport(output, observer, runId, buildReport = buildCellReport, file = 'cell-observations.json') {
     if (!observer?.restored) throw new Error('Owned cell observation or restoration did not complete.');
-    const report = buildCellReport(observer.frames, runId);
-    const file = 'cell-observations.json';
+    const report = buildReport(observer.frames, runId);
     writeJson(join(output, file), report);
     const counts = {};
     for (const item of report.observations) counts[item.result] = (counts[item.result] ?? 0) + 1;
-    return { runId, suiteId: cellSuiteId, file, sha256: hash(readFileSync(join(output, file))), counts,
+    return { runId, suiteId: report.suiteId, file, sha256: hash(readFileSync(join(output, file))), counts,
         provisionalUntil: 'cell-receipt.json' };
 }
 
@@ -188,6 +190,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let output;
     let preserveScratch = false;
     let cellEvidence;
+    let sgrEvidence;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
@@ -227,6 +230,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let app;
         let workerIdentity;
         let cellObserver;
+        let sgrObserver;
         let completed = false;
         const proofs = [];
         const image = statSync(executable);
@@ -240,8 +244,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
             clipboard: 'disabled; no clipboard fixture', pixels: 'no pixel capture adapter',
             cells: 'private observe-only AgentHost; nonce-bound pane; separate ASCII cell-state suite',
+            attributes: 'separate ASCII SGR flags and palette-index suite; no RGB, underline metadata or pixels',
         };
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         const server = createServer(socket => {
             let buffer = '';
             socket.setTimeout(5000, () => socket.destroy());
@@ -269,10 +275,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (['cell-start', 'cell-bind', 'cell-read', 'cell-finish'].includes(request.kind)) {
-                        cellObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName, nonce: config.cellNonce });
-                        const result = await cellObserver.handle(request.kind, queryTimeout, request.barrier);
-                        appendFileSync(join(output, 'cell-snapshots.jsonl'), JSON.stringify(cellObserver.frames.at(-1)) + '\n');
+                    if (/^(?:cell|sgr)-(?:start|bind|read|finish)$/.test(request.kind)) {
+                        const attributes = request.kind.startsWith('sgr-');
+                        if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
+                        if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                            nonce: `NTILDE_SG_${runId}`, includeAttributes: true, prefix: 'sgr', expectedPaneId: cellObserver.paneId });
+                        else cellObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName, nonce: config.cellNonce });
+                        const observer = attributes ? sgrObserver : cellObserver;
+                        const result = await observer.handle(request.kind, queryTimeout, request.barrier);
+                        appendFileSync(join(output, attributes ? 'sgr-snapshots.jsonl' : 'cell-snapshots.jsonl'), JSON.stringify(observer.frames.at(-1)) + '\n');
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
                         return;
                     }
@@ -315,7 +326,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             await done;
             const summary = collectionSummary(output, args[3]);
             cellEvidence = retainCellReport(output, cellObserver, runId);
+            sgrEvidence = retainCellReport(output, sgrObserver, runId, buildSgrReport, 'sgr-observations.json');
             summary.cellEvidence = cellEvidence;
+            summary.sgrEvidence = sgrEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
@@ -343,7 +356,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
         throw interruption;
     }
-    try { completeCellReceipt(output, scratch, cellEvidence); }
+    try { completeCellReceipt(output, scratch, { ...cellEvidence, sgrEvidence }); }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
 

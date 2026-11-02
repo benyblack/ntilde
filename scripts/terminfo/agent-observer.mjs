@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { join } from 'node:path';
+import { copyAttributeRuns, readAttributeRuns } from './attributes.mjs';
 
 export const snapshotHash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
@@ -56,7 +57,7 @@ export function agentRequest(endpoint, method, params, timeoutMs) {
     });
 }
 
-export function screenSnapshot(value) {
+export function screenSnapshot(value, includeAttributes = false) {
     if (!Number.isSafeInteger(value?.rows) || value.rows < 3 || value.rows > 128
         || !Number.isSafeInteger(value.cols) || value.cols < 48 || value.cols > 256
         || !Array.isArray(value.lines) || value.lines.length !== value.rows
@@ -64,13 +65,16 @@ export function screenSnapshot(value) {
         || !Number.isSafeInteger(value.cursorRow) || value.cursorRow < 0 || value.cursorRow >= value.rows
         || !Number.isSafeInteger(value.cursorCol) || value.cursorCol < 0 || value.cursorCol >= value.cols
         || typeof value.cursorVisible !== 'boolean') throw new Error('Invalid or unsupported observer geometry/state.');
-    return { rows: value.rows, cols: value.cols, lines: [...value.lines],
+    const result = { rows: value.rows, cols: value.cols, lines: [...value.lines],
         cursorRow: value.cursorRow, cursorCol: value.cursorCol, cursorVisible: value.cursorVisible };
+    if (includeAttributes) result.attributeRuns = copyAttributeRuns(value.attributeRuns, value.rows * value.cols);
+    return result;
 }
 
 export class OwnedCellObserver {
-    constructor({ appData, ownerPid, profileName, nonce, rpc = agentRequest, endpoint = observerEndpoint }) {
-        Object.assign(this, { appData, ownerPid, profileName, nonce, rpc, endpoint });
+    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
+        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, prefix, rpc, endpoint });
+        this.paneId = expectedPaneId;
         this.snapshots = 0;
         this.frames = [];
     }
@@ -92,7 +96,10 @@ export class OwnedCellObserver {
     async capture(budget) {
         if (++this.snapshots > 64) throw new Error('Cell snapshot budget exhausted.');
         const before = await this.session(budget);
-        const screen = screenSnapshot(await this.request('readScreen', { paneId: before.paneId, includeAttributes: false }, budget));
+        const raw = await this.request('readScreen', { paneId: before.paneId, includeAttributes: this.includeAttributes }, budget);
+        const projection = screenSnapshot(raw);
+        if (this.includeAttributes) projection.attributeRuns = readAttributeRuns(raw.attributeLines, projection.rows, projection.cols);
+        const screen = screenSnapshot(projection, this.includeAttributes);
         const after = await this.session(budget);
         if (before.paneId !== after.paneId || before.rows !== screen.rows || before.cols !== screen.cols
             || after.rows !== screen.rows || after.cols !== screen.cols
@@ -105,13 +112,14 @@ export class OwnedCellObserver {
 
     async handle(kind, budget, barrier = null) {
         if (this.busy || this.restored) throw new Error('Cell observation is busy or already complete.');
-        if (!['cell-start', 'cell-bind', 'cell-read', 'cell-finish'].includes(kind)) throw new Error('Unknown cell operation.');
-        if (kind !== 'cell-start' && (typeof barrier !== 'string' || barrier.length > 128 || !/^\x1b\[\?[\d;]+c$/.test(barrier))) {
+        const operation = kind.startsWith(this.prefix + '-') ? kind.slice(this.prefix.length + 1) : '';
+        if (!['start', 'bind', 'read', 'finish'].includes(operation)) throw new Error('Unknown cell operation.');
+        if (operation !== 'start' && (typeof barrier !== 'string' || barrier.length > 128 || !/^\x1b\[\?[\d;]+c$/.test(barrier))) {
             throw new Error('Missing cell ordering barrier.');
         }
         this.busy = true;
         try {
-            const result = await this.observe(kind, budget);
+            const result = await this.observe('cell-' + operation, budget);
             this.frames.push({ index: this.frames.length, kind, paneId: result.paneId,
                 barrier, screen: result.screen, sha256: snapshotHash(result.screen) });
             return result;
