@@ -24,8 +24,10 @@ scenario's stated `Intent` before publishing, and reports what changed.
 
 ## Where things live
 
-- **This directory** — the *published* variants: PNGs (and, where it actually beats the PNG, a
-  smaller lossless WebP sibling) sized for their destination:
+- **This directory** — the *published* variants, and only the ones something displays: a run
+  publishes a file only if `README.md` or `site/scripts/sync-screenshots.mjs` names it, and
+  `--prune` removes the rest. Every re-publish stores a full copy in git history, so variants
+  nothing shows are never committed. To ship a new one, reference it there first. Sizes:
   - `<name>-readme.png[.webp]` — 1280px wide, for `README.md`.
   - `<name>-site.png[.webp]` — 2400px wide, for the marketing site (`site/public/shots/`).
   - `og-card.png` (1200×630) and `social-square.png` (1080×1080) — social-preview cards, derived
@@ -46,10 +48,10 @@ scenario's stated `Intent` before publishing, and reports what changed.
 
 ## Scenarios you won't find here
 
-- **`hero-split`** — registered and runnable, but held back from publishing. At 2x scale the
+- **`hero-split`** — registered and runnable, but nothing references it yet, so it is not published. At 2x scale the
   bottom-right pane draws its last rows shifted to the right edge even though the terminal buffer
   holds them correctly; 1x renders clean. That is a renderer bug in the app, not in this harness,
-  and a published hero image should not show it. Publish it again once the bug is fixed.
+  and a published hero image should not show it. Reference it from the README or site once the bug is fixed.
 - **`remote-files`** — needs a live, connected SSH session the offline harness has no way to
   provide, so `ScenarioCatalog` does not register it.
 

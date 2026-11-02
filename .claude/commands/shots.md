@@ -12,7 +12,8 @@ Scenarios requested: $ARGUMENTS (empty means `all`).
 
    `all` runs every scenario `ScenarioCatalog` registers. `remote-files` is not registered (it
    needs a live SSH session), so it produces no assets - don't report or imply it ran.
-   `hero-split` runs, but see `docs/assets/shots/README.md` before publishing it.
+   `--publish` ships only the files `README.md` or `site/scripts/sync-screenshots.mjs` reference;
+   review those, and reference a new variant there before expecting it to publish.
 
 2. Read `artifacts/shots/shots.json` to get the produced asset list.
 

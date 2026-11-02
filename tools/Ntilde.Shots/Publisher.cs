@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Ntilde.Shots;
 
 /// <summary>
@@ -19,6 +21,43 @@ public static class Publisher
     /// second time.
     /// </summary>
     private static readonly string[] ManagedExtensions = [".png", ".webp", .. ClipExtensions];
+
+    /// <summary>
+    /// The files that decide what ships: the README's image tags and the site's list of the shots it
+    /// copies into <c>site/public/shots/</c>. Every generated file costs its full size in git history
+    /// on each re-publish, so a variant nothing displays is not committed at all.
+    /// </summary>
+    private static readonly string[] ReferenceSources =
+        ["README.md", Path.Combine("site", "scripts", "sync-screenshots.mjs")];
+
+    private static readonly Regex AssetFileName =
+        new(@"[A-Za-z0-9][A-Za-z0-9.-]*\.(?:png|webp|gif|webm)\b", RegexOptions.Compiled);
+
+    /// <summary>
+    /// The bare file names (<c>hero-single-readme.png</c>, <c>og-card.png</c>) that
+    /// <see cref="ReferenceSources"/> under <paramref name="repositoryRoot"/> mention. A path like
+    /// <c>docs/assets/shots/x.png</c> contributes <c>x.png</c>; names of files that are not shots
+    /// (the app icon) are harmless, because only a run's own variants are ever matched against them.
+    /// </summary>
+    public static IReadOnlySet<string> ReferencedFileNames(string repositoryRoot)
+    {
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string source in ReferenceSources)
+        {
+            string path = Path.Combine(repositoryRoot, source);
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            foreach (Match match in AssetFileName.Matches(File.ReadAllText(path)))
+            {
+                names.Add(match.Value);
+            }
+        }
+
+        return names;
+    }
 
     /// <summary>
     /// Where <paramref name="asset"/> belongs under <paramref name="repositoryRoot"/>'s published
@@ -59,18 +98,22 @@ public static class Publisher
     /// siblings <see cref="Encoder"/> actually produced. Tier 1/2 masters and each clip's own
     /// Tier 4 PNG capture are deliberately skipped - see the type remarks.
     /// </summary>
+    /// <param name="only">
+    /// When given, the destination file names allowed to ship (see <see cref="ReferencedFileNames"/>);
+    /// every other variant stays in <c>artifacts/</c>. Null publishes everything the run produced.
+    /// </param>
     /// <returns>
     /// The paths that were copied, relative to <paramref name="repositoryRoot"/>, in the order
     /// they were written.
     /// </returns>
-    public static IReadOnlyList<string> Publish(ShotRun run, string repositoryRoot)
+    public static IReadOnlyList<string> Publish(ShotRun run, string repositoryRoot, IReadOnlySet<string>? only = null)
     {
         string assetsDirectory = Path.GetFullPath(Path.Combine(repositoryRoot, "docs", "assets", "shots"));
         Directory.CreateDirectory(assetsDirectory);
 
         var published = new List<string>();
 
-        foreach (ShotAsset asset in run.Assets.Where(a => a.Tier == 3))
+        foreach (ShotAsset asset in run.Assets.Where(a => a.Tier == 3 && Ships(a, only)))
         {
             published.Add(CopyToDestination(asset, repositoryRoot));
         }
@@ -90,12 +133,21 @@ public static class Publisher
                     continue;
                 }
 
-                published.Add(CopyToDestination(clipMaster with { File = clipFile }, repositoryRoot));
+                ShotAsset clip = clipMaster with { File = clipFile };
+                if (!Ships(clip, only))
+                {
+                    continue;
+                }
+
+                published.Add(CopyToDestination(clip, repositoryRoot));
             }
         }
 
         return published;
     }
+
+    private static bool Ships(ShotAsset asset, IReadOnlySet<string>? only) =>
+        only is null || only.Contains(asset.Name + Path.GetExtension(asset.File));
 
     /// <summary>
     /// Deletes committed files under <c>docs/assets/shots/</c> that this run did not (re)publish -

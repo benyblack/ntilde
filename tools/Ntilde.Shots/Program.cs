@@ -131,7 +131,10 @@ public static class Program
             // invokes the tool from the repository root, which is also --out's own default base
             // a few lines up.
             string repositoryRoot = Directory.GetCurrentDirectory();
-            IReadOnlyList<string> published = Publisher.Publish(run, repositoryRoot);
+            // Only what README.md or the site actually displays ships; the rest stays in artifacts/.
+            // To publish a new variant, reference it there first.
+            IReadOnlyList<string> published = Publisher.Publish(
+                run, repositoryRoot, Publisher.ReferencedFileNames(repositoryRoot));
             foreach (string path in published)
             {
                 Console.WriteLine($"[shots] published {path}");

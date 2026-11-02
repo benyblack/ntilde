@@ -60,6 +60,67 @@ public sealed class PublisherTests
     }
 
     [Fact]
+    public void ReferencedFileNames_CollectsAssetNamesFromTheReadmeAndTheSiteSyncList()
+    {
+        (string repositoryRoot, string outputDirectory) = NewTempRoots();
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(repositoryRoot, "README.md"),
+                "<img src=\"docs/assets/shots/hero-single-readme.png\" />\n![clip](docs/assets/shots/clip-agent.gif)");
+            Directory.CreateDirectory(Path.Combine(repositoryRoot, "site", "scripts"));
+            File.WriteAllText(
+                Path.Combine(repositoryRoot, "site", "scripts", "sync-screenshots.mjs"),
+                "const SHOTS_FILES = ['tui-vim-site.png', 'tui-vim-site.webp', 'og-card.png'];");
+
+            IReadOnlySet<string> names = Publisher.ReferencedFileNames(repositoryRoot);
+
+            Assert.Equal(
+                ["clip-agent.gif", "hero-single-readme.png", "og-card.png", "tui-vim-site.png", "tui-vim-site.webp"],
+                names.Order(StringComparer.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(repositoryRoot, recursive: true);
+            Directory.Delete(outputDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Publish_WithAnAllowList_ShipsOnlyTheListedVariantsAndClips()
+    {
+        (string repositoryRoot, string outputDirectory) = NewTempRoots();
+        try
+        {
+            var run = new ShotRun(outputDirectory, scale: 2.0);
+
+            foreach (string name in new[] { "hero-single-readme", "hero-single-site" })
+            {
+                WriteFile(Path.Combine(outputDirectory, name + ".png"));
+                run.Record(Asset(name, tier: 3, file: Path.Combine(outputDirectory, name + ".png")));
+            }
+
+            WriteFile(Path.Combine(outputDirectory, "clip-agent@2x.png"));
+            WriteFile(Path.Combine(outputDirectory, "clip-agent.gif"));
+            WriteFile(Path.Combine(outputDirectory, "clip-agent.webm"));
+            run.Record(Asset("clip-agent", tier: 4, file: Path.Combine(outputDirectory, "clip-agent@2x.png")));
+
+            IReadOnlyList<string> published = Publisher.Publish(
+                run, repositoryRoot, new HashSet<string> { "hero-single-readme.png", "clip-agent.gif" });
+
+            string shots = Path.Combine("docs", "assets", "shots");
+            Assert.Equal([Path.Combine(shots, "hero-single-readme.png"), Path.Combine(shots, "clip-agent.gif")], published);
+            Assert.False(File.Exists(Path.Combine(repositoryRoot, shots, "hero-single-site.png")));
+            Assert.False(File.Exists(Path.Combine(repositoryRoot, shots, "clip-agent.webm")));
+        }
+        finally
+        {
+            Directory.Delete(repositoryRoot, recursive: true);
+            Directory.Delete(outputDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Publish_CopiesClipFilesButNotTheTier4PngMaster()
     {
         (string repositoryRoot, string outputDirectory) = NewTempRoots();
