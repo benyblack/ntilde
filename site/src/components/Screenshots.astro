@@ -6,9 +6,9 @@
 const basePrefix = (import.meta.env.BASE_URL ?? '/').endsWith('/')
   ? import.meta.env.BASE_URL
   : `${import.meta.env.BASE_URL}/`;
-// `webp` is set only for the variants that actually have a WebP sibling published in
-// docs/assets/shots/ (a sibling is only emitted where it beats its PNG) and mirrored into
-// site/public/shots/ by sync-screenshots.mjs. Keep this list and SHOTS_FILES there in step.
+// Every variant has a WebP sibling; one ships when it is named here and in SHOTS_FILES in
+// sync-screenshots.mjs, which mirrors docs/assets/shots/ into site/public/shots/. Keep the two
+// lists in step.
 const images = [
   { src: `${basePrefix}shots/hero-split-site.png`, webp: `${basePrefix}shots/hero-split-site.webp`, alt: 'Ntilde on macOS with three panes: a test run and Rust source on the left, a git graph top-right and a process table bottom-right' },
   { src: `${basePrefix}shots/command-palette-site.png`, alt: 'The command palette open over a populated terminal, a query typed, and matching commands listed with their keyboard shortcuts' },

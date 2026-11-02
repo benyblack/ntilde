@@ -14,8 +14,8 @@ main-window captures get the traffic lights AppKit would draw in the space Ntild
 on Windows they show no caption buttons, as before.
 
 `--prune` deletes committed files under this directory that the run did not (re)publish — the
-cleanup for a renamed scenario, a dropped variant, or a WebP sibling that stopped qualifying
-under the smaller-than-its-PNG gate. It only ever acts on a full catalogue run where every
+cleanup for a renamed scenario, a dropped variant, or a file the README and site stopped
+referencing. It only ever acts on a full catalogue run where every
 scenario succeeded; anything else (a scenario-scoped run, or a run with a failure) makes it a
 no-op with a console warning instead of deleting anything, so it is safe to pass by habit.
 

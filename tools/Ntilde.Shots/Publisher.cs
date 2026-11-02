@@ -153,8 +153,8 @@ public static class Publisher
     /// Deletes committed files under <c>docs/assets/shots/</c> that this run did not (re)publish -
     /// the fix for a real gap discovered while auditing Task 18.5's WebP policy change:
     /// <see cref="Publish"/> only ever copies, so a variant that stops being produced (a rename,
-    /// a scenario dropped from the catalogue, or - the case that motivated this - a WebP sibling
-    /// that no longer qualifies under the smaller-than-its-PNG gate) leaves its old file committed
+    /// a scenario dropped from the catalogue, or a file the README and site no longer reference)
+    /// leaves its old file committed
     /// forever with nothing to notice or remove it.
     /// </summary>
     /// <remarks>

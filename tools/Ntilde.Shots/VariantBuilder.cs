@@ -153,29 +153,21 @@ public static class VariantBuilder
 
     /// <summary>
     /// Writes <paramref name="bitmap"/> under <paramref name="name"/> verbatim as an optimized
-    /// PNG, plus a lossless WebP sibling <b>if and only if</b> the WebP actually comes out
-    /// smaller - used for og-card and social-square, whose filenames are fixed by the brief
-    /// rather than derived from the master's own name.
+    /// PNG and a lossless WebP sibling - used directly for og-card and social-square, whose
+    /// filenames are fixed by the brief rather than derived from the master's own name.
     /// </summary>
     /// <remarks>
-    /// The spec's Outputs section asks for published assets "sized for use: README-width PNG
-    /// plus WebP" - "sized for use" and "plus WebP" sit in the same sentence, so a WebP sibling
-    /// that is <i>larger</i> than the PNG it accompanies satisfies the letter of "plus WebP" while
-    /// violating "sized for use". Measured across the current 28 variants: 16 qualify (WebP
-    /// smaller, sometimes substantially), 12 do not - including both card assets (og-card +34%,
-    /// social-square +118% before this gate). Those 12 deliberately have no <c>.webp</c> file and
-    /// no WebP <see cref="ShotAsset"/> record. That is not a gap to "fix" later; it is the policy.
-    /// A lossy fallback for the 12 (particularly the cards) was considered and rejected: under
-    /// this gate the cards already have no sibling, so a second per-asset-class encoder path would
-    /// buy nothing, and OG/social previews are consumed by unfurl bots with historically
-    /// inconsistent WebP support - PNG-only is the safer choice there regardless of bytes.
+    /// The WebP is always written, even where it comes out larger than the PNG (the cards do,
+    /// by a third or more). It used to be dropped in that case, but the README and the site name
+    /// WebP files in <c>&lt;picture&gt;</c> sources, and a browser does not fall back to the PNG
+    /// when a listed WebP is missing - so a re-capture that tipped one variant over the line
+    /// published a broken image. Whether a WebP is worth its bytes is now the referencing page's
+    /// call: <see cref="Publisher"/> ships only the files README.md or the site name, so an
+    /// unreferenced or oversized sibling simply stays in <c>artifacts/</c>.
     /// </remarks>
     /// <returns>
-    /// The PNG asset alone, or the PNG asset followed by its WebP sibling when the WebP qualifies
-    /// - same <see cref="ShotAsset.Name"/>, same Tier 3, differing only in
-    /// <see cref="ShotAsset.File"/>'s extension. <see cref="Publisher"/> already publishes every
-    /// Tier 3 asset it finds, so recording (or not recording) the WebP here is what controls
-    /// whether it gets published, with no change to Publisher itself.
+    /// The PNG asset followed by its WebP sibling - same <see cref="ShotAsset.Name"/>, same Tier 3,
+    /// differing only in <see cref="ShotAsset.File"/>'s extension.
     /// </returns>
     private static ShotAsset[] WriteNamedVariant(ShotRun run, ShotAsset master, SKBitmap bitmap, string name)
     {
@@ -193,19 +185,8 @@ public static class VariantBuilder
             Os: run.Os,
             TimestampUtc: DateTime.UtcNow.ToString("O"));
 
-        // Encoded to a real file first (not just measured in memory) so the size comparison
-        // below is against actual on-disk output, then deleted again if it doesn't qualify.
         string webpPath = Path.Combine(run.OutputDirectory, $"{name}.webp");
         Rasterizer.WriteLosslessWebp(bitmap, webpPath);
-
-        long pngSize = new FileInfo(pngPath).Length;
-        long webpSize = new FileInfo(webpPath).Length;
-
-        if (webpSize >= pngSize)
-        {
-            File.Delete(webpPath);
-            return [png];
-        }
 
         ShotAsset webp = png with { File = webpPath };
         return [png, webp];

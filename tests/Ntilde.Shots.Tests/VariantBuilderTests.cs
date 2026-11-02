@@ -32,7 +32,7 @@ public sealed class VariantBuilderTests
     }
 
     [Fact]
-    public void BuildAll_WritesALosslessWebpSiblingWhenItQualifiesAsSmaller()
+    public void BuildAll_WritesALosslessWebpSibling()
     {
         string outputDirectory = Path.Combine(Path.GetTempPath(), $"shots-variant-{Guid.NewGuid():N}");
         Directory.CreateDirectory(outputDirectory);
@@ -111,14 +111,12 @@ public sealed class VariantBuilderTests
     }
 
     [Fact]
-    public void BuildAll_SkipsTheWebpSiblingWhenItIsNotSmallerThanThePng()
+    public void BuildAll_WritesTheWebpSiblingEvenWhenItIsLargerThanThePng()
     {
-        // og-card and social-square composite onto OnBackdrop's fixed brand-gradient backdrop,
-        // and on the real published assets that WebP sibling comes out LARGER than the optimized
-        // PNG (measured: og-card +34%, social-square +118%) - the gate in
-        // VariantBuilder.WriteNamedVariant exists specifically for this shape of content. This
-        // reproduces it with a synthetic "hero-single" master so the skip path has direct
-        // coverage rather than relying only on a live harness run to exercise it.
+        // og-card and social-square composite onto OnBackdrop's fixed gradient backdrop, where the
+        // lossless WebP comes out LARGER than the optimized PNG. It is still written: the README and
+        // site list WebP sources a browser will not fall back from, so a missing sibling is a broken
+        // image. Publisher's reference list, not the encoder's byte count, decides what ships.
         string outputDirectory = Path.Combine(Path.GetTempPath(), $"shots-variant-card-{Guid.NewGuid():N}");
         Directory.CreateDirectory(outputDirectory);
 
@@ -136,20 +134,12 @@ public sealed class VariantBuilderTests
 
             IReadOnlyList<ShotAsset> produced = VariantBuilder.BuildAll(masterAsset, run);
 
-            ShotAsset ogCardPng = Assert.Single(produced, a => a.Name == "og-card");
-            ShotAsset socialSquarePng = Assert.Single(produced, a => a.Name == "social-square");
-
-            Assert.EndsWith(".png", ogCardPng.File, StringComparison.Ordinal);
-            Assert.EndsWith(".png", socialSquarePng.File, StringComparison.Ordinal);
-            Assert.DoesNotContain(produced, a => a.Name == "og-card" && a.File.EndsWith(".webp", StringComparison.Ordinal));
-            Assert.DoesNotContain(produced, a => a.Name == "social-square" && a.File.EndsWith(".webp", StringComparison.Ordinal));
-            Assert.False(File.Exists(Path.Combine(outputDirectory, "og-card.webp")));
-            Assert.False(File.Exists(Path.Combine(outputDirectory, "social-square.webp")));
-
-            // README/site, by contrast, are the source's own shape (no fixed-canvas backdrop
-            // composite) and DO qualify for this master - confirming the gate is genuinely
-            // per-asset rather than accidentally suppressing every WebP for this master.
-            Assert.Contains(produced, a => a.Name == "hero-single-readme" && a.File.EndsWith(".webp", StringComparison.Ordinal));
+            foreach (string name in new[] { "og-card", "social-square", "hero-single-readme", "hero-single-site" })
+            {
+                Assert.Contains(produced, a => a.Name == name && a.File.EndsWith(".png", StringComparison.Ordinal));
+                Assert.Contains(produced, a => a.Name == name && a.File.EndsWith(".webp", StringComparison.Ordinal));
+                Assert.True(File.Exists(Path.Combine(outputDirectory, name + ".webp")), $"{name}.webp was not written.");
+            }
         }
         finally
         {
