@@ -12,15 +12,15 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
     private readonly Func<Task<IAsyncDataTransfer?>> _read;
     private readonly Func<IAsyncDataTransfer?, Task> _write;
     private readonly Func<Task> _clear;
-    private readonly Func<string, CancellationToken, Task<bool>> _confirm;
+    private readonly Func<ClipboardReadRequest, CancellationToken, Task<ClipboardReadConsent>> _confirm;
 
-    public AvaloniaKittyClipboard(Func<IClipboard?> getClipboard, Func<string, CancellationToken, Task<bool>> confirm)
+    public AvaloniaKittyClipboard(Func<IClipboard?> getClipboard, Func<ClipboardReadRequest, CancellationToken, Task<ClipboardReadConsent>> confirm)
         : this(() => Require(getClipboard).TryGetDataAsync(), data => Require(getClipboard).SetDataAsync(data),
             () => Require(getClipboard).ClearAsync(), confirm)
     { }
 
     internal AvaloniaKittyClipboard(Func<Task<IAsyncDataTransfer?>> read, Func<IAsyncDataTransfer?, Task> write,
-        Func<Task> clear, Func<string, CancellationToken, Task<bool>> confirm)
+        Func<Task> clear, Func<ClipboardReadRequest, CancellationToken, Task<ClipboardReadConsent>> confirm)
     {
         _read = read; _write = write; _clear = clear; _confirm = confirm;
     }
@@ -158,7 +158,7 @@ internal sealed class AvaloniaKittyClipboard : IKittyClipboard
         catch { owned.Dispose(); throw; } // ownership passes to Avalonia only on success
     }
 
-    public Task<bool> ConfirmReadAsync(string name, CancellationToken cancellation) => _confirm(name, cancellation);
+    public Task<ClipboardReadConsent> ConfirmReadAsync(ClipboardReadRequest request, CancellationToken cancellation) => _confirm(request, cancellation);
 
     internal static string? ToMime(DataFormat format)
     {
