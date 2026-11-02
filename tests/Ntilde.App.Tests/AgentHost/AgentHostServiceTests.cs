@@ -333,7 +333,8 @@ public class AgentHostServiceTests : IDisposable
         using var service = NewService(registry);
         var request = RequestLine(AgentHostProtocol.Methods.ReadScreen, paramsObj: new ReadScreenParams
         {
-            PaneId = registration.PaneId, IncludeCursorMode = true,
+            PaneId = registration.PaneId,
+            IncludeCursorMode = true,
         });
         var initial = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
         Assert.Equal(new CursorModeDto { Style = 2, Blink = true, IsDefault = true }, initial.CursorMode);
