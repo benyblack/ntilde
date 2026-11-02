@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { buildCursorReport, collectCursor, pristineCursorBaseline } from './cursor.mjs';
 import { rehash, runId, stateFrames, stateScreen } from './fixtures/state-frames.mjs';
 
@@ -63,4 +65,27 @@ test('known initial budget refusal performs no reset, unrelated errors remain fa
         fence: { write: async value => writes.push(value) } });
     assert.equal(result.status, 'unavailable'); assert.deepEqual(writes, []);
     await assert.rejects(collectCursor({ config: { runId }, owner: async () => { throw new Error('wrong pane'); } }), /wrong pane/);
+});
+
+
+test('published cursorReport re-derives and matches the shared cleanup receipt', () => {
+    const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-02-rendition-cursor.json', import.meta.url)));
+    const report = published.cursorReport, receipt = published.completionReceipt;
+    assert.deepEqual(buildCursorReport(report.snapshots, report.runId), report);
+    assert.equal(createHash('sha256').update(JSON.stringify(report, null, 2) + '\n').digest('hex'), receipt.cursorEvidence.sha256);
+    assert.equal(report.runId, receipt.runId);
+    assert.equal(receipt.cursorEvidence.runId, report.runId);
+    assert.equal(receipt.cursorEvidence.suiteId, report.suiteId);
+    assert.deepEqual(receipt.cursorEvidence.counts, { passed: 9 });
+    assert.equal(receipt.fixtureRemoved, true);
+    assert.equal(published.stockCollector.rawSha256, receipt.rawSha256);
+    assert.deepEqual(published.stockCollector.counts, { inconclusive: 177, supported: 78 });
+    for (const [key, expected] of [['sgrEvidence', 17], ['rgbEvidence', 20]]) {
+        assert.deepEqual(published.companionEvidence[key], receipt[key]);
+        assert.deepEqual(receipt[key].counts, { passed: expected });
+    }
+    const ascii = published.companionEvidence.cellEvidence;
+    assert.equal(ascii.sha256, receipt.sha256);
+    assert.equal(ascii.runId, receipt.runId);
+    assert.deepEqual(ascii.counts, { passed: 8 });
 });

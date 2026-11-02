@@ -20,9 +20,14 @@ export function stateScreen(first = '', details = [], { col = first.length, cont
 export function stateFrames(prefix, nonce, initial, samples, control, binding) {
     const values = [initial, binding(nonce + runId), ...samples.flatMap(([, steps]) => [control(),
         ...steps.map(([, screen]) => screen)]), structuredClone(initial)];
+    const kind = index => {
+        if (index === 0) return prefix + '-start';
+        if (index === 1) return prefix + '-bind';
+        if (index === values.length - 1) return prefix + '-finish';
+        return prefix + '-read';
+    };
     return values.map((screen, index) => ({ index, paneId, screen, sha256: snapshotHash(screen),
-        kind: index === 0 ? prefix + '-start' : index === 1 ? prefix + '-bind' : index === values.length - 1 ? prefix + '-finish' : prefix + '-read',
-        barrier: index === 0 ? null : '\x1b[?62;4;22c' }));
+        kind: kind(index), barrier: index === 0 ? null : '\x1b[?62;4;22c' }));
 }
 
 export function rehash(frames) { for (const frame of frames) frame.sha256 = snapshotHash(frame.screen); }

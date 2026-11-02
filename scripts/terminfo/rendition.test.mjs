@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { buildRenditionReport, collectRendition } from './rendition.mjs';
 import { normal, rehash, runId, stateFrames, stateScreen } from './fixtures/state-frames.mjs';
 
@@ -35,6 +37,7 @@ test('16 rendition/charset experiments derive from independent complete physical
 for (const [name, change, result] of [
     ['missing faint with correct text', f => { f[3].screen = stateScreen('A'); }, 'failed'],
     ['bad control', f => { f[2].screen = stateScreen('bad'); }, 'inconclusive'],
+    ['unaffected cursor visibility changes', f => { f[3].screen.cursorVisible = false; }, 'failed'],
     ['unaffected cell style changes', f => { f[3].screen.cellDetails.at(-1).flags |= 1; }, 'failed'],
 ]) test(name, () => { const input = frames(); change(input); rehash(input); assert.equal(buildRenditionReport(input, runId).observations[0].result, result); });
 
@@ -65,4 +68,27 @@ test('initial known refusal performs no writes; other errors remain fatal', asyn
         fence: { write: async value => writes.push(value) } });
     assert.equal(refused.status, 'unavailable'); assert.deepEqual(writes, []);
     await assert.rejects(collectRendition({ config: { runId }, owner: async () => { throw new Error('wrong pane'); } }), /wrong pane/);
+});
+
+
+test('published renditionReport re-derives and matches the shared cleanup receipt', () => {
+    const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-02-rendition-cursor.json', import.meta.url)));
+    const report = published.renditionReport, receipt = published.completionReceipt;
+    assert.deepEqual(buildRenditionReport(report.snapshots, report.runId), report);
+    assert.equal(createHash('sha256').update(JSON.stringify(report, null, 2) + '\n').digest('hex'), receipt.renditionEvidence.sha256);
+    assert.equal(report.runId, receipt.runId);
+    assert.equal(receipt.renditionEvidence.runId, report.runId);
+    assert.equal(receipt.renditionEvidence.suiteId, report.suiteId);
+    assert.deepEqual(receipt.renditionEvidence.counts, { passed: 16 });
+    assert.equal(receipt.fixtureRemoved, true);
+    assert.equal(published.stockCollector.rawSha256, receipt.rawSha256);
+    assert.deepEqual(published.stockCollector.counts, { inconclusive: 177, supported: 78 });
+    for (const [key, expected] of [['sgrEvidence', 17], ['rgbEvidence', 20]]) {
+        assert.deepEqual(published.companionEvidence[key], receipt[key]);
+        assert.deepEqual(receipt[key].counts, { passed: expected });
+    }
+    const ascii = published.companionEvidence.cellEvidence;
+    assert.equal(ascii.sha256, receipt.sha256);
+    assert.equal(ascii.runId, receipt.runId);
+    assert.deepEqual(ascii.counts, { passed: 8 });
 });

@@ -325,7 +325,9 @@ Unrelated errors and any refusal after fixture entry remain fatal.
 Overline has no current VT state or renderer path. It remains open under #762
 for a separate implementation and qualification; no constant or consumed-input
 hint is substituted for an observation. Stock grades and frozen triage stay
-unchanged. Controlled pixels and blink timing remain subsequent work.
+unchanged. Controlled pixels and blink timing remain subsequent work. The
+[2026-11-02 rendition/cursor measurement](terminfo/2026-11-02-rendition-cursor.md)
+retains the qualified run and its exact limits.
 
 Adapter tests use Node's built-in test runner:
 

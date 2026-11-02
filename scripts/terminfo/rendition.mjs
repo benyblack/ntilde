@@ -6,6 +6,7 @@ const normal = changes => ({ flags: 768, fg: -1, bg: -1, foregroundArgb: null, b
     underlineStyle: 0, underlineColorIndex: -1, underlineArgb: null, ...changes });
 const view = (first, col, details = []) => ({ first, row: 0, col, details });
 const fixture = (id, steps) => ({ id, seed: '', cursor: [0, 0], steps });
+const matches = (screen, wanted) => screen.cursorVisible === true && matchesRgb(screen, wanted);
 const styles = [['faint', 2, 22, 64], ['hidden', 8, 28, 128], ['strikethrough', 9, 29, 16], ['blink', 5, 25, 32]];
 const combined = normal({ flags: 255, foregroundArgb: 0xff112233, backgroundArgb: 0xff445566,
     underlineStyle: 3, underlineArgb: 0xff778899 });
@@ -48,9 +49,9 @@ export function buildRenditionReport(snapshots, runId) {
         const assertions = item.steps.map(([sequence, expected]) => {
             const target = snapshots[offset++];
             if (target.kind !== 'rendition-read') throw new Error('Invalid rendition experiment order.');
-            return { sequence, expected, snapshot: target.index, passed: matchesRgb(target.screen, expected) };
+            return { sequence, expected, snapshot: target.index, passed: matches(target.screen, expected) };
         });
-        const ready = matchesRgb(before.screen, view('', 0));
+        const ready = matches(before.screen, view('', 0));
         const qualified = assertions.every(value => value.passed) ? 'passed' : 'failed';
         return { featureId: item.id, before: before.index, assertions, result: ready ? qualified : 'inconclusive' };
     });
