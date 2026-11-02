@@ -188,6 +188,25 @@ public class AgentHostWindowlessProtocolTests
     }
 
     [Fact]
+    public void ReadScreen_windowless_cell_details_preserve_imported_rgb_and_underline_metadata()
+    {
+        var source = new StubWindowlessSource();
+        var session = source.Add("\x1b[38;2;12;34;56;4:3;58;5;123mA", cols: 90, rows: 20);
+        using var service = NewService(new AgentSessionRegistry(), new AgentActivityJournal());
+        service.SetWindowlessSource(source);
+        var line = Line(AgentHostProtocol.Methods.ReadScreen,
+            JsonSerializer.Serialize(new ReadScreenParams { PaneId = session.SessionId, IncludeCellDetails = true },
+                AgentHostJsonContext.Default.ReadScreenParams));
+        var screen = Result(Handle(service, line), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        var first = screen.CellDetails![0];
+        Assert.Equal(0xff0c2238u, first.ForegroundArgb);
+        Assert.Equal(3, first.UnderlineStyle);
+        Assert.Equal(123, first.UnderlineColorIndex);
+        Assert.Null(first.UnderlineArgb);
+        Assert.Equal(1800, screen.CellDetails.Sum(run => run.Count));
+    }
+
+    [Fact]
     public void ReadScreen_of_a_pane_never_asks_the_source_even_when_a_daemon_has_the_same_id()
     {
         // The registry is asked first: a pane id is answered by the pane. Ids are random, so a daemon session with

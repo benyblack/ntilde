@@ -9,6 +9,18 @@ import { agentRequest, observerEndpoint, OwnedCellObserver, screenSnapshot } fro
 
 const paneId = '11111111-1111-1111-1111-111111111111', barrier = '\x1b[?62;4;22c';
 const blank = () => ({ rows: 3, cols: 60, lines: ['', '', ''], cursorRow: 0, cursorCol: 0, cursorVisible: true });
+
+test('observer preserves a correlated App refusal code without trusting an uncorrelated refusal', async () => {
+    let frame = { v: 1, id: 1, error: { code: 'screenDetailsUnavailable', message: 'budget' } };
+    const server = createServer(socket => { socket.once('data', () => socket.end(JSON.stringify(frame) + '\n')); });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+        const endpoint = { host: '127.0.0.1', port: server.address().port };
+        await assert.rejects(agentRequest(endpoint, 'readScreen', {}, 1000), error => error.code === 'screenDetailsUnavailable');
+        frame = { ...frame, id: 2 };
+        await assert.rejects(agentRequest(endpoint, 'readScreen', {}, 1000), error => error.code === undefined && /Uncorrelated/.test(error.message));
+    } finally { await new Promise(resolve => server.close(resolve)); }
+});
 function fixture() {
     let value = blank(), sessions = [{ paneId, profileName: 'fixture', kind: 'local', rows: 3, cols: 60 }];
     let calls = 0;
@@ -143,8 +155,8 @@ test('agent RPC accepts only read-only versioned correlated frames', async () =>
 });
 
 for (const [name, data, error] of [
-    ['wrong version', '{"v":2,"id":1,"result":{}}\n', /refused/],
-    ['wrong request', '{"v":1,"id":2,"result":{}}\n', /refused/],
+    ['wrong version', '{"v":2,"id":1,"result":{}}\n', /Uncorrelated/],
+    ['wrong request', '{"v":1,"id":2,"result":{}}\n', /Uncorrelated/],
     ['an error', '{"v":1,"id":1,"error":{"code":"disabled"}}\n', /refused/],
     ['a partial frame', '{"v":1', /Incomplete/],
     ['oversized data', 'x'.repeat(512 * 1024 + 1), /Oversized/],
@@ -179,4 +191,32 @@ test('discovery refuses another app, outside sockets, symlinks and shared permis
         chmodSync(endpoint, 0o600); chmodSync(root, 0o755);
         assert.throws(() => observerEndpoint(root, 42), /private observer/);
     } finally { server.close(); await once(server, 'close'); rmSync(root, { recursive: true, force: true }); }
+});
+
+
+test('RGB observer opts into details, copies complete runs and refuses missing or unrestored metadata', async () => {
+    const initial = { ...blank(), cellDetails: [{ count: 180, flags: 768, fg: -1, bg: -1, underlineStyle: 0, underlineColorIndex: -1 }] };
+    let value = structuredClone(initial);
+    const observer = new OwnedCellObserver({ appData: '/never/discover', ownerPid: 42, profileName: 'fixture', nonce: 'nonce',
+        includeCellDetails: true, prefix: 'rgb', expectedPaneId: paneId, endpoint: () => 'fixture-only',
+        rpc: async (_, method, params) => {
+            if (method === 'listSessions') return { sessions: [{ paneId, profileName: 'fixture', kind: 'local', rows: 3, cols: 60 }] };
+            assert.equal(params.includeCellDetails, true);
+            assert.equal(params.includeAttributes, false);
+            return value;
+        } });
+    await observer.handle('rgb-start', () => 1000);
+    value = { ...structuredClone(initial), lines: ['nonce', '', ''], cursorCol: 5 };
+    await observer.handle('rgb-bind', () => 1000, barrier);
+    value = { ...blank(), cellDetails: [{ count: 180, flags: 520, fg: -1, bg: -1,
+        foregroundArgb: 0xff010203, underlineStyle: 3, underlineColorIndex: 123 }] };
+    await observer.handle('rgb-read', () => 1000, barrier);
+    value.cellDetails[0].foregroundArgb = 0xff040506;
+    assert.equal(observer.frames.at(-1).screen.cellDetails[0].foregroundArgb, 0xff010203);
+    await assert.rejects(observer.handle('rgb-finish', () => 1000, barrier), /restoration failed/);
+    value = blank();
+    await assert.rejects(observer.handle('rgb-read', () => 1000, barrier), /budget/);
+    value = initial;
+    await observer.handle('rgb-finish', () => 1000, barrier);
+    assert.equal(observer.restored, true);
 });
