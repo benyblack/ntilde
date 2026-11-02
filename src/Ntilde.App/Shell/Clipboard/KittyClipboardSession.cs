@@ -262,7 +262,12 @@ internal sealed class KittyClipboardSession : IDisposable
     {
         string displayName = ClipboardProgramName.Display(authorization.Name);
         string? credential = ClipboardProgramName.CanRemember(displayName) ? ClipboardSessionPermissions.Key(authorization.Name, authorization.Password) : null;
-        string? key = credential == null ? null : (authorization.Primary ? "primary:" : "clipboard:") + credential;
+        string? key = null;
+        if (credential != null)
+        {
+            string location = authorization.Primary ? "primary:" : "clipboard:";
+            key = location + credential;
+        }
         lock (_sync)
         {
             if (!IsAlive(generation) || cancellation.IsCancellationRequested) return false;

@@ -30,7 +30,10 @@ Reads retain at most the existing 64 MiB aggregate MIME budget. Native property
 requests use 64 KiB chunks. Writes retain at most 128 MiB of materialized MIME and
 alias values, sharing immutable alias buffers. At most 16 outgoing INCR streams
 and 128 MiB of referenced stream payloads can remain active; streams expire after
-10 seconds. Reads have bounded reply/transfer waits. A failed receive destroys
+10 seconds. The last stream on each foreign requestor window releases its event
+subscription; local read-window subscriptions remain until that read ends. A
+stale SelectionClear cannot erase data successfully reacquired on the worker.
+Reads have bounded reply/transfer waits. A failed receive destroys
 its private request window, rather than leaving an incomplete INCR handshake.
 
 The native worker admits at most one waiting command. A stalled connection
@@ -47,7 +50,10 @@ selection ownership, middle-click behavior, or default paste shortcuts.
 
 `KittyClipboardSessionTests` covers target inheritance across write chunks and
 aliases, write-policy enforcement, permission location isolation and revocation,
-and paste-token separation. Local-display parsing has deterministic cases.
+and paste-token separation. `PrimaryTransferRegistryTests` covers 1,000 persistent
+requestors, shared/local subscriptions, expiry/destruction, stream/payload caps,
+and stale ownership loss with in-flight bytes retained. Local-display parsing
+has deterministic cases.
 The disposable Linux/Xvfb native workflow exchanges text, HTML, PNG, binary and
 aliases with an independent GTK primary-selection peer. Large binary fixtures
 exercise INCR; the host requires observed sends and receives and verifies that

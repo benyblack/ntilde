@@ -99,7 +99,7 @@ def main():
                 report["passed"] = True
         except Exception as error:
             report["failure"] = f"{type(error).__name__}: {error}"
-            for filename in ["host.log", "peer.log", "error.txt"]:
+            for filename in ["host.log", "peer.log", "primary.log", "error.txt"]:
                 path = root / filename
                 if path.exists():
                     # Only generated fixture bytes enter this CI-only sandbox.

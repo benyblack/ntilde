@@ -5,13 +5,16 @@ namespace Ntilde.Shell.Clipboard;
 /// <summary>Linux X11 PRIMARY, on an independent connection and one process-lifetime worker.</summary>
 internal sealed class XcbPrimaryClipboard(Func<ClipboardReadRequest, CancellationToken, Task<ClipboardReadConsent>> confirm) : IKittyClipboard
 {
+    internal static Action<string>? TraceForTest { get; set; }
     private static readonly Lazy<Worker> Shared = new(() => new Worker());
     public bool Available => OperatingSystem.IsLinux() && IsLocalDisplay(Environment.GetEnvironmentVariable("DISPLAY"));
 
     internal static bool IsLocalDisplay(string? display)
     {
         if (display == null) return false;
-        string value = display.StartsWith("unix:", StringComparison.Ordinal) ? display[5..] : display.StartsWith(':') ? display[1..] : "";
+        string value = "";
+        if (display.StartsWith("unix:", StringComparison.Ordinal)) value = display[5..];
+        else if (display.StartsWith(':')) value = display[1..];
         string[] parts = value.Split('.');
         return parts.Length is 1 or 2 && parts.All(p => p.Length > 0 && p.All(char.IsAsciiDigit));
     }
@@ -28,11 +31,11 @@ internal sealed class XcbPrimaryClipboard(Func<ClipboardReadRequest, Cancellatio
     private sealed class Snapshot(XcbPrimaryClipboard clipboard, XcbSelectionTargets targets) : IKittyClipboardSnapshot
     {
         private bool _disposed;
-        public IReadOnlyList<string> Types => targets.Formats.Keys.ToArray();
+        public IReadOnlyList<string> Types { get; } = targets.Formats.Keys.ToArray();
         public Task<byte[]?> ReadAsync(string mime, int maxBytes = VT.KittyClipboardPacket.MaxDataBytes)
         {
             if (_disposed || !targets.Formats.TryGetValue(mime, out uint target)) return Task.FromResult<byte[]?>(null);
-            return clipboard.Run(c => (byte[]?)c.Read(targets.Owner, target, maxBytes));
+            return clipboard.Run<byte[]?>(c => c.Read(targets.Owner, target, maxBytes));
         }
         public void Dispose() => _disposed = true;
     }
@@ -57,7 +60,12 @@ internal sealed class XcbPrimaryClipboard(Func<ClipboardReadRequest, Cancellatio
             {
                 if (!_work.TryAdd((connection, error) =>
                     {
-                        try { done.TrySetResult(error == null ? work(connection!) : throw error); }
+                        try
+                        {
+                            if (error != null) throw error;
+                            if (connection == null) throw new IOException("X11 PRIMARY connection was not initialized.");
+                            done.TrySetResult(work(connection));
+                        }
                         catch (Exception caught) { done.TrySetException(caught); }
                     })) done.TrySetException(new IOException("X11 PRIMARY is busy."));
             }

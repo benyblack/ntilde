@@ -34,6 +34,7 @@ class ClipboardReader:
         self.stream = None
         self.mime = None
         self.expected = None
+        self.total = 0
 
     def next_value(self):
         try:
@@ -42,6 +43,8 @@ class ClipboardReader:
             loop.quit()
             return
         self.chunks = []
+        self.total = 0
+        print("Native GTK read start:", self.mime, flush=True)
         clipboard.read_async([self.mime], GLib.PRIORITY_DEFAULT, None, self.opened)
 
     def opened(self, source, result, *_):
@@ -49,7 +52,9 @@ class ClipboardReader:
             self.stream, actual_mime = source.read_finish(result)
             if actual_mime != self.mime:
                 raise RuntimeError("Unexpected native MIME: " + self.mime)
-            self.read_chunk()
+            # GTK 4.22's INCR flush clears pending_task after completing its task.
+            # Queue the next read after that cleanup, rather than replacing it reentrantly.
+            GLib.idle_add(self.read_chunk)
         except Exception as error:
             self.fail(error)
 
@@ -61,7 +66,10 @@ class ClipboardReader:
             block = input_stream.read_bytes_finish(outcome).get_data()
             if block:
                 self.chunks.append(block)
-                self.read_chunk()
+                self.total += len(block)
+                if self.total % 65536 == 0:
+                    print("Native GTK read progress:", self.mime, self.total, flush=True)
+                GLib.idle_add(self.read_chunk)
                 return
             input_stream.close(None)
             actual = b"".join(self.chunks)
@@ -72,7 +80,8 @@ class ClipboardReader:
                 expected = self.expected
             if actual != expected:
                 raise RuntimeError("Native GTK clipboard mismatch: " + self.mime)
-            self.next_value()
+            print("Native GTK read complete:", self.mime, len(actual), flush=True)
+            GLib.idle_add(self.next_value)
         except Exception as error:
             self.fail(error)
 

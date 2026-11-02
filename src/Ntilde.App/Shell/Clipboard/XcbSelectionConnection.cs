@@ -15,14 +15,15 @@ internal sealed class XcbSelectionConnection : IDisposable
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(10);
     private readonly nint _connection;
     private readonly uint _root, _window, _targets, _timestamp, _multiple, _atomPair, _incr, _property, _utf8;
-    private readonly List<Outgoing> _outgoing = [];
-    private Dictionary<uint, byte[]> _owned = [];
-    private uint _ownedAt;
+    private readonly HashSet<uint> _localWindows = [];
+    private readonly PrimaryTransferRegistry _outgoing;
+    private readonly PrimarySelectionOwnership _ownership = new();
     internal int IncrementalSends { get; private set; }
     internal int IncrementalReceives { get; private set; }
 
     public XcbSelectionConnection()
     {
+        _outgoing = new PrimaryTransferRegistry(Subscribe, window => _localWindows.Contains(window));
         _connection = XcbNative.Connect(0, out int screen);
         try
         {
@@ -36,7 +37,11 @@ internal sealed class XcbSelectionConnection : IDisposable
             _atomPair = Intern("ATOM_PAIR"); _incr = Intern("INCR"); _utf8 = Intern("UTF8_STRING");
             _property = Intern("_NTILDE_PRIMARY_TRANSFER");
         }
-        catch { if (_connection != 0) XcbNative.Disconnect(_connection); throw; }
+        catch
+        {
+            if (_connection != 0) XcbNative.Disconnect(_connection);
+            throw;
+        }
     }
 
     private uint CreateWindow()
@@ -44,6 +49,7 @@ internal sealed class XcbSelectionConnection : IDisposable
         uint window = XcbNative.GenerateId(_connection);
         WithBytes(BitConverter.GetBytes(PropertyEvents), data =>
             XcbNative.CreateWindow(_connection, 0, window, _root, 0, 0, 1, 1, 0, 2, 0, 1u << 11, data));
+        _localWindows.Add(window);
         return window;
     }
 
@@ -61,7 +67,7 @@ internal sealed class XcbSelectionConnection : IDisposable
     {
         uint cookie = XcbNative.InternAtom(_connection, 0, checked((ushort)Encoding.UTF8.GetByteCount(name)), name);
         using var reply = Reply(cookie);
-        return U32(reply.Pointer, 8);
+        return ReadU32(reply.Pointer, 8);
     }
 
     private string AtomName(uint atom)
@@ -74,7 +80,7 @@ internal sealed class XcbSelectionConnection : IDisposable
     private uint Owner()
     {
         using var reply = Reply(XcbNative.GetOwner(_connection, Primary));
-        return U32(reply.Pointer, 8);
+        return ReadU32(reply.Pointer, 8);
     }
 
     public XcbSelectionTargets CaptureTargets()
@@ -97,7 +103,11 @@ internal sealed class XcbSelectionConnection : IDisposable
         return new(owner, formats);
     }
 
-    private int Priority(uint target) => target == 31 ? 2 : target == _utf8 ? 1 : 0;
+    private int Priority(uint target)
+    {
+        if (target == 31) return 2;
+        return target == _utf8 ? 1 : 0;
+    }
 
     public byte[] Read(uint owner, uint target, int budget)
     {
@@ -115,41 +125,43 @@ internal sealed class XcbSelectionConnection : IDisposable
         {
             _ = XcbNative.ConvertSelection(_connection, window, Primary, target, _property, 0);
             long started = Stopwatch.GetTimestamp();
-            var notify = Wait(e => e.Type == 31 && e.U32(8) == window && e.U32(16) == target, started);
-            if (notify.U32(20) == 0) throw new IOException("PRIMARY target was refused.");
+            var notify = Wait(e => e.Kind == 31 && e.Field(8) == window && e.Field(16) == target, started);
+            if (notify.Field(20) == 0) throw new IOException("PRIMARY target was refused.");
             var first = ReadProperty(window, _property, budget, allowIncr: true);
-            if (first.Type != _incr)
+            if (first.DataType != _incr)
             {
                 if (Owner() != owner) throw new IOException("PRIMARY owner changed during the read.");
                 return Validate(first, format, expectedType);
             }
             IncrementalReceives++;
-            if (first.Format != 32 || first.Bytes.Length != sizeof(uint)) throw new IOException("Malformed PRIMARY INCR header.");
-            if (BitConverter.ToUInt32(first.Bytes) > Math.Max(0, budget)) throw new IOException("PRIMARY exceeds the read budget.");
+            XcbPrimaryClipboard.TraceForTest?.Invoke($"INCR receive owner={owner} target={target} budget={budget}");
+            if (first.BitWidth != 32 || first.Data.Length != sizeof(uint)) throw new IOException("Malformed PRIMARY INCR header.");
+            if (BitConverter.ToUInt32(first.Data) > Math.Max(0, budget)) throw new IOException("PRIMARY exceeds the read budget.");
             _ = XcbNative.DeleteProperty(_connection, window, _property);
             using var result = new MemoryStream();
             while (true)
             {
-                Wait(e => e.Type == 28 && e.U32(4) == window && e.U32(8) == _property && e.Bytes[16] == 0, started);
+                Wait(e => e.Kind == 28 && e.Field(4) == window && e.Field(8) == _property && e.Data[16] == 0, started);
                 var chunk = ReadProperty(window, _property, budget - checked((int)result.Length), allowIncr: false);
                 byte[] bytes = Validate(chunk, format, expectedType);
                 _ = XcbNative.DeleteProperty(_connection, window, _property);
                 if (bytes.Length == 0) break;
                 result.Write(bytes);
+                XcbPrimaryClipboard.TraceForTest?.Invoke($"INCR received bytes={bytes.Length} total={result.Length}");
             }
             if (Owner() != owner) throw new IOException("PRIMARY owner changed during the read.");
             return result.ToArray();
         }
-        finally { _ = XcbNative.DestroyWindow(_connection, window); Flush(); }
+        finally { _localWindows.Remove(window); _ = XcbNative.DestroyWindow(_connection, window); Flush(); }
     }
 
-    private static byte[] Validate(Property value, byte format, uint type)
+    private static byte[] Validate(NativeProperty value, byte format, uint type)
     {
-        if (value.Format != format || value.Type != type) throw new IOException("Unexpected PRIMARY property type.");
-        return value.Bytes;
+        if (value.BitWidth != format || value.DataType != type) throw new IOException("Unexpected PRIMARY property type.");
+        return value.Data;
     }
 
-    private Property ReadProperty(uint window, uint property, int budget, bool allowIncr)
+    private NativeProperty ReadProperty(uint window, uint property, int budget, bool allowIncr)
     {
         using var value = new MemoryStream();
         uint offset = 0, type = 0; byte format = 0;
@@ -158,19 +170,24 @@ internal sealed class XcbSelectionConnection : IDisposable
         {
             CheckDeadline(started);
             using var reply = Reply(XcbNative.GetProperty(_connection, 0, window, property, 0, offset, ChunkBytes / 4));
-            uint currentType = U32(reply.Pointer, 8), after = U32(reply.Pointer, 12), count = U32(reply.Pointer, 16);
-            byte currentFormat = Marshal.ReadByte(reply.Pointer, 1);
-            if (offset == 0) { type = currentType; format = currentFormat; }
-            if (format is not (8 or 32) || format != currentFormat || type != currentType) throw new IOException("Malformed PRIMARY property.");
-            long length = (long)count * (format / 8);
+            var header = new PropertyHeader(ReadU32(reply.Pointer, 8), Marshal.ReadByte(reply.Pointer, 1), ReadU32(reply.Pointer, 16), ReadU32(reply.Pointer, 12));
+            if (offset == 0) { type = header.DataType; format = header.BitWidth; }
             int limit = allowIncr && type == _incr ? sizeof(uint) : Math.Max(0, budget);
-            if (length > ChunkBytes || value.Length + length + after > limit) throw new IOException("PRIMARY exceeds the read budget.");
-            value.Write(Copy(reply.Pointer + 32, checked((int)length)));
-            if (after == 0) break;
+            int length = PropertyChunkLength(header, format, type, limit - value.Length);
+            value.Write(Copy(reply.Pointer + 32, length));
+            if (header.Remaining == 0) break;
             if (length == 0 || length % 4 != 0) throw new IOException("Invalid PRIMARY property continuation.");
             offset += checked((uint)(length / 4));
         }
         return new(type, format, value.ToArray());
+    }
+
+    private static int PropertyChunkLength(PropertyHeader header, byte format, uint type, long remaining)
+    {
+        if (format is not (8 or 32) || format != header.BitWidth || type != header.DataType) throw new IOException("Malformed PRIMARY property.");
+        long length = (long)header.ItemCount * (format / 8);
+        if (length > ChunkBytes || length + header.Remaining > remaining) throw new IOException("PRIMARY exceeds the read budget.");
+        return checked((int)length);
     }
 
     public void Write(IReadOnlyDictionary<string, byte[]> values)
@@ -179,7 +196,7 @@ internal sealed class XcbSelectionConnection : IDisposable
         {
             _ = XcbNative.SetOwner(_connection, 0, Primary, 0);
             if (Owner() != 0) throw new IOException("Could not clear PRIMARY.");
-            _owned.Clear(); Flush(); return;
+            _ownership.Clear(); Flush(); return;
         }
         if (values.Count > KittyClipboardPacket.MaxTypes || values.Any(p => !KittyClipboardPacket.IsMime(p.Key)) ||
             values.Values.Sum(v => (long)v.Length) > 2L * KittyClipboardPacket.MaxDataBytes)
@@ -194,41 +211,42 @@ internal sealed class XcbSelectionConnection : IDisposable
         }
         // Obtain a server timestamp through our own property notification.
         Change(_window, _property, Integer, 32, BitConverter.GetBytes(0));
-        var timestamp = Wait(e => e.Type == 28 && e.U32(4) == _window && e.U32(8) == _property, Stopwatch.GetTimestamp());
-        uint time = timestamp.U32(12);
+        var timestamp = Wait(e => e.Kind == 28 && e.Field(4) == _window && e.Field(8) == _property, Stopwatch.GetTimestamp());
+        uint time = timestamp.Field(12);
         _ = XcbNative.SetOwner(_connection, _window, Primary, time);
         if (Owner() != _window) throw new IOException("Could not own PRIMARY.");
-        _owned = owned; _ownedAt = time;
+        _ownership.Publish(owned, time);
     }
 
     public void Pump()
     {
         CheckConnection();
-        _outgoing.RemoveAll(s => Stopwatch.GetElapsedTime(s.Started) >= Deadline);
+        _outgoing.Expire();
         for (int count = 0; count < 256 && TakeEvent() is Event item; count++) Dispatch(item);
         Flush();
     }
 
     private void Dispatch(Event item)
     {
-        switch (item.Type)
+        switch (item.Kind)
         {
             case 30: Serve(item); break;
-            case 29: _owned.Clear(); break;
-            case 28 when item.Bytes[16] == 1: Advance(item.U32(4), item.U32(8)); break;
-            case 17: _outgoing.RemoveAll(s => s.Window == item.U32(8)); break;
+            case 29: _ownership.SelectionCleared(Owner(), _window); break;
+            case 28 when item.Data[16] == 1: Advance(item.Field(4), item.Field(8)); break;
+            case 17: _outgoing.Destroyed(item.Field(8)); break;
             default: break;
         }
     }
 
     private void Serve(Event request)
     {
-        uint requestor = request.U32(12), target = request.U32(20), property = request.U32(24);
+        uint requestor = request.Field(12), target = request.Field(20), property = request.Field(24);
+        XcbPrimaryClipboard.TraceForTest?.Invoke($"request window={requestor} target={target} property={property}");
         if (property == 0) property = target;
-        bool served = request.U32(8) == _window && request.U32(16) == Primary &&
+        bool served = request.Field(8) == _window && request.Field(16) == Primary &&
             (target == _multiple ? ServeMultiple(requestor, property) : ServeTarget(requestor, target, property));
         byte[] notify = new byte[32]; notify[0] = 31;
-        Put(notify, 4, request.U32(4)); Put(notify, 8, requestor); Put(notify, 12, Primary);
+        Put(notify, 4, request.Field(4)); Put(notify, 8, requestor); Put(notify, 12, Primary);
         Put(notify, 16, target); Put(notify, 20, served ? property : 0);
         WithBytes(notify, pointer => XcbNative.SendEvent(_connection, 0, requestor, 0, pointer));
         Flush();
@@ -244,22 +262,20 @@ internal sealed class XcbSelectionConnection : IDisposable
             var used = new HashSet<uint> { property };
             for (int i = 0; i < pairs.Length; i += 2)
                 if (pairs[i] == _multiple || pairs[i + 1] == 0 || !used.Add(pairs[i + 1]) || !ServeTarget(requestor, pairs[i], pairs[i + 1])) pairs[i + 1] = 0;
-            Change(requestor, property, _atomPair, 32, Bytes(pairs)); return true;
+            Change(requestor, property, _atomPair, 32, EncodeAtoms(pairs)); return true;
         }
         catch (IOException) { return false; }
     }
 
     private bool ServeTarget(uint window, uint target, uint property)
     {
-        if (_owned.Count == 0) return false;
-        if (target == _targets) { Change(window, property, Atom, 32, Bytes(_owned.Keys.Concat(new[] { _targets, _timestamp, _multiple }))); return true; }
-        if (target == _timestamp) { Change(window, property, Integer, 32, BitConverter.GetBytes(_ownedAt)); return true; }
-        if (!_owned.TryGetValue(target, out byte[]? bytes)) return false;
+        if (_ownership.Values.Count == 0) return false;
+        if (target == _targets) { Change(window, property, Atom, 32, EncodeAtoms(_ownership.Values.Keys.Concat(new[] { _targets, _timestamp, _multiple }))); return true; }
+        if (target == _timestamp) { Change(window, property, Integer, 32, BitConverter.GetBytes(_ownership.Timestamp)); return true; }
+        if (!_ownership.Values.TryGetValue(target, out byte[]? bytes)) return false;
+        XcbPrimaryClipboard.TraceForTest?.Invoke($"serve window={window} target={target} property={property} bytes={bytes.Length}");
         if (bytes.Length <= ChunkBytes) { Change(window, property, target, 8, bytes); return true; }
-        if (_outgoing.Count >= 16 || _outgoing.Sum(s => (long)s.Bytes.Length) + bytes.Length > 2L * KittyClipboardPacket.MaxDataBytes ||
-            _outgoing.Any(s => s.Window == window && s.Property == property)) return false;
-        WithBytes(BitConverter.GetBytes(PropertyEvents | StructureEvents), data => XcbNative.ChangeAttributes(_connection, window, 1u << 11, data));
-        _outgoing.Add(new(window, property, target, bytes, Stopwatch.GetTimestamp()));
+        if (!_outgoing.TryStart(window, property, target, bytes)) return false;
         IncrementalSends++;
         Change(window, property, _incr, 32, BitConverter.GetBytes(checked((uint)bytes.Length)));
         return true;
@@ -267,14 +283,21 @@ internal sealed class XcbSelectionConnection : IDisposable
 
     private void Advance(uint window, uint property)
     {
-        var stream = _outgoing.FirstOrDefault(s => s.Window == window && s.Property == property);
+        _outgoing.Expire();
+        var stream = _outgoing.Find(window, property);
         if (stream == null) return;
-        if (Stopwatch.GetElapsedTime(stream.Started) >= Deadline) { _outgoing.Remove(stream); return; }
-        int count = Math.Min(ChunkBytes, stream.Bytes.Length - stream.Offset);
-        Change(window, property, stream.Target, 8, stream.Bytes.AsSpan(stream.Offset, count).ToArray());
+        int count = Math.Min(ChunkBytes, stream.Payload.Length - stream.Offset);
+        Change(window, property, stream.Target, 8, stream.Payload.AsSpan(stream.Offset, count).ToArray());
         stream.Offset += count;
-        if (count == 0) _outgoing.Remove(stream);
+        XcbPrimaryClipboard.TraceForTest?.Invoke($"INCR send window={window} property={property} bytes={count} offset={stream.Offset}");
+        if (count == 0) _outgoing.Retire(stream);
         Flush();
+    }
+
+    private void Subscribe(uint window, bool enabled)
+    {
+        WithBytes(BitConverter.GetBytes(enabled ? PropertyEvents | StructureEvents : 0), data => XcbNative.ChangeAttributes(_connection, window, 1u << 11, data));
+        XcbPrimaryClipboard.TraceForTest?.Invoke($"subscription window={window} enabled={enabled}");
     }
 
     private void Change(uint window, uint property, uint type, byte format, byte[] bytes) =>
@@ -290,7 +313,12 @@ internal sealed class XcbSelectionConnection : IDisposable
                 CheckConnection();
                 if (XcbNative.PollReply(_connection, sequence, out nint reply, out nint error) != 0)
                 {
-                    if (error != 0) { XcbNative.Free(error); if (reply != 0) XcbNative.Free(reply); throw new IOException("X11 PRIMARY request was refused."); }
+                    if (error != 0)
+                    {
+                        XcbNative.Free(error);
+                        if (reply != 0) XcbNative.Free(reply);
+                        throw new IOException("X11 PRIMARY request was refused.");
+                    }
                     if (reply == 0) throw new IOException("X11 PRIMARY returned no reply.");
                     return new(reply);
                 }
@@ -336,22 +364,14 @@ internal sealed class XcbSelectionConnection : IDisposable
     }
 
     private static byte[] Copy(nint source, int length) { byte[] bytes = new byte[length]; Marshal.Copy(source, bytes, 0, length); return bytes; }
-    private static uint U32(nint pointer, int offset) => unchecked((uint)Marshal.ReadInt32(pointer, offset));
+    private static uint ReadU32(nint pointer, int offset) => unchecked((uint)Marshal.ReadInt32(pointer, offset));
     private static void Put(byte[] bytes, int offset, uint value) => BitConverter.GetBytes(value).CopyTo(bytes, offset);
     private static uint[] Atoms(byte[] bytes) => Enumerable.Range(0, bytes.Length / 4).Select(i => BitConverter.ToUInt32(bytes, i * 4)).ToArray();
-    private static byte[] Bytes(IEnumerable<uint> values) => values.SelectMany(BitConverter.GetBytes).ToArray();
+    private static byte[] EncodeAtoms(IEnumerable<uint> values) => values.SelectMany(BitConverter.GetBytes).ToArray();
 
-    public void Dispose() { XcbNative.Disconnect(_connection); _owned.Clear(); _outgoing.Clear(); }
-    private sealed record Property(uint Type, byte Format, byte[] Bytes);
-    private sealed record Event(byte[] Bytes) { public int Type => Bytes[0] & 127; public uint U32(int offset) => BitConverter.ToUInt32(Bytes, offset); }
+    public void Dispose() { XcbNative.Disconnect(_connection); _ownership.Clear(); _localWindows.Clear(); }
+    private sealed record PropertyHeader(uint DataType, byte BitWidth, uint ItemCount, uint Remaining);
+    private sealed record NativeProperty(uint DataType, byte BitWidth, byte[] Data);
+    private sealed record Event(byte[] Data) { public int Kind => Data[0] & 127; public uint Field(int offset) => BitConverter.ToUInt32(Data, offset); }
     private sealed class ReplyMemory(nint pointer) : IDisposable { public nint Pointer => pointer; public void Dispose() => XcbNative.Free(pointer); }
-    private sealed class Outgoing(uint window, uint property, uint target, byte[] bytes, long started)
-    {
-        public uint Window => window;
-        public uint Property => property;
-        public uint Target => target;
-        public byte[] Bytes => bytes;
-        public long Started => started;
-        public int Offset;
-    }
 }
