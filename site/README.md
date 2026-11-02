@@ -106,7 +106,8 @@ draft: false   # optional; true keeps it out of the published site
 
 The page renders the title, so the body starts below it. An image followed by a
 paragraph that is only italic text shows that text as the image's caption. A draft
-shows up in `npm run dev` but not in `npm run build`.
+shows up in `npm run dev` but not in `npm run build`. Link to other pages of the
+site from the site root (`/docs/ssh/`, `/#install`); the build adds the base path.
 
 ## Editing content
 
