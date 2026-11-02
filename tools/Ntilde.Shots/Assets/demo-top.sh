@@ -6,11 +6,10 @@
 # script is plain printf: nothing it prints came from the real machine, so there is nothing here
 # for the demo environment to fail to mask.
 #
-# Row count (17 lines: 2 header + 15 process rows) is fixed so the command line, the table and the
+# Row count (19 lines: 2 header + 17 process rows) is fixed so the command line, the table and the
 # next prompt all fit hero-split's 22-row bottom-right pane without scrolling. The 20-row table it
 # had before was tuned on Windows' font; with the bundled JetBrains Mono the pane is 22 rows and
-# that table scrolled it by two. It also ended on watchdog and bash, the two rows that tripped a
-# renderer bug in this pane (the buffer held them correctly; the drawn row was shifted right).
+# that table scrolled it by two.
 printf '\033[90mtop - demo world uptime 4 days, 20 processes, load 0.42 0.38 0.31\033[0m\n'
 printf '\033[7m%-6s %-10s %5s %5s %-9s %-8s %s\033[0m\n' "PID" "USER" "%CPU" "%MEM" "STATE" "TIME" "COMMAND"
 printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1042" "dev" "12.4" " 3.1" "running" "00:02:11" "ntilde-app"
@@ -28,3 +27,5 @@ printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1219" "dev" " 1.0" " 0.6" "sleeping"
 printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1226" "dev" " 0.9" " 0.5" "sleeping" "00:00:08" "font-shaper"
 printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1233" "dev" " 0.8" " 0.5" "sleeping" "00:00:07" "theme-loader"
 printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1254" "dev" " 0.4" " 0.3" "sleeping" "00:00:04" "net-bridge"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1119" "dev" " 0.3" " 0.4" "sleeping" "00:00:04" "watchdog"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1140" "dev" " 0.1" " 0.2" "sleeping" "00:00:01" "bash"
