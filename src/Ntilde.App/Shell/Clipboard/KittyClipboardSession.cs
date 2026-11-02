@@ -250,7 +250,7 @@ internal sealed class KittyClipboardSession : IDisposable
     private async Task<bool> AuthorizeReadAsync(string name, string password, int generation, CancellationToken cancellation)
     {
         string displayName = SafeName(name);
-        string? key = displayName.Length == 0 ? null : ClipboardSessionPermissions.Key(name, password);
+        string? key = string.IsNullOrWhiteSpace(displayName) ? null : ClipboardSessionPermissions.Key(name, password);
         lock (_sync)
         {
             if (!IsAlive(generation) || cancellation.IsCancellationRequested) return false;
@@ -367,7 +367,7 @@ internal sealed class KittyClipboardSession : IDisposable
         if (!await _replies.SendAsync(response, cancellation)) throw new IOException("Clipboard reply queue remained unavailable.");
     }
 
-    private static string SafeName(string name) => new(name.Where(c => !char.IsControl(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).Take(80).ToArray());
+    private static string SafeName(string name) => new(name.Where(c => !char.IsControl(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).ToArray());
     private void Reply(string type, string status, string id, bool defer = false)
     {
         lock (_sync)

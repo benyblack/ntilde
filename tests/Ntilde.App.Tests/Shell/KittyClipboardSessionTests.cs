@@ -121,6 +121,18 @@ public class KittyClipboardSessionTests
         Assert.Contains("status=EPERM", other.Replies[^1]);
     }
 
+    [Fact]
+    public async Task Consent_shows_the_full_name_including_suffixes_after_a_shared_long_prefix()
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        string prefix = new('x', 100);
+        h.Send(NamedRead(name: prefix + "first")); await h.Drain();
+        Assert.Equal(prefix + "first", h.Clipboard.LastRequest!.Name);
+        h.Send(NamedRead(name: prefix + "second")); await h.Drain();
+        Assert.Equal(prefix + "second", h.Clipboard.LastRequest!.Name);
+        Assert.Equal(2, h.Clipboard.Prompts);
+    }
+
     [Theory]
     [InlineData((int)ClipboardReadConsent.Deny)]
     [InlineData((int)ClipboardReadConsent.AllowOnce)]
@@ -137,6 +149,8 @@ public class KittyClipboardSessionTests
     [Theory]
     [InlineData("", "password")]
     [InlineData("Editor", "")]
+    [InlineData("   ", "password")]
+    [InlineData("\u00a0\u2003\t", "password")]
     [InlineData("\u0000\u202e", "password")]
     public async Task Missing_or_invisible_identity_never_offers_or_stores_a_session_grant(string name, string password)
     {
