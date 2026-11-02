@@ -89,6 +89,18 @@ class TerminfoTriageTests(unittest.TestCase):
         self.assertEqual("Q01", row["action"])
         self.assertIn("shifted versus overwritten cells", self.report["actions"]["Q01"]["nextMeasurement"])
 
+    def test_unpinned_row_claims_and_missing_required_fields_are_rejected(self):
+        for field in ("runtimeEvidence", "sourceEvidence", "sourceLimitation"):
+            changed = copy.deepcopy(self.report)
+            row = next(row for row in changed["observations"] if "sourceLimitation" not in row)
+            row[field] = "unproven claim" if field != "sourceLimitation" else None
+            with self.assertRaisesRegex(ValueError, "row schema"):
+                triage.validate(changed)
+        changed = copy.deepcopy(self.report)
+        del changed["observations"][0]["traceSha256"]
+        with self.assertRaisesRegex(ValueError, "row schema"):
+            triage.validate(changed)
+
     def test_substituted_raw_input_is_rejected_before_any_source_command(self):
         with tempfile.TemporaryDirectory() as temporary:
             raw = Path(temporary) / "raw.json"

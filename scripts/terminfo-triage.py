@@ -163,6 +163,12 @@ def validate_rows(rows):
 
 
 def validate_assignments(rows):
+    for row in rows:
+        expected = {"original", "action", "traceSha256"}
+        if row["original"]["featureId"] in LIMITS:
+            expected.add("sourceLimitation")
+        if set(row) != expected:
+            raise ValueError("Observation row schema changed")
     if any(r["action"] != classify(r["original"]) or r.get("sourceLimitation") != LIMITS.get(r["original"]["featureId"]) for r in rows):
         raise ValueError("Triage classification changed")
     traces = sorted((r["original"]["featureId"], r["traceSha256"]) for r in rows)
