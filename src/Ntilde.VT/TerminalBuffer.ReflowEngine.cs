@@ -791,7 +791,14 @@ namespace Ntilde.VT
                             bool isRightPinned = lastContentIndex == physRow.Cells.Length - 1;
                             int gapThreshold = isRightPinned ? 2 : 10;
 
-                            if (bestGapLength >= gapThreshold)
+                            // Only a block already against the right edge is a right prompt, by the same
+                            // rule GridQueryReader uses (zsh's RPROMPT stops one column short). Without
+                            // this, the last rows of padded output above the prompt - a printf table whose
+                            // `%-10s %5s` columns leave a 10-space gap - were pushed to the new right edge
+                            // on every widening resize, such as a scale change re-snapping the cell width.
+                            bool isNearRightEdge = lastContentIndex >= physRow.Cells.Length - 1 - GridQueryReader.MaxRightPromptIndent;
+
+                            if (isNearRightEdge && bestGapLength >= gapThreshold)
                             {
                                 // We found a split!
                                 // Left+Middle = 0 .. bestGapStart (exclusive)
