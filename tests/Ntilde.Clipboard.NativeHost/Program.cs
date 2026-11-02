@@ -81,14 +81,7 @@ internal sealed class ClipboardScenario(Window window, string root)
         WritePackets(session, values, location);
         await WaitUntilAsync(() => _replies.Any(r => r.Contains("status=DONE:id=qa-write", StringComparison.Ordinal)));
         var beforePeer = (Sent: 0, Received: 0);
-        if (Program.Primary)
-        {
-            using var own = await primary.OpenReadAsync();
-            byte[]? binary = await own.ReadAsync(BinaryMime);
-            if (binary == null || !binary.SequenceEqual(values[BinaryMime])) throw new InvalidDataException("PRIMARY self-read did not preserve bytes.");
-            beforePeer = await primary.TransferCountsAsync();
-            if (beforePeer.Sent == 0 || beforePeer.Received == 0) throw new InvalidDataException("PRIMARY self-read did not exercise INCR.");
-        }
+        if (Program.Primary) beforePeer = await VerifyPrimarySelfReadAsync(primary, values);
         Signal("host-write.ready");
         // Runner allows 25 s for peer read + 25 s for peer write; this handoff covers both.
         await WaitUntilAsync(() => File.Exists(Path.Combine(root, "peer-write.ready")), TimeSpan.FromSeconds(55));
@@ -119,6 +112,16 @@ internal sealed class ClipboardScenario(Window window, string root)
         VerifyRead(peerFixture.ToDictionary(p => p.Key, p => Convert.FromBase64String(p.Value)));
         if (Program.Primary) await VerifyPrimaryResultAsync(session, primary, adapter, beforePeer, sentinel);
         Signal("host-read.verified");
+    }
+
+    private static async Task<(int Sent, int Received)> VerifyPrimarySelfReadAsync(XcbPrimaryClipboard primary, Dictionary<string, byte[]> values)
+    {
+        using var own = await primary.OpenReadAsync();
+        byte[]? binary = await own.ReadAsync(BinaryMime);
+        if (binary == null || !binary.SequenceEqual(values[BinaryMime])) throw new InvalidDataException("PRIMARY self-read did not preserve bytes.");
+        var counts = await primary.TransferCountsAsync();
+        if (counts.Sent == 0 || counts.Received == 0) throw new InvalidDataException("PRIMARY self-read did not exercise INCR.");
+        return counts;
     }
 
     private async Task VerifyPrimaryResultAsync(KittyClipboardSession session, XcbPrimaryClipboard primary,
