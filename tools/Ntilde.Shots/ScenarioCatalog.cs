@@ -4,9 +4,9 @@ namespace Ntilde.Shots;
 
 public static class ScenarioCatalog
 {
-    // RemoteFilesScenario is the only implemented scenario still left out of this list, and the
-    // reason is structural rather than a defect to fix: it needs a genuinely connected native SSH
-    // session, which this offline harness has no way to provide. See its header comment.
+    // RemoteFilesScenario is the one scenario that needs more than git and bash: it connects to a
+    // throwaway SSH server in Docker (DemoSshHost), and fails with a plain message when Docker is
+    // not running.
     //
     // The other three deferrals are gone. sixel-graphics and iterm2-inline-image were blocked twice
     // over - first because nothing under src/ assigned AnsiParser.ImageDecoder so a plain build
@@ -36,6 +36,7 @@ public static class ScenarioCatalog
         new SixelGraphicsScenario(),
         new Iterm2InlineImageScenario(),
         new ConnectionManagerScenario(),
+        new RemoteFilesScenario(),
         new ClipPaletteScenario(),
         new ClipSplitScenario(),
         new ClipTuiScenario()

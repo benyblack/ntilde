@@ -122,6 +122,14 @@ public sealed class DemoWorld : IDisposable
     }
 
     /// <summary>
+    /// The value <paramref name="name"/> had before this world replaced it, or its current value if
+    /// it never did. For tools the harness itself runs on the real machine - the docker CLI finds
+    /// Docker Desktop through the real <c>~/.docker</c> - never for anything the demo shell sees.
+    /// </summary>
+    public string? OriginalEnvironment(string name) =>
+        _environmentToRestore.TryGetValue(name, out string? original) ? original : Environment.GetEnvironmentVariable(name);
+
+    /// <summary>
     /// Sets a process environment variable, remembering the value it displaces so
     /// <see cref="Dispose"/> can put it back.
     /// </summary>

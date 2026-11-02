@@ -1,85 +1,149 @@
+using System.Reflection;
 using Avalonia.Controls;
 using Ntilde.Controls;
+using Ntilde.Platform.Ssh.Interactions;
+using Ntilde.Services.Ssh;
+using Ntilde.Shell;
+using Ntilde.Shell.Secrets;
 
 namespace Ntilde.Shots.Scenarios;
 
 /// <summary>
-/// The remote files sidebar beside a terminal pane, with the transfer centre visible showing
-/// recent transfers.
+/// A native SSH tab to <c>dev@edge-01</c> with the remote files sidebar open, then the same window
+/// with the transfer centre showing a download and an upload in flight beside a finished one.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>Deliberately NOT registered in ScenarioCatalog.</b> <see cref="TerminalPane.ToggleRemoteFilesSidebar"/>
-/// is the real, public entry point the brief asks for, but its private implementation
-/// (<c>TerminalPane.IsRemoteFilesSidebarSupported</c>, <c>Controls/TerminalPane.axaml.cs:941-945</c>)
-/// requires <c>Profile.Type == ConnectionType.SSH &amp;&amp; Profile.SshBackendKind == SshBackendKind.Native</c>
-/// — a genuinely connected native SSH session, not merely a profile of that type. The sidebar's
-/// contents come from <c>RemoteFilesSidebarViewModel.OpenAsync</c>, which lists a directory over that
-/// live session; there is nothing to list without one.
-/// </para>
-/// <para>
-/// <b>DemoWorld has no reachable SSH server to connect to.</b> Every scenario's pane runs the demo
-/// profile — a local bash shell (<c>DemoWorld.BuildDemoProfile</c>) — and the harness has no local SSH
-/// daemon of its own. The product's own SSH E2E tests exist
-/// (<c>tests/Ntilde.Platform.Tests/Ssh/DockerSshFixture.cs</c>) but stand up a Docker container,
-/// which this harness cannot depend on without contradicting its own design constraints: it is meant
-/// to be fast, dependency-free and fully offline (<c>scripts/shots.ps1 all</c> currently runs eleven
-/// scenarios in about 75 seconds with nothing beyond git and bash on PATH).
-/// </para>
-/// <para>
-/// This file still runs <see cref="TerminalPane.ToggleRemoteFilesSidebar"/> for real against the demo
-/// (local) profile, which the real code refuses for exactly the reason above, and then waits for
-/// <c>RemoteEntriesList</c> to report at least one row before ever calling
-/// <see cref="ShotContext.Capture"/> — so if this is ever registered again before the underlying gap
-/// is closed, it fails loudly with a timeout instead of quietly publishing an empty sidebar. That is
-/// the brief's own instruction ("the scenario must fail rather than capture an empty sidebar") turned
-/// into code rather than left as a comment.
-/// </para>
-/// <para>
-/// <b>What would re-enable it.</b> A way for this offline harness to hand a pane a genuinely connected
-/// native SSH session with a small, controlled remote filesystem to browse — for example, an in-process
-/// fake transport wired through the same <c>SshBackendKind.Native</c> path the product itself uses,
-/// rather than a real network connection. That is a change to the SSH stack under <c>src/</c>, which
-/// this task may not touch, and a shortcut version of it (setting <c>IsVisible</c> on a sidebar with no
-/// backing session, or wiring a decoder the product does not ship) is exactly the dishonest screenshot
-/// this project exists to refuse — see the sixel/iTerm2 scenarios' own header comments for the same
-/// call made the same way.
-/// </para>
+/// Everything on screen is real: the session is a live native SSH connection to
+/// <see cref="DemoSshHost"/>'s container, the sidebar lists that machine's home directory over it,
+/// and the transfers are native SFTP jobs moving real bytes, captured part way through. That is why
+/// this scenario needs Docker, and why it was left unregistered until there was a server to reach.
 /// </remarks>
 internal sealed class RemoteFilesScenario : IScenario
 {
+    /// <summary>Big enough that both large transfers are still running when the capture is taken.</summary>
+    private const long UploadBytes = 1_400L * 1024 * 1024;
+
     public ShotSpec Spec { get; } = new(
         Name: "remote-files",
         Tier: 2,
         LogicalWidth: 1280,
         LogicalHeight: 800,
-        Intent: "The remote files sidebar open beside a terminal pane, with the transfer centre " +
-                "visible in the lower right showing recent transfers.");
+        Intent: "Two images. 'remote-files' shows a native SSH tab to dev@edge-01 with the remote files " +
+                "sidebar open beside it, listing the remote home directory's folders and files. " +
+                "'remote-files-transfers' shows the same window with the transfer centre open: one " +
+                "finished download and a large download and upload part way through, with progress " +
+                "bars and byte counts.");
 
     public async Task RunAsync(ShotContext context)
     {
-        TerminalPane pane = context.OpenTab(context.World.DemoProfile);
-        await context.RunCommandAsync(pane, "clear");
+        using DemoSshHost host = DemoSshHost.Start(context.World);
+        UseHarnessSshPrompts(context);
+
+        TerminalPane pane = context.OpenTab(host.Profile);
+        context.Driver.WaitFor(
+            () => ScreenText(pane).Contains("dev@edge-01", StringComparison.Ordinal),
+            TimeSpan.FromSeconds(30),
+            "the remote shell's prompt on edge-01");
+
+        await context.RunCommandAsync(pane, "ls -lh logs releases/0.12.4 releases/0.13.0");
 
         pane.ToggleRemoteFilesSidebar();
-        context.Driver.Pump(3);
-
-        context.Driver.Require<Border>("TransferOverlay").IsVisible = true;
-        context.Driver.Pump(3);
-
-        // Fails loudly rather than capturing whatever is on screen. Confirmed by actually running
-        // this against the demo (local) profile: IsRemoteFilesSidebarSupported() refuses before
-        // TerminalPane.EnsureRemoteFilesSidebarHost ever runs, so RemoteFilesSidebar - and its
-        // RemoteEntriesList - never exists in the pane's visual tree at all, and RequireIn throws
-        // immediately ("No control named 'RemoteEntriesList'") rather than this WaitFor ever
-        // reaching its 10s timeout. Either shape is an immediate, loud failure - never a captured
-        // image - which is the property that matters; the timeout stays as the correct behaviour
-        // for the day a live session makes the control exist but starts empty.
         context.Driver.WaitFor(
-            () => context.Driver.RequireIn<ListBox>(pane, "RemoteEntriesList").ItemCount > 0,
-            TimeSpan.FromSeconds(10),
-            "the remote files sidebar to list at least one real entry from a live SSH session");
+            () => FindInTree<ListBox>(pane, "RemoteEntriesList") is { ItemCount: > 0 },
+            TimeSpan.FromSeconds(20),
+            "the remote files sidebar to list edge-01's home directory over the live session");
+        context.Driver.Pump(5);
 
         context.Capture();
+
+        Guid sessionId = pane.Session?.Id ?? throw new InvalidOperationException("The SSH pane has no session.");
+        string downloads = Path.Combine(context.World.HomeRoot, "Downloads");
+        Directory.CreateDirectory(downloads);
+
+        TransferJob readme = Enqueue(context, host, sessionId, TransferDirection.Download,
+            Path.Combine(downloads, "README.md"), $"{DemoSshHost.RemoteHome}/README.md");
+        context.Driver.WaitFor(
+            () => readme.State == TransferState.Completed,
+            TimeSpan.FromSeconds(20),
+            "the small README download to finish");
+
+        // Sparse, so creating it costs nothing; the SFTP client still reads and sends every byte.
+        string dist = Path.Combine(context.World.HomeRoot, "dist");
+        Directory.CreateDirectory(dist);
+        string upload = Path.Combine(dist, "ntilde-0.13.1-osx-arm64.dmg");
+        using (var file = new FileStream(upload, FileMode.Create, FileAccess.Write))
+        {
+            file.SetLength(UploadBytes);
+        }
+
+        TransferJob download = Enqueue(context, host, sessionId, TransferDirection.Download,
+            Path.Combine(downloads, "ntilde-0.13.0-full-images.tar"),
+            $"{DemoSshHost.RemoteHome}/releases/0.13.0/ntilde-0.13.0-full-images.tar");
+        TransferJob uploadJob = Enqueue(context, host, sessionId, TransferDirection.Upload,
+            upload, $"{DemoSshHost.RemoteHome}/releases/ntilde-0.13.1-osx-arm64.dmg");
+
+        try
+        {
+            context.Driver.WaitFor(
+                () => InFlight(download) && InFlight(uploadJob),
+                TimeSpan.FromSeconds(60),
+                "the large download and upload to both be running and part way through");
+
+            context.Capture("transfers");
+        }
+        finally
+        {
+            SftpService.Instance.CancelJob(download.Id);
+            SftpService.Instance.CancelJob(uploadJob.Id);
+            context.Driver.Pump(3);
+        }
     }
+
+    private static bool InFlight(TransferJob job) =>
+        job.State == TransferState.Running && job.Progress is > 0.3 and < 0.9;
+
+    private static TransferJob Enqueue(
+        ShotContext context, DemoSshHost host, Guid sessionId, TransferDirection direction, string localPath, string remotePath)
+    {
+        var job = new TransferJob
+        {
+            SessionId = sessionId,
+            ProfileId = host.Profile.Id,
+            ProfileName = host.Profile.Name,
+            Direction = direction,
+            Kind = TransferKind.File,
+            LocalPath = localPath,
+            RemotePath = remotePath
+        };
+
+        context.Window.EnqueueTransferJob(job);
+        context.Driver.Pump(2);
+        return job;
+    }
+
+    /// <summary>
+    /// Replaces the window's SSH prompt handler before the tab opens, so no dialog can appear in a
+    /// headless run: the container's freshly generated host key is accepted (and recorded in the
+    /// sandboxed known-hosts file), password prompts are refused (login is by key), and the vault is
+    /// in memory rather than the real Keychain. MainWindow hands its handler to every pane it wires.
+    /// </summary>
+    private static void UseHarnessSshPrompts(ShotContext context)
+    {
+        FieldInfo field = typeof(MainWindow).GetField("_sshInteractionService", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("MainWindow has no '_sshInteractionService' field. It was renamed - update the scenario.");
+
+        field.SetValue(context.Window, new SshInteractionService(
+            ownerProvider: () => context.Window,
+            hostKeyPresenter: (_, _, _) => Task.FromResult(SshInteractionResponse.AcceptHostKey()),
+            authPresenter: (_, _, _) => Task.FromResult(SshInteractionResponse.Cancel()),
+            vaultService: new VaultService(new InMemorySecretStore())));
+    }
+
+    private static string ScreenText(TerminalPane pane) =>
+        pane.Buffer is { } buffer
+            ? string.Join('\n', buffer.ViewportRows.Select(row => new string(row.Cells.Select(c => c.Character == '\0' ? ' ' : c.Character).ToArray())))
+            : string.Empty;
+
+    private static T? FindInTree<T>(Control root, string name) where T : Control =>
+        Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(root).OfType<T>().FirstOrDefault(c => c.Name == name);
 }

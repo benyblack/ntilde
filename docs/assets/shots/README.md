@@ -46,10 +46,12 @@ scenario's stated `Intent` before publishing, and reports what changed.
   render in that folder, and never put a hand-captured window screenshot anywhere else in this
   directory.
 
-## Scenarios you won't find here
+## Docker, for one scenario
 
-- **`remote-files`** — needs a live, connected SSH session the offline harness has no way to
-  provide, so `ScenarioCatalog` does not register it.
+`remote-files` connects to a real SSH server: a throwaway container built from
+`tools/Ntilde.Shots/Assets/demo-ssh/` and published on `edge-01.localhost:2222` for the length of
+the scenario. It needs Docker running and port 2222 free, and fails with a plain message when they
+are not. Every other scenario needs only git and bash.
 
 Each scenario's own source file under `tools/Ntilde.Shots/Scenarios/` documents the
 evidence trail in detail, and `ScenarioCatalog.cs` explains what re-enabling one would require.

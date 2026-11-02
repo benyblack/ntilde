@@ -10,8 +10,8 @@ Scenarios requested: $ARGUMENTS (empty means `all`).
 
    `scripts/shots.sh $ARGUMENTS --scale 2` (macOS/Linux) or `scripts/shots.ps1 $ARGUMENTS --scale 2` (Windows)
 
-   `all` runs every scenario `ScenarioCatalog` registers. `remote-files` is not registered (it
-   needs a live SSH session), so it produces no assets - don't report or imply it ran.
+   `all` runs every scenario `ScenarioCatalog` registers. `remote-files` needs Docker running (it
+   connects to a throwaway SSH container); if Docker is down it fails and `--prune` will refuse.
    `--publish` ships only the files `README.md` or `site/scripts/sync-screenshots.mjs` reference;
    review those, and reference a new variant there before expecting it to publish.
 
