@@ -132,6 +132,19 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def unique_json_members(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON key: " + key)
+        result[key] = value
+    return result
+
+
+def parse_report(text):
+    return json.loads(text, object_pairs_hook=unique_json_members)
+
+
 def original_digest(observations):
     original = sorted((o["original"] for o in observations), key=lambda o: o["featureId"])
     return digest(json.dumps(original, sort_keys=True, separators=(",", ":")).encode())
@@ -247,7 +260,7 @@ def main():
         STEM.with_suffix(".json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         STEM.with_suffix(".md").write_text(markdown(report), encoding="utf-8")
     else:
-        report = json.loads(STEM.with_suffix(".json").read_text(encoding="utf-8"))
+        report = parse_report(STEM.with_suffix(".json").read_text(encoding="utf-8"))
         validate(report)
         if STEM.with_suffix(".md").read_text(encoding="utf-8") != markdown(report):
             raise ValueError("Markdown inventory is stale")

@@ -101,6 +101,16 @@ class TerminfoTriageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "row schema"):
             triage.validate(changed)
 
+    def test_duplicate_json_claims_are_rejected_before_last_value_can_hide_them(self):
+        text = json.dumps(self.report)
+        for original, duplicate in ((
+                '"outcome": "inconclusive"', '"outcome": "supported", "outcome": "inconclusive"'), (
+                '"action": "Q01"', '"action": "Q03", "action": "Q01"')):
+            changed = text.replace(original, duplicate, 1)
+            self.assertNotEqual(text, changed)
+            with self.assertRaisesRegex(ValueError, "Duplicate JSON key"):
+                triage.parse_report(changed)
+
     def test_substituted_raw_input_is_rejected_before_any_source_command(self):
         with tempfile.TemporaryDirectory() as temporary:
             raw = Path(temporary) / "raw.json"
