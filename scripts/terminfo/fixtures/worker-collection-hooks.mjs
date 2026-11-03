@@ -10,7 +10,7 @@ code.set(new URL('ownership.mjs', root).href, log + `
     export async function requestOwner(_, kind) { record(kind); }
 `);
 code.set(new URL('terminal-fence.mjs', root).href, log + `export function terminalFence() { record('fence'); return { dispose() { record('dispose'); } }; }`);
-for (const [file, name] of [['cells', 'Cells'], ['sgr', 'Sgr'], ['rgb', 'Rgb'], ['rendition', 'Rendition'], ['cursor', 'Cursor'], ['pixels-cases', 'Pixels']]) {
+for (const [file, name] of [['cells', 'Cells'], ['sgr', 'Sgr'], ['rgb', 'Rgb'], ['rendition', 'Rendition'], ['cursor', 'Cursor'], ['pixels-cases', 'Pixels'], ['color-cases', 'Colors']]) {
     code.set(new URL(file + '.mjs', root).href, log + `export async function collect${name}() { record('${name}'); }`);
 }
 registerHooks({ load(url, context, next) {

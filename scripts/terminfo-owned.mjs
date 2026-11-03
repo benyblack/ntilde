@@ -17,6 +17,9 @@ import { buildRenditionReport, renditionCases, renditionSuiteId } from './termin
 import { buildCursorReport, cursorCases, cursorSuiteId } from './terminfo/cursor.mjs';
 import { OwnedPixelObserver } from './terminfo/pixels-capture.mjs';
 import { pixelSuiteId, pixelScenes } from './terminfo/pixels-cases.mjs';
+import { OwnedColorObserver } from './terminfo/color-capture.mjs';
+import { colorSuiteId, colorCases } from './terminfo/color-cases.mjs';
+import { buildColorReport } from './terminfo/colors.mjs';
 import { buildPixelReport } from './terminfo/pixels.mjs';
 import { completeOwnedReceipt } from './terminfo/receipt.mjs';
 
@@ -109,6 +112,10 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
         pixelSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'pixels.mjs'),
         pixelCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'pixels-cases.mjs'),
         pixelPngSourceSha256: join(repo, 'scripts', 'terminfo', 'pixels-png.mjs'),
+        colorCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'color-capture.mjs'),
+        colorSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'colors.mjs'),
+        colorCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'color-cases.mjs'),
+        colorQuerySourceSha256: join(repo, 'scripts', 'terminfo', 'color-query.mjs'),
         receiptSourceSha256: join(repo, 'scripts', 'terminfo', 'receipt.mjs'),
         collectorManifestSha256: join(repo, 'scripts', 'terminfo', 'collector-package.json'),
         collectorLockSha256: join(repo, 'scripts', 'terminfo', 'collector-package-lock.json'),
@@ -208,6 +215,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let renditionEvidence;
     let cursorEvidence;
     let pixelEvidence;
+    let colorEvidence;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
@@ -251,6 +259,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let sgrObserver;
         let pixelObserver;
         let pixelUnavailable;
+        let colorObserver;
+        let colorUnavailable;
         const detailStates = new Map();
         const detailSpecs = {
             rgb: { previous: 'sgr', nonce: 'NTILDE_RG_', suiteId: rgbSuiteId, cases: rgbCases, report: buildRgbReport },
@@ -268,7 +278,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             nodeVersion: process.version, dependencyInstall: 'isolated npm ci --ignore-scripts', startedAt: new Date().toISOString(), runId,
             ...retainCollectorEvidence(output, bundle, adapterBundleSha256, ownerModule, workerScript),
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
-            clipboard: 'disabled; no clipboard fixture', pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
+            clipboard: 'disabled; no clipboard fixture', colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             cells: 'private observe-only AgentHost; nonce-bound pane; separate ASCII cell-state suite',
             attributes: 'separate ASCII SGR flags and palette-index suite',
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
@@ -276,7 +286,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         };
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
-        for (const prefix of [...Object.keys(detailSpecs), 'pixel'])
+        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         /** Complete each prior suite before capturing this one; only initial typed refusal is optional. */
         const observeDetails = async (prefix, request, budget) => {
@@ -340,10 +350,39 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 throw error;
             }
         };
+        const recordColorUnavailable = () => {
+            const file = 'color-unavailable.json';
+            writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: colorSuiteId,
+                status: 'unavailable', reason: 'screenDetailsUnavailable', fixtureStarted: false, plannedExperiments: colorCases.length });
+            colorUnavailable = { runId, suiteId: colorSuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                status: 'unavailable', reason: 'screenDetailsUnavailable', counts: {}, provisionalUntil: 'cell-receipt.json' };
+        };
+        const observeColors = async (request, budget) => {
+            const previous = { unavailable: pixelUnavailable, observer: pixelObserver };
+            if (previous?.unavailable && request.kind === 'color-start' && !colorUnavailable) {
+                recordColorUnavailable();
+                const error = new Error('Color fixture requires complete screen details.');
+                error.code = 'screenDetailsUnavailable';
+                throw error;
+            }
+            if (!previous?.observer.restored) throw new Error('Pixel suite must restore before color observations.');
+            colorObserver ??= new OwnedColorObserver({ output, appData, ownerPid: app.pid, profileName,
+                nonce: `NTILDE_CL_${runId}`, expectedPaneId: cellObserver.paneId });
+            try {
+                const result = await colorObserver.handle(request, budget);
+                appendFileSync(join(output, 'color-snapshots.jsonl'), JSON.stringify(colorObserver.frames.at(-1)) + '\n');
+                return result;
+            } catch (error) {
+                if (request.kind === 'color-start' && error.code === 'screenDetailsUnavailable'
+                    && !colorObserver.before.baseline && colorObserver.before.snapshots === 1 && !colorObserver.frames.length) recordColorUnavailable();
+                throw error;
+            }
+        };
         /** Route owned observations serially, preserving suite restoration and pane identity dependencies. */
         const observeCells = async (request, budget) => {
             const prefix = request.kind.split('-')[0];
             if (prefix === 'pixel') return observePixels(request, budget);
+            if (prefix === 'color') return observeColors(request, budget);
             if (Object.hasOwn(detailSpecs, prefix)) return observeDetails(prefix, request, budget);
             const attributes = request.kind.startsWith('sgr-');
             if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
@@ -382,7 +421,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel)-(?:start|bind|read|finish)$/.test(request.kind)) {
+                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color)-(?:start|bind|read|finish)$/.test(request.kind)) {
                         const result = await observeCells(request, queryTimeout);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
                         return;
@@ -432,6 +471,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             cursorEvidence = retainDetails('cursor');
             pixelEvidence = pixelUnavailable ?? retainCellReport(output, pixelObserver, runId,
                 (frames, id) => buildPixelReport(frames, id, output), 'pixel-observations.json');
+            colorEvidence = colorUnavailable ?? retainCellReport(output, colorObserver, runId,
+                (frames, id) => buildColorReport(frames, id, output), 'color-observations.json');
+            summary.colorEvidence = colorEvidence;
             summary.pixelEvidence = pixelEvidence;
             summary.renditionEvidence = renditionEvidence;
             summary.cursorEvidence = cursorEvidence;
@@ -465,7 +507,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
         throw interruption;
     }
-    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence }); }
+    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence }); }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
 

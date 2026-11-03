@@ -45,3 +45,33 @@ test('idle input, write errors, timeout and disposal reject pending barriers', a
     const unsolicited = new Input(), idle = terminalFence(unsolicited, { write() {} });
     unsolicited.emit('data', Buffer.from('x')); await assert.rejects(idle.write(''), /Unexpected/); idle.dispose();
 });
+
+test('typed query uses one ordering fence and handles fragmented replies', async () => {
+    const input = new Input(); let written;
+    const fence = terminalFence(input, { write(value, callback) { written = value; callback(); } });
+    const pending = fence.query({ code: 4, index: 200 }, '\x1b[0m');
+    assert.equal(written, '\x1b[0m\x1b]4;200;?\x1b\\\x1b[c');
+    await assert.rejects(fence.write(''), /Concurrent/);
+    const raw = '\x1b]4;200;rgb:1212/3434/5656\x1b\\';
+    for (const byte of Buffer.from(raw + '\x1b[?62;4;22c')) input.emit('data', Buffer.from([byte]));
+    assert.deepEqual(await pending, { barrier: '\x1b[?62;4;22c', reply: { raw, channels16: [0x1212, 0x3434, 0x5656] } });
+    fence.dispose(); assert.equal(input.isRaw, false); assert.equal(input.paused, true);
+});
+
+test('explicit absent query reply completes only with DA, and late input poisons the fence', async () => {
+    const input = new Input(), fence = terminalFence(input, { write(_, callback) { callback(); } });
+    const pending = fence.query({ code: 17 });
+    input.emit('data', Buffer.from('\x1b[?62;4;22c'));
+    assert.deepEqual(await pending, { barrier: '\x1b[?62;4;22c', reply: null });
+    input.emit('data', Buffer.from('\x1b]17;rgb:1212/3434/5656\x1b\\'));
+    await assert.rejects(fence.write(''), /Unexpected/); fence.dispose();
+});
+
+test('typed query mismatches and over-budget frames remain fatal', async () => {
+    for (const response of ['\x1b]19;rgb:1212/3434/5656\x1b\\\x1b[?62c', '\x1b]' + 'x'.repeat(513)]) {
+        const input = new Input(), fence = terminalFence(input, { write(_, callback) { callback(); } });
+        const pending = fence.query({ code: 17 });
+        input.emit('data', Buffer.from(response));
+        await assert.rejects(pending); await assert.rejects(fence.write('')); fence.dispose();
+    }
+});

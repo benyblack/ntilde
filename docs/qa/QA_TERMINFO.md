@@ -348,6 +348,18 @@ Windows/Linux qualification remains #775. The earlier
 [2026-11-02 rendition/cursor measurement](terminfo/2026-11-02-rendition-cursor.md)
 retains its historical scope and exact limits.
 
+### Supplemental runtime color resets and queries
+
+The [owned color suite](terminfo/owned-colors.md) follows the fixed pixel suite.
+It adds ten baseline/override/reset experiments, 35 parent-owned PNGs, exact
+fenced OSC 4/10/11/12/17/19 replies and independent OSC 104/110/111/112/117/119
+reset checks. Selection colors use an isolated synthetic render selection.
+An unset selection default is an explicit absent reply, not unsupported.
+Runtime colors are cleared explicitly before alternate-screen exit because
+DECSTR does not restore them. Receipt v3 preserves the six prior bindings and
+adds re-derived color evidence after verified cleanup. This is supplemental
+owned offscreen evidence; stock collector grades stay frozen.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh

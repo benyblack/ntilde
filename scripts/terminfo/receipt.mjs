@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { buildPixelReport } from './pixels.mjs';
 import { pixelSuiteId } from './pixels-cases.mjs';
 
+import { buildColorReport } from './colors.mjs';
+import { colorSuiteId } from './color-cases.mjs';
+
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const suites = ['sgr', 'rgb', 'rendition', 'cursor'];
 
@@ -45,6 +48,21 @@ function checkPixelEvidence(output, evidence, runId, suiteId) {
     }
 }
 
+function checkColorEvidence(output, evidence, runId, suiteId) {
+    if (suiteId !== colorSuiteId) throw new Error('Unexpected color suite identity.');
+    checkEvidence(output, evidence, 'color', runId);
+    const colors = JSON.parse(readFileSync(join(output, evidence.file)));
+    if (colors.runId !== runId || colors.suiteId !== colorSuiteId) throw new Error('Invalid color report identity.');
+    if (evidence.file === 'color-observations.json') {
+        const derived = buildColorReport(colors.snapshots, runId, output);
+        if (JSON.stringify(colors) !== JSON.stringify(derived)) throw new Error('Color observations do not match retained evidence.');
+        const journal = readFileSync(join(output, 'color-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+        if (JSON.stringify(journal) !== JSON.stringify(colors.snapshots)) throw new Error('Color journal does not match the report.');
+    } else if (colors.status !== 'unavailable' || colors.reason !== 'screenDetailsUnavailable' || colors.fixtureStarted !== false) {
+        throw new Error('Invalid color unavailable marker.');
+    }
+}
+
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
 export function completeOwnedReceipt(output, scratch, evidence) {
     const proofBytes = readFileSync(join(output, 'ownership-proof.json'));
@@ -59,7 +77,11 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     checkEvidence(output, evidence, 'cell', runId);
     for (const prefix of suites) checkEvidence(output, evidence[prefix + 'Evidence'], prefix, runId);
     if (context.pixelSuiteId !== undefined) checkPixelEvidence(output, evidence.pixelEvidence, runId, context.pixelSuiteId);
-    const receipt = { schemaVersion: context.pixelSuiteId ? 2 : 1, ...evidence, ownershipProofSha256: digest(proofBytes),
+    if (context.colorSuiteId !== undefined) checkColorEvidence(output, evidence.colorEvidence, runId, context.colorSuiteId);
+    let schemaVersion = 1;
+    if (context.pixelSuiteId) schemaVersion = 2;
+    if (context.colorSuiteId) schemaVersion = 3;
+    const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };
     writeFileSync(join(output, 'cell-receipt.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
