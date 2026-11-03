@@ -13,10 +13,12 @@ import { pixelSuiteId } from '../pixels-cases.mjs';
 import { colorSuiteId } from '../color-cases.mjs';
 import { eraseSuiteId, editingSuiteId } from '../editing-cases.mjs';
 export const runId = 'a'.repeat(32);
+/** Derive the selected synthetic report from its source-owned fixture plan. */
 function reportFor(prefix) {
     if (prefix === 'history') return buildHistoryReport(syntheticCellPlanJournal(prefix, runId, { casesFor: makeHistoryCases, nonce: 'NTILDE_HS_' }), runId);
     return buildEditingReport(syntheticEditingJournal(prefix, runId), runId, prefix);
 }
+/** Provide isolated logical receipt inputs, optionally including the v5 transport proof. */
 export function ownedReceiptFixture(action, { history = false } = {}) {
     const output = mkdtempSync(join(tmpdir(), 'nt-edit-receipt-'));
     const write = (file, value) => writeFileSync(join(output, file), JSON.stringify(value));

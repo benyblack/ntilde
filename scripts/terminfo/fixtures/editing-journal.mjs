@@ -23,6 +23,7 @@ export function initialEditingScreen() {
         flags: 768, fg: -1, bg: -1, foregroundArgb: null, backgroundArgb: null, underlineStyle: 0, underlineColorIndex: -1, underlineArgb: null }))),
         row: 0, col: 0, top: 0, bottom: 9, alternate: false });
 }
+/** Build coherent unit-only records for refusal tests; these are never runtime measurements. */
 export function syntheticCellPlanJournal(prefix, runId, { casesFor, nonce }) {
     const frames = [], add = (kind, raw, caseId = null, stageId = null) => {
         const screen = screenSnapshot(raw, false, true, true, true, true), sha256 = snapshotHash(screen);

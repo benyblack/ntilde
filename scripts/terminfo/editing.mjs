@@ -43,6 +43,7 @@ export function validateCellPlanFrames(frames, runId, { prefix, casesFor, nonce 
         || !same(bind.history, first.screen.history)) reject();
     return cases;
 }
+/** Preserve the historical erase/editing identities, known inputs and exact report wording. */
 function editingSpec(prefix) {
     if (!['erase', 'editing'].includes(prefix)) reject();
     return { prefix, casesFor: makeEditingCases, nonce: noncePrefix(prefix), suiteId: suiteIdentity(prefix),

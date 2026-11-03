@@ -1,3 +1,4 @@
+/** Compress independent text/state and relevant attribute expectations without losing cell positions. */
 export function compressExpected(state) {
     const runs = [];
     for (const { text, ...values } of state.grid.flat()) {

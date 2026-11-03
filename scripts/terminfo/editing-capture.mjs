@@ -1,6 +1,7 @@
 import { OwnedCellObserver, snapshotHash } from './agent-observer.mjs';
 import { makeEditingCases } from './editing-cases.mjs';
 const check = value => { if (!value) throw new Error('Invalid owned editing binding or restoration.'); };
+/** Require a blank default local viewport and genuinely empty observed history before mutation. */
 export function pristineEditing(screen) {
     const state = screen.bufferState;
     return screen.lines.every(line => line === '') && screen.cursorRow === 0 && screen.cursorCol === 0 && screen.cursorVisible
@@ -19,6 +20,7 @@ export class OwnedCellPlanObserver {
     }
     get paneId() { return this.before.paneId; }
     get restored() { return this.before.restored && this.frames.at(-1)?.kind === this.prefix + '-finish'; }
+    /** Accept only the source-defined plan, paired state/history reads and exact restoration. */
     async handle(request, budget) {
         check(!this.busy && !this.restored);
         const reading = request.kind === this.prefix + '-read';

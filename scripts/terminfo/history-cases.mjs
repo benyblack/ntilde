@@ -6,6 +6,7 @@ const normalCell = (text = ' ') => ({ text, overline: false, flags: 768, fg: -1,
     foregroundArgb: null, backgroundArgb: null, underlineStyle: 0, underlineColorIndex: -1, underlineArgb: null });
 const copy = state => structuredClone(state);
 const text = row => row.map(value => value.text).join('').trimEnd();
+/** Move only the modeled region; retain displaced rows solely for main full-screen upward scrolling. */
 function scroll(state, count, up) {
     const { top, bottom, grid } = state, region = grid.slice(top, bottom + 1);
     const amount = Math.min(count, region.length);
@@ -14,12 +15,14 @@ function scroll(state, count, up) {
     const changed = up ? [...region.slice(amount), ...blanks] : [...blanks, ...region.slice(0, region.length - amount)];
     grid.splice(top, region.length, ...changed);
 }
+/** Start accumulation from known empty history so line-feed setup cannot qualify itself. */
 function addLineFeedCases(add, rows) {
     for (const [id, sequence, col] of [['lf', '\n', 4], ['crlf', '\r\n', 0], ['index', '\x1bD', 4]]) {
         add('history.accumulate.' + id, sequence, state => { scroll(state, 1, true); state.col = col; },
             { row: rows - 1, history: [] });
     }
 }
+/** Cover omitted, zero and explicit counts plus independently controlled partial margins. */
 function addScrollVariants(add, command, up, alternate) {
     const direction = up ? 'up' : 'down', screen = alternate ? 'alt' : 'main';
     const prefix = `history.scroll-${direction}.${screen}`;
@@ -29,11 +32,13 @@ function addScrollVariants(add, command, up, alternate) {
     }
     add(prefix + '.margins', `\x1b[2${command}`, state => scroll(state, 2, up), { alternate, top: 1, bottom: 6 });
 }
+/** Keep main and alternate-screen scrolling as separate observable experiments. */
 function addScrollingCases(add) {
     for (const [command, up] of [['S', true], ['T', false]]) {
         for (const alternate of [false, true]) addScrollVariants(add, command, up, alternate);
     }
 }
+/** Distinguish scrolling at the top margin from ordinary or clamped cursor movement. */
 function addReverseIndexCases(add) {
     const reverse = state => { if (state.row === state.top) scroll(state, 1, false); else state.row = Math.max(0, state.row - 1); };
     for (const alternate of [false, true]) add(`history.reverse-index.${alternate ? 'alt' : 'main'}.top`, '\x1bM', reverse, { row: 0, alternate });
@@ -41,6 +46,7 @@ function addReverseIndexCases(add) {
         add('history.reverse-index.margins.' + name, '\x1bM', reverse, { row, top: 1, bottom: 6 });
     }
 }
+/** Separate valid/reset/origin margins from rejection cases whose cursor is already home. */
 function addMarginCases(add, rows) {
     add('history.margins.set', '\x1b[2;7r', state => { state.top = 1; state.bottom = 6; state.row = 0; state.col = 0; });
     for (const [name, sequence] of [['default', '\x1b[r'], ['zero', '\x1b[0;0r']]) {
@@ -53,12 +59,14 @@ function addMarginCases(add, rows) {
     add('history.margins.origin-home', '\x1b[3;8r', state => { state.top = 2; state.bottom = 7; state.row = 2; state.col = 0; },
         { top: 1, bottom: 6, row: 3, originMode: true });
 }
+/** Generate bounded complete ASCII/history expectations independently of terminal readback. */
 export function makeHistoryCases(rows, cols) {
     if (!Number.isSafeInteger(rows) || rows < 10 || rows > 128 || !Number.isSafeInteger(cols) || cols < 48 || cols > 256 || rows * cols > 8192) throw new Error('Invalid history fixture grid.');
     const rowText = row => `HROW${String(row).padStart(3, '0')}-ABCDEFGH`;
     const grid = Array.from({ length: rows }, (_, row) => Array.from({ length: cols }, (_, col) => normalCell(rowText(row)[col] ?? ' ')));
     const writes = grid.map((_, row) => at(row, 0) + rowText(row).padEnd(cols, ' ')).join('');
     const fixtures = [];
+    /** Seed one private case using previously qualified erasure, then model its target independently. */
     function add(id, sequence, transform, options = {}) {
         const before = { grid: copy(grid), row: 2, col: 4, top: 0, bottom: rows - 1, alternate: false,
             originMode: false, history: ['HISTORY0', 'HISTORY1'], ...options };
@@ -76,6 +84,7 @@ export function makeHistoryCases(rows, cols) {
 export const historySuiteId = 'ntilde-owned-history-scrolling-v1';
 
 const finalRestore = '\x1b[?1049l' + reset + '\x1b[2J\x1b[3J\x1b[H\x1b[?25h';
+/** Execute the fixed plan serially and restore; only a pre-write typed budget refusal is optional. */
 export async function collectHistory({ config, fence, owner }) {
     let initial;
     try { initial = await owner('history-start'); }

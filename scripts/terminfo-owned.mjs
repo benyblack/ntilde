@@ -192,6 +192,7 @@ function retainPreparationFailure(output, error) {
     }
 }
 
+/** Collect only through a proved disposable app/PTY, then finalize after complete cleanup. */
 async function main() {
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
@@ -410,6 +411,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             state.unavailable = { runId, suiteId: spec.suiteId, file, sha256: hash(readFileSync(join(output, file))),
                 status: 'unavailable', reason: 'screenDetailsUnavailable', counts: {}, provisionalUntil: 'cell-receipt.json' };
         };
+        /** Run each known cell plan only after its predecessor restored or declined before writes. */
         const observeEditing = async (prefix, request, budget) => {
             const spec = editingSpecs[prefix];
             const previous = prefix === 'erase' ? { observer: colorObserver, unavailable: colorUnavailable } : editingStates.get(spec.previous);
@@ -458,10 +460,17 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             appendFileSync(join(output, attributes ? 'sgr-snapshots.jsonl' : 'cell-snapshots.jsonl'), JSON.stringify(observer.frames.at(-1)) + '\n');
             return result;
         };
+        /** Reject observations until the parent has independently proved untranslated output. */
         const observeUntranslatedCells = (request, budget) => {
             if (!outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
             return observeCells(request, budget);
         };
+        /** Retain the first measured lineage and PTY without storing the run capability. */
+        const retainFirstProof = (owner, worker, tty) => {
+            if (proofs.length !== 0) return;
+            proofs.push({ app: owner, worker, tty, at: new Date().toISOString() });
+        };
+        /** Bind one kernel-observed output-mode proof to the already verified worker. */
         const attestOutputMode = (request, budget) => {
             if (outputModeVerified || !proofs.length) throw new Error('Unexpected private PTY output proof.');
             const mode = readOwnedOutputMode(request.tty, budget());
@@ -502,7 +511,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     }
                     if (request.kind === 'prove') {
                         // Retain the measured proof, never the capability token.
-                        if (proofs.length === 0) proofs.push({ app: owner, worker, tty: request.tty, at: new Date().toISOString() });
+                        retainFirstProof(owner, worker, request.tty);
                     } else if (request.kind === 'raw-output') {
                         attestOutputMode(request, queryTimeout);
                     } else if (request.kind === 'done') {

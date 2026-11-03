@@ -96,6 +96,7 @@ function checkEditingSuites(output, evidence, runId, context) {
     checkEditingEvidence(output, evidence.editingEvidence, runId, 'editing', editingSuiteId, buildCellEditingReport, 22);
 }
 
+/** Require the parent-observed transport and matching geometry before accepting v5 history evidence. */
 function checkHistoryProof(output, evidence, runId, context, proof) {
     if (context.historySuiteId !== historySuiteId || context.terminalOutput !== ownedOutputPolicy) throw new Error('Missing or changed required v5 history identity/output policy.');
     const mode = proof.proofs?.[0]?.terminalOutput;
