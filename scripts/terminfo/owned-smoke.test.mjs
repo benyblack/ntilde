@@ -150,7 +150,7 @@ function launch(executable, interrupt, observation = {}) {
             }
         });
         child.stderr.on('data', chunk => { errors += chunk; });
-        child.on('exit', code => {
+        child.on('close', code => {
             clearTimeout(timer); clearTimeout(terminationTimer);
             if (lifecycleError) reject(lifecycleError); else resolve({ code, output, errors });
         });

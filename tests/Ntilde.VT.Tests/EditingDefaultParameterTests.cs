@@ -43,6 +43,11 @@ public sealed class EditingDefaultParameterTests
             Assert.Equal((2, 2), (buffer.CursorRow, buffer.CursorCol));
             Assert.Equal((1, 4), (buffer.ScrollTop, buffer.ScrollBottom));
             Assert.Equal(2, buffer.Scrollback.Count);
+            for (int row = 0; row < 2; row++)
+            {
+                var history = buffer.Scrollback.GetRow(row);
+                Assert.Equal($"HISTORY{row}", new string(history.ToArray().Select(cell => cell.Character).ToArray()).TrimEnd());
+            }
             TerminalCell erased = buffer.GetCell(command == "X" ? 2 : 0, command == "M" ? 4 : 2);
             if (command == "X")
             {
