@@ -7,7 +7,7 @@
 | `presentationTimeMs` | Integer synthetic time from 0 through 60,000 ms, starting with a visible blink phase. Omit it to keep the existing fixed-visible capture behavior. |
 | `includeRenderDetails` | Include the actual resolved primary font, pixel grid, palette and presentation facts from the draw. Defaults to false. |
 
-Both require `mode: "render"`. A request combining either with `mode: "live"` is malformed; the endpoint does not silently replace a desktop photograph with a controlled render. Invalid inputs are refused before marking the pane as observed or writing a PNG. Valid captures retain the normal observe permission and indicator behavior.
+Both require `mode: "render"`. A request combining either with `mode: "live"` is malformed; the endpoint does not silently replace a desktop photograph with a controlled render. Invalid inputs are refused before marking the pane as observed or writing a PNG. Valid captures retain the normal observe permission and indicator behavior. If the draw grid differs from the grid used to size the bitmap, captures return retryable `captureUnavailable`, including default captures without metadata. The lightweight grid facts do not require font fingerprinting or provenance allocation.
 
 For example, against the observe endpoint of a disposable owned fixture:
 

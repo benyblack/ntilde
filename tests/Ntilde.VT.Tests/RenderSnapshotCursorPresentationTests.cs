@@ -7,6 +7,27 @@ public sealed class RenderSnapshotCursorPresentationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void ActualBufferGrid_IsDistinctFromTheRequestedViewport(bool isolated)
+    {
+        var buffer = new TerminalBuffer(24, 5);
+        using var snapshot = buffer.CaptureRenderSnapshot(new RenderSnapshotRequest
+        {
+            ViewportCols = 20,
+            ViewportRows = 3,
+            Isolated = isolated,
+        }, out _);
+        Assert.Equal(20, snapshot.ViewportCols);
+        Assert.Equal(3, snapshot.ViewportRows);
+        Assert.Equal(24, snapshot.BufferCols);
+        Assert.Equal(5, snapshot.BufferRows);
+        buffer.Resize(30, 7);
+        Assert.Equal(24, snapshot.BufferCols);
+        Assert.Equal(5, snapshot.BufferRows);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void CursorModeFacts_AreCapturedTogetherAndRemainDetachedFromLaterModes(bool isolated)
     {
         var buffer = new TerminalBuffer(20, 3);

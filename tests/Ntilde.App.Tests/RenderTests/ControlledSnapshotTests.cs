@@ -42,7 +42,9 @@ public sealed class ControlledSnapshotTests
                 PreferredCursorStyle = CursorStyle.Beam,
                 PreferredCursorBlink = preferredCursorBlink,
             }, true, out var details);
-        context = Assert.IsType<SnapshotRenderContext>(details);
+        context = Assert.IsType<SnapshotRenderContext>(details.Context);
+        Assert.Equal(context.Frame.Rows, details.Rows);
+        Assert.Equal(context.Frame.Cols, details.Cols);
         return bitmap;
     }
 
@@ -119,6 +121,20 @@ public sealed class ControlledSnapshotTests
         new AnsiParser(buffer).Process("\x1b]4;1;rgb:12/34/56\a\x1b]11;rgb:11/22/33\a");
         Assert.Equal(TermColor.Black, context.Frame.Theme.Background);
         Assert.Equal(palette, context.Frame.Theme.AnsiPalette);
+    }
+
+    [AvaloniaFact]
+    public void DrawGrid_IsReturnedWithoutRequestingFontOrThemeProvenance()
+    {
+        using var bitmap = TerminalSnapshotRenderer.CaptureWithContext(Buffer("plain"), Metrics, 168, 54,
+            new TerminalSnapshotOptions { HideCursor = true }, false, out var capture);
+        Assert.Equal(20, capture.Cols);
+        Assert.Equal(3, capture.Rows);
+        Assert.Equal(20, capture.BufferCols);
+        Assert.Equal(3, capture.BufferRows);
+        Assert.Null(capture.Context);
+        Assert.Equal(168, bitmap.Width);
+        Assert.Equal(54, bitmap.Height);
     }
 
     [AvaloniaFact]

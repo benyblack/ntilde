@@ -215,26 +215,38 @@ public class AgentHostCaptureProtocolTests : IDisposable
     }
 
     [Theory]
-    [InlineData(100, 30)]
-    [InlineData(40, 12)]
-    public void Controlled_capture_refuses_a_grid_changed_during_render_preparation_and_succeeds_on_retry(int cols, int rows)
+    [InlineData(100, 30, true, false)]
+    [InlineData(40, 12, true, false)]
+    [InlineData(100, 30, false, false)]
+    [InlineData(40, 12, false, false)]
+    [InlineData(100, 30, true, true)]
+    [InlineData(40, 12, true, true)]
+    [InlineData(100, 30, false, true)]
+    [InlineData(40, 12, false, true)]
+    public void Capture_refuses_a_grid_changed_during_render_preparation_and_succeeds_on_retry(int cols, int rows, bool details, bool beforeDraw)
     {
         var registry = new AgentSessionRegistry();
         var registration = Register(registry, "resize fixture");
-        var options = new AgentCaptureOptions(530, true)
+        Action resize = () => registration.Buffer.Resize(cols, rows);
+        var options = new AgentCaptureOptions(null, details)
         {
-            BeforeRenderForTest = () => registration.Buffer.Resize(cols, rows),
+            BeforeRenderForTest = beforeDraw ? null : resize,
+            BeforeDrawForTest = beforeDraw ? resize : null,
         };
         Assert.False(registration.TryCapturePng(0, 1, out var refused, out var error, options));
         Assert.Equal(AgentCaptureError.Unavailable, error);
         Assert.Null(refused.Png);
-        Assert.True(registration.TryCapturePng(0, 1, out var retry, out _, new AgentCaptureOptions(530, true)));
+        Assert.True(registration.TryCapturePng(0, 1, out var retry, out _, new AgentCaptureOptions(null, details)));
         Assert.Equal(cols, retry.Cols);
         Assert.Equal(rows, retry.Rows);
         Assert.Equal(cols * 8, retry.Width);
         Assert.Equal(rows * 16, retry.Height);
-        Assert.Equal(retry.Width, retry.RenderDetails!.Grid.RenderWidthPx);
-        Assert.Equal(retry.Height, retry.RenderDetails.Grid.RenderHeightPx);
+        if (details)
+        {
+            Assert.Equal(retry.Width, retry.RenderDetails!.Grid.RenderWidthPx);
+            Assert.Equal(retry.Height, retry.RenderDetails.Grid.RenderHeightPx);
+        }
+        else Assert.Null(retry.RenderDetails);
     }
 
     [Fact]

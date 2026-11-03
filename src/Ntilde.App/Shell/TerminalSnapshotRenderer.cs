@@ -76,6 +76,7 @@ namespace Ntilde.Shell
         public bool TextBlinkVisible { get; init; } = true;
         /// <summary>Synthetic time since a visible phase, never the live control's animation clock.</summary>
         public long? PresentationTimeMs { get; init; }
+        internal Action? BeforeDrawForTest { get; init; }
         public bool PreferredCursorBlink { get; init; } = true;
         public CursorStyle? PreferredCursorStyle { get; init; }
         public bool EnableLigatures { get; init; }
@@ -176,9 +177,9 @@ namespace Ntilde.Shell
 
         internal static SKBitmap CaptureWithContext(
             TerminalBuffer buffer, CellMetrics metrics, int width, int height,
-            TerminalSnapshotOptions? options, bool includeRenderDetails, out SnapshotRenderContext? renderContext)
+            TerminalSnapshotOptions? options, bool includeRenderDetails, out SnapshotCaptureInfo captureInfo)
         {
-            renderContext = null;
+            captureInfo = default;
             ArgumentNullException.ThrowIfNull(buffer);
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
@@ -298,9 +299,13 @@ namespace Ntilde.Shell
 
             try
             {
+                options.BeforeDrawForTest?.Invoke();
                 using var snapshot = op.DrawTerminalInternal(canvas);
+                SnapshotRenderContext? renderContext = null;
                 if (includeRenderDetails && op.RenderedFrame is { } frame)
                     renderContext = SnapshotRenderContext.Create(frame, skTypeface.Typeface ?? SKTypeface.Default, fallbackChain, metrics, options, bitmap.Width, bitmap.Height);
+                captureInfo = new SnapshotCaptureInfo(snapshot?.ViewportRows ?? 0, snapshot?.ViewportCols ?? 0,
+                    snapshot?.BufferRows ?? 0, snapshot?.BufferCols ?? 0, renderContext);
                 return bitmap;
             }
             catch

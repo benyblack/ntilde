@@ -21,6 +21,9 @@ internal readonly record struct RenderedFrameInfo(
     bool CursorVisible,
     bool CursorBlinkEnabled);
 
+/// <summary>Cheap draw-grid facts are always returned; native font/provenance work remains opt-in.</summary>
+internal readonly record struct SnapshotCaptureInfo(int Rows, int Cols, int BufferRows, int BufferCols, SnapshotRenderContext? Context);
+
 /// <summary>Opt-in render provenance. It describes an offscreen render, not a desktop photograph.</summary>
 internal sealed record SnapshotRenderContext
 {

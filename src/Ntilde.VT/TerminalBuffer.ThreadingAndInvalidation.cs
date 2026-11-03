@@ -342,6 +342,7 @@ namespace Ntilde.VT
             int viewportRows = Math.Max(0, req.ViewportRows);
             int viewportCols = Math.Max(0, req.ViewportCols);
             int totalLines = 0;
+            int bufferRows, bufferCols;
             int absDisplayStart = 0;
             int cursorRow = 0;
             int cursorCol = 0;
@@ -363,6 +364,8 @@ namespace Ntilde.VT
                 Lock.EnterReadLock();
                 try
                 {
+                    bufferRows = Rows;
+                    bufferCols = Cols;
                     totalLines = InternalTotalLines;
                     absDisplayStart = Math.Max(0, totalLines - viewportRows - req.ScrollOffset);
                     cursorRow = _cursorRow;
@@ -412,6 +415,8 @@ namespace Ntilde.VT
                 {
                     ViewportRows = viewportRows,
                     ViewportCols = viewportCols,
+                    BufferRows = bufferRows,
+                    BufferCols = bufferCols,
                     TotalLines = totalLines,
                     AbsDisplayStart = absDisplayStart,
                     ScrollOffset = req.ScrollOffset,

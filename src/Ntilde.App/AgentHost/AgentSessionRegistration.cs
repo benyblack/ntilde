@@ -10,6 +10,7 @@ namespace Ntilde.AgentHost
     {
         // Per-call seam for deterministic concurrent-resize regressions; never set by the wire handler.
         internal Action? BeforeRenderForTest { get; init; }
+        internal Action? BeforeDrawForTest { get; init; }
     }
 
     /// <summary>A rendered pane screenshot (A5), as returned by <see cref="AgentSessionRegistration.TryCapturePng"/>.</summary>
@@ -513,6 +514,7 @@ namespace Ntilde.AgentHost
                 PreferredCursorStyle = parameters.PreferredCursorStyle,
                 PreferredCursorBlink = parameters.PreferredCursorBlink,
                 PresentationTimeMs = captureOptions.PresentationTimeMs,
+                BeforeDrawForTest = captureOptions.BeforeDrawForTest,
 
                 // Visibility/shape/blink facts come from the draw's own snapshot.
                 // No live focus or clock is read; absent synthetic time keeps visible phases.
@@ -546,8 +548,9 @@ namespace Ntilde.AgentHost
 
                 captureOptions.BeforeRenderForTest?.Invoke();
                 using var bitmap = TerminalSnapshotRenderer.CaptureWithContext(buffer, parameters.Metrics, width, height,
-                    options, captureOptions.IncludeRenderDetails, out var context);
-                if (context != null && (context.Frame.Cols != cols || context.Frame.Rows != rows))
+                    options, captureOptions.IncludeRenderDetails, out var captureFrame);
+                if (captureFrame.Cols != cols || captureFrame.Rows != rows ||
+                    captureFrame.BufferCols != cols || captureFrame.BufferRows != rows)
                 {
                     // The bitmap was sized before a concurrent resize. Retry rather than
                     // presenting a cropped/expanded viewport as a qualified full-grid frame.
@@ -563,7 +566,7 @@ namespace Ntilde.AgentHost
                     rows,
                     Downscaled: downscaled != null,
                     Scale: effectiveScale,
-                    RenderDetails: context == null ? null : AgentCaptureDetails.From(context));
+                    RenderDetails: captureFrame.Context == null ? null : AgentCaptureDetails.From(captureFrame.Context));
                 return true;
             }
             catch (Exception ex)
