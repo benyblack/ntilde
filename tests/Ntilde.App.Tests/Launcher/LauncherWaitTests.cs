@@ -47,6 +47,7 @@ public sealed class LauncherWaitTests
         {
             CancellationToken ct = TestContext.Current.CancellationToken;
             Task<int> wait = Task.Run(() => LauncherNative.WaitForChildOrRelease(child.Handle, release.SafeWaitHandle.DangerousGetHandle()), ct);
+            // Short on purpose: a negative check; it waits only to give a wrong early return time to happen.
             Assert.False(wait.Wait(300, ct), "The wait returned before the child exited or the event was set.");
 
             release.Set();

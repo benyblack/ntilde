@@ -121,7 +121,9 @@ public sealed class AgentSocketLinkTests : IDisposable
 
         Task<bool> probe = Task.Run(() => AgentSocketLink.IsLiveSocket(path), TestContext.Current.CancellationToken);
 
-        Assert.True(probe.Wait(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken), "the probe blocked on a full backlog");
+        // A probe that blocks on the backlog blocks for good, so a long ceiling still catches it; 1 s only measured how
+        // soon the pool ran the Task.Run.
+        Assert.True(probe.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken), "the probe blocked on a full backlog");
         Assert.False(probe.Result);
     }
 

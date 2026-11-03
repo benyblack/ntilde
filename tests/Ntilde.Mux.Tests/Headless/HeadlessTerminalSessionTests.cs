@@ -515,8 +515,9 @@ public sealed class HeadlessTerminalSessionTests
 
         // The parse thread must actually be gone, not merely have had Dispose() return around a
         // Join timeout: a fresh request should be refused promptly, never left hanging.
+        // 10 s: the failure this guards is a request left hanging for good, which any ceiling catches.
         await Assert.ThrowsAsync<ObjectDisposedException>(() => mux.InvokeAsync(() => 0))
-            .WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
     }
 
     [Fact]

@@ -76,8 +76,10 @@ public class AgentEventRingTests
         var ring = new AgentEventRing();
         Append(ring);
 
+        // 10 s is still half the poll's 20 s, so a poll that waited instead of returning fails; 2 s only added a race
+        // with the scheduler.
         var result = await ring.WaitSinceAsync(0, TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         Assert.Single(result.Events);
     }
 }

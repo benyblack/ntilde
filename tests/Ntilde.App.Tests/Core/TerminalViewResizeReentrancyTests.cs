@@ -147,6 +147,7 @@ public class TerminalViewResizeReentrancyTests
                     _held.Set();
                     SawAWaitingWriter = SpinWait.SpinUntil(
                         () => buffer.Lock.WaitingWriteCount > 0, TimeSpan.FromSeconds(10));
+                    // Short on purpose: the stand-in holds the lock at most this long, like a PTY batch; a test that releases it sooner just goes on.
                     _release.Wait(TimeSpan.FromMilliseconds(250));
                 }
                 finally
