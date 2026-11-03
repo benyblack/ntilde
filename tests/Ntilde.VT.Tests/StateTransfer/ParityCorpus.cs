@@ -154,19 +154,23 @@ internal static class ParityCorpus
             "\u001b[?1049h" + "and in again"));
 
         // The `?1049h` stream above can never reach EnterAltScreen(clearAlt: false), because 1049
-        // always clears on entry. `?47h` is the only spelling that does not, and retained alt
-        // content is exactly what went wrong in the snapshot's alt-screen shape handling - so the
-        // non-clearing path gets a stream of its own. `?1047h` (clears, but does not save the
-        // cursor) sits in between and is here for the same reason.
+        // always clears on entry. Both `?47h` and `?1047h` retain content on entry. The latter
+        // clears only when exiting via `?1047l`; exiting via `?47l` retains the rows. This stream
+        // exercises the retained path that previously exposed stale alternate-screen shapes.
         yield return ("alt-screen-no-clear", Utf8(
             "main row one\r\nmain row two\r\n" +
             "\u001b[?1047h" + "\u001b[1;1Halt content written under 1047" +
-            "\u001b[?1047l" + "\u001b[3;1Hmain again" +
-            // Re-entry WITHOUT clearing: the 1047 row above must still be on the alt screen.
+            "\u001b[?47l" + "\u001b[3;1Hmain again" +
+            // Exit via 47 retained the 1047 row above; re-entry must keep it.
             "\u001b[?47h" + "\u001b[2;1Halt content written under 47" +
             "\u001b[?47l" + "\u001b[4;1Hmain third row" +
             // And once more, so the stream ends on an alt screen holding two retained rows.
             "\u001b[?47h" + "\u001b[5;1Hre-entered, prior alt rows retained"));
+
+        yield return ("alt-screen-clear-on-1047-exit", Utf8(
+            "main content\u001b[?47h\u001b[3;4H\u001b[53;4:3malt decorated" +
+            "\u001b[?47l\u001b[?1047h\u001b[?1047l" +
+            "\u001b[?47h\u001b[4;1Hafter clearing\u001b[?47l"));
 
         yield return ("scroll-regions", Utf8(
             "\u001b[2J\u001b[H" +

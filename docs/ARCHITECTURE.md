@@ -168,6 +168,14 @@ State machine for ESC, CSI, OSC, DEC-private modes. Emits **semantic operations*
 
 Applies semantic operations to terminal state. Maintains cursor, modes, tab stops, margins. Owns main + alternate screen buffers and scrollback.
 
+Alternate-screen clearing follows the selected mode. Modes 47 and 1047 retain the
+alternate cells and its per-screen cursor/pen on entry. Mode 1047 clears active
+alternate text and row metadata before returning to main; resetting it while main
+is active leaves stashed alternate content intact. Mode 1049 clears on entry and
+arms the complete main saved cursor, consumed by the first alternate exit.
+The 1047 clear-on-exit distinction follows the
+[xterm control reference](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html).
+
 DECSC/DECRC and private modes 1048/1049 share per-screen saved cursor banks, including
 rendition, pending wrap, origin mode and character-set context. Mux state transfer
 and new replay snapshots copy those banks. DECSTR resets the active bank and soft
