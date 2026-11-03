@@ -101,6 +101,10 @@ public sealed record ReadScreenParams
     /// <summary>Include stored cursor style/blink/default modes, without resolving host preferences or blink phase.</summary>
     [JsonPropertyName("includeCursorMode")]
     public bool IncludeCursorMode { get; init; }
+
+    /// <summary>Include observed margins, editing modes, pending wrap, active screen and local history count.</summary>
+    [JsonPropertyName("includeBufferState"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IncludeBufferState { get; init; }
 }
 
 /// <summary>
@@ -129,6 +133,10 @@ public sealed record ScreenSnapshotDto
     /// <summary>Stored cursor modes, captured under the same read lock; present only when requested.</summary>
     [JsonPropertyName("cursorMode")]
     public CursorModeDto? CursorMode { get; init; }
+
+    /// <summary>Stored editing state captured under the same lock; omitted unless explicitly requested.</summary>
+    [JsonPropertyName("bufferState")]
+    public BufferStateDto? BufferState { get; init; }
 
     /// <summary>Cursor row in viewport coordinates (0-based).</summary>
     [JsonPropertyName("cursorRow")]

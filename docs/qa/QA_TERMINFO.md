@@ -348,6 +348,15 @@ Windows/Linux qualification remains #775. The earlier
 [2026-11-02 rendition/cursor measurement](terminfo/2026-11-02-rendition-cursor.md)
 retains its historical scope and exact limits.
 
+### Optional editing-state readback
+
+[Editing-state readback](terminfo/buffer-observations.md) adds an explicit raw
+AgentHost opt-in for margins, origin/wrap/insert modes, pending wrap, active
+screen and exact local scrollback count under the text/cell snapshot lock.
+Windowless history count is explicitly unknown, not inferred from its viewport
+import. These facts support extended editing fixtures; they do not by themselves
+qualify protocol behavior or change stock grades.
+
 ### Supplemental runtime color resets and queries
 
 The [owned color suite](terminfo/owned-colors.md) follows the fixed pixel suite.

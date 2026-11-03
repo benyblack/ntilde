@@ -174,6 +174,10 @@ public class AgentHostServiceTests : IDisposable
         Assert.Equal("hello world", dto.Lines[0]);
         Assert.Null(dto.CellDetails);
         Assert.Null(dto.CursorMode);
+        Assert.Null(dto.BufferState);
+        Assert.DoesNotContain("includeBufferState", JsonSerializer.Serialize(
+            new ReadScreenParams { PaneId = registration.PaneId }, AgentHostJsonContext.Default.ReadScreenParams));
+        Assert.False(response.Result!.Value.TryGetProperty("bufferState", out _));
         Assert.False(response.Result!.Value.TryGetProperty("cursorMode", out _));
         Assert.False(response.Result!.Value.TryGetProperty("cellDetails", out _));
     }
@@ -401,6 +405,156 @@ public class AgentHostServiceTests : IDisposable
         Assert.Equal(style, screen.CursorMode!.Style);
         Assert.Equal(blink, screen.CursorMode.Blink);
         Assert.False(screen.CursorVisible);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReadScreen_optional_buffer_state_tracks_editing_modes_and_is_detached(bool alternate)
+    {
+        var buffer = new TerminalBuffer(40, 10);
+        var parser = new AnsiParser(buffer);
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, buffer);
+        using var service = NewService(registry);
+        var request = RequestLine(AgentHostProtocol.Methods.ReadScreen, paramsObj: new ReadScreenParams
+        {
+            PaneId = registration.PaneId,
+            IncludeBufferState = true,
+        });
+        var initial = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.Equal(new BufferStateDto
+        {
+            ScrollTop = 0,
+            ScrollBottom = 9,
+            OriginMode = false,
+            AutoWrap = true,
+            InsertMode = false,
+            PendingWrap = false,
+            AlternateScreen = false,
+            ScrollbackLines = 0
+        }, initial.BufferState);
+        parser.Process((alternate ? "\x1b[?1049h" : "") + "\x1b[3;8r\x1b[?6h\x1b[4h\x1b[?7lX");
+        var captured = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.Equal(new BufferStateDto
+        {
+            ScrollTop = 2,
+            ScrollBottom = 7,
+            OriginMode = true,
+            AutoWrap = false,
+            InsertMode = true,
+            PendingWrap = false,
+            AlternateScreen = alternate,
+            ScrollbackLines = 0
+        }, captured.BufferState);
+        Assert.Equal(2, captured.CursorRow);
+        Assert.Equal(1, captured.CursorCol);
+        Assert.Equal("X", captured.Lines[2]);
+        Assert.Null(captured.CellDetails);
+        Assert.Null(captured.CursorMode);
+        parser.Process("\x1b[?1049l\x1b[!p");
+        Assert.True(captured.BufferState!.OriginMode);
+        Assert.False(captured.BufferState.AutoWrap);
+        Assert.Equal(alternate, captured.BufferState.AlternateScreen);
+        Assert.False(initial.BufferState!.OriginMode);
+    }
+
+    [Fact]
+    public void ReadScreen_buffer_state_does_not_require_the_optional_cell_detail_budget()
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, new TerminalBuffer(200, 50));
+        using var service = NewService(registry);
+        var response = Handle(service, RequestLine(AgentHostProtocol.Methods.ReadScreen,
+            paramsObj: new ReadScreenParams { PaneId = registration.PaneId, IncludeBufferState = true }));
+        var screen = ResultOf(response, AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.NotNull(screen.BufferState);
+        Assert.Equal(49, screen.BufferState.ScrollBottom);
+        Assert.Equal(0, screen.BufferState.ScrollbackLines);
+        Assert.Null(screen.CellDetails);
+        Assert.Equal(50, screen.Lines.Length);
+    }
+
+    [Fact]
+    public void ReadScreen_buffer_state_observes_pending_wrap_before_the_next_character()
+    {
+        var buffer = new TerminalBuffer(4, 3);
+        var parser = new AnsiParser(buffer);
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, buffer);
+        using var service = NewService(registry);
+        var request = RequestLine(AgentHostProtocol.Methods.ReadScreen, paramsObj: new ReadScreenParams
+        {
+            PaneId = registration.PaneId,
+            IncludeBufferState = true,
+        });
+        parser.Process("ABCD");
+        var pending = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.True(pending.BufferState!.PendingWrap);
+        Assert.Equal(3, pending.CursorCol);
+        Assert.Equal(0, pending.CursorRow);
+        parser.Process("E");
+        var wrapped = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.False(wrapped.BufferState!.PendingWrap);
+        Assert.Equal(1, wrapped.CursorRow);
+        Assert.Equal(1, wrapped.CursorCol);
+        Assert.Equal("E", wrapped.Lines[1]);
+        Assert.True(pending.BufferState.PendingWrap);
+    }
+
+    [Fact]
+    public void ReadScreen_buffer_state_retains_main_history_count_while_alternate_screen_is_active()
+    {
+        var buffer = new TerminalBuffer(20, 3);
+        var parser = new AnsiParser(buffer);
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, buffer);
+        using var service = NewService(registry);
+        var request = RequestLine(AgentHostProtocol.Methods.ReadScreen, paramsObj: new ReadScreenParams
+        {
+            PaneId = registration.PaneId,
+            IncludeBufferState = true,
+        });
+        parser.Process("OLD1\r\nOLD2\r\nKEEP1\r\nKEEP2\r\nKEEP3\x1b[?1049h");
+        var alternate = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.True(alternate.BufferState!.AlternateScreen);
+        Assert.Equal(2, alternate.BufferState.ScrollbackLines);
+        Assert.All(alternate.Lines, line => Assert.Empty(line));
+        parser.Process("\x1b[?1049l");
+        var main = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.False(main.BufferState!.AlternateScreen);
+        Assert.Equal(2, main.BufferState.ScrollbackLines);
+        Assert.Equal(new[] { "KEEP1", "KEEP2", "KEEP3" }, main.Lines);
+        parser.Process("\x1b[3J");
+        Assert.Equal(2, alternate.BufferState.ScrollbackLines);
+    }
+
+    [Fact]
+    public void ReadScreen_buffer_state_observes_ED3_history_removal_without_changing_viewport()
+    {
+        var buffer = new TerminalBuffer(20, 3);
+        var parser = new AnsiParser(buffer);
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, buffer);
+        using var service = NewService(registry);
+        var request = RequestLine(AgentHostProtocol.Methods.ReadScreen, paramsObj: new ReadScreenParams
+        {
+            PaneId = registration.PaneId,
+            IncludeBufferState = true,
+            IncludeCellDetails = true,
+        });
+        parser.Process("OLD1\r\nOLD2\r\nKEEP1\r\nKEEP2\r\nKEEP3");
+        var before = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.Equal(2, before.BufferState!.ScrollbackLines);
+        Assert.Equal(new[] { "KEEP1", "KEEP2", "KEEP3" }, before.Lines);
+        parser.Process("\x1b[3J");
+        var after = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.Equal(0, after.BufferState!.ScrollbackLines);
+        Assert.Equal(before.Lines, after.Lines);
+        Assert.Equal(before.CellDetails, after.CellDetails);
+        Assert.Equal(before.CursorRow, after.CursorRow);
+        Assert.Equal(before.CursorCol, after.CursorCol);
+        Assert.Equal(2, before.BufferState.ScrollbackLines);
     }
 
     [Fact]
