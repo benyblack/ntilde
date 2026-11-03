@@ -21,7 +21,7 @@ original process/filesystem after teardown.
 ```js
 import assert from 'node:assert/strict';
 import { readFileSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.argv[2];
 const load = file => JSON.parse(readFileSync(join(root, file), 'utf8'));
@@ -48,7 +48,7 @@ const { completeOwnedReceipt } = await import(pathToFileURL(join(root, 'sources/
 const evidence = { ...receipt };
 for (const key of ['schemaVersion', 'ownershipProofSha256', 'contextSha256', 'rawSha256', 'fixtureRemoved', 'completedAt']) delete evidence[key];
 unlinkSync(join(root, 'cell-receipt.json'));
-const derived = completeOwnedReceipt(root, join(root, 'nonexistent-original-fixture'), evidence);
+const derived = completeOwnedReceipt(root, dirname(load('initial-settings.json').Profiles[0].Command), evidence);
 assert.deepEqual({ ...derived, completedAt: receipt.completedAt }, receipt);
 console.log('PASS complete v8 finalizer: every required binding/hash/count and cleanup check reproduced');
 ```
