@@ -312,28 +312,38 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             const state = detailStates.get(prefix), spec = detailSpecs[prefix];
             return state?.unavailable ?? retainCellReport(output, state?.observer, runId, spec.report, `${prefix}-observations.json`);
         };
-        /** Route owned observations serially, preserving suite restoration and pane identity dependencies. */
-        const observeCells = async (request, budget) => {
-            const prefix = request.kind.split('-')[0];
-            if (prefix === 'pixel') {
-                const previous = detailStates.get('cursor');
-                if (previous?.unavailable && request.kind === 'pixel-start' && !pixelUnavailable) {
-                    const file = 'pixel-unavailable.json';
-                    writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: pixelSuiteId,
-                        status: 'unavailable', reason: 'screenDetailsUnavailable', fixtureStarted: false, plannedExperiments: pixelScenes.length });
-                    pixelUnavailable = { runId, suiteId: pixelSuiteId, file, sha256: hash(readFileSync(join(output, file))),
-                        status: 'unavailable', reason: 'screenDetailsUnavailable', counts: {}, provisionalUntil: 'cell-receipt.json' };
-                    const error = new Error('Pixel fixture requires complete screen details.');
-                    error.code = 'screenDetailsUnavailable';
-                    throw error;
-                }
-                if (!previous?.observer.restored) throw new Error('Cursor suite must restore before pixel observations.');
-                pixelObserver ??= new OwnedPixelObserver({ output, appData, ownerPid: app.pid, profileName,
-                    nonce: `NTILDE_PX_${runId}`, expectedPaneId: cellObserver.paneId });
+        const recordPixelUnavailable = () => {
+            const file = 'pixel-unavailable.json';
+            writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: pixelSuiteId,
+                status: 'unavailable', reason: 'screenDetailsUnavailable', fixtureStarted: false, plannedExperiments: pixelScenes.length });
+            pixelUnavailable = { runId, suiteId: pixelSuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                status: 'unavailable', reason: 'screenDetailsUnavailable', counts: {}, provisionalUntil: 'cell-receipt.json' };
+        };
+        const observePixels = async (request, budget) => {
+            const previous = detailStates.get('cursor');
+            if (previous?.unavailable && request.kind === 'pixel-start' && !pixelUnavailable) {
+                recordPixelUnavailable();
+                const error = new Error('Pixel fixture requires complete screen details.');
+                error.code = 'screenDetailsUnavailable';
+                throw error;
+            }
+            if (!previous?.observer.restored) throw new Error('Cursor suite must restore before pixel observations.');
+            pixelObserver ??= new OwnedPixelObserver({ output, appData, ownerPid: app.pid, profileName,
+                nonce: `NTILDE_PX_${runId}`, expectedPaneId: cellObserver.paneId });
+            try {
                 const result = await pixelObserver.handle(request, budget);
                 appendFileSync(join(output, 'pixel-snapshots.jsonl'), JSON.stringify(pixelObserver.frames.at(-1)) + '\n');
                 return result;
+            } catch (error) {
+                if (request.kind === 'pixel-start' && error.code === 'screenDetailsUnavailable'
+                    && !pixelObserver.before.baseline && pixelObserver.before.snapshots === 1 && !pixelObserver.frames.length) recordPixelUnavailable();
+                throw error;
             }
+        };
+        /** Route owned observations serially, preserving suite restoration and pane identity dependencies. */
+        const observeCells = async (request, budget) => {
+            const prefix = request.kind.split('-')[0];
+            if (prefix === 'pixel') return observePixels(request, budget);
             if (Object.hasOwn(detailSpecs, prefix)) return observeDetails(prefix, request, budget);
             const attributes = request.kind.startsWith('sgr-');
             if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');

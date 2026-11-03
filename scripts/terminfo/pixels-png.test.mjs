@@ -76,3 +76,9 @@ for (const name of ['BlockAndShadePrimitives', 'BoxDrawingGridPrimitives', 'Curs
         assert.equal(image.pixels.length, image.width * image.height * 4);
     });
 }
+
+test('rejects RGB transparency keys instead of silently making matching pixels opaque', () => {
+    const bytes = png([0,3,4,5], { width:1, height:1, color:2 });
+    const keyed = Buffer.concat([bytes.subarray(0,33), chunk('tRNS', Buffer.from([0,3,0,4,0,5])), bytes.subarray(33)]);
+    assert.throws(() => decodeCapturePng(keyed));
+});

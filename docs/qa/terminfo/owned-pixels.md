@@ -20,7 +20,8 @@ allowlist is unchanged. The dedicated fixed capture transport is bounded at
 The whole suite has a 64-million-decoded-pixel budget. Its static PNG subset is
 8-bit RGB/RGBA, non-interlaced; CRC, chunk ordering, exact bounded inflate length
 and all five row filters are verified. Unsupported forms, APNG, malformed data,
-downscaling, missing inline bytes or clock/context substitutions fail the run.
+RGB transparency keys, downscaling, a clipped reported pixel grid, missing inline
+bytes or clock/context substitutions fail the run.
 
 The returned primary font stream SHA-256, TTC face index/style, configured and
 resolved families, fallback names, size, platform/architecture, actual pixel
@@ -57,7 +58,8 @@ A version-2 `cell-receipt.json` is finalized only after worker/app/socket shutdo
 and fixture removal; it re-derives the report, checks its journal and rehashes
 all PNGs. Version-1 historical reports/receipts retain their original format.
 
-Only a preceding initial typed `screenDetailsUnavailable` refusal may produce
+Only an initial typed `screenDetailsUnavailable` refusal, inherited from a
+preceding unavailable suite or from the first pixel state read before binding, may produce
 `pixel-unavailable.json` with `fixtureStarted=false` and no pixel outcomes.
 Other missing evidence is fatal. No fixture writes occur for that unavailable
 case. A run without verified cleanup has no final receipt.

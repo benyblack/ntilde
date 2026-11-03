@@ -40,6 +40,8 @@ test('wire validation accepts synthetic phases but rejects metadata, image and c
         r => { r.renderDetails.presentation.textBlinkVisible = false; }, r => { r.renderDetails.presentation.cursorVisible = false; },
         r => { r.renderDetails.font.primarySha256 = null; }, r => { r.renderDetails.font.weight = 0; },
         r => { r.renderDetails.font.fallbackFamilies = Array(65).fill('a'); }, r => { r.renderDetails.grid.cellWidthDip++; },
+        r => { r.renderDetails.grid.originXPx = 4; }, r => { r.renderDetails.grid.originYPx = 1; },
+        r => { r.renderDetails.grid.cellWidthDip = 11; r.renderDetails.grid.cellWidthPx = 11; },
         r => { r.renderDetails.theme.ansiPaletteArgb.pop(); }, r => { r.renderDetails.theme.foregroundOverride = true; },
         r => { r.renderDetails.minimumContrast = 2; }, r => { r.renderDetails.enableLigatures = true; },
         r => { r.renderDetails.schemaVersion = 2; }, r => { r.renderDetails.platform = 'unknown'; },
@@ -130,3 +132,53 @@ test('initial oversized decoded suite is rejected before retaining a frame', asy
     await assert.rejects(f.call('pixel-start'), /decoded budget/);
     assert.equal(f.observer.frames.length, 0);
 }));
+
+test('controlled transport accepts a 600 KiB frame while ordinary reads reject it and the 5 MiB cap still applies', async () => {
+    let padding = 600 * 1024;
+    const server = createServer(socket => {
+        socket.on('error', () => {});
+        socket.once('data', () => socket.end(JSON.stringify({ v: 1, id: 1, result: { ...pixelCapture(), padding: 'x'.repeat(padding) } }) + '\n'));
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const endpoint = { host: '127.0.0.1', port: server.address().port };
+    try {
+        const result = await captureRequest(endpoint, pixelPaneId, 0, 1000);
+        assert.equal(result.padding.length, padding);
+        assert.equal(validatePixelCapture(result, pixelScreen(), 0).image.width, 600);
+        await assert.rejects(agentRequest(endpoint, 'readScreen', {}, 1000), /Oversized/);
+        padding = 5 * 1024 * 1024;
+        await assert.rejects(captureRequest(endpoint, pixelPaneId, 0, 1000), /Oversized/);
+    } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('pixel-start typed refusal writes no fixture input, and later refusals remain fatal', async () => {
+    const writes = [];
+    const error = new Error('detail budget'); error.code = 'screenDetailsUnavailable';
+    const options = { config: { runId }, fence: { write: async value => { writes.push(value); return barrier; } }, owner: async () => { throw error; } };
+    assert.deepEqual(await collectPixels(options), { status: 'unavailable', reason: error.code });
+    assert.deepEqual(writes, []);
+    let started = false;
+    options.owner = async kind => { if (kind === 'pixel-start') { started = true; return { screen: pixelScreen() }; } if (kind === 'pixel-bind') throw error; return {}; };
+    await assert.rejects(collectPixels(options), value => value === error);
+    assert.equal(started, true);
+    assert.equal(writes.at(-1), '\x1b[?1049l\x1b[!p');
+});
+
+test('portable worker execution proves ownership before all six suites and disposes the fence before collection completion', async () => {
+    const { spawnSync } = await import('node:child_process');
+    const { createHash } = await import('node:crypto');
+    const { fileURLToPath } = await import('node:url');
+    const output = mkdtempSync(join(tmpdir(), 'nt-worker-order-'));
+    try {
+        const bundle = join(output, 'bundle.mjs'), config = join(output, 'worker.json'), log = join(output, 'calls.txt');
+        const source = 'export async function collectNtildeRun() { return { testOnly: true }; }';
+        writeFileSync(bundle, source);
+        writeFileSync(config, JSON.stringify({ output, bundle, adapterBundleSha256: createHash('sha256').update(source).digest('hex') }));
+        const result = spawnSync(process.execPath, ['--import', fileURLToPath(new URL('./fixtures/worker-collection-hooks.mjs', import.meta.url)),
+            fileURLToPath(new URL('./worker.mjs', import.meta.url)), config], { encoding: 'utf8', timeout: 5000,
+            env: { ...process.env, NTILDE_WORKER_TEST_LOG: log } });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'dispose', 'done']);
+        assert.equal(JSON.parse(readFileSync(join(output, 'raw.json'))).testOnly, true);
+    } finally { rmSync(output, { recursive: true, force: true }); }
+});

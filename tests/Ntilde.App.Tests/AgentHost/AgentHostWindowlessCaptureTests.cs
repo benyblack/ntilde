@@ -95,7 +95,7 @@ public class AgentHostWindowlessCaptureTests : IDisposable
         Assert.False(details.Presentation.TextBlinkVisible);
         Assert.Equal(100, result.Cols);
         Assert.Equal(30, result.Rows);
-        Assert.Equal(800, details.Grid.RenderWidthPx);
+        Assert.Equal(804, details.Grid.RenderWidthPx);
         Assert.Equal(480, details.Grid.RenderHeightPx);
         Assert.Equal(8, details.Grid.CellWidthDip);
         Assert.Equal(14, details.Font.SizeDip);
@@ -121,7 +121,7 @@ public class AgentHostWindowlessCaptureTests : IDisposable
         // The session's 100x30 grid, not the pane's 80x24: only the cell size is borrowed.
         Assert.Equal(100, result.Cols);
         Assert.Equal(30, result.Rows);
-        Assert.Equal(100 * 8, result.Width);
+        Assert.Equal(4 + 100 * 8, result.Width);
         Assert.Equal(30 * 16, result.Height);
         Assert.Equal(AgentHostProtocol.CaptureModes.Render, result.Mode);
         Assert.StartsWith(Path.GetFullPath(_exportDir), result.FilePath, StringComparison.Ordinal);
@@ -129,7 +129,7 @@ public class AgentHostWindowlessCaptureTests : IDisposable
         var bytes = File.ReadAllBytes(result.FilePath);
         Assert.Equal(bytes, Convert.FromBase64String(result.PngBase64!));
         using var bitmap = SKBitmap.Decode(bytes);
-        Assert.Equal(100 * 8, bitmap.Width);
+        Assert.Equal(4 + 100 * 8, bitmap.Width);
         Assert.Equal(30 * 16, bitmap.Height);
         // An empty cell shows the pane's theme background: the capture looks like the user's terminal.
         Assert.Equal(new SKColor(0x12, 0x34, 0x56), bitmap.GetPixel(bitmap.Width - 1, bitmap.Height - 1));

@@ -342,7 +342,8 @@ Overline now has VT state and an App rendering path, with stored state qualified
 by the [v3 measurement](terminfo/2026-11-03-overline.md). No constant or
 consumed-input hint substitutes for an observation. Stock grades and frozen
 triage stay unchanged. The live frames qualify stored state and decoded cells;
-controlled pixel observations and blink timing remain #763, and live
+controlled pixel observations are now retained in the [owned pixel suite](terminfo/owned-pixels.md);
+synthetic blink phases do not measure desktop cadence. Live
 Windows/Linux qualification remains #775. The earlier
 [2026-11-02 rendition/cursor measurement](terminfo/2026-11-02-rendition-cursor.md)
 retains its historical scope and exact limits.

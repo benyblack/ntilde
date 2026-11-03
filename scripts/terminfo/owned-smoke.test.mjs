@@ -123,6 +123,7 @@ function launch(executable, interrupt, observation = {}) {
                 NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${pathToFileURL(join(repo, 'scripts/terminfo/fixtures/owned-lifecycle.mjs')).href}`].filter(Boolean).join(' '),
             } : {}), NTILDE_TERMINFO_TEST_LIFECYCLE_LOG: observation.log,
                 NTILDE_TERMINFO_TEST_LIFECYCLE_PHASE: observation.phase,
+                NTILDE_TERMINFO_TEST_PIXEL_BUDGET: observation.pixelBudget ? '1' : undefined,
                 NTILDE_TERMINFO_TEST_RGB_BUDGET: observation.rgbBudget ? '1' : undefined },
         });
         let output = '';
@@ -418,3 +419,27 @@ for (const runner of ['owned', 'inline']) {
         });
     });
 }
+
+
+test('an initial pixel detail refusal after restored cursor evidence retains typed unavailability and cleanup', {
+    skip: !prepared || !process.env.NTILDE_TERMINFO_TEST_EXECUTABLE,
+}, async () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-pixel-budget-'));
+    try {
+        const log = join(root, 'lifecycle.jsonl');
+        const result = await launch(process.env.NTILDE_TERMINFO_TEST_EXECUTABLE, false, { log, pixelBudget: true });
+        assert.equal(result.code, 0, result.output + result.errors);
+        const output = /results: ([^\n]+)/.exec(result.output)[1];
+        const receipt = JSON.parse(readFileSync(join(output, 'cell-receipt.json')));
+        assert.equal(receipt.fixtureRemoved, true);
+        assert.equal(receipt.pixelEvidence.status, 'unavailable');
+        assert.equal(receipt.pixelEvidence.reason, 'screenDetailsUnavailable');
+        assert.deepEqual(receipt.pixelEvidence.counts, {});
+        assert.equal(receipt.cursorEvidence.counts.passed, 9);
+        assert.equal(JSON.parse(readFileSync(join(output, 'pixel-unavailable.json'))).fixtureStarted, false);
+        assert.equal(readFileSync(join(output, 'pixel-snapshots.jsonl'), 'utf8'), '');
+        assert.ok(!existsSync(join(output, 'pixels')));
+        assert.ok(!existsSync(join(output, 'pixel-observations.json')));
+        assert.ok(readFileSync(log, 'utf8').includes('pixelBudgetRefusal'));
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});

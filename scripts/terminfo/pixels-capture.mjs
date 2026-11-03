@@ -23,9 +23,10 @@ function validateDetails(details, screen, image, timeMs) {
         || !integer(font.collectionIndex, 0, 65535) || !integer(font.weight, 1, 1000) || !integer(font.width, 1, 9)
         || !name(font.slant) || !finite(font.sizeDip, 4, 96) || !Array.isArray(font.fallbackFamilies)
         || font.fallbackFamilies.length > 64 || !font.fallbackFamilies.every(name)) fail();
-    if (!grid || image.width !== Math.ceil(screen.cols * grid.cellWidthDip) || image.height !== Math.ceil(screen.rows * grid.cellHeightDip)
+    if (!grid || grid.originXPx + screen.cols * grid.cellWidthPx > image.width || grid.originYPx + screen.rows * grid.cellHeightPx > image.height
         || grid.renderWidthPx !== image.width || grid.renderHeightPx !== image.height
         || !integer(grid.originXPx, 0, image.width) || !integer(grid.originYPx, 0, image.height)
+        || grid.cellWidthPx !== Math.max(1, Math.round(grid.cellWidthDip)) || grid.cellHeightPx !== Math.max(1, Math.round(grid.cellHeightDip))
         || !integer(grid.cellWidthPx, 1, 256) || !integer(grid.cellHeightPx, 1, 512)
         || !finite(grid.cellWidthDip, 1, 256) || !finite(grid.cellHeightDip, 1, 512)
         || !finite(grid.baselineDip, 0, grid.cellHeightDip)

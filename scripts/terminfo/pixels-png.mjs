@@ -31,7 +31,7 @@ function acceptAncillary(state, item) {
 }
 
 function acceptChunk(state, item, count, last) {
-    if (['acTL', 'fcTL', 'fdAT'].includes(item.type)) throw invalid();
+    if (['acTL', 'fcTL', 'fdAT', 'tRNS'].includes(item.type)) throw invalid();
     if (!state.imageHeader && item.type !== 'IHDR') throw invalid();
     switch (item.type) {
         case 'IHDR':
