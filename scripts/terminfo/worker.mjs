@@ -10,6 +10,7 @@ import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
 import { collectCursor } from './cursor.mjs';
+import { collectErase, collectEditing } from './editing-cases.mjs';
 import { collectColors } from './color-cases.mjs';
 import { collectPixels } from './pixels-cases.mjs';
 
@@ -29,6 +30,8 @@ try {
         await collectCursor({ config, fence, owner });
         await collectPixels({ config, fence, owner });
         await collectColors({ config, fence, owner });
+        await collectErase({ config, fence, owner });
+        await collectEditing({ config, fence, owner });
     } finally { fence.dispose(); }
     const source = readFileSync(config.bundle);
     const digest = createHash('sha256').update(source).digest('hex');

@@ -146,6 +146,9 @@ The terminal engine is the **single source of truth** for terminal semantics. Th
   Windowless viewport imports report an explicitly unknown history count; imported
   empty storage cannot prove empty daemon history. This projection does not alter
   parser state or enable acting methods, and Contracts remains a leaf.
+- Normalize default-one CSI counts in the parser: ECH, IL and DL map omitted/zero
+  parameters to one before invoking buffer operations. Direct buffer zero-count
+  calls remain no-ops, independently of cursor, margins and saved history.
 - Provide read-only snapshots for rendering and replay
 
 ### 3.2 Components
