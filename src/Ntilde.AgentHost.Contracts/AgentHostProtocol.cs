@@ -107,6 +107,7 @@ public static class AgentHostProtocol
     {
         public const string ListSessions = "listSessions";
         public const string ReadScreen = "readScreen";
+        public const string ReadPaneMetadata = "readPaneMetadata";
         public const string ReadScrollback = "readScrollback";
         public const string GetSessionStatus = "getSessionStatus";
         public const string WaitForEvents = "waitForEvents";
@@ -221,6 +222,7 @@ public static class AgentHostProtocol
 
         /// <summary>The requested complete cell-detail projection exceeds its cell or run budget.</summary>
         public const string ScreenDetailsUnavailable = "screenDetailsUnavailable";
+        public const string PaneMetadataUnavailable = "paneMetadataUnavailable";
 
         /// <summary>
         /// A4: <c>exportReplay</c> was called but the user has not enabled

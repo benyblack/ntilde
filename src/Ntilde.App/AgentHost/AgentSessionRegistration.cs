@@ -180,6 +180,9 @@ namespace Ntilde.AgentHost
         // the pane; the sweep still uses only the lifecycle members.
         private volatile Ntilde.Pty.ITerminalSession? _session;
 
+        /// <summary>Identity-only lease for bounded read-only UI observations.</summary>
+        internal Ntilde.Pty.ITerminalSession? ObservationSession => _session;
+
         // Desired flight-recording state pushed by the endpoint (A4). Kept on
         // the registration because the pane may publish the session *after*
         // the endpoint enabled recording (registration happens before spawn),

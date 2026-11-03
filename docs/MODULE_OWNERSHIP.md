@@ -364,7 +364,7 @@ invariant changes.
 
 **Namespace:** `Ntilde.AgentHost.Contracts`
 **Depends on:** *(leaf — only BCL)*
-**Public surface:** `AgentHostProtocol`, `AgentHostDiscovery`, `AgentHostJsonContext`, `Frames.*`, and the contract DTO groups (`ActContracts`, `SessionContracts`, `StatusContracts`, `ReplayContracts`, `ResizePane`)
+**Public surface:** `AgentHostProtocol`, `AgentHostDiscovery`, `AgentHostJsonContext`, `Frames.*`, and the contract DTO groups (`ActContracts`, `SessionContracts`, `StatusContracts`, `ReplayContracts`, `ResizePane`, `PaneMetadataContracts`)
 
 **Owns**
 - The wire protocol between the app's agent host and any external client (today: the MCP server)
@@ -860,6 +860,12 @@ requires public test classes.
   Everything else moved to `Ntilde.CommandAssist` in #114.
 - Startup orchestration (seven `Startup*.cs` files in `Shell/`)
 - `AgentOutputRegionTracker`: coalesced streaming/presence read deadlines, one background read at a time, dirty follow-ups, and cancellation on generation/lifetime changes. Completion reads synchronously without waiting for background work; output/presence deliveries reject stale generations. Timer metadata locks never span buffer reads or UI dispatch.
+- Read-only pane metadata observations: `IAgentPaneObserver` is separate from acting.
+  `readPaneMetadata` marshals real title/cwd and tab/toast control properties to the UI
+  thread, and copies complete bounded active-viewport links/raw shell anchors under
+  an immediate buffer read lock. It refuses stale registration/session/buffer identity,
+  unavailable controls and oversized observations; it never activates tabs or opens links.
+  UI properties and stored VT facts are observations, not pixel or OS-taskbar evidence.
 - Workspace and session lifecycle
 - SSH UI: connection manager, transfer center, remote files sidebar, vault, sftp service, ssh-askpass
 - Legacy OpenSSH SCP paths: `SftpService` backslash-escapes literal remote shell characters before

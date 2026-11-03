@@ -281,6 +281,10 @@ namespace Ntilde.AgentHost
         // Closes over the window, so it is cleared on Stop like the allowlist
         // probe. Volatile: published from UI, read on IPC.
         private volatile IAgentActionExecutor? _actionExecutor;
+        private volatile IAgentPaneObserver? _paneObserver;
+
+        /// <summary>Publish a read-only UI observer independently of act permission.</summary>
+        public void SetPaneObserver(IAgentPaneObserver? observer) => _paneObserver = observer;
 
         /// <summary>Publishes (or clears) the spawn/close UI executor. UI thread.</summary>
         public void SetActionExecutor(IAgentActionExecutor? executor) => _actionExecutor = executor;
@@ -444,6 +448,7 @@ namespace Ntilde.AgentHost
             // do not leak, so they are left as-is.
             _sshProfileAllowlist = null;
             _actionExecutor = null; // closes over the window too — same pinning reason
+            _paneObserver = null;
             _windowlessSource = null; // so does its shownHere
 
             // The sweep that would put the windowless light out stops with the endpoint. Nobody is told: a stopped
@@ -889,6 +894,7 @@ namespace Ntilde.AgentHost
                 return request.Method switch
                 {
                     AgentHostProtocol.Methods.ListSessions => await HandleListSessionsAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.ReadPaneMetadata => await HandleReadPaneMetadataAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.ReadScreen => await HandleReadScreenAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.ReadScrollback => await HandleReadScrollbackAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.GetSessionStatus => await HandleGetSessionStatusAsync(request, cancellationToken).ConfigureAwait(false),
@@ -1600,6 +1606,42 @@ namespace Ntilde.AgentHost
 
             var result = new ListSessionsResult { Sessions = sessions };
             return Ok(request.Id, JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.ListSessionsResult));
+        }
+
+        private async Task<AgentHostResponse> HandleReadPaneMetadataAsync(AgentHostRequest request, CancellationToken cancellationToken)
+        {
+            var p = DeserializeParams(request, AgentHostJsonContext.Default.ReadPaneMetadataParams);
+            if (p == null || p.PaneId == Guid.Empty)
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest, "readPaneMetadata requires a nonempty paneId.");
+            if (!_registry.TryGet(p.PaneId, out var registration))
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, "No attached pane has that identity.");
+            var observer = _paneObserver;
+            var session = registration.ObservationSession;
+            if (observer == null || session == null)
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.PaneMetadataUnavailable, "A complete current UI observation is unavailable.");
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(TimeSpan.FromSeconds(2));
+            PaneMetadataResult? observed;
+            try
+            {
+                observed = await observer.ReadPaneMetadataAsync(registration, deadline.Token).WaitAsync(deadline.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.PaneMetadataUnavailable, "The UI observation was cancelled or exceeded its deadline.");
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception)
+            {
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.PaneMetadataUnavailable, "A complete current UI observation is unavailable.");
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            if (observed == null || observed.PaneId != p.PaneId || !ReferenceEquals(observer, _paneObserver)
+                || !_registry.TryGet(p.PaneId, out var current) || !ReferenceEquals(current, registration)
+                || !ReferenceEquals(session, registration.ObservationSession))
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.PaneMetadataUnavailable, "The pane identity or observation is no longer current.");
+            TryNoteRead(registration);
+            return Ok(request.Id, JsonSerializer.SerializeToElement(observed, AgentHostJsonContext.Default.PaneMetadataResult));
         }
 
         private async Task<AgentHostResponse> HandleReadScreenAsync(AgentHostRequest request, CancellationToken cancellationToken)
