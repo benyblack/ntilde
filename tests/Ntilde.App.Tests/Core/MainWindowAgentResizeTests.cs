@@ -16,12 +16,22 @@ public sealed class MainWindowAgentResizeTests : IClassFixture<TestAppDataRoot>,
 {
     public void Dispose() => TestMainWindowFactory.DisposeCreatedWindows();
 
-    [AvaloniaFact]
-    public async Task Resize_waits_for_actual_view_buffer_and_session_dispatch()
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Resize_waits_for_actual_view_buffer_and_session_dispatch(bool missingProfile)
     {
         using var service = new AgentHostService(new AgentSessionRegistry());
         using var scope = AgentHostService.OverrideInstanceForTesting(service);
         var (window, pane) = CreateWindow();
+        if (missingProfile)
+        {
+            // The restored command-based fallback has no profile even though its direct session is local.
+            var profile = typeof(TerminalPane).GetProperty(nameof(TerminalPane.Profile))
+                ?? throw new InvalidOperationException("The pane profile property is unavailable.");
+            profile.SetValue(pane, null);
+            Assert.Null(pane.Profile);
+        }
         int cols = pane.TermView.Cols - 3, rows = pane.TermView.Rows - 2;
         Assert.True(cols > 0 && rows > 0);
         pane.TermView.ReleaseResizeThrottleForTest();
@@ -217,6 +227,19 @@ public sealed class MainWindowAgentResizeTests : IClassFixture<TestAppDataRoot>,
         var before = window.ClientSize;
 
         Assert.Null(await ((IAgentActionExecutor)window).ResizePaneAsync(pane.PaneId, cols, rows, TestContext.Current.CancellationToken));
+        Assert.Equal(before, window.ClientSize);
+    }
+
+    [AvaloniaFact]
+    public async Task An_ssh_profile_cannot_use_the_direct_local_window_resize()
+    {
+        using var service = new AgentHostService(new AgentSessionRegistry());
+        using var scope = AgentHostService.OverrideInstanceForTesting(service);
+        var (window, pane) = CreateWindow();
+        Assert.IsType<TerminalProfile>(pane.Profile).Type = ConnectionType.SSH;
+        var before = window.ClientSize;
+
+        Assert.Null(await ((IAgentActionExecutor)window).ResizePaneAsync(pane.PaneId, 80, 24, TestContext.Current.CancellationToken));
         Assert.Equal(before, window.ClientSize);
     }
 

@@ -36,9 +36,10 @@ public partial class MainWindow
     /// <summary>Only one visible direct local pane may own the normal window's sizing operation.</summary>
     private bool CanAgentResizePane(TerminalPane pane)
     {
+        // Match AgentHost registration: restored command-based panes with no profile are local.
         if (!IsVisible || !pane.IsEffectivelyVisible || !ReferenceEquals(TopLevel.GetTopLevel(pane), this) ||
             !CanResize || WindowState != WindowState.Normal || _isFocusMode ||
-            !ReferenceEquals(_currentPane, pane) || pane.Profile?.Type != ConnectionType.Local ||
+            !ReferenceEquals(_currentPane, pane) || pane.Profile?.Type == ConnectionType.SSH ||
             pane.Session?.IsProcessRunning != true || pane.TermView.DefersBufferResizeToSession ||
             !_paneOwnerTab.TryGetValue(pane, out var tab))
         {

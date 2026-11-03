@@ -180,7 +180,8 @@ unsupported protocol versions, are not journaled.
 It is not an MCP tool. Only the current single direct local pane in the selected
 tab of a visible, normal, resizable window is eligible. Remote, mux/deferred,
 windowless, split, inactive and focus-mode targets are refused without activating
-a tab or directly resizing the VT buffer.
+a tab or directly resizing the VT buffer. Restored command-based local panes
+remain eligible when their saved profile no longer resolves.
 
 App changes its actual window client size using measured cell/chrome dimensions
 and starts a two-second observation timeout for the ordinary view → buffer →
