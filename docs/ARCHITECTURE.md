@@ -180,7 +180,8 @@ The owned saved-state QA suite uses paired active-cell/mode/history observations
 and newly written pen/charset witnesses. Invisible banks are checked directly only
 by owning VT tests; a live cursor response alone cannot qualify restoration.
 Its source-defined fixture clearing is independent of RIS under test. V7 receipts
-bind all preceding suites, retained source/journal bytes and verified cleanup;
+bind all preceding suites, retained source/report hashes, parsed journal frames
+and verified cleanup;
 coherent reset negatives remain explicit for later fixes.
 
 DECSC/DECRC and private modes 1048/1049 share per-screen saved cursor banks, including
