@@ -1196,7 +1196,7 @@ namespace Ntilde.AgentHost
             else
             {
                 if (!registration.TryCapturePng(maxWidth, scale, out var capture, out var captureError,
-                    p.PresentationTimeMs, p.IncludeRenderDetails))
+                    new AgentCaptureOptions(p.PresentationTimeMs, p.IncludeRenderDetails)))
                 {
                     var message = captureError == AgentCaptureError.TooLarge
                         ? $"This pane would render larger than the {AgentHostProtocol.MaxCapturePixels:N0}-pixel per-capture budget at scale {scale:0.##}. Lower the scale, make the window smaller, or raise the font size."
@@ -1823,13 +1823,14 @@ namespace Ntilde.AgentHost
 
             var screen = await source.ReadScreenAsync(p.PaneId, 0, cancellationToken).ConfigureAwait(false);
             var (buffer, failure) = ImportScreen(request.Id, p.PaneId, method, screen, render.Theme);
-            if (failure != null)
+            if (failure != null || buffer is null)
             {
-                return WindowlessRead(request, method, p.PaneId, screen, failure);
+                return WindowlessRead(request, method, p.PaneId, screen, failure ?? Error(request.Id,
+                    AgentHostProtocol.ErrorCodes.CaptureUnavailable, "This session's screen could not be imported for capture."));
             }
 
-            if (!AgentSessionRegistration.TryRenderPng(buffer!, render.Parameters, maxWidth, scale, out var capture, out var captureError,
-                p.PresentationTimeMs, p.IncludeRenderDetails))
+            if (!AgentSessionRegistration.TryRenderPng(buffer, render.Parameters, maxWidth, scale, out var capture, out var captureError,
+                new AgentCaptureOptions(p.PresentationTimeMs, p.IncludeRenderDetails)))
             {
                 var message = captureError == AgentCaptureError.TooLarge
                     ? $"This session would render larger than the {AgentHostProtocol.MaxCapturePixels:N0}-pixel per-capture budget at scale {scale:0.##}. Lower the scale."

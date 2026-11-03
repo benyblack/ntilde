@@ -214,6 +214,29 @@ public class AgentHostCaptureProtocolTests : IDisposable
         Assert.Equal(4, registration.Buffer.CursorCol);
     }
 
+    [Theory]
+    [InlineData(100, 30)]
+    [InlineData(40, 12)]
+    public void Controlled_capture_refuses_a_grid_changed_during_render_preparation_and_succeeds_on_retry(int cols, int rows)
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, "resize fixture");
+        var options = new AgentCaptureOptions(530, true)
+        {
+            BeforeRenderForTest = () => registration.Buffer.Resize(cols, rows),
+        };
+        Assert.False(registration.TryCapturePng(0, 1, out var refused, out var error, options));
+        Assert.Equal(AgentCaptureError.Unavailable, error);
+        Assert.Null(refused.Png);
+        Assert.True(registration.TryCapturePng(0, 1, out var retry, out _, new AgentCaptureOptions(530, true)));
+        Assert.Equal(cols, retry.Cols);
+        Assert.Equal(rows, retry.Rows);
+        Assert.Equal(cols * 8, retry.Width);
+        Assert.Equal(rows * 16, retry.Height);
+        Assert.Equal(retry.Width, retry.RenderDetails!.Grid.RenderWidthPx);
+        Assert.Equal(retry.Height, retry.RenderDetails.Grid.RenderHeightPx);
+    }
+
     [Fact]
     public void Render_context_coordinates_describe_the_draw_before_downscaling()
     {

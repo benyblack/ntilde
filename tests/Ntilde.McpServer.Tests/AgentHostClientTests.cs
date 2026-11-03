@@ -250,7 +250,46 @@ public class AgentHostClientTests : IDisposable
         Assert.DoesNotContain("no cursor blink", text, StringComparison.Ordinal);
     }
 
-    private async Task<string> CaptureReplyAsync(long? requestedTime, long? responseTime, bool details)
+    [Fact]
+    public async Task Controlled_capture_returns_requested_render_details_on_a_successful_reply()
+    {
+        var text = await CaptureReplyAsync(530, 530, true, replyDetails: true);
+        Assert.StartsWith("Screenshot written:", text, StringComparison.Ordinal);
+        Assert.Contains("Render details: ", text, StringComparison.Ordinal);
+        Assert.Contains("\"primaryFamily\":\"Fixture Mono\"", text, StringComparison.Ordinal);
+        Assert.Contains("\"timeMs\":530", text, StringComparison.Ordinal);
+    }
+
+    private static CaptureRenderDetails FakeCaptureDetails(long? time) => new()
+    {
+        Platform = "test",
+        Architecture = "x64",
+        Font = new CaptureFontDetails
+        {
+            ConfiguredFamily = "Fixture Mono",
+            PrimaryFamily = "Fixture Mono",
+            PrimarySha256 = new string('a', 64),
+            Slant = "Upright",
+            FallbackFamilies = Array.Empty<string>(),
+            SizeDip = 14,
+            Weight = 400,
+            Width = 5,
+        },
+        Grid = new CaptureGridDetails
+        {
+            RenderWidthPx = 8,
+            RenderHeightPx = 16,
+            CellWidthDip = 8,
+            CellHeightDip = 16,
+            BaselineDip = 12,
+            CellWidthPx = 8,
+            CellHeightPx = 16,
+        },
+        Theme = new CaptureThemeDetails { AnsiPaletteArgb = new uint[256], ForegroundArgb = 0xffffffffU, BackgroundArgb = 0xff000000U },
+        Presentation = new CapturePresentationDetails { TimeMs = time, HalfPeriodMs = 530 },
+    };
+
+    private async Task<string> CaptureReplyAsync(long? requestedTime, long? responseTime, bool details, bool replyDetails = false)
     {
         var endpoint = OperatingSystem.IsWindows()
             ? "ntilde-capture-client-" + Guid.NewGuid().ToString("N") : Path.Combine(_tempDir, "cap.sock");
@@ -265,6 +304,7 @@ public class AgentHostClientTests : IDisposable
             ByteCount = 10,
             Downscaled = false,
             PresentationTimeMs = responseTime,
+            RenderDetails = replyDetails ? FakeCaptureDetails(responseTime) : null,
         };
         using var serverCts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         serverCts.CancelAfter(TimeSpan.FromSeconds(10));

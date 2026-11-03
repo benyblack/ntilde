@@ -52,6 +52,8 @@ public sealed class SessionTools
             : AgentHostClient.ProtocolErrorMessage;
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "S107",
+        Justification = "Seven flat MCP inputs plus injected client/cancellation infrastructure; grouping inputs would change the existing additive tool schema.")]
     [McpServerTool(Name = "ntilde.capture_screen"),
      Description("Captures a live Ntilde session as a PNG image and returns its path — use it when the pixels matter and text does not carry them: inline images (sixel), box-drawing and TUI layout, colour and theme problems, or a rendering bug you need to see. Two modes: mode='render' (default) re-renders the pane offscreen from its buffer, so it works even if the window is minimized, occluded, or on another desktop, no other window can leak in, and unchanged screen/settings/capture options produce the same bytes (visible blink phases by default); mode='live' photographs the pane as drawn on screen, which additionally carries the user's background image and window opacity but only works while the pane is visible and is not reproducible. Raise scale (up to 3) to render more detail — a 1x capture of an 80x24 pane is only about 640x384, which is thin for reading text back out of the image; maxWidth shrinks the result instead. Set inline=true to also get the image itself back (capped; the file is written either way). Read-only, and requires 'Agent access (observe)' like every other read; the pane's agent indicator lights when you capture it. A windowless session supports mode='render' only (live is refused), borrowing an open pane's font metrics. For reading text, ntilde.read_screen is cheaper. Get paneId from ntilde.list_sessions.")]
     public static async Task<IEnumerable<ContentBlock>> CaptureScreen(
@@ -65,52 +67,9 @@ public sealed class SessionTools
         [Description("Include actual render font identity, palette, pixel grid and presentation facts. Render mode only; fallback font names are listed but their bytes/per-glyph use are not attested.")] bool includeRenderDetails = false,
         CancellationToken cancellationToken = default)
     {
-        if (!Guid.TryParse(paneId, out var pane))
-        {
-            return Text($"Error: '{paneId}' is not a valid pane id (GUID). Use ntilde.list_sessions to find live pane ids.");
-        }
-        if (maxWidth < 0)
-        {
-            return Text("Error: maxWidth must be 0 (rendered size) or greater.");
-        }
-        // Clamped rather than rejected: a caller asking for more detail than the
-        // endpoint allows wants the most it can give, not an error. Out-of-range
-        // low is a different matter - 0.5 would mean "blur it", which nothing wants.
-        if (scale < 0)
-        {
-            return Text("Error: scale must be 0 (meaning 1) or greater.");
-        }
-        var effectiveScale = scale <= 0 ? 1d : Math.Min(scale, AgentHostProtocol.MaxCaptureScale);
-
-        var normalizedMode = string.IsNullOrWhiteSpace(mode) ? AgentHostProtocol.CaptureModes.Render : mode.Trim();
-        if (!normalizedMode.Equals(AgentHostProtocol.CaptureModes.Render, StringComparison.OrdinalIgnoreCase) &&
-            !normalizedMode.Equals(AgentHostProtocol.CaptureModes.Live, StringComparison.OrdinalIgnoreCase))
-        {
-            return Text($"Error: unknown mode '{mode}'. Use '{AgentHostProtocol.CaptureModes.Render}' (default) or '{AgentHostProtocol.CaptureModes.Live}'.");
-        }
-
-        if (presentationTimeMs is < 0 or > AgentHostProtocol.MaxCapturePresentationTimeMs)
-        {
-            return Text($"Error: presentationTimeMs must be between 0 and {AgentHostProtocol.MaxCapturePresentationTimeMs}.");
-        }
-        if (normalizedMode.Equals(AgentHostProtocol.CaptureModes.Live, StringComparison.OrdinalIgnoreCase) &&
-            (presentationTimeMs.HasValue || includeRenderDetails))
-        {
-            return Text("Error: synthetic presentation time and render details require mode 'render'.");
-        }
-
-        var parameters = JsonSerializer.SerializeToElement(
-            new CaptureScreenParams
-            {
-                PaneId = pane,
-                Inline = inline,
-                MaxWidth = maxWidth,
-                Scale = effectiveScale,
-                Mode = normalizedMode,
-                PresentationTimeMs = presentationTimeMs,
-                IncludeRenderDetails = includeRenderDetails,
-            },
-            AgentHostJsonContext.Default.CaptureScreenParams);
+        var (capture, validationError) = CaptureParameters(paneId, inline, maxWidth, scale, mode, presentationTimeMs, includeRenderDetails);
+        if (capture == null) return Text(validationError ?? AgentHostClient.ProtocolErrorMessage);
+        var parameters = JsonSerializer.SerializeToElement(capture, AgentHostJsonContext.Default.CaptureScreenParams);
         var outcome = await client.CallAsync(AgentHostProtocol.Methods.CaptureScreen, parameters, cancellationToken).ConfigureAwait(false);
         if (!TryUnwrap(outcome, out var result, out var error)) return Text(error);
 
@@ -119,17 +78,17 @@ public sealed class SessionTools
             return Text(AgentHostClient.ProtocolErrorMessage);
         }
 
-        if (presentationTimeMs.HasValue && dto!.PresentationTimeMs != presentationTimeMs)
+        if (presentationTimeMs.HasValue && dto.PresentationTimeMs != presentationTimeMs)
         {
             return Text("Error: the endpoint did not confirm the requested synthetic presentation time.");
         }
-        if (includeRenderDetails && dto!.RenderDetails == null)
+        if (includeRenderDetails && dto.RenderDetails == null)
         {
             return Text("Error: the endpoint did not provide the requested render details.");
         }
 
-        var blocks = new List<ContentBlock> { new TextContentBlock { Text = FormatCapture(dto!) } };
-        if (dto!.PngBase64 is { Length: > 0 } base64)
+        var blocks = new List<ContentBlock> { new TextContentBlock { Text = FormatCapture(dto) } };
+        if (dto.PngBase64 is { Length: > 0 } base64)
         {
             // Decoded here rather than passing the base64 through: FromBytes owns
             // the encoding, so a malformed payload fails here instead of shipping
@@ -144,6 +103,55 @@ public sealed class SessionTools
             }
         }
         return blocks;
+    }
+
+    private static (CaptureScreenParams? Parameters, string? Error) CaptureParameters(
+        string paneId, bool inline, int maxWidth, double scale, string mode, long? presentationTimeMs, bool includeRenderDetails)
+    {
+        if (!Guid.TryParse(paneId, out var pane))
+        {
+            return (null, $"Error: '{paneId}' is not a valid pane id (GUID). Use ntilde.list_sessions to find live pane ids.");
+        }
+        if (maxWidth < 0)
+        {
+            return (null, "Error: maxWidth must be 0 (rendered size) or greater.");
+        }
+        // Clamped rather than rejected: a caller asking for more detail than the
+        // endpoint allows wants the most it can give, not an error. Out-of-range
+        // low is a different matter - 0.5 would mean "blur it", which nothing wants.
+        if (scale < 0)
+        {
+            return (null, "Error: scale must be 0 (meaning 1) or greater.");
+        }
+        var effectiveScale = scale <= 0 ? 1d : Math.Min(scale, AgentHostProtocol.MaxCaptureScale);
+
+        var normalizedMode = string.IsNullOrWhiteSpace(mode) ? AgentHostProtocol.CaptureModes.Render : mode.Trim();
+        if (!normalizedMode.Equals(AgentHostProtocol.CaptureModes.Render, StringComparison.OrdinalIgnoreCase) &&
+            !normalizedMode.Equals(AgentHostProtocol.CaptureModes.Live, StringComparison.OrdinalIgnoreCase))
+        {
+            return (null, $"Error: unknown mode '{mode}'. Use '{AgentHostProtocol.CaptureModes.Render}' (default) or '{AgentHostProtocol.CaptureModes.Live}'.");
+        }
+
+        if (presentationTimeMs is < 0 or > AgentHostProtocol.MaxCapturePresentationTimeMs)
+        {
+            return (null, $"Error: presentationTimeMs must be between 0 and {AgentHostProtocol.MaxCapturePresentationTimeMs}.");
+        }
+        if (normalizedMode.Equals(AgentHostProtocol.CaptureModes.Live, StringComparison.OrdinalIgnoreCase) &&
+            (presentationTimeMs.HasValue || includeRenderDetails))
+        {
+            return (null, "Error: synthetic presentation time and render details require mode 'render'.");
+        }
+
+        return (new CaptureScreenParams
+        {
+            PaneId = pane,
+            Inline = inline,
+            MaxWidth = maxWidth,
+            Scale = effectiveScale,
+            Mode = normalizedMode,
+            PresentationTimeMs = presentationTimeMs,
+            IncludeRenderDetails = includeRenderDetails,
+        }, null);
     }
 
     [McpServerTool(Name = "ntilde.read_scrollback"),
@@ -346,7 +354,7 @@ public sealed class SessionTools
     private static bool TryDeserializeResult<T>(
         JsonElement result,
         System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo,
-        out T? value)
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out T? value)
         where T : class
     {
         try

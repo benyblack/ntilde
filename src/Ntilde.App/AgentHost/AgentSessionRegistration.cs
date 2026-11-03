@@ -5,6 +5,13 @@ using Ntilde.VT;
 
 namespace Ntilde.AgentHost
 {
+    /// <summary>Additive controls for an offscreen capture, independent of the live clock.</summary>
+    public readonly record struct AgentCaptureOptions(long? PresentationTimeMs = null, bool IncludeRenderDetails = false)
+    {
+        // Per-call seam for deterministic concurrent-resize regressions; never set by the wire handler.
+        internal Action? BeforeRenderForTest { get; init; }
+    }
+
     /// <summary>A rendered pane screenshot (A5), as returned by <see cref="AgentSessionRegistration.TryCapturePng"/>.</summary>
     public readonly record struct AgentCaptureInfo(
         byte[] Png,
@@ -415,7 +422,7 @@ namespace Ntilde.AgentHost
         /// the machine it runs on.
         /// </summary>
         public bool TryCapturePng(int maxWidth, double scale, out AgentCaptureInfo info, out AgentCaptureError error,
-            long? presentationTimeMs = null, bool includeRenderDetails = false)
+            AgentCaptureOptions captureOptions = default)
         {
             if (RenderParameters is not { } parameters || !parameters.IsUsable)
             {
@@ -424,7 +431,7 @@ namespace Ntilde.AgentHost
                 return false;
             }
 
-            return TryRenderPng(Buffer, parameters, maxWidth, scale, out info, out error, presentationTimeMs, includeRenderDetails);
+            return TryRenderPng(Buffer, parameters, maxWidth, scale, out info, out error, captureOptions);
         }
 
         /// <summary>
@@ -435,7 +442,7 @@ namespace Ntilde.AgentHost
         internal static bool TryRenderPng(
             TerminalBuffer buffer, PaneRenderParameters parameters, int maxWidth, double scale,
             out AgentCaptureInfo info, out AgentCaptureError error,
-            long? presentationTimeMs = null, bool includeRenderDetails = false)
+            AgentCaptureOptions captureOptions = default)
         {
             info = default;
             error = AgentCaptureError.Unavailable;
@@ -505,7 +512,7 @@ namespace Ntilde.AgentHost
                 MinimumContrast = parameters.MinimumContrast,
                 PreferredCursorStyle = parameters.PreferredCursorStyle,
                 PreferredCursorBlink = parameters.PreferredCursorBlink,
-                PresentationTimeMs = presentationTimeMs,
+                PresentationTimeMs = captureOptions.PresentationTimeMs,
 
                 // Visibility/shape/blink facts come from the draw's own snapshot.
                 // No live focus or clock is read; absent synthetic time keeps visible phases.
@@ -537,16 +544,23 @@ namespace Ntilde.AgentHost
                 using var glyphCache = new Ntilde.Rendering.GlyphCache();
                 options = options with { GlyphCache = glyphCache };
 
+                captureOptions.BeforeRenderForTest?.Invoke();
                 using var bitmap = TerminalSnapshotRenderer.CaptureWithContext(buffer, parameters.Metrics, width, height,
-                    options, includeRenderDetails, out var context);
+                    options, captureOptions.IncludeRenderDetails, out var context);
+                if (context != null && (context.Frame.Cols != cols || context.Frame.Rows != rows))
+                {
+                    // The bitmap was sized before a concurrent resize. Retry rather than
+                    // presenting a cropped/expanded viewport as a qualified full-grid frame.
+                    return false;
+                }
                 using var downscaled = TerminalSnapshotRenderer.DownscaleToWidth(bitmap, maxWidth);
                 var final = downscaled ?? bitmap;
                 info = new AgentCaptureInfo(
                     TerminalSnapshotRenderer.EncodePng(final),
                     final.Width,
                     final.Height,
-                    context?.Frame.Cols ?? cols,
-                    context?.Frame.Rows ?? rows,
+                    cols,
+                    rows,
                     Downscaled: downscaled != null,
                     Scale: effectiveScale,
                     RenderDetails: context == null ? null : AgentCaptureDetails.From(context));
