@@ -6,7 +6,7 @@ using Ntilde.VT;
 namespace Ntilde.AgentHost
 {
     /// <summary>Additive controls for an offscreen capture, independent of the live clock.</summary>
-    public readonly record struct AgentCaptureOptions(long? PresentationTimeMs = null, bool IncludeRenderDetails = false)
+    public readonly record struct AgentCaptureOptions(long? PresentationTimeMs = null, bool IncludeRenderDetails = false, CaptureSelection? SyntheticSelection = null)
     {
         // Per-call seam for deterministic concurrent-resize regressions; never set by the wire handler.
         internal Action? BeforeRenderForTest { get; init; }
@@ -465,7 +465,7 @@ namespace Ntilde.AgentHost
                 buffer.Lock.ExitReadLock();
             }
 
-            if (cols <= 0 || rows <= 0)
+            if (cols <= 0 || rows <= 0 || !CaptureSelectionValidation.FitsGrid(captureOptions.SyntheticSelection, rows, cols))
             {
                 return false;
             }
@@ -517,6 +517,13 @@ namespace Ntilde.AgentHost
                 PreferredCursorBlink = parameters.PreferredCursorBlink,
                 PresentationTimeMs = captureOptions.PresentationTimeMs,
                 BeforeDrawForTest = captureOptions.BeforeDrawForTest,
+                SelectionRelativeToViewport = captureOptions.SyntheticSelection is not null,
+                Selection = captureOptions.SyntheticSelection is { } selected ? new SelectionState
+                {
+                    IsActive = true,
+                    Start = (selected.StartRow, selected.StartCol),
+                    End = (selected.EndRow, selected.EndCol),
+                } : null,
 
                 // Visibility/shape/blink facts come from the draw's own snapshot.
                 // No live focus or clock is read; absent synthetic time keeps visible phases.

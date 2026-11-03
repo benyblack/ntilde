@@ -408,7 +408,7 @@ namespace Ntilde.VT
                     readLockMs = lockSw.ElapsedMilliseconds;
                 }
 
-                selectionRows = BuildSelectionRows(req.Selection, absDisplayStart, viewportRows, viewportCols);
+                selectionRows = BuildSelectionRows(req.Selection, absDisplayStart, viewportRows, viewportCols, req.SelectionRelativeToViewport);
                 searchHighlights = BuildSearchHighlights(req.SearchMatches, req.ActiveSearchIndex, absDisplayStart, viewportRows, viewportCols);
 
                 return new TerminalRenderSnapshot
@@ -673,6 +673,11 @@ namespace Ntilde.VT
                 AnsiPalette = palette,
                 HasForegroundOverride = overrides.Foreground.HasValue,
                 HasBackgroundOverride = overrides.Background.HasValue,
+                HasCursorOverride = overrides.Cursor.HasValue,
+                HasSelectionBackgroundOverride = overrides.SelectionBackground.HasValue,
+                HasSelectionForegroundOverride = overrides.SelectionForeground.HasValue,
+                SelectionBackground = theme.SelectionBackground,
+                SelectionForeground = theme.SelectionForeground,
                 PaletteOverrides = new PaletteOverrideMask(masks[0], masks[1], masks[2], masks[3]),
                 Source = theme
             };
@@ -866,7 +871,7 @@ namespace Ntilde.VT
             return PooledArray<DirtySpan>.Empty;
         }
 
-        private static PooledArray<SelectionRowSnapshot> BuildSelectionRows(SelectionState? selection, int absDisplayStart, int viewportRows, int viewportCols)
+        private static PooledArray<SelectionRowSnapshot> BuildSelectionRows(SelectionState? selection, int absDisplayStart, int viewportRows, int viewportCols, bool relativeToViewport)
         {
             if (selection == null || !selection.IsActive || viewportRows <= 0 || viewportCols <= 0)
             {
@@ -877,7 +882,7 @@ namespace Ntilde.VT
             int absEnd = absDisplayStart + viewportRows;
             for (int absRow = absDisplayStart; absRow < absEnd; absRow++)
             {
-                var (isSelected, colStart, colEnd) = selection.GetSelectionRangeForRow(absRow, viewportCols);
+                var (isSelected, colStart, colEnd) = selection.GetSelectionRangeForRow(relativeToViewport ? absRow - absDisplayStart : absRow, viewportCols);
                 if (!isSelected)
                 {
                     continue;

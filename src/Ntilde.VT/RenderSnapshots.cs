@@ -9,6 +9,8 @@ namespace Ntilde.VT
         public int ViewportCols { get; init; }
         public int ScrollOffset { get; init; }
         public SelectionState? Selection { get; init; }
+        /// <summary>Interpret selection rows relative to this actual captured viewport; default uses absolute history rows.</summary>
+        public bool SelectionRelativeToViewport { get; init; }
         public IReadOnlyList<SearchMatch>? SearchMatches { get; init; }
         public int ActiveSearchIndex { get; init; }
 
@@ -51,6 +53,11 @@ namespace Ntilde.VT
         public TermColor[] AnsiPalette { get; init; }
         public bool HasForegroundOverride { get; init; }
         public bool HasBackgroundOverride { get; init; }
+        public bool HasCursorOverride { get; init; }
+        public bool HasSelectionBackgroundOverride { get; init; }
+        public bool HasSelectionForegroundOverride { get; init; }
+        public TermColor? SelectionBackground { get; init; }
+        public TermColor? SelectionForeground { get; init; }
         public PaletteOverrideMask PaletteOverrides { get; init; }
 
         /// <summary>

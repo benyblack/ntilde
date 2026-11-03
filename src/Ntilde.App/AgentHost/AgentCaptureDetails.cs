@@ -3,6 +3,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Ntilde.AgentHost.Contracts;
 using Ntilde.Shell;
+using Ntilde.VT;
 
 namespace Ntilde.AgentHost;
 
@@ -14,6 +15,8 @@ internal static class AgentCaptureDetails
         var grid = frame.PixelGrid;
         var theme = frame.Theme;
         var cursorText = frame.DerivedColors.CursorText;
+        var selection = frame.DerivedColors.Selection;
+        var selectionForeground = frame.DerivedColors.SelectionForeground;
         return new CaptureRenderDetails
         {
             Platform = PlatformName(),
@@ -54,6 +57,15 @@ internal static class AgentCaptureDetails
                 AnsiPaletteArgb = theme.AnsiPalette.Select(color => Argb(color.A, color.R, color.G, color.B)).ToArray(),
                 ForegroundOverride = theme.HasForegroundOverride,
                 BackgroundOverride = theme.HasBackgroundOverride,
+                CursorOverride = theme.HasCursorOverride,
+                SelectionBackgroundOverride = theme.HasSelectionBackgroundOverride,
+                SelectionForegroundOverride = theme.HasSelectionForegroundOverride,
+                SelectionBackgroundArgb = Argb(theme.SelectionBackground),
+                SelectionForegroundArgb = Argb(theme.SelectionForeground),
+                EffectiveSelectionBackgroundArgb = Argb(selection.A, selection.R, selection.G, selection.B),
+                EffectiveSelectionForegroundArgb = selectionForeground is { } selectedForeground
+                    ? Argb(selectedForeground.A, selectedForeground.R, selectedForeground.G, selectedForeground.B) : null,
+                PaletteOverrideIndices = Enumerable.Range(0, 256).Where(theme.PaletteOverrides.Contains).ToArray(),
             },
             Presentation = new CapturePresentationDetails
             {
@@ -66,6 +78,13 @@ internal static class AgentCaptureDetails
                 CursorRow = frame.CursorRow,
                 CursorCol = frame.CursorCol,
             },
+            SyntheticSelection = frame.SyntheticSelection is { } range ? new CaptureSelection
+            {
+                StartRow = range.StartRow,
+                StartCol = range.StartCol,
+                EndRow = range.EndRow,
+                EndCol = range.EndCol,
+            } : null,
             EnableLigatures = context.EnableLigatures,
             EnableComplexShaping = context.EnableComplexShaping,
             MinimumContrast = context.MinimumContrast,
@@ -79,6 +98,8 @@ internal static class AgentCaptureDetails
         if (OperatingSystem.IsLinux()) return "linux";
         return "unknown";
     }
+
+    private static uint? Argb(TermColor? color) => color is { } value ? Argb(value.A, value.R, value.G, value.B) : null;
 
     private static uint Argb(byte alpha, byte red, byte green, byte blue)
         => (uint)alpha << 24 | (uint)red << 16 | (uint)green << 8 | blue;

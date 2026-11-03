@@ -26,6 +26,9 @@ public sealed record CaptureRenderDetails
     [JsonPropertyName("presentation")]
     public required CapturePresentationDetails Presentation { get; init; }
 
+    [JsonPropertyName("syntheticSelection"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public CaptureSelection? SyntheticSelection { get; init; }
+
     [JsonPropertyName("enableLigatures")]
     public bool EnableLigatures { get; init; }
 
@@ -109,6 +112,27 @@ public sealed record CaptureThemeDetails
     public uint CursorTextArgb { get; init; }
     [JsonPropertyName("ansiPaletteArgb")]
     public required uint[] AnsiPaletteArgb { get; init; }
+    /// <summary>Effective theme selection values, before App derivation; null may mean no concrete OSC query reply.</summary>
+    [JsonPropertyName("selectionBackgroundArgb"), JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public uint? SelectionBackgroundArgb { get; init; }
+    [JsonPropertyName("selectionForegroundArgb"), JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public uint? SelectionForegroundArgb { get; init; }
+    /// <summary>Actual selection paint color; may be a translucent host-derived tint.</summary>
+    [JsonPropertyName("effectiveSelectionBackgroundArgb")]
+    public uint EffectiveSelectionBackgroundArgb { get; init; }
+    /// <summary>Null means no shared selection foreground override; cells use their own foreground,
+    /// subject to the minimum contrast setting.</summary>
+    [JsonPropertyName("effectiveSelectionForegroundArgb"), JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public uint? EffectiveSelectionForegroundArgb { get; init; }
+    [JsonPropertyName("cursorOverride")]
+    public bool CursorOverride { get; init; }
+    [JsonPropertyName("selectionBackgroundOverride")]
+    public bool SelectionBackgroundOverride { get; init; }
+    [JsonPropertyName("selectionForegroundOverride")]
+    public bool SelectionForegroundOverride { get; init; }
+    /// <summary>Sorted indices with stream-owned overrides, even when an override equals its host color.</summary>
+    [JsonPropertyName("paletteOverrideIndices")]
+    public int[] PaletteOverrideIndices { get; init; } = [];
     [JsonPropertyName("foregroundOverride")]
     public bool ForegroundOverride { get; init; }
     [JsonPropertyName("backgroundOverride")]

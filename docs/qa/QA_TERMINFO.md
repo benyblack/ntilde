@@ -448,3 +448,11 @@ It follows the five stored-state suites, retains 40 controlled PNG frames and ev
 local comparisons. The new version-2 cleanup receipt re-derives the pixel report and
 rechecks every image after verified cleanup; historical version-1 receipts remain unchanged.
 Existing stock grades and retained cell/query observations are unchanged.
+
+
+The controlled-capture API also records cursor/selection/palette override evidence
+and distinguishes nullable theme selection defaults from derived selection paint.
+Its optional AgentHost `syntheticSelection` paints a validated viewport span in an
+offscreen image without changing live selection or terminal state. This is
+infrastructure for #764; the owned color-reset/query/pixel suite and its retained
+measurements remain a follow-up, and no stock observations are regraded.
