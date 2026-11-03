@@ -101,7 +101,7 @@ export async function terminateRecordedWorker(recorded, runId) {
     throw new Error(`Owned worker ${recorded.pid} did not exit after SIGKILL.`);
 }
 
-/** Exchange a bounded private capability request; only the known initial RGB refusal can be optional. */
+/** Exchange a bounded private capability request; only source-known initial refusals carry optional codes. */
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(config.socket);
@@ -118,7 +118,7 @@ export function requestOwner(config, kind, extra = {}) {
         }) + '\n'));
         socket.on('data', chunk => {
             buffer += chunk;
-            const limit = /^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|resize)-/.test(kind) ? 512 * 1024 : 16384;
+            const limit = /^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|resize|saved)-/.test(kind) ? 512 * 1024 : 16384;
             if (Buffer.byteLength(buffer) > limit) return finish(new Error('Oversized owner response.'));
             if (!buffer.includes('\n')) return;
             try {
@@ -126,7 +126,8 @@ export function requestOwner(config, kind, extra = {}) {
                 if (!response.ok) {
                     const error = new Error(response.error ?? 'Ntilde ownership refused.');
                     if (response.code === 'screenDetailsUnavailable'
-                        || (kind === 'resize-start' && response.code === 'resizeGeometryUnavailable')) error.code = response.code;
+                        || (kind === 'resize-start' && response.code === 'resizeGeometryUnavailable')
+                        || (kind === 'saved-start' && response.code === 'savedGeometryUnavailable')) error.code = response.code;
                     return finish(error);
                 }
                 finish(null, response);

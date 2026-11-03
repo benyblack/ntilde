@@ -9,6 +9,9 @@ import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
 import { assertProcessOwnership, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
+import { OwnedSavedObserver } from './terminfo/saved-capture.mjs';
+import { savedSuiteId, ownedSavedPolicy } from './terminfo/saved-cases.mjs';
+import { buildSavedReport } from './terminfo/saved.mjs';
 import { OwnedResizeObserver } from './terminfo/resize-capture.mjs';
 import { resizeSuiteId, ownedResizePolicy } from './terminfo/resize-cases.mjs';
 import { buildResizeReport } from './terminfo/resize.mjs';
@@ -42,7 +45,7 @@ const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 /** Preserve only source-known initial App/geometry-budget refusal codes. */
 function ownerFailure(error) {
     return { ok: false, error: error.message,
-        ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
+        ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
 }
 
 function validateInvocation(args) {
@@ -132,6 +135,11 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
         editingExpectationsSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-expectations.mjs'),
         editingCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-capture.mjs'),
         editingSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'editing.mjs'),
+        savedCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'saved-cases.mjs'),
+        savedCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'saved-capture.mjs'),
+        savedSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'saved.mjs'),
+        savedExpectationsSourceSha256: join(repo, 'scripts', 'terminfo', 'saved-expectations.mjs'),
+        savedReceiptSourceSha256: join(repo, 'scripts', 'terminfo', 'saved-receipt.mjs'),
         resizeCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'resize-cases.mjs'),
         resizeCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'resize-capture.mjs'),
         resizeSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'resize.mjs'),
@@ -247,6 +255,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let editingEvidence;
     let historyEvidence;
     let resizeEvidence;
+    let savedEvidence;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
@@ -305,6 +314,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             cursor: { previous: 'rendition', nonce: 'NTILDE_CS_', suiteId: cursorSuiteId, cases: cursorCases, report: buildCursorReport, includeCursorMode: true },
         };
         let resizeState;
+        let savedState;
         let completed = false, outputModeVerified = false;
         const proofs = [];
         const image = statSync(executable);
@@ -317,7 +327,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             nodeVersion: process.version, dependencyInstall: 'isolated npm ci --ignore-scripts', startedAt: new Date().toISOString(), runId,
             ...retainCollectorEvidence(output, bundle, adapterBundleSha256, ownerModule, workerScript),
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
-            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
+            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             cells: 'private AgentHost readScreen; nonce-bound pane; separate ASCII cell-state suite',
             attributes: 'separate ASCII SGR flags and palette-index suite',
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
@@ -325,7 +335,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         };
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
-        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize'])
+        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         /** Complete each prior suite before capturing this one; only initial typed refusal is optional. */
@@ -506,10 +516,45 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 }
             }
         };
+        /** Only an initial typed refusal may omit source-known saved-state stages. */
+        const recordSavedUnavailable = reason => {
+            const file = 'saved-unavailable.json';
+            writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: savedSuiteId,
+                status: 'unavailable', reason, fixtureStarted: false, plannedExperiments: 9 });
+            savedState.unavailable = { runId, suiteId: savedSuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                status: 'unavailable', reason, counts: {}, provisionalUntil: 'cell-receipt.json' };
+        };
+        const observeSaved = async (request, budget) => {
+            if (!resizeState?.observer?.restored && !resizeState?.unavailable) throw new Error('Resize must restore before saved-state observations.');
+            savedState ??= { workerPid: request.workerPid, tty: request.tty,
+                observer: new OwnedSavedObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: 'NTILDE_SV_' + runId, expectedPaneId: cellObserver.paneId }) };
+            const state = savedState;
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('Saved-state fixture ownership or availability changed.');
+            if (resizeState.unavailable?.reason === 'screenDetailsUnavailable' && request.kind === 'saved-start') {
+                recordSavedUnavailable('screenDetailsUnavailable');
+                throw Object.assign(new Error('Saved-state fixture requires complete screen details.'), { code: 'screenDetailsUnavailable' });
+            }
+            try {
+                const result = await state.observer.handle(request, budget);
+                if (request.kind === 'saved-start') {
+                    if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error('Original geometry changed before saved-state observations.');
+                    proofs[0].saved.paneId = state.observer.paneId;
+                    proofs[0].saved.geometry = { rows: result.screen.rows, cols: result.screen.cols };
+                }
+                appendFileSync(join(output, 'saved-snapshots.jsonl'), JSON.stringify(state.observer.frames.at(-1)) + '\n');
+                return result;
+            } catch (error) {
+                if (request.kind === 'saved-start' && ['screenDetailsUnavailable', 'savedGeometryUnavailable'].includes(error.code)
+                    && !state.observer.baseline && !state.observer.frames.length) recordSavedUnavailable(error.code);
+                throw error;
+            }
+        };
         /** Route owned observations serially, preserving suite restoration and pane identity dependencies. */
         const observeCells = async (request, budget) => {
             const prefix = request.kind.split('-')[0];
             if (prefix === 'resize') return observeResize(request, budget);
+            if (prefix === 'saved') return observeSaved(request, budget);
             if (prefix === 'pixel') return observePixels(request, budget);
             if (prefix === 'color') return observeColors(request, budget);
             if (Object.hasOwn(editingSpecs, prefix)) return observeEditing(prefix, request, budget);
@@ -532,7 +577,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         /** Retain the first measured lineage and PTY without storing the run capability. */
         const retainFirstProof = (owner, worker, tty) => {
             if (proofs.length !== 0) return;
-            proofs.push({ app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] } });
+            proofs.push({ app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, saved: { policy: ownedSavedPolicy } });
         };
         /** Bind one kernel-observed output-mode proof to the already verified worker. */
         const attestOutputMode = (request, budget) => {
@@ -568,7 +613,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history)-(?:start|bind|read|finish)$/.test(request.kind)
+                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved)-(?:start|bind|read|finish)$/.test(request.kind)
                         || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)) {
                         const result = await observeUntranslatedCells(request, queryTimeout);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
@@ -628,6 +673,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             historyEvidence = retainEditing('history');
             resizeEvidence = resizeState?.unavailable ?? retainCellReport(output, resizeState?.observer, runId,
                 (frames, id) => buildResizeReport(frames, resizeState.observer.actions, id), 'resize-observations.json');
+            savedEvidence = savedState?.unavailable ?? retainCellReport(output, savedState?.observer, runId, buildSavedReport, 'saved-observations.json');
+            summary.savedEvidence = savedEvidence;
             summary.resizeEvidence = resizeEvidence;
             summary.historyEvidence = historyEvidence;
             summary.eraseEvidence = eraseEvidence;
@@ -666,7 +713,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
         throw interruption;
     }
-    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence }); }
+    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence }); }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
 

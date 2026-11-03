@@ -49,6 +49,7 @@ function withCollectorFixture(receipt, lockfile, action) {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
             'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs', 'terminfo/terminal-output.mjs',
             'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs', 'terminfo/editing-state.mjs', 'terminfo/editing-cases.mjs', 'terminfo/editing-expectations.mjs', 'terminfo/editing-capture.mjs', 'terminfo/editing.mjs', 'terminfo/history-cases.mjs', 'terminfo/history-capture.mjs', 'terminfo/history.mjs',
+            'terminfo/saved-cases.mjs', 'terminfo/saved-capture.mjs', 'terminfo/saved.mjs', 'terminfo/saved-expectations.mjs', 'terminfo/saved-receipt.mjs',
             'terminfo/resize-cases.mjs', 'terminfo/resize-capture.mjs', 'terminfo/resize.mjs', 'terminfo/resize-action.mjs', 'terminfo/resize-receipt.mjs',
             'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
             const target = join(root, 'scripts', file);
@@ -181,6 +182,9 @@ function assertRetainedCollector(output) {
         ['editingSuiteSourceSha256', 'terminfo/editing.mjs'],
         ['historyCasesSourceSha256', 'terminfo/history-cases.mjs'], ['historyCaptureSourceSha256', 'terminfo/history-capture.mjs'],
         ['historySuiteSourceSha256', 'terminfo/history.mjs'],
+        ['savedCasesSourceSha256', 'terminfo/saved-cases.mjs'], ['savedCaptureSourceSha256', 'terminfo/saved-capture.mjs'],
+        ['savedSuiteSourceSha256', 'terminfo/saved.mjs'], ['savedExpectationsSourceSha256', 'terminfo/saved-expectations.mjs'],
+        ['savedReceiptSourceSha256', 'terminfo/saved-receipt.mjs'],
         ['resizeCasesSourceSha256', 'terminfo/resize-cases.mjs'], ['resizeCaptureSourceSha256', 'terminfo/resize-capture.mjs'],
         ['resizeSuiteSourceSha256', 'terminfo/resize.mjs'], ['resizeActionSourceSha256', 'terminfo/resize-action.mjs'],
         ['resizeReceiptSourceSha256', 'terminfo/resize-receipt.mjs'],
@@ -410,7 +414,20 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 6);
+        assert.equal(receipt.schemaVersion, 7);
+        assert.equal(receipt.savedEvidence.sha256, digest('saved-observations.json'));
+        const saved = JSON.parse(readFileSync(join(output, 'saved-observations.json')));
+        assert.equal(saved.snapshots.length, 57);
+        assert.ok(saved.observations.every(item => item.control.passed));
+        const ris = saved.observations.find(item => item.featureId === 'saved.reset.full-both-banks');
+        assert.ok(saved.observations.filter(item => item !== ris).every(item => item.result === 'passed'));
+        assert.ok(ris.assertions.filter(item => item.stageId !== 'full-reset').every(item => item.passed));
+        assert.notEqual(ris.result, 'inconclusive'); // The known RIS cell-clearing negative remains visible for #773.
+        const savedCounts = saved.observations.reduce((counts, item) => ({ ...counts, [item.result]: (counts[item.result] ?? 0) + 1 }), {});
+        assert.deepEqual(receipt.savedEvidence.counts, savedCounts);
+        assert.equal(saved.snapshots[0].paneId, report.snapshots[0].paneId);
+        assert.deepEqual(saved.snapshots[0].screen, saved.snapshots.at(-1).screen);
+        assert.deepEqual(saved.snapshots, readFileSync(join(output, 'saved-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
         assert.equal(receipt.resizeEvidence.sha256, digest('resize-observations.json'));
         const resized = JSON.parse(readFileSync(join(output, 'resize-observations.json')));
         assert.equal(resized.snapshots.length, 12); assert.equal(resized.actions.length, 6);
