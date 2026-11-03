@@ -520,3 +520,12 @@ stock collector and frozen grades are unchanged.
 The [2026-11-03 committed-source measurement](terminfo/2026-11-03-resize.md)
 records three passing comparisons at 40 × 140 cells, with twelve paired frames,
 six exact App/kernel action proofs and verified completed cleanup.
+
+### Supplemental owned saved-state and alternate screens
+
+The [saved-state suite](terminfo/owned-saved-state.md) follows restored resize
+observations. Nine staged cases retain 57 paired active-state/history frames and
+new output witnesses for saved pens and character sets. V7 receipts require all
+preceding bindings, the source-defined stage order, archived sources and verified
+cleanup. Setup does not depend on the RIS operation under test; its cell-clearing
+negative remains explicit for #773. No new stock grade is inferred.

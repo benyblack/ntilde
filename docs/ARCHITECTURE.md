@@ -176,6 +176,13 @@ arms the complete main saved cursor, consumed by the first alternate exit.
 The 1047 clear-on-exit distinction follows the
 [xterm control reference](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html).
 
+The owned saved-state QA suite uses paired active-cell/mode/history observations
+and newly written pen/charset witnesses. Invisible banks are checked directly only
+by owning VT tests; a live cursor response alone cannot qualify restoration.
+Its source-defined fixture clearing is independent of RIS under test. V7 receipts
+bind all preceding suites, retained source/journal bytes and verified cleanup;
+coherent reset negatives remain explicit for later fixes.
+
 DECSC/DECRC and private modes 1048/1049 share per-screen saved cursor banks, including
 rendition, pending wrap, origin mode and character-set context. Mux state transfer
 and new replay snapshots copy those banks. DECSTR resets the active bank and soft

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "74b5cc1e268ada62ca5427a51e79b6e6483f7aa6bd8c037c22fe03a7c0acea1c",
+  "matrixSha256": "ac1ca054f447743254eca21302fdf835d2e73c993f2d41e40e4ef54dd8ba3c3c",
   "summary": {
     "totalRows": 82,
     "supportedCount": 41,
@@ -754,7 +754,7 @@
       "feature": "Alternate screen",
       "status": "\u26A0 Partial",
       "specOrNotes": "Switch \u002B save/restore cursor",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/AlternateScreenModeTests.cs\u0060, \u0060tests/Ntilde.App.Tests/AlternateScreenTests.cs\u0060; Replay: \u0060tests/Ntilde.App.Tests/ReplayTests/AlternateScreenReplayTests.cs\u0060, \u0060tests/Ntilde.App.Tests/ReplayTests/NativeSshReplayParityTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/AlternateScreenModeTests.cs\u0060, \u0060tests/Ntilde.App.Tests/AlternateScreenTests.cs\u0060; Replay: \u0060tests/Ntilde.App.Tests/ReplayTests/AlternateScreenReplayTests.cs\u0060, \u0060tests/Ntilde.App.Tests/ReplayTests/NativeSshReplayParityTests.cs\u0060",
       "evidenceKinds": [
         "replay",
         "unit"
@@ -775,6 +775,10 @@
         {
           "path": "tests/Ntilde.VT.Tests/AlternateScreenModeTests.cs",
           "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs",
+          "exists": true
         }
       ],
       "hasAutomatedEvidenceSignal": true,
@@ -788,7 +792,7 @@
       "feature": "DECSTR (soft reset)",
       "status": "\u2705 Supported",
       "specOrNotes": "Preserve contents, scrollback, active screen and current cursor position; reset margins, origin/insert/application-cursor modes, visibility, cursor presentation, SGR and character sets; reset the active saved cursor to home",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/CursorResetRenderTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/CursorResetRenderTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
       "evidenceKinds": [
         "replay",
         "unit"
@@ -807,6 +811,10 @@
           "exists": true
         },
         {
+          "path": "tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs",
           "exists": true
         }
@@ -822,7 +830,7 @@
       "feature": "Cursor save/restore (1048)",
       "status": "\u2705 Supported",
       "specOrNotes": "Aliases DECSC/DECRC: per-screen position, rendition, pending wrap, origin mode and G0-G3/GL; does not switch screens",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
       "evidenceKinds": [
         "replay",
         "unit"
@@ -834,6 +842,10 @@
         },
         {
           "path": "tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs",
           "exists": true
         },
         {

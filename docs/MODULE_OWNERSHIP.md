@@ -41,6 +41,12 @@ invariant changes.
   per-screen cursor/pen on entry; 1047 clears active alternate text and row metadata on exit,
   while an inactive reset does not clear stashed content. 1049 clears on entry and arms its
   complete main saved cursor; the first alternate exit consumes that saved cursor.
+- **Saved-state QA distinguishes observation from hidden state.** The adapter pairs
+  bounded active-cell/mode/history reads and uses source-known restoration writes
+  to witness saved pens and G0/G1 behavior. It never substitutes cursor responses
+  for full state or claims direct inactive-bank inspection. Explicit fixture
+  clearing is independent of RIS under test; v7 binds every preceding suite and
+  retains a coherent reset negative rather than grading a method call as support.
 - Deterministic parsing — same byte stream produces the same semantic ops
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops ordinary text content. OSC 66 rectangles are
