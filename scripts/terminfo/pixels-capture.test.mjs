@@ -174,7 +174,7 @@ test('portable worker execution proves ownership before all six suites and dispo
         const source = 'export async function collectNtildeRun() { return { testOnly: true }; }';
         writeFileSync(bundle, source);
         writeFileSync(config, JSON.stringify({ output, bundle, adapterBundleSha256: createHash('sha256').update(source).digest('hex') }));
-        const result = spawnSync(process.execPath, ['--import', fileURLToPath(new URL('./fixtures/worker-collection-hooks.mjs', import.meta.url)),
+        const result = spawnSync(process.execPath, ['--import', new URL('./fixtures/worker-collection-hooks.mjs', import.meta.url).href,
             fileURLToPath(new URL('./worker.mjs', import.meta.url)), config], { encoding: 'utf8', timeout: 5000,
             env: { ...process.env, NTILDE_WORKER_TEST_LOG: log } });
         assert.equal(result.status, 0, result.stdout + result.stderr);
