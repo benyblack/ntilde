@@ -5,7 +5,7 @@ export const metadataSuiteId = 'ntilde-owned-pane-metadata-v1';
 export const ownedMetadataPolicy = 'paired private main-screen cells, bounded host metadata and actual UI controls; prepared baseline restoration plus verified disposable teardown';
 export function metadataFixture(runId) {
     if (!/^[a-f\d]{32}$/.test(runId ?? '')) throw new Error('Invalid metadata run identity.');
-    const title = 'Owned metadata ' + runId, cwd = '/tmp/ntilde-owned-metadata-base';
+    const title = 'MD-base-' + runId.slice(0, 8), cwd = '/ntilde-qa/metadata-base';
     const nonce = 'NTILDE_MD_' + runId;
     const reset = osc('8;;') + osc('9;4;0') + osc('133;D;0') + osc('133;A')
         + '\x1b[?1049l\x1b[!p\x1b[?6l\x1b[r\x1b[4l\x1b[0m\x1b[2J\x1b[H'
@@ -23,10 +23,10 @@ export function makeMetadataCases(rows, cols, runId) {
         { id: 'restored', sequence: fixture.setup, expected: { type: 'baseline' } },
     ] });
     const cases = [
-        change('title.osc2', osc('2;Metadata OSC2 ' + runId), { type: 'title', title: 'Metadata OSC2 ' + runId }),
-        change('title.osc0', osc('0;Metadata OSC0 ' + runId), { type: 'title', title: 'Metadata OSC0 ' + runId },
+        change('title.osc2', osc('2;MD-2-' + runId.slice(0, 8)), { type: 'title', title: 'MD-2-' + runId.slice(0, 8) }),
+        change('title.osc0', osc('0;MD-0-' + runId.slice(0, 8)), { type: 'title', title: 'MD-0-' + runId.slice(0, 8) },
             { limitation: 'Title component only; no independent icon-name observation.' }),
-        change('cwd.osc7', osc('7;file://localhost/tmp/ntilde%20owned/' + runId), { type: 'cwd', cwd: '/tmp/ntilde owned/' + runId }),
+        change('cwd.osc7', osc('7;file://localhost/ntilde-qa/metadata%20owned/' + runId), { type: 'cwd', cwd: '/ntilde-qa/metadata owned/' + runId }),
         change('links.osc8', at(1, 3) + osc('8;id=owned-' + runId + ';https://example.invalid/' + runId) + 'LINK' + osc('8;;') + 'x',
             { type: 'link', row: 1, col: 3, text: 'LINKx', uri: 'https://example.invalid/' + runId, id: 'owned-' + runId }),
         change('shell.lifecycle', '', { type: 'shell-a' }),
@@ -54,6 +54,21 @@ export function makeMetadataCases(rows, cols, runId) {
     return cases;
 }
 
+async function executeMetadataPlan(cases, fixture, fence, owner, sleep) {
+    const plan = cases.flatMap(item => item.stages.map((stage, index) => ({ item, stage, index })));
+    await plan.reduce((previous, { item, stage, index }) => previous.then(async () => {
+        const barrier = await fence.write((index === 0 ? item.setup : '') + stage.sequence);
+        if (stage.delayMs) await sleep(stage.delayMs);
+        await owner('metadata-read', barrier, { caseId: item.id, stageId: stage.id });
+    }), Promise.resolve());
+    await owner('metadata-finish', await fence.write(fixture.finish));
+}
+async function cleanupMetadata(fence, fixture, original) {
+    try {
+        if (fence.failed) await fence.writeCleanup(fixture.finish);
+        else await fence.write(fixture.finish);
+    } catch (cleanupError) { throw new AggregateError([original, cleanupError], 'Metadata collection and cleanup failed.'); }
+}
 /** Only the proved disposable worker executes the bounded fixed plan, serially. */
 export async function collectMetadata({ config, fence, owner, sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)) }) {
     let initial;
@@ -67,17 +82,6 @@ export async function collectMetadata({ config, fence, owner, sleep = millisecon
     const cases = makeMetadataCases(initial.screen.rows, initial.screen.cols, config.runId), fixture = metadataFixture(config.runId);
     try {
         await owner('metadata-bind', await fence.write(fixture.setup));
-        for (const item of cases) for (const [index, stage] of item.stages.entries()) {
-            const barrier = await fence.write((index === 0 ? item.setup : '') + stage.sequence);
-            if (stage.delayMs) await sleep(stage.delayMs);
-            await owner('metadata-read', barrier, { caseId: item.id, stageId: stage.id });
-        }
-        await owner('metadata-finish', await fence.write(fixture.finish));
-    } catch (error) {
-        try {
-            if (fence.failed) await fence.writeCleanup(fixture.finish);
-            else await fence.write(fixture.finish);
-        } catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Metadata collection and cleanup failed.'); }
-        throw error;
-    }
+        await executeMetadataPlan(cases, fixture, fence, owner, sleep);
+    } catch (error) { await cleanupMetadata(fence, fixture, error); throw error; }
 }

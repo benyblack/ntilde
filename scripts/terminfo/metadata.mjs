@@ -19,12 +19,18 @@ export function validateMetadataSnapshot(value, first) {
             && b.historyGeneration === first.metadata.buffer.historyGeneration));
     return { screen, metadata, status, rawStatus: structuredClone(value.rawStatus) };
 }
+function frameOperation(index, last) {
+    if (index === 0) return 'start';
+    if (index === 1) return 'bind';
+    if (index === last) return 'finish';
+    return 'read';
+}
 function validateFrame(frame, index, last, first, stage) {
     const keys = ['index', 'kind', 'paneId', 'barrier', 'before', 'sha256', 'after', 'afterSha256', 'caseId', 'stageId'];
     check(frame && Object.keys(frame).length === keys.length && keys.every(key => Object.hasOwn(frame, key)));
     const before = validateMetadataSnapshot(frame.before, first), after = validateMetadataSnapshot(frame.after, first);
     const sha = snapshotHash(metadataProjection(before));
-    const operation = index === 0 ? 'start' : index === 1 ? 'bind' : index === last ? 'finish' : 'read';
+    const operation = frameOperation(index, last);
     check(frame.index === index && frame.kind === 'metadata-' + operation && frame.paneId === first.metadata.paneId
         && before.metadata.paneId === frame.paneId && after.metadata.paneId === frame.paneId
         && same(metadataProjection(before), metadataProjection(after)) && frame.sha256 === sha && frame.afterSha256 === sha

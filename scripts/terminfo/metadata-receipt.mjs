@@ -29,6 +29,7 @@ export function includesMetadataEvidence(output, evidence, context, proof) {
     return context.metadataSuiteId !== undefined || context.ownedMetadataPolicy !== undefined || evidence.metadataEvidence !== undefined
         || Object.keys(metadataSources).some(key => context[key] !== undefined)
         || proof.proofs?.some(value => value.metadata !== undefined) === true
+        || present(join(output, 'metadata-failed-observation.json'))
         || present(join(output, 'metadata-snapshots.jsonl'))
         || present(join(output, 'metadata-observations.json')) || present(join(output, 'metadata-unavailable.json'))
         || Object.values(metadataSources).some(file => present(join(output, 'sources', file)));
@@ -45,6 +46,7 @@ function checkSources(output, context, marker) {
 export function checkMetadataEvidence(output, binding, runId, context, proof) {
     const marker = proof.proofs?.[0]?.metadata;
     checkSources(output, context, marker);
+    check(!present(join(output, 'metadata-failed-observation.json')));
     check(binding?.runId === runId && binding.suiteId === metadataSuiteId
         && ['metadata-observations.json', 'metadata-unavailable.json'].includes(binding.file));
     const otherReport = binding.file === 'metadata-observations.json' ? 'metadata-unavailable.json' : 'metadata-observations.json';

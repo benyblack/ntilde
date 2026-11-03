@@ -16,17 +16,17 @@ test('source-known lifecycle encodes independent A B C D markers and raw anchor 
 });
 test('title, cwd, hyperlink and progress input bytes remain explicit rather than inferred from replies', () => {
     const get = id => cases.find(value => value.id === 'metadata.' + id).stages[1];
-    assert.equal(get('title.osc2').sequence, '\x1b]2;Metadata OSC2 ' + runId + '\x07');
-    assert.equal(get('title.osc0').sequence, '\x1b]0;Metadata OSC0 ' + runId + '\x07');
+    assert.equal(get('title.osc2').sequence, '\x1b]2;MD-2-' + runId.slice(0, 8) + '\x07');
+    assert.equal(get('title.osc0').sequence, '\x1b]0;MD-0-' + runId.slice(0, 8) + '\x07');
     assert.equal(get('title.empty').sequence, '\x1b]2;\x07');
-    assert.equal(get('cwd.osc7').sequence, '\x1b]7;file://localhost/tmp/ntilde%20owned/' + runId + '\x07');
+    assert.equal(get('cwd.osc7').sequence, '\x1b]7;file://localhost/ntilde-qa/metadata%20owned/' + runId + '\x07');
     assert.ok(get('links.osc8').sequence.endsWith('LINK\x1b]8;;\x07x'));
     assert.deepEqual(['normal', 'error', 'paused', 'indeterminate'].map(id => get('progress.' + id).sequence),
         ['\x1b]9;4;1;42\x07', '\x1b]9;4;2;42\x07', '\x1b]9;4;4;42\x07', '\x1b]9;4;3;0\x07']);
     assert.equal(get('progress.indeterminate').expected.percent, null);
 });
 test('fixed preparation preserves main-screen shell status and has an explicit final blank-screen boundary', () => {
-    const f = metadataFixture(runId); assert.equal(f.nonce.length, 42);
+    const f = metadataFixture(runId); assert.equal(f.nonce.length, 42); assert.ok(f.title.length < 20);
     assert.ok(!f.setup.includes('\x1b[?1049h')); assert.ok(f.setup.endsWith(f.nonce));
     assert.ok(!f.finish.includes(f.nonce)); assert.ok(f.finish.includes('\x1b]9;4;0\x07'));
     assert.ok(f.finish.includes('\x1b]133;D;0\x07')); assert.ok(f.finish.includes('\x1b]2;' + f.title + '\x07'));

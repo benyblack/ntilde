@@ -6,27 +6,31 @@ import { copyPaneMetadata, copyMetadataStatus } from '../metadata-state.mjs';
 import { metadataProjection } from '../metadata.mjs';
 import { screenSnapshot, snapshotHash } from '../agent-observer.mjs';
 export { editingPaneId as metadataPaneId };
-export function metadataWire(screen, expected, runId, { unprepared = false, focused = false } = {}) {
-    const f = metadataFixture(runId), shell = expected.type;
+function metadataBuffer(screen, expected) {
     const mark = (row, col) => ({ row, col, absoluteRow: row, generation: 4, alternateScreen: false });
-    const title = expected.type === 'title' && expected.title ? expected.title : f.title;
-    return { paneId: editingPaneId, oscTitle: unprepared ? null : title,
-        workingDirectory: unprepared ? null : expected.type === 'cwd' ? expected.cwd : f.cwd,
-        displayTitle: unprepared ? 'Owned fixture' : title,
-        buffer: { rows: screen.rows, cols: screen.cols, cursorRow: screen.cursorRow, cursorCol: screen.cursorCol,
-            alternateScreen: false, scrollbackLines: 0, historyGeneration: 4, rowsEvicted: 0, acceptingCommandInput: shell === 'shell-b',
-            commandStart: ['shell-b', 'shell-c'].includes(shell) ? mark(expected.row, expected.col) : null,
-            outputStart: shell === 'shell-c' ? mark(expected.row + 1, 0) : null,
-            links: expected.type === 'link' ? [{ row: expected.row, col: expected.col, length: 4, identity: 0, uri: expected.uri, id: expected.id }] : [] },
-        presentation: { windowActive: focused, windowVisible: true, paneActive: true, focusMode: false,
-            notificationsEnabled: true, progressEnabled: true, tabTextVisible: true,
-            tabText: (unprepared ? 'Owned fixture' : title) + (expected.type === 'progress'
-                ? { Normal: ' 42%', Error: ' ✖ 42%', Paused: ' ⏸ 42%', Indeterminate: ' ⋯' }[expected.kind] : ''),
-            progressOwner: expected.type === 'progress' ? editingPaneId : null, progressKind: expected.type === 'progress' ? expected.kind : null,
-            progressPercent: expected.type === 'progress' ? expected.percent : null, progressBar: null,
-            toastVisible: expected.type === 'notification' && !focused,
-            toastTitle: ['notification', 'notification-hidden'].includes(expected.type) && !focused ? f.title : '',
-            toastMessage: ['notification', 'notification-hidden'].includes(expected.type) && !focused ? expected.message : '' } };
+    return { rows: screen.rows, cols: screen.cols, cursorRow: screen.cursorRow, cursorCol: screen.cursorCol,
+        alternateScreen: false, scrollbackLines: 0, historyGeneration: 4, rowsEvicted: 0, acceptingCommandInput: expected.type === 'shell-b',
+        commandStart: ['shell-b', 'shell-c'].includes(expected.type) ? mark(expected.row, expected.col) : null,
+        outputStart: expected.type === 'shell-c' ? mark(expected.row + 1, 0) : null,
+        links: expected.type === 'link' ? [{ row: expected.row, col: expected.col, length: 4, identity: 0, uri: expected.uri, id: expected.id }] : [] };
+}
+function metadataPresentation(title, expected, runId, focused) {
+    const progress = expected.type === 'progress', toast = ['notification', 'notification-hidden'].includes(expected.type) && !focused;
+    const suffix = progress ? { Normal: ' 42%', Error: ' ✖ 42%', Paused: ' ⏸ 42%', Indeterminate: ' ⋯' }[expected.kind] : '';
+    return { windowActive: focused, windowVisible: true, paneActive: true, focusMode: false,
+        notificationsEnabled: true, progressEnabled: true, tabTextVisible: true, tabText: title + suffix,
+        progressOwner: progress ? editingPaneId : null, progressKind: progress ? expected.kind : null,
+        progressPercent: progress ? expected.percent : null, progressBar: null,
+        toastVisible: expected.type === 'notification' && !focused,
+        toastTitle: toast ? metadataFixture(runId).title : '', toastMessage: toast ? expected.message : '' };
+}
+export function metadataWire(screen, expected, runId, { unprepared = false, focused = false } = {}) {
+    const f = metadataFixture(runId);
+    let title = expected.type === 'title' && expected.title ? expected.title : f.title;
+    let cwd = expected.type === 'cwd' ? expected.cwd : f.cwd;
+    if (unprepared) { title = 'Owned fixture'; cwd = null; }
+    return { paneId: editingPaneId, oscTitle: unprepared ? null : title, workingDirectory: cwd, displayTitle: title,
+        buffer: metadataBuffer(screen, expected), presentation: metadataPresentation(title, expected, runId, focused) };
 }
 export function metadataStatus(expected, { unprepared = false } = {}) {
     return { paneId: editingPaneId, status: expected.type === 'shell-c' ? 'running' : 'awaitingInput',

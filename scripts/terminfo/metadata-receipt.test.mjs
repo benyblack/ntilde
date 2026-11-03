@@ -93,3 +93,8 @@ test('v8 rejects disabled settings even with a recomputed context digest', () =>
     f.write('initial-settings.json', settings); f.context.initialSettingsSha256 = snapshotHash(settings);
     f.write('context.json', f.context); assert.throws(f.finish);
 }));
+
+test('a rejected observed pair cannot accompany an otherwise complete success receipt', () => fixture(f => {
+    f.write('metadata-failed-observation.json', { operation: 'bind', before: f.frames[1].before, after: f.frames[1].after });
+    assert.throws(f.finish);
+}));

@@ -54,11 +54,12 @@ export class OwnedMetadataObserver {
         }
     }
     async handle(request, budget) {
-        const { operation, stage } = this.validateRequest(request); this.busy = true;
+        const { operation, stage } = this.validateRequest(request); this.busy = true; this.lastAttempt = null;
         try {
             const before = await this.capture(this.before, budget);
             this.after.paneId ??= this.paneId;
             const after = await this.capture(this.after, budget);
+            this.lastAttempt = { operation, caseId: stage?.caseId ?? null, stageId: stage?.stageId ?? null, before, after };
             const sha256 = snapshotHash(metadataProjection(before));
             check(sha256 === snapshotHash(metadataProjection(after)));
             this.acceptPair(operation, before);

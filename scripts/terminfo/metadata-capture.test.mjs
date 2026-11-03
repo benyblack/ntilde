@@ -42,4 +42,6 @@ test('wrong nonce and failed prepared baseline refuse fixture binding', async ()
     const f = fixture(); await f.call(f.frames[0]); const frame = structuredClone(f.frames[1]);
     frame.before.screen.lines[0] = 'wrong'; f.set(frame);
     await assert.rejects(f.call(frame)); assert.equal(f.observer.frames.length, 1);
+    assert.equal(f.observer.lastAttempt.operation, 'bind');
+    assert.equal(f.observer.lastAttempt.before.screen.lines[0], 'wrong');
 });

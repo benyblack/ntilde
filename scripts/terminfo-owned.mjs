@@ -590,6 +590,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'metadata-snapshots.jsonl'), JSON.stringify(state.observer.frames.at(-1)) + '\n');
                 return result;
             } catch (error) {
+                if (state.observer.lastAttempt && !(request.kind === 'metadata-start'
+                    && ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code)))
+                    writeJson(join(output, 'metadata-failed-observation.json'), state.observer.lastAttempt);
                 if (request.kind === 'metadata-start' && ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code)
                     && !state.observer.baseline && !state.observer.frames.length) recordMetadataUnavailable(error.code);
                 throw error;
