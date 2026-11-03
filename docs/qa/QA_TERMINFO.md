@@ -391,7 +391,9 @@ homing. Receipt v5 retains all nine prior bindings and requires an independently
 observed private-PTY output-mode proof. Only the proved disposable PTY has output
 translation disabled for owned suites; its previous mode returns before stock
 collection. This prevents bare LF from becoming CRLF in transport. Resize/reflow
-and history attributes remain separate work; stock grades stay unchanged.
+and history attributes remain separate work; stock grades stay unchanged. The
+[2026-11-03 measurement](terminfo/2026-11-03-history.md) retains all 30 passing
+comparisons, exact source provenance and the parent-observed output-mode proof.
 
 Adapter tests use Node's built-in test runner:
 

@@ -73,3 +73,6 @@ reports keep their original grades and remain exactly reproducible.
 Stock results remain 78 supported, 177 inconclusive, zero unsupported,
 `suiteComplete=false`, with an ungraded reverse-wrap geometry diagnostic.
 The earlier explicit-RGB bold pixel negative remains recorded for #772.
+
+The [2026-11-03 committed-source measurement](2026-11-03-history.md) retains all
+30 passing comparisons, the complete report and parent-observed output flags.

@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { ownedOutputPolicy, validateOutputDescription } from './terminal-output.mjs';
 import { makeHistoryCases } from './history-cases.mjs';
 import { buildHistoryReport } from './history.mjs';
 import { syntheticCellPlanJournal } from './fixtures/editing-journal.mjs';
@@ -37,4 +40,20 @@ test('wrong history control is inconclusive rather than a support score', () => 
     const values = frames(); const control = values.find(frame => frame.caseId === 'history.scroll-up.main.2' && frame.stageId === 'control');
     coherent(control, screen => { screen.history.lines.reverse(); });
     const report = buildHistoryReport(values, runId); assert.equal(report.observations.find(item => item.featureId === control.caseId).result, 'inconclusive');
+});
+
+test('published committed-source history measurement rederives all 30 comparisons and its receipt hash', () => {
+    const data = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-03-history.json', import.meta.url)));
+    const report = buildHistoryReport(data.historyReport.snapshots, data.context.runId);
+    assert.deepEqual(report, data.historyReport); assert.equal(report.snapshots.length, 63);
+    assert.equal(report.observations.length, 30); assert.ok(report.observations.every(value => value.result === 'passed'));
+    assert.equal(data.receipt.schemaVersion, 5); assert.equal(data.receipt.fixtureRemoved, true);
+    assert.equal(data.receipt.historyEvidence.sha256, createHash('sha256').update(JSON.stringify(report, null, 2) + '\n').digest('hex'));
+    assert.deepEqual(data.receipt.historyEvidence.counts, { passed: 30 });
+    assert.equal(data.context.terminalOutput, ownedOutputPolicy); assert.equal(data.terminalOutputProof.outputProcessing, false);
+    validateOutputDescription(data.terminalOutputProof.description);
+    assert.equal(data.appBuildSource, data.adapterSource); assert.ok(data.context.appVersion.includes(data.appBuildSource));
+    assert.deepEqual(report.snapshots[0].screen, report.snapshots.at(-1).screen);
+    assert.deepEqual(data.stockCollector.counts, { inconclusive: 177, supported: 78 });
+    assert.equal(data.stockCollector.suiteComplete, false); assert.ok(data.stockCollector.ungradedDiagnostics['cursor.reverse-wrap']);
 });
