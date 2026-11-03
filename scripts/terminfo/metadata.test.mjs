@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { buildMetadataReport, metadataProjection } from './metadata.mjs';
 import { syntheticMetadataJournal } from './fixtures/metadata-journal.mjs';
 import { snapshotHash } from './agent-observer.mjs';
@@ -89,4 +91,28 @@ test('inactive control followed by focused suppressed delivery is inconclusive',
     coherent(frame, value => { value.metadata.presentation.windowActive = true; value.metadata.presentation.toastVisible = false; });
     const item = buildMetadataReport(values, runId).observations.at(-1);
     assert.equal(item.control.passed, true); assert.equal(item.positiveDeliveryPreconditions, false); assert.equal(item.result, 'inconclusive');
+});
+
+test('published committed-source metadata rederives ten passes, empty-title negative and two unqualified P probes', () => {
+    const data = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-03-metadata.json', import.meta.url)));
+    assert.deepEqual(buildMetadataReport(data.metadataReport.snapshots, data.context.runId), data.metadataReport);
+    assert.equal(data.appBuildSource, 'dc32fc8ee9ee8704f6066da8be057f6aa355ed94'); assert.equal(data.appBuildSource, data.adapterSource);
+    assert.equal(data.receipt.schemaVersion, 8); assert.equal(data.receipt.fixtureRemoved, true);
+    assert.deepEqual(data.receipt.metadataEvidence.counts, { passed: 10, inconclusive: 2, failed: 1 });
+    assert.equal(data.metadataReport.snapshots.length, 46); assert.ok(data.metadataReport.observations.every(value => value.control.passed));
+    assert.deepEqual(data.metadataOwnership.geometry, { rows: 40, cols: 140 });
+    assert.equal(data.metadataReport.snapshots[39].before.metadata.oscTitle, 'MD-base-13f2c9a4');
+    assert.equal(data.metadataReport.observations.at(-1).positiveDeliveryPreconditions, true);
+    assert.equal(data.metadataReport.observations.at(-1).result, 'passed');
+    assert.equal(data.metadataReport.snapshots[0].before.metadata.oscTitle, null);
+    assert.equal(data.metadataReport.snapshots.at(-1).before.metadata.oscTitle, 'MD-base-13f2c9a4');
+    assert.deepEqual(data.metadataReport.snapshots[0].before.screen, data.metadataReport.snapshots.at(-1).before.screen);
+    const bytes = JSON.stringify(data.metadataReport, null, 2) + '\n';
+    assert.equal(Buffer.byteLength(bytes), 396053);
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), data.receipt.metadataEvidence.sha256);
+    const archive = readFileSync(new URL('../../docs/qa/terminfo/' + data.archive.file, import.meta.url));
+    assert.equal(archive.length, 597703); assert.equal(createHash('sha256').update(archive).digest('hex'), data.archive.sha256);
+    assert.equal(data.archive.files, 164); assert.equal(Object.keys(data.archive.fileSha256).length, 164);
+    assert.deepEqual(data.stockCollector.counts, { inconclusive: 177, supported: 78 });
+    assert.equal(data.stockCollector.suiteComplete, false); assert.ok(data.stockCollector.ungradedDiagnostics['cursor.reverse-wrap']);
 });
