@@ -142,6 +142,7 @@ namespace Ntilde.Shell
             public int AbsRow;
             public SKPicture? CachedPicture;
             public RenderRowSnapshot? Snapshot;
+            public bool HasBlinkInk { get; set; }
         }
 
         private class FrameSnapshot
@@ -481,10 +482,11 @@ namespace Ntilde.Shell
                     bool hasRenderableRow = rowSnapshot.Cols > 0 && rowSnapshot.Cells.Length >= rowSnapshot.Cols && rowSnapshot.RowId != 0;
                     if (hasRenderableRow)
                     {
-                        containsTextBlinkInk |= ContainsBlinkInk(rowSnapshot);
+                        item.HasBlinkInk = ContainsBlinkInk(rowSnapshot);
+                        containsTextBlinkInk |= item.HasBlinkInk;
                         // A pre-animation picture must not become the span baseline when blinking ends.
-                        if (useRowCache && rowSnapshot.ContainsBlink) _rowCache!.InvalidateRow(rowSnapshot.RowId);
-                        item.CachedPicture = useRowCache && !rowSnapshot.ContainsBlink ? _rowCache?.Get(rowSnapshot.RowId, rowSnapshot.Revision) : null;
+                        if (useRowCache && item.HasBlinkInk) _rowCache?.InvalidateRow(rowSnapshot.RowId);
+                        item.CachedPicture = useRowCache && !item.HasBlinkInk ? _rowCache?.Get(rowSnapshot.RowId, rowSnapshot.Revision) : null;
 
                         if (item.CachedPicture != null)
                         {
@@ -565,8 +567,7 @@ namespace Ntilde.Shell
                     if (item.Snapshot.HasValue)
                     {
                         var snapshot = item.Snapshot.Value;
-                        bool hasDirtySpans = rowSpans != null && rowSpans.Count > 0;
-                        bool shouldUseSpanRendering = !snapshot.ContainsBlink && hasDirtySpans && ShouldUseSpanRenderingForRow(rowSpans!, snapshot.Cols);
+                        bool shouldUseSpanRendering = !item.HasBlinkInk && rowSpans is { Count: > 0 } && ShouldUseSpanRenderingForRow(rowSpans, snapshot.Cols);
 
                         SKPicture? previousRowPicture = null;
                         if (shouldUseSpanRendering)
@@ -628,7 +629,7 @@ namespace Ntilde.Shell
 
                             // Refresh cache entry for the new revision (full-row picture for future frames).
                             // Skip when useRowCache=false (AltScreen) — no point recording a picture we won't store.
-                            if (useRowCache && !snapshot.ContainsBlink && buildsThisFrame < maxBuilds)
+                            if (useRowCache && !item.HasBlinkInk && buildsThisFrame < maxBuilds)
                             {
                                 var recSw = System.Diagnostics.Stopwatch.StartNew();
                                 using var recorder = new SKPictureRecorder();
@@ -661,7 +662,7 @@ namespace Ntilde.Shell
                         else if (buildsThisFrame < maxBuilds)
                         {
                             rowRenderCount++;
-                            if (useRowCache && !snapshot.ContainsBlink)
+                            if (useRowCache && !item.HasBlinkInk)
                             {
                                 // Record into a picture so it can be cached and replayed on future frames.
                                 var recSw = System.Diagnostics.Stopwatch.StartNew();
@@ -1323,10 +1324,15 @@ namespace Ntilde.Shell
                 var runBuilder = _runBuilder;
                 var runCellTexts = _runCellTexts;
 
-                for (int c = 0; c < snapshot.Cols; c++)
+                int c = 0;
+                while (c < snapshot.Cols)
                 {
                     var cell = snapshot.Cells[c];
-                    if (cell.IsWideContinuation) continue;
+                    if (cell.IsWideContinuation)
+                    {
+                        c++;
+                        continue;
+                    }
                     if (cell.TextSizing is { } sized)
                     {
                         if (sized.ColumnOffset == 0)
@@ -1347,6 +1353,7 @@ namespace Ntilde.Shell
                                 ForegroundOverride = foregroundOverride,
                                 OverlayFill = overlayFill
                             });
+                        c++;
                         continue;
                     }
 
@@ -1453,7 +1460,7 @@ namespace Ntilde.Shell
                     int runEndCol = c + totalRunWidth;
                     if (runEndCol <= effectiveSpanStart)
                     {
-                        c = k - 1;
+                        c = k;
                         continue;
                     }
 
@@ -1482,7 +1489,7 @@ namespace Ntilde.Shell
                     if (runIsHidden || (runIsBlink && !_textBlinkVisible))
                     {
                         cellsRendered += totalRunWidth;
-                        c = k - 1;
+                        c = k;
                         continue;
                     }
 
@@ -1527,15 +1534,15 @@ namespace Ntilde.Shell
                         if (_glyphCache != null && !runIsItalic)
                         {
                             // The shortcut skips the decorations below, so a run of blanks carrying a styled or colored
-                            // underline (#270) takes the per-glyph path instead; its blanks draw nothing there either.
-                            if (runUnderline is null && ShouldDrawRunDirectWhenGlyphCacheEnabled(runText))
+                            // underline (#270) or strikethrough takes the per-glyph path so its decoration is painted.
+                            if (runUnderline is null && !runIsStrikethrough && ShouldDrawRunDirectWhenGlyphCacheEnabled(runText))
                             {
                                 FlushBatches(canvas);
                                 canvas.DrawText(runText, rx, baselineYDip, font, fgPaint);
                                 IncrementTextDrawCall();
                                 IncrementDirectDrawTextCall();
                                 cellsRendered += totalRunWidth;
-                                c = k - 1;
+                                c = k;
                                 continue;
                             }
 
@@ -1803,7 +1810,7 @@ namespace Ntilde.Shell
                         }
                     }
 
-                    c = k - 1;
+                    c = k;
                 }
 
                 FlushBatches(canvas);

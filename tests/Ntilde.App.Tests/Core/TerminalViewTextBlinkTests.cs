@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -55,8 +56,9 @@ public sealed class TerminalViewTextBlinkTests
             Dispatcher.UIThread.RunJobs();
             Assert.True(other.Focus());
             new AnsiParser(buffer).Process("\x1b[?25l\x1b[38;2;255;255;255;48;2;0;0;0;5mMMMM");
-            animation.ReportCells(true); // the render-thread observation, without a wall-clock delay
-            Tick(view);
+            view.InvalidateVisual();
+            using (var frame = window.CaptureRenderedFrame()) Assert.NotNull(frame);
+            Tick(view); // the real draw operation reported its blink ink to the view clock
             Assert.DoesNotContain("cursor blink", view.RunningTimersForTest);
             var before = Capture(view);
             clock.Milliseconds += 530;

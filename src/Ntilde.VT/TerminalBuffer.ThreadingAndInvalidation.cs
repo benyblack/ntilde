@@ -694,16 +694,13 @@ namespace Ntilde.VT
             }
 
             RenderCellSnapshot[]? cachedCells = _cachedRenderRowCells[rowIndex];
-            bool canReuse =
-                cachedCells != null &&
+            if (cachedCells != null &&
                 cachedCells.Length == viewportCols &&
                 _cachedRenderRowIds[rowIndex] == row.Id &&
                 _cachedRenderRowRevisions[rowIndex] == row.Revision &&
-                _cachedRenderRowCols[rowIndex] == viewportCols;
-
-            if (canReuse)
+                _cachedRenderRowCols[rowIndex] == viewportCols)
             {
-                return (cachedCells!, _cachedRenderRowContainsBlink[rowIndex]);
+                return (cachedCells, _cachedRenderRowContainsBlink[rowIndex]);
             }
 
             var rebuiltCells = new RenderCellSnapshot[viewportCols];
@@ -988,16 +985,13 @@ namespace Ntilde.VT
             }
 
             RenderCellSnapshot[]? cachedCells = _cachedRenderRowCells[rowIndex];
-            bool canReuse =
-                cachedCells != null &&
+            if (cachedCells != null &&
                 cachedCells.Length == viewportCols &&
                 _cachedRenderRowIds[rowIndex] == rowId &&
                 _cachedRenderRowRevisions[rowIndex] == revision &&
-                _cachedRenderRowCols[rowIndex] == viewportCols;
-
-            if (canReuse)
+                _cachedRenderRowCols[rowIndex] == viewportCols)
             {
-                return (cachedCells!, _cachedRenderRowContainsBlink[rowIndex]);
+                return (cachedCells, _cachedRenderRowContainsBlink[rowIndex]);
             }
 
             // Sizing edits can mutate retained rows; their dedicated revision invalidates both cell and picture caches.

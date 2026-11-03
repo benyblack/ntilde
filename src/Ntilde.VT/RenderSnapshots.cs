@@ -170,7 +170,7 @@ namespace Ntilde.VT
         public RenderCellSnapshot[] Cells;
         public long RowId;
         /// <summary>At least one unhidden SGR 5 cell in this immutable row projection.</summary>
-        public bool ContainsBlink;
+        public bool ContainsBlink { get; set; }
     }
 
     public struct RenderImageSnapshot

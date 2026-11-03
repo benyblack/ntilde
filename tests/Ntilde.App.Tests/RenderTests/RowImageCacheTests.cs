@@ -1,7 +1,7 @@
 using Ntilde.Rendering;
 using SkiaSharp;
 
-namespace Ntilde.Rendering.Tests;
+namespace Ntilde.Tests.RenderTests;
 
 public sealed class RowImageCacheTests
 {
