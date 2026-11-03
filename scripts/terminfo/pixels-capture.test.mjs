@@ -133,22 +133,31 @@ test('initial oversized decoded suite is rejected before retaining a frame', asy
     assert.equal(f.observer.frames.length, 0);
 }));
 
-test('controlled transport accepts a 600 KiB frame while ordinary reads reject it and the 5 MiB cap still applies', async () => {
-    let padding = 600 * 1024;
+test('controlled transport accepts a 600 KiB frame while ordinary reads reject it and the 5 MiB cap still applies', { timeout: 5000 }, async t => {
+    const padding = 600 * 1024;
+    // Build responses before opening a request; this test measures byte limits.
+    // The separate observer deadline regression measures elapsed-time refusal.
+    let response = JSON.stringify({ v: 1, id: 1, result: { ...pixelCapture(), padding: 'x'.repeat(padding) } }) + '\n';
+    const oversized = ' '.repeat(5 * 1024 * 1024 + 1);
     const server = createServer(socket => {
         socket.on('error', () => {});
-        socket.once('data', () => socket.end(JSON.stringify({ v: 1, id: 1, result: { ...pixelCapture(), padding: 'x'.repeat(padding) } }) + '\n'));
+        socket.once('data', () => socket.end(response));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const endpoint = { host: '127.0.0.1', port: server.address().port };
+    // Freeze only future response timers; the harness already has a real 5s bound.
+    t.mock.timers.enable({ apis: ['setTimeout'] });
     try {
         const result = await captureRequest(endpoint, pixelPaneId, 0, 1000);
         assert.equal(result.padding.length, padding);
         assert.equal(validatePixelCapture(result, pixelScreen(), 0).image.width, 600);
         await assert.rejects(agentRequest(endpoint, 'readScreen', {}, 1000), /Oversized/);
-        padding = 5 * 1024 * 1024;
+        response = oversized;
         await assert.rejects(captureRequest(endpoint, pixelPaneId, 0, 1000), /Oversized/);
-    } finally { await new Promise(resolve => server.close(resolve)); }
+    } finally {
+        await new Promise(resolve => server.close(resolve));
+        t.mock.timers.reset();
+    }
 });
 
 test('pixel-start typed refusal writes no fixture input, and later refusals remain fatal', async () => {
