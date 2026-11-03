@@ -264,4 +264,19 @@ public class OverlineTests
             Assert.Null(At(buffer, 1));
         }
     }
+
+    [Theory]
+    [InlineData(3, 2)]
+    [InlineData(5, 4)]
+    public void HeightShrinkAndGrow_PreserveOverlinedBlankRowsInHistoryOrViewport(int row, int height)
+    {
+        var buffer = new TerminalBuffer(20, 6);
+        new AnsiParser(buffer).Process($"\x1b[{row + 1};1H\x1b[53m   \x1b[0m\x1b[H");
+        Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(0, row));
+        buffer.Resize(20, height);
+        for (int col = 0; col < 3; col++) Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(col, row));
+        Assert.True(buffer.Scrollback.Count > 0);
+        buffer.Resize(20, 6);
+        for (int col = 0; col < 3; col++) Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(col, row));
+    }
 }
