@@ -48,7 +48,7 @@ function withCollectorFixture(receipt, lockfile, action) {
     try {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
             'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs',
-            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs',
+            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs', 'terminfo/editing-state.mjs', 'terminfo/editing-cases.mjs', 'terminfo/editing-expectations.mjs', 'terminfo/editing-capture.mjs', 'terminfo/editing.mjs',
             'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
@@ -129,10 +129,18 @@ function launch(executable, interrupt, observation = {}) {
         let output = '';
         let errors = '';
         let sent = false;
-        // The resistant-worker case adds a bounded SIGKILL escalation after all 75 PNG captures.
-        // A normal collected run measures ~12.5s; retain the original 15s ceiling for every other case.
-        const timeoutMs = observation.stubborn ? 20000 : 15000;
-        const timer = setTimeout(() => { child.kill('SIGTERM'); reject(new Error('Adapter lifecycle did not finish.')); }, timeoutMs);
+        // Complete runs now add 76 paired state/history frames after all 75 PNGs.
+        // A full collection reaches teardown in ~14s (~15.5s under the full suite).
+        // Keep interruption-only cases at 15s; allow 20s only for completed collections.
+        const collected = observation.stubborn || observation.phase === 'fixture-removal' && !interrupt;
+        const timeoutMs = collected ? 20000 : 15000;
+        let lifecycleError, terminationTimer;
+        const timer = setTimeout(() => {
+            lifecycleError = new Error('Adapter lifecycle did not finish.');
+            child.kill('SIGTERM');
+            // Wait for the adapter's cleanup before another desktop test can start.
+            terminationTimer = setTimeout(() => { child.kill('SIGKILL'); }, 5000);
+        }, timeoutMs);
         child.on('error', reject);
         child.stdout.on('data', chunk => {
             output += chunk;
@@ -142,7 +150,10 @@ function launch(executable, interrupt, observation = {}) {
             }
         });
         child.stderr.on('data', chunk => { errors += chunk; });
-        child.on('exit', code => { clearTimeout(timer); resolve({ code, output, errors }); });
+        child.on('exit', code => {
+            clearTimeout(timer); clearTimeout(terminationTimer);
+            if (lifecycleError) reject(lifecycleError); else resolve({ code, output, errors });
+        });
     });
 }
 
@@ -163,6 +174,9 @@ function assertRetainedCollector(output) {
         ['pixelCasesSourceSha256', 'terminfo/pixels-cases.mjs'], ['pixelPngSourceSha256', 'terminfo/pixels-png.mjs'],
         ['colorQuerySourceSha256', 'terminfo/color-query.mjs'], ['colorCaptureSourceSha256', 'terminfo/color-capture.mjs'],
         ['colorCasesSourceSha256', 'terminfo/color-cases.mjs'], ['colorSuiteSourceSha256', 'terminfo/colors.mjs'],
+        ['editingStateSourceSha256', 'terminfo/editing-state.mjs'], ['editingCasesSourceSha256', 'terminfo/editing-cases.mjs'],
+        ['editingExpectationsSourceSha256', 'terminfo/editing-expectations.mjs'], ['editingCaptureSourceSha256', 'terminfo/editing-capture.mjs'],
+        ['editingSuiteSourceSha256', 'terminfo/editing.mjs'],
         ['receiptSourceSha256', 'terminfo/receipt.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
@@ -382,7 +396,7 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 3);
+        assert.equal(receipt.schemaVersion, 4);
         assert.equal(receipt.pixelEvidence.sha256, digest('pixel-observations.json'));
         const pixels = JSON.parse(readFileSync(join(output, 'pixel-observations.json')));
         assert.equal(pixels.snapshots.length, 40);
@@ -400,6 +414,18 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.equal(colors.snapshots[0].pixel.sha256, colors.snapshots.at(-1).pixel.sha256);
         for (const frame of colors.snapshots) assert.equal(frame.pixel.sha256, digest(frame.pixel.file));
         assert.ok(colors.observations.every(item => item.result === 'passed'), JSON.stringify(colors.observations));
+        for (const [prefix, count, frames] of [['erase', 13, 29], ['editing', 22, 47]]) {
+            const binding = receipt[prefix + 'Evidence'];
+            assert.equal(binding.sha256, digest(prefix + '-observations.json'));
+            const extra = JSON.parse(readFileSync(join(output, binding.file)));
+            assert.equal(extra.runId, receipt.runId); assert.equal(extra.observations.length, count);
+            assert.equal(extra.snapshots.length, frames);
+            assert.deepEqual(extra.snapshots, readFileSync(join(output, prefix + '-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+            assert.deepEqual(extra.snapshots[0].screen, extra.snapshots.at(-1).screen);
+            assert.equal(extra.snapshots[0].paneId, report.snapshots[0].paneId);
+            assert.ok(extra.snapshots.every(frame => frame.screen.bufferState && frame.screen.history));
+            assert.equal(extra.observations.filter(item => item.result === 'inconclusive').length, 0);
+        }
         for (const [prefix, count] of [['rendition', 19], ['cursor', 9]]) {
             assert.equal(receipt[prefix + 'Evidence'].sha256, digest(prefix + '-observations.json'));
             const extra = JSON.parse(readFileSync(join(output, prefix + '-observations.json')));
@@ -453,6 +479,12 @@ test('an initial pixel detail refusal after restored cursor evidence retains typ
         assert.deepEqual(receipt.pixelEvidence.counts, {});
         assert.equal(receipt.colorEvidence.status, 'unavailable');
         assert.equal(readFileSync(join(output, 'color-snapshots.jsonl'), 'utf8'), '');
+        for (const prefix of ['erase', 'editing']) {
+            assert.equal(receipt[prefix + 'Evidence'].status, 'unavailable');
+            assert.deepEqual(receipt[prefix + 'Evidence'].counts, {});
+            assert.equal(readFileSync(join(output, prefix + '-snapshots.jsonl'), 'utf8'), '');
+            assert.equal(JSON.parse(readFileSync(join(output, prefix + '-unavailable.json'))).fixtureStarted, false);
+        }
         assert.equal(receipt.cursorEvidence.counts.passed, 9);
         assert.equal(JSON.parse(readFileSync(join(output, 'pixel-unavailable.json'))).fixtureStarted, false);
         assert.equal(readFileSync(join(output, 'pixel-snapshots.jsonl'), 'utf8'), '');

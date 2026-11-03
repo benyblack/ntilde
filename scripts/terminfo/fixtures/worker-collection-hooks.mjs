@@ -13,6 +13,7 @@ code.set(new URL('terminal-fence.mjs', root).href, log + `export function termin
 for (const [file, name] of [['cells', 'Cells'], ['sgr', 'Sgr'], ['rgb', 'Rgb'], ['rendition', 'Rendition'], ['cursor', 'Cursor'], ['pixels-cases', 'Pixels'], ['color-cases', 'Colors']]) {
     code.set(new URL(file + '.mjs', root).href, log + `export async function collect${name}() { record('${name}'); }`);
 }
+code.set(new URL('editing-cases.mjs', root).href, log + `export async function collectErase() { record('Erase'); } export async function collectEditing() { record('Editing'); }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);

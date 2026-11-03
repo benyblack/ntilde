@@ -371,6 +371,15 @@ adds re-derived color evidence after verified cleanup. The
 comparisons and original PNGs. This is supplemental
 owned offscreen evidence; stock collector grades stay frozen.
 
+### Supplemental erasure and editing
+
+The [owned erasure/editing suites](terminfo/owned-editing.md) follow runtime
+colors with 35 bounded ASCII experiments and 76 paired logical frames. They
+observe every relevant cell, cursor, margins/modes and actual nonempty history;
+ED3 requires an independently seeded history control. Receipt v4 re-derives both
+reports and preserves all seven preceding bindings after verified cleanup.
+These are supplemental observations; stock grades remain unchanged.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh

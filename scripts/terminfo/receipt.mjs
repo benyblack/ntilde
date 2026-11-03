@@ -7,6 +7,9 @@ import { pixelSuiteId } from './pixels-cases.mjs';
 import { buildColorReport } from './colors.mjs';
 import { colorSuiteId } from './color-cases.mjs';
 
+import { buildEraseReport, buildCellEditingReport } from './editing.mjs';
+import { eraseSuiteId, editingSuiteId } from './editing-cases.mjs';
+
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const suites = ['sgr', 'rgb', 'rendition', 'cursor'];
 
@@ -63,6 +66,32 @@ function checkColorEvidence(output, evidence, runId, suiteId) {
     }
 }
 
+/** Re-derive both new complete-state/history reports without weakening any historical receipt. */
+function checkEditingEvidence(output, evidence, runId, prefix, suiteId, buildReport, count) {
+    checkEvidence(output, evidence, prefix, runId);
+    const report = JSON.parse(readFileSync(join(output, evidence.file)));
+    if (report.runId !== runId || report.suiteId !== suiteId || evidence.suiteId !== suiteId) throw new Error('Invalid editing report identity.');
+    const journalText = readFileSync(join(output, `${prefix}-snapshots.jsonl`), 'utf8').trim();
+    if (evidence.file === `${prefix}-observations.json`) {
+        const derived = buildReport(report.snapshots, runId);
+        if (JSON.stringify(report) !== JSON.stringify(derived)) throw new Error('Editing observations do not match retained evidence.');
+        const journal = journalText.split('\n').map(line => JSON.parse(line));
+        if (JSON.stringify(journal) !== JSON.stringify(report.snapshots)) throw new Error('Editing journal does not match the report.');
+        const counts = report.observations.reduce((values, item) => ({ ...values, [item.result]: (values[item.result] ?? 0) + 1 }), {});
+        if (JSON.stringify(counts) !== JSON.stringify(evidence.counts)) throw new Error('Editing receipt counts do not match the report.');
+    } else if (report.status !== 'unavailable' || report.reason !== 'screenDetailsUnavailable'
+        || report.fixtureStarted !== false || report.plannedExperiments !== count || journalText !== ''
+        || evidence.status !== 'unavailable' || evidence.reason !== report.reason || JSON.stringify(evidence.counts) !== '{}') {
+        throw new Error('Invalid editing unavailable marker.');
+    }
+}
+function checkEditingSuites(output, evidence, runId, context) {
+    if (context.eraseSuiteId !== eraseSuiteId || context.editingSuiteId !== editingSuiteId
+        || context.pixelSuiteId !== pixelSuiteId || context.colorSuiteId !== colorSuiteId) throw new Error('Missing or changed required v4 suite identities.');
+    checkEditingEvidence(output, evidence.eraseEvidence, runId, 'erase', eraseSuiteId, buildEraseReport, 13);
+    checkEditingEvidence(output, evidence.editingEvidence, runId, 'editing', editingSuiteId, buildCellEditingReport, 22);
+}
+
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
 export function completeOwnedReceipt(output, scratch, evidence) {
     const proofBytes = readFileSync(join(output, 'ownership-proof.json'));
@@ -78,9 +107,12 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     for (const prefix of suites) checkEvidence(output, evidence[prefix + 'Evidence'], prefix, runId);
     if (context.pixelSuiteId !== undefined) checkPixelEvidence(output, evidence.pixelEvidence, runId, context.pixelSuiteId);
     if (context.colorSuiteId !== undefined) checkColorEvidence(output, evidence.colorEvidence, runId, context.colorSuiteId);
+    const includesEditing = context.eraseSuiteId !== undefined || context.editingSuiteId !== undefined;
+    if (includesEditing) checkEditingSuites(output, evidence, runId, context);
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
+    if (includesEditing) schemaVersion = 4;
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

@@ -1,5 +1,6 @@
 // Reads only the endpoint in the disposable app-data root. Never uses discovery
 // from the user's normal app, and never exposes an acting method.
+import { copyBufferState, copyHistory } from './editing-state.mjs';
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
@@ -31,7 +32,7 @@ export function observerEndpoint(appData, ownerPid) {
 
 /** Read one correlated response from the private read-only endpoint; preserve typed refusals. */
 export function agentRequest(endpoint, method, params, timeoutMs) {
-    if (!['listSessions', 'readScreen'].includes(method)) throw new Error('Observer method is not read-only.');
+    if (!['listSessions', 'readScreen', 'readScrollback'].includes(method)) throw new Error('Observer method is not read-only.');
     return privateRequest(endpoint, method, params, timeoutMs, 512 * 1024);
 }
 
@@ -99,7 +100,7 @@ function privateRequest(endpoint, method, params, timeoutMs, byteLimit) {
 }
 
 /** Copy and bound only requested state; absent or malformed evidence never becomes a successful snapshot. */
-export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false) {
+export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false) {
     if (!Number.isSafeInteger(value?.rows) || value.rows < 3 || value.rows > 128
         || !Number.isSafeInteger(value.cols) || value.cols < 48 || value.cols > 256
         || !Array.isArray(value.lines) || value.lines.length !== value.rows
@@ -117,12 +118,16 @@ export function screenSnapshot(value, includeAttributes = false, includeCellDeta
             || typeof mode.blink !== 'boolean' || typeof mode.isDefault !== 'boolean') throw new Error('Invalid stored cursor mode.');
         result.cursorMode = { style: mode.style, blink: mode.blink, isDefault: mode.isDefault };
     }
+    if (includeBufferState) {
+        result.bufferState = copyBufferState(value.bufferState, value.rows);
+        result.history = copyHistory(value.history, result.bufferState.scrollbackLines, value.cols);
+    }
     return result;
 }
 
 export class OwnedCellObserver {
-    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
-        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, includeOverline, prefix, rpc, endpoint });
+    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
+        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, includeOverline, includeBufferState, prefix, rpc, endpoint });
         this.paneId = expectedPaneId;
         this.snapshots = 0;
         this.frames = [];
@@ -149,12 +154,18 @@ export class OwnedCellObserver {
         const raw = await this.request('readScreen', { paneId: before.paneId, includeAttributes: this.includeAttributes,
             ...(this.includeCellDetails ? { includeCellDetails: true } : {}),
             ...(this.includeCursorMode ? { includeCursorMode: true } : {}),
-            ...(this.includeOverline ? { includeOverline: true } : {}) }, budget);
+            ...(this.includeOverline ? { includeOverline: true } : {}),
+            ...(this.includeBufferState ? { includeBufferState: true } : {}) }, budget);
         const projection = screenSnapshot(raw);
         if (this.includeAttributes) projection.attributeRuns = readAttributeRuns(raw.attributeLines, projection.rows, projection.cols);
         if (this.includeCellDetails) projection.cellDetails = raw.cellDetails;
         if (this.includeCursorMode) projection.cursorMode = raw.cursorMode;
-        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode, this.includeOverline);
+        if (this.includeBufferState) {
+            projection.bufferState = copyBufferState(raw.bufferState, projection.rows);
+            projection.history = copyHistory(await this.request('readScrollback', { paneId: before.paneId, startLine: 0, maxLines: 64 }, budget),
+                projection.bufferState.scrollbackLines, projection.cols);
+        }
+        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode, this.includeOverline, this.includeBufferState);
         const after = await this.session(budget);
         if (before.paneId !== after.paneId || before.rows !== screen.rows || before.cols !== screen.cols
             || after.rows !== screen.rows || after.cols !== screen.cols
