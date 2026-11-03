@@ -4,7 +4,7 @@ export const pixelPaneId = '11111111-1111-1111-1111-111111111111';
 export function pngChunk(type, data) {
     const result = Buffer.alloc(data.length + 12);
     result.writeUInt32BE(data.length); result.write(type, 4); data.copy(result, 8);
-    result.writeUInt32BE(crc32(result.subarray(4, result.length - 4)), result.length - 4);
+    result.writeUInt32BE(crc32(result.subarray(4, -4)), result.length - 4);
     return result;
 }
 export function syntheticPng(width = 600, height = 200) {
@@ -14,7 +14,7 @@ export function syntheticPng(width = 600, height = 200) {
         pngChunk('IDAT', deflateSync(raw)), pngChunk('IEND', Buffer.alloc(0))]);
 }
 export function pixelScreen() {
-    return { rows: 10, cols: 60, lines: Array(10).fill(''), cursorRow: 0, cursorCol: 0, cursorVisible: true,
+    return { rows: 10, cols: 60, lines: new Array(10).fill(''), cursorRow: 0, cursorCol: 0, cursorVisible: true,
         cursorMode: { style: 2, blink: true, isDefault: true }, cellDetails: [{ overline: false, count: 600, flags: 768,
             fg: -1, bg: -1, foregroundArgb: null, backgroundArgb: null, underlineStyle: 0, underlineColorIndex: -1, underlineArgb: null }] };
 }

@@ -25,30 +25,40 @@ function header(data) {
     return { width, height, channels: color === 2 ? 3 : 4 };
 }
 
+function acceptAncillary(state, item) {
+    if (item.type[0] === item.type[0].toUpperCase()) throw invalid();
+    if (state.data.length) state.idatEnded = true;
+}
+
+function acceptChunk(state, item, count, last) {
+    if (['acTL', 'fcTL', 'fdAT'].includes(item.type)) throw invalid();
+    if (!state.imageHeader && item.type !== 'IHDR') throw invalid();
+    switch (item.type) {
+        case 'IHDR':
+            if (state.imageHeader || count !== 1) throw invalid();
+            state.imageHeader = header(item.data);
+            break;
+        case 'IDAT':
+            if (state.idatEnded) throw invalid();
+            state.data.push(item.data);
+            break;
+        case 'IEND':
+            if (item.data.length || !state.data.length || !last) throw invalid();
+            return { ...state.imageHeader, compressed: Buffer.concat(state.data) };
+        default:
+            acceptAncillary(state, item);
+    }
+}
+
 function chunks(bytes) {
-    let offset = 8, count = 0, imageHeader, idatEnded = false;
-    const data = [];
+    let offset = 8, count = 0;
+    const state = { imageHeader: null, idatEnded: false, data: [] };
     while (offset < bytes.length) {
         if (++count > limits.chunks) throw invalid();
         const item = chunkAt(bytes, offset);
         offset = item.end;
-        if (['acTL', 'fcTL', 'fdAT'].includes(item.type)) throw invalid();
-        if (item.type === 'IHDR') {
-            if (imageHeader || count !== 1) throw invalid();
-            imageHeader = header(item.data);
-        } else {
-            if (!imageHeader) throw invalid();
-            if (item.type === 'IDAT') {
-                if (idatEnded) throw invalid();
-                data.push(item.data);
-            } else if (item.type === 'IEND') {
-                if (item.data.length || !data.length || offset !== bytes.length) throw invalid();
-                return { ...imageHeader, compressed: Buffer.concat(data) };
-            } else {
-                if (item.type[0] === item.type[0].toUpperCase()) throw invalid();
-                if (data.length) idatEnded = true;
-            }
-        }
+        const result = acceptChunk(state, item, count, offset === bytes.length);
+        if (result) return result;
     }
     throw invalid();
 }
@@ -72,17 +82,22 @@ function predictor(filter, left, up, upperLeft) {
     }
 }
 
+function reconstructRow(raw, start, stride, channels, hasPrevious) {
+    const filter = raw[start - 1];
+    if (filter > 4) throw invalid();
+    for (let x = 0; x < stride; x++) {
+        const left = x >= channels ? raw[start + x - channels] : 0;
+        const up = hasPrevious ? raw[start + x - stride - 1] : 0;
+        const upperLeft = hasPrevious && x >= channels ? raw[start + x - stride - 1 - channels] : 0;
+        raw[start + x] = (raw[start + x] + predictor(filter, left, up, upperLeft)) & 255;
+    }
+}
+
 function unfilter(raw, width, height, channels) {
     const stride = width * channels, pixels = Buffer.allocUnsafe(width * height * 4);
     for (let y = 0; y < height; y++) {
-        const start = y * (stride + 1) + 1, filter = raw[start - 1];
-        if (filter > 4) throw invalid();
-        for (let x = 0; x < stride; x++) {
-            const left = x >= channels ? raw[start + x - channels] : 0;
-            const up = y ? raw[start + x - stride - 1] : 0;
-            const upperLeft = y && x >= channels ? raw[start + x - stride - 1 - channels] : 0;
-            raw[start + x] = (raw[start + x] + predictor(filter, left, up, upperLeft)) & 255;
-        }
+        const start = y * (stride + 1) + 1;
+        reconstructRow(raw, start, stride, channels, y > 0);
         for (let x = 0; x < width; x++) {
             const source = start + x * channels, target = (y * width + x) * 4;
             pixels[target] = raw[source];

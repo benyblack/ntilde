@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "appBuildSource": "0c3b302afd645b3ed258896e03632907d402ecb4",
-  "adapterSource": "c0f65fc7a6afa5d5b28d0d3f4c471420761375ee",
-  "localEvidence": "artifacts/terminfo/owned-aS9riV",
+  "adapterSource": "c1e6278db69814d359c7584d4f0eb8128c6c6d00",
+  "localEvidence": "artifacts/terminfo/owned-KTSWxy",
   "context": {
     "adapter": "ntilde-owned-macos-v1",
     "adapterBundleSha256": "87e28f31543d1e7ee618d9a88dd3ccf427c1f92582a853cf10d2444074a89ef9",
@@ -13,8 +13,8 @@
     "assemblySha256": "c0dab1719ce7ecdde676cc98f0b7c19a74ad55c0365db4f24ab67fb8d17bf81f",
     "nodeVersion": "v24.22.1",
     "dependencyInstall": "isolated npm ci --ignore-scripts",
-    "startedAt": "2026-11-03T10:42:51.597Z",
-    "runId": "09ac5019bc2d60c6b1dd875887cf02c4",
+    "startedAt": "2026-11-03T10:51:47.787Z",
+    "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
     "runnerSourceSha256": "32a06493bced9eb33df2c16b1749e33627e0d8603f157c49e5899a7582e1c9dd",
     "adapterSourceSha256": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
     "ownershipSourceSha256": "9667a6f6c3b182350828a3c9269d1c4dc745dde3da26e01390ec7831d4fbb390",
@@ -29,8 +29,8 @@
     "rgbSuiteSourceSha256": "65911c9a13c9db222e3699d5a6b0acf74b3eea0e4158997082bde50976576351",
     "renditionSuiteSourceSha256": "4b662f3c34c047c0403b04c03ea6776cbe7c428f2e4ae7ce0e23bd61ec26c69e",
     "cursorSuiteSourceSha256": "861891583646ff6081185b267442e149e5397fdcc91ba68d95d01d96dd8713a9",
-    "pixelCaptureSourceSha256": "8d3679976beeef97e5e4d05c300f828f96cceb29bf5ad2463f877a6fa2bc685c",
-    "pixelSuiteSourceSha256": "116479cead3ffacacc3e7cd742fad5362d07ade45e358bcbd6da3d2bc1611df5",
+    "pixelCaptureSourceSha256": "0b0db07599f214b813874045b9b0e64621a769e2020567e2afb651e498f6a4c4",
+    "pixelSuiteSourceSha256": "820f25800272371984aa2f27ae4ed137519644a9c6cb9dcea77108ce6483a55f",
     "pixelCasesSourceSha256": "be77694b0ad4f546a55027c04751d69af1374abd191ff647c4c287b81c00e25e",
     "pixelPngSourceSha256": "39712921102133810a067f78f0a808b64edb510383219dd14a968a2c5dec77eb",
     "receiptSourceSha256": "6388acf0e8221553e22a496fc30967f009d273fbee1910059d26ac4ef25b5fe8",
@@ -47,7 +47,7 @@
     "cursorModes": "stored cursor style/blink/default/visibility; pristine owned DECSTR cleanup, no host appearance or blink phase"
   },
   "stockCollector": {
-    "runId": "c0ccc0d489db6b06a29570df46a49a0e",
+    "runId": "b0645c3be1042dd8dc0b1699378296ee",
     "suiteId": "16a690f34c0e",
     "suiteComplete": false,
     "ungradedDiagnostics": {
@@ -57,7 +57,7 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "measuredAt": "2026-11-03T10:43:00.983Z",
+    "measuredAt": "2026-11-03T10:51:56.789Z",
     "target": {
       "kind": "app",
       "id": "ntilde",
@@ -84,79 +84,79 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "rawSha256": "3e31bf10a8da9d750600ae332d219182737e9da3f86196db2a3ca9b0745d02ab"
+    "rawSha256": "64e06f3f14a8221b0d581bbbab79adca68165ffdd614937163cbb2e6d75ac0c8"
   },
   "receipt": {
     "schemaVersion": 2,
-    "runId": "09ac5019bc2d60c6b1dd875887cf02c4",
+    "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
     "suiteId": "ntilde-owned-ascii-cells-v1",
     "file": "cell-observations.json",
-    "sha256": "df18f7550cae8066e176cf1bd60b32729720f358def097e9eb576277ac88904d",
+    "sha256": "e15580f699f17b8e8a8c07c8e8368406b40353a2893c2f051dd9cbbe7b0bdc18",
     "counts": {
       "passed": 8
     },
     "provisionalUntil": "cell-receipt.json",
     "sgrEvidence": {
-      "runId": "09ac5019bc2d60c6b1dd875887cf02c4",
+      "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
       "suiteId": "ntilde-owned-sgr-indices-v1",
       "file": "sgr-observations.json",
-      "sha256": "ad4ec8969601aef9c6cecb8672b6dce96e10c7330a6b07362b4505b138f30505",
+      "sha256": "dba5bf17dbd392bdd53b8a8d7db3bc67648b9513d12ba0877ca592eafc368453",
       "counts": {
         "passed": 17
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "rgbEvidence": {
-      "runId": "09ac5019bc2d60c6b1dd875887cf02c4",
+      "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
       "suiteId": "ntilde-owned-rgb-underline-v1",
       "file": "rgb-observations.json",
-      "sha256": "2a8f757ed49833d72b6e6448db31fd5a1161ab0b853bb9e236b00b0236348ccf",
+      "sha256": "e666f5c3f3eb9b981c8e42898be9ec91a1069f25f3f6a5c5e8ab93057f1b6483",
       "counts": {
         "passed": 20
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "renditionEvidence": {
-      "runId": "09ac5019bc2d60c6b1dd875887cf02c4",
+      "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
       "suiteId": "ntilde-owned-rendition-charsets-v3",
       "file": "rendition-observations.json",
-      "sha256": "d8ec8da64dabed0914e6499c082e8ea6f53a1e02d8e418fff6f5807df40955cc",
+      "sha256": "9541994a2a322b26445421f9bb79caaf7acf319f8bf977ee8dd2812ce7d0b692",
       "counts": {
         "passed": 19
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "cursorEvidence": {
-      "runId": "09ac5019bc2d60c6b1dd875887cf02c4",
+      "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
       "suiteId": "ntilde-owned-cursor-modes-v1",
       "file": "cursor-observations.json",
-      "sha256": "bb0283cc057c743b4b2b3bdbd0d7aebcca1dc6e623bb13a45272525e9a0fe212",
+      "sha256": "e29c8c12eb302f89fe0f9bce3b6581976134f40be9a0aef9e6413721c5d3bef0",
       "counts": {
         "passed": 9
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "pixelEvidence": {
-      "runId": "09ac5019bc2d60c6b1dd875887cf02c4",
+      "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
       "suiteId": "ntilde-owned-render-pixels-v1",
       "file": "pixel-observations.json",
-      "sha256": "3c834e398c5742541281655ac61bba8255dfa6eee5c6c77f41dbd0729be9ff84",
+      "sha256": "6acbeaedc740c9f48027e7b18a103859d57ca19a9fd142e9d413cda34c51455a",
       "counts": {
         "failed": 1,
         "passed": 24
       },
       "provisionalUntil": "cell-receipt.json"
     },
-    "ownershipProofSha256": "c5aa8b6ddf5304cc0b0cd1977f58fcb325e2ff6e5dd8c0c5fd8be81d1451888f",
-    "contextSha256": "1833a0eb2c8dbabcaf54f4e6fd92de47071c1aea56c3101d5898fdbd906331dd",
-    "rawSha256": "3e31bf10a8da9d750600ae332d219182737e9da3f86196db2a3ca9b0745d02ab",
+    "ownershipProofSha256": "f5dd3e3bec3a8b21ba9003994319247aa2069eabccfb638e5799c515041433d7",
+    "contextSha256": "3e33d3b1bc31e77bb77feb8876eef7f3d1b7d0f66872e13d4f41d069bfca6474",
+    "rawSha256": "64e06f3f14a8221b0d581bbbab79adca68165ffdd614937163cbb2e6d75ac0c8",
     "fixtureRemoved": true,
-    "completedAt": "2026-11-03T10:43:02.387Z"
+    "completedAt": "2026-11-03T10:51:58.131Z"
   },
   "pixelReport": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-render-pixels-v1",
-    "runId": "09ac5019bc2d60c6b1dd875887cf02c4",
+    "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
     "complete": true,
     "scope": "Owned offscreen renderer pixels at synthetic 530ms half-period phases; local controls and retained primary font/context. No live desktop cadence, cross-platform font/fallback equivalence, clipboard, images or stock grades.",
     "inputs": [
@@ -372,7 +372,7 @@
       {
         "index": 0,
         "kind": "pixel-start",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": null,
         "screen": {
           "rows": 41,
@@ -848,13 +848,13 @@
       {
         "index": 1,
         "kind": "pixel-bind",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
           "cols": 140,
           "lines": [
-            "NTILDE_PX_09ac5019bc2d60c6b1dd875887cf02c4",
+            "NTILDE_PX_5ea69594a55c0a4e7a3ff5c705bcbb67",
             "",
             "",
             "",
@@ -919,12 +919,12 @@
             "isDefault": true
           }
         },
-        "sha256": "bc2f8e0e810153079c894cc3c494c21b725ca53eabee68e304c739c928faf78d",
+        "sha256": "b3c03a3d258c4706db239a2c6f06ede09ccb6f9823b6213b2d5c700fff754d1a",
         "afterScreen": {
           "rows": 41,
           "cols": 140,
           "lines": [
-            "NTILDE_PX_09ac5019bc2d60c6b1dd875887cf02c4",
+            "NTILDE_PX_5ea69594a55c0a4e7a3ff5c705bcbb67",
             "",
             "",
             "",
@@ -989,12 +989,12 @@
             "isDefault": true
           }
         },
-        "afterSha256": "bc2f8e0e810153079c894cc3c494c21b725ca53eabee68e304c739c928faf78d",
+        "afterSha256": "b3c03a3d258c4706db239a2c6f06ede09ccb6f9823b6213b2d5c700fff754d1a",
         "sceneId": null,
         "pixel": {
           "file": "pixels/frame-001.png",
-          "sha256": "1130781ef8d4f7d680267f45010b64eb2be9930deda439aef3ea53febafd2479",
-          "byteCount": 10265,
+          "sha256": "d0f516f0c2a797d034f213290050a2a4b714323b3b05d2640c54b62f9f3be226",
+          "byteCount": 9977,
           "width": 1190,
           "height": 759,
           "rows": 41,
@@ -1324,7 +1324,7 @@
       {
         "index": 2,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1944,7 +1944,7 @@
       {
         "index": 3,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -3308,7 +3308,7 @@
       {
         "index": 4,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -3928,7 +3928,7 @@
       {
         "index": 5,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -4548,7 +4548,7 @@
       {
         "index": 6,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -5168,7 +5168,7 @@
       {
         "index": 7,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -5788,7 +5788,7 @@
       {
         "index": 8,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -6408,7 +6408,7 @@
       {
         "index": 9,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -7028,7 +7028,7 @@
       {
         "index": 10,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -7648,7 +7648,7 @@
       {
         "index": 11,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -8268,7 +8268,7 @@
       {
         "index": 12,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -8888,7 +8888,7 @@
       {
         "index": 13,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -9508,7 +9508,7 @@
       {
         "index": 14,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -10128,7 +10128,7 @@
       {
         "index": 15,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -10748,7 +10748,7 @@
       {
         "index": 16,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -11368,7 +11368,7 @@
       {
         "index": 17,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -11988,7 +11988,7 @@
       {
         "index": 18,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -12608,7 +12608,7 @@
       {
         "index": 19,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -13228,7 +13228,7 @@
       {
         "index": 20,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -13848,7 +13848,7 @@
       {
         "index": 21,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -14468,7 +14468,7 @@
       {
         "index": 22,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -15088,7 +15088,7 @@
       {
         "index": 23,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -15708,7 +15708,7 @@
       {
         "index": 24,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -16328,7 +16328,7 @@
       {
         "index": 25,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -16948,7 +16948,7 @@
       {
         "index": 26,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -17568,7 +17568,7 @@
       {
         "index": 27,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -18188,7 +18188,7 @@
       {
         "index": 28,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -18808,7 +18808,7 @@
       {
         "index": 29,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -19428,7 +19428,7 @@
       {
         "index": 30,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -20048,7 +20048,7 @@
       {
         "index": 31,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -20668,7 +20668,7 @@
       {
         "index": 32,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -21288,7 +21288,7 @@
       {
         "index": 33,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -21908,7 +21908,7 @@
       {
         "index": 34,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -22528,7 +22528,7 @@
       {
         "index": 35,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -23148,7 +23148,7 @@
       {
         "index": 36,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -23768,7 +23768,7 @@
       {
         "index": 37,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -24388,7 +24388,7 @@
       {
         "index": 38,
         "kind": "pixel-read",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -25008,7 +25008,7 @@
       {
         "index": 39,
         "kind": "pixel-finish",
-        "paneId": "41b88a42-3e8b-49e3-86b0-11b42323831f",
+        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -25491,6 +25491,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyphs and blank positive controls",
             "passed": true
           },
@@ -25518,6 +25522,10 @@
           5
         ],
         "controls": [
+          {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
           {
             "description": "normal glyphs and blank positive controls",
             "passed": true
@@ -25547,6 +25555,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyphs and blank positive controls",
             "passed": true
           },
@@ -25574,6 +25586,10 @@
           7
         ],
         "controls": [
+          {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
           {
             "description": "normal glyphs and blank positive controls",
             "passed": true
@@ -25603,6 +25619,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyphs and blank positive controls",
             "passed": true
           },
@@ -25631,6 +25651,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyphs and blank positive controls",
             "passed": true
           },
@@ -25655,6 +25679,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyphs and blank positive controls",
             "passed": true
           },
@@ -25678,6 +25706,10 @@
           11
         ],
         "controls": [
+          {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
           {
             "description": "normal glyphs and blank positive controls",
             "passed": true
@@ -25707,6 +25739,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyphs and blank positive controls",
             "passed": true
           },
@@ -25734,6 +25770,10 @@
           13
         ],
         "controls": [
+          {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
           {
             "description": "normal glyphs and blank positive controls",
             "passed": true
@@ -25763,6 +25803,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyphs and blank positive controls",
             "passed": true
           },
@@ -25790,6 +25834,10 @@
           15
         ],
         "controls": [
+          {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
           {
             "description": "normal glyphs and blank positive controls",
             "passed": true
@@ -25822,6 +25870,10 @@
         ],
         "controls": [
           {
+            "description": "all underline inputs match the recorded text/cursor",
+            "passed": true
+          },
+          {
             "description": "all five blank-cell controls carry green underline pixels",
             "passed": true
           }
@@ -25840,6 +25892,10 @@
           3
         ],
         "controls": [
+          {
+            "description": "color patches match the recorded text/cursor",
+            "passed": true
+          },
           {
             "description": "palette has multiple distinguishable entries",
             "passed": true
@@ -25996,6 +26052,10 @@
         ],
         "controls": [
           {
+            "description": "identical input text/cursor at all phases",
+            "passed": true
+          },
+          {
             "description": "visible glyphs and decorations present",
             "passed": true
           },
@@ -26024,6 +26084,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyph positive control",
             "passed": true
           },
@@ -26033,6 +26097,10 @@
           }
         ],
         "assertions": [
+          {
+            "description": "stored shape/blink/default/visibility match the exact requested mode",
+            "passed": true
+          },
           {
             "description": "visible-phase cursor agrees with visibility control",
             "passed": true
@@ -26052,6 +26120,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyph positive control",
             "passed": true
           },
@@ -26061,6 +26133,10 @@
           }
         ],
         "assertions": [
+          {
+            "description": "stored shape/blink/default/visibility match the exact requested mode",
+            "passed": true
+          },
           {
             "description": "visible-phase cursor agrees with visibility control",
             "passed": true
@@ -26080,6 +26156,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyph positive control",
             "passed": true
           },
@@ -26089,6 +26169,10 @@
           }
         ],
         "assertions": [
+          {
+            "description": "stored shape/blink/default/visibility match the exact requested mode",
+            "passed": true
+          },
           {
             "description": "visible-phase cursor agrees with visibility control",
             "passed": true
@@ -26108,6 +26192,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyph positive control",
             "passed": true
           },
@@ -26117,6 +26205,10 @@
           }
         ],
         "assertions": [
+          {
+            "description": "stored shape/blink/default/visibility match the exact requested mode",
+            "passed": true
+          },
           {
             "description": "visible-phase cursor agrees with visibility control",
             "passed": true
@@ -26136,6 +26228,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyph positive control",
             "passed": true
           },
@@ -26145,6 +26241,10 @@
           }
         ],
         "assertions": [
+          {
+            "description": "stored shape/blink/default/visibility match the exact requested mode",
+            "passed": true
+          },
           {
             "description": "visible-phase cursor agrees with visibility control",
             "passed": true
@@ -26164,6 +26264,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyph positive control",
             "passed": true
           },
@@ -26173,6 +26277,10 @@
           }
         ],
         "assertions": [
+          {
+            "description": "stored shape/blink/default/visibility match the exact requested mode",
+            "passed": true
+          },
           {
             "description": "visible-phase cursor agrees with visibility control",
             "passed": true
@@ -26192,6 +26300,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyph positive control",
             "passed": true
           },
@@ -26201,6 +26313,10 @@
           }
         ],
         "assertions": [
+          {
+            "description": "stored shape/blink/default/visibility match the exact requested mode",
+            "passed": true
+          },
           {
             "description": "visible-phase cursor agrees with visibility control",
             "passed": true
@@ -26220,6 +26336,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyph positive control",
             "passed": true
           },
@@ -26229,6 +26349,10 @@
           }
         ],
         "assertions": [
+          {
+            "description": "stored shape/blink/default/visibility match the exact requested mode",
+            "passed": true
+          },
           {
             "description": "visible-phase cursor agrees with visibility control",
             "passed": true
@@ -26248,6 +26372,10 @@
         ],
         "controls": [
           {
+            "description": "target text and cursor match fixture input",
+            "passed": true
+          },
+          {
             "description": "normal glyph positive control",
             "passed": true
           },
@@ -26257,6 +26385,10 @@
           }
         ],
         "assertions": [
+          {
+            "description": "stored shape/blink/default/visibility match the exact requested mode",
+            "passed": true
+          },
           {
             "description": "visible-phase cursor agrees with visibility control",
             "passed": true

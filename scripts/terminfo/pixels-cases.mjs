@@ -37,6 +37,13 @@ export const pixelScenes = Object.freeze([
 export const pixelPlan = Object.freeze(pixelScenes.flatMap(item => item.times.map(timeMs => Object.freeze({ sceneId: item.id, timeMs }))));
 
 /** A phase change captures the same screen without rewriting it or advancing a wall clock. */
+async function captureScene(item, fence, owner) {
+    const ordering = await fence.write(item.sequence);
+    // Every phase must finish before the next RPC; concurrent captures cannot qualify.
+    return item.times.reduce((previous, timeMs) => previous.then(() =>
+        owner('pixel-read', ordering, { sceneId: item.id, timeMs })), Promise.resolve());
+}
+
 export async function collectPixels({ config, fence, owner }) {
     let initial;
     try { initial = await owner('pixel-start', null, { timeMs: 0 }); }
@@ -50,12 +57,7 @@ export async function collectPixels({ config, fence, owner }) {
     try {
         const barrier = await fence.write('\x1b[?1049h' + reset + `NTILDE_PX_${config.runId}`);
         await owner('pixel-bind', barrier, { timeMs: 0 });
-        for (const item of pixelScenes) {
-            let ordering = await fence.write(item.sequence);
-            for (const timeMs of item.times) {
-                await owner('pixel-read', ordering, { sceneId: item.id, timeMs });
-            }
-        }
+        await pixelScenes.reduce((previous, item) => previous.then(() => captureScene(item, fence, owner)), Promise.resolve());
     } finally {
         await owner('pixel-finish', await fence.write('\x1b[?1049l\x1b[!p'), { timeMs: 0 });
     }

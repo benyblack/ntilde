@@ -28,6 +28,23 @@ function checkEvidence(output, evidence, prefix, runId) {
         || digest(readFileSync(join(output, evidence.file))) !== evidence.sha256) throw new Error('Invalid owned suite receipt binding.');
 }
 
+
+/** Re-derive the supplemental pixel evidence from retained bytes and the complete journal. */
+function checkPixelEvidence(output, evidence, runId, suiteId) {
+    if (suiteId !== pixelSuiteId) throw new Error('Unexpected pixel suite identity.');
+    checkEvidence(output, evidence, 'pixel', runId);
+    const pixels = JSON.parse(readFileSync(join(output, evidence.file)));
+    if (pixels.runId !== runId || pixels.suiteId !== pixelSuiteId) throw new Error('Invalid pixel report identity.');
+    if (evidence.file === 'pixel-observations.json') {
+        const derived = buildPixelReport(pixels.snapshots, runId, output);
+        if (JSON.stringify(pixels) !== JSON.stringify(derived)) throw new Error('Pixel observations do not match retained evidence.');
+        const journal = readFileSync(join(output, 'pixel-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+        if (JSON.stringify(journal) !== JSON.stringify(pixels.snapshots)) throw new Error('Pixel journal does not match the report.');
+    } else if (pixels.status !== 'unavailable' || pixels.reason !== 'screenDetailsUnavailable' || pixels.fixtureStarted !== false) {
+        throw new Error('Invalid pixel unavailable marker.');
+    }
+}
+
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
 export function completeOwnedReceipt(output, scratch, evidence) {
     const proofBytes = readFileSync(join(output, 'ownership-proof.json'));
@@ -41,20 +58,7 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (!/^[a-f\d]{32}$/.test(runId ?? '')) throw new Error('Invalid owned receipt run identity.');
     checkEvidence(output, evidence, 'cell', runId);
     for (const prefix of suites) checkEvidence(output, evidence[prefix + 'Evidence'], prefix, runId);
-    if (context.pixelSuiteId !== undefined) {
-        if (context.pixelSuiteId !== pixelSuiteId) throw new Error('Unexpected pixel suite identity.');
-        checkEvidence(output, evidence.pixelEvidence, 'pixel', runId);
-        const pixels = JSON.parse(readFileSync(join(output, evidence.pixelEvidence.file)));
-        if (pixels.runId !== runId || pixels.suiteId !== pixelSuiteId) throw new Error('Invalid pixel report identity.');
-        if (evidence.pixelEvidence.file === 'pixel-observations.json') {
-            const derived = buildPixelReport(pixels.snapshots, runId, output);
-            if (JSON.stringify(pixels) !== JSON.stringify(derived)) throw new Error('Pixel observations do not match retained evidence.');
-            const journal = readFileSync(join(output, 'pixel-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
-            if (JSON.stringify(journal) !== JSON.stringify(pixels.snapshots)) throw new Error('Pixel journal does not match the report.');
-        } else if (pixels.status !== 'unavailable' || pixels.reason !== 'screenDetailsUnavailable' || pixels.fixtureStarted !== false) {
-            throw new Error('Invalid pixel unavailable marker.');
-        }
-    }
+    if (context.pixelSuiteId !== undefined) checkPixelEvidence(output, evidence.pixelEvidence, runId, context.pixelSuiteId);
     const receipt = { schemaVersion: context.pixelSuiteId ? 2 : 1, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

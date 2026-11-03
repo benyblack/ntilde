@@ -15,7 +15,7 @@ const name = value => typeof value === 'string' && value.length > 0 && value.len
 
 /** Validate the actual draw context; missing font fingerprints are not pixel qualifications. */
 function validateDetails(details, screen, image, timeMs) {
-    if (!details || details.schemaVersion !== 1 || !['macos', 'linux', 'windows'].includes(details.platform)
+    if (details?.schemaVersion !== 1 || !['macos', 'linux', 'windows'].includes(details.platform)
         || !/^(arm64|x64|x86|arm|wasm|s390x|loongarch64|ppc64le|riscv64)$/.test(details.architecture ?? '')
         || details.enableLigatures !== false || details.minimumContrast !== 1 || typeof details.enableComplexShaping !== 'boolean') fail();
     const { font, grid, theme, presentation: phase } = details;

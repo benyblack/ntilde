@@ -39,7 +39,7 @@ export function countColorCoverage(bytes, foreground, background = [16, 16, 16, 
 const solid = (bytes, rgba) => countColor(bytes, rgba) === bytes.length / 4;
 const changed = (left, right) => !left.equals(right);
 function sceneContentReady(frame) {
-    const screen = frame.screen, lines = Array(screen.rows).fill('');
+    const screen = frame.screen, lines = new Array(screen.rows).fill('');
     if (frame.sceneId === 'colors') {
         lines[4] = '  ' + '\u2588'.repeat(32); lines[6] = '      ' + '\u2588'.repeat(4);
     } else { lines[2] = '    HMWqg_|'; lines[6] = lines[2]; }
@@ -55,6 +55,18 @@ function expectedCursorMode(parameter) {
 }
 const ink = bytes => bytes.length / 4 - countColor(bytes, [16, 16, 16, 255]);
 
+function frameKind(index, length) {
+    if (index === 0) return 'pixel-start';
+    if (index === 1) return 'pixel-bind';
+    if (index === length - 1) return 'pixel-finish';
+    return 'pixel-read';
+}
+function observationResult(controls, assertions) {
+    if (!controls.every(item => item.passed)) return 'inconclusive';
+    return assertions.every(item => item.passed) ? 'passed' : 'failed';
+}
+const check = (description, passed) => ({ description, passed });
+
 /** Revalidate the complete journal and every retained PNG before calculating any observations. */
 export function validatePixelFrames(frames, runId, output) {
     if (!/^[a-f\d]{32}$/.test(runId ?? '') || !Array.isArray(frames) || frames.length !== pixelPlan.length + 3) throw new Error('Incomplete pixel journal.');
@@ -68,7 +80,7 @@ export function validatePixelFrames(frames, runId, output) {
         || first.pixel.sha256 !== last.pixel.sha256) throw new Error('Pixel restoration was not verified.');
     const images = frames.map((frame, index) => {
         const plan = index >= 2 && index < frames.length - 1 ? pixelPlan[index - 2] : { timeMs: 0 };
-        const kind = index === 0 ? 'pixel-start' : index === 1 ? 'pixel-bind' : index === frames.length - 1 ? 'pixel-finish' : 'pixel-read';
+        const kind = frameKind(index, frames.length);
         if (frame.index !== index || frame.kind !== kind || frame.paneId !== pane || !/^[a-f\d-]{36}$/i.test(pane ?? '')
             || frame.sha256 !== snapshotHash(screenSnapshot(frame.screen, false, true, true, true))
             || frame.afterSha256 !== frame.sha256 || snapshotHash(screenSnapshot(frame.afterScreen, false, true, true, true)) !== frame.sha256 || frame.screen.rows !== first.screen.rows || frame.screen.cols !== first.screen.cols
@@ -84,6 +96,29 @@ export function validatePixelFrames(frames, runId, output) {
     return images;
 }
 
+function renditionAssertions(id, target, empty, normal, blank) {
+    if (id === 'hidden') return [check('glyph ink suppressed', solid(target, [16, 16, 16, 255])), check('background retained', empty.equals(blank))];
+    else if (id === 'reverse') return [check('foreground/background exchange includes blank cells', solid(empty, [240, 240, 240, 255])), check('glyph region changes', changed(target, normal))];
+    else if (['strike', 'overline'].includes(id)) return [check('decoration changes glyph and blank cells', changed(target, normal) && changed(empty, blank))];
+    else if (id.startsWith('underline.')) return [check('independent green decoration visible on blank cells',
+            countColorCoverage(empty, [32, 224, 96, 255]) > 0), check('glyph region changes', changed(target, normal))];
+    else return [check('glyph pixels differ with attribute', changed(target, normal)), check('blank cells unchanged', empty.equals(blank))];
+}
+
+function colorAssertions(palette, grid) {
+    const assertions = [];
+    for (let index = 0; index < 16; index++) {
+        const wanted = colorBytes(palette.frame.pixel.renderDetails.theme.ansiPaletteArgb[index]);
+        for (const row of [2, 4]) {
+            const pixels = regionPixels(palette.image, grid, { row, col: 2 + index * 2, rows: 1, cols: 2 });
+            assertions.push(check(`palette ${index} ${row === 2 ? 'background' : 'full-block foreground'} interior`, countColor(pixels, wanted) > pixels.length / 8));
+        }
+    }
+    for (const col of [2, 6]) assertions.push(check(`RGB ${col === 2 ? 'background' : 'foreground'} interior`,
+        countColor(regionPixels(palette.image, grid, { row: 6, col, rows: 1, cols: 4 }), [23, 91, 173, 255]) > grid.cellWidthPx * grid.cellHeightPx));
+    return assertions;
+}
+
 /** Supplemental local comparisons, never stock collector grades or desktop/timing qualification. */
 export function buildPixelReport(frames, runId, output) {
     const images = validatePixelFrames(frames, runId, output);
@@ -96,34 +131,18 @@ export function buildPixelReport(frames, runId, output) {
     const ready = content('normal') && ink(normal) > 10 && solid(blank, [16, 16, 16, 255]) && normal.equals(control);
     const observations = [];
     const add = (featureId, controls, assertions, snapshots) => observations.push({ featureId, snapshots,
-        controls, assertions, result: controls.every(item => item.passed) ? (assertions.every(item => item.passed) ? 'passed' : 'failed') : 'inconclusive' });
-    const check = (description, passed) => ({ description, passed });
+        controls, assertions, result: observationResult(controls, assertions) });
     const targetIndex = id => entries.get(`${id}:0`).frame.index;
     const common = id => [check('target text and cursor match fixture input', content(id)), check('normal glyphs and blank positive controls', ready), check('non-target control unchanged', region(id, controlRegion).equals(control))];
     for (const id of ['bold', 'italic', 'faint', 'hidden', 'reverse', 'strike', 'overline', ...[1, 2, 3, 4, 5].map(style => `underline.${style}`)]) {
         const target = region(id), empty = region(id, blankRegion);
-        let assertions;
-        if (id === 'hidden') assertions = [check('glyph ink suppressed', solid(target, [16, 16, 16, 255])), check('background retained', empty.equals(blank))];
-        else if (id === 'reverse') assertions = [check('foreground/background exchange includes blank cells', solid(empty, [240, 240, 240, 255])), check('glyph region changes', changed(target, normal))];
-        else if (['strike', 'overline'].includes(id)) assertions = [check('decoration changes glyph and blank cells', changed(target, normal) && changed(empty, blank))];
-        else if (id.startsWith('underline.')) assertions = [check('independent green decoration visible on blank cells',
-            countColorCoverage(empty, [32, 224, 96, 255]) > 0), check('glyph region changes', changed(target, normal))];
-        else assertions = [check('glyph pixels differ with attribute', changed(target, normal)), check('blank cells unchanged', empty.equals(blank))];
+        const assertions = renditionAssertions(id, target, empty, normal, blank);
         add(`rendition.${id}`, common(id), assertions, [targetIndex('normal'), targetIndex(id)]);
     }
     const underlines = [1, 2, 3, 4, 5].map(style => region(`underline.${style}`, blankRegion));
     add('underline.distinct-styles', [check('all underline inputs match the recorded text/cursor', [1, 2, 3, 4, 5].every(style => content(`underline.${style}`))), check('all five blank-cell controls carry green underline pixels', underlines.every(bytes => countColorCoverage(bytes, [32, 224, 96, 255]) > 0))],
         [check('five local underline masks are distinct', new Set(underlines.map(bytes => bytes.toString('hex'))).size === 5)], [1, 2, 3, 4, 5].map(style => targetIndex(`underline.${style}`)));
-    const palette = entries.get('colors:0'), paletteAssertions = [];
-    for (let index = 0; index < 16; index++) {
-        const wanted = colorBytes(palette.frame.pixel.renderDetails.theme.ansiPaletteArgb[index]);
-        for (const row of [2, 4]) {
-            const pixels = regionPixels(palette.image, grid, { row, col: 2 + index * 2, rows: 1, cols: 2 });
-            paletteAssertions.push(check(`palette ${index} ${row === 2 ? 'background' : 'full-block foreground'} interior`, countColor(pixels, wanted) > pixels.length / 8));
-        }
-    }
-    for (const col of [2, 6]) paletteAssertions.push(check(`RGB ${col === 2 ? 'background' : 'foreground'} interior`,
-        countColor(regionPixels(palette.image, grid, { row: 6, col, rows: 1, cols: 4 }), [23, 91, 173, 255]) > grid.cellWidthPx * grid.cellHeightPx));
+    const palette = entries.get('colors:0'), paletteAssertions = colorAssertions(palette, grid);
     add('colors.palette-and-rgb', [check('color patches match the recorded text/cursor', content('colors')), check('palette has multiple distinguishable entries', new Set(palette.frame.pixel.renderDetails.theme.ansiPaletteArgb.slice(0, 16)).size > 8)], paletteAssertions, [palette.frame.index]);
     const blink = [0, 529, 530, 1059, 1060].map(time => region('text-blink', pixelRegion, time));
     add('blink.text-phases', [check('identical input text/cursor at all phases', [0, 529, 530, 1059, 1060].every(time => sceneContentReady(entries.get(`text-blink:${time}`).frame))), check('visible glyphs and decorations present', ink(blink[0]) > 10),
