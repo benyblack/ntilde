@@ -61,7 +61,7 @@ public sealed class ShotRun
     {
         try
         {
-            var psi = new ProcessStartInfo("git", "rev-parse --short HEAD")
+            var psi = new ProcessStartInfo(HostTool.Resolve("git"), "rev-parse --short HEAD")
             {
                 RedirectStandardOutput = true,
                 UseShellExecute = false

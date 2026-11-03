@@ -31,7 +31,8 @@ public static class Publisher
         ["README.md", Path.Combine("site", "scripts", "sync-screenshots.mjs")];
 
     private static readonly Regex AssetFileName =
-        new(@"[A-Za-z0-9][A-Za-z0-9.-]*\.(?:png|webp|gif|webm)\b", RegexOptions.Compiled);
+        // Timeout backstop (csharpsquid:S6444); the pattern scans two trusted repo files.
+        new(@"[A-Za-z0-9][A-Za-z0-9.-]*\.(?:png|webp|gif|webm)\b", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
 
     /// <summary>
     /// The bare file names (<c>hero-single-readme.png</c>, <c>og-card.png</c>) that

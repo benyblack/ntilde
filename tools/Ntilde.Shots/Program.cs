@@ -54,10 +54,24 @@ public static class Program
 
         // Short on Unix on purpose: the agent host binds a Unix socket under the profile root, and a
         // socket path is capped at 104 bytes on macOS. macOS's per-user temp directory alone is ~50, so
-        // a full GUID under it put agent.sock at 113 and the host silently never started.
-        string baseDirectory = OperatingSystem.IsWindows()
-            ? Path.Combine(Path.GetTempPath(), "ntilde-shots", Guid.NewGuid().ToString("N"))
-            : Path.Combine("/tmp", "ntilde-shots", Guid.NewGuid().ToString("N")[..8]);
+        // a full GUID under it put agent.sock at 113 and the host silently never started; 8 hex digits
+        // put it at 89. On Unix the run's directory is owner-only, since the temp directory may be
+        // shared (csharpsquid:S5443).
+        string baseDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "ntilde-shots",
+            OperatingSystem.IsWindows() ? Guid.NewGuid().ToString("N") : Guid.NewGuid().ToString("N")[..8]);
+        if (OperatingSystem.IsWindows())
+        {
+            Directory.CreateDirectory(baseDirectory);
+        }
+        else
+        {
+            Directory.CreateDirectory(
+                baseDirectory,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+
         using var world = DemoWorld.Create(baseDirectory);
         world.SeedWorkspace();
 

@@ -169,20 +169,20 @@ internal sealed class DemoSshHost : IDisposable
 
     private static (int ExitCode, string Output) Docker(string arguments, bool throwOnError = true)
     {
-        var startInfo = new ProcessStartInfo("docker", arguments)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false
-        };
-        if (s_dockerHome is not null)
-        {
-            startInfo.Environment["HOME"] = s_dockerHome;
-        }
-
         Process process;
         try
         {
+            var startInfo = new ProcessStartInfo(HostTool.Resolve("docker"), arguments)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+            if (s_dockerHome is not null)
+            {
+                startInfo.Environment["HOME"] = s_dockerHome;
+            }
+
             process = Process.Start(startInfo)
                 ?? throw new InvalidOperationException("Could not start docker.");
         }

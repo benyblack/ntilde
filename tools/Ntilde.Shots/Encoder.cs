@@ -131,7 +131,7 @@ public static class Encoder
 
         using var process = new Process
         {
-            StartInfo = new ProcessStartInfo("ffmpeg", arguments)
+            StartInfo = new ProcessStartInfo(HostTool.Resolve("ffmpeg"), arguments)
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

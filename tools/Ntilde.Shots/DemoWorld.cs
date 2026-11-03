@@ -615,7 +615,7 @@ public sealed class DemoWorld : IDisposable
     // Do not "restore" the synchronous version; drain both streams asynchronously instead.
     private void Git(string arguments)
     {
-        var psi = new System.Diagnostics.ProcessStartInfo("git", arguments)
+        var psi = new System.Diagnostics.ProcessStartInfo(HostTool.Resolve("git"), arguments)
         {
             WorkingDirectory = WorkspaceRoot,
             RedirectStandardOutput = true,
