@@ -456,6 +456,16 @@ notification/taskbar delivery. The contract leaf gains DTOs only and keeps zero
 project references. Owning tests: `AgentPaneMetadataCaptureTests`,
 `AgentHostMetadataProtocolTests`, `MainWindowAgentMetadataTests`.
 
+The separate owned metadata QA suite pairs full cells/attributes and bounded
+host/status/control reads. Fixed experiments retain initial unprepared metadata,
+establish a private title/cwd baseline, and restore that prepared baseline and
+the initial cells before verified disposable App/worker teardown. Hidden control
+contents and original null title/cwd are not claimed restored. Actual settings
+and focus gate notification claims; OSC 133 P consumed-byte probes remain
+inconclusive without independent prompt-part readback. Version 8 receipts bind
+all thirteen suites, exact archived source/report bytes, parsed paired journals and cleanup;
+any retained metadata marker forces the complete chain.
+
 ### Persistent-session scrollback policy
 
 The GUI forwards `MaxHistory` at spawn and in presentation updates. The daemon owns the chosen

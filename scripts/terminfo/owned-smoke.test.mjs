@@ -49,6 +49,7 @@ function withCollectorFixture(receipt, lockfile, action) {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
             'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs', 'terminfo/terminal-output.mjs',
             'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs', 'terminfo/editing-state.mjs', 'terminfo/editing-cases.mjs', 'terminfo/editing-expectations.mjs', 'terminfo/editing-capture.mjs', 'terminfo/editing.mjs', 'terminfo/history-cases.mjs', 'terminfo/history-capture.mjs', 'terminfo/history.mjs',
+            'terminfo/metadata-cases.mjs', 'terminfo/metadata-capture.mjs', 'terminfo/metadata-state.mjs', 'terminfo/metadata-expectations.mjs', 'terminfo/metadata.mjs', 'terminfo/metadata-receipt.mjs',
             'terminfo/saved-cases.mjs', 'terminfo/saved-capture.mjs', 'terminfo/saved.mjs', 'terminfo/saved-expectations.mjs', 'terminfo/saved-receipt.mjs',
             'terminfo/resize-cases.mjs', 'terminfo/resize-capture.mjs', 'terminfo/resize.mjs', 'terminfo/resize-action.mjs', 'terminfo/resize-receipt.mjs',
             'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
@@ -182,6 +183,9 @@ function assertRetainedCollector(output) {
         ['editingSuiteSourceSha256', 'terminfo/editing.mjs'],
         ['historyCasesSourceSha256', 'terminfo/history-cases.mjs'], ['historyCaptureSourceSha256', 'terminfo/history-capture.mjs'],
         ['historySuiteSourceSha256', 'terminfo/history.mjs'],
+        ['metadataCasesSourceSha256', 'terminfo/metadata-cases.mjs'], ['metadataCaptureSourceSha256', 'terminfo/metadata-capture.mjs'],
+        ['metadataStateSourceSha256', 'terminfo/metadata-state.mjs'], ['metadataExpectationsSourceSha256', 'terminfo/metadata-expectations.mjs'],
+        ['metadataSuiteSourceSha256', 'terminfo/metadata.mjs'], ['metadataReceiptSourceSha256', 'terminfo/metadata-receipt.mjs'],
         ['savedCasesSourceSha256', 'terminfo/saved-cases.mjs'], ['savedCaptureSourceSha256', 'terminfo/saved-capture.mjs'],
         ['savedSuiteSourceSha256', 'terminfo/saved.mjs'], ['savedExpectationsSourceSha256', 'terminfo/saved-expectations.mjs'],
         ['savedReceiptSourceSha256', 'terminfo/saved-receipt.mjs'],
@@ -414,7 +418,21 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 7);
+        assert.equal(receipt.schemaVersion, 8);
+        assert.equal(receipt.metadataEvidence.sha256, digest('metadata-observations.json'));
+        const metadata = JSON.parse(readFileSync(join(output, 'metadata-observations.json')));
+        assert.equal(metadata.snapshots.length, 46); assert.equal(metadata.observations.length, 13);
+        assert.ok(metadata.observations.every(item => item.control.passed));
+        const emptyTitle = metadata.observations.find(item => item.featureId === 'metadata.title.empty');
+        assert.equal(emptyTitle.result, 'failed');
+        assert.equal(metadata.observations.filter(item => item.featureId.startsWith('metadata.shell.P.')).every(item => item.result === 'inconclusive'), true);
+        assert.ok(metadata.observations.filter(item => ![emptyTitle.featureId, 'metadata.notification.osc9'].includes(item.featureId)
+            && !item.featureId.startsWith('metadata.shell.P.')).every(item => item.result === 'passed'));
+        const metadataCounts = metadata.observations.reduce((counts, item) => ({ ...counts, [item.result]: (counts[item.result] ?? 0) + 1 }), {});
+        assert.deepEqual(receipt.metadataEvidence.counts, metadataCounts);
+        assert.deepEqual(metadata.snapshots, readFileSync(join(output, 'metadata-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+        assert.equal(metadata.snapshots[0].paneId, report.snapshots[0].paneId);
+        assert.deepEqual(metadata.snapshots[0].before.screen, metadata.snapshots.at(-1).before.screen);
         assert.equal(receipt.savedEvidence.sha256, digest('saved-observations.json'));
         const saved = JSON.parse(readFileSync(join(output, 'saved-observations.json')));
         assert.equal(saved.snapshots.length, 57);

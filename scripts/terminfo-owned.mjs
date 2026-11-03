@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { OwnedMetadataObserver } from './terminfo/metadata-capture.mjs';
+import { metadataSuiteId, ownedMetadataPolicy } from './terminfo/metadata-cases.mjs';
+import { buildMetadataReport } from './terminfo/metadata.mjs';
 // Launches a private macOS desktop instance; never attaches to an existing pane.
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -45,7 +48,7 @@ const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 /** Preserve only source-known initial App/geometry-budget refusal codes. */
 function ownerFailure(error) {
     return { ok: false, error: error.message,
-        ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
+        ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
 }
 
 function validateInvocation(args) {
@@ -135,6 +138,12 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
         editingExpectationsSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-expectations.mjs'),
         editingCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-capture.mjs'),
         editingSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'editing.mjs'),
+        metadataCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata-cases.mjs'),
+        metadataCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata-capture.mjs'),
+        metadataStateSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata-state.mjs'),
+        metadataExpectationsSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata-expectations.mjs'),
+        metadataSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata.mjs'),
+        metadataReceiptSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata-receipt.mjs'),
         savedCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'saved-cases.mjs'),
         savedCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'saved-capture.mjs'),
         savedSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'saved.mjs'),
@@ -256,6 +265,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let historyEvidence;
     let resizeEvidence;
     let savedEvidence;
+    let metadataEvidence;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
@@ -285,6 +295,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             QuakeModeEnabled: false, AutomaticUpdateChecks: false, AllowOsc52ClipboardWrite: false,
             MinimumContrast: 1, EnableLigatures: false,
             BellAudioEnabled: false, BellVisualEnabled: false, SmoothScrolling: false,
+            Osc9NotificationsEnabled: true, Osc9ProgressReportingEnabled: true, TabStripOrientation: 'Horizontal',
             CommandAssistEnabled: false, CommandAssistShellIntegrationEnabled: false,
             CommandAssistPowerShellIntegrationEnabled: false, AgentAccessObserveEnabled: true, AgentAccessActEnabled: true,
         };
@@ -315,6 +326,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         };
         let resizeState;
         let savedState;
+        let metadataState;
         let completed = false, outputModeVerified = false;
         const proofs = [];
         const image = statSync(executable);
@@ -327,7 +339,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             nodeVersion: process.version, dependencyInstall: 'isolated npm ci --ignore-scripts', startedAt: new Date().toISOString(), runId,
             ...retainCollectorEvidence(output, bundle, adapterBundleSha256, ownerModule, workerScript),
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
-            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
+            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             cells: 'private AgentHost readScreen; nonce-bound pane; separate ASCII cell-state suite',
             attributes: 'separate ASCII SGR flags and palette-index suite',
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
@@ -335,7 +347,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         };
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
-        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved'])
+        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         /** Complete each prior suite before capturing this one; only initial typed refusal is optional. */
@@ -550,11 +562,45 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 throw error;
             }
         };
+        const recordMetadataUnavailable = reason => {
+            const file = 'metadata-unavailable.json';
+            writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: metadataSuiteId,
+                status: 'unavailable', reason, fixtureStarted: false, plannedExperiments: 13 });
+            metadataState.unavailable = { runId, suiteId: metadataSuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                status: 'unavailable', reason, counts: {}, provisionalUntil: 'cell-receipt.json' };
+        };
+        const observeMetadata = async (request, budget) => {
+            if (!savedState?.observer?.restored && !savedState?.unavailable) throw new Error('Saved-state must restore before metadata observations.');
+            metadataState ??= { workerPid: request.workerPid, tty: request.tty,
+                observer: new OwnedMetadataObserver({ appData, ownerPid: app.pid, profileName,
+                    runId, expectedPaneId: cellObserver.paneId }) };
+            const state = metadataState;
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('Metadata-state fixture ownership or availability changed.');
+            if (savedState.unavailable?.reason === 'screenDetailsUnavailable' && request.kind === 'metadata-start') {
+                recordMetadataUnavailable('screenDetailsUnavailable');
+                throw Object.assign(new Error('Metadata-state fixture requires complete screen details.'), { code: 'screenDetailsUnavailable' });
+            }
+            try {
+                const result = await state.observer.handle(request, budget);
+                if (request.kind === 'metadata-start') {
+                    if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error('Original geometry changed before metadata-state observations.');
+                    proofs[0].metadata.paneId = state.observer.paneId;
+                    proofs[0].metadata.geometry = { rows: result.screen.rows, cols: result.screen.cols };
+                }
+                appendFileSync(join(output, 'metadata-snapshots.jsonl'), JSON.stringify(state.observer.frames.at(-1)) + '\n');
+                return result;
+            } catch (error) {
+                if (request.kind === 'metadata-start' && ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code)
+                    && !state.observer.baseline && !state.observer.frames.length) recordMetadataUnavailable(error.code);
+                throw error;
+            }
+        };
         /** Route owned observations serially, preserving suite restoration and pane identity dependencies. */
         const observeCells = async (request, budget) => {
             const prefix = request.kind.split('-')[0];
             if (prefix === 'resize') return observeResize(request, budget);
             if (prefix === 'saved') return observeSaved(request, budget);
+            if (prefix === 'metadata') return observeMetadata(request, budget);
             if (prefix === 'pixel') return observePixels(request, budget);
             if (prefix === 'color') return observeColors(request, budget);
             if (Object.hasOwn(editingSpecs, prefix)) return observeEditing(prefix, request, budget);
@@ -577,7 +623,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         /** Retain the first measured lineage and PTY without storing the run capability. */
         const retainFirstProof = (owner, worker, tty) => {
             if (proofs.length !== 0) return;
-            proofs.push({ app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, saved: { policy: ownedSavedPolicy } });
+            proofs.push({ app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy } });
         };
         /** Bind one kernel-observed output-mode proof to the already verified worker. */
         const attestOutputMode = (request, budget) => {
@@ -613,7 +659,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved)-(?:start|bind|read|finish)$/.test(request.kind)
+                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
                         || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)) {
                         const result = await observeUntranslatedCells(request, queryTimeout);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
@@ -674,6 +720,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             resizeEvidence = resizeState?.unavailable ?? retainCellReport(output, resizeState?.observer, runId,
                 (frames, id) => buildResizeReport(frames, resizeState.observer.actions, id), 'resize-observations.json');
             savedEvidence = savedState?.unavailable ?? retainCellReport(output, savedState?.observer, runId, buildSavedReport, 'saved-observations.json');
+            metadataEvidence = metadataState?.unavailable ?? retainCellReport(output, metadataState?.observer, runId, buildMetadataReport, 'metadata-observations.json');
+            summary.metadataEvidence = metadataEvidence;
             summary.savedEvidence = savedEvidence;
             summary.resizeEvidence = resizeEvidence;
             summary.historyEvidence = historyEvidence;
@@ -713,7 +761,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
         throw interruption;
     }
-    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence }); }
+    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence }); }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
 

@@ -12,6 +12,7 @@ import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
 import { collectCursor } from './cursor.mjs';
 import { collectErase, collectEditing } from './editing-cases.mjs';
+import { collectMetadata } from './metadata-cases.mjs';
 import { collectSaved } from './saved-cases.mjs';
 import { collectResize } from './resize-cases.mjs';
 import { collectHistory } from './history-cases.mjs';
@@ -42,6 +43,7 @@ try {
         await collectHistory({ config, fence, owner });
         await collectResize({ config, fence, owner });
         await collectSaved({ config, fence, owner });
+        await collectMetadata({ config, fence, owner });
     } finally {
         try { restoreOutput?.(); }
         finally { fence.dispose(); }
