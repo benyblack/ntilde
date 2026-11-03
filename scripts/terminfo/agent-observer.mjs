@@ -36,6 +36,17 @@ export function agentRequest(endpoint, method, params, timeoutMs) {
     return privateRequest(endpoint, method, params, timeoutMs, 512 * 1024);
 }
 
+/** Fixed resize action for the parent-proved disposable pane; read-only observers never call it. */
+export function ownedResizeRequest(endpoint, paneId, rows, cols, timeoutMs) {
+    if (!/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(paneId ?? '')
+        || !Number.isSafeInteger(rows) || rows < 1 || rows > 128
+        || !Number.isSafeInteger(cols) || cols < 1 || cols > 256) {
+        throw new Error('Invalid owned resize request.');
+    }
+    // Preserve partial actual results for retention and parent validation; never replace them with the target.
+    return privateRequest(endpoint, 'resizePane', { paneId, rows, cols }, timeoutMs, 16384);
+}
+
 /** Fixed render-only capture for the disposable, nonce-bound pixel fixture. */
 export function captureRequest(endpoint, paneId, presentationTimeMs, timeoutMs) {
     return renderRequest(endpoint, paneId, presentationTimeMs, timeoutMs);

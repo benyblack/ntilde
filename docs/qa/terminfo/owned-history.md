@@ -28,7 +28,8 @@ local comparison. No outcome changes a stock collector grade.
 
 The source expectations follow the [VT100 programmer manual](https://vt100.net/docs/vt100-ug/chapter3.html)
 and [xterm control sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html).
-Resize/reflow, saved-bank completeness, history attributes, Unicode editing,
+Resize/reflow is measured separately by the [owned resize suite](owned-resize.md).
+Saved-bank completeness, history attributes, Unicode editing,
 rendered pixels and Windows/Linux runtime coverage remain separate measurements.
 This history slice alone does not complete issue #766.
 

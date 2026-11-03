@@ -14,19 +14,19 @@ import { colorSuiteId } from '../color-cases.mjs';
 import { eraseSuiteId, editingSuiteId } from '../editing-cases.mjs';
 export const runId = 'a'.repeat(32);
 /** Derive the selected synthetic report from its source-owned fixture plan. */
-function reportFor(prefix) {
-    if (prefix === 'history') return buildHistoryReport(syntheticCellPlanJournal(prefix, runId, { casesFor: makeHistoryCases, nonce: 'NTILDE_HS_' }), runId);
-    return buildEditingReport(syntheticEditingJournal(prefix, runId), runId, prefix);
+function reportFor(prefix, rows, cols) {
+    if (prefix === 'history') return buildHistoryReport(syntheticCellPlanJournal(prefix, runId, { casesFor: makeHistoryCases, nonce: 'NTILDE_HS_', rows, cols }), runId);
+    return buildEditingReport(syntheticEditingJournal(prefix, runId, { rows, cols }), runId, prefix);
 }
 /** Provide isolated logical receipt inputs, optionally including the v5 transport proof. */
-export function ownedReceiptFixture(action, { history = false } = {}) {
+export function ownedReceiptFixture(action, { history = false, rows = 10, cols = 48 } = {}) {
     const output = mkdtempSync(join(tmpdir(), 'nt-edit-receipt-'));
     const write = (file, value) => writeFileSync(join(output, file), JSON.stringify(value));
     const context = { runId, pixelSuiteId, colorSuiteId, eraseSuiteId, editingSuiteId }, evidence = {};
     const proof = { completed: true, cleanedUpAt: '2026-11-03', cleanupError: null };
     if (history) {
         Object.assign(context, { historySuiteId, terminalOutput: ownedOutputPolicy });
-        proof.proofs = [{ terminalOutput: { tool: sttyTool, outputProcessing: false, description: 'speed 9600 baud; 10 rows; 48 columns;\noflags: -opost onlcr', verifiedAt: '2026-11-03T00:00:00Z' } }];
+        proof.proofs = [{ terminalOutput: { tool: sttyTool, outputProcessing: false, description: `speed 9600 baud; ${rows} rows; ${cols} columns;\noflags: -opost onlcr`, verifiedAt: '2026-11-03T00:00:00Z' } }];
     }
     try {
         write('context.json', context); write('raw.json', {});
@@ -44,7 +44,7 @@ export function ownedReceiptFixture(action, { history = false } = {}) {
             if (prefix === 'cell') Object.assign(evidence, binding); else evidence[prefix + 'Evidence'] = binding;
         }
         for (const prefix of history ? ['erase', 'editing', 'history'] : ['erase', 'editing']) {
-            const report = reportFor(prefix);
+            const report = reportFor(prefix, rows, cols);
             write(prefix + '-observations.json', report);
             writeFileSync(join(output, prefix + '-snapshots.jsonl'), report.snapshots.map(value => JSON.stringify(value)).join('\n'));
             evidence[prefix + 'Evidence'] = { runId, suiteId: report.suiteId, file: prefix + '-observations.json', sha256: snapshotHash(report), counts: { passed: report.observations.length } };

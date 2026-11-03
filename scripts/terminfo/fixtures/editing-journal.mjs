@@ -14,30 +14,30 @@ export function editingWire(stage) {
         if (last && JSON.stringify(last.value) === JSON.stringify(value)) last.count += run.count;
         else cellDetails.push({ count: run.count, value });
     }
-    return { rows: 10, cols: 48, lines: expected.lines, cursorRow: expected.cursorRow, cursorCol: expected.cursorCol, cursorVisible: true,
+    return { rows: stage.grid.length, cols: stage.grid[0].length, lines: expected.lines, cursorRow: expected.cursorRow, cursorCol: expected.cursorCol, cursorVisible: true,
         cursorMode: { style: 2, blink: true, isDefault: true }, bufferState: expected.bufferState,
         history: expected.history, cellDetails: cellDetails.map(({ count, value }) => ({ count, ...value })) };
 }
-export function initialEditingScreen() {
-    return editingWire({ grid: Array.from({ length: 10 }, () => Array.from({ length: 48 }, () => ({ text: ' ', overline: false,
+export function initialEditingScreen(rows = 10, cols = 48) {
+    return editingWire({ grid: Array.from({ length: rows }, () => Array.from({ length: cols }, () => ({ text: ' ', overline: false,
         flags: 768, fg: -1, bg: -1, foregroundArgb: null, backgroundArgb: null, underlineStyle: 0, underlineColorIndex: -1, underlineArgb: null }))),
-        row: 0, col: 0, top: 0, bottom: 9, alternate: false });
+        row: 0, col: 0, top: 0, bottom: rows - 1, alternate: false });
 }
 /** Build coherent unit-only records for refusal tests; these are never runtime measurements. */
-export function syntheticCellPlanJournal(prefix, runId, { casesFor, nonce }) {
+export function syntheticCellPlanJournal(prefix, runId, { casesFor, nonce, rows = 10, cols = 48 }) {
     const frames = [], add = (kind, raw, caseId = null, stageId = null) => {
         const screen = screenSnapshot(raw, false, true, true, true, true), sha256 = snapshotHash(screen);
         frames.push({ index: frames.length, kind: prefix + '-' + kind, paneId: editingPaneId,
             barrier: kind === 'start' ? null : barrier, screen, sha256, afterScreen: structuredClone(screen), afterSha256: sha256, caseId, stageId });
     };
-    add('start', initialEditingScreen());
-    const bind = initialEditingScreen(); bind.lines[0] = nonce + runId;
+    add('start', initialEditingScreen(rows, cols));
+    const bind = initialEditingScreen(rows, cols); bind.lines[0] = nonce + runId;
     bind.cursorCol = 42; bind.bufferState.alternateScreen = true; add('bind', bind);
-    for (const item of casesFor(10, 48).filter(value => value.id.startsWith(prefix + '.'))) {
+    for (const item of casesFor(rows, cols).filter(value => value.id.startsWith(prefix + '.'))) {
         add('read', editingWire(item.before), item.id, 'control'); add('read', editingWire(item.after), item.id, 'after');
     }
-    add('finish', initialEditingScreen()); return frames;
+    add('finish', initialEditingScreen(rows, cols)); return frames;
 }
 
-export const syntheticEditingJournal = (prefix, runId) => syntheticCellPlanJournal(prefix, runId,
-    { casesFor: makeEditingCases, nonce: prefix === 'erase' ? 'NTILDE_ER_' : 'NTILDE_EC_' });
+export const syntheticEditingJournal = (prefix, runId, geometry = {}) => syntheticCellPlanJournal(prefix, runId,
+    { casesFor: makeEditingCases, nonce: prefix === 'erase' ? 'NTILDE_ER_' : 'NTILDE_EC_', ...geometry });

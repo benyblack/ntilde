@@ -120,9 +120,10 @@ under `~/.ntilde-qa`, including its isolated dependency installation, which is
 removed during cleanup. It verifies that the parent is owned by the current user,
 is not a symlink, and has no group/other permissions. A long home path that
 cannot fit the macOS socket limit is rejected before launching the app.
-Persistence, updates, hotkeys, clipboard writes and agent Act access are disabled
-for that instance. Observe access is enabled only in this private app-data root
-for the supplemental cell suite below. It launches the exact executable with a unique
+Persistence, updates, hotkeys and clipboard writes are disabled for that instance.
+Observe access is enabled only in this private app-data root. The v6 runner also
+enables Act access there for the parent-selected [resize fixture](terminfo/owned-resize.md);
+its ordinary cell observers remain read-only. The v1–v5 runner left Act disabled. It launches the exact executable with a unique
 run marker. A private socket capability binds the worker to that launch; both
 ends verify its live app parent, executable, user, controlling TTY and output
 device. Geometry and cell reads repeat the ownership/device check. Cleanup terminates
@@ -214,7 +215,8 @@ After the ASCII suite restores the main screen, the same owned worker runs
 `NTILDE_SG_` nonce binds it to the same pane; process/PTY ownership, singleton
 profile, geometry, DA ordering and restore checks apply to every snapshot.
 Observe access requests the App's existing `readScreen(includeAttributes=true)`.
-Act access remains disabled.
+These SGR requests remain read-only. The v6 runner enables Act only in the private
+instance for its later source-selected resize actions.
 
 Seventeen experiments measure bold, italic, underline-enabled and inverse flags;
 SGR 22/23/24/27 selective resets; SGR 0 for those flags and indexed colors;
@@ -504,3 +506,17 @@ offscreen image without changing live selection or terminal state. The
 [owned color suite](terminfo/owned-colors.md) now uses these facts for #764; its
 [retained measurement](terminfo/2026-11-03-colors.md) records ten passing reset/query/pixel
 comparisons. No stock observations are regraded.
+
+### Supplemental owned resize/reflow
+
+The [owned resize suite](terminfo/owned-resize.md) follows history observations.
+It retains twelve paired full-state/history frames and six source-selected App
+actions with independently measured kernel geometry. It checks width, height and
+combined shrink/restore, including Ntilde's documented top-anchor policy and
+conservation of every hard line across history plus viewport. V6 receipts retain
+all preceding bindings and require the new action/source/settings proof. The
+stock collector and frozen grades are unchanged.
+
+The [2026-11-03 committed-source measurement](terminfo/2026-11-03-resize.md)
+records three passing comparisons at 40 × 140 cells, with twelve paired frames,
+six exact App/kernel action proofs and verified completed cleanup.

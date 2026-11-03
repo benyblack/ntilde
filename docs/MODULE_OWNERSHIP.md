@@ -915,6 +915,13 @@ requires public test classes.
   settled requires the view and successful current-session callback to agree.
   Changing the buffer or session invalidates older completion evidence. Neither the
   leaf DTOs nor this completion signal attest kernel PTY size or undo reflow.
+- **Owned resize QA is a separate caller boundary.** `scripts/terminfo-owned.mjs`
+  enables act access only in its disposable settings root. Its source plan selects
+  six App actions, re-proves process/PTY ownership before and after each action,
+  and independently reads kernel geometry/output flags. V6 receipts require paired
+  full-state/history frames, exact action/source/settings bindings, verified cleanup
+  and all earlier suite bindings. Ordinary cell observers retain their read-only
+  allowlist; no action attests a personal or remote session.
 - The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 
 **Non-responsibilities**
