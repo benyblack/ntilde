@@ -48,7 +48,7 @@ function withCollectorFixture(receipt, lockfile, action) {
     try {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
             'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs',
-            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs',
+            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs',
             'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
@@ -123,6 +123,7 @@ function launch(executable, interrupt, observation = {}) {
                 NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${pathToFileURL(join(repo, 'scripts/terminfo/fixtures/owned-lifecycle.mjs')).href}`].filter(Boolean).join(' '),
             } : {}), NTILDE_TERMINFO_TEST_LIFECYCLE_LOG: observation.log,
                 NTILDE_TERMINFO_TEST_LIFECYCLE_PHASE: observation.phase,
+                NTILDE_TERMINFO_TEST_PIXEL_BUDGET: observation.pixelBudget ? '1' : undefined,
                 NTILDE_TERMINFO_TEST_RGB_BUDGET: observation.rgbBudget ? '1' : undefined },
         });
         let output = '';
@@ -155,6 +156,8 @@ function assertRetainedCollector(output) {
         ['attributeSourceSha256', 'terminfo/attributes.mjs'], ['sgrSuiteSourceSha256', 'terminfo/sgr.mjs'],
         ['cellDetailsSourceSha256', 'terminfo/cell-details.mjs'], ['rgbSuiteSourceSha256', 'terminfo/rgb.mjs'],
         ['renditionSuiteSourceSha256', 'terminfo/rendition.mjs'], ['cursorSuiteSourceSha256', 'terminfo/cursor.mjs'],
+        ['pixelCaptureSourceSha256', 'terminfo/pixels-capture.mjs'], ['pixelSuiteSourceSha256', 'terminfo/pixels.mjs'],
+        ['pixelCasesSourceSha256', 'terminfo/pixels-cases.mjs'], ['pixelPngSourceSha256', 'terminfo/pixels-png.mjs'],
         ['receiptSourceSha256', 'terminfo/receipt.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
@@ -180,6 +183,9 @@ test('an oversized real viewport records RGB unavailable while retaining stock r
         assert.equal(receipt.rgbEvidence.reason, 'screenDetailsUnavailable');
         assert.equal(receipt.renditionEvidence.status, 'unavailable');
         assert.equal(receipt.cursorEvidence.status, 'unavailable');
+        assert.equal(receipt.pixelEvidence.status, 'unavailable');
+        assert.deepEqual(receipt.pixelEvidence.counts, {});
+        assert.equal(readFileSync(join(output, 'pixel-snapshots.jsonl'), 'utf8'), '');
         assert.deepEqual(receipt.rgbEvidence.counts, {});
         assert.equal(unavailable.fixtureStarted, false);
         assert.equal(unavailable.plannedExperiments, 20);
@@ -369,6 +375,15 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
+        assert.equal(receipt.schemaVersion, 2);
+        assert.equal(receipt.pixelEvidence.sha256, digest('pixel-observations.json'));
+        const pixels = JSON.parse(readFileSync(join(output, 'pixel-observations.json')));
+        assert.equal(pixels.snapshots.length, 40);
+        assert.equal(pixels.observations.length, 25);
+        assert.deepEqual(pixels.snapshots, readFileSync(join(output, 'pixel-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+        assert.equal(pixels.snapshots[0].pixel.sha256, pixels.snapshots.at(-1).pixel.sha256);
+        for (const frame of pixels.snapshots) assert.equal(frame.pixel.sha256, digest(frame.pixel.file));
+        assert.ok(pixels.observations.filter(item => item.featureId !== 'rendition.bold').every(item => item.result === 'passed'), JSON.stringify(pixels.observations));
         for (const [prefix, count] of [['rendition', 19], ['cursor', 9]]) {
             assert.equal(receipt[prefix + 'Evidence'].sha256, digest(prefix + '-observations.json'));
             const extra = JSON.parse(readFileSync(join(output, prefix + '-observations.json')));
@@ -404,3 +419,27 @@ for (const runner of ['owned', 'inline']) {
         });
     });
 }
+
+
+test('an initial pixel detail refusal after restored cursor evidence retains typed unavailability and cleanup', {
+    skip: !prepared || !process.env.NTILDE_TERMINFO_TEST_EXECUTABLE,
+}, async () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-pixel-budget-'));
+    try {
+        const log = join(root, 'lifecycle.jsonl');
+        const result = await launch(process.env.NTILDE_TERMINFO_TEST_EXECUTABLE, false, { log, pixelBudget: true });
+        assert.equal(result.code, 0, result.output + result.errors);
+        const output = /results: ([^\n]+)/.exec(result.output)[1];
+        const receipt = JSON.parse(readFileSync(join(output, 'cell-receipt.json')));
+        assert.equal(receipt.fixtureRemoved, true);
+        assert.equal(receipt.pixelEvidence.status, 'unavailable');
+        assert.equal(receipt.pixelEvidence.reason, 'screenDetailsUnavailable');
+        assert.deepEqual(receipt.pixelEvidence.counts, {});
+        assert.equal(receipt.cursorEvidence.counts.passed, 9);
+        assert.equal(JSON.parse(readFileSync(join(output, 'pixel-unavailable.json'))).fixtureStarted, false);
+        assert.equal(readFileSync(join(output, 'pixel-snapshots.jsonl'), 'utf8'), '');
+        assert.ok(!existsSync(join(output, 'pixels')));
+        assert.ok(!existsSync(join(output, 'pixel-observations.json')));
+        assert.ok(readFileSync(log, 'utf8').includes('pixelBudgetRefusal'));
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});

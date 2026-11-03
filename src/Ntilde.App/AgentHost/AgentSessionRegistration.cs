@@ -470,29 +470,31 @@ namespace Ntilde.AgentHost
                 return false;
             }
 
-            // Cell metrics and grid size come from different places (the pane's
-            // last publish vs. the buffer just now), so a capture that lands
-            // between a font change and the resize it triggers pairs the new cell
-            // size with the pre-resize row/column count. That is not a torn image:
-            // the draw operation lays out exactly these rows/cols at exactly these
-            // metrics, so the content fills the canvas either way — it is the same
-            // one-frame transition the live control paints in that same window,
-            // which is what a screenshot of a resizing pane should look like.
-            var width = (int)Math.Ceiling(cols * (double)parameters.Metrics.CellWidth);
-            var height = (int)Math.Ceiling(rows * (double)parameters.Metrics.CellHeight);
-            if (width <= 0 || height <= 0)
+            // The draw snaps each cell independently and adds its pixel origin. Multiplying
+            // fractional DIP metrics by the grid count clips the right/bottom after snapping.
+            var effectiveScale = scale <= 0 ? 1.0 : Math.Min(scale, Contracts.AgentHostProtocol.MaxCaptureScale);
+            var grid = TerminalDrawOperation.CreatePixelGrid(parameters.Metrics, effectiveScale);
+            long gridWidth = grid.OriginXPx + (long)cols * grid.CellWidthPx;
+            long gridHeight = grid.OriginYPx + (long)rows * grid.CellHeightPx;
+            const long pixelBudget = Contracts.AgentHostProtocol.MaxCapturePixels;
+            if (gridWidth > pixelBudget || gridHeight > pixelBudget || gridWidth * gridHeight > pixelBudget)
             {
+                error = AgentCaptureError.TooLarge;
                 return false;
             }
-            // The budget guards the bitmap that actually gets allocated, so it has
-            // to be measured in device pixels. width/height above are DIPs, and the
-            // renderer multiplies both by the scale — so checking DIPs would
-            // under-count by scale squared and let a 3x capture allocate nine times
-            // the budget. Rounded the way the renderer rounds.
-            var effectiveScale = scale <= 0 ? 1.0 : Math.Min(scale, Contracts.AgentHostProtocol.MaxCaptureScale);
+            // Capture accepts integer DIP bounds. Round upward so every snapped device
+            // pixel fits, then budget the exact bitmap size the renderer will allocate.
+            double widthDip = Math.Ceiling(gridWidth / effectiveScale);
+            double heightDip = Math.Ceiling(gridHeight / effectiveScale);
+            if (widthDip > int.MaxValue || heightDip > int.MaxValue)
+            {
+                error = AgentCaptureError.TooLarge;
+                return false;
+            }
+            int width = (int)widthDip, height = (int)heightDip;
             var deviceWidth = (long)Math.Round(width * effectiveScale, MidpointRounding.AwayFromZero);
             var deviceHeight = (long)Math.Round(height * effectiveScale, MidpointRounding.AwayFromZero);
-            if (deviceWidth * deviceHeight > Contracts.AgentHostProtocol.MaxCapturePixels)
+            if (deviceWidth * deviceHeight > pixelBudget)
             {
                 error = AgentCaptureError.TooLarge;
                 return false;

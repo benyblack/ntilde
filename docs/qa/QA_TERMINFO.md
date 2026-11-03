@@ -342,7 +342,8 @@ Overline now has VT state and an App rendering path, with stored state qualified
 by the [v3 measurement](terminfo/2026-11-03-overline.md). No constant or
 consumed-input hint substitutes for an observation. Stock grades and frozen
 triage stay unchanged. The live frames qualify stored state and decoded cells;
-controlled pixel observations and blink timing remain #763, and live
+controlled pixel observations are now retained in the [owned pixel suite](terminfo/owned-pixels.md);
+synthetic blink phases do not measure desktop cadence. Live
 Windows/Linux qualification remains #775. The earlier
 [2026-11-02 rendition/cursor measurement](terminfo/2026-11-02-rendition-cursor.md)
 retains its historical scope and exact limits.
@@ -439,9 +440,11 @@ The [revision-2 charset restoration measurement](terminfo/2026-11-02-rendition-c
 adds lowercase post-reset probes and the portable production receipt finalizer.
 The original v1 mapping measurement remains unchanged.
 
-## Controlled capture foundation
+## Controlled capture and owned pixel observations
 
 [Controlled offscreen capture](terminfo/controlled-capture.md) defines the optional synthetic
-clock and actual render metadata used to prepare owned pixel qualification. The terminfo.dev
-owned runner does not yet invoke this API as a pixel suite; #763 still tracks that follow-up.
+clock and actual render metadata used by the [owned pixel suite](terminfo/owned-pixels.md).
+It follows the five stored-state suites, retains 40 controlled PNG frames and evaluates 25
+local comparisons. The new version-2 cleanup receipt re-derives the pixel report and
+rechecks every image after verified cleanup; historical version-1 receipts remain unchanged.
 Existing stock grades and retained cell/query observations are unchanged.

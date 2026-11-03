@@ -209,7 +209,9 @@ public class AgentHostCaptureProtocolTests : IDisposable
         Assert.False(context.Presentation.CursorVisible);
         Assert.Equal(0, context.Presentation.CursorRow);
         Assert.Equal(4, context.Presentation.CursorCol);
-        Assert.True(registration.Buffer.GetCell(0, 0).IsBlink);
+        registration.Buffer.Lock.EnterReadLock();
+        try { Assert.True(registration.Buffer.GetCell(0, 0).IsBlink); }
+        finally { registration.Buffer.Lock.ExitReadLock(); }
         Assert.False(registration.Buffer.Modes.IsCursorVisible);
         Assert.Equal(4, registration.Buffer.CursorCol);
     }
@@ -239,7 +241,7 @@ public class AgentHostCaptureProtocolTests : IDisposable
         Assert.True(registration.TryCapturePng(0, 1, out var retry, out _, new AgentCaptureOptions(null, details)));
         Assert.Equal(cols, retry.Cols);
         Assert.Equal(rows, retry.Rows);
-        Assert.Equal(cols * 8, retry.Width);
+        Assert.Equal(4 + cols * 8, retry.Width);
         Assert.Equal(rows * 16, retry.Height);
         if (details)
         {
@@ -258,9 +260,45 @@ public class AgentHostCaptureProtocolTests : IDisposable
         var result = Result(Handle(service, CaptureRequestLine(registration.PaneId, maxWidth: 160, scale: 2, details: true)));
         Assert.True(result.Downscaled);
         Assert.Equal(160, result.Width);
-        Assert.Equal(1280, result.RenderDetails!.Grid.RenderWidthPx);
+        Assert.Equal(1288, result.RenderDetails!.Grid.RenderWidthPx);
         Assert.Equal(768, result.RenderDetails.Grid.RenderHeightPx);
         Assert.Equal(16, result.RenderDetails.Grid.CellWidthPx);
+    }
+
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    [InlineData(1.5)]
+    [InlineData(2.0)]
+    public void Fractional_metrics_capture_contains_the_complete_snapped_grid(double scale)
+    {
+        var registry = new AgentSessionRegistry();
+        var metrics = new CellMetrics { CellWidth = 8.5f, CellHeight = 18.5f, Baseline = 14.5f, Ascent = 14.5f, Descent = 4f };
+        var registration = Register(registry, metrics: metrics);
+        registration.Buffer.Resize(140, 41);
+        new AnsiParser(registration.Buffer).Process("\x1b[?25l\x1b[?7l\x1b[41;140H\x1b[48;2;23;91;173m ");
+        using var service = NewService(registry);
+        var result = Result(Handle(service, CaptureRequestLine(registration.PaneId, scale: scale, details: true)));
+        var grid = result.RenderDetails!.Grid;
+        Assert.True(grid.OriginXPx + result.Cols * grid.CellWidthPx <= result.Width);
+        Assert.True(grid.OriginYPx + result.Rows * grid.CellHeightPx <= result.Height);
+        using var image = SKBitmap.Decode(File.ReadAllBytes(result.FilePath));
+        Assert.Equal(new SKColor(23, 91, 173), image.GetPixel(
+            grid.OriginXPx + result.Cols * grid.CellWidthPx - 2,
+            grid.OriginYPx + result.Rows * grid.CellHeightPx - 2));
+    }
+
+    [Fact]
+    public void Pixel_budget_includes_snapped_cells_and_the_grid_origin()
+    {
+        var registry = new AgentSessionRegistry();
+        var metrics = new CellMetrics { CellWidth = 99.5f, CellHeight = 79.5f, Baseline = 60f, Ascent = 60f, Descent = 19.5f };
+        var registration = Register(registry, metrics: metrics);
+        registration.Buffer.Resize(80, 25);
+        using var service = NewService(registry);
+        var response = Handle(service, CaptureRequestLine(registration.PaneId));
+        Assert.Equal(AgentHostProtocol.ErrorCodes.CaptureUnavailable, response.Error?.Code);
+        Assert.False(Directory.Exists(_exportDir) && Directory.EnumerateFiles(_exportDir).Any());
     }
 
     // PNG signature: every capture must be a real PNG, not an empty or truncated file.
@@ -277,7 +315,7 @@ public class AgentHostCaptureProtocolTests : IDisposable
 
         Assert.Equal(80, result.Cols);
         Assert.Equal(24, result.Rows);
-        Assert.Equal(80 * 8, result.Width);
+        Assert.Equal(4 + 80 * 8, result.Width);
         Assert.Equal(24 * 16, result.Height);
         Assert.False(result.Downscaled);
         Assert.False(result.InlineOmitted);
@@ -337,7 +375,7 @@ public class AgentHostCaptureProtocolTests : IDisposable
 
         Assert.True(result.Downscaled);
         Assert.Equal(160, result.Width);
-        // 640x384 scaled to width 160 keeps the aspect ratio.
+        // 644x384 scaled to width 160 keeps the aspect ratio.
         Assert.Equal(96, result.Height);
         Assert.Equal(80, result.Cols); // the grid is unchanged; only the image shrank
     }
@@ -352,7 +390,7 @@ public class AgentHostCaptureProtocolTests : IDisposable
         var result = Result(Handle(service, CaptureRequestLine(registration.PaneId, maxWidth: 10_000)));
 
         Assert.False(result.Downscaled);
-        Assert.Equal(80 * 8, result.Width);
+        Assert.Equal(4 + 80 * 8, result.Width);
     }
 
     [Fact]
@@ -449,9 +487,9 @@ public class AgentHostCaptureProtocolTests : IDisposable
         var twoX = Result(Handle(service, CaptureRequestLine(registration.PaneId, id: 2, scale: 2)));
 
         Assert.Equal(1.0, oneX.Scale);
-        Assert.Equal(80 * 8, oneX.Width);
+        Assert.Equal(4 + 80 * 8, oneX.Width);
         Assert.Equal(2.0, twoX.Scale);
-        Assert.Equal(80 * 8 * 2, twoX.Width);
+        Assert.Equal((4 + 80 * 8) * 2, twoX.Width);
         Assert.Equal(24 * 16 * 2, twoX.Height);
 
         // The grid is unchanged - only the resolution it was drawn at.
@@ -497,7 +535,7 @@ public class AgentHostCaptureProtocolTests : IDisposable
         using var service = NewService(registry);
 
         var fits = Result(Handle(service, CaptureRequestLine(registration.PaneId, id: 1, scale: 2)));
-        Assert.Equal(6400, fits.Width); // 12.3M device pixels, inside the 16M budget
+        Assert.Equal(6408, fits.Width); // 12.3M device pixels, inside the 16M budget
 
         var response = Handle(service, CaptureRequestLine(registration.PaneId, id: 2, scale: 3));
         Assert.Equal(AgentHostProtocol.ErrorCodes.CaptureUnavailable, response.Error?.Code); // 27.6M

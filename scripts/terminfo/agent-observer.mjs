@@ -32,9 +32,23 @@ export function observerEndpoint(appData, ownerPid) {
 /** Read one correlated response from the private read-only endpoint; preserve typed refusals. */
 export function agentRequest(endpoint, method, params, timeoutMs) {
     if (!['listSessions', 'readScreen'].includes(method)) throw new Error('Observer method is not read-only.');
+    return privateRequest(endpoint, method, params, timeoutMs, 512 * 1024);
+}
+
+/** Fixed render-only capture for the disposable, nonce-bound pixel fixture. */
+export function captureRequest(endpoint, paneId, presentationTimeMs, timeoutMs) {
+    if (!/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(paneId ?? '')
+        || !Number.isSafeInteger(presentationTimeMs) || presentationTimeMs < 0 || presentationTimeMs > 60000) {
+        throw new Error('Invalid owned capture request.');
+    }
+    return privateRequest(endpoint, 'captureScreen', { paneId, mode: 'render', inline: true, maxWidth: 0, scale: 1,
+        includeRenderDetails: true, presentationTimeMs }, timeoutMs, 5 * 1024 * 1024);
+}
+
+function privateRequest(endpoint, method, params, timeoutMs, byteLimit) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(endpoint);
-        let buffer = '', settled = false;
+        let buffer = '', received = 0, settled = false;
         const finish = (error, value) => {
             if (settled) return;
             settled = true;
@@ -46,8 +60,9 @@ export function agentRequest(endpoint, method, params, timeoutMs) {
         socket.on('error', error => finish(error));
         socket.on('connect', () => socket.write(JSON.stringify({ v: 1, id: 1, method, params }) + '\n'));
         socket.on('data', chunk => {
+            received += Buffer.byteLength(chunk);
+            if (received > byteLimit) return finish(new Error('Oversized observer response.'));
             buffer += chunk;
-            if (Buffer.byteLength(buffer) > 512 * 1024) return finish(new Error('Oversized observer response.'));
             if (!buffer.includes('\n')) return;
             try {
                 const frame = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));

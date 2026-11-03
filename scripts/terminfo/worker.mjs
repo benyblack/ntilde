@@ -10,6 +10,7 @@ import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
 import { collectCursor } from './cursor.mjs';
+import { collectPixels } from './pixels-cases.mjs';
 
 let config;
 try {
@@ -19,12 +20,13 @@ try {
     const binding = await verifyNtildeOutput(config, process.stdout);
     const fence = terminalFence(process.stdin, process.stdout);
     try {
-        const owner = (kind, barrier = null) => requestOwner(config, kind, { tty: binding.tabTty, barrier });
+        const owner = (kind, barrier = null, extra = {}) => requestOwner(config, kind, { ...extra, tty: binding.tabTty, barrier });
         await collectCells({ config, fence, owner });
         await collectSgr({ config, fence, owner });
         await collectRgb({ config, fence, owner });
         await collectRendition({ config, fence, owner });
         await collectCursor({ config, fence, owner });
+        await collectPixels({ config, fence, owner });
     } finally { fence.dispose(); }
     const source = readFileSync(config.bundle);
     const digest = createHash('sha256').update(source).digest('hex');

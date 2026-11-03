@@ -283,19 +283,24 @@ namespace Ntilde.Shell
             _showRenderHud = showRenderHud;
             _isolatedSnapshot = isolatedSnapshot;
             _requestImageFrame = requestImageFrame;
-            _cellWidthDevicePx = Math.Max(1, ToDevicePx(_metrics.CellWidth));
-            _cellHeightDevicePx = Math.Max(1, ToDevicePx(_metrics.CellHeight));
-            int baselineOffsetPx = ToDevicePx(_metrics.Baseline);
-            int underlineOffsetPx = ToDevicePx(_metrics.CellHeight - Math.Max(1.5f, _metrics.CellHeight * 0.12f));
-            int strikeOffsetPx = (int)Math.Round(_cellHeightDevicePx * 0.52, MidpointRounding.AwayFromZero);
-            _pixelGrid = new PixelGrid(
-                originXPx: ToDevicePx(4f),
+            _pixelGrid = CreatePixelGrid(_metrics, _renderScaling);
+            _cellWidthDevicePx = _pixelGrid.CellWidthPx;
+            _cellHeightDevicePx = _pixelGrid.CellHeightPx;
+        }
+
+        // Capture sizing and painting must use exactly the same snapping and origin.
+        internal static PixelGrid CreatePixelGrid(CellMetrics metrics, double renderScaling)
+        {
+            int DevicePx(double logical) => (int)Math.Round(logical * renderScaling, MidpointRounding.AwayFromZero);
+            int cellHeight = Math.Max(1, DevicePx(metrics.CellHeight));
+            return new PixelGrid(
+                originXPx: DevicePx(4f),
                 originYPx: 0,
-                cellWidthPx: _cellWidthDevicePx,
-                cellHeightPx: _cellHeightDevicePx,
-                baselineOffsetPx: baselineOffsetPx,
-                underlineOffsetPx: underlineOffsetPx,
-                strikeOffsetPx: strikeOffsetPx);
+                cellWidthPx: Math.Max(1, DevicePx(metrics.CellWidth)),
+                cellHeightPx: cellHeight,
+                baselineOffsetPx: DevicePx(metrics.Baseline),
+                underlineOffsetPx: DevicePx(metrics.CellHeight - Math.Max(1.5f, metrics.CellHeight * 0.12f)),
+                strikeOffsetPx: (int)Math.Round(cellHeight * 0.52, MidpointRounding.AwayFromZero));
         }
 
         public void Dispose()
