@@ -18,6 +18,10 @@ public static class AgentHostProtocol
     public const int MaxCellDetailCells = 8192;
     public const int MaxCellDetailRuns = 1024;
 
+    /// <summary>Bounds on explicitly requested visible-pane grids.</summary>
+    public const int MaxResizeRows = 128;
+    public const int MaxResizeCols = 256;
+
     /// <summary>
     /// Wire protocol version. The server rejects requests whose version does
     /// not match with <see cref="ErrorCodes.VersionMismatch"/>.
@@ -128,6 +132,9 @@ public static class AgentHostProtocol
 
         /// <summary>A3: closes a live pane by id.</summary>
         public const string CloseSession = "closeSession";
+
+        /// <summary>Permissioned App-window resize for a single visible direct local pane.</summary>
+        public const string ResizePane = "resizePane";
 
         /// <summary>
         /// A5: captures a pane as a PNG and returns its path (plus, on request, the
@@ -256,6 +263,9 @@ public static class AgentHostProtocol
         /// this instant — safe to retry.
         /// </summary>
         public const string ActUnavailable = "actUnavailable";
+
+        /// <summary>The pane cannot safely use the visible local-window resize operation.</summary>
+        public const string ResizeUnavailable = "resizeUnavailable";
 
         /// <summary>A3: <c>spawnSession</c> resolved a profile but the tab failed to open.</summary>
         public const string SpawnFailed = "spawnFailed";

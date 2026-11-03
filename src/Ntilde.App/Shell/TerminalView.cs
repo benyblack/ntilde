@@ -274,6 +274,7 @@ namespace Ntilde.Shell
                 _buffer.OnInvalidate -= InvalidateBuffer; // Idempotent remove
                 _buffer.OnScreenSwitched -= OnScreenSwitched;
             }
+            if (!ReferenceEquals(_buffer, buffer)) LastCompletedResizeDispatch = default;
             _buffer = buffer;
             _textBlink.Restart(clearCells: true);
             if (_buffer != null)
@@ -343,7 +344,11 @@ namespace Ntilde.Shell
         /// </summary>
         public void SetSession(ITerminalSession? session)
         {
-            if (!ReferenceEquals(_session, session)) ResetKittyKeyTracking();
+            if (!ReferenceEquals(_session, session))
+            {
+                ResetKittyKeyTracking();
+                LastCompletedResizeDispatch = default; // A previous session cannot prove this target received a resize.
+            }
             _session = session;
         }
 

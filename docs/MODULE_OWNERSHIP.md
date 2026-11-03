@@ -354,7 +354,7 @@ invariant changes.
 
 **Namespace:** `Ntilde.AgentHost.Contracts`
 **Depends on:** *(leaf — only BCL)*
-**Public surface:** `AgentHostProtocol`, `AgentHostDiscovery`, `AgentHostJsonContext`, `Frames.*`, and the contract DTO groups (`ActContracts`, `SessionContracts`, `StatusContracts`, `ReplayContracts`)
+**Public surface:** `AgentHostProtocol`, `AgentHostDiscovery`, `AgentHostJsonContext`, `Frames.*`, and the contract DTO groups (`ActContracts`, `SessionContracts`, `StatusContracts`, `ReplayContracts`, `ResizePane`)
 
 **Owns**
 - The wire protocol between the app's agent host and any external client (today: the MCP server)
@@ -903,6 +903,18 @@ requires public test classes.
 - Windows launch support (`Shell/`): `LauncherRelease.cs` (sets the `ntilde.com` release event on the GUI path; discards it in the mux branch) and `UserPathRegistration.cs` (the install folder on the user `PATH`, from Velopack's install, update and uninstall hooks only); `AppVersionInfo.cs` (the app's version, for the About window, the editor and the release download); `VelopackHookLog.cs` (where a Velopack hook's lines go: Velopack's own log, since a hook exits before `AppLogger` starts)
 - `Shell/SshAskPassVaultPolicy.cs` (Phase 5 Task 2): whether the OpenSSH askpass helper may fill the vault password on a user's attempt through a jump host (not with ssh before 8.4, a hop named like the target, or a proxy in the extra arguments)
 - Updates and the multiplexer (`Update/`): `MuxUpdateCompatibility.cs` (R10: the protocol marker in the staged release notes, whether an apply keeps the daemon, and the startup auto-apply gate) and `UpdateSourceOverride.cs` (`NTILDE_UPDATE_SOURCE_DIR`, a local feed honoured only for the `NtildeSurvival` verification package id)
+- **Permissioned visible-pane resize belongs to App.** Raw AgentHost `resizePane`
+  requires the separate default-off act permission and journals attempts reaching
+  its method handler; frame-level rejections happen before that journal.
+  `MainWindow.AgentResize` only changes the normal window containing its current
+  single direct local pane; remote, deferred/mux, windowless, split and inactive
+  panes are not resized. The existing view → VT buffer → session ordering remains
+  authoritative. A two-second responsive-UI observation timeout reports actual
+  nonblocking buffer samples; synchronous resize work can still block on a write
+  lock and delay dispatcher timeout delivery.
+  settled requires the view and successful current-session callback to agree.
+  Changing the buffer or session invalidates older completion evidence. Neither the
+  leaf DTOs nor this completion signal attest kernel PTY size or undo reflow.
 - The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 
 **Non-responsibilities**

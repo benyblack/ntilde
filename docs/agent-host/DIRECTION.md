@@ -120,6 +120,7 @@ Ntilde.McpServer  ── local IPC (named pipe / unix socket) ──▶  Ntilde.
 | notifications (completion / stall) | off | same toggle |
 | live indicators (pane status segment, tab marker, window light) | off | tied to observe / act; cannot be silenced separately |
 | send input, spawn/close sessions & panes | off | separate explicit opt-in, per-profile allowlist for SSH |
+| resize a single visible direct local pane (raw AgentHost `resizePane`) | off | separate explicit act opt-in; normal resizable window, active single-pane tab only |
 | replay export | off | observe permission + explicit export action |
 | screenshot (render a pane to PNG) | off | observe permission |
 
@@ -168,6 +169,36 @@ Each milestone is independently shippable and announceable. Estimates assume
   state)
 - Stall detection has an explicit, documented definition (no output for N s
   while `running`) — no heuristics that can't be tested
+
+### Controlled visible-pane resize
+
+The raw AgentHost method `resizePane` accepts `{paneId, rows, cols}` with rows
+1–128 and columns 1–256. It uses the separate default-off act permission and
+journals attempts that reach the operation, including malformed parameters,
+refusals and cancellations. Frames rejected before method dispatch, including
+unsupported protocol versions, are not journaled.
+It is not an MCP tool. Only the current single direct local pane in the selected
+tab of a visible, normal, resizable window is eligible. Remote, mux/deferred,
+windowless, split, inactive and focus-mode targets are refused without activating
+a tab or directly resizing the VT buffer. Restored command-based local panes
+remain eligible when their saved profile no longer resolves.
+
+App changes its actual window client size using measured cell/chrome dimensions
+and starts a two-second observation timeout for the ordinary view → buffer →
+session resize path. Timeout observation and event cleanup run on the UI dispatcher;
+this is a responsive-UI bound, not a hard request deadline. A stalled dispatcher
+or contended buffer write lock can delay the response. Qualification callers need
+their own transport deadline and disposable-process cleanup.
+
+The result `{rows, cols, layoutSettled, exact}` contains observed buffer geometry. `layoutSettled` requires agreement with the view and a successfully
+returned current-session resize callback. Changing the buffer or session clears
+older completion evidence; `exact` additionally requires the requested
+grid. Native window limits or a callback failure can produce partial results.
+A busy buffer is sampled without waiting; unavailable observation returns
+`resizeUnavailable`. Cancellation and timeout do not undo terminal reflow or
+promise restoration. A qualification runner must restore and verify geometry
+separately. Session callback completion does not attest the child's kernel PTY
+size; independent PTY observation is required for that claim.
 
 ### A3 — Act (permissioned)
 

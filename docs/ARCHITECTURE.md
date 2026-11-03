@@ -396,6 +396,14 @@ Shell composition glue (startup orchestration, app paths/logging/services, sessi
 - The Agent Output panel (`AgentOutput/`): tracks the current command's output region and renders it as markdown into an Avalonia control tree. Parsing is Markdig; the control-tree rendering is this assembly's own `MarkdownRenderer`
 - Agent Output scheduling: the first invalidation fixes a read deadline; later chunks cannot postpone it. Background reads are serialized, with one dirty follow-up. Completion retains its bounded synchronous read before the prompt repaints; generations reject stale UI deliveries. A BCL `TimeProvider` supplies deterministic timer tests.
 - Pane resizing (pixel → row/col calculation)
+- Permissioned raw AgentHost `resizePane`: App owns measured window sizing, the
+  responsive-UI two-second observation timeout and refusal of inactive/split/remote/deferred panes.
+  It uses the existing resize path and samples actual buffer geometry without
+  waiting for its lock. Existing synchronous resize work can still wait for a buffer
+  write lock; a blocked UI dispatcher delays timeout delivery and cleanup. Settled means view/buffer agreement after the session
+  callback returned for the current buffer/session; changing either invalidates
+  the previous completion evidence. It does not attest kernel PTY size or reversible reflow.
+  The leaf contracts carry only request/result facts; no UI dependency enters VT.
 - The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 
 ### Non-Responsibilities
