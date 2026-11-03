@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { buildResizeReport } from './resize.mjs';
 import { syntheticResizeJournal } from './fixtures/resize-journal.mjs';
 import { snapshotHash } from './agent-observer.mjs';
@@ -61,4 +63,24 @@ test('restoration of each logical fixture is an independent assertion', () => {
     assert.equal(result.observations[1].result, 'failed');
     assert.equal(result.observations[1].assertions[0].passed, true);
     assert.equal(result.observations[1].assertions[1].passed, false);
+});
+
+test('published committed-source resize evidence rederives all comparisons and its v6 binding', () => {
+    const data = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-03-resize.json', import.meta.url)));
+    const value = data.resizeReport;
+    assert.deepEqual(buildResizeReport(value.snapshots, value.actions, data.context.runId), value);
+    assert.equal(value.snapshots.length, 12); assert.equal(value.actions.length, 6);
+    assert.deepEqual(value.observations.map(item => item.result), ['passed', 'passed', 'passed']);
+    assert.deepEqual(data.resizeOwnership.actions, value.actions);
+    assert.deepEqual(data.resizeOwnership.originalGeometry, { rows: 40, cols: 140 });
+    assert.deepEqual(value.snapshots[0].screen, value.snapshots.at(-1).screen);
+    assert.equal(data.receipt.schemaVersion, 6); assert.equal(data.receipt.fixtureRemoved, true);
+    assert.deepEqual(data.receipt.resizeEvidence.counts, { passed: 3 });
+    assert.equal(data.receipt.resizeEvidence.sha256,
+        createHash('sha256').update(JSON.stringify(value, null, 2) + '\n').digest('hex'));
+    assert.equal(data.appBuildSource, data.adapterSource);
+    assert.equal(data.appBuildSource, '595f957413986e1d9fc62c62754e2e44729d243a');
+    assert.deepEqual(data.stockCollector.counts, { supported: 78, inconclusive: 177 });
+    assert.equal(data.stockCollector.suiteComplete, false);
+    assert.ok(data.stockCollector.ungradedDiagnostics['cursor.reverse-wrap']);
 });

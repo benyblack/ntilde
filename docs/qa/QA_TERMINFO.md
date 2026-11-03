@@ -516,3 +516,7 @@ combined shrink/restore, including Ntilde's documented top-anchor policy and
 conservation of every hard line across history plus viewport. V6 receipts retain
 all preceding bindings and require the new action/source/settings proof. The
 stock collector and frozen grades are unchanged.
+
+The [2026-11-03 committed-source measurement](terminfo/2026-11-03-resize.md)
+records three passing comparisons at 40 × 140 cells, with twelve paired frames,
+six exact App/kernel action proofs and verified completed cleanup.

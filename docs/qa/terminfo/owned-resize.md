@@ -10,6 +10,9 @@ its VT buffer and the worker's independently verified kernel PTY:
 | Height/history round trip | Four fewer rows | A full viewport of short hard lines displaces four ordered rows into history. |
 | Combined round trip | Seven fewer columns and four fewer rows | Full-viewport long hard lines rewrap through history; restoring geometry remaps the visible logical-line anchor. |
 
+The [committed-source measurement](2026-11-03-resize.md) records three passing
+comparisons, all twelve paired frames and all six App/kernel action proofs.
+
 Every case has a complete before, smaller-grid and restored-geometry state.
 Both screen and complete bounded history are read twice independently per frame.
 There are twelve paired frames, including the initial state, nonce binding and
