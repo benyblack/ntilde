@@ -10,6 +10,13 @@ test('v6 binds all preceding suites, exact rederived resize actions and removed 
     const receipt = f.finish(); assert.equal(receipt.schemaVersion, 6); assert.equal(receipt.fixtureRemoved, true);
     assert.deepEqual(receipt.resizeEvidence.counts, { passed: 3 }); assert.deepEqual(receipt.historyEvidence.counts, { passed: 30 });
 }));
+test('v6 rejects a coherently errored action even when its observed facts, journals, proof and digest agree', () => fixture(f => {
+    f.actions[0].error = 'Failed post-request proof.';
+    f.write('resize-observations.json', f.report); f.write('ownership-proof.json', f.proof);
+    writeFileSync(join(f.output, 'resize-actions.jsonl'), f.actions.map(value => JSON.stringify(value)).join('\n'));
+    f.evidence.resizeEvidence.sha256 = snapshotHash(f.report);
+    assert.throws(f.finish);
+}));
 for (const [name, mutate] of [
     ['missing resize binding', f => { delete f.evidence.resizeEvidence; }],
     ['missing suite identity', f => { delete f.context.resizeSuiteId; f.write('context.json', f.context); }],

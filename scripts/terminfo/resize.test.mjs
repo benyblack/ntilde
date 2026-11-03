@@ -20,6 +20,10 @@ test('complete synthetic evidence derives all three plans and compares full smal
     assert.deepEqual(result.observations[2].snapshots, [8, 9, 10]);
     assert.deepEqual(result.observations[2].actions, [4, 5]);
 });
+for (const error of ['Failed post-request proof.', null, false]) test('an error field cannot qualify an otherwise valid successful action: ' + JSON.stringify(error), () => {
+    const value = syntheticResizeJournal(); value.actions[0].error = error;
+    assert.throws(() => report(value));
+});
 for (const [name, mutate] of [
     ['missing frame', value => value.frames.pop()],
     ['missing action', value => value.actions.pop()],

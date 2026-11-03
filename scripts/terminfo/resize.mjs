@@ -18,7 +18,8 @@ function frameKind(index, last) {
 /** Validate the independent App and kernel facts for one source-selected action. */
 function validateAction(action, expectedAction, stage, paneId, runId) {
     const observed = action?.observed;
-    check(action?.index === expectedAction && action.caseId === stage.caseId && action.stageId === stage.stageId
+    check(action?.index === expectedAction && !Object.hasOwn(action, 'error')
+        && action.caseId === stage.caseId && action.stageId === stage.stageId
         && same(action.target, stage.target) && observed?.paneId === paneId && observed.runId === runId
         && typeof observed.observedAt === 'string' && Number.isFinite(Date.parse(observed.observedAt))
         && new Date(observed.observedAt).toISOString() === observed.observedAt
