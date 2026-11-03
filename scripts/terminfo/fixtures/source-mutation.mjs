@@ -3,8 +3,11 @@ import fs from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { syncBuiltinESMExports } from 'node:module';
-const root = process.env.NTILDE_TERMINFO_TEST_SOURCE_ROOT;
-if (!root?.startsWith(join(tmpdir(), 'nt-receipt-')) || !fs.statSync(root).isDirectory()) throw new Error('Expected disposable source-clone root.');
+const selected = process.env.NTILDE_TERMINFO_TEST_SOURCE_ROOT;
+if (!selected) throw new Error('Expected disposable source-clone root.');
+const root = fs.realpathSync(selected);
+if (!root.startsWith(join(fs.realpathSync(tmpdir()), 'nt-receipt-')) || !fs.statSync(root).isDirectory())
+    throw new Error('Expected disposable source-clone root.');
 const original = fs.writeFileSync;
 fs.writeFileSync = (path, data, ...rest) => {
     const result = original(path, data, ...rest);
