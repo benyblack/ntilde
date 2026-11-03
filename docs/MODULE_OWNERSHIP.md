@@ -90,6 +90,9 @@ invariant changes.
   selection values and stream override flags come from the same VT snapshot; App separately
   reports derived selection paint colors, which do not imply a concrete OSC query default.
   See `docs/qa/terminfo/controlled-capture.md`.
+- **VT normalizes CSI default-one counts at the parser boundary.** ECH, IL and DL
+  treat an omitted or explicit zero count as one. Buffer APIs retain their direct
+  zero-count no-op semantics; cursor, margins and saved history remain independent.
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
 - **Agent editing observations are read-only snapshots.** App's opt-in `readScreen`
   `bufferState` copies margins, origin/wrap/insert modes, pending wrap, active screen
