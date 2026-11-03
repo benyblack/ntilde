@@ -11,7 +11,7 @@ import { buildEraseReport, buildCellEditingReport } from './editing.mjs';
 import { eraseSuiteId, editingSuiteId } from './editing-cases.mjs';
 import { historySuiteId } from './history-cases.mjs';
 import { buildHistoryReport } from './history.mjs';
-import { ownedOutputPolicy, sttyTool, validateOutputDescription } from './terminal-output.mjs';
+import { ownedOutputPolicy, sttyTool, validateOutputDescription, validateOutputGeometry } from './terminal-output.mjs';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const suites = ['sgr', 'rgb', 'rendition', 'cursor'];
@@ -87,6 +87,7 @@ function checkEditingEvidence(output, evidence, runId, prefix, suiteId, buildRep
         || evidence.status !== 'unavailable' || evidence.reason !== report.reason || JSON.stringify(evidence.counts) !== '{}') {
         throw new Error('Invalid editing unavailable marker.');
     }
+    return report;
 }
 function checkEditingSuites(output, evidence, runId, context) {
     if (context.eraseSuiteId !== eraseSuiteId || context.editingSuiteId !== editingSuiteId
@@ -100,7 +101,8 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
     const mode = proof.proofs?.[0]?.terminalOutput;
     if (mode?.outputProcessing !== false || mode.tool !== sttyTool || typeof mode.verifiedAt !== 'string' || !Number.isFinite(Date.parse(mode.verifiedAt))) throw new Error('Missing parent-observed private PTY output proof.');
     validateOutputDescription(mode.description);
-    checkEditingEvidence(output, evidence.historyEvidence, runId, 'history', historySuiteId, buildHistoryReport, 30);
+    const report = checkEditingEvidence(output, evidence.historyEvidence, runId, 'history', historySuiteId, buildHistoryReport, 30);
+    if (report.snapshots) validateOutputGeometry(mode.description, report.snapshots[0].screen.rows, report.snapshots[0].screen.cols);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
@@ -120,7 +122,9 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (context.colorSuiteId !== undefined) checkColorEvidence(output, evidence.colorEvidence, runId, context.colorSuiteId);
     const includesEditing = context.eraseSuiteId !== undefined || context.editingSuiteId !== undefined
         || evidence.eraseEvidence !== undefined || evidence.editingEvidence !== undefined;
-    const includesHistory = context.historySuiteId !== undefined || evidence.historyEvidence !== undefined;
+    const historyMarkers = ['historySuiteId', 'terminalOutput', 'historyCasesSourceSha256', 'historyCaptureSourceSha256', 'historySuiteSourceSha256', 'terminalOutputSourceSha256'];
+    const includesHistory = evidence.historyEvidence !== undefined || historyMarkers.some(key => context[key] !== undefined)
+        || proof.proofs?.some(entry => entry.terminalOutput !== undefined) === true;
     if (includesEditing || includesHistory) checkEditingSuites(output, evidence, runId, context);
     if (includesHistory) checkHistoryProof(output, evidence, runId, context, proof);
     let schemaVersion = 1;

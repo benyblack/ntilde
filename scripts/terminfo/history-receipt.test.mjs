@@ -12,6 +12,9 @@ test('v5 receipt binds the rederived complete history plan and parent-observed o
 for (const [name, mutate] of [
     ['missing binding', f => { delete f.evidence.historyEvidence; }],
     ['missing v5 identity', f => { delete f.context.historySuiteId; f.write('context.json', f.context); }],
+    ['history ID and binding stripped with output policy retained', f => { delete f.context.historySuiteId; delete f.evidence.historyEvidence; f.write('context.json', f.context); }],
+    ['history ID binding and policy stripped with v5 source retained', f => { delete f.context.historySuiteId; delete f.context.terminalOutput; delete f.evidence.historyEvidence; f.context.historySuiteSourceSha256 = 'a'.repeat(64); f.write('context.json', f.context); }],
+    ['context markers and history binding stripped with measured output proof retained', f => { delete f.context.historySuiteId; delete f.context.terminalOutput; delete f.evidence.historyEvidence; f.write('context.json', f.context); }],
     ['missing output policy', f => { delete f.context.terminalOutput; f.write('context.json', f.context); }],
     ['both v4 identities removed', f => { delete f.context.eraseSuiteId; delete f.context.editingSuiteId; f.write('context.json', f.context); }],
     ['earlier suite missing', f => { delete f.evidence.editingEvidence; }],
@@ -29,6 +32,7 @@ for (const [name, mutate] of [
     ['wrong tool', proof => { proof.proofs[0].terminalOutput.tool = 'stty'; }],
     ['missing measured flag', proof => { proof.proofs[0].terminalOutput.description = 'oflags: opost onlcr'; }],
     ['missing timestamp', proof => { delete proof.proofs[0].terminalOutput.verifiedAt; }],
+    ['mismatched kernel geometry', proof => { proof.proofs[0].terminalOutput.description = 'speed 9600 baud; 11 rows; 48 columns;\noflags: -opost onlcr'; }],
 ]) test('v5 refuses parent output proof ' + name, () => fixture(f => {
     mutate(f.proof); f.write('ownership-proof.json', f.proof); assert.throws(f.finish);
 }));

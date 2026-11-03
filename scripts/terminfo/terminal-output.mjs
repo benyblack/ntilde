@@ -3,8 +3,13 @@ export const sttyTool = '/bin/stty';
 export const ownedOutputPolicy = 'parent-verified -opost in proved private PTY for owned suites; previous mode restored before stock collection';
 export function validateOutputDescription(description) {
     if (typeof description !== 'string' || description.length > 4096) throw new Error('Invalid private PTY output description.');
-    const tokens = description.split(/\s+/);
-    if (!tokens.includes('-opost') || tokens.includes('opost')) throw new Error('Private PTY output translation is not disabled.');
+    const tokens = new Set(description.split(/\s+/));
+    if (!tokens.has('-opost') || tokens.has('opost')) throw new Error('Private PTY output translation is not disabled.');
+}
+export function validateOutputGeometry(description, rows, cols) {
+    validateOutputDescription(description);
+    const match = /(?:^|[;\s])(\d+) rows;\s+(\d+) columns;/.exec(description);
+    if (!match || Number(match[1]) !== rows || Number(match[2]) !== cols) throw new Error('Private PTY geometry does not match the observed App screen.');
 }
 function ttyPath(tty) {
     if (typeof tty !== 'string' || !/^\/dev\/ttys\d+$/.test(tty)) throw new Error('Expected the proved private macOS worker PTY.');

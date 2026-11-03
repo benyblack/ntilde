@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { prepareOwnedOutput, readOwnedOutputMode, sttyTool } from './terminal-output.mjs';
+import { prepareOwnedOutput, readOwnedOutputMode, sttyTool, validateOutputGeometry } from './terminal-output.mjs';
 const tty = '/dev/ttys123';
 function fixture({ flags = 'oflags: -opost onlcr', fail = null } = {}) {
     const calls = [], saved = 'gfmt1:cflag=4b00:iflag=0:oflag=3:lflag=0';
@@ -75,4 +75,11 @@ assert capture(program,True)==bytes([65,10,66,13,10])
 print('baseline CRLF; owned LF; exact original-mode restoration')`;
     const result = spawnSync('/usr/bin/python3', ['-c', script, process.execPath, program], { encoding: 'utf8', timeout: 5000 });
     assert.equal(result.status, 0, result.stdout + result.stderr); assert.match(result.stdout, /owned LF/);
+});
+
+test('kernel geometry is independently checked against the captured App grid', () => {
+    const description = 'speed 9600 baud; 41 rows; 140 columns;\noflags: -opost onlcr';
+    validateOutputGeometry(description, 41, 140);
+    for (const [rows, cols] of [[40, 140], [41, 141]]) assert.throws(() => validateOutputGeometry(description, rows, cols), /geometry/);
+    assert.throws(() => validateOutputGeometry('oflags: -opost onlcr', 41, 140), /geometry/);
 });

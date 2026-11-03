@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { ownedOutputPolicy, validateOutputDescription } from './terminal-output.mjs';
+import { ownedOutputPolicy, validateOutputDescription, validateOutputGeometry } from './terminal-output.mjs';
 import { makeHistoryCases } from './history-cases.mjs';
 import { buildHistoryReport } from './history.mjs';
 import { syntheticCellPlanJournal } from './fixtures/editing-journal.mjs';
@@ -52,6 +52,7 @@ test('published committed-source history measurement rederives all 30 comparison
     assert.deepEqual(data.receipt.historyEvidence.counts, { passed: 30 });
     assert.equal(data.context.terminalOutput, ownedOutputPolicy); assert.equal(data.terminalOutputProof.outputProcessing, false);
     validateOutputDescription(data.terminalOutputProof.description);
+    validateOutputGeometry(data.terminalOutputProof.description, report.snapshots[0].screen.rows, report.snapshots[0].screen.cols);
     assert.equal(data.appBuildSource, data.adapterSource); assert.ok(data.context.appVersion.includes(data.appBuildSource));
     assert.deepEqual(report.snapshots[0].screen, report.snapshots.at(-1).screen);
     assert.deepEqual(data.stockCollector.counts, { inconclusive: 177, supported: 78 });

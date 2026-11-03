@@ -458,6 +458,16 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             appendFileSync(join(output, attributes ? 'sgr-snapshots.jsonl' : 'cell-snapshots.jsonl'), JSON.stringify(observer.frames.at(-1)) + '\n');
             return result;
         };
+        const observeUntranslatedCells = (request, budget) => {
+            if (!outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
+            return observeCells(request, budget);
+        };
+        const attestOutputMode = (request, budget) => {
+            if (outputModeVerified || !proofs.length) throw new Error('Unexpected private PTY output proof.');
+            const mode = readOwnedOutputMode(request.tty, budget());
+            proofs[0].terminalOutput = { ...mode, verifiedAt: new Date().toISOString() };
+            outputModeVerified = true;
+        };
         const server = createServer(socket => {
             let buffer = '';
             socket.setTimeout(5000, () => socket.destroy());
@@ -486,8 +496,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
                     if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history)-(?:start|bind|read|finish)$/.test(request.kind)) {
-                        if (!outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
-                        const result = await observeCells(request, queryTimeout);
+                        const result = await observeUntranslatedCells(request, queryTimeout);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
                         return;
                     }
@@ -495,10 +504,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         // Retain the measured proof, never the capability token.
                         if (proofs.length === 0) proofs.push({ app: owner, worker, tty: request.tty, at: new Date().toISOString() });
                     } else if (request.kind === 'raw-output') {
-                        if (outputModeVerified || !proofs.length) throw new Error('Unexpected private PTY output proof.');
-                        const mode = readOwnedOutputMode(request.tty, queryTimeout());
-                        proofs[0].terminalOutput = { ...mode, verifiedAt: new Date().toISOString() };
-                        outputModeVerified = true;
+                        attestOutputMode(request, queryTimeout);
                     } else if (request.kind === 'done') {
                         completed = true;
                         resolveDone();

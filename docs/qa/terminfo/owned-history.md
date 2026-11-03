@@ -64,8 +64,10 @@ produce an unavailable marker; missing facts and later refusals remain fatal.
 
 Receipt v5 re-derives history evidence, compares its journal and counts, requires
 the parent-observed output-mode proof and preserves all nine earlier bindings.
-Context identities or supplied evidence both trigger mandatory validation, so
-removing an identity cannot silently downgrade the receipt. Finalization still
+Context identities, supplied evidence, the output policy, archived v5 source
+markers or a retained output-mode proof trigger mandatory validation, so stripping
+an identity and binding cannot silently downgrade the receipt. The independently
+recorded kernel geometry must match the bounded App snapshot geometry. Finalization still
 requires verified worker/app/socket shutdown and fixture removal. Sources and
 exact dependency inputs remain archived and hashed. Published historical v1-v4
 reports keep their original grades and remain exactly reproducible.
