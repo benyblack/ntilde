@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "211659153a59303ce24f7dd1f72df8f66daafecde878d6095e015a50017074eb",
+  "matrixSha256": "74b5cc1e268ada62ca5427a51e79b6e6483f7aa6bd8c037c22fe03a7c0acea1c",
   "summary": {
     "totalRows": 82,
     "supportedCount": 41,
@@ -754,7 +754,7 @@
       "feature": "Alternate screen",
       "status": "\u26A0 Partial",
       "specOrNotes": "Switch \u002B save/restore cursor",
-      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/AlternateScreenTests.cs\u0060; Replay: \u0060tests/Ntilde.App.Tests/ReplayTests/AlternateScreenReplayTests.cs\u0060, \u0060tests/Ntilde.App.Tests/ReplayTests/NativeSshReplayParityTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/AlternateScreenModeTests.cs\u0060, \u0060tests/Ntilde.App.Tests/AlternateScreenTests.cs\u0060; Replay: \u0060tests/Ntilde.App.Tests/ReplayTests/AlternateScreenReplayTests.cs\u0060, \u0060tests/Ntilde.App.Tests/ReplayTests/NativeSshReplayParityTests.cs\u0060",
       "evidenceKinds": [
         "replay",
         "unit"
@@ -771,12 +771,16 @@
         {
           "path": "tests/Ntilde.App.Tests/ReplayTests/NativeSshReplayParityTests.cs",
           "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/AlternateScreenModeTests.cs",
+          "exists": true
         }
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Buffer",
-      "knownDeviations": "Main scrollback is preserved and alt-screen output never enters scrollback. \u0060?47\u0060 reuses the existing alternate buffer/state without clearing; \u0060?1047\u0060 and \u0060?1049\u0060 clear and home the alternate buffer on entry. Nested/redundant alt-screen enters are treated as no-op, and a \u0060?1049\u0060 save is consumed by the first exit from alt-screen regardless of whether that exit uses \u0060?47l\u0060, \u0060?1047l\u0060, or \u0060?1049l\u0060.",
+      "knownDeviations": "Main scrollback is preserved and alt-screen output never enters scrollback. \u0060?47\u0060 and \u0060?1047\u0060 reuse the retained alternate buffer/state on entry. Following xterm, \u0060?1047l\u0060 clears the active alternate cells/row metadata before returning to main; while main is already active it does not clear a stashed alternate. \u0060?1049\u0060 clears and homes on entry. Nested/redundant alt-screen enters are treated as no-op, and a \u0060?1049\u0060 save is consumed by the first exit from alt-screen regardless of whether that exit uses \u0060?47l\u0060, \u0060?1047l\u0060, or \u0060?1049l\u0060.",
       "sourceLine": 117
     },
     {

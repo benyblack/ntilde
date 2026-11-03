@@ -989,9 +989,9 @@ namespace Ntilde.VT
                         if (enable) _buffer.EnterAltScreen(clearAlt: false, saveCursorForExit: false);
                         else SwitchToMainScreen();
                         break;
-                    case 1047:  // Alternate screen
-                        if (enable) _buffer.EnterAltScreen(clearAlt: true, saveCursorForExit: false);
-                        else SwitchToMainScreen();
+                    case 1047:  // Alternate screen: retain on entry, clear on exit (xterm).
+                        if (enable) _buffer.EnterAltScreen(clearAlt: false, saveCursorForExit: false);
+                        else SwitchToMainScreen(clearAltBeforeExit: true);
                         break;
                     case 1048:  // Save/restore cursor, the same banks as DECSC/DECRC
                         if (enable) SaveCursor();

@@ -37,6 +37,10 @@ invariant changes.
   "Export Snapshot (ANSI)" command relies on.
 
 **Invariants** (enforced by architecture tests and `tests/Ntilde.VT.Tests/`)
+- Alternate-screen clearing is mode-specific: 47 and 1047 retain the alternate cells and
+  per-screen cursor/pen on entry; 1047 clears active alternate text and row metadata on exit,
+  while an inactive reset does not clear stashed content. 1049 clears on entry and arms its
+  complete main saved cursor; the first alternate exit consumes that saved cursor.
 - Deterministic parsing — same byte stream produces the same semantic ops
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops ordinary text content. OSC 66 rectangles are

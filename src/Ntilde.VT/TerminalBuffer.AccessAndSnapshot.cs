@@ -856,12 +856,17 @@ namespace Ntilde.VT
         /// Switch back to main screen buffer
         /// </summary>
         public void SwitchToMainScreen(bool restoreSavedCursorIfArmed = true)
+            => SwitchToMainScreen(restoreSavedCursorIfArmed, clearAltBeforeExit: false);
+
+        // Parser-owned 1047 clearing stays under the same write lock as the screen transition.
+        internal void SwitchToMainScreen(bool restoreSavedCursorIfArmed, bool clearAltBeforeExit)
         {
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
                 if (!_isAltScreen) return;
 
+                if (clearAltBeforeExit) ClearAltScreenNoLock();
                 SaveActiveScreenStateNoLock();
                 _altScreen = _viewport;    // Save current viewport as alt screen
                 _isAltScreen = false;
