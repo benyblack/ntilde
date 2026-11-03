@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { buildEditingReport } from './editing.mjs';
 import { syntheticEditingJournal } from './fixtures/editing-journal.mjs';
 import { snapshotHash } from './agent-observer.mjs';
@@ -40,4 +42,29 @@ test('valid wrong post-state with qualified controls is a failed local compariso
     coherent(frames[3], screen => { screen.lines[2] = 'wrong'; });
     const report = buildEditingReport(frames, runId, 'editing'); assert.equal(report.observations[0].result, 'failed');
     assert.equal(report.observations[0].controls[0].passed, true);
+});
+
+test('published before/after runs rederive exact reports and preserve the three original negatives', () => {
+    const data = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-03-editing.json', import.meta.url)));
+    for (const phase of ['before', 'after']) {
+        const run = data[phase];
+        assert.equal(run.receipt.schemaVersion, 4); assert.equal(run.receipt.fixtureRemoved, true);
+        assert.equal(run.appBuildSource, run.adapterSource);
+        for (const prefix of ['erase', 'editing']) {
+            const report = run[prefix + 'Report'], derived = buildEditingReport(report.snapshots, run.context.runId, prefix);
+            assert.deepEqual(derived, report);
+            assert.equal(run.receipt[prefix + 'Evidence'].sha256, createHash('sha256').update(JSON.stringify(derived, null, 2) + '\n').digest('hex'));
+            assert.deepEqual(report.snapshots[0].screen, report.snapshots.at(-1).screen);
+            assert.ok(report.observations.every(value => value.controls.every(control => control.passed)));
+            assert.ok(report.inputs.every(value => value.before.history.totalLines === 2));
+        }
+        assert.deepEqual(run.stockCollector.counts, { inconclusive: 177, supported: 78 });
+        assert.equal(run.stockCollector.suiteComplete, false); assert.ok(run.stockCollector.ungradedDiagnostics['cursor.reverse-wrap']);
+    }
+    const observations = run => [...run.eraseReport.observations, ...run.editingReport.observations];
+    assert.deepEqual(observations(data.before).filter(value => value.result !== 'passed').map(value => value.featureId),
+        ['erase.characters.0', 'editing.insert-lines.0', 'editing.delete-lines.0']);
+    assert.equal(observations(data.after).length, 35); assert.ok(observations(data.after).every(value => value.result === 'passed'));
+    assert.deepEqual(data.before.eraseReport.inputs, data.after.eraseReport.inputs);
+    assert.deepEqual(data.before.editingReport.inputs, data.after.editingReport.inputs);
 });

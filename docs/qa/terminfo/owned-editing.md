@@ -50,3 +50,6 @@ This qualifies bounded ASCII stored cells and actual history text. Unicode editi
 rendered pixels, resize/reflow, full saved state and Windows/Linux runtime behavior
 remain separate work. The frozen stock result remains 78 supported, 177 inconclusive,
 zero unsupported, `suiteComplete=false`, with an ungraded reverse-wrap diagnostic.
+
+The [2026-11-03 before/after measurement](2026-11-03-editing.md) retains all 35
+comparisons, including the three qualified zero-count failures before the fix.
