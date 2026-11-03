@@ -67,8 +67,13 @@ namespace Ntilde.Shell
             }
         }
 
-        public TerminalView()
+        public TerminalView() : this(new TextBlinkAnimation()) { }
+
+        internal TerminalView(TextBlinkAnimation textBlink)
         {
+            ArgumentNullException.ThrowIfNull(textBlink);
+            _textBlink = textBlink;
+            _reportTextBlinkCells = _textBlink.ReportCells;
             Focusable = true;
             ClipToBounds = true;
 
@@ -119,6 +124,8 @@ namespace Ntilde.Shell
         private bool _isAttachedToVisualTree;
         private volatile bool _isUiRenderable;
         private bool _cursorBlinkPhase = true;
+        private readonly TextBlinkAnimation _textBlink;
+        private readonly Action<bool> _reportTextBlinkCells;
         private bool _cursorBlinkEnabled = true;
         private bool _bellAudioEnabled = true;
         private bool _bellVisualEnabled = true;
@@ -268,6 +275,7 @@ namespace Ntilde.Shell
                 _buffer.OnScreenSwitched -= OnScreenSwitched;
             }
             _buffer = buffer;
+            _textBlink.Restart(clearCells: true);
             if (_buffer != null)
             {
                 _buffer.OnInvalidate -= InvalidateBuffer; // Ensure no duplicates

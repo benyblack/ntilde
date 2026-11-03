@@ -71,6 +71,13 @@ invariant changes.
   existing row decoration side table, preserving the 12-byte cell layout. Saved pens, reflow,
   history, state transfer, replay and ANSI exports retain it. App paints it in the resolved
   foreground; SGR 58 remains underline-only. AgentHost exposes it only through explicit opt-in.
+- **Text blink presentation belongs to App.** VT snapshots cache only an unhidden SGR 5
+  presence flag while copying cells; they carry no clock or UI state. App advances a monotonic
+  530 ms half-period on its existing render timer, independently of cursor focus/settings,
+  and animates only rendered blinking ink. Hidden/retired views do not advance. Blink-off
+  suppresses glyphs and decorations while preserving backgrounds. Animated rows bypass
+  picture/span reuse and retire older cached versions; ordinary rows keep their cache path.
+  Offscreen snapshots default to visible text and accept an explicit deterministic phase.
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
 - **Cursor save state is shared by DECSC/DECRC and modes 1048/1049.** The per-screen banks
   retain position, rendition, pending wrap, origin mode and G0-G3/GL. Saved character sets

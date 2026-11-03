@@ -11,6 +11,9 @@ namespace Ntilde.Shell
     {
         private void OnRenderTimerTick(object? sender, EventArgs e)
         {
+            // SGR text blink uses this existing tick, independently of cursor focus/mode.
+            // No reported ink means no animation invalidations or additional timers.
+            if (ShouldRunUiTimers() && _buffer?.IsSynchronizedOutput != true && _textBlink.Advance()) _isDirty = true;
             if (!_isDirty && _buffer?.IsSynchronizedOutput == true)
             {
                 _buffer.FlushSynchronizedOutputTimeout();
@@ -146,6 +149,7 @@ namespace Ntilde.Shell
         private void StartUiTimers()
         {
             if (_uiTimersRunning) return;
+            _textBlink.Restart();
             _renderTimer.Start();
             // Blink is gated separately from the render timer: output still arrives on an
             // unfocused pane and must render, but its cursor is not drawn at all.
@@ -217,6 +221,7 @@ namespace Ntilde.Shell
             if (!_uiTimersRunning) return;
 
             _renderTimer.Stop();
+            _textBlink.Restart();
             _cursorBlinkTimer.Stop();
             _scrollAnimationTimer.Stop();
             // Nothing restarts this timer until the next wheel gesture, so a half-played

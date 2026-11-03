@@ -144,6 +144,26 @@ namespace Ntilde.Tests.RenderTests
         }
 
         [AvaloniaFact]
+        public void BlinkPhaseChange_RedrawsOnlyTheAnimatedRow_AndRestoresCachingAfterRemoval()
+        {
+            using var harness = new DrawPathHarness(Cols, Rows);
+            harness.Parser.Process("\x1b[?25l\x1b[5mBLINK\x1b[25m\r\nsteady");
+            harness.DrawFrame();
+
+            RendererStatistics.Reset();
+            harness.DrawFrame(textBlinkVisible: false);
+            Assert.Equal(Rows - 1, RendererStatistics.RowCacheHits);
+            Assert.Equal(1, RendererStatistics.RowCacheMisses);
+
+            harness.Parser.Process("\x1b[1;1HBLINK");
+            harness.DrawFrame(); // record the now-steady row
+            RendererStatistics.Reset();
+            harness.DrawFrame();
+            Assert.Equal(Rows, RendererStatistics.RowCacheHits);
+            Assert.Equal(0, RendererStatistics.RowCacheMisses);
+        }
+
+        [AvaloniaFact]
         public void GlyphAtlasIsReusedAcrossFrames_WithoutResetting()
         {
             var buffer = BufferWithContent();

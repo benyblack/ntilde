@@ -43,6 +43,8 @@ namespace Ntilde.Shell
         private readonly SKTypeface[] _fallbackChain;
         private readonly float _opacity;
         private readonly bool _hideCursor;
+        private readonly bool _textBlinkVisible;
+        private readonly Action<bool>? _reportTextBlinkCells;
         private readonly CursorStyle? _preferredCursorStyle;
         private readonly double _renderScaling;
         private readonly int _bufferRows;
@@ -227,7 +229,9 @@ namespace Ntilde.Shell
             double minimumContrast = 1.0,
             IDisposable? cacheLease = null,
             Action? requestImageFrame = null,
-            CursorStyle? preferredCursorStyle = null)
+            CursorStyle? preferredCursorStyle = null,
+            bool textBlinkVisible = true,
+            Action<bool>? reportTextBlinkCells = null)
         {
             _bounds = bounds;
             _preferredCursorStyle = preferredCursorStyle;
@@ -250,6 +254,8 @@ namespace Ntilde.Shell
             _fallbackChain = fallbackChain;
             _opacity = (float)Math.Clamp(opacity, 0.0, 1.0);
             _hideCursor = hideCursor;
+            _textBlinkVisible = textBlinkVisible;
+            _reportTextBlinkCells = reportTextBlinkCells;
             _renderScaling = renderScaling;
             _bufferRows = snapshotRows;
             _bufferCols = snapshotCols;
@@ -450,6 +456,7 @@ namespace Ntilde.Shell
                     _rowCache.RequestClear();
                 }
                 _wasAltScreenLastFrame = isAltScreen;
+                bool containsTextBlinkInk = false;
 
                 for (int r = 0; r < bufferRows; r++)
                 {
@@ -474,7 +481,10 @@ namespace Ntilde.Shell
                     bool hasRenderableRow = rowSnapshot.Cols > 0 && rowSnapshot.Cells.Length >= rowSnapshot.Cols && rowSnapshot.RowId != 0;
                     if (hasRenderableRow)
                     {
-                        item.CachedPicture = useRowCache ? _rowCache?.Get(rowSnapshot.RowId, rowSnapshot.Revision) : null;
+                        containsTextBlinkInk |= ContainsBlinkInk(rowSnapshot);
+                        // A pre-animation picture must not become the span baseline when blinking ends.
+                        if (useRowCache && rowSnapshot.ContainsBlink) _rowCache!.InvalidateRow(rowSnapshot.RowId);
+                        item.CachedPicture = useRowCache && !rowSnapshot.ContainsBlink ? _rowCache?.Get(rowSnapshot.RowId, rowSnapshot.Revision) : null;
 
                         if (item.CachedPicture != null)
                         {
@@ -492,7 +502,7 @@ namespace Ntilde.Shell
 
                     frame.RowItems.Add(item);
                 }
-
+                _reportTextBlinkCells?.Invoke(containsTextBlinkInk);
 
                 // --------------------
                 // Render Phase (LOCK RELEASED)
@@ -556,7 +566,7 @@ namespace Ntilde.Shell
                     {
                         var snapshot = item.Snapshot.Value;
                         bool hasDirtySpans = rowSpans != null && rowSpans.Count > 0;
-                        bool shouldUseSpanRendering = hasDirtySpans && ShouldUseSpanRenderingForRow(rowSpans!, snapshot.Cols);
+                        bool shouldUseSpanRendering = !snapshot.ContainsBlink && hasDirtySpans && ShouldUseSpanRenderingForRow(rowSpans!, snapshot.Cols);
 
                         SKPicture? previousRowPicture = null;
                         if (shouldUseSpanRendering)
@@ -618,7 +628,7 @@ namespace Ntilde.Shell
 
                             // Refresh cache entry for the new revision (full-row picture for future frames).
                             // Skip when useRowCache=false (AltScreen) — no point recording a picture we won't store.
-                            if (useRowCache && buildsThisFrame < maxBuilds)
+                            if (useRowCache && !snapshot.ContainsBlink && buildsThisFrame < maxBuilds)
                             {
                                 var recSw = System.Diagnostics.Stopwatch.StartNew();
                                 using var recorder = new SKPictureRecorder();
@@ -651,7 +661,7 @@ namespace Ntilde.Shell
                         else if (buildsThisFrame < maxBuilds)
                         {
                             rowRenderCount++;
-                            if (useRowCache)
+                            if (useRowCache && !snapshot.ContainsBlink)
                             {
                                 // Record into a picture so it can be cached and replayed on future frames.
                                 var recSw = System.Diagnostics.Stopwatch.StartNew();
@@ -1234,6 +1244,24 @@ namespace Ntilde.Shell
             _shapingCache.Clear();
         }
 
+        private static bool ContainsBlinkInk(RenderRowSnapshot row)
+        {
+            if (!row.ContainsBlink) return false;
+            for (int col = 0; col < Math.Min(row.Cols, row.Cells.Length); col++)
+                if (CellHasBlinkInk(row.Cells[col])) return true;
+            return false;
+        }
+
+        private static bool CellHasBlinkInk(RenderCellSnapshot cell)
+        {
+            if (!cell.IsBlink || cell.IsHidden || cell.IsWideContinuation) return false;
+            if (cell.IsStrikethrough || cell.Underline?.Overline == true) return true;
+            if (cell.IsUnderline && (cell.Underline is { HasColor: true } || cell.Underline?.Style is > UnderlineStyle.Single)) return true;
+            if (cell.TextSizing is { } sized) return ContainsNonWhitespace(sized.Block.Text);
+            if (cell.Text is { } text) return ContainsNonWhitespace(text);
+            return cell.Character != '\0' && !char.IsWhiteSpace(cell.Character);
+        }
+
         private int DrawRowTextFromSnapshot(
             SKCanvas canvas,
             RenderRowSnapshot snapshot,
@@ -1298,7 +1326,7 @@ namespace Ntilde.Shell
                 for (int c = 0; c < snapshot.Cols; c++)
                 {
                     var cell = snapshot.Cells[c];
-                    if (cell.IsWideContinuation || cell.IsHidden) continue;
+                    if (cell.IsWideContinuation) continue;
                     if (cell.TextSizing is { } sized)
                     {
                         if (sized.ColumnOffset == 0)
@@ -1315,6 +1343,7 @@ namespace Ntilde.Shell
                                 Primary = primaryTf,
                                 DrawBackgrounds = drawBackgrounds,
                                 HasVisibleText = ContainsNonWhitespace(sized.Block.Text),
+                                SuppressInk = cell.IsHidden || (cell.IsBlink && !_textBlinkVisible),
                                 ForegroundOverride = foregroundOverride,
                                 OverlayFill = overlayFill
                             });
@@ -1328,6 +1357,8 @@ namespace Ntilde.Shell
                     CellUnderline? runUnderline = cell.Underline;
                     bool runIsStrikethrough = cell.IsStrikethrough;
                     bool runIsFaint = cell.IsFaint;
+                    bool runIsHidden = cell.IsHidden;
+                    bool runIsBlink = cell.IsBlink;
                     var bg = cell.IsInverse ? cf : cb;
                     var fg = EnforceMinimumContrast(cell.IsInverse ? cb : cf, bg, overlayFill);
                     if (runIsFaint)
@@ -1352,7 +1383,6 @@ namespace Ntilde.Shell
                     {
                         var next = snapshot.Cells[k];
                         if (next.TextSizing != null) break;
-                        if (next.IsHidden) break;
                         if (next.IsWideContinuation)
                         {
                             k++;
@@ -1379,7 +1409,9 @@ namespace Ntilde.Shell
                             next.IsUnderline != runIsUnderline ||
                             !Equals(next.Underline, runUnderline) ||
                             next.IsStrikethrough != runIsStrikethrough ||
-                            next.IsFaint != runIsFaint)
+                            next.IsFaint != runIsFaint ||
+                            next.IsHidden != runIsHidden ||
+                            next.IsBlink != runIsBlink)
                             break;
 
                         string cellText = NormalizeTextElementForRender(next.Text ?? next.Character.ToString());
@@ -1445,6 +1477,13 @@ namespace Ntilde.Shell
                         _bgFillPaint.IsAntialias = false;
                         canvas.DrawRect(rx, rowTopYDip, rw, snappedCellHeight, _bgFillPaint);
                         IncrementRectDrawCall();
+                    }
+
+                    if (runIsHidden || (runIsBlink && !_textBlinkVisible))
+                    {
+                        cellsRendered += totalRunWidth;
+                        c = k - 1;
+                        continue;
                     }
 
                     bool appliedItalicTransform = false;
