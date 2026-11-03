@@ -11,9 +11,9 @@ if (!root.startsWith(join(fs.realpathSync(tmpdir()), 'nt-receipt-')) || !fs.stat
 const original = fs.writeFileSync;
 fs.writeFileSync = (path, data, ...rest) => {
     const result = original(path, data, ...rest);
-    if (typeof path === 'string' && path.startsWith(join(root, 'artifacts', 'terminfo', 'owned-')) && path.endsWith('/raw.json')) {
-        const target = join(root, 'scripts', 'terminfo', 'metadata-state.mjs');
-        original(target, fs.readFileSync(target, 'utf8') + '\n// Disposable source mutation after collection.\n');
+    if (typeof path === 'string' && path.endsWith('/worker.json')) {
+        const target = join(root, 'scripts', 'terminfo', 'metadata-cases.mjs');
+        original(target, fs.readFileSync(target, 'utf8').replaceAll('MD-base-', 'MUTATED-base-'));
     }
     return result;
 };

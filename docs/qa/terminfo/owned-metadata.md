@@ -58,16 +58,32 @@ in evidence; a callback or cleanup method invocation cannot replace them.
 ## Receipt and tests
 
 Version 8 requires all thirteen suite bindings and every retained file in the
-51-entry executed-source/input inventory, plus the derived collector bundle and
-retained dependency lock. It rederives metadata inputs,
+52-entry measured-source/input inventory, plus the derived collector bundle,
+retained dependency lock and source-snapshot manifest. The BCL-only trusted
+`scripts/terminfo-owned.mjs` launcher copies these bytes before importing the
+measured `scripts/terminfo-owned-runner.mjs`; parent, worker and ownership imports
+use the same private read-only mirror without fallback to checkout modules.
+Node/BCL, the launcher and operator environment are trusted and are not independently
+attested. Read-only permissions isolate routine edits, not a hostile same-user
+process. Historical 51-file v8 archives keep their recorded scope. It rederives metadata inputs,
 controls, results and counts from the complete paired journal and checks exact
 retained report/source bytes, private settings digest, common pane/kernel geometry
 and completed cleanup. Any metadata context field, source copy, parent marker,
 journal or either report forces this chain. Contradictory available/unavailable
 reports and attempts to omit the metadata binding are rejected. Only a preflight or zero-successful-response typed refusal can become an
 unavailable record. A successful RPC or partial capture makes the attempt fatal,
-even before nonce binding; its evidence is retained. Live sources are rehashed
-after worker collection and again after cleanup before receipt finalization.
+even before nonce binding; its evidence is retained. Captured sources are rehashed
+after collection and cleanup, then the private source tree is removed after the
+App/worker teardown and before receipt finalization. The receipt binds that manifest
+and removal record. Original checkout edits before parent imports or between parent
+and worker imports cannot change the captured graph.
+
+A queued UI update may settle across at most three paired captures within the
+existing operation deadline, per-observer 64-capture cap and response-byte budget.
+Every discarded mismatched pair is retained in the accepted frame (or failure
+artifact on exhaustion). Failed/malformed RPCs are never retried, nor does the
+sampler wait for an expected effect: a stable wrong state remains negative.
+Empty-title qualification explicitly requires an empty visible tab label.
 
 Portable tests cover wire bounds, fixed bytes, pairing, actual host-effect checks,
 ordering, ownership binding, restoration, counts, source/report/journal corruption,

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync } from 'node:fs';
+import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { ownedSourceFiles } from './owned-sources.mjs';
+import { ownedSourceFiles, legacyV8SourceFiles, sourceSnapshotPolicy } from './owned-sources.mjs';
 import { buildMetadataReport } from './metadata.mjs';
 import { metadataSuiteId, ownedMetadataPolicy } from './metadata-cases.mjs';
 import { validateOutputGeometry } from './terminal-output.mjs';
@@ -31,10 +31,30 @@ export function includesMetadataEvidence(output, evidence, context, proof) {
     return context.metadataSuiteId !== undefined || context.ownedMetadataPolicy !== undefined || evidence.metadataEvidence !== undefined
         || Object.keys(metadataSources).some(key => context[key] !== undefined)
         || proof.proofs?.some(value => value.metadata !== undefined) === true
+        || context.sourceSnapshotPolicy !== undefined || context.sourceInventorySha256 !== undefined
+        || proof.sourceSnapshot !== undefined || present(join(output, 'source-snapshot.json'))
+        || present(join(output, 'sources', 'owned-source-inventory.json'))
+        || present(join(output, 'sources', 'terminfo-owned-runner.mjs'))
         || present(join(output, 'metadata-failed-observation.json'))
         || present(join(output, 'metadata-snapshots.jsonl'))
         || present(join(output, 'metadata-observations.json')) || present(join(output, 'metadata-unavailable.json'))
         || Object.values(metadataSources).some(file => present(join(output, 'sources', file)));
+}
+function snapshotMode(output, context) {
+    return context.sourceSnapshotPolicy !== undefined || context.sourceInventorySha256 !== undefined
+        || present(join(output, 'source-snapshot.json')) || present(join(output, 'sources', 'owned-source-inventory.json'))
+        || present(join(output, 'sources', 'terminfo-owned-runner.mjs'));
+}
+function checkSnapshot(output, context, proof) {
+    check(context.sourceSnapshotPolicy === sourceSnapshotPolicy && /^[a-f\d]{64}$/.test(context.sourceSnapshotManifestSha256 ?? ''));
+    const data = bytes(output, 'source-snapshot.json', 65536), manifest = JSON.parse(data);
+    check(hash(data) === context.sourceSnapshotManifestSha256 && manifest.schemaVersion === 1 && manifest.policy === sourceSnapshotPolicy
+        && Object.keys(manifest.hashes ?? {}).length === Object.keys(ownedSourceFiles).length
+        && Object.keys(ownedSourceFiles).every(key => manifest.hashes[key] === context[key]));
+    check(proof.sourceSnapshot?.policy === sourceSnapshotPolicy && typeof context.sourceSnapshotRoot === 'string'
+        && proof.sourceSnapshot.root === context.sourceSnapshotRoot && !present(context.sourceSnapshotRoot)
+        && Number.isFinite(Date.parse(proof.sourceSnapshot.removedAt))
+        && Date.parse(proof.sourceSnapshot.removedAt) >= Date.parse(proof.cleanedUpAt));
 }
 function checkSources(output, context, marker) {
     check(context.metadataSuiteId === metadataSuiteId && context.ownedMetadataPolicy === ownedMetadataPolicy && marker?.policy === ownedMetadataPolicy
@@ -44,8 +64,11 @@ function checkSources(output, context, marker) {
         && hash(bytes(output, 'collector-adapter.mjs')) === context.adapterBundleSha256
         && hash(bytes(output, 'package-lock.json')) === context.collectorLockSha256);
     const dir = lstatSync(join(output, 'sources')); check(dir.isDirectory() && !dir.isSymbolicLink());
-    check(Object.keys(context).filter(key => key.endsWith('SourceSha256')).every(key => Object.hasOwn(ownedSourceFiles, key)));
-    for (const [key, file] of Object.entries(ownedSourceFiles)) {
+    const inventory = snapshotMode(output, context) ? ownedSourceFiles : legacyV8SourceFiles;
+    check(Object.keys(context).filter(key => key.endsWith('SourceSha256')).every(key => Object.hasOwn(inventory, key)));
+    const retained = readdirSync(join(output, 'sources')), expected = Object.values(inventory);
+    check(retained.length === expected.length && retained.every(file => expected.includes(file)));
+    for (const [key, file] of Object.entries(inventory)) {
         check(/^[a-f\d]{64}$/.test(context[key] ?? '') && hash(bytes(output, join('sources', file), 2 * 1024 * 1024)) === context[key]);
     }
 }
@@ -53,6 +76,7 @@ function checkSources(output, context, marker) {
 export function checkMetadataEvidence(output, binding, runId, context, proof) {
     const marker = proof.proofs?.[0]?.metadata;
     checkSources(output, context, marker);
+    if (snapshotMode(output, context)) checkSnapshot(output, context, proof);
     check(!present(join(output, 'metadata-failed-observation.json')));
     check(binding?.runId === runId && binding.suiteId === metadataSuiteId
         && ['metadata-observations.json', 'metadata-unavailable.json'].includes(binding.file));

@@ -82,6 +82,7 @@ net.createConnection = (...args) => {
 const spawn = childProcess.spawn;
 childProcess.spawn = (...args) => {
     const child = spawn(...args);
+    if (!Array.isArray(args[1]) || !args[1].some(value => value.startsWith('--ntilde-terminfo-owner='))) return child;
     record({ appPid: child.pid });
     interruptAt('post-spawn');
     const kill = child.kill.bind(child);

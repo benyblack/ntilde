@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
+import { ownedSourceFiles } from './owned-sources.mjs';
 import { upstreamReceipt } from './collector.mjs';
 import { installLockedCollector } from './runtime.mjs';
 import { terminateRecordedWorker } from './ownership.mjs';
@@ -46,13 +47,8 @@ function withCollectorFixture(receipt, lockfile, action) {
     // Clone the small runner fixture so tests never mutate the real tool cache.
     const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
     try {
-        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
-            'terminfo/worker.mjs', 'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs', 'terminfo/terminal-output.mjs',
-            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs', 'terminfo/editing-state.mjs', 'terminfo/editing-cases.mjs', 'terminfo/editing-expectations.mjs', 'terminfo/editing-capture.mjs', 'terminfo/editing.mjs', 'terminfo/history-cases.mjs', 'terminfo/history-capture.mjs', 'terminfo/history.mjs',
-            'terminfo/owned-sources.mjs', 'terminfo/metadata-cases.mjs', 'terminfo/metadata-capture.mjs', 'terminfo/metadata-state.mjs', 'terminfo/metadata-expectations.mjs', 'terminfo/metadata.mjs', 'terminfo/metadata-receipt.mjs',
-            'terminfo/saved-cases.mjs', 'terminfo/saved-capture.mjs', 'terminfo/saved.mjs', 'terminfo/saved-expectations.mjs', 'terminfo/saved-receipt.mjs',
-            'terminfo/resize-cases.mjs', 'terminfo/resize-capture.mjs', 'terminfo/resize.mjs', 'terminfo/resize-action.mjs', 'terminfo/resize-receipt.mjs',
-            'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
+        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', ...Object.values(ownedSourceFiles)
+            .map(file => file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file)]) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
             copyFileSync(join(repo, 'scripts', file), target);
@@ -168,7 +164,7 @@ function assertRetainedCollector(output) {
     const digest = bytes => createHash('sha256').update(bytes).digest('hex');
     assert.equal(digest(readFileSync(join(output, context.retainedAdapterBundle))), context.adapterBundleSha256);
     for (const [field, source] of [
-        ['runnerSourceSha256', 'terminfo-owned.mjs'], ['adapterSourceSha256', 'terminfo/collector.mjs'],
+        ['runnerSourceSha256', 'terminfo-owned-runner.mjs'], ['adapterSourceSha256', 'terminfo/collector.mjs'],
         ['ownershipSourceSha256', 'terminfo/ownership.mjs'], ['workerSourceSha256', 'terminfo/worker.mjs'],
         ['runtimeSourceSha256', 'terminfo/runtime.mjs'],
         ['observerSourceSha256', 'terminfo/agent-observer.mjs'], ['cellSuiteSourceSha256', 'terminfo/cells.mjs'],
@@ -185,7 +181,7 @@ function assertRetainedCollector(output) {
         ['editingSuiteSourceSha256', 'terminfo/editing.mjs'],
         ['historyCasesSourceSha256', 'terminfo/history-cases.mjs'], ['historyCaptureSourceSha256', 'terminfo/history-capture.mjs'],
         ['historySuiteSourceSha256', 'terminfo/history.mjs'],
-        ['sourceRegistrySourceSha256', 'terminfo/owned-sources.mjs'],
+        ['sourceRegistrySourceSha256', 'terminfo/owned-sources.mjs'], ['sourceInventorySha256', 'terminfo/owned-source-inventory.json'],
         ['metadataCasesSourceSha256', 'terminfo/metadata-cases.mjs'], ['metadataCaptureSourceSha256', 'terminfo/metadata-capture.mjs'],
         ['metadataStateSourceSha256', 'terminfo/metadata-state.mjs'], ['metadataExpectationsSourceSha256', 'terminfo/metadata-expectations.mjs'],
         ['metadataSuiteSourceSha256', 'terminfo/metadata.mjs'], ['metadataReceiptSourceSha256', 'terminfo/metadata-receipt.mjs'],
@@ -553,7 +549,7 @@ test('an initial pixel detail refusal after restored cursor evidence retains typ
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('a post-snapshot module edit in a disposable clone prevents the real collection receipt', {
+test('original-clone edits before worker launch cannot change the captured parent/worker graph', {
     skip: !prepared || !process.env.NTILDE_TERMINFO_TEST_EXECUTABLE,
 }, () => withCollectorFixture(upstreamReceipt, true, root => {
     const preload = new URL('./fixtures/source-mutation.mjs', import.meta.url).href;
@@ -563,14 +559,17 @@ test('a post-snapshot module edit in a disposable clone prevents the real collec
         env: { ...process.env, NTILDE_TERMINFO_TEST_SOURCE_ROOT: root,
             NODE_OPTIONS: [process.env.NODE_OPTIONS, '--import=' + preload].filter(Boolean).join(' ') },
     });
-    assert.equal(result.status, 1, result.stdout + result.stderr);
-    assert.match(result.stderr, /Owned source changed before completion: metadata-state.mjs/);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
     const output = /results: ([^\n]+)/.exec(result.stdout)[1];
     const proof = JSON.parse(readFileSync(join(output, 'ownership-proof.json')));
     assert.equal(proof.completed, true); assert.ok(proof.cleanedUpAt);
-    assert.ok(!existsSync(join(output, 'cell-receipt.json')));
-    const archived = readFileSync(join(output, 'sources', 'metadata-state.mjs'));
-    assert.notDeepEqual(archived, readFileSync(join(root, 'scripts', 'terminfo', 'metadata-state.mjs')));
+    assert.ok(existsSync(join(output, 'cell-receipt.json')));
+    assert.ok(proof.sourceSnapshot?.removedAt); assert.ok(!existsSync(proof.sourceSnapshot.root));
+    const archived = readFileSync(join(output, 'sources', 'metadata-cases.mjs'));
+    assert.notDeepEqual(archived, readFileSync(join(root, 'scripts', 'terminfo', 'metadata-cases.mjs')));
+    assert.ok(!archived.toString().includes('MUTATED-base-'));
+    const metadata = JSON.parse(readFileSync(join(output, 'metadata-observations.json')));
+    assert.ok(metadata.snapshots[1].before.metadata.oscTitle.startsWith('MD-base-'));
     const settings = JSON.parse(readFileSync(join(output, 'initial-settings.json')));
     assert.ok(!existsSync(dirname(settings.Profiles[0].Command)));
 }));

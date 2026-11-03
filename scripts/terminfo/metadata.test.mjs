@@ -116,3 +116,22 @@ test('published committed-source metadata rederives ten passes, empty-title nega
     assert.deepEqual(data.stockCollector.counts, { inconclusive: 177, supported: 78 });
     assert.equal(data.stockCollector.suiteComplete, false); assert.ok(data.stockCollector.ungradedDiagnostics['cursor.reverse-wrap']);
 });
+
+for (const tabText of ['MD-base-aaaaaaaa', 'fallback profile', '']) test('empty title independently requires an empty tab label: ' + JSON.stringify(tabText), () => {
+    const values = syntheticMetadataJournal();
+    coherent(values.find(value => value.caseId === 'metadata.title.empty' && value.stageId === 'observed'), value => {
+        value.metadata.oscTitle = ''; value.metadata.displayTitle = ''; value.metadata.presentation.tabText = tabText;
+    });
+    const item = buildMetadataReport(values, runId).observations.find(value => value.featureId === 'metadata.title.empty');
+    assert.equal(item.control.passed, true); assert.equal(item.result, tabText === '' ? 'passed' : 'failed');
+});
+
+for (const [name, mutate] of [
+    ['unchanged discarded pair', (pair) => { pair.after = structuredClone(pair.before); }],
+    ['wrong discarded pane', (pair) => { pair.after.metadata.paneId = '22222222-2222-2222-2222-222222222222'; }],
+    ['extra discarded field', (pair) => { pair.unrecorded = true; }],
+]) test('retained settling pair rejects ' + name, () => {
+    const values = syntheticMetadataJournal(), before = structuredClone(values[3].before), after = structuredClone(before);
+    after.metadata.presentation.tabText = 'queued refresh'; const pair = { before, after }; mutate(pair);
+    values[3].settling = [pair]; assert.throws(() => buildMetadataReport(values, runId));
+});

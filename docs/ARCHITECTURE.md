@@ -464,9 +464,17 @@ contents and original null title/cwd are not claimed restored. Actual settings
 and focus gate notification claims; OSC 133 P consumed-byte probes remain
 inconclusive without independent prompt-part readback. Version 8 receipts bind
 all thirteen suites, exact archived source/report bytes, parsed paired journals and cleanup;
-any retained metadata marker forces the complete chain. Live sources are checked
-after collection and cleanup; partial initial observations remain fatal rather
-than becoming clean unavailable markers.
+any retained metadata marker forces the complete chain. A trusted BCL-only launcher
+captures the complete 52-entry measured source/input graph before importing the
+measured runner. Parent, worker and derived collector ownership imports use that
+private read-only mirror; checkout edits cannot change their loaded modules.
+The launcher, Node/BCL and operator environment remain trusted, not independently
+attested. The manifest binds exact captured bytes; the measured source tree must
+be removed after App/worker teardown and before finalization. Historical 51-entry
+v8 evidence retains its original scope. Partial initial observations remain fatal
+rather than becoming clean unavailable markers. Paired reads may retry disagreement
+at most twice within the original deadline/capture/byte budgets, preserving every
+mismatched pair; stable wrong effects remain negative.
 
 ### Persistent-session scrollback policy
 

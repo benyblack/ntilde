@@ -27,7 +27,16 @@ function frameOperation(index, last) {
 }
 function validateFrame(frame, index, last, first, stage) {
     const keys = ['index', 'kind', 'paneId', 'barrier', 'before', 'sha256', 'after', 'afterSha256', 'caseId', 'stageId'];
+    if (Object.hasOwn(frame ?? {}, 'settling')) keys.push('settling');
     check(frame && Object.keys(frame).length === keys.length && keys.every(key => Object.hasOwn(frame, key)));
+    if (frame.settling !== undefined) {
+        check(Array.isArray(frame.settling) && frame.settling.length > 0 && frame.settling.length <= 2);
+        for (const pair of frame.settling) {
+            check(pair && Object.keys(pair).length === 2 && Object.hasOwn(pair, 'before') && Object.hasOwn(pair, 'after'));
+            const left = validateMetadataSnapshot(pair.before, first), right = validateMetadataSnapshot(pair.after, first);
+            check(!same(metadataProjection(left), metadataProjection(right)));
+        }
+    }
     const before = validateMetadataSnapshot(frame.before, first), after = validateMetadataSnapshot(frame.after, first);
     const sha = snapshotHash(metadataProjection(before));
     const operation = frameOperation(index, last);

@@ -938,9 +938,14 @@ requires public test classes.
   hidden-control contents are not claimed restored. Notification grades require
   observed settings/focus, and P consumption cannot become a semantic grade.
   Version 8 binds all thirteen suites, exact retained source/report bytes and
-  parsed paired journal frames through verified disposable teardown. Live source
-  bytes are rechecked after collection and cleanup; partial initial observations
-  stay fatal and cannot downgrade to clean unavailability.
+  parsed paired journal frames through verified disposable teardown. The BCL-only
+  trusted launcher captures 52 measured source/input files before importing the
+  runner; parent and worker use the same read-only private graph. It binds the
+  manifest and requires source-tree removal after App/worker cleanup, before the
+  receipt. Node/BCL, launcher and operator environment are trusted, not attested;
+  historical 51-file v8 evidence keeps its recorded scope. Partial initial reads
+  stay fatal. At most two disagreement retries share existing budgets and retain
+  their complete mismatched pairs; stable wrong effects cannot become passes.
 - **Owned resize QA is a separate caller boundary.** `scripts/terminfo-owned.mjs`
   enables act access only in its disposable settings root. Its source plan selects
   six App actions, re-proves process/PTY ownership before and after each action,

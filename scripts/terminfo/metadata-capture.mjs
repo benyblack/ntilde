@@ -86,19 +86,31 @@ export class OwnedMetadataObserver {
             else this.finished = true;
         }
     }
+    async settledPair(budget, remaining = 2) {
+        const before = await this.capture(this.before, budget); this.lastAttempt.before = before;
+        this.after.paneId ??= this.paneId;
+        const after = await this.capture(this.after, budget); this.lastAttempt.after = after;
+        if (snapshotHash(metadataProjection(before)) === snapshotHash(metadataProjection(after))) return { before, after };
+        (this.lastAttempt.settling ??= []).push({ before, after });
+        check(remaining > 0);
+        // Only agreement is retried, never an expected effect or a malformed/failed RPC.
+        // The original caller deadline, per-observer 64-capture and byte budgets still apply.
+        budget();
+        await new Promise(resolve => setTimeout(resolve, 10));
+        return this.settledPair(budget, remaining - 1);
+    }
     async handle(request, budget) {
         const { operation, stage } = this.validateRequest(request); this.busy = true;
         this.lastAttempt = { operation, caseId: stage?.caseId ?? null, stageId: stage?.stageId ?? null,
             responseBytes: 0, responses: [] };
         try {
-            const before = await this.capture(this.before, budget); this.lastAttempt.before = before;
-            this.after.paneId ??= this.paneId;
-            const after = await this.capture(this.after, budget); this.lastAttempt.after = after;
+            const { before, after } = await this.settledPair(budget);
             const sha256 = snapshotHash(metadataProjection(before));
             check(sha256 === snapshotHash(metadataProjection(after)));
             this.acceptPair(operation, before);
             this.frames.push({ index: this.frames.length, kind: request.kind, paneId: this.paneId, barrier: request.barrier,
-                before, sha256, after, afterSha256: sha256, caseId: stage?.caseId ?? null, stageId: stage?.stageId ?? null });
+                before, sha256, after, afterSha256: sha256, caseId: stage?.caseId ?? null, stageId: stage?.stageId ?? null,
+                ...(this.lastAttempt.settling ? { settling: this.lastAttempt.settling } : {}) });
             if (operation === 'read') this.next++;
             return { screen: before.screen, paneId: this.paneId };
         } catch (error) { this.lastAttempt.error = this.failure(error); throw error; }

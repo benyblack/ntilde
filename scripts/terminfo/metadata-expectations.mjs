@@ -48,7 +48,7 @@ export function matchesMetadataExpected(snapshot, expected, first, runId, finish
     const expectedLinks = expected.type === 'link' ? [{ row: expected.row, col: expected.col, length: 4, identity: 0,
         uri: expected.uri, id: expected.id }] : [];
     return same(snapshot.screen, expectedMetadataScreen(first, expected, runId, finish))
-        && m.oscTitle === title && m.displayTitle === title && p.tabText.includes(title) && m.workingDirectory === cwd
+        && m.oscTitle === title && m.displayTitle === title && (title === '' ? p.tabText === '' : p.tabText.includes(title)) && m.workingDirectory === cwd
         && b.alternateScreen === false && b.scrollbackLines === 0 && b.rowsEvicted === 0
         && same(b.links, expectedLinks) && shellMatches(snapshot, expected) && progressMatches(snapshot, expected)
         && toastMatches(snapshot, expected, runId) && p.windowVisible && p.paneActive && !p.focusMode

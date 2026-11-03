@@ -14,7 +14,7 @@ function fixture(inject = () => {}) {
             if (method === 'readScrollback') return value.screen.history;
             if (method === 'getSessionStatus') return value.rawStatus;
             assert.equal(method, 'readPaneMetadata');
-            if (corrupt && ++metadataReads === 2) value.metadata.oscTitle = 'changed between reads';
+            if (corrupt && ++metadataReads % 2 === 0) value.metadata.oscTitle = 'changed between reads';
             return value.metadata;
         } });
     return { observer, frames, reads, set: value => { frame = value; }, corrupt: () => { corrupt = true; metadataReads = 0; },
@@ -87,4 +87,24 @@ test('even a successful session response before an initial metadata refusal prev
     const observer = { frames: [], lastAttempt: { responses: [{ method: 'listSessions', response: { sessions: [] } }] } };
     assert.equal(initialMetadataRefusal(request, error, observer), false); assert.equal(metadataFailure(request, error, observer).code, undefined);
     assert.equal(initialMetadataRefusal({ kind: 'metadata-read' }, error, { frames: [] }), false);
+});
+
+test('a transient presentation change settles within the same deadline and retains the mismatched pair', async () => {
+    const f = fixture((method, value, reads) => {
+        if (method === 'readPaneMetadata' && reads.filter(v => v === method).length === 2) value.metadata.presentation.tabText = 'queued refresh';
+    });
+    await f.call(f.frames[0]);
+    const frame = f.observer.frames[0]; assert.equal(frame.settling.length, 1);
+    assert.equal(frame.settling[0].after.metadata.presentation.tabText, 'queued refresh');
+    assert.deepEqual(frame.before, f.frames[0].before); assert.deepEqual(frame.after, f.frames[0].after);
+    assert.equal(f.reads.filter(value => value === 'readPaneMetadata').length, 4);
+    for (const next of f.frames.slice(1)) { f.set(next); await f.call(next); }
+    const { buildMetadataReport } = await import('./metadata.mjs');
+    assert.equal(buildMetadataReport(f.observer.frames, runId).snapshots[0].settling.length, 1);
+});
+test('perpetually changing presentation exhausts three pairs without accepting or discarding evidence', async () => {
+    const f = fixture(); f.corrupt(); await assert.rejects(f.call(f.frames[0]));
+    assert.equal(f.observer.frames.length, 0); assert.equal(f.observer.lastAttempt.settling.length, 3);
+    assert.equal(f.reads.filter(value => value === 'readPaneMetadata').length, 6);
+    assert.ok(f.observer.lastAttempt.responses.length > 0); assert.ok(f.observer.lastAttempt.error);
 });
