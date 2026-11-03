@@ -439,9 +439,11 @@ The [revision-2 charset restoration measurement](terminfo/2026-11-02-rendition-c
 adds lowercase post-reset probes and the portable production receipt finalizer.
 The original v1 mapping measurement remains unchanged.
 
-## Controlled capture foundation
+## Controlled capture and owned pixel observations
 
 [Controlled offscreen capture](terminfo/controlled-capture.md) defines the optional synthetic
-clock and actual render metadata used to prepare owned pixel qualification. The terminfo.dev
-owned runner does not yet invoke this API as a pixel suite; #763 still tracks that follow-up.
+clock and actual render metadata used by the [owned pixel suite](terminfo/owned-pixels.md).
+It follows the five stored-state suites, retains 40 controlled PNG frames and evaluates 25
+local comparisons. The new version-2 cleanup receipt re-derives the pixel report and
+rechecks every image after verified cleanup; historical version-1 receipts remain unchanged.
 Existing stock grades and retained cell/query observations are unchanged.

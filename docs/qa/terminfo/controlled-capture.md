@@ -46,4 +46,4 @@ Windowless captures use their imported terminal snapshot and the font metrics/pr
 
 Compare controlled fixtures within recorded platform, renderer, font and geometry preconditions. Font hashes do not make rasterization identical across OS or renderer versions. Keep the original PNG, exact input, returned metadata, executable/source hashes and restoration/cleanup evidence with each observation. A state flag or cursor movement alone is not pixel evidence.
 
-This API is qualification infrastructure. The owned terminfo.dev pixel-observation suite is still a follow-up under #763. It does not change the frozen stock collector grades (78 supported, 0 unsupported, 177 inconclusive), historical reports or `suiteComplete: false`.
+The [owned pixel suite](owned-pixels.md) invokes this API in the disposable runner and retains its PNGs, complete state brackets and metadata. It does not change the frozen stock collector grades (78 supported, 0 unsupported, 177 inconclusive), historical reports or `suiteComplete: false`.
