@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { buildRenditionReport, collectRendition } from './rendition.mjs';
+import { buildRenditionReport as deriveReport, collectRendition } from './rendition.mjs';
 import { normal, rehash, runId, stateFrames, stateScreen } from './fixtures/state-frames.mjs';
+
+const buildRenditionReport = (frames, id, suite = 'ntilde-owned-rendition-charsets-v2') => deriveReport(frames, id, suite);
 
 const combined = [255, -1, -1, 0xff112233, 0xff445566, 3, -1, 0xff778899];
 const write = '\x1b[1;2;3;4:3;5;7;8;9;38;2;17;34;51;48;2;68;85;102;58;2;119;136;153mA';
@@ -31,7 +33,7 @@ test('16 rendition/charset experiments derive from independent complete physical
     const report = buildRenditionReport(frames(), runId);
     assert.equal(report.snapshots.length, 40);
     assert.deepEqual(report.observations.map(value => value.featureId), samples.map(([id]) => id));
-    assert.ok(report.observations.every(value => value.result === 'passed'));
+    assert.ok(report.observations.every(value => value.result === 'passed'), JSON.stringify(report.observations.filter(value => value.result !== 'passed')));
 });
 
 for (const [name, change, result] of [
@@ -52,7 +54,7 @@ test('wrong combining width fails qualified assertions', () => {
 
 test('rendition writes match independent literal experiments and restore ASCII shifts', async () => {
     const writes = [], reads = [];
-    await collectRendition({ config: { runId }, owner: async kind => { reads.push(kind); },
+    await collectRendition({ config: { runId }, suiteId: 'ntilde-owned-rendition-charsets-v2', owner: async kind => { reads.push(kind); },
         fence: { write: async value => { writes.push(value); return '\x1b[?62;4;22c'; } } });
     assert.ok(writes[0].endsWith('NTILDE_RD_' + runId));
     let offset = 1;
@@ -64,14 +66,14 @@ test('rendition writes match independent literal experiments and restore ASCII s
 
 test('initial known refusal performs no writes; other errors remain fatal', async () => {
     const writes = [];
-    const refused = await collectRendition({ config: { runId }, owner: async () => { throw Object.assign(new Error('budget'), { code: 'screenDetailsUnavailable' }); },
+    const refused = await collectRendition({ config: { runId }, suiteId: 'ntilde-owned-rendition-charsets-v2', owner: async () => { throw Object.assign(new Error('budget'), { code: 'screenDetailsUnavailable' }); },
         fence: { write: async value => writes.push(value) } });
     assert.equal(refused.status, 'unavailable'); assert.deepEqual(writes, []);
-    await assert.rejects(collectRendition({ config: { runId }, owner: async () => { throw new Error('wrong pane'); } }), /wrong pane/);
+    await assert.rejects(collectRendition({ config: { runId }, suiteId: 'ntilde-owned-rendition-charsets-v2', owner: async () => { throw new Error('wrong pane'); } }), /wrong pane/);
 });
 
 
-for (const filename of ['2026-11-02-rendition-cursor.json', '2026-11-02-rendition-cursor-restoration.json'])
+for (const filename of ['2026-11-02-rendition-cursor.json', '2026-11-02-rendition-cursor-restoration.json', '2026-11-03-overline.json'])
 test('published renditionReport re-derives and matches the shared cleanup receipt: ' + filename, () => {
     const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/' + filename, import.meta.url)));
     const report = published.renditionReport, receipt = published.completionReceipt;
@@ -80,7 +82,7 @@ test('published renditionReport re-derives and matches the shared cleanup receip
     assert.equal(report.runId, receipt.runId);
     assert.equal(receipt.renditionEvidence.runId, report.runId);
     assert.equal(receipt.renditionEvidence.suiteId, report.suiteId);
-    assert.deepEqual(receipt.renditionEvidence.counts, { passed: 16 });
+    assert.deepEqual(receipt.renditionEvidence.counts, { passed: report.suiteId === 'ntilde-owned-rendition-charsets-v3' ? 19 : 16 });
     assert.equal(receipt.fixtureRemoved, true);
     assert.equal(published.stockCollector.rawSha256, receipt.rawSha256);
     assert.deepEqual(published.stockCollector.counts, { inconclusive: 177, supported: 78 });
@@ -105,4 +107,74 @@ test('post-restoration probes detect an ignored G0 or G1 ASCII designation', () 
         rehash(input);
         assert.equal(buildRenditionReport(input, runId).observations.find(value => value.featureId === id).result, 'failed');
     }
+});
+
+const overlineSamples = [
+    ['sgr.overline', [['\x1b[53mA', 'A', [[...normal, true]]], ['\x1b[55mB', 'AB', [[...normal, true], normal]]]],
+    ['sgr.overline.underline-independent', [['\x1b[53;4:3;58;5;9mA', 'A', [[776, -1, -1, null, null, 3, 9, null, true]]],
+        ['\x1b[24mB', 'AB', [[776, -1, -1, null, null, 3, 9, null, true], [...normal, true]]],
+        ['\x1b[4:2mC\x1b[55mD', 'ABCD', [[776, -1, -1, null, null, 3, 9, null, true], [...normal, true],
+            [776, -1, -1, null, null, 2, 9, null, true], [776, -1, -1, null, null, 2, 9, null, false]]]]],
+    ['sgr.overline.reset', [['\x1b[53mA', 'A', [[...normal, true]]], ['\x1b[0mB', 'AB', [[...normal, true], normal]]]],
+];
+function overlineFrames() {
+    const expanded = [...samples, ...overlineSamples.map(([id, steps]) => [id,
+        steps.map(([sequence, first, details]) => [sequence, stateScreen(first, details, { includeOverline: true })])])];
+    const input = stateFrames('rendition', 'NTILDE_RD_', stateScreen('', [], { control: '' }), expanded,
+        () => stateScreen(), nonce => stateScreen(nonce, [], { control: '' }));
+    for (const frame of input) for (const run of frame.screen.cellDetails) run.overline ??= false;
+    rehash(input);
+    return input;
+}
+
+test('v3 adds independent overline experiments while retaining all prior charset and flag controls', () => {
+    const report = deriveReport(overlineFrames(), runId);
+    assert.equal(report.suiteId, 'ntilde-owned-rendition-charsets-v3');
+    assert.equal(report.snapshots.length, 50);
+    assert.equal(report.observations.length, 19);
+    assert.ok(report.observations.every(value => value.result === 'passed'), JSON.stringify(report.observations.filter(value => value.result !== 'passed')));
+});
+
+test('v3 refuses missing or untyped overline observations instead of assuming false', () => {
+    for (const value of [undefined, null, 1, 'true']) {
+        const input = overlineFrames();
+        input[0].screen.cellDetails[0].overline = value;
+        rehash(input);
+        assert.throws(() => deriveReport(input, runId), /overline/);
+    }
+});
+
+test('v3 detects ignored SGR53, ignored SGR55, ignored SGR0, and overline changed by SGR24', () => {
+    for (const [feature, assertion, cellIndex, replacement] of [
+        ['sgr.overline', 0, 0, false], ['sgr.overline', 1, 1, true],
+        ['sgr.overline.reset', 1, 1, true], ['sgr.overline.underline-independent', 1, 1, false],
+        ['sgr.overline.underline-independent', 2, 3, true],
+    ]) {
+        const input = overlineFrames(), before = deriveReport(input, runId);
+        const observation = before.observations.find(value => value.featureId === feature);
+        const frame = input[observation.assertions[assertion].snapshot];
+        const cells = frame.screen.cellDetails.flatMap(({ count, ...value }) => Array.from({ length: count }, () => ({ ...value })));
+        cells[cellIndex].overline = replacement;
+        frame.screen.cellDetails = [];
+        for (const cell of cells) {
+            const last = frame.screen.cellDetails.at(-1);
+            if (last && Object.keys(cell).every(key => cell[key] === last[key])) last.count++;
+            else frame.screen.cellDetails.push({ count: 1, ...cell });
+        }
+        rehash(input);
+        assert.equal(deriveReport(input, runId).observations.find(value => value.featureId === feature).result, 'failed');
+    }
+});
+
+test('v3 collector writes the independent overline experiments and restores the private main screen', async () => {
+    const writes = [];
+    await collectRendition({ config: { runId }, owner: async () => {}, fence: { write: async value => { writes.push(value); return '\x1b[?62;4;22c'; } } });
+    let offset = 1 + samples.reduce((sum, [, steps]) => sum + 1 + steps.length, 0);
+    for (const [, steps] of overlineSamples) {
+        assert.ok(writes[offset++].includes('KEEP!'));
+        assert.deepEqual(writes.slice(offset, offset + steps.length), steps.map(([sequence]) => sequence));
+        offset += steps.length;
+    }
+    assert.equal(offset, writes.length - 1);
+    assert.ok(writes.at(-1).endsWith('\x1b[?1049l'));
 });

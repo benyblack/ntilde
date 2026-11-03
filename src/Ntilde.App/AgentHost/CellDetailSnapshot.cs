@@ -8,7 +8,7 @@ namespace Ntilde.AgentHost;
 internal static class CellDetailSnapshot
 {
     /// <summary>Capture a complete canonical viewport or refuse before returning any partial data.</summary>
-    internal static bool TryCapture(TerminalBuffer buffer, out CellDetailRunDto[]? details)
+    internal static bool TryCapture(TerminalBuffer buffer, out CellDetailRunDto[]? details, bool includeOverline = false)
     {
         details = null;
         if ((long)buffer.Rows * buffer.Cols > AgentHostProtocol.MaxCellDetailCells) return false;
@@ -19,7 +19,7 @@ internal static class CellDetailSnapshot
         {
             for (var col = 0; col < buffer.Cols; col++)
             {
-                var value = Project(row, col);
+                var value = Project(row, col, includeOverline);
                 if (value == previous)
                 {
                     count++;
@@ -37,10 +37,11 @@ internal static class CellDetailSnapshot
     }
 
     /// <summary>Copy stored attributes without resolving defaults, palette colors or renderer effects.</summary>
-    private static CellDetailRunDto Project(TerminalRow row, int col)
+    private static CellDetailRunDto Project(TerminalRow row, int col, bool includeOverline)
     {
         var cell = row.Cells[col];
-        var underline = cell.IsUnderline ? row.GetUnderline(col) : null;
+        var decoration = cell.IsUnderline || includeOverline ? row.GetUnderline(col) : null;
+        var underline = cell.IsUnderline ? decoration : null;
         return new CellDetailRunDto
         {
             Count = 1,
@@ -52,6 +53,7 @@ internal static class CellDetailSnapshot
             UnderlineStyle = cell.IsUnderline ? (byte)(underline?.Style ?? UnderlineStyle.Single) : (byte)0,
             UnderlineColorIndex = underline?.ColorIndex ?? -1,
             UnderlineArgb = underline?.Color?.ToUint(),
+            Overline = includeOverline ? decoration?.Overline == true : null,
         };
     }
 

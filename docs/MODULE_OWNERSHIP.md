@@ -67,6 +67,10 @@ invariant changes.
   Writes extend the content boundary;
   structural edits discard the special boundary. Missing legacy metadata means full-row content.
   Cell layout/ABI is unchanged; malformed transferred boundaries are refused before mutation.
+- **Overline is sparse cell metadata.** SGR 53/55 is independent of underline and uses the
+  existing row decoration side table, preserving the 12-byte cell layout. Saved pens, reflow,
+  history, state transfer, replay and ANSI exports retain it. App paints it in the resolved
+  foreground; SGR 58 remains underline-only. AgentHost exposes it only through explicit opt-in.
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
 - **Cursor save state is shared by DECSC/DECRC and modes 1048/1049.** The per-screen banks
   retain position, rendition, pending wrap, origin mode and G0-G3/GL. Saved character sets

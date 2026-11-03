@@ -102,11 +102,23 @@ public sealed class Osc66RenderTests
     [AvaloniaTheory]
     [InlineData("\x1b[4m", false)]
     [InlineData("\x1b[4:3m", true)]
+    [InlineData("\x1b[53m", true)]
     [InlineData("\x1b[4;58:5:1m", true)]
     public void Sized_blank_underlines_follow_the_ordinary_plain_vs_styled_policy(string style, bool visible)
     {
         using var bitmap = Render(style + "\x1b]66;s=2:w=2;  \a");
         Assert.Equal(visible, Ink(bitmap).Width > 0);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("\x1b[53m")]
+    [InlineData("\x1b[4;53m")]
+    public void Sized_overline_is_clipped_to_the_top_of_the_scaled_block(string style)
+    {
+        using var bitmap = Render(style + "\x1b]66;s=2:w=2;  \a");
+        var ink = Ink(bitmap);
+        Assert.True(ink.Width > Metrics.CellWidth * Scaling);
+        Assert.True(ink.Bottom <= 5 * Scaling, $"overline extended down the block: {ink}");
     }
 
     [AvaloniaFact]
@@ -136,6 +148,7 @@ public sealed class Osc66RenderTests
     [AvaloniaTheory]
     [InlineData("\x1b[4:2m", true)]
     [InlineData("\x1b[4:3m", true)]
+    [InlineData("\x1b[53m", true)]
     [InlineData("\x1b[4;58:5:1m", true)]
     [InlineData("\x1b[4m", false)]
     public void Styled_underlines_cover_short_payloads_full_rectangles_while_plain_ones_follow_the_text(string style, bool full)

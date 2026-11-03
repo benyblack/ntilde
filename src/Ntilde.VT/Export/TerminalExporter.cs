@@ -168,7 +168,7 @@ namespace Ntilde.VT.Export
                         var cell = buffer.GetCellAbsolute(eol, absRow);
                         if (cell.Character != ' ' || !cell.IsDefaultBackground
                             || buffer.GetTextSizingAbsolute(eol, absRow) != null
-                            || (cell.IsUnderline && buffer.GetUnderlineAbsolute(eol, absRow) != null))
+                            || (buffer.GetUnderlineAbsolute(eol, absRow) != null))
                         {
                             break;
                         }
@@ -189,7 +189,7 @@ namespace Ntilde.VT.Export
                             c++;
                             continue;
                         }
-                        CellUnderline? underline = cell.IsUnderline ? buffer.GetUnderlineAbsolute(c, absRow) : null;
+                        CellUnderline? underline = buffer.GetUnderlineAbsolute(c, absRow);
                         if (isFirstCell || StateChanged(lastCell, cell) || underline != lastUnderline)
                         {
                             AppendSgrSequence(sb, cell, underline, isFirstCell ? TerminalCell.Default : lastCell, lastUnderline);
@@ -210,7 +210,7 @@ namespace Ntilde.VT.Export
                     bool needsEolReset = !lastCell.IsDefaultBackground || !lastCell.IsDefaultForeground ||
                                        lastCell.IsBold || lastCell.IsItalic || lastCell.IsUnderline ||
                                        lastCell.IsInverse || lastCell.IsStrikethrough || lastCell.IsFaint ||
-                                       lastCell.IsHidden || lastCell.IsBlink;
+                                       lastCell.IsHidden || lastCell.IsBlink || lastUnderline?.Overline == true;
 
                     if (!isFirstCell && needsEolReset)
                     {
@@ -279,6 +279,7 @@ namespace Ntilde.VT.Export
                 if (cell.IsFaint) codes.Add(2);
                 if (cell.IsItalic) codes.Add(3);
                 if (cell.IsUnderline) codes.Add(4);
+                if (underline?.Overline == true) codes.Add(53);
                 if (cell.IsBlink) codes.Add(5);
                 if (cell.IsInverse) codes.Add(7);
                 if (cell.IsHidden) codes.Add(8);
@@ -293,6 +294,7 @@ namespace Ntilde.VT.Export
                 if (!lastCell.IsFaint && cell.IsFaint) codes.Add(2);
                 if (!lastCell.IsItalic && cell.IsItalic) codes.Add(3);
                 if (!lastCell.IsUnderline && cell.IsUnderline) codes.Add(4);
+                if (lastUnderline?.Overline != true && underline?.Overline == true) codes.Add(53);
                 if (!lastCell.IsBlink && cell.IsBlink) codes.Add(5);
                 if (!lastCell.IsInverse && cell.IsInverse) codes.Add(7);
                 if (!lastCell.IsHidden && cell.IsHidden) codes.Add(8);
@@ -340,7 +342,7 @@ namespace Ntilde.VT.Export
                 sb.Append('m');
             }
 
-            if (underline is not null && (needsReset || underline != lastUnderline))
+            if (cell.IsUnderline && underline is not null && (needsReset || underline != lastUnderline))
             {
                 AnsiCellWriter.AppendUnderlineSgr(sb, underline);
             }

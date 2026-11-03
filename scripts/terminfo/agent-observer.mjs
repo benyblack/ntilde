@@ -66,7 +66,7 @@ export function agentRequest(endpoint, method, params, timeoutMs) {
 }
 
 /** Copy and bound only requested state; absent or malformed evidence never becomes a successful snapshot. */
-export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false) {
+export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false) {
     if (!Number.isSafeInteger(value?.rows) || value.rows < 3 || value.rows > 128
         || !Number.isSafeInteger(value.cols) || value.cols < 48 || value.cols > 256
         || !Array.isArray(value.lines) || value.lines.length !== value.rows
@@ -77,7 +77,7 @@ export function screenSnapshot(value, includeAttributes = false, includeCellDeta
     const result = { rows: value.rows, cols: value.cols, lines: [...value.lines],
         cursorRow: value.cursorRow, cursorCol: value.cursorCol, cursorVisible: value.cursorVisible };
     if (includeAttributes) result.attributeRuns = copyAttributeRuns(value.attributeRuns, value.rows * value.cols);
-    if (includeCellDetails) result.cellDetails = copyCellDetails(value.cellDetails, value.rows * value.cols);
+    if (includeCellDetails) result.cellDetails = copyCellDetails(value.cellDetails, value.rows * value.cols, includeOverline);
     if (includeCursorMode) {
         const mode = value.cursorMode;
         if (!mode || !Number.isSafeInteger(mode.style) || mode.style < 0 || mode.style > 2
@@ -88,8 +88,8 @@ export function screenSnapshot(value, includeAttributes = false, includeCellDeta
 }
 
 export class OwnedCellObserver {
-    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
-        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, prefix, rpc, endpoint });
+    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
+        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, includeOverline, prefix, rpc, endpoint });
         this.paneId = expectedPaneId;
         this.snapshots = 0;
         this.frames = [];
@@ -115,12 +115,13 @@ export class OwnedCellObserver {
         const before = await this.session(budget);
         const raw = await this.request('readScreen', { paneId: before.paneId, includeAttributes: this.includeAttributes,
             ...(this.includeCellDetails ? { includeCellDetails: true } : {}),
-            ...(this.includeCursorMode ? { includeCursorMode: true } : {}) }, budget);
+            ...(this.includeCursorMode ? { includeCursorMode: true } : {}),
+            ...(this.includeOverline ? { includeOverline: true } : {}) }, budget);
         const projection = screenSnapshot(raw);
         if (this.includeAttributes) projection.attributeRuns = readAttributeRuns(raw.attributeLines, projection.rows, projection.cols);
         if (this.includeCellDetails) projection.cellDetails = raw.cellDetails;
         if (this.includeCursorMode) projection.cursorMode = raw.cursorMode;
-        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode);
+        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode, this.includeOverline);
         const after = await this.session(budget);
         if (before.paneId !== after.paneId || before.rows !== screen.rows || before.cols !== screen.cols
             || after.rows !== screen.rows || after.cols !== screen.cols

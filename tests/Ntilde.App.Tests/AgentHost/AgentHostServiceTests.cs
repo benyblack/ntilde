@@ -178,14 +178,66 @@ public class AgentHostServiceTests : IDisposable
         Assert.False(response.Result!.Value.TryGetProperty("cellDetails", out _));
     }
 
-    private ScreenSnapshotDto ReadDetails(TerminalBuffer buffer)
+    private ScreenSnapshotDto ReadDetails(TerminalBuffer buffer, bool includeOverline = false)
     {
         var registry = new AgentSessionRegistry();
         var registration = Register(registry, buffer);
         using var service = NewService(registry);
         return ResultOf(Handle(service, RequestLine(AgentHostProtocol.Methods.ReadScreen,
-            paramsObj: new ReadScreenParams { PaneId = registration.PaneId, IncludeCellDetails = true })),
+            paramsObj: new ReadScreenParams { PaneId = registration.PaneId, IncludeCellDetails = true, IncludeOverline = includeOverline })),
             AgentHostJsonContext.Default.ScreenSnapshotDto);
+    }
+
+    [Fact]
+    public void ReadScreen_overline_is_explicitly_opted_in_and_preserves_legacy_run_boundaries()
+    {
+        var buffer = new TerminalBuffer(20, 3);
+        new AnsiParser(buffer).Process("\x1b[53mA\x1b[55mB\x1b[53mC\x1b[0m");
+        var legacy = ReadDetails(buffer);
+        Assert.Single(legacy.CellDetails!);
+        Assert.Null(legacy.CellDetails![0].Overline);
+        Assert.DoesNotContain("overline", JsonSerializer.Serialize(legacy, AgentHostJsonContext.Default.ScreenSnapshotDto));
+        var details = ReadDetails(buffer, includeOverline: true);
+        Assert.Equal(4, details.CellDetails!.Length);
+        var cells = ExpandDetails(details);
+        Assert.True(cells[0].Overline);
+        Assert.False(cells[1].Overline);
+        Assert.True(cells[2].Overline);
+        Assert.All(cells.Skip(3), cell => Assert.False(cell.Overline));
+        Assert.All(cells, cell => Assert.Equal(0, cell.UnderlineStyle));
+        Assert.All(cells, cell => Assert.Null(cell.UnderlineArgb));
+        Assert.All(cells, cell => Assert.Equal(-1, cell.UnderlineColorIndex));
+    }
+
+    [Theory]
+    [InlineData(64, true)]
+    [InlineData(65, false)]
+    public void ReadScreen_overline_respects_the_run_budget_without_fragmenting_legacy_details(int cols, bool allowed)
+    {
+        var buffer = new TerminalBuffer(cols, 16);
+        buffer.Lock.EnterWriteLock();
+        try
+        {
+            var index = 0;
+            foreach (var row in buffer.ViewportRows)
+                for (int col = 0; col < cols; col++)
+                    row.SetUnderline(col, index++ % 2 == 0 ? CellUnderline.OverlineOnly : null);
+        }
+        finally { buffer.Lock.ExitWriteLock(); }
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, buffer);
+        using var service = NewService(registry);
+        var response = Handle(service, RequestLine(AgentHostProtocol.Methods.ReadScreen,
+            paramsObj: new ReadScreenParams { PaneId = registration.PaneId, IncludeCellDetails = true, IncludeOverline = true }));
+        if (allowed)
+            Assert.Equal(1024, ResultOf(response, AgentHostJsonContext.Default.ScreenSnapshotDto).CellDetails!.Length);
+        else
+        {
+            Assert.Equal(AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable, response.Error?.Code);
+            Assert.Null(response.Result);
+            Assert.Equal(AgentAttentionTier.Idle, registration.AttentionMachine.Snapshot().Tier);
+        }
+        Assert.Single(ReadDetails(buffer).CellDetails!);
     }
 
     private static CellDetailRunDto[] ExpandDetails(ScreenSnapshotDto dto)

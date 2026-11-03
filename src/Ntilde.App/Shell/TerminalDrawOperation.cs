@@ -1325,7 +1325,7 @@ namespace Ntilde.Shell
                     var cf = ResolveCellForeground(cell, themeFg, alpha, themeSnapshot);
                     bool runIsItalic = cell.IsItalic;
                     bool runIsUnderline = cell.IsUnderline;
-                    CellUnderline? runUnderline = cell.IsUnderline ? cell.Underline : null;
+                    CellUnderline? runUnderline = cell.Underline;
                     bool runIsStrikethrough = cell.IsStrikethrough;
                     bool runIsFaint = cell.IsFaint;
                     var bg = cell.IsInverse ? cf : cb;
@@ -1352,7 +1352,8 @@ namespace Ntilde.Shell
                     {
                         var next = snapshot.Cells[k];
                         if (next.TextSizing != null) break;
-                        if (next.IsHidden || next.IsWideContinuation)
+                        if (next.IsHidden) break;
+                        if (next.IsWideContinuation)
                         {
                             k++;
                             continue;
@@ -1376,7 +1377,7 @@ namespace Ntilde.Shell
                             break;
                         if (next.IsItalic != runIsItalic ||
                             next.IsUnderline != runIsUnderline ||
-                            !Equals(next.IsUnderline ? next.Underline : null, runUnderline) ||
+                            !Equals(next.Underline, runUnderline) ||
                             next.IsStrikethrough != runIsStrikethrough ||
                             next.IsFaint != runIsFaint)
                             break;
@@ -1716,9 +1717,9 @@ namespace Ntilde.Shell
                     // came with a CSI-leader misparse fix). A styled or colored one (#270) is only ever there because
                     // an application asked for it with SGR 4:x, 21 or 58 - an editor's squiggle on trailing whitespace,
                     // say - so it is drawn across the whole run, blanks included, as other terminals draw it.
-                    bool styledUnderline = runUnderline is not null;
+                    bool styledUnderline = runUnderline is { HasColor: true } || runUnderline?.Style is > UnderlineStyle.Single;
                     bool underlineHasVisibleText = runIsUnderline && (styledUnderline || ContainsNonWhitespace(runText));
-                    if (underlineHasVisibleText || runIsStrikethrough)
+                    if (underlineHasVisibleText || runIsStrikethrough || runUnderline?.Overline == true)
                     {
                         _decoStrokePaint.Color = fg;
                         _decoStrokePaint.IsAntialias = true;
@@ -1743,6 +1744,14 @@ namespace Ntilde.Shell
                             }
 
                             DrawUnderline(canvas, runUnderline?.Style ?? UnderlineStyle.Single, underlineX1, underlineX2, underlineY, rowBottomY, strokeWidth);
+                            IncrementRectDrawCall();
+                        }
+
+                        if (runUnderline?.Overline == true)
+                        {
+                            _decoStrokePaint.Color = fg;
+                            float overlineY = rowTopYDip + (strokeWidth / 2);
+                            canvas.DrawLine(rx, overlineY, rx + rw, overlineY, _decoStrokePaint);
                             IncrementRectDrawCall();
                         }
 

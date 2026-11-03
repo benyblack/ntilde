@@ -243,7 +243,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const detailStates = new Map();
         const detailSpecs = {
             rgb: { previous: 'sgr', nonce: 'NTILDE_RG_', suiteId: rgbSuiteId, cases: rgbCases, report: buildRgbReport },
-            rendition: { previous: 'rgb', nonce: 'NTILDE_RD_', suiteId: renditionSuiteId, cases: renditionCases, report: buildRenditionReport },
+            rendition: { previous: 'rgb', nonce: 'NTILDE_RD_', suiteId: renditionSuiteId, cases: renditionCases, report: buildRenditionReport, includeOverline: true },
             cursor: { previous: 'rendition', nonce: 'NTILDE_CS_', suiteId: cursorSuiteId, cases: cursorCases, report: buildCursorReport, includeCursorMode: true },
         };
         let completed = false;
@@ -276,7 +276,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             let state = detailStates.get(prefix);
             if (!state) {
                 state = { observer: new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
-                    nonce: spec.nonce + runId, includeCellDetails: true, includeCursorMode: spec.includeCursorMode ?? false,
+                    nonce: spec.nonce + runId, includeCellDetails: true, includeCursorMode: spec.includeCursorMode ?? false, includeOverline: spec.includeOverline ?? false,
                     prefix, expectedPaneId: cellObserver.paneId }) };
                 detailStates.set(prefix, state);
             }

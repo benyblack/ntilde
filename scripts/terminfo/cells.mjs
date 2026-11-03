@@ -48,8 +48,8 @@ export async function collectCells({ config, owner, fence, fixtures = cellCases,
 }
 
 /** Validate complete state, provenance, identity and the ordering barrier for one frame. */
-function validateFrame(frame, index, baseline, includeAttributes, includeCellDetails, includeCursorMode) {
-    screenSnapshot(frame.screen, includeAttributes, includeCellDetails, includeCursorMode);
+function validateFrame(frame, index, baseline, includeAttributes, includeCellDetails, includeCursorMode, includeOverline) {
+    screenSnapshot(frame.screen, includeAttributes, includeCellDetails, includeCursorMode, includeOverline);
     if (frame.index !== index || frame.sha256 !== snapshotHash(frame.screen) || frame.paneId !== baseline.paneId
         || frame.screen.rows !== baseline.screen.rows || frame.screen.cols !== baseline.screen.cols) {
         throw new Error('Changed owned cell snapshot evidence.');
@@ -60,11 +60,11 @@ function validateFrame(frame, index, baseline, includeAttributes, includeCellDet
 }
 
 /** Check exact fixture ordering, nonce binding, geometry and main-screen restoration. */
-export function validateFrames(snapshots, runId, { fixtures = cellCases, prefix = 'cell', noncePrefix = 'NTILDE_QA_', includeAttributes = false, includeCellDetails = false, includeCursorMode = false } = {}) {
+export function validateFrames(snapshots, runId, { fixtures = cellCases, prefix = 'cell', noncePrefix = 'NTILDE_QA_', includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false } = {}) {
     const count = 3 + fixtures.reduce((sum, fixture) => sum + 1 + fixture.steps.length, 0);
     if (snapshots.length !== count || snapshots[0].kind !== prefix + '-start' || snapshots[1].kind !== prefix + '-bind'
         || snapshots.at(-1).kind !== prefix + '-finish') throw new Error('Incomplete owned cell snapshot sequence.');
-    for (const [index, frame] of snapshots.entries()) validateFrame(frame, index, snapshots[0], includeAttributes, includeCellDetails, includeCursorMode);
+    for (const [index, frame] of snapshots.entries()) validateFrame(frame, index, snapshots[0], includeAttributes, includeCellDetails, includeCursorMode, includeOverline);
     const binding = snapshots[1].screen;
     if (!/^[a-f\d]{32}$/.test(runId) || binding.lines[0] !== noncePrefix + runId
         || binding.cursorRow !== 0 || binding.cursorCol !== (noncePrefix + runId).length) {

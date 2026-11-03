@@ -290,16 +290,26 @@ retains the first qualified run and its limits.
 ### Supplemental remaining rendition, charsets and cursor modes
 
 After RGB collection restores (or records its initial typed budget refusal),
-the worker runs `ntilde-owned-rendition-charsets-v2`: 16 experiments and 40
-parent-owned frames. These measure faint, hidden, strikethrough and blink flags;
+the worker runs `ntilde-owned-rendition-charsets-v3`: 19 experiments and 50
+parent-owned frames. Three additional experiments observe SGR 53/55, independence
+from underline style/color and SGR 24, and SGR 0 reset. The explicit
+`readScreen(includeCellDetails=true, includeOverline=true)` opt-in includes a
+boolean per run. Without it, overline is omitted from both values and run
+boundaries, preserving canonical projections for older clients. These observations
+prove stored state; focused renderer tests separately exercise the painted top stroke. These measure faint, hidden, strikethrough and blink flags;
 their selective resets and SGR 0; BMP, combining, wide and supplementary Unicode;
 DEC line drawing/special graphics; and G0/G1 SI/SO switching. Complete physical
 cell details include wide-continuation and extended-text flags. Combining and
 wide cases use independent cursor-width expectations. Each charset sequence
 restores ASCII designation and shift, then writes lowercase probes to verify it.
 The first retained v1 mapping measurement predates those post-restoration probes
-and remains reproducible with its explicitly selected suite revision. Hidden text is
+and remains reproducible with its explicitly selected suite revision. The retained
+v2 measurement also remains reproducible, with its original 16 experiments and
+40 frames; it contains no overline observations. Hidden text is
 recorded buffer content; blink is a stored flag. Neither proves painted output.
+
+The [2026-11-03 overline measurement](terminfo/2026-11-03-overline.md) retains
+the qualified v3 run and its limits.
 
 `ntilde-owned-cursor-modes-v1` follows with nine experiments and 22 frames.
 `readScreen(includeCursorMode=true)` adds an optional `cursorMode` object with
@@ -328,12 +338,14 @@ Initial `screenDetailsUnavailable` refusals produce separate hashed unavailable
 markers, no invented outcomes, and permit subsequent suites/stock collection.
 Unrelated errors and any refusal after fixture entry remain fatal.
 
-Overline has no current VT state or renderer path. It remains open under #762
-for a separate implementation and qualification; no constant or consumed-input
-hint is substituted for an observation. Stock grades and frozen triage stay
-unchanged. Controlled pixels and blink timing remain subsequent work. The
+Overline now has VT state and an App rendering path, with stored state qualified
+by the [v3 measurement](terminfo/2026-11-03-overline.md). No constant or
+consumed-input hint substitutes for an observation. Stock grades and frozen
+triage stay unchanged. The live frames qualify stored state and decoded cells;
+controlled pixel observations and blink timing remain #763, and live
+Windows/Linux qualification remains #775. The earlier
 [2026-11-02 rendition/cursor measurement](terminfo/2026-11-02-rendition-cursor.md)
-retains the qualified run and its exact limits.
+retains its historical scope and exact limits.
 
 Adapter tests use Node's built-in test runner:
 

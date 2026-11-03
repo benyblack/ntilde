@@ -1046,7 +1046,7 @@ namespace Ntilde.VT
                         IsFaint = cell.IsFaint,
                         IsItalic = cell.IsItalic,
                         IsUnderline = cell.IsUnderline,
-                        Underline = cell.IsUnderline && underlines != null && underlines.TryGet(c, out CellUnderline? underline)
+                        Underline = underlines != null && underlines.TryGet(c, out CellUnderline? underline)
                             ? underline
                             : null,
                         IsBlink = cell.IsBlink,

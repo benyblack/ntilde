@@ -117,6 +117,7 @@ namespace Ntilde.VT
         [JsonPropertyName("faint")] public bool IsFaint { get; set; }
         [JsonPropertyName("italic")] public bool IsItalic { get; set; }
         [JsonPropertyName("ul")] public bool IsUnderline { get; set; }
+        [JsonPropertyName("ol"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsOverline { get; set; }
         [JsonPropertyName("blink")] public bool IsBlink { get; set; }
         [JsonPropertyName("strike")] public bool IsStrikethrough { get; set; }
         [JsonPropertyName("hidden")] public bool IsHidden { get; set; }
