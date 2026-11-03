@@ -69,6 +69,8 @@ namespace Ntilde.Shell
     {
         /// <summary>Selection to paint, or null for "nothing selected".</summary>
         public SelectionState? Selection { get; init; }
+        /// <summary>Resolve supplied selection rows against the actual captured viewport, not history coordinates.</summary>
+        public bool SelectionRelativeToViewport { get; init; }
 
         public bool HideCursor { get; init; }
 
@@ -295,7 +297,8 @@ namespace Ntilde.Shell
                 presentationTimeMs: options.PresentationTimeMs,
                 preferredCursorBlink: options.PreferredCursorBlink,
                 fillBackground: options.FillBackground,
-                collectRenderDetails: includeRenderDetails);
+                collectRenderDetails: includeRenderDetails,
+                selectionRelativeToViewport: options.SelectionRelativeToViewport);
 
             try
             {

@@ -30,6 +30,7 @@ namespace Ntilde.Shell
         private readonly CellMetrics _metrics;
         private readonly int _scrollOffset;
         private readonly SelectionState _selection;
+        private readonly bool _selectionRelativeToViewport;
         private readonly List<SearchMatch>? _searchMatches;
         private readonly int _activeSearchIndex;
         private readonly Typeface _typeface;
@@ -243,7 +244,8 @@ namespace Ntilde.Shell
             long? presentationTimeMs = null,
             bool preferredCursorBlink = true,
             bool fillBackground = false,
-            bool collectRenderDetails = false)
+            bool collectRenderDetails = false,
+            bool selectionRelativeToViewport = false)
         {
             _bounds = bounds;
             _preferredCursorStyle = preferredCursorStyle;
@@ -251,6 +253,7 @@ namespace Ntilde.Shell
             _buffer = buffer;
             _scrollOffset = scrollOffset;
             _selection = selection;
+            _selectionRelativeToViewport = selectionRelativeToViewport;
             _searchMatches = searchMatches;
             _activeSearchIndex = activeSearchIndex;
             _metrics = metrics;
@@ -301,6 +304,15 @@ namespace Ntilde.Shell
                 baselineOffsetPx: DevicePx(metrics.Baseline),
                 underlineOffsetPx: DevicePx(metrics.CellHeight - Math.Max(1.5f, metrics.CellHeight * 0.12f)),
                 strikeOffsetPx: (int)Math.Round(cellHeight * 0.52, MidpointRounding.AwayFromZero));
+        }
+
+        private SnapshotSelectionRange? CaptureSyntheticSelection(TerminalRenderSnapshot snapshot)
+        {
+            if (!_selectionRelativeToViewport || snapshot.SelectionRows.Length == 0) return null;
+            var first = snapshot.SelectionRows.Array[0];
+            var last = snapshot.SelectionRows.Array[snapshot.SelectionRows.Length - 1];
+            return new SnapshotSelectionRange(first.AbsRow - snapshot.AbsDisplayStart, first.ColStart,
+                last.AbsRow - snapshot.AbsDisplayStart, last.ColEnd);
         }
 
         public void Dispose()
@@ -404,6 +416,7 @@ namespace Ntilde.Shell
                     ViewportCols = _bufferCols,
                     ScrollOffset = _scrollOffset,
                     Selection = _selection,
+                    SelectionRelativeToViewport = _selectionRelativeToViewport,
                     SearchMatches = _searchMatches,
                     ActiveSearchIndex = _activeSearchIndex,
                     Isolated = _isolatedSnapshot,
@@ -458,7 +471,8 @@ namespace Ntilde.Shell
                 {
                     RenderedFrame = new RenderedFrameInfo(renderSnapshot.Theme, frame.RenderColors, _pixelGrid,
                         bufferRows, bufferCols, renderSnapshot.CursorRow, renderSnapshot.CursorCol,
-                        frame.CursorStyle, frame.CursorVisible, frame.CursorBlinkEnabled);
+                        frame.CursorStyle, frame.CursorVisible, frame.CursorBlinkEnabled,
+                        CaptureSyntheticSelection(renderSnapshot));
                 }
                 if (_fillBackground)
                 {

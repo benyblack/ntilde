@@ -254,6 +254,10 @@ public sealed record CaptureScreenParams
     [JsonPropertyName("presentationTimeMs")]
     public long? PresentationTimeMs { get; init; }
 
+    /// <summary>Synthetic viewport selection for render mode only; does not change the live selection.</summary>
+    [JsonPropertyName("syntheticSelection"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public CaptureSelection? SyntheticSelection { get; init; }
+
     /// <summary>Include the actual render font, pixel grid, palette and presentation facts. Render mode only.</summary>
     [JsonPropertyName("includeRenderDetails")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -322,6 +326,10 @@ public sealed record CaptureScreenResult
     /// <summary>Echoed only when explicitly requested, so an older endpoint cannot silently supply another phase.</summary>
     [JsonPropertyName("presentationTimeMs")]
     public long? PresentationTimeMs { get; init; }
+
+    /// <summary>Echoed only when a synthetic selection was requested and rendered.</summary>
+    [JsonPropertyName("syntheticSelection"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public CaptureSelection? SyntheticSelection { get; init; }
 
     [JsonPropertyName("renderDetails")]
     public CaptureRenderDetails? RenderDetails { get; init; }

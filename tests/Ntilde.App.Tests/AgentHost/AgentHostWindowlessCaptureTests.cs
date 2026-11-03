@@ -103,6 +103,38 @@ public class AgentHostWindowlessCaptureTests : IDisposable
     }
 
     [Fact]
+    public void Synthetic_selection_is_validated_and_painted_against_the_windowless_grid()
+    {
+        var registry = new AgentSessionRegistry();
+        RegisterMeasuredPane(registry, new TerminalTheme
+        {
+            Foreground = TermColor.White,
+            Background = TermColor.Black,
+            SelectionBackground = TermColor.FromRgb(23, 91, 173),
+        });
+        var source = new StubWindowlessSource();
+        var session = source.Add("", cols: 100, rows: 30);
+        var journal = new AgentActivityJournal();
+        using var service = NewService(registry, journal);
+        service.SetWindowlessSource(source);
+        var range = new CaptureSelection { StartRow = 29, StartCol = 99, EndRow = 29, EndCol = 99 };
+        var p = new CaptureScreenParams { PaneId = session.SessionId, Inline = true, IncludeRenderDetails = true, SyntheticSelection = range };
+        string Line(CaptureScreenParams value) => $"{{\"v\":1,\"id\":1,\"method\":\"captureScreen\",\"params\":{JsonSerializer.Serialize(value, AgentHostJsonContext.Default.CaptureScreenParams)}}}";
+        var response = Handle(service, Line(p));
+        Assert.Null(response.Error);
+        var result = response.Result!.Value.Deserialize(AgentHostJsonContext.Default.CaptureScreenResult)!;
+        Assert.Equal(range, result.SyntheticSelection);
+        Assert.Equal(range, result.RenderDetails!.SyntheticSelection);
+        using var bitmap = SKBitmap.Decode(Convert.FromBase64String(result.PngBase64!));
+        Assert.Equal(new SKColor(23, 91, 173), bitmap.GetPixel(800, 472));
+        var before = journal.Snapshot().Count;
+        var invalid = Handle(service, Line(p with { SyntheticSelection = range with { EndRow = 30 } }));
+        Assert.Equal(AgentHostProtocol.ErrorCodes.MalformedRequest, invalid.Error?.Code);
+        Assert.Equal(before, journal.Snapshot().Count);
+        Assert.Single(Directory.GetFiles(_exportDir));
+    }
+
+    [Fact]
     public void Render_draws_the_sessions_own_grid_at_a_panes_cell_size_and_is_journaled()
     {
         var registry = new AgentSessionRegistry();

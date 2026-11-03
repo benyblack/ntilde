@@ -83,7 +83,13 @@ invariant changes.
   background fill and opt-in metadata use the exact render snapshot, including a detached palette.
   Font stream fingerprints are bounded and opt-in. Live photographs reject synthetic time and
   render provenance; default capture wire shapes/phases stay unchanged. No request changes the
-  live animation clock or terminal state. See `docs/qa/terminfo/controlled-capture.md`.
+  live animation clock or terminal state. Synthetic selection is a detached offscreen input:
+  VT projects viewport-relative ranges against the actual captured viewport, preserving the
+  ordinary absolute-history selection path. App validates ordered/in-bounds coordinates before
+  attention/export and echoes the actual draw's selected range in metadata. Nullable theme
+  selection values and stream override flags come from the same VT snapshot; App separately
+  reports derived selection paint colors, which do not imply a concrete OSC query default.
+  See `docs/qa/terminfo/controlled-capture.md`.
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
 - **Cursor save state is shared by DECSC/DECRC and modes 1048/1049.** The per-screen banks
   retain position, rendition, pending wrap, origin mode and G0-G3/GL. Saved character sets

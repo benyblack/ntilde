@@ -164,12 +164,14 @@ public class AgentHostCaptureProtocolTests : IDisposable
         var line = CaptureRequestLine(registration.PaneId);
         Assert.DoesNotContain("presentationTimeMs", line, StringComparison.Ordinal);
         Assert.DoesNotContain("includeRenderDetails", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("syntheticSelection", line, StringComparison.Ordinal);
         var response = Handle(service, line);
         var result = Result(response);
         Assert.Null(result.PresentationTimeMs);
         Assert.Null(result.RenderDetails);
         Assert.False(response.Result!.Value.TryGetProperty("presentationTimeMs", out _));
         Assert.False(response.Result.Value.TryGetProperty("renderDetails", out _));
+        Assert.False(response.Result.Value.TryGetProperty("syntheticSelection", out _));
     }
 
     [Fact]
@@ -299,6 +301,134 @@ public class AgentHostCaptureProtocolTests : IDisposable
         var response = Handle(service, CaptureRequestLine(registration.PaneId));
         Assert.Equal(AgentHostProtocol.ErrorCodes.CaptureUnavailable, response.Error?.Code);
         Assert.False(Directory.Exists(_exportDir) && Directory.EnumerateFiles(_exportDir).Any());
+    }
+
+    private static string WithSyntheticSelection(string request, string value) => request.Replace(
+        "\"params\":{", "\"params\":{\"syntheticSelection\":" + value + ",", StringComparison.Ordinal);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Synthetic_selection_changes_only_the_offscreen_image_and_is_echoed(bool details)
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, "\x1b[?25lHMWqg");
+        registration.Buffer.Theme = new TerminalTheme
+        {
+            Foreground = TermColor.White,
+            Background = TermColor.Black,
+            SelectionBackground = TermColor.FromRgb(23, 91, 173),
+        };
+        using var service = NewService(registry);
+        string before = JsonSerializer.Serialize(registration.Buffer.ExportState(100));
+        var normal = Result(Handle(service, CaptureRequestLine(registration.PaneId, details: details)));
+        var response = Handle(service, WithSyntheticSelection(CaptureRequestLine(registration.PaneId, details: details),
+            "{\"startRow\":0,\"startCol\":0,\"endRow\":0,\"endCol\":4}"));
+        var selected = Result(response);
+        Assert.NotEqual(File.ReadAllBytes(normal.FilePath), File.ReadAllBytes(selected.FilePath));
+        Assert.Equal(4, response.Result!.Value.GetProperty("syntheticSelection").GetProperty("endCol").GetInt32());
+        Assert.Equal(before, JsonSerializer.Serialize(registration.Buffer.ExportState(100)));
+        var again = Result(Handle(service, CaptureRequestLine(registration.PaneId)));
+        Assert.Equal(File.ReadAllBytes(normal.FilePath), File.ReadAllBytes(again.FilePath));
+    }
+
+    [Theory]
+    [InlineData("render", "{\"startRow\":-1,\"startCol\":0,\"endRow\":0,\"endCol\":4}")]
+    [InlineData("render", "{\"startRow\":0,\"startCol\":0,\"endRow\":24,\"endCol\":4}")]
+    [InlineData("render", "{\"startRow\":0,\"startCol\":0,\"endRow\":0,\"endCol\":80}")]
+    [InlineData("render", "{\"startRow\":1,\"startCol\":0,\"endRow\":0,\"endCol\":4}")]
+    [InlineData("render", "{\"startRow\":0,\"startCol\":4,\"endRow\":0,\"endCol\":0}")]
+    [InlineData("render", "{\"startRow\":0,\"startCol\":0,\"endRow\":0}")]
+    [InlineData("live", "{\"startRow\":0,\"startCol\":0,\"endRow\":0,\"endCol\":4}")]
+    public void Invalid_synthetic_selection_does_not_mark_attention_or_export(string mode, string selection)
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, "unchanged");
+        var journal = new AgentActivityJournal();
+        using var service = NewService(registry, journal);
+        var response = Handle(service, WithSyntheticSelection(CaptureRequestLine(registration.PaneId, mode: mode), selection));
+        Assert.Equal(AgentHostProtocol.ErrorCodes.MalformedRequest, response.Error?.Code);
+        Assert.Equal(AgentAttentionTier.Idle, registration.AttentionMachine.Snapshot().Tier);
+        Assert.Empty(journal.Snapshot());
+        Assert.Empty(Directory.Exists(_exportDir) ? Directory.GetFiles(_exportDir) : Array.Empty<string>());
+    }
+
+    [Fact]
+    public void Render_metadata_distinguishes_color_overrides_and_nullable_selection_defaults()
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, "colors");
+        registration.Buffer.Theme = new TerminalTheme { Foreground = TermColor.White, Background = TermColor.Black };
+        using var service = NewService(registry);
+        var baseline = Handle(service, CaptureRequestLine(registration.PaneId, details: true));
+        var initial = baseline.Result!.Value.GetProperty("renderDetails").GetProperty("theme");
+        Assert.True(initial.TryGetProperty("cursorOverride", out var cursorOverride));
+        Assert.False(cursorOverride.GetBoolean());
+        Assert.Equal(JsonValueKind.Null, initial.GetProperty("selectionBackgroundArgb").ValueKind);
+        Assert.Equal(JsonValueKind.Null, initial.GetProperty("selectionForegroundArgb").ValueKind);
+        Assert.Equal(0, initial.GetProperty("paletteOverrideIndices").GetArrayLength());
+        new AnsiParser(registration.Buffer).Process("\x1b]12;#175bad\x1b\\\x1b]17;#205030\x1b\\\x1b]19;#f0e0d0\x1b\\\x1b]4;200;#112233\x1b\\");
+        var changed = Handle(service, CaptureRequestLine(registration.PaneId, details: true));
+        var theme = changed.Result!.Value.GetProperty("renderDetails").GetProperty("theme");
+        Assert.True(theme.GetProperty("cursorOverride").GetBoolean());
+        Assert.True(theme.GetProperty("selectionBackgroundOverride").GetBoolean());
+        Assert.True(theme.GetProperty("selectionForegroundOverride").GetBoolean());
+        Assert.Equal(0xff205030U, theme.GetProperty("selectionBackgroundArgb").GetUInt32());
+        Assert.Equal(0xfff0e0d0U, theme.GetProperty("selectionForegroundArgb").GetUInt32());
+        Assert.Equal(0xff205030U, theme.GetProperty("effectiveSelectionBackgroundArgb").GetUInt32());
+        Assert.Equal(0xfff0e0d0U, theme.GetProperty("effectiveSelectionForegroundArgb").GetUInt32());
+        Assert.Equal(200, theme.GetProperty("paletteOverrideIndices")[0].GetInt32());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Synthetic_selection_uses_the_actual_viewport_after_history_and_intervening_scroll(bool appendDuringDraw)
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, "\x1b[?25l" + string.Join("\r\n", Enumerable.Range(0, 40).Select(i => "line" + i)));
+        registration.Buffer.Theme = new TerminalTheme
+        {
+            Foreground = TermColor.White,
+            Background = TermColor.Black,
+            SelectionBackground = TermColor.FromRgb(23, 91, 173),
+        };
+        var range = new CaptureSelection { StartRow = 1, StartCol = 15, EndRow = 1, EndCol = 19 };
+        var options = new AgentCaptureOptions(null, true, range)
+        {
+            BeforeDrawForTest = appendDuringDraw ? () => new AnsiParser(registration.Buffer).Process("\r\nnew\r\nnew") : null,
+        };
+        Assert.True(registration.TryCapturePng(0, 1, out var capture, out _, options));
+        var details = Assert.IsType<CaptureRenderDetails>(capture.RenderDetails);
+        Assert.Equal(range, details.SyntheticSelection);
+        using var bitmap = SKBitmap.Decode(capture.Png);
+        var grid = details.Grid;
+        Assert.Equal(new SKColor(23, 91, 173), bitmap.GetPixel(grid.OriginXPx + 17 * grid.CellWidthPx + 4, grid.CellHeightPx + 8));
+        Assert.Equal(SKColors.Black, bitmap.GetPixel(grid.OriginXPx + 20 * grid.CellWidthPx + 4, grid.CellHeightPx + 8));
+    }
+
+    [Fact]
+    public void Color_metadata_resets_return_exactly_to_nullable_host_defaults()
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, "colors");
+        registration.Buffer.Theme = new TerminalTheme { Foreground = TermColor.White, Background = TermColor.Black };
+        using var service = NewService(registry);
+        var initial = Result(Handle(service, CaptureRequestLine(registration.PaneId, details: true))).RenderDetails!.Theme;
+        Assert.Null(initial.SelectionBackgroundArgb);
+        Assert.Null(initial.SelectionForegroundArgb);
+        Assert.NotEqual(0U, initial.EffectiveSelectionBackgroundArgb);
+        var parser = new AnsiParser(registration.Buffer);
+        parser.Process("\x1b]10;#102030;#405060;#708090\x1b\\\x1b]17;#a0b0c0\x1b\\\x1b]19;#d0e0f0\x1b\\\x1b]4;1;#123456;200;#abcdef\x1b\\");
+        var changed = Result(Handle(service, CaptureRequestLine(registration.PaneId, details: true))).RenderDetails!.Theme;
+        Assert.True(changed.ForegroundOverride);
+        Assert.True(changed.BackgroundOverride);
+        Assert.Equal(new[] { 1, 200 }, changed.PaletteOverrideIndices);
+        parser.Process("\x1b]104\x1b\\\x1b]110\x1b\\\x1b]111\x1b\\\x1b]112\x1b\\\x1b]117\x1b\\\x1b]119\x1b\\");
+        var restored = Result(Handle(service, CaptureRequestLine(registration.PaneId, details: true))).RenderDetails!.Theme;
+        Assert.Equal(JsonSerializer.Serialize(initial), JsonSerializer.Serialize(restored));
+        Assert.True(changed.SelectionBackgroundOverride);
+        Assert.Equal(0xffa0b0c0U, changed.SelectionBackgroundArgb);
     }
 
     // PNG signature: every capture must be a real PNG, not an empty or truncated file.

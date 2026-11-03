@@ -8,6 +8,8 @@ using Ntilde.VT;
 
 namespace Ntilde.Shell;
 
+internal readonly record struct SnapshotSelectionRange(int StartRow, int StartCol, int EndRow, int EndCol);
+
 /// <summary>Values from the exact snapshot and pixel grid used by one draw, never a later buffer read.</summary>
 internal readonly record struct RenderedFrameInfo(
     RenderThemeSnapshot Theme,
@@ -19,7 +21,8 @@ internal readonly record struct RenderedFrameInfo(
     int CursorCol,
     CursorStyle CursorStyle,
     bool CursorVisible,
-    bool CursorBlinkEnabled);
+    bool CursorBlinkEnabled,
+    SnapshotSelectionRange? SyntheticSelection = null);
 
 /// <summary>Cheap draw-grid facts are always returned; native font/provenance work remains opt-in.</summary>
 internal readonly record struct SnapshotCaptureInfo(int Rows, int Cols, int BufferRows, int BufferCols, SnapshotRenderContext? Context);
@@ -83,6 +86,11 @@ internal sealed record SnapshotRenderContext
         AnsiPalette = (TermColor[])theme.AnsiPalette.Clone(),
         HasForegroundOverride = theme.HasForegroundOverride,
         HasBackgroundOverride = theme.HasBackgroundOverride,
+        HasCursorOverride = theme.HasCursorOverride,
+        HasSelectionBackgroundOverride = theme.HasSelectionBackgroundOverride,
+        HasSelectionForegroundOverride = theme.HasSelectionForegroundOverride,
+        SelectionBackground = theme.SelectionBackground,
+        SelectionForeground = theme.SelectionForeground,
         PaletteOverrides = theme.PaletteOverrides,
     };
 

@@ -22,6 +22,13 @@ public class OverlineTests
     private static CellUnderline? At(TerminalBuffer buffer, int col, int row = 0)
         => buffer.GetUnderlineAbsolute(col, buffer.Scrollback.Count + row);
 
+    private static string GraphemeAt(TerminalBuffer buffer, int col, int row)
+    {
+        buffer.Lock.EnterReadLock();
+        try { return buffer.GetGrapheme(col, row); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
     [Fact]
     public void Overline_DoesNotWidenThePackedCell()
         => Assert.Equal(12, Marshal.SizeOf<TerminalCell>());
@@ -291,11 +298,11 @@ public class OverlineTests
         buffer.Resize(newCols, 6);
         for (int col = 1; col <= gap; col++)
             Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(col % newCols, col / newCols));
-        Assert.Equal('A', buffer.GetGrapheme(0, 0)[0]);
+        Assert.Equal('A', GraphemeAt(buffer, 0, 0)[0]);
         for (int index = 0; index < right.Length; index++)
         {
             int col = gap + 1 + index;
-            Assert.Equal(right[index].ToString(), buffer.GetGrapheme(col % newCols, col / newCols));
+            Assert.Equal(right[index].ToString(), GraphemeAt(buffer, col % newCols, col / newCols));
         }
     }
 
@@ -305,7 +312,7 @@ public class OverlineTests
         var buffer = new TerminalBuffer(24, 6);
         new AnsiParser(buffer).Process("A" + new string(' ', 12) + "B\x1b[53m  \x1b[55m");
         buffer.Resize(20, 6);
-        Assert.Equal("B", buffer.GetGrapheme(17, 0));
+        Assert.Equal("B", GraphemeAt(buffer, 17, 0));
         Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(18, 0));
         Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(19, 0));
     }
@@ -316,8 +323,8 @@ public class OverlineTests
         var buffer = new TerminalBuffer(20, 6);
         new AnsiParser(buffer).Process("A" + new string(' ', 12) + "B");
         buffer.Resize(16, 6);
-        Assert.Equal("A", buffer.GetGrapheme(0, 0));
-        Assert.Equal("B", buffer.GetGrapheme(15, 0));
+        Assert.Equal("A", GraphemeAt(buffer, 0, 0));
+        Assert.Equal("B", GraphemeAt(buffer, 15, 0));
         for (int col = 1; col < 15; col++) Assert.Null(buffer.GetUnderlineAbsolute(col, 0));
     }
 }
