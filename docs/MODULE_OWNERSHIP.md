@@ -938,7 +938,9 @@ requires public test classes.
   hidden-control contents are not claimed restored. Notification grades require
   observed settings/focus, and P consumption cannot become a semantic grade.
   Version 8 binds all thirteen suites, exact retained source/report bytes and
-  parsed paired journal frames through verified disposable teardown; partial evidence cannot downgrade.
+  parsed paired journal frames through verified disposable teardown. Live source
+  bytes are rechecked after collection and cleanup; partial initial observations
+  stay fatal and cannot downgrade to clean unavailability.
 - **Owned resize QA is a separate caller boundary.** `scripts/terminfo-owned.mjs`
   enables act access only in its disposable settings root. Its source plan selects
   six App actions, re-proves process/PTY ownership before and after each action,

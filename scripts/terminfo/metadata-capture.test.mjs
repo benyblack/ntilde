@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { OwnedMetadataObserver } from './metadata-capture.mjs';
+import { OwnedMetadataObserver, initialMetadataRefusal, metadataFailure } from './metadata-capture.mjs';
 import { syntheticMetadataJournal, metadataPaneId } from './fixtures/metadata-journal.mjs';
 const runId = 'a'.repeat(32);
 function fixture(inject = () => {}) {
@@ -61,4 +61,30 @@ for (const [name, inject] of [
     if (name === 'malformed metadata') assert.equal(attempt.responses.at(-1).response.buffer.links, 'malformed');
     if (name === 'malformed status') assert.equal(attempt.responses.at(-1).response.confidence, 'malformed');
     assert.equal(f.observer.frames.length, 0); assert.equal(f.observer.restored, false);
+});
+
+for (const code of ['paneMetadataUnavailable', 'screenDetailsUnavailable', 'metadataGeometryUnavailable']) {
+    test('clean preflight ' + code + ' retains its initial optional meaning', () => {
+        const request = { kind: 'metadata-start' }, error = Object.assign(new Error('preflight'), { code });
+        const observer = { frames: [] };
+        assert.equal(initialMetadataRefusal(request, error, observer), true);
+        assert.equal(metadataFailure(request, error, observer), error);
+    });
+    test('typed second-capture ' + code + ' is fatal and retains the first capture/raw responses', async () => {
+        const request = { kind: 'metadata-start' }, error = Object.assign(new Error('second read refused'), { code });
+        const f = fixture((method, value, reads) => {
+            if (method === 'readPaneMetadata' && reads.filter(v => v === method).length === 2) throw error;
+        });
+        await assert.rejects(f.call(f.frames[0]), value => value === error);
+        assert.ok(f.observer.lastAttempt.before); assert.ok(f.observer.lastAttempt.responses.some(value => Object.hasOwn(value, 'response')));
+        assert.equal(initialMetadataRefusal(request, error, f.observer), false);
+        const fatal = metadataFailure(request, error, f.observer);
+        assert.equal(fatal.code, undefined); assert.equal(fatal.cause, error); assert.equal(f.observer.frames.length, 0);
+    });
+}
+test('even a successful session response before an initial metadata refusal prevents a clean skip', () => {
+    const request = { kind: 'metadata-start' }, error = Object.assign(new Error('refused'), { code: 'paneMetadataUnavailable' });
+    const observer = { frames: [], lastAttempt: { responses: [{ method: 'listSessions', response: { sessions: [] } }] } };
+    assert.equal(initialMetadataRefusal(request, error, observer), false); assert.equal(metadataFailure(request, error, observer).code, undefined);
+    assert.equal(initialMetadataRefusal({ kind: 'metadata-read' }, error, { frames: [] }), false);
 });

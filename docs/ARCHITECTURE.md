@@ -464,7 +464,9 @@ contents and original null title/cwd are not claimed restored. Actual settings
 and focus gate notification claims; OSC 133 P consumed-byte probes remain
 inconclusive without independent prompt-part readback. Version 8 receipts bind
 all thirteen suites, exact archived source/report bytes, parsed paired journals and cleanup;
-any retained metadata marker forces the complete chain.
+any retained metadata marker forces the complete chain. Live sources are checked
+after collection and cleanup; partial initial observations remain fatal rather
+than becoming clean unavailable markers.
 
 ### Persistent-session scrollback policy
 

@@ -64,8 +64,10 @@ controls, results and counts from the complete paired journal and checks exact
 retained report/source bytes, private settings digest, common pane/kernel geometry
 and completed cleanup. Any metadata context field, source copy, parent marker,
 journal or either report forces this chain. Contradictory available/unavailable
-reports and attempts to omit the metadata binding are rejected. Only an initial
-typed refusal before fixture writes can become an unavailable record.
+reports and attempts to omit the metadata binding are rejected. Only a preflight or zero-successful-response typed refusal can become an
+unavailable record. A successful RPC or partial capture makes the attempt fatal,
+even before nonce binding; its evidence is retained. Live sources are rehashed
+after worker collection and again after cleanup before receipt finalization.
 
 Portable tests cover wire bounds, fixed bytes, pairing, actual host-effect checks,
 ordering, ownership binding, restoration, counts, source/report/journal corruption,

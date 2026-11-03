@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged } from './terminfo/owned-sources.mjs';
-import { OwnedMetadataObserver } from './terminfo/metadata-capture.mjs';
-import { metadataSuiteId, ownedMetadataPolicy } from './terminfo/metadata-cases.mjs';
+import { OwnedMetadataObserver, initialMetadataRefusal, metadataFailure } from './terminfo/metadata-capture.mjs';
+import { metadataSuiteId, ownedMetadataPolicy, makeMetadataCases } from './terminfo/metadata-cases.mjs';
 import { buildMetadataReport } from './terminfo/metadata.mjs';
 // Launches a private macOS desktop instance; never attaches to an existing pane.
 import { spawn, execFileSync } from 'node:child_process';
@@ -52,12 +52,9 @@ function ownerFailure(error) {
         ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
 }
 
-function initialMetadataRefusal(request, error) {
-    return request.kind === 'metadata-start' && ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code);
-}
 function retainFailedMetadataAttempt(output, request, error, observer) {
-    if (observer.lastAttempt?.error && !initialMetadataRefusal(request, error))
-        writeJson(join(output, 'metadata-failed-observation.json'), observer.lastAttempt);
+    if (observer.lastAttempt && !initialMetadataRefusal(request, error, observer))
+        writeJson(join(output, 'metadata-failed-observation.json'), { ...observer.lastAttempt, error: observer.failure(error) });
 }
 
 function validateInvocation(args) {
@@ -545,6 +542,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 throw Object.assign(new Error('Metadata-state fixture requires complete screen details.'), { code: 'screenDetailsUnavailable' });
             }
             try {
+                if (request.kind === 'metadata-start') makeMetadataCases(cellObserver.baseline.rows, cellObserver.baseline.cols, runId);
                 const result = await state.observer.handle(request, budget);
                 if (request.kind === 'metadata-start') {
                     if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error('Original geometry changed before metadata-state observations.');
@@ -555,9 +553,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 return result;
             } catch (error) {
                 retainFailedMetadataAttempt(output, request, error, state.observer);
-                if (initialMetadataRefusal(request, error)
-                    && !state.observer.baseline && !state.observer.frames.length) recordMetadataUnavailable(error.code);
-                throw error;
+                if (initialMetadataRefusal(request, error, state.observer)) recordMetadataUnavailable(error.code);
+                throw metadataFailure(request, error, state.observer);
             }
         };
         /** Route owned observations serially, preserving suite restoration and pane identity dependencies. */

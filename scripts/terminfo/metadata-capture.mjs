@@ -5,6 +5,20 @@ import { makeMetadataCases } from './metadata-cases.mjs';
 import { matchesMetadataExpected } from './metadata-expectations.mjs';
 import { metadataProjection, validateMetadataSnapshot } from './metadata.mjs';
 const check = value => { if (!value) throw new Error('Invalid owned metadata binding or restoration.'); };
+const unavailableCodes = ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'];
+/** Only a preflight/zero-response refusal is eligible for the initial optional marker. */
+export function initialMetadataRefusal(request, error, observer) {
+    const attempt = observer?.lastAttempt;
+    return request.kind === 'metadata-start' && unavailableCodes.includes(error.code)
+        && !observer?.baseline && !observer?.frames?.length && !attempt?.before
+        && !attempt?.responses?.some(record => Object.hasOwn(record, 'response'));
+}
+/** A partial failure must not retain a code that the worker treats as a clean initial skip. */
+export function metadataFailure(request, error, observer) {
+    if (!initialMetadataRefusal(request, error, observer) && unavailableCodes.includes(error.code))
+        return new Error('Metadata observation failed after partial responses.', { cause: error });
+    return error;
+}
 /** Read actual host controls separately from the complete VT viewport; preserve both independent reads. */
 export class OwnedMetadataObserver {
     constructor(options) {

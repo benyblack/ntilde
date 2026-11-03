@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { metadataFailure } from './metadata-capture.mjs';
 import { collectMetadata, makeMetadataCases, metadataFixture } from './metadata-cases.mjs';
 import { initialEditingScreen } from './fixtures/editing-journal.mjs';
 const config = { runId: 'a'.repeat(32) }, barrier = '\x1b[?1;2c';
@@ -25,4 +26,13 @@ for (const fatal of [false, true]) test('later refusal remains fatal and attempt
         calls.push(kind); if (kind === 'metadata-read') { fence.failed = fatal; throw error; } return { screen: initialEditingScreen(12, 60) };
     } }), value => value === error);
     assert.equal(writes.at(-1), metadataFixture(config.runId).finish); assert.ok(!calls.includes('metadata-finish'));
+});
+
+test('a partial initial typed refusal cannot make the worker skip the metadata suite', async () => {
+    const writes = [], original = Object.assign(new Error('partial read'), { code: 'paneMetadataUnavailable' });
+    const error = metadataFailure({ kind: 'metadata-start' }, original,
+        { frames: [], lastAttempt: { responses: [{ method: 'listSessions', response: { sessions: [] } }] } });
+    await assert.rejects(collectMetadata({ config, fence: { write: async value => writes.push(value) },
+        owner: async () => { throw error; } }), value => value === error);
+    assert.equal(writes.length, 0); assert.equal(error.code, undefined); assert.equal(error.cause, original);
 });
