@@ -105,10 +105,21 @@ public class AgentHostCaptureProtocolTests : IDisposable
         bool inline = false,
         int maxWidth = 0,
         double scale = 0,
-        string? mode = null)
+        string? mode = null,
+        long? time = null,
+        bool details = false)
     {
         var paramsJson = JsonSerializer.Serialize(
-            new CaptureScreenParams { PaneId = paneId, Inline = inline, MaxWidth = maxWidth, Scale = scale, Mode = mode },
+            new CaptureScreenParams
+            {
+                PaneId = paneId,
+                Inline = inline,
+                MaxWidth = maxWidth,
+                Scale = scale,
+                Mode = mode,
+                PresentationTimeMs = time,
+                IncludeRenderDetails = details
+            },
             AgentHostJsonContext.Default.CaptureScreenParams);
         return $"{{\"v\":{AgentHostProtocol.Version},\"id\":{id},\"method\":\"{AgentHostProtocol.Methods.CaptureScreen}\",\"params\":{paramsJson}}}";
     }
@@ -123,6 +134,98 @@ public class AgentHostCaptureProtocolTests : IDisposable
         var result = response.Result!.Value.Deserialize(AgentHostJsonContext.Default.CaptureScreenResult);
         Assert.NotNull(result);
         return result!;
+    }
+
+    [Theory]
+    [InlineData(-1L, "render", false)]
+    [InlineData(60001L, "render", false)]
+    [InlineData(0L, "live", false)]
+    [InlineData(null, "live", true)]
+    public void Invalid_controlled_options_do_not_mark_attention_or_write_a_capture(long? time, string mode, bool details)
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, "unchanged");
+        var journal = new AgentActivityJournal();
+        using var service = NewService(registry, journal);
+        Assert.Equal(AgentAttentionTier.Idle, registration.AttentionMachine.Snapshot().Tier);
+        var response = Handle(service, CaptureRequestLine(registration.PaneId, mode: mode, time: time, details: details));
+        Assert.Equal(AgentHostProtocol.ErrorCodes.MalformedRequest, response.Error?.Code);
+        Assert.Equal(AgentAttentionTier.Idle, registration.AttentionMachine.Snapshot().Tier);
+        Assert.Empty(journal.Snapshot());
+        Assert.Empty(Directory.Exists(_exportDir) ? Directory.GetFiles(_exportDir) : Array.Empty<string>());
+    }
+
+    [Fact]
+    public void Default_capture_omits_the_new_clock_and_provenance_fields()
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, "default");
+        using var service = NewService(registry);
+        var line = CaptureRequestLine(registration.PaneId);
+        Assert.DoesNotContain("presentationTimeMs", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("includeRenderDetails", line, StringComparison.Ordinal);
+        var response = Handle(service, line);
+        var result = Result(response);
+        Assert.Null(result.PresentationTimeMs);
+        Assert.Null(result.RenderDetails);
+        Assert.False(response.Result!.Value.TryGetProperty("presentationTimeMs", out _));
+        Assert.False(response.Result.Value.TryGetProperty("renderDetails", out _));
+    }
+
+    [Fact]
+    public void Controlled_capture_changes_pixels_without_changing_the_terminal_and_returns_the_actual_render_facts()
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, "\x1b[?25l\x1b[5mMMMM", fontFamily: BundledFontCatalog.DefaultTerminalFontFamily);
+        registration.Buffer.Theme = new TerminalTheme { Foreground = TermColor.White, Background = TermColor.Black };
+        using var service = NewService(registry);
+        var first = Result(Handle(service, CaptureRequestLine(registration.PaneId, scale: 2, time: 0, details: true)));
+        var hidden = Result(Handle(service, CaptureRequestLine(registration.PaneId, scale: 2, time: 530, details: true)));
+        var again = Result(Handle(service, CaptureRequestLine(registration.PaneId, scale: 2, time: 1060, details: true)));
+        var defaultPhase = Result(Handle(service, CaptureRequestLine(registration.PaneId, scale: 2)));
+        Assert.NotEqual(File.ReadAllBytes(first.FilePath), File.ReadAllBytes(hidden.FilePath));
+        Assert.Equal(File.ReadAllBytes(first.FilePath), File.ReadAllBytes(again.FilePath));
+        Assert.Equal(File.ReadAllBytes(first.FilePath), File.ReadAllBytes(defaultPhase.FilePath));
+        Assert.Equal(530, hidden.PresentationTimeMs);
+        var context = Assert.IsType<CaptureRenderDetails>(hidden.RenderDetails);
+        Assert.Equal(1, context.SchemaVersion);
+        Assert.Contains(context.Platform, new[] { "windows", "macos", "linux" });
+        Assert.Matches("^[a-f0-9]{64}$", context.Font.PrimarySha256!);
+        Assert.Equal(first.RenderDetails!.Font.PrimarySha256, context.Font.PrimarySha256);
+        Assert.Equal(BundledFontCatalog.DefaultTerminalFontFamily, context.Font.ConfiguredFamily);
+        Assert.False(string.IsNullOrWhiteSpace(context.Font.PrimaryFamily));
+        Assert.Equal(14, context.Font.SizeDip);
+        Assert.Equal(8, context.Grid.CellWidthDip);
+        Assert.Equal(16, context.Grid.CellWidthPx);
+        Assert.Equal(8, context.Grid.OriginXPx);
+        Assert.Equal(hidden.Width, context.Grid.RenderWidthPx);
+        Assert.Equal(hidden.Height, context.Grid.RenderHeightPx);
+        Assert.Equal(0xff000000U, context.Theme.BackgroundArgb);
+        Assert.Equal(0xffffffffU, context.Theme.ForegroundArgb);
+        Assert.Equal(256, context.Theme.AnsiPaletteArgb.Length);
+        Assert.Equal(530, context.Presentation.TimeMs);
+        Assert.Equal(530, context.Presentation.HalfPeriodMs);
+        Assert.False(context.Presentation.TextBlinkVisible);
+        Assert.False(context.Presentation.CursorVisible);
+        Assert.Equal(0, context.Presentation.CursorRow);
+        Assert.Equal(4, context.Presentation.CursorCol);
+        Assert.True(registration.Buffer.GetCell(0, 0).IsBlink);
+        Assert.False(registration.Buffer.Modes.IsCursorVisible);
+        Assert.Equal(4, registration.Buffer.CursorCol);
+    }
+
+    [Fact]
+    public void Render_context_coordinates_describe_the_draw_before_downscaling()
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, "resampled");
+        using var service = NewService(registry);
+        var result = Result(Handle(service, CaptureRequestLine(registration.PaneId, maxWidth: 160, scale: 2, details: true)));
+        Assert.True(result.Downscaled);
+        Assert.Equal(160, result.Width);
+        Assert.Equal(1280, result.RenderDetails!.Grid.RenderWidthPx);
+        Assert.Equal(768, result.RenderDetails.Grid.RenderHeightPx);
+        Assert.Equal(16, result.RenderDetails.Grid.CellWidthPx);
     }
 
     // PNG signature: every capture must be a real PNG, not an empty or truncated file.

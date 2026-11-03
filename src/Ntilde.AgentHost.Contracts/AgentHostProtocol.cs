@@ -68,6 +68,9 @@ public static class AgentHostProtocol
     /// </summary>
     public const int MaxInlineCaptureBytes = 3 * 1024 * 1024;
 
+    /// <summary>Bounded synthetic presentation time for controlled offscreen captures.</summary>
+    public const long MaxCapturePresentationTimeMs = 60_000;
+
     /// <summary>
     /// Ceiling on <c>captureScreen</c>'s render scale. A pane renders at 1 device
     /// pixel per DIP by default, which for a typical 8x16 cell puts an 80x24 grid

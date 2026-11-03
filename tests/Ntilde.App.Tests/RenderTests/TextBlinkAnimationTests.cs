@@ -20,7 +20,17 @@ public sealed class TextBlinkAnimationTests
     [InlineData(1059, false)]
     [InlineData(1060, true)]
     public void Phase_IsDeterministicWithoutWallClockTime(long milliseconds, bool visible)
-        => Assert.Equal(visible, TextBlinkAnimation.IsVisibleAt(TimeSpan.FromMilliseconds(milliseconds)));
+    {
+        Assert.Equal(visible, TextBlinkAnimation.IsVisibleAt(TimeSpan.FromMilliseconds(milliseconds)));
+        Assert.Equal(visible, TextBlinkAnimation.IsVisibleAtMilliseconds(milliseconds));
+    }
+
+    [Fact]
+    public void SyntheticMilliseconds_DoNotOverflowTheClockRepresentation()
+    {
+        Assert.False(TextBlinkAnimation.IsVisibleAtMilliseconds(long.MaxValue));
+        Assert.Throws<ArgumentOutOfRangeException>(() => TextBlinkAnimation.IsVisibleAtMilliseconds(-1));
+    }
 
     [Fact]
     public void NoBlinkInk_NeverRequestsAnAnimationRedraw()

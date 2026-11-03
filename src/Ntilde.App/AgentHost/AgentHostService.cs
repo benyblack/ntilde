@@ -1109,6 +1109,17 @@ namespace Ntilde.AgentHost
                     $"Unknown capture mode '{p.Mode}'. Use '{AgentHostProtocol.CaptureModes.Render}' (the default) or '{AgentHostProtocol.CaptureModes.Live}'.");
             }
 
+            if (p.PresentationTimeMs is < 0 or > AgentHostProtocol.MaxCapturePresentationTimeMs)
+            {
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest,
+                    $"presentationTimeMs must be between 0 and {AgentHostProtocol.MaxCapturePresentationTimeMs}.");
+            }
+            if (live && (p.PresentationTimeMs.HasValue || p.IncludeRenderDetails))
+            {
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest,
+                    "Synthetic presentation time and render details require mode 'render'.");
+            }
+
             double scale = p.Scale <= 0 ? 1.0 : Math.Min(p.Scale, AgentHostProtocol.MaxCaptureScale);
             int maxWidth = Math.Max(0, p.MaxWidth);
 
@@ -1133,6 +1144,7 @@ namespace Ntilde.AgentHost
             int cols;
             int rows;
             bool downscaled;
+            CaptureRenderDetails? renderDetails = null;
 
             if (live)
             {
@@ -1183,7 +1195,8 @@ namespace Ntilde.AgentHost
             }
             else
             {
-                if (!registration.TryCapturePng(maxWidth, scale, out var capture, out var captureError))
+                if (!registration.TryCapturePng(maxWidth, scale, out var capture, out var captureError,
+                    p.PresentationTimeMs, p.IncludeRenderDetails))
                 {
                     var message = captureError == AgentCaptureError.TooLarge
                         ? $"This pane would render larger than the {AgentHostProtocol.MaxCapturePixels:N0}-pixel per-capture budget at scale {scale:0.##}. Lower the scale, make the window smaller, or raise the font size."
@@ -1197,9 +1210,11 @@ namespace Ntilde.AgentHost
                 cols = capture.Cols;
                 rows = capture.Rows;
                 downscaled = capture.Downscaled;
+                renderDetails = capture.RenderDetails;
             }
 
-            return CaptureResult(request, png, imageWidth, imageHeight, cols, rows, downscaled, live, scale, p.Inline);
+            return CaptureResult(request, png, imageWidth, imageHeight, cols, rows, downscaled, live, scale, p.Inline,
+                p.PresentationTimeMs, renderDetails);
         }
 
         /// <summary>
@@ -1208,7 +1223,8 @@ namespace Ntilde.AgentHost
         /// </summary>
         private AgentHostResponse CaptureResult(
             AgentHostRequest request, byte[] png, int imageWidth, int imageHeight, int cols, int rows, bool downscaled,
-            bool live, double scale, bool inlineRequested)
+            bool live, double scale, bool inlineRequested,
+            long? presentationTimeMs = null, CaptureRenderDetails? renderDetails = null)
         {
             string filePath;
             try
@@ -1241,6 +1257,8 @@ namespace Ntilde.AgentHost
                 Scale = scale,
                 PngBase64 = inlineRequested && inlineFits ? Convert.ToBase64String(png) : null,
                 InlineOmitted = inlineRequested && !inlineFits,
+                PresentationTimeMs = presentationTimeMs,
+                RenderDetails = renderDetails,
             };
             return Ok(request.Id, JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.CaptureScreenResult));
         }
@@ -1810,7 +1828,8 @@ namespace Ntilde.AgentHost
                 return WindowlessRead(request, method, p.PaneId, screen, failure);
             }
 
-            if (!AgentSessionRegistration.TryRenderPng(buffer!, render.Parameters, maxWidth, scale, out var capture, out var captureError))
+            if (!AgentSessionRegistration.TryRenderPng(buffer!, render.Parameters, maxWidth, scale, out var capture, out var captureError,
+                p.PresentationTimeMs, p.IncludeRenderDetails))
             {
                 var message = captureError == AgentCaptureError.TooLarge
                     ? $"This session would render larger than the {AgentHostProtocol.MaxCapturePixels:N0}-pixel per-capture budget at scale {scale:0.##}. Lower the scale."
@@ -1820,7 +1839,7 @@ namespace Ntilde.AgentHost
 
             return WindowlessRead(request, method, p.PaneId, screen, CaptureResult(
                 request, capture.Png, capture.Width, capture.Height, capture.Cols, capture.Rows, capture.Downscaled,
-                live: false, scale, p.Inline));
+                live: false, scale, p.Inline, p.PresentationTimeMs, capture.RenderDetails));
         }
 
         /// <summary>

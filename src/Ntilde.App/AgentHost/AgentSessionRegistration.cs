@@ -1,5 +1,6 @@
 using System;
 using Ntilde.Shell;
+using Ntilde.AgentHost.Contracts;
 using Ntilde.VT;
 
 namespace Ntilde.AgentHost
@@ -12,7 +13,8 @@ namespace Ntilde.AgentHost
         int Cols,
         int Rows,
         bool Downscaled,
-        double Scale);
+        double Scale,
+        CaptureRenderDetails? RenderDetails = null);
 
     /// <summary>Why a capture could not be produced; mapped to a protocol error code by the endpoint.</summary>
     public enum AgentCaptureError
@@ -412,7 +414,8 @@ namespace Ntilde.AgentHost
         /// Neither is taken from the user's monitor, so a capture cannot vary with
         /// the machine it runs on.
         /// </summary>
-        public bool TryCapturePng(int maxWidth, double scale, out AgentCaptureInfo info, out AgentCaptureError error)
+        public bool TryCapturePng(int maxWidth, double scale, out AgentCaptureInfo info, out AgentCaptureError error,
+            long? presentationTimeMs = null, bool includeRenderDetails = false)
         {
             if (RenderParameters is not { } parameters || !parameters.IsUsable)
             {
@@ -421,7 +424,7 @@ namespace Ntilde.AgentHost
                 return false;
             }
 
-            return TryRenderPng(Buffer, parameters, maxWidth, scale, out info, out error);
+            return TryRenderPng(Buffer, parameters, maxWidth, scale, out info, out error, presentationTimeMs, includeRenderDetails);
         }
 
         /// <summary>
@@ -431,7 +434,8 @@ namespace Ntilde.AgentHost
         /// </summary>
         internal static bool TryRenderPng(
             TerminalBuffer buffer, PaneRenderParameters parameters, int maxWidth, double scale,
-            out AgentCaptureInfo info, out AgentCaptureError error)
+            out AgentCaptureInfo info, out AgentCaptureError error,
+            long? presentationTimeMs = null, bool includeRenderDetails = false)
         {
             info = default;
             error = AgentCaptureError.Unavailable;
@@ -442,13 +446,11 @@ namespace Ntilde.AgentHost
             }
 
             int cols, rows;
-            bool cursorVisible;
             buffer.Lock.EnterReadLock();
             try
             {
                 cols = buffer.Cols;
                 rows = buffer.Rows;
-                cursorVisible = buffer.Modes.IsCursorVisible;
             }
             finally
             {
@@ -502,11 +504,12 @@ namespace Ntilde.AgentHost
                 EnableComplexShaping = parameters.EnableComplexShaping,
                 MinimumContrast = parameters.MinimumContrast,
                 PreferredCursorStyle = parameters.PreferredCursorStyle,
+                PreferredCursorBlink = parameters.PreferredCursorBlink,
+                PresentationTimeMs = presentationTimeMs,
 
-                // Follows the buffer's cursor mode, never the control's blink
-                // phase or focus: a blinking cursor would make consecutive
-                // captures of an idle session disagree.
-                HideCursor = !cursorVisible,
+                // Visibility/shape/blink facts come from the draw's own snapshot.
+                // No live focus or clock is read; absent synthetic time keeps visible phases.
+                HideCursor = false,
 
                 // The caller's scale, not the monitor's. Worth stating plainly
                 // because passing anything but 1.0 here was broken until #346:
@@ -534,17 +537,19 @@ namespace Ntilde.AgentHost
                 using var glyphCache = new Ntilde.Rendering.GlyphCache();
                 options = options with { GlyphCache = glyphCache };
 
-                using var bitmap = TerminalSnapshotRenderer.Capture(buffer, parameters.Metrics, width, height, options);
+                using var bitmap = TerminalSnapshotRenderer.CaptureWithContext(buffer, parameters.Metrics, width, height,
+                    options, includeRenderDetails, out var context);
                 using var downscaled = TerminalSnapshotRenderer.DownscaleToWidth(bitmap, maxWidth);
                 var final = downscaled ?? bitmap;
                 info = new AgentCaptureInfo(
                     TerminalSnapshotRenderer.EncodePng(final),
                     final.Width,
                     final.Height,
-                    cols,
-                    rows,
+                    context?.Frame.Cols ?? cols,
+                    context?.Frame.Rows ?? rows,
                     Downscaled: downscaled != null,
-                    Scale: effectiveScale);
+                    Scale: effectiveScale,
+                    RenderDetails: context == null ? null : AgentCaptureDetails.From(context));
                 return true;
             }
             catch (Exception ex)

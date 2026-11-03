@@ -53,7 +53,7 @@ public sealed class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.capture_screen"),
-     Description("Captures a live Ntilde session as a PNG image and returns its path — use it when the pixels matter and text does not carry them: inline images (sixel), box-drawing and TUI layout, colour and theme problems, or a rendering bug you need to see. Two modes: mode='render' (default) re-renders the pane offscreen from its buffer, so it works even if the window is minimized, occluded, or on another desktop, no other window can leak in, and the same screen always produces the same bytes; mode='live' photographs the pane as drawn on screen, which additionally carries the user's background image and window opacity but only works while the pane is visible and is not reproducible. Raise scale (up to 3) to render more detail — a 1x capture of an 80x24 pane is only about 640x384, which is thin for reading text back out of the image; maxWidth shrinks the result instead. Set inline=true to also get the image itself back (capped; the file is written either way). Read-only, and requires 'Agent access (observe)' like every other read; the pane's agent indicator lights when you capture it. A windowless session supports mode='render' only (live is refused), borrowing an open pane's font metrics. For reading text, ntilde.read_screen is cheaper. Get paneId from ntilde.list_sessions.")]
+     Description("Captures a live Ntilde session as a PNG image and returns its path — use it when the pixels matter and text does not carry them: inline images (sixel), box-drawing and TUI layout, colour and theme problems, or a rendering bug you need to see. Two modes: mode='render' (default) re-renders the pane offscreen from its buffer, so it works even if the window is minimized, occluded, or on another desktop, no other window can leak in, and unchanged screen/settings/capture options produce the same bytes (visible blink phases by default); mode='live' photographs the pane as drawn on screen, which additionally carries the user's background image and window opacity but only works while the pane is visible and is not reproducible. Raise scale (up to 3) to render more detail — a 1x capture of an 80x24 pane is only about 640x384, which is thin for reading text back out of the image; maxWidth shrinks the result instead. Set inline=true to also get the image itself back (capped; the file is written either way). Read-only, and requires 'Agent access (observe)' like every other read; the pane's agent indicator lights when you capture it. A windowless session supports mode='render' only (live is refused), borrowing an open pane's font metrics. For reading text, ntilde.read_screen is cheaper. Get paneId from ntilde.list_sessions.")]
     public static async Task<IEnumerable<ContentBlock>> CaptureScreen(
         AgentHostClient client,
         [Description("The pane id (GUID) from ntilde.list_sessions.")] string paneId,
@@ -61,6 +61,8 @@ public sealed class SessionTools
         [Description("Shrink the delivered image to at most this pixel width, preserving aspect ratio. 0 (default) delivers it at its rendered size. To gain detail rather than lose it, raise scale instead.")] int maxWidth = 0,
         [Description("Device pixels per point to render at, 1 to 3. Default 1. Raising it makes text in the image easier to read; the value is yours, not the monitor's, so a capture stays reproducible.")] double scale = 1,
         [Description("'render' (default) for the deterministic offscreen re-render that works on hidden panes, or 'live' to photograph the pane as drawn on screen (visible panes only; includes background image and window opacity).")] string mode = "render",
+        [Description("Optional synthetic milliseconds since a visible blink phase, 0 to 60000. Render mode only; never samples or changes the live clock. Omit for fixed visible text/cursor phases.")] long? presentationTimeMs = null,
+        [Description("Include actual render font identity, palette, pixel grid and presentation facts. Render mode only; fallback font names are listed but their bytes/per-glyph use are not attested.")] bool includeRenderDetails = false,
         CancellationToken cancellationToken = default)
     {
         if (!Guid.TryParse(paneId, out var pane))
@@ -87,6 +89,16 @@ public sealed class SessionTools
             return Text($"Error: unknown mode '{mode}'. Use '{AgentHostProtocol.CaptureModes.Render}' (default) or '{AgentHostProtocol.CaptureModes.Live}'.");
         }
 
+        if (presentationTimeMs is < 0 or > AgentHostProtocol.MaxCapturePresentationTimeMs)
+        {
+            return Text($"Error: presentationTimeMs must be between 0 and {AgentHostProtocol.MaxCapturePresentationTimeMs}.");
+        }
+        if (normalizedMode.Equals(AgentHostProtocol.CaptureModes.Live, StringComparison.OrdinalIgnoreCase) &&
+            (presentationTimeMs.HasValue || includeRenderDetails))
+        {
+            return Text("Error: synthetic presentation time and render details require mode 'render'.");
+        }
+
         var parameters = JsonSerializer.SerializeToElement(
             new CaptureScreenParams
             {
@@ -95,6 +107,8 @@ public sealed class SessionTools
                 MaxWidth = maxWidth,
                 Scale = effectiveScale,
                 Mode = normalizedMode,
+                PresentationTimeMs = presentationTimeMs,
+                IncludeRenderDetails = includeRenderDetails,
             },
             AgentHostJsonContext.Default.CaptureScreenParams);
         var outcome = await client.CallAsync(AgentHostProtocol.Methods.CaptureScreen, parameters, cancellationToken).ConfigureAwait(false);
@@ -103,6 +117,15 @@ public sealed class SessionTools
         if (!TryDeserializeResult(result, AgentHostJsonContext.Default.CaptureScreenResult, out var dto))
         {
             return Text(AgentHostClient.ProtocolErrorMessage);
+        }
+
+        if (presentationTimeMs.HasValue && dto!.PresentationTimeMs != presentationTimeMs)
+        {
+            return Text("Error: the endpoint did not confirm the requested synthetic presentation time.");
+        }
+        if (includeRenderDetails && dto!.RenderDetails == null)
+        {
+            return Text("Error: the endpoint did not provide the requested render details.");
         }
 
         var blocks = new List<ContentBlock> { new TextContentBlock { Text = FormatCapture(dto!) } };
@@ -526,9 +549,24 @@ public sealed class SessionTools
         {
             sb.AppendLine("The inline image was omitted because it exceeded the inline size cap — read the file from the path above, or retry with a smaller maxWidth.");
         }
-        sb.Append(live
-            ? "This is the pane as drawn on screen, so it carries the background image and window opacity — and is not reproducible: the same session photographs differently as the window moves or is covered."
-            : "The image is the pane's grid only: no window chrome, no other panes, no selection highlight, and no cursor blink (the cursor is drawn whenever the session has it enabled). The user's background image and window opacity are not in it — mode='live' captures those.");
+        if (live)
+        {
+            sb.Append("This is the pane as drawn on screen, so it carries the background image and window opacity — and is not reproducible: the same session photographs differently as the window moves or is covered.");
+        }
+        else if (dto.PresentationTimeMs.HasValue)
+        {
+            sb.Append($"Controlled offscreen frame at synthetic time {dto.PresentationTimeMs.Value} ms. This selects presentation phases; it does not measure or change live desktop timing.");
+        }
+        else
+        {
+            sb.Append("The image is the pane's grid only: no window chrome, no other panes, no selection highlight, and no cursor blink (the cursor is drawn whenever the session has it enabled). The user's background image and window opacity are not in it — mode='live' captures those.");
+        }
+        if (dto.RenderDetails is { } details)
+        {
+            sb.AppendLine();
+            sb.Append("Render details: ");
+            sb.Append(JsonSerializer.Serialize(details, AgentHostJsonContext.Default.CaptureRenderDetails));
+        }
         return sb.ToString();
     }
 

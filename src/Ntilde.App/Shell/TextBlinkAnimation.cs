@@ -6,7 +6,8 @@ namespace Ntilde.Shell;
 /// <summary>UI-owned monotonic text-blink clock; render-thread feedback is a single atomic fact.</summary>
 internal sealed class TextBlinkAnimation
 {
-    internal static readonly TimeSpan HalfPeriod = TimeSpan.FromMilliseconds(530);
+    private const long HalfPeriodMilliseconds = 530;
+    internal static readonly TimeSpan HalfPeriod = TimeSpan.FromMilliseconds(HalfPeriodMilliseconds);
     private readonly TimeProvider _clock;
     private int _reportedCells;
     private bool _active;
@@ -44,6 +45,12 @@ internal sealed class TextBlinkAnimation
         _active = false;
         ForegroundVisible = true;
         if (clearCells) Volatile.Write(ref _reportedCells, 0);
+    }
+
+    internal static bool IsVisibleAtMilliseconds(long elapsed)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(elapsed);
+        return (elapsed / HalfPeriodMilliseconds & 1) == 0;
     }
 
     internal static bool IsVisibleAt(TimeSpan elapsed)

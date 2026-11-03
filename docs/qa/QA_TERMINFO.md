@@ -438,3 +438,10 @@ is needed for that check.
 The [revision-2 charset restoration measurement](terminfo/2026-11-02-rendition-cursor-restoration.md)
 adds lowercase post-reset probes and the portable production receipt finalizer.
 The original v1 mapping measurement remains unchanged.
+
+## Controlled capture foundation
+
+[Controlled offscreen capture](terminfo/controlled-capture.md) defines the optional synthetic
+clock and actual render metadata used to prepare owned pixel qualification. The terminfo.dev
+owned runner does not yet invoke this API as a pixel suite; #763 still tracks that follow-up.
+Existing stock grades and retained cell/query observations are unchanged.
