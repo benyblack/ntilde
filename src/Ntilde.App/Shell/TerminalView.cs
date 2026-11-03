@@ -344,7 +344,11 @@ namespace Ntilde.Shell
         /// </summary>
         public void SetSession(ITerminalSession? session)
         {
-            if (!ReferenceEquals(_session, session)) ResetKittyKeyTracking();
+            if (!ReferenceEquals(_session, session))
+            {
+                ResetKittyKeyTracking();
+                LastCompletedResizeDispatch = default; // A previous session cannot prove this target received a resize.
+            }
             _session = session;
         }
 

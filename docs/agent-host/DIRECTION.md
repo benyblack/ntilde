@@ -190,7 +190,8 @@ or contended buffer write lock can delay the response. Qualification callers nee
 their own transport deadline and disposable-process cleanup.
 
 The result `{rows, cols, layoutSettled, exact}` contains observed buffer geometry. `layoutSettled` requires agreement with the view and a successfully
-returned session resize callback; `exact` additionally requires the requested
+returned current-session resize callback. Changing the buffer or session clears
+older completion evidence; `exact` additionally requires the requested
 grid. Native window limits or a callback failure can produce partial results.
 A busy buffer is sampled without waiting; unavailable observation returns
 `resizeUnavailable`. Cancellation and timeout do not undo terminal reflow or

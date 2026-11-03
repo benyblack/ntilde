@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Ntilde.AgentHost;
+using Ntilde.Tests.Controls;
 using Ntilde.Shell;
 using Ntilde.VT;
 
@@ -94,6 +95,79 @@ public sealed class TerminalViewResizeCompletionTests
             Assert.Equal(original, (view.Cols, view.Rows));
             Assert.True(AgentPaneResizeObservation.TryRead(buffer, view.Cols, view.Rows, view.LastCompletedResizeDispatch, out var actual));
             Assert.Equal((original.Rows, original.Cols), (actual.Rows, actual.Cols));
+            Assert.False(actual.LayoutSettled);
+        }
+        finally { window.Close(); Dispatcher.UIThread.RunJobs(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_changed_session_cannot_reuse_the_previous_sessions_completion_on_the_same_buffer(bool detached)
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var view = new TerminalView();
+        using var previous = new FakeTerminalSession();
+        using var current = new FakeTerminalSession();
+        view.SetBuffer(buffer);
+        view.SetSession(previous);
+        view.OnResize += (cols, rows) => view.SessionForTest?.Resize(cols, rows);
+        var window = new Window { Content = view, Width = 800, Height = 400 };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var delivered = view.LastCompletedResizeDispatch;
+            Assert.True(AgentPaneResizeObservation.TryRead(buffer, view.Cols, view.Rows, delivered, out var before));
+            Assert.True(before.LayoutSettled);
+
+            view.SetSession(detached ? null : current);
+
+            Assert.True(AgentPaneResizeObservation.TryRead(buffer, view.Cols, view.Rows, view.LastCompletedResizeDispatch, out var changed));
+            Assert.Equal((before.Rows, before.Cols), (changed.Rows, changed.Cols));
+            Assert.False(changed.LayoutSettled);
+            if (!detached)
+            {
+                view.ReleaseResizeThrottleForTest();
+                window.Width = 600;
+                Dispatcher.UIThread.RunJobs();
+                var fresh = view.LastCompletedResizeDispatch;
+                Assert.Equal((view.Cols, view.Rows), fresh);
+                view.SetSession(current); // Reapplying the same session must preserve its own completion.
+                Assert.Equal(fresh, view.LastCompletedResizeDispatch);
+            }
+        }
+        finally { window.Close(); Dispatcher.UIThread.RunJobs(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Replacing_the_target_inside_a_resize_callback_cannot_publish_completion_for_its_replacement(bool replaceBuffer)
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var view = new TerminalView();
+        using var previous = new FakeTerminalSession();
+        using var current = new FakeTerminalSession();
+        view.SetBuffer(buffer);
+        view.SetSession(previous);
+        var window = new Window { Content = view, Width = 800, Height = 400 };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            view.OnResize += (cols, rows) =>
+            {
+                if (replaceBuffer) { buffer = new TerminalBuffer(cols, rows); view.SetBuffer(buffer); }
+                else view.SetSession(current);
+            };
+            view.ReleaseResizeThrottleForTest();
+
+            window.Width = 600;
+            Dispatcher.UIThread.RunJobs();
+
+            if (!replaceBuffer) Assert.Same(current, view.SessionForTest);
+            Assert.True(AgentPaneResizeObservation.TryRead(buffer, view.Cols, view.Rows, view.LastCompletedResizeDispatch, out var actual));
             Assert.False(actual.LayoutSettled);
         }
         finally { window.Close(); Dispatcher.UIThread.RunJobs(); }

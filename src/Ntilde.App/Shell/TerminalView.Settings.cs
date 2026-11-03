@@ -126,6 +126,7 @@ namespace Ntilde.Shell
                             LastCompletedResizeDispatch = default;
                             if (!DefersBufferResizeToSession) _buffer.Resize(cols, rows);
                             ResetMouseMotionTracking(); // Issue #269: grid reflowed, cell coords are stale.
+                            var resizeTarget = (_session, _buffer);
                             OnResize?.Invoke(cols, rows);
 
                             // The third place a dispatch happens, and the one easiest to miss:
@@ -141,7 +142,7 @@ namespace Ntilde.Shell
                             // recording what it actually dispatched is what keeps the field
                             // honest either way.
                             RecordGridSent(cols, rows);
-                            CompleteResizeDispatch(cols, rows);
+                            CompleteResizeDispatch(cols, rows, resizeTarget);
                         }
                     }
                 }

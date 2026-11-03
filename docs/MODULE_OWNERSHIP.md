@@ -912,7 +912,8 @@ requires public test classes.
   authoritative. A two-second responsive-UI observation timeout reports actual
   nonblocking buffer samples; synchronous resize work can still block on a write
   lock and delay dispatcher timeout delivery.
-  settled requires the view and successful session callback to agree. Neither the
+  settled requires the view and successful current-session callback to agree.
+  Changing the buffer or session invalidates older completion evidence. Neither the
   leaf DTOs nor this completion signal attest kernel PTY size or undo reflow.
 - The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 

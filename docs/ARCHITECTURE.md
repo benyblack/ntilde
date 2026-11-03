@@ -401,7 +401,8 @@ Shell composition glue (startup orchestration, app paths/logging/services, sessi
   It uses the existing resize path and samples actual buffer geometry without
   waiting for its lock. Existing synchronous resize work can still wait for a buffer
   write lock; a blocked UI dispatcher delays timeout delivery and cleanup. Settled means view/buffer agreement after the session
-  callback returned; it does not attest kernel PTY size or reversible reflow.
+  callback returned for the current buffer/session; changing either invalidates
+  the previous completion evidence. It does not attest kernel PTY size or reversible reflow.
   The leaf contracts carry only request/result facts; no UI dependency enters VT.
 - The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 

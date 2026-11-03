@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Ntilde.VT;
+using Ntilde.Pty;
 using Ntilde.Rendering;
 
 namespace Ntilde.Shell
@@ -19,8 +20,10 @@ namespace Ntilde.Shell
         internal event Action<int, int>? ResizeDispatchCompleted;
         internal (int Cols, int Rows) LastCompletedResizeDispatch { get; private set; }
 
-        private void CompleteResizeDispatch(int cols, int rows)
+        /// <summary>Only an unchanged callback target may publish successful delivery for this grid.</summary>
+        private void CompleteResizeDispatch(int cols, int rows, (ITerminalSession? Session, TerminalBuffer? Buffer) target)
         {
+            if (!ReferenceEquals(_session, target.Session) || !ReferenceEquals(_buffer, target.Buffer)) return;
             LastCompletedResizeDispatch = (cols, rows);
             ResizeDispatchCompleted?.Invoke(cols, rows);
         }
@@ -250,12 +253,13 @@ namespace Ntilde.Shell
                         Ready?.Invoke(cols, rows);
 
                         // Also trigger initial PTY resize to sync with layout
+                        var resizeTarget = (_session, _buffer);
                         OnResize?.Invoke(cols, rows);
 
                         // This path dispatches inline rather than through the throttle, so it
                         // records the dispatch itself.
                         RecordGridSent(cols, rows);
-                        CompleteResizeDispatch(cols, rows);
+                        CompleteResizeDispatch(cols, rows, resizeTarget);
                     }
 
                     if (dimensionsChanged)
@@ -411,8 +415,9 @@ namespace Ntilde.Shell
                     RecordGridSent(_pendingCols, _pendingRows);
 
                     ResetMouseMotionTracking(); // Issue #269: grid reflowed, cell coords are stale.
+                    var resizeTarget = (_session, _buffer);
                     OnResize?.Invoke(_pendingCols, _pendingRows);
-                    CompleteResizeDispatch(_pendingCols, _pendingRows);
+                    CompleteResizeDispatch(_pendingCols, _pendingRows, resizeTarget);
                     if (_pendingResizeStartedAt != DateTime.MinValue)
                     {
                         long latencyMs = (long)Math.Max(0, (DateTime.UtcNow - _pendingResizeStartedAt).TotalMilliseconds);
