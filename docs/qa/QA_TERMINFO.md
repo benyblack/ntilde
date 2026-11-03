@@ -382,6 +382,19 @@ The [2026-11-03 before/after measurement](terminfo/2026-11-03-editing.md)
 retains three original zero-count failures and all 35 passing comparisons after
 the focused parser fix. These are supplemental observations; stock grades remain unchanged.
 
+### Supplemental history and scrolling
+
+The [owned history suite](terminfo/owned-history.md) adds 30 ASCII comparisons
+and 63 paired frames after erasure/editing. It measures actual ordered history,
+main/alternate scrolling, reverse index and margins, including origin-relative
+homing. Receipt v5 retains all nine prior bindings and requires an independently
+observed private-PTY output-mode proof. Only the proved disposable PTY has output
+translation disabled for owned suites; its previous mode returns before stock
+collection. This prevents bare LF from becoming CRLF in transport. Resize/reflow
+and history attributes remain separate work; stock grades stay unchanged. The
+[2026-11-03 measurement](terminfo/2026-11-03-history.md) retains all 30 passing
+comparisons, exact source provenance and the parent-observed output-mode proof.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh

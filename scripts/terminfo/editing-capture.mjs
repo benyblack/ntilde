@@ -1,6 +1,7 @@
 import { OwnedCellObserver, snapshotHash } from './agent-observer.mjs';
 import { makeEditingCases } from './editing-cases.mjs';
 const check = value => { if (!value) throw new Error('Invalid owned editing binding or restoration.'); };
+/** Require a blank default local viewport and genuinely empty observed history before mutation. */
 export function pristineEditing(screen) {
     const state = screen.bufferState;
     return screen.lines.every(line => line === '') && screen.cursorRow === 0 && screen.cursorCol === 0 && screen.cursorVisible
@@ -9,16 +10,17 @@ export function pristineEditing(screen) {
         && state.scrollTop === 0 && state.scrollBottom === screen.rows - 1 && !state.originMode && state.autoWrap
         && !state.insertMode && !state.pendingWrap && !state.alternateScreen && state.scrollbackLines === 0 && screen.history.lines.length === 0;
 }
-export class OwnedEditingObserver {
-    constructor({ prefix, ...options }) {
-        check(['erase', 'editing'].includes(prefix));
-        this.prefix = prefix;
+export class OwnedCellPlanObserver {
+    constructor({ prefix, casesFor, ...options }) {
+        check(/^[a-z]{1,16}$/.test(prefix) && typeof casesFor === 'function');
+        this.prefix = prefix; this.casesFor = casesFor;
         const facts = { ...options, prefix, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true };
         this.before = new OwnedCellObserver(facts); this.after = new OwnedCellObserver(facts);
         this.frames = []; this.next = 0;
     }
     get paneId() { return this.before.paneId; }
     get restored() { return this.before.restored && this.frames.at(-1)?.kind === this.prefix + '-finish'; }
+    /** Accept only the source-defined plan, paired state/history reads and exact restoration. */
     async handle(request, budget) {
         check(!this.busy && !this.restored);
         const reading = request.kind === this.prefix + '-read';
@@ -33,7 +35,7 @@ export class OwnedEditingObserver {
             check(snapshotHash(result.screen) === snapshotHash(after));
             if (request.kind === this.prefix + '-start') {
                 check(pristineEditing(result.screen));
-                this.cases = makeEditingCases(result.screen.rows, result.screen.cols).filter(value => value.id.startsWith(this.prefix + '.'));
+                this.cases = this.casesFor(result.screen.rows, result.screen.cols).filter(value => value.id.startsWith(this.prefix + '.'));
                 this.plan = this.cases.flatMap(value => ['control', 'after'].map(stageId => ({ caseId: value.id, stageId })));
                 check(this.plan.length + 3 <= 64);
             }
@@ -50,5 +52,13 @@ export class OwnedEditingObserver {
             if (reading) this.next++;
             return result;
         } finally { this.busy = false; }
+    }
+}
+
+/** Historical erase/editing entry point keeps its exact known plans and wire shape. */
+export class OwnedEditingObserver extends OwnedCellPlanObserver {
+    constructor(options) {
+        check(['erase', 'editing'].includes(options.prefix));
+        super({ ...options, casesFor: makeEditingCases });
     }
 }

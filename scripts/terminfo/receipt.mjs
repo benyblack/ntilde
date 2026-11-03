@@ -9,6 +9,9 @@ import { colorSuiteId } from './color-cases.mjs';
 
 import { buildEraseReport, buildCellEditingReport } from './editing.mjs';
 import { eraseSuiteId, editingSuiteId } from './editing-cases.mjs';
+import { historySuiteId } from './history-cases.mjs';
+import { buildHistoryReport } from './history.mjs';
+import { ownedOutputPolicy, sttyTool, validateOutputDescription, validateOutputGeometry } from './terminal-output.mjs';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const suites = ['sgr', 'rgb', 'rendition', 'cursor'];
@@ -84,12 +87,23 @@ function checkEditingEvidence(output, evidence, runId, prefix, suiteId, buildRep
         || evidence.status !== 'unavailable' || evidence.reason !== report.reason || JSON.stringify(evidence.counts) !== '{}') {
         throw new Error('Invalid editing unavailable marker.');
     }
+    return report;
 }
 function checkEditingSuites(output, evidence, runId, context) {
     if (context.eraseSuiteId !== eraseSuiteId || context.editingSuiteId !== editingSuiteId
         || context.pixelSuiteId !== pixelSuiteId || context.colorSuiteId !== colorSuiteId) throw new Error('Missing or changed required v4 suite identities.');
     checkEditingEvidence(output, evidence.eraseEvidence, runId, 'erase', eraseSuiteId, buildEraseReport, 13);
     checkEditingEvidence(output, evidence.editingEvidence, runId, 'editing', editingSuiteId, buildCellEditingReport, 22);
+}
+
+/** Require the parent-observed transport and matching geometry before accepting v5 history evidence. */
+function checkHistoryProof(output, evidence, runId, context, proof) {
+    if (context.historySuiteId !== historySuiteId || context.terminalOutput !== ownedOutputPolicy) throw new Error('Missing or changed required v5 history identity/output policy.');
+    const mode = proof.proofs?.[0]?.terminalOutput;
+    if (mode?.outputProcessing !== false || mode.tool !== sttyTool || typeof mode.verifiedAt !== 'string' || !Number.isFinite(Date.parse(mode.verifiedAt))) throw new Error('Missing parent-observed private PTY output proof.');
+    validateOutputDescription(mode.description);
+    const report = checkEditingEvidence(output, evidence.historyEvidence, runId, 'history', historySuiteId, buildHistoryReport, 30);
+    if (report.snapshots) validateOutputGeometry(mode.description, report.snapshots[0].screen.rows, report.snapshots[0].screen.cols);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
@@ -109,11 +123,16 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (context.colorSuiteId !== undefined) checkColorEvidence(output, evidence.colorEvidence, runId, context.colorSuiteId);
     const includesEditing = context.eraseSuiteId !== undefined || context.editingSuiteId !== undefined
         || evidence.eraseEvidence !== undefined || evidence.editingEvidence !== undefined;
-    if (includesEditing) checkEditingSuites(output, evidence, runId, context);
+    const historyMarkers = ['historySuiteId', 'terminalOutput', 'historyCasesSourceSha256', 'historyCaptureSourceSha256', 'historySuiteSourceSha256', 'terminalOutputSourceSha256'];
+    const includesHistory = evidence.historyEvidence !== undefined || historyMarkers.some(key => context[key] !== undefined)
+        || proof.proofs?.some(entry => entry.terminalOutput !== undefined) === true;
+    if (includesEditing || includesHistory) checkEditingSuites(output, evidence, runId, context);
+    if (includesHistory) checkHistoryProof(output, evidence, runId, context, proof);
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
     if (includesEditing) schemaVersion = 4;
+    if (includesHistory) schemaVersion = 5;
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

@@ -1,3 +1,4 @@
+/** Compress independent text/state and relevant attribute expectations without losing cell positions. */
 export function compressExpected(state) {
     const runs = [];
     for (const { text, ...values } of state.grid.flat()) {
@@ -8,7 +9,7 @@ export function compressExpected(state) {
     const history = state.history ?? [];
     return { lines: state.grid.map(row => row.map(value => value.text).join('').trimEnd()),
         cursorRow: state.row, cursorCol: state.col, cursorVisible: true,
-        bufferState: { scrollTop: state.top, scrollBottom: state.bottom, originMode: false, autoWrap: true,
+        bufferState: { scrollTop: state.top, scrollBottom: state.bottom, originMode: state.originMode ?? false, autoWrap: true,
             insertMode: false, pendingWrap: false, alternateScreen: state.alternate, scrollbackLines: history.length },
         history: { startLine: 0, totalLines: history.length, lines: [...history] }, expectedAttributeRuns: runs };
 }

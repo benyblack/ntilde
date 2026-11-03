@@ -90,6 +90,11 @@ invariant changes.
   selection values and stream override flags come from the same VT snapshot; App separately
   reports derived selection paint colors, which do not imply a concrete OSC query default.
   See `docs/qa/terminfo/controlled-capture.md`.
+- **Owned QA controls its proved transport outside VT.** The adapter verifies the
+  disposable worker's exact PTY before disabling output translation, obtains an
+  independent parent-observed mode proof before cell observations, and restores
+  the saved mode before stock collection. Node raw input alone does not prove
+  unmodified LF delivery; no personal terminal is selected by this path.
 - **VT normalizes CSI default-one counts at the parser boundary.** ECH, IL and DL
   treat an omitted or explicit zero count as one. Buffer APIs retain their direct
   zero-count no-op semantics; cursor, margins and saved history remain independent.

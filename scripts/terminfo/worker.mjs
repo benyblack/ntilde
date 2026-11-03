@@ -6,11 +6,13 @@ import { adapterId } from './collector.mjs';
 import { assertPrivateFile, processRecord, requestOwner, verifyNtildeOutput } from './ownership.mjs';
 import { collectCells } from './cells.mjs';
 import { terminalFence } from './terminal-fence.mjs';
+import { prepareOwnedOutput } from './terminal-output.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
 import { collectCursor } from './cursor.mjs';
 import { collectErase, collectEditing } from './editing-cases.mjs';
+import { collectHistory } from './history-cases.mjs';
 import { collectColors } from './color-cases.mjs';
 import { collectPixels } from './pixels-cases.mjs';
 
@@ -21,7 +23,10 @@ try {
     // Establish the real process/PTY relation before loading the probe engine.
     const binding = await verifyNtildeOutput(config, process.stdout);
     const fence = terminalFence(process.stdin, process.stdout);
+    let restoreOutput;
     try {
+        restoreOutput = prepareOwnedOutput(binding.tabTty);
+        await requestOwner(config, 'raw-output', { tty: binding.tabTty });
         const owner = (kind, barrier = null, extra = {}) => requestOwner(config, kind, { ...extra, tty: binding.tabTty, barrier });
         await collectCells({ config, fence, owner });
         await collectSgr({ config, fence, owner });
@@ -32,7 +37,11 @@ try {
         await collectColors({ config, fence, owner });
         await collectErase({ config, fence, owner });
         await collectEditing({ config, fence, owner });
-    } finally { fence.dispose(); }
+        await collectHistory({ config, fence, owner });
+    } finally {
+        try { restoreOutput?.(); }
+        finally { fence.dispose(); }
+    }
     const source = readFileSync(config.bundle);
     const digest = createHash('sha256').update(source).digest('hex');
     if (digest !== config.adapterBundleSha256) throw new Error('Local adapter bundle changed.');

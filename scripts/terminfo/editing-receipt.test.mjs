@@ -1,44 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { snapshotHash } from './agent-observer.mjs';
-import { syntheticEditingJournal } from './fixtures/editing-journal.mjs';
-import { buildEditingReport } from './editing.mjs';
-import { completeOwnedReceipt } from './receipt.mjs';
-import { pixelSuiteId } from './pixels-cases.mjs';
-import { colorSuiteId } from './color-cases.mjs';
-import { eraseSuiteId, editingSuiteId } from './editing-cases.mjs';
-const runId = 'a'.repeat(32);
-function fixture(action) {
-    const output = mkdtempSync(join(tmpdir(), 'nt-edit-receipt-'));
-    const write = (file, value) => writeFileSync(join(output, file), JSON.stringify(value));
-    const context = { runId, pixelSuiteId, colorSuiteId, eraseSuiteId, editingSuiteId }, evidence = {};
-    try {
-        write('context.json', context); write('raw.json', {});
-        write('ownership-proof.json', { completed: true, cleanedUpAt: '2026-11-03', cleanupError: null });
-        for (const prefix of ['cell', 'sgr', 'rgb', 'rendition', 'cursor', 'pixel', 'color']) {
-            let value = {}, suiteId = prefix;
-            const optional = prefix === 'pixel' || prefix === 'color';
-            if (optional) {
-                suiteId = prefix === 'pixel' ? pixelSuiteId : colorSuiteId;
-                value = { runId, suiteId, status: 'unavailable', reason: 'screenDetailsUnavailable', fixtureStarted: false };
-            }
-            const file = prefix + (optional ? '-unavailable.json' : '-observations.json');
-            write(file, value);
-            const binding = { runId, suiteId, file, sha256: snapshotHash(value) };
-            if (prefix === 'cell') Object.assign(evidence, binding); else evidence[prefix + 'Evidence'] = binding;
-        }
-        for (const prefix of ['erase', 'editing']) {
-            const report = buildEditingReport(syntheticEditingJournal(prefix, runId), runId, prefix);
-            write(prefix + '-observations.json', report);
-            writeFileSync(join(output, prefix + '-snapshots.jsonl'), report.snapshots.map(value => JSON.stringify(value)).join('\n'));
-            evidence[prefix + 'Evidence'] = { runId, suiteId: report.suiteId, file: prefix + '-observations.json', sha256: snapshotHash(report), counts: { passed: report.observations.length } };
-        }
-        action({ output, context, evidence, write, finish: () => completeOwnedReceipt(output, join(output, 'removed'), evidence) });
-    } finally { rmSync(output, { recursive: true, force: true }); }
-}
+import { ownedReceiptFixture as fixture, runId } from './fixtures/editing-receipt.mjs';
 test('v4 receipt binds both independently rederived reports after cleanup', () => fixture(f => {
     const receipt = f.finish(); assert.equal(receipt.schemaVersion, 4); assert.equal(receipt.fixtureRemoved, true);
     assert.deepEqual(receipt.eraseEvidence.counts, { passed: 13 }); assert.deepEqual(receipt.editingEvidence.counts, { passed: 22 });
