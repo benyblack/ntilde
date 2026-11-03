@@ -24,7 +24,11 @@ import { buildPixelReport } from './terminfo/pixels.mjs';
 import { OwnedEditingObserver } from './terminfo/editing-capture.mjs';
 import { eraseSuiteId, editingSuiteId } from './terminfo/editing-cases.mjs';
 import { buildEraseReport, buildCellEditingReport } from './terminfo/editing.mjs';
+import { OwnedHistoryObserver } from './terminfo/history-capture.mjs';
+import { historySuiteId } from './terminfo/history-cases.mjs';
+import { buildHistoryReport } from './terminfo/history.mjs';
 import { completeOwnedReceipt } from './terminfo/receipt.mjs';
+import { readOwnedOutputMode, ownedOutputPolicy } from './terminfo/terminal-output.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -124,6 +128,10 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
         editingExpectationsSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-expectations.mjs'),
         editingCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-capture.mjs'),
         editingSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'editing.mjs'),
+        historyCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'history-cases.mjs'),
+        historyCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'history-capture.mjs'),
+        historySuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'history.mjs'),
+        terminalOutputSourceSha256: join(repo, 'scripts', 'terminfo', 'terminal-output.mjs'),
         receiptSourceSha256: join(repo, 'scripts', 'terminfo', 'receipt.mjs'),
         collectorManifestSha256: join(repo, 'scripts', 'terminfo', 'collector-package.json'),
         collectorLockSha256: join(repo, 'scripts', 'terminfo', 'collector-package-lock.json'),
@@ -226,6 +234,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let colorEvidence;
     let eraseEvidence;
     let editingEvidence;
+    let historyEvidence;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
@@ -274,7 +283,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const editingStates = new Map();
         const editingSpecs = {
             erase: { nonce: 'NTILDE_ER_', suiteId: eraseSuiteId, count: 13, report: buildEraseReport },
-            editing: { nonce: 'NTILDE_EC_', suiteId: editingSuiteId, count: 22, report: buildCellEditingReport },
+            editing: { previous: 'erase', nonce: 'NTILDE_EC_', suiteId: editingSuiteId, count: 22, report: buildCellEditingReport },
+            history: { previous: 'editing', nonce: 'NTILDE_HS_', suiteId: historySuiteId, count: 30, report: buildHistoryReport, observer: OwnedHistoryObserver },
         };
         const detailStates = new Map();
         const detailSpecs = {
@@ -282,7 +292,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             rendition: { previous: 'rgb', nonce: 'NTILDE_RD_', suiteId: renditionSuiteId, cases: renditionCases, report: buildRenditionReport, includeOverline: true },
             cursor: { previous: 'rendition', nonce: 'NTILDE_CS_', suiteId: cursorSuiteId, cases: cursorCases, report: buildCursorReport, includeCursorMode: true },
         };
-        let completed = false;
+        let completed = false, outputModeVerified = false;
         const proofs = [];
         const image = statSync(executable);
         const context = {
@@ -293,7 +303,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             nodeVersion: process.version, dependencyInstall: 'isolated npm ci --ignore-scripts', startedAt: new Date().toISOString(), runId,
             ...retainCollectorEvidence(output, bundle, adapterBundleSha256, ownerModule, workerScript),
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
-            clipboard: 'disabled; no clipboard fixture', eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
+            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             cells: 'private observe-only AgentHost; nonce-bound pane; separate ASCII cell-state suite',
             attributes: 'separate ASCII SGR flags and palette-index suite',
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
@@ -401,11 +411,12 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 status: 'unavailable', reason: 'screenDetailsUnavailable', counts: {}, provisionalUntil: 'cell-receipt.json' };
         };
         const observeEditing = async (prefix, request, budget) => {
-            const previous = prefix === 'erase' ? { observer: colorObserver, unavailable: colorUnavailable } : editingStates.get('erase');
+            const spec = editingSpecs[prefix];
+            const previous = prefix === 'erase' ? { observer: colorObserver, unavailable: colorUnavailable } : editingStates.get(spec.previous);
             if (!previous?.observer?.restored && !previous?.unavailable) throw new Error('The previous suite must restore before editing observations.');
             let state = editingStates.get(prefix);
             if (!state) {
-                state = { observer: new OwnedEditingObserver({ prefix, appData, ownerPid: app.pid, profileName,
+                state = { observer: new (spec.observer ?? OwnedEditingObserver)({ prefix, appData, ownerPid: app.pid, profileName,
                     nonce: editingSpecs[prefix].nonce + runId, expectedPaneId: cellObserver.paneId }) };
                 editingStates.set(prefix, state);
             }
@@ -474,7 +485,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing)-(?:start|bind|read|finish)$/.test(request.kind)) {
+                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history)-(?:start|bind|read|finish)$/.test(request.kind)) {
+                        if (!outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
                         const result = await observeCells(request, queryTimeout);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
                         return;
@@ -482,6 +494,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     if (request.kind === 'prove') {
                         // Retain the measured proof, never the capability token.
                         if (proofs.length === 0) proofs.push({ app: owner, worker, tty: request.tty, at: new Date().toISOString() });
+                    } else if (request.kind === 'raw-output') {
+                        if (outputModeVerified || !proofs.length) throw new Error('Unexpected private PTY output proof.');
+                        const mode = readOwnedOutputMode(request.tty, queryTimeout());
+                        proofs[0].terminalOutput = { ...mode, verifiedAt: new Date().toISOString() };
+                        outputModeVerified = true;
                     } else if (request.kind === 'done') {
                         completed = true;
                         resolveDone();
@@ -528,6 +545,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 (frames, id) => buildColorReport(frames, id, output), 'color-observations.json');
             eraseEvidence = retainEditing('erase');
             editingEvidence = retainEditing('editing');
+            historyEvidence = retainEditing('history');
+            summary.historyEvidence = historyEvidence;
             summary.eraseEvidence = eraseEvidence;
             summary.editingEvidence = editingEvidence;
             summary.colorEvidence = colorEvidence;
@@ -564,7 +583,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
         throw interruption;
     }
-    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence }); }
+    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence }); }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
 

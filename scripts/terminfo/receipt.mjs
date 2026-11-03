@@ -9,6 +9,9 @@ import { colorSuiteId } from './color-cases.mjs';
 
 import { buildEraseReport, buildCellEditingReport } from './editing.mjs';
 import { eraseSuiteId, editingSuiteId } from './editing-cases.mjs';
+import { historySuiteId } from './history-cases.mjs';
+import { buildHistoryReport } from './history.mjs';
+import { ownedOutputPolicy, sttyTool, validateOutputDescription } from './terminal-output.mjs';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const suites = ['sgr', 'rgb', 'rendition', 'cursor'];
@@ -92,6 +95,14 @@ function checkEditingSuites(output, evidence, runId, context) {
     checkEditingEvidence(output, evidence.editingEvidence, runId, 'editing', editingSuiteId, buildCellEditingReport, 22);
 }
 
+function checkHistoryProof(output, evidence, runId, context, proof) {
+    if (context.historySuiteId !== historySuiteId || context.terminalOutput !== ownedOutputPolicy) throw new Error('Missing or changed required v5 history identity/output policy.');
+    const mode = proof.proofs?.[0]?.terminalOutput;
+    if (mode?.outputProcessing !== false || mode.tool !== sttyTool || typeof mode.verifiedAt !== 'string' || !Number.isFinite(Date.parse(mode.verifiedAt))) throw new Error('Missing parent-observed private PTY output proof.');
+    validateOutputDescription(mode.description);
+    checkEditingEvidence(output, evidence.historyEvidence, runId, 'history', historySuiteId, buildHistoryReport, 30);
+}
+
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
 export function completeOwnedReceipt(output, scratch, evidence) {
     const proofBytes = readFileSync(join(output, 'ownership-proof.json'));
@@ -109,11 +120,14 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (context.colorSuiteId !== undefined) checkColorEvidence(output, evidence.colorEvidence, runId, context.colorSuiteId);
     const includesEditing = context.eraseSuiteId !== undefined || context.editingSuiteId !== undefined
         || evidence.eraseEvidence !== undefined || evidence.editingEvidence !== undefined;
-    if (includesEditing) checkEditingSuites(output, evidence, runId, context);
+    const includesHistory = context.historySuiteId !== undefined || evidence.historyEvidence !== undefined;
+    if (includesEditing || includesHistory) checkEditingSuites(output, evidence, runId, context);
+    if (includesHistory) checkHistoryProof(output, evidence, runId, context, proof);
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
     if (includesEditing) schemaVersion = 4;
+    if (includesHistory) schemaVersion = 5;
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

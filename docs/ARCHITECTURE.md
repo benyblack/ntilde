@@ -146,6 +146,11 @@ The terminal engine is the **single source of truth** for terminal semantics. Th
   Windowless viewport imports report an explicitly unknown history count; imported
   empty storage cannot prove empty daemon history. This projection does not alter
   parser state or enable acting methods, and Contracts remains a leaf.
+- Owned QA controls PTY output processing outside VT: only the proved disposable
+  worker's exact PTY is changed, with a parent-observed untranslated-output proof
+  before cell observations and saved-mode restoration before stock collection.
+  Node raw input alone cannot establish unmodified LF delivery. This adapter
+  path selects no personal terminal and adds no I/O to VT.
 - Normalize default-one CSI counts in the parser: ECH, IL and DL map omitted/zero
   parameters to one before invoking buffer operations. Direct buffer zero-count
   calls remain no-ops, independently of cursor, margins and saved history.

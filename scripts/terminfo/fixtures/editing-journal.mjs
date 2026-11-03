@@ -23,17 +23,20 @@ export function initialEditingScreen() {
         flags: 768, fg: -1, bg: -1, foregroundArgb: null, backgroundArgb: null, underlineStyle: 0, underlineColorIndex: -1, underlineArgb: null }))),
         row: 0, col: 0, top: 0, bottom: 9, alternate: false });
 }
-export function syntheticEditingJournal(prefix, runId) {
+export function syntheticCellPlanJournal(prefix, runId, { casesFor, nonce }) {
     const frames = [], add = (kind, raw, caseId = null, stageId = null) => {
         const screen = screenSnapshot(raw, false, true, true, true, true), sha256 = snapshotHash(screen);
         frames.push({ index: frames.length, kind: prefix + '-' + kind, paneId: editingPaneId,
             barrier: kind === 'start' ? null : barrier, screen, sha256, afterScreen: structuredClone(screen), afterSha256: sha256, caseId, stageId });
     };
     add('start', initialEditingScreen());
-    const bind = initialEditingScreen(); bind.lines[0] = `NTILDE_${prefix === 'erase' ? 'ER' : 'EC'}_${runId}`;
+    const bind = initialEditingScreen(); bind.lines[0] = nonce + runId;
     bind.cursorCol = 42; bind.bufferState.alternateScreen = true; add('bind', bind);
-    for (const item of makeEditingCases(10, 48).filter(value => value.id.startsWith(prefix + '.'))) {
+    for (const item of casesFor(10, 48).filter(value => value.id.startsWith(prefix + '.'))) {
         add('read', editingWire(item.before), item.id, 'control'); add('read', editingWire(item.after), item.id, 'after');
     }
     add('finish', initialEditingScreen()); return frames;
 }
+
+export const syntheticEditingJournal = (prefix, runId) => syntheticCellPlanJournal(prefix, runId,
+    { casesFor: makeEditingCases, nonce: prefix === 'erase' ? 'NTILDE_ER_' : 'NTILDE_EC_' });

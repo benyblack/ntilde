@@ -9,10 +9,10 @@ export function pristineEditing(screen) {
         && state.scrollTop === 0 && state.scrollBottom === screen.rows - 1 && !state.originMode && state.autoWrap
         && !state.insertMode && !state.pendingWrap && !state.alternateScreen && state.scrollbackLines === 0 && screen.history.lines.length === 0;
 }
-export class OwnedEditingObserver {
-    constructor({ prefix, ...options }) {
-        check(['erase', 'editing'].includes(prefix));
-        this.prefix = prefix;
+export class OwnedCellPlanObserver {
+    constructor({ prefix, casesFor, ...options }) {
+        check(/^[a-z]{1,16}$/.test(prefix) && typeof casesFor === 'function');
+        this.prefix = prefix; this.casesFor = casesFor;
         const facts = { ...options, prefix, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true };
         this.before = new OwnedCellObserver(facts); this.after = new OwnedCellObserver(facts);
         this.frames = []; this.next = 0;
@@ -33,7 +33,7 @@ export class OwnedEditingObserver {
             check(snapshotHash(result.screen) === snapshotHash(after));
             if (request.kind === this.prefix + '-start') {
                 check(pristineEditing(result.screen));
-                this.cases = makeEditingCases(result.screen.rows, result.screen.cols).filter(value => value.id.startsWith(this.prefix + '.'));
+                this.cases = this.casesFor(result.screen.rows, result.screen.cols).filter(value => value.id.startsWith(this.prefix + '.'));
                 this.plan = this.cases.flatMap(value => ['control', 'after'].map(stageId => ({ caseId: value.id, stageId })));
                 check(this.plan.length + 3 <= 64);
             }
@@ -50,5 +50,13 @@ export class OwnedEditingObserver {
             if (reading) this.next++;
             return result;
         } finally { this.busy = false; }
+    }
+}
+
+/** Historical erase/editing entry point keeps its exact known plans and wire shape. */
+export class OwnedEditingObserver extends OwnedCellPlanObserver {
+    constructor(options) {
+        check(['erase', 'editing'].includes(options.prefix));
+        super({ ...options, casesFor: makeEditingCases });
     }
 }

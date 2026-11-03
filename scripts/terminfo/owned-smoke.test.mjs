@@ -47,8 +47,8 @@ function withCollectorFixture(receipt, lockfile, action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
     try {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
-            'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs',
-            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs', 'terminfo/editing-state.mjs', 'terminfo/editing-cases.mjs', 'terminfo/editing-expectations.mjs', 'terminfo/editing-capture.mjs', 'terminfo/editing.mjs',
+            'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs', 'terminfo/terminal-output.mjs',
+            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs', 'terminfo/editing-state.mjs', 'terminfo/editing-cases.mjs', 'terminfo/editing-expectations.mjs', 'terminfo/editing-capture.mjs', 'terminfo/editing.mjs', 'terminfo/history-cases.mjs', 'terminfo/history-capture.mjs', 'terminfo/history.mjs',
             'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
@@ -129,7 +129,7 @@ function launch(executable, interrupt, observation = {}) {
         let output = '';
         let errors = '';
         let sent = false;
-        // Complete runs now add 76 paired state/history frames after all 75 PNGs.
+        // Complete runs now add 139 paired state/history frames after all 75 PNGs.
         // A full collection reaches teardown in ~14s (~15.5s under the full suite).
         // Keep interruption-only cases at 15s; allow 20s only for completed collections.
         const collected = observation.stubborn || observation.phase === 'fixture-removal' && !interrupt;
@@ -166,7 +166,7 @@ function assertRetainedCollector(output) {
         ['ownershipSourceSha256', 'terminfo/ownership.mjs'], ['workerSourceSha256', 'terminfo/worker.mjs'],
         ['runtimeSourceSha256', 'terminfo/runtime.mjs'],
         ['observerSourceSha256', 'terminfo/agent-observer.mjs'], ['cellSuiteSourceSha256', 'terminfo/cells.mjs'],
-        ['cellFenceSourceSha256', 'terminfo/terminal-fence.mjs'],
+        ['cellFenceSourceSha256', 'terminfo/terminal-fence.mjs'], ['terminalOutputSourceSha256', 'terminfo/terminal-output.mjs'],
         ['attributeSourceSha256', 'terminfo/attributes.mjs'], ['sgrSuiteSourceSha256', 'terminfo/sgr.mjs'],
         ['cellDetailsSourceSha256', 'terminfo/cell-details.mjs'], ['rgbSuiteSourceSha256', 'terminfo/rgb.mjs'],
         ['renditionSuiteSourceSha256', 'terminfo/rendition.mjs'], ['cursorSuiteSourceSha256', 'terminfo/cursor.mjs'],
@@ -177,6 +177,8 @@ function assertRetainedCollector(output) {
         ['editingStateSourceSha256', 'terminfo/editing-state.mjs'], ['editingCasesSourceSha256', 'terminfo/editing-cases.mjs'],
         ['editingExpectationsSourceSha256', 'terminfo/editing-expectations.mjs'], ['editingCaptureSourceSha256', 'terminfo/editing-capture.mjs'],
         ['editingSuiteSourceSha256', 'terminfo/editing.mjs'],
+        ['historyCasesSourceSha256', 'terminfo/history-cases.mjs'], ['historyCaptureSourceSha256', 'terminfo/history-capture.mjs'],
+        ['historySuiteSourceSha256', 'terminfo/history.mjs'],
         ['receiptSourceSha256', 'terminfo/receipt.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
@@ -361,6 +363,9 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.equal(removal.workerAlive, false, 'The worker must exit before fixture removal begins.');
         assert.throws(() => process.kill(worker.pid, 0), /ESRCH/, 'Cleanup must wait for the worker to exit.');
         assert.equal(proof.completed, true);
+        assert.equal(proof.proofs[0].terminalOutput.outputProcessing, false);
+        assert.equal(proof.proofs[0].terminalOutput.tool, '/bin/stty');
+        assert.match(proof.proofs[0].terminalOutput.description, /-opost/);
         assert.ok(proof.cleanedUpAt);
         assertRetainedCollector(output);
         const settings = JSON.parse(readFileSync(join(output, 'initial-settings.json')));
@@ -396,7 +401,7 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 4);
+        assert.equal(receipt.schemaVersion, 5);
         assert.equal(receipt.pixelEvidence.sha256, digest('pixel-observations.json'));
         const pixels = JSON.parse(readFileSync(join(output, 'pixel-observations.json')));
         assert.equal(pixels.snapshots.length, 40);
@@ -414,7 +419,7 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.equal(colors.snapshots[0].pixel.sha256, colors.snapshots.at(-1).pixel.sha256);
         for (const frame of colors.snapshots) assert.equal(frame.pixel.sha256, digest(frame.pixel.file));
         assert.ok(colors.observations.every(item => item.result === 'passed'), JSON.stringify(colors.observations));
-        for (const [prefix, count, frames] of [['erase', 13, 29], ['editing', 22, 47]]) {
+        for (const [prefix, count, frames] of [['erase', 13, 29], ['editing', 22, 47], ['history', 30, 63]]) {
             const binding = receipt[prefix + 'Evidence'];
             assert.equal(binding.sha256, digest(prefix + '-observations.json'));
             const extra = JSON.parse(readFileSync(join(output, binding.file)));
@@ -479,7 +484,7 @@ test('an initial pixel detail refusal after restored cursor evidence retains typ
         assert.deepEqual(receipt.pixelEvidence.counts, {});
         assert.equal(receipt.colorEvidence.status, 'unavailable');
         assert.equal(readFileSync(join(output, 'color-snapshots.jsonl'), 'utf8'), '');
-        for (const prefix of ['erase', 'editing']) {
+        for (const prefix of ['erase', 'editing', 'history']) {
             assert.equal(receipt[prefix + 'Evidence'].status, 'unavailable');
             assert.deepEqual(receipt[prefix + 'Evidence'].counts, {});
             assert.equal(readFileSync(join(output, prefix + '-snapshots.jsonl'), 'utf8'), '');
