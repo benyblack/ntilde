@@ -306,11 +306,14 @@ public class OverlineTests
         }
     }
 
+    // Both rows below end at the right edge: reflow only right-pins a block that is already against
+    // it (GridQueryReader.MaxRightPromptIndent), so a gap that stops short of the edge is ordinary
+    // padded output and keeps its columns.
     [Fact]
     public void SparseReflow_PreservesDecoratedTailOfRightPinnedText()
     {
         var buffer = new TerminalBuffer(24, 6);
-        new AnsiParser(buffer).Process("A" + new string(' ', 12) + "B\x1b[53m  \x1b[55m");
+        new AnsiParser(buffer).Process("A" + new string(' ', 20) + "B\x1b[53m  \x1b[55m");
         buffer.Resize(20, 6);
         Assert.Equal("B", GraphemeAt(buffer, 17, 0));
         Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(18, 0));
@@ -321,7 +324,7 @@ public class OverlineTests
     public void SparseReflow_PlainGapsKeepTheirExistingRightPinnedWidth()
     {
         var buffer = new TerminalBuffer(20, 6);
-        new AnsiParser(buffer).Process("A" + new string(' ', 12) + "B");
+        new AnsiParser(buffer).Process("A" + new string(' ', 18) + "B");
         buffer.Resize(16, 6);
         Assert.Equal("A", GraphemeAt(buffer, 0, 0));
         Assert.Equal("B", GraphemeAt(buffer, 15, 0));
