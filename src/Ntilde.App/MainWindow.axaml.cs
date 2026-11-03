@@ -402,6 +402,7 @@ namespace Ntilde
             AgentHost.AgentHostService.Instance.ActEnabled = _settings.AgentAccessActEnabled;
             AgentHost.AgentHostService.Instance.SetSshProfileAllowlist(IsSshProfileAgentAllowed);
             AgentHost.AgentHostService.Instance.SetActionExecutor(this);
+            AgentHost.AgentHostService.Instance.SetPaneObserver(this);
             AgentHost.AgentHostService.Instance.SetWindowlessSource(WindowlessSessions);
             AgentHost.AgentHostService.Instance.Apply(_settings.AgentAccessObserveEnabled);
             AgentHost.AgentHostService.Instance.ObserveActivityChanged += OnAgentObserveActivityChanged;

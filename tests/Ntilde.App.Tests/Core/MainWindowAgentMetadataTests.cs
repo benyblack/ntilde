@@ -16,12 +16,13 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
 {
     public void Dispose() => TestMainWindowFactory.DisposeCreatedWindows();
 
-    private static (MainWindow Window, TerminalPane Pane, TerminalSettings Settings) CreateWindow()
+    private static (MainWindow Window, TerminalPane Pane, TerminalSettings Settings) CreateWindow(bool observeEnabled = false)
     {
         var profile = new TerminalProfile { Name = "Owned metadata local", Type = ConnectionType.Local };
         var settings = new TerminalSettings
         {
             SessionPersistence = SessionPersistenceMode.Off,
+            AgentAccessObserveEnabled = observeEnabled,
             AgentAccessActEnabled = false,
             CommandAssistShellIntegrationEnabled = false,
             Osc9NotificationsEnabled = true,
@@ -50,6 +51,29 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
         var task = ((IAgentPaneObserver)window).ReadPaneMetadataAsync(registration, TestContext.Current.CancellationToken);
         Dispatcher.UIThread.RunJobs();
         return await task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+    }
+
+    [AvaloniaFact]
+    public async Task Initial_window_startup_publishes_the_read_observer_without_act_access()
+    {
+        var registry = new AgentSessionRegistry();
+        using var registryScope = AgentSessionRegistry.OverrideInstanceForTesting(registry);
+        string root = Ntilde.AppTests.AgentHost.AgentHostTestEndpoint.CreateTempDir("metadata");
+        try
+        {
+            using var service = new AgentHostService(registry, Ntilde.AppTests.AgentHost.AgentHostTestEndpoint.CreateEndpoint(root), root);
+            using var scope = AgentHostService.OverrideInstanceForTesting(service);
+            var (window, pane, _) = CreateWindow(observeEnabled: true);
+            Assert.False(service.ActEnabled);
+            Assert.Equal(pane.PaneId, Assert.Single(registry.GetRegistrations()).PaneId);
+            string request = "{\"v\":1,\"id\":1,\"method\":\"readPaneMetadata\",\"params\":{\"paneId\":\"" + pane.PaneId + "\"}}";
+            var pending = service.HandleRequestLineAsync(request, TestContext.Current.CancellationToken);
+            Dispatcher.UIThread.RunJobs();
+            var response = await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.Null(response.Error);
+            Assert.Equal(pane.PaneId.ToString(), response.Result!.Value.GetProperty("paneId").GetString());
+        }
+        finally { Directory.Delete(root, recursive: true); }
     }
 
     [AvaloniaFact]
