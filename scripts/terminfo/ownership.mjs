@@ -118,14 +118,15 @@ export function requestOwner(config, kind, extra = {}) {
         }) + '\n'));
         socket.on('data', chunk => {
             buffer += chunk;
-            const limit = /^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history)-/.test(kind) ? 512 * 1024 : 16384;
+            const limit = /^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|resize)-/.test(kind) ? 512 * 1024 : 16384;
             if (Buffer.byteLength(buffer) > limit) return finish(new Error('Oversized owner response.'));
             if (!buffer.includes('\n')) return;
             try {
                 const response = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
                 if (!response.ok) {
                     const error = new Error(response.error ?? 'Ntilde ownership refused.');
-                    if (response.code === 'screenDetailsUnavailable') error.code = response.code;
+                    if (response.code === 'screenDetailsUnavailable'
+                        || (kind === 'resize-start' && response.code === 'resizeGeometryUnavailable')) error.code = response.code;
                     return finish(error);
                 }
                 finish(null, response);

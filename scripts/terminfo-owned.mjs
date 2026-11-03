@@ -9,6 +9,10 @@ import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
 import { assertProcessOwnership, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
+import { OwnedResizeObserver } from './terminfo/resize-capture.mjs';
+import { resizeSuiteId, ownedResizePolicy } from './terminfo/resize-cases.mjs';
+import { buildResizeReport } from './terminfo/resize.mjs';
+import { resizeOwnedPane } from './terminfo/resize-action.mjs';
 import { OwnedCellObserver } from './terminfo/agent-observer.mjs';
 import { buildCellReport } from './terminfo/cells.mjs';
 import { buildSgrReport } from './terminfo/sgr.mjs';
@@ -35,10 +39,10 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writeJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
 const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 
-/** Preserve only the known optional App refusal in the private owner response. */
+/** Preserve only source-known initial App/geometry-budget refusal codes. */
 function ownerFailure(error) {
     return { ok: false, error: error.message,
-        ...(error.code === 'screenDetailsUnavailable' ? { code: error.code } : {}) };
+        ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
 }
 
 function validateInvocation(args) {
@@ -128,6 +132,11 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
         editingExpectationsSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-expectations.mjs'),
         editingCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-capture.mjs'),
         editingSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'editing.mjs'),
+        resizeCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'resize-cases.mjs'),
+        resizeCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'resize-capture.mjs'),
+        resizeSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'resize.mjs'),
+        resizeActionSourceSha256: join(repo, 'scripts', 'terminfo', 'resize-action.mjs'),
+        resizeReceiptSourceSha256: join(repo, 'scripts', 'terminfo', 'resize-receipt.mjs'),
         historyCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'history-cases.mjs'),
         historyCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'history-capture.mjs'),
         historySuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'history.mjs'),
@@ -200,6 +209,7 @@ async function main() {
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
+Enables Act access only in fresh private settings for parent-selected resize actions.
 Requires an npm installation (or NTILDE_TERMINFO_NPM_CLI) to recreate locked dependencies.
 Prepare terminfo.dev@4.0.0 under
 artifacts/terminfo/tool (see docs/qa/QA_TERMINFO.md). Launches a disposable
@@ -236,6 +246,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let eraseEvidence;
     let editingEvidence;
     let historyEvidence;
+    let resizeEvidence;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
@@ -266,7 +277,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             MinimumContrast: 1, EnableLigatures: false,
             BellAudioEnabled: false, BellVisualEnabled: false, SmoothScrolling: false,
             CommandAssistEnabled: false, CommandAssistShellIntegrationEnabled: false,
-            CommandAssistPowerShellIntegrationEnabled: false, AgentAccessObserveEnabled: true, AgentAccessActEnabled: false,
+            CommandAssistPowerShellIntegrationEnabled: false, AgentAccessObserveEnabled: true, AgentAccessActEnabled: true,
         };
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
@@ -293,27 +304,30 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             rendition: { previous: 'rgb', nonce: 'NTILDE_RD_', suiteId: renditionSuiteId, cases: renditionCases, report: buildRenditionReport, includeOverline: true },
             cursor: { previous: 'rendition', nonce: 'NTILDE_CS_', suiteId: cursorSuiteId, cases: cursorCases, report: buildCursorReport, includeCursorMode: true },
         };
+        let resizeState;
         let completed = false, outputModeVerified = false;
         const proofs = [];
         const image = statSync(executable);
         const context = {
             adapter: adapterId, adapterBundleSha256, upstreamBundleSha256, appVersion: args[3],
             appVersionSource: 'operator supplied; not independently verified',
+            initialSettingsSha256: hash(readFileSync(join(output, 'initial-settings.json'))),
             executable, executableSha256: hash(readFileSync(executable)),
             assemblySha256: existsSync(join(dirname(executable), 'Ntilde.dll')) ? hash(readFileSync(join(dirname(executable), 'Ntilde.dll'))) : null,
             nodeVersion: process.version, dependencyInstall: 'isolated npm ci --ignore-scripts', startedAt: new Date().toISOString(), runId,
             ...retainCollectorEvidence(output, bundle, adapterBundleSha256, ownerModule, workerScript),
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
-            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
-            cells: 'private observe-only AgentHost; nonce-bound pane; separate ASCII cell-state suite',
+            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
+            cells: 'private AgentHost readScreen; nonce-bound pane; separate ASCII cell-state suite',
             attributes: 'separate ASCII SGR flags and palette-index suite',
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
             cursorModes: 'stored cursor style/blink/default/visibility; pristine owned DECSTR cleanup, no host appearance or blink phase',
         };
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
-        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs)])
+        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         /** Complete each prior suite before capturing this one; only initial typed refusal is optional. */
         const observeDetails = async (prefix, request, budget) => {
             const spec = detailSpecs[prefix];
@@ -443,9 +457,59 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             const state = editingStates.get(prefix);
             return state?.unavailable ?? retainCellReport(output, state?.observer, runId, editingSpecs[prefix].report, `${prefix}-observations.json`);
         };
+        /** Record only a source-known initial refusal, before binding or requesting any resize. */
+        const recordResizeUnavailable = reason => {
+            const file = 'resize-unavailable.json';
+            writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: resizeSuiteId,
+                status: 'unavailable', reason, fixtureStarted: false, plannedExperiments: 3 });
+            resizeState.unavailable = { runId, suiteId: resizeSuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                status: 'unavailable', reason, counts: {}, provisionalUntil: 'cell-receipt.json' };
+        };
+        /** Source-selected geometry changes stay separate from the ordinary fixed-baseline readers. */
+        const observeResize = async (request, budget) => {
+            const previous = editingStates.get('history');
+            if (!previous?.observer?.restored && !previous?.unavailable) throw new Error('History must restore before resize observations.');
+            if (!resizeState) {
+                resizeState = { workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0 };
+                resizeState.observer = new OwnedResizeObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: 'NTILDE_RZ_' + runId, expectedPaneId: cellObserver.paneId,
+                    performResize: (rows, cols, actionBudget) => resizeOwnedPane({ app, appData, executable, runId,
+                        paneId: resizeState.observer.paneId, uid: process.getuid(),
+                        workerPid: resizeState.workerPid, tty: resizeState.tty }, rows, cols, actionBudget) });
+                proofs[0].resize.actions = resizeState.observer.actions;
+            }
+            const state = resizeState;
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('Resize fixture ownership or availability changed.');
+            if (previous.unavailable && request.kind === 'resize-start') {
+                recordResizeUnavailable('screenDetailsUnavailable');
+                throw Object.assign(new Error('Resize fixture requires complete screen details.'), { code: 'screenDetailsUnavailable' });
+            }
+            try {
+                const result = await state.observer.handle(request, budget);
+                if (request.kind === 'resize-start') {
+                    proofs[0].resize.paneId = state.observer.paneId;
+                    proofs[0].resize.originalGeometry = state.observer.original;
+                }
+                for (const frame of state.observer.frames.slice(state.recordedFrames)) {
+                    appendFileSync(join(output, 'resize-snapshots.jsonl'), JSON.stringify(frame) + '\n');
+                    state.recordedFrames++;
+                }
+                return result;
+            } catch (error) {
+                if (request.kind === 'resize-start' && ['screenDetailsUnavailable', 'resizeGeometryUnavailable'].includes(error.code)
+                    && !state.observer.baseline && !state.observer.frames.length && !state.observer.actions.length) recordResizeUnavailable(error.code);
+                throw error;
+            } finally {
+                for (const action of state.observer.actions.slice(state.recordedActions)) {
+                    appendFileSync(join(output, 'resize-actions.jsonl'), JSON.stringify(action) + '\n');
+                    state.recordedActions++;
+                }
+            }
+        };
         /** Route owned observations serially, preserving suite restoration and pane identity dependencies. */
         const observeCells = async (request, budget) => {
             const prefix = request.kind.split('-')[0];
+            if (prefix === 'resize') return observeResize(request, budget);
             if (prefix === 'pixel') return observePixels(request, budget);
             if (prefix === 'color') return observeColors(request, budget);
             if (Object.hasOwn(editingSpecs, prefix)) return observeEditing(prefix, request, budget);
@@ -468,7 +532,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         /** Retain the first measured lineage and PTY without storing the run capability. */
         const retainFirstProof = (owner, worker, tty) => {
             if (proofs.length !== 0) return;
-            proofs.push({ app: owner, worker, tty, at: new Date().toISOString() });
+            proofs.push({ app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] } });
         };
         /** Bind one kernel-observed output-mode proof to the already verified worker. */
         const attestOutputMode = (request, budget) => {
@@ -504,7 +568,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history)-(?:start|bind|read|finish)$/.test(request.kind)) {
+                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history)-(?:start|bind|read|finish)$/.test(request.kind)
+                        || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)) {
                         const result = await observeUntranslatedCells(request, queryTimeout);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
                         return;
@@ -561,6 +626,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             eraseEvidence = retainEditing('erase');
             editingEvidence = retainEditing('editing');
             historyEvidence = retainEditing('history');
+            resizeEvidence = resizeState?.unavailable ?? retainCellReport(output, resizeState?.observer, runId,
+                (frames, id) => buildResizeReport(frames, resizeState.observer.actions, id), 'resize-observations.json');
+            summary.resizeEvidence = resizeEvidence;
             summary.historyEvidence = historyEvidence;
             summary.eraseEvidence = eraseEvidence;
             summary.editingEvidence = editingEvidence;
@@ -598,7 +666,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
         throw interruption;
     }
-    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence }); }
+    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence }); }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
 

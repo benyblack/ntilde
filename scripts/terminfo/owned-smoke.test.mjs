@@ -49,6 +49,7 @@ function withCollectorFixture(receipt, lockfile, action) {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
             'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs', 'terminfo/terminal-output.mjs',
             'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs', 'terminfo/editing-state.mjs', 'terminfo/editing-cases.mjs', 'terminfo/editing-expectations.mjs', 'terminfo/editing-capture.mjs', 'terminfo/editing.mjs', 'terminfo/history-cases.mjs', 'terminfo/history-capture.mjs', 'terminfo/history.mjs',
+            'terminfo/resize-cases.mjs', 'terminfo/resize-capture.mjs', 'terminfo/resize.mjs', 'terminfo/resize-action.mjs', 'terminfo/resize-receipt.mjs',
             'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
@@ -129,11 +130,12 @@ function launch(executable, interrupt, observation = {}) {
         let output = '';
         let errors = '';
         let sent = false;
-        // Complete runs now add 139 paired state/history frames after all 75 PNGs.
-        // A full collection reaches teardown in ~14s (~15.5s under the full suite).
-        // Keep interruption-only cases at 15s; allow 20s only for completed collections.
+        // Complete runs include 151 paired state/history frames, 75 PNGs and six App actions
+        // with before/after process proofs. The resistant-worker run completes its receipt in
+        // 20.06s (measured through process exit), including the bounded SIGTERM/SIGKILL path.
+        // Allow 25s only for completed collections; interruption-only cases retain 15s.
         const collected = observation.stubborn || observation.phase === 'fixture-removal' && !interrupt;
-        const timeoutMs = collected ? 20000 : 15000;
+        const timeoutMs = collected ? 25000 : 15000;
         let lifecycleError, terminationTimer;
         const timer = setTimeout(() => {
             lifecycleError = new Error('Adapter lifecycle did not finish.');
@@ -179,6 +181,9 @@ function assertRetainedCollector(output) {
         ['editingSuiteSourceSha256', 'terminfo/editing.mjs'],
         ['historyCasesSourceSha256', 'terminfo/history-cases.mjs'], ['historyCaptureSourceSha256', 'terminfo/history-capture.mjs'],
         ['historySuiteSourceSha256', 'terminfo/history.mjs'],
+        ['resizeCasesSourceSha256', 'terminfo/resize-cases.mjs'], ['resizeCaptureSourceSha256', 'terminfo/resize-capture.mjs'],
+        ['resizeSuiteSourceSha256', 'terminfo/resize.mjs'], ['resizeActionSourceSha256', 'terminfo/resize-action.mjs'],
+        ['resizeReceiptSourceSha256', 'terminfo/resize-receipt.mjs'],
         ['receiptSourceSha256', 'terminfo/receipt.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
@@ -202,6 +207,10 @@ test('an oversized real viewport records RGB unavailable while retaining stock r
         const unavailable = JSON.parse(readFileSync(join(output, receipt.rgbEvidence.file)));
         assert.equal(receipt.rgbEvidence.status, 'unavailable');
         assert.equal(receipt.rgbEvidence.reason, 'screenDetailsUnavailable');
+        assert.equal(receipt.resizeEvidence.status, 'unavailable');
+        assert.equal(receipt.resizeEvidence.reason, 'screenDetailsUnavailable');
+        assert.equal(readFileSync(join(output, 'resize-snapshots.jsonl'), 'utf8'), '');
+        assert.equal(readFileSync(join(output, 'resize-actions.jsonl'), 'utf8'), '');
         assert.equal(receipt.renditionEvidence.status, 'unavailable');
         assert.equal(receipt.cursorEvidence.status, 'unavailable');
         assert.equal(receipt.pixelEvidence.status, 'unavailable');
@@ -371,7 +380,7 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         const settings = JSON.parse(readFileSync(join(output, 'initial-settings.json')));
         assert.ok(!existsSync(dirname(settings.Profiles[0].Command)));
         assert.equal(settings.AgentAccessObserveEnabled, true);
-        assert.equal(settings.AgentAccessActEnabled, false);
+        assert.equal(settings.AgentAccessActEnabled, true);
         const receipt = JSON.parse(readFileSync(join(output, 'cell-receipt.json')));
         const digest = file => createHash('sha256').update(readFileSync(join(output, file))).digest('hex');
         assert.equal(receipt.fixtureRemoved, true);
@@ -401,7 +410,14 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 5);
+        assert.equal(receipt.schemaVersion, 6);
+        assert.equal(receipt.resizeEvidence.sha256, digest('resize-observations.json'));
+        const resized = JSON.parse(readFileSync(join(output, 'resize-observations.json')));
+        assert.equal(resized.snapshots.length, 12); assert.equal(resized.actions.length, 6);
+        assert.deepEqual(receipt.resizeEvidence.counts, { passed: 3 });
+        assert.equal(resized.snapshots[0].paneId, report.snapshots[0].paneId);
+        assert.deepEqual(resized.snapshots[0].screen, resized.snapshots.at(-1).screen);
+        assert.deepEqual(resized.actions, readFileSync(join(output, 'resize-actions.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
         assert.equal(receipt.pixelEvidence.sha256, digest('pixel-observations.json'));
         const pixels = JSON.parse(readFileSync(join(output, 'pixel-observations.json')));
         assert.equal(pixels.snapshots.length, 40);

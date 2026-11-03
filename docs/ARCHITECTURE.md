@@ -411,6 +411,13 @@ Shell composition glue (startup orchestration, app paths/logging/services, sessi
 - Buffer mutation (except via explicit APIs)
 - Rendering logic (Skia primitives in Rendering; Avalonia binding shell here is intentionally thin — though see Known Tech Debt)
 
+The owned QA runner is an external App client: its v6 resize plan enables the
+existing act permission only in a private disposable root, selects bounded geometry
+in the parent, re-proves the exact App/worker/PTY before and after each action and
+reads kernel dimensions separately. Paired state/history observations and action
+proofs are bound into the cleanup receipt. Ordinary observers stay read-only.
+See [owned resize qualification](qa/terminfo/owned-resize.md).
+
 ### Persistent-session scrollback policy
 
 The GUI forwards `MaxHistory` at spawn and in presentation updates. The daemon owns the chosen
