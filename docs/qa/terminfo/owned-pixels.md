@@ -62,6 +62,9 @@ Only a preceding initial typed `screenDetailsUnavailable` refusal may produce
 Other missing evidence is fatal. No fixture writes occur for that unavailable
 case. A run without verified cleanup has no final receipt.
 
+The [first retained macOS measurement](2026-11-03-pixels.md) records 24 passed
+comparisons and one negative bold appearance comparison, with no invented support.
+
 The stock results remain **78 supported / 0 unsupported / 177 inconclusive**,
 `suiteComplete=false`, including the existing ungraded reverse-wrap geometry
 diagnostic. Supplemental pixels never regrade the stock collector.

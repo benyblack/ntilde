@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildPixelReport } from './pixels.mjs';
 import { pixelSuiteId } from './pixels-cases.mjs';
 import { pngHash } from './pixels-capture.mjs';
@@ -64,3 +65,21 @@ for (const [name, mutate] of [
 ]) test('v2 finalizer refuses ' + name, () => receiptFixture(f => {
     mutate(f); assert.throws(f.finish); assert.equal(existsSync(join(f.output, 'cell-receipt.json')), false);
 }));
+
+test('published pixel measurements re-derive from original PNGs and match their final receipt', () => {
+    const data = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-03-pixels.json', import.meta.url)));
+    const output = new URL('../../docs/qa/terminfo/2026-11-03-pixels/', import.meta.url);
+    // path helpers accept filesystem paths; the evidence tree has no private App paths.
+    const root = fileURLToPath(output);
+    const derived = buildPixelReport(data.pixelReport.snapshots, data.context.runId, root);
+    assert.deepEqual(derived, data.pixelReport);
+    assert.equal(pngHash(Buffer.from(JSON.stringify(derived, null, 2) + '\n')), data.receipt.pixelEvidence.sha256);
+    assert.equal(data.receipt.fixtureRemoved, true);
+    assert.equal(data.receipt.schemaVersion, 2);
+    assert.equal(data.receipt.runId, data.context.runId);
+    assert.deepEqual(data.receipt.pixelEvidence.counts, { failed: 1, passed: 24 });
+    assert.deepEqual(data.stockCollector.counts, { inconclusive: 177, supported: 78 });
+    assert.equal(data.stockCollector.suiteComplete, false);
+    assert.ok(data.stockCollector.ungradedDiagnostics['cursor.reverse-wrap']);
+    assert.deepEqual(derived.observations.filter(item => item.result !== 'passed').map(item => item.featureId), ['rendition.bold']);
+});
