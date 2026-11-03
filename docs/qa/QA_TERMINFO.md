@@ -357,7 +357,9 @@ reset checks. Selection colors use an isolated synthetic render selection.
 An unset selection default is an explicit absent reply, not unsupported.
 Runtime colors are cleared explicitly before alternate-screen exit because
 DECSTR does not restore them. Receipt v3 preserves the six prior bindings and
-adds re-derived color evidence after verified cleanup. This is supplemental
+adds re-derived color evidence after verified cleanup. The
+[2026-11-03 measurement](terminfo/2026-11-03-colors.md) retains all ten passing
+comparisons and original PNGs. This is supplemental
 owned offscreen evidence; stock collector grades stay frozen.
 
 Adapter tests use Node's built-in test runner:

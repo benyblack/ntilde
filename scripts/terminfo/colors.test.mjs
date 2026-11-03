@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -142,4 +144,19 @@ test('initial optional refusal writes nothing, later refusals restore and remain
     assert.deepEqual(await collectColors(options), { status: 'unavailable', reason: error.code }); assert.equal(writes, 0);
     options.owner = async kind => { if (kind === 'color-bind') throw error; return { screen: pixelScreen() }; };
     await assert.rejects(collectColors(options), value => value === error); assert.equal(writes, 2);
+});
+
+test('published color measurements rederive all original PNGs and match the final v3 receipt', () => {
+    const data = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-03-colors.json', import.meta.url)));
+    const root = new URL('../../docs/qa/terminfo/2026-11-03-colors/', import.meta.url);
+    const derived = buildColorReport(data.colorReport.snapshots, data.context.runId, fileURLToPath(root));
+    assert.deepEqual(derived, data.colorReport);
+    assert.equal(data.receipt.colorEvidence.sha256, createHash('sha256').update(JSON.stringify(derived, null, 2) + '\n').digest('hex'));
+    assert.equal(data.receipt.schemaVersion, 3); assert.equal(data.receipt.fixtureRemoved, true);
+    assert.deepEqual(data.receipt.colorEvidence.counts, { passed: 10 });
+    assert.ok(derived.observations.every(item => item.result === 'passed'));
+    assert.deepEqual(data.stockCollector.counts, { inconclusive: 177, supported: 78 });
+    assert.equal(data.stockCollector.suiteComplete, false); assert.ok(data.stockCollector.ungradedDiagnostics['cursor.reverse-wrap']);
+    const unset = derived.snapshots.find(frame => frame.caseId === 'selection-background' && frame.stageId === 'baseline');
+    assert.equal(unset.pixel.renderDetails.theme.selectionBackgroundArgb, null); assert.equal(unset.queries[0].reply, null);
 });
