@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { ownedSourceFiles } from './owned-sources.mjs';
 import { buildMetadataReport } from './metadata.mjs';
 import { metadataSuiteId, ownedMetadataPolicy } from './metadata-cases.mjs';
 import { validateOutputGeometry } from './terminal-output.mjs';
@@ -11,6 +12,7 @@ export const metadataSources = {
     metadataCasesSourceSha256: 'metadata-cases.mjs', metadataCaptureSourceSha256: 'metadata-capture.mjs',
     metadataSuiteSourceSha256: 'metadata.mjs', metadataStateSourceSha256: 'metadata-state.mjs',
     metadataExpectationsSourceSha256: 'metadata-expectations.mjs', metadataReceiptSourceSha256: 'metadata-receipt.mjs',
+    sourceRegistrySourceSha256: 'owned-sources.mjs',
 };
 function present(path) {
     try { lstatSync(path); return true; }
@@ -37,8 +39,13 @@ export function includesMetadataEvidence(output, evidence, context, proof) {
 function checkSources(output, context, marker) {
     check(context.metadataSuiteId === metadataSuiteId && context.ownedMetadataPolicy === ownedMetadataPolicy && marker?.policy === ownedMetadataPolicy
         && Object.keys(marker).every(key => ['policy', 'paneId', 'geometry'].includes(key)));
+    check(context.retainedSources === 'sources' && context.retainedAdapterBundle === 'collector-adapter.mjs'
+        && /^[a-f\d]{64}$/.test(context.adapterBundleSha256 ?? '')
+        && hash(bytes(output, 'collector-adapter.mjs')) === context.adapterBundleSha256
+        && hash(bytes(output, 'package-lock.json')) === context.collectorLockSha256);
     const dir = lstatSync(join(output, 'sources')); check(dir.isDirectory() && !dir.isSymbolicLink());
-    for (const [key, file] of Object.entries(metadataSources)) {
+    check(Object.keys(context).filter(key => key.endsWith('SourceSha256')).every(key => Object.hasOwn(ownedSourceFiles, key)));
+    for (const [key, file] of Object.entries(ownedSourceFiles)) {
         check(/^[a-f\d]{64}$/.test(context[key] ?? '') && hash(bytes(output, join('sources', file), 2 * 1024 * 1024)) === context[key]);
     }
 }

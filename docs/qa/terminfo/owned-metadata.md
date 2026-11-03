@@ -19,7 +19,7 @@ Thirteen source-known experiments retain 43 stages and 46 paired snapshots:
 | OSC 133 P stock probe | Exact `P;Cwd=/tmp` input and retained host state | Inconclusive; consumed bytes do not prove a cwd or prompt-part property |
 | OSC 133 P prompt-part probe | Exact `P;k=r` input and retained host state | Inconclusive without independent prompt-part boundary readback |
 | OSC 9 normal/error/paused/indeterminate progress | Stored kind/percent/owner and actual horizontal tab suffix | Four experiments plus independent withdrawal controls; no OS taskbar claim |
-| OSC 9 notification | Actual private in-window toast title/message/visibility and auto-hide | Observed opt-in and inactive-window preconditions; focused delivery remains inconclusive |
+| OSC 9 notification | Actual private in-window toast title/message/visibility and auto-hide | Observed opt-in and compatible inactive-window preconditions at control and delivery; observed focus changes remain inconclusive |
 
 The P prompt-part distinction follows the [Contour OSC 133 description](https://contour-terminal.org/vt-extensions/osc-133-shell-integration/).
 The pinned collector's `P;Cwd` consumed-byte probe is retained as a probe
@@ -36,14 +36,19 @@ recipient participates.
 
 Each snapshot retains two complete viewport/host/status observations. Stable
 facts must agree; raw timestamp-bearing status responses are retained separately
-and validated. Exact pane/grid/cursor/history facts must agree across components.
+and validated. Each failed attempt retains bounded raw responses before payload
+validation, including partial pairs, outside the accepted journal. Such rejected
+attempts cannot accompany a completed observation receipt. Exact
+pane/grid/cursor/history facts must agree across components.
 The suite has a 64-snapshot ceiling, complete-cell and metadata payload limits,
 fixed ordering, nonce binding and a bounded six-second-toast auto-hide observation.
 UI and VT components remain separately observed, without a global atomicity claim.
 
 The first snapshot retains the unprepared initial metadata. Fixed writes then
 establish an independently checked title/cwd baseline and main-screen nonce.
-The suite restores that **prepared** title/cwd baseline, withdraws progress,
+Full-region delete-line preparation replaces inherited row/wrap metadata before
+writing each fixture control, independently of the erase/reset operations under
+test elsewhere. The suite restores that **prepared** title/cwd baseline, withdraws progress,
 clears links/shell anchors, observes toast hiding and restores the complete
 initial cell state. It does not claim original null title/cwd or hidden control
 contents restored. App/worker exit and removal of the private fixture are
@@ -52,7 +57,9 @@ in evidence; a callback or cleanup method invocation cannot replace them.
 
 ## Receipt and tests
 
-Version 8 requires all thirteen suite bindings. It rederives metadata inputs,
+Version 8 requires all thirteen suite bindings and every retained file in the
+51-entry executed-source/input inventory, plus the derived collector bundle and
+retained dependency lock. It rederives metadata inputs,
 controls, results and counts from the complete paired journal and checks exact
 retained report/source bytes, private settings digest, common pane/kernel geometry
 and completed cleanup. Any metadata context field, source copy, parent marker,

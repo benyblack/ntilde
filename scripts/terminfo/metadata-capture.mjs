@@ -1,4 +1,4 @@
-import { OwnedCellObserver, snapshotHash } from './agent-observer.mjs';
+import { agentRequest, OwnedCellObserver, snapshotHash } from './agent-observer.mjs';
 import { pristineEditing } from './editing-capture.mjs';
 import { copyPaneMetadata, copyMetadataStatus } from './metadata-state.mjs';
 import { makeMetadataCases } from './metadata-cases.mjs';
@@ -10,7 +10,8 @@ export class OwnedMetadataObserver {
     constructor(options) {
         check(/^[a-f\d]{32}$/.test(options.runId ?? ''));
         this.runId = options.runId;
-        const facts = { ...options, prefix: 'metadata', includeCellDetails: true,
+        const rpc = options.rpc ?? agentRequest;
+        const facts = { ...options, rpc: (...args) => this.recordRequest(rpc, ...args), prefix: 'metadata', includeCellDetails: true,
             includeCursorMode: true, includeOverline: true, includeBufferState: true };
         this.before = new OwnedCellObserver(facts); this.after = new OwnedCellObserver(facts);
         this.frames = []; this.next = 0;
@@ -30,6 +31,24 @@ export class OwnedMetadataObserver {
         if (operation === 'read') check(stage);
         if (operation === 'finish') check(this.next === this.plan.length);
         return { operation, stage };
+    }
+    async recordRequest(rpc, endpoint, method, params, timeout) {
+        const record = { method, params: structuredClone(params) };
+        this.lastAttempt.responses.push(record);
+        try {
+            const result = await rpc(endpoint, method, params, timeout), bytes = JSON.stringify(result);
+            const length = Buffer.byteLength(bytes);
+            check(length <= 512 * 1024 && this.lastAttempt.responseBytes + length <= 8 * 1024 * 1024);
+            this.lastAttempt.responseBytes += length;
+            record.response = JSON.parse(bytes);
+            return result;
+        } catch (error) {
+            record.error = this.failure(error); throw error;
+        }
+    }
+    failure(error) {
+        return { message: String(error.message ?? error).slice(0, 4096),
+            ...(typeof error.code === 'string' ? { code: error.code.slice(0, 64) } : {}) };
     }
     async capture(observer, budget) {
         const screen = await observer.capture(budget);
@@ -54,12 +73,13 @@ export class OwnedMetadataObserver {
         }
     }
     async handle(request, budget) {
-        const { operation, stage } = this.validateRequest(request); this.busy = true; this.lastAttempt = null;
+        const { operation, stage } = this.validateRequest(request); this.busy = true;
+        this.lastAttempt = { operation, caseId: stage?.caseId ?? null, stageId: stage?.stageId ?? null,
+            responseBytes: 0, responses: [] };
         try {
-            const before = await this.capture(this.before, budget);
+            const before = await this.capture(this.before, budget); this.lastAttempt.before = before;
             this.after.paneId ??= this.paneId;
-            const after = await this.capture(this.after, budget);
-            this.lastAttempt = { operation, caseId: stage?.caseId ?? null, stageId: stage?.stageId ?? null, before, after };
+            const after = await this.capture(this.after, budget); this.lastAttempt.after = after;
             const sha256 = snapshotHash(metadataProjection(before));
             check(sha256 === snapshotHash(metadataProjection(after)));
             this.acceptPair(operation, before);
@@ -67,6 +87,7 @@ export class OwnedMetadataObserver {
                 before, sha256, after, afterSha256: sha256, caseId: stage?.caseId ?? null, stageId: stage?.stageId ?? null });
             if (operation === 'read') this.next++;
             return { screen: before.screen, paneId: this.paneId };
-        } finally { this.busy = false; }
+        } catch (error) { this.lastAttempt.error = this.failure(error); throw error; }
+        finally { this.busy = false; }
     }
 }

@@ -98,3 +98,14 @@ test('a rejected observed pair cannot accompany an otherwise complete success re
     f.write('metadata-failed-observation.json', { operation: 'bind', before: f.frames[1].before, after: f.frames[1].after });
     assert.throws(f.finish);
 }));
+
+for (const file of ['terminfo-owned.mjs', 'worker.mjs', 'ownership.mjs', 'agent-observer.mjs', 'receipt.mjs', 'owned-sources.mjs']) test('v8 rejects changed executed source ' + file, () => fixture(f => {
+    writeFileSync(join(f.output, 'sources', file), 'substituted'); assert.throws(f.finish);
+}));
+test('v8 rejects a missing executed observer digest even when its archive remains', () => fixture(f => {
+    delete f.context.observerSourceSha256; f.write('context.json', f.context); assert.throws(f.finish);
+}));
+
+for (const file of ['collector-adapter.mjs', 'package-lock.json']) test('v8 rejects changed retained executable/input bytes ' + file, () => fixture(f => {
+    writeFileSync(join(f.output, file), 'substituted'); assert.throws(f.finish);
+}));

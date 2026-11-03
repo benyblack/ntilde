@@ -83,3 +83,10 @@ for (const [name, feature, stage, mutate] of [
     const item = buildMetadataReport(values, runId).observations.find(value => value.featureId === feature);
     assert.equal(item.control.passed, true); assert.equal(item.result, 'failed');
 });
+
+test('inactive control followed by focused suppressed delivery is inconclusive', () => {
+    const values = syntheticMetadataJournal(), frame = values.find(value => value.caseId === 'metadata.notification.osc9' && value.stageId === 'observed');
+    coherent(frame, value => { value.metadata.presentation.windowActive = true; value.metadata.presentation.toastVisible = false; });
+    const item = buildMetadataReport(values, runId).observations.at(-1);
+    assert.equal(item.control.passed, true); assert.equal(item.positiveDeliveryPreconditions, false); assert.equal(item.result, 'inconclusive');
+});

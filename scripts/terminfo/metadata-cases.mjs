@@ -8,7 +8,7 @@ export function metadataFixture(runId) {
     const title = 'MD-base-' + runId.slice(0, 8), cwd = '/ntilde-qa/metadata-base';
     const nonce = 'NTILDE_MD_' + runId;
     const reset = osc('8;;') + osc('9;4;0') + osc('133;D;0') + osc('133;A')
-        + '\x1b[?1049l\x1b[!p\x1b[?6l\x1b[r\x1b[4l\x1b[0m\x1b[2J\x1b[H'
+        + '\x1b[?1049l\x1b[!p\x1b[?6l\x1b[r\x1b[4l\x1b[0m\x1b[H\x1b[128M\x1b[2J\x1b[H'
         + osc('2;' + title) + osc('7;file://localhost' + cwd);
     return { title, cwd, nonce, reset, setup: reset + nonce, finish: reset };
 }

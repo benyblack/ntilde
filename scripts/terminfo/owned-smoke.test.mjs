@@ -49,7 +49,7 @@ function withCollectorFixture(receipt, lockfile, action) {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
             'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs', 'terminfo/terminal-output.mjs',
             'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs', 'terminfo/editing-state.mjs', 'terminfo/editing-cases.mjs', 'terminfo/editing-expectations.mjs', 'terminfo/editing-capture.mjs', 'terminfo/editing.mjs', 'terminfo/history-cases.mjs', 'terminfo/history-capture.mjs', 'terminfo/history.mjs',
-            'terminfo/metadata-cases.mjs', 'terminfo/metadata-capture.mjs', 'terminfo/metadata-state.mjs', 'terminfo/metadata-expectations.mjs', 'terminfo/metadata.mjs', 'terminfo/metadata-receipt.mjs',
+            'terminfo/owned-sources.mjs', 'terminfo/metadata-cases.mjs', 'terminfo/metadata-capture.mjs', 'terminfo/metadata-state.mjs', 'terminfo/metadata-expectations.mjs', 'terminfo/metadata.mjs', 'terminfo/metadata-receipt.mjs',
             'terminfo/saved-cases.mjs', 'terminfo/saved-capture.mjs', 'terminfo/saved.mjs', 'terminfo/saved-expectations.mjs', 'terminfo/saved-receipt.mjs',
             'terminfo/resize-cases.mjs', 'terminfo/resize-capture.mjs', 'terminfo/resize.mjs', 'terminfo/resize-action.mjs', 'terminfo/resize-receipt.mjs',
             'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
@@ -132,12 +132,14 @@ function launch(executable, interrupt, observation = {}) {
         let output = '';
         let errors = '';
         let sent = false;
-        // Complete runs include 151 paired state/history frames, 75 PNGs and six App actions
-        // with before/after process proofs. The resistant-worker run completes its receipt in
-        // 20.06s (measured through process exit), including the bounded SIGTERM/SIGKILL path.
-        // Allow 25s only for completed collections; interruption-only cases retain 15s.
+        // Complete runs add 46 paired metadata observations and a deliberate 6.5s toast
+        // wait to the previously measured 20.06s resistant-worker lifecycle. At f476,
+        // collection completed and cleanup finished at 24.23s after context creation;
+        // installation/launch caused the old 25s outer deadline to fire during cleanup.
+        // Budget that added work only for complete collections; interruption-only cases
+        // keep 15s and individual RPC/worker-termination limits are unchanged.
         const collected = observation.stubborn || observation.phase === 'fixture-removal' && !interrupt;
-        const timeoutMs = collected ? 25000 : 15000;
+        const timeoutMs = collected ? 35000 : 15000;
         let lifecycleError, terminationTimer;
         const timer = setTimeout(() => {
             lifecycleError = new Error('Adapter lifecycle did not finish.');
@@ -183,6 +185,7 @@ function assertRetainedCollector(output) {
         ['editingSuiteSourceSha256', 'terminfo/editing.mjs'],
         ['historyCasesSourceSha256', 'terminfo/history-cases.mjs'], ['historyCaptureSourceSha256', 'terminfo/history-capture.mjs'],
         ['historySuiteSourceSha256', 'terminfo/history.mjs'],
+        ['sourceRegistrySourceSha256', 'terminfo/owned-sources.mjs'],
         ['metadataCasesSourceSha256', 'terminfo/metadata-cases.mjs'], ['metadataCaptureSourceSha256', 'terminfo/metadata-capture.mjs'],
         ['metadataStateSourceSha256', 'terminfo/metadata-state.mjs'], ['metadataExpectationsSourceSha256', 'terminfo/metadata-expectations.mjs'],
         ['metadataSuiteSourceSha256', 'terminfo/metadata.mjs'], ['metadataReceiptSourceSha256', 'terminfo/metadata-receipt.mjs'],

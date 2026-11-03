@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { OwnedMetadataObserver } from './metadata-capture.mjs';
 import { syntheticMetadataJournal, metadataPaneId } from './fixtures/metadata-journal.mjs';
 const runId = 'a'.repeat(32);
-function fixture() {
+function fixture(inject = () => {}) {
     const frames = syntheticMetadataJournal(), reads = []; let frame = frames[0], corrupt = false, metadataReads = 0;
     const observer = new OwnedMetadataObserver({ runId, profileName: 'fixture', expectedPaneId: metadataPaneId,
         endpoint: () => 'private', rpc: async (_, method) => {
             reads.push(method); const value = structuredClone(frame.before);
+            inject(method, value, reads);
             if (method === 'listSessions') return { sessions: [{ paneId: metadataPaneId, kind: 'local', profileName: 'fixture', rows: value.screen.rows, cols: value.screen.cols }] };
             if (method === 'readScreen') return value.screen;
             if (method === 'readScrollback') return value.screen.history;
@@ -44,4 +45,20 @@ test('wrong nonce and failed prepared baseline refuse fixture binding', async ()
     await assert.rejects(f.call(frame)); assert.equal(f.observer.frames.length, 1);
     assert.equal(f.observer.lastAttempt.operation, 'bind');
     assert.equal(f.observer.lastAttempt.before.screen.lines[0], 'wrong');
+});
+
+for (const [name, inject] of [
+    ['timeout', (method, value, reads) => { if (method === 'readPaneMetadata' && reads.filter(v => v === method).length === 2) throw new Error('second capture timed out'); }],
+    ['malformed metadata', (method, value, reads) => { if (method === 'readPaneMetadata' && reads.filter(v => v === method).length === 2) value.metadata.buffer.links = 'malformed'; }],
+    ['malformed status', (method, value, reads) => { if (method === 'getSessionStatus' && reads.filter(v => v === method).length === 2) value.rawStatus.confidence = 'malformed'; }],
+]) test('second capture ' + name + ' preserves the first snapshot and bounded original responses before validation', async () => {
+    const f = fixture(inject); await assert.rejects(f.call(f.frames[0]));
+    const attempt = f.observer.lastAttempt;
+    assert.equal(attempt.operation, 'start'); assert.ok(attempt.before); assert.equal(attempt.after, undefined);
+    assert.ok(attempt.error); assert.ok(attempt.responseBytes > 0); assert.ok(attempt.responseBytes <= 8 * 1024 * 1024);
+    assert.ok(attempt.responses.some(value => value.response));
+    if (name === 'timeout') assert.equal(attempt.responses.at(-1).error.message, 'second capture timed out');
+    if (name === 'malformed metadata') assert.equal(attempt.responses.at(-1).response.buffer.links, 'malformed');
+    if (name === 'malformed status') assert.equal(attempt.responses.at(-1).response.confidence, 'malformed');
+    assert.equal(f.observer.frames.length, 0); assert.equal(f.observer.restored, false);
 });

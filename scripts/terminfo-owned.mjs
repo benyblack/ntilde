@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { ownedSourceFiles } from './terminfo/owned-sources.mjs';
 import { OwnedMetadataObserver } from './terminfo/metadata-capture.mjs';
 import { metadataSuiteId, ownedMetadataPolicy } from './terminfo/metadata-cases.mjs';
 import { buildMetadataReport } from './terminfo/metadata.mjs';
@@ -49,6 +50,14 @@ const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 function ownerFailure(error) {
     return { ok: false, error: error.message,
         ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
+}
+
+function initialMetadataRefusal(request, error) {
+    return request.kind === 'metadata-start' && ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code);
+}
+function retainFailedMetadataAttempt(output, request, error, observer) {
+    if (observer.lastAttempt?.error && !initialMetadataRefusal(request, error))
+        writeJson(join(output, 'metadata-failed-observation.json'), observer.lastAttempt);
 }
 
 function validateInvocation(args) {
@@ -111,57 +120,10 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
     writeFileSync(join(output, 'collector-adapter.mjs'), bundleBytes, { flag: 'wx', mode: 0o600 });
     const sourceDirectory = join(output, 'sources');
     mkdirSync(sourceDirectory, { mode: 0o700 });
-    const sources = {
-        runnerSourceSha256: fileURLToPath(import.meta.url),
-        adapterSourceSha256: join(repo, 'scripts', 'terminfo', 'collector.mjs'),
-        ownershipSourceSha256: ownerModule, workerSourceSha256: workerScript,
-        runtimeSourceSha256: join(repo, 'scripts', 'terminfo', 'runtime.mjs'),
-        observerSourceSha256: join(repo, 'scripts', 'terminfo', 'agent-observer.mjs'),
-        cellSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'cells.mjs'),
-        cellFenceSourceSha256: join(repo, 'scripts', 'terminfo', 'terminal-fence.mjs'),
-        attributeSourceSha256: join(repo, 'scripts', 'terminfo', 'attributes.mjs'),
-        sgrSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'sgr.mjs'),
-        cellDetailsSourceSha256: join(repo, 'scripts', 'terminfo', 'cell-details.mjs'),
-        rgbSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'rgb.mjs'),
-        renditionSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'rendition.mjs'),
-        cursorSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'cursor.mjs'),
-        pixelCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'pixels-capture.mjs'),
-        pixelSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'pixels.mjs'),
-        pixelCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'pixels-cases.mjs'),
-        pixelPngSourceSha256: join(repo, 'scripts', 'terminfo', 'pixels-png.mjs'),
-        colorCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'color-capture.mjs'),
-        colorSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'colors.mjs'),
-        colorCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'color-cases.mjs'),
-        colorQuerySourceSha256: join(repo, 'scripts', 'terminfo', 'color-query.mjs'),
-        editingStateSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-state.mjs'),
-        editingCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-cases.mjs'),
-        editingExpectationsSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-expectations.mjs'),
-        editingCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'editing-capture.mjs'),
-        editingSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'editing.mjs'),
-        metadataCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata-cases.mjs'),
-        metadataCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata-capture.mjs'),
-        metadataStateSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata-state.mjs'),
-        metadataExpectationsSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata-expectations.mjs'),
-        metadataSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata.mjs'),
-        metadataReceiptSourceSha256: join(repo, 'scripts', 'terminfo', 'metadata-receipt.mjs'),
-        savedCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'saved-cases.mjs'),
-        savedCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'saved-capture.mjs'),
-        savedSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'saved.mjs'),
-        savedExpectationsSourceSha256: join(repo, 'scripts', 'terminfo', 'saved-expectations.mjs'),
-        savedReceiptSourceSha256: join(repo, 'scripts', 'terminfo', 'saved-receipt.mjs'),
-        resizeCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'resize-cases.mjs'),
-        resizeCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'resize-capture.mjs'),
-        resizeSuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'resize.mjs'),
-        resizeActionSourceSha256: join(repo, 'scripts', 'terminfo', 'resize-action.mjs'),
-        resizeReceiptSourceSha256: join(repo, 'scripts', 'terminfo', 'resize-receipt.mjs'),
-        historyCasesSourceSha256: join(repo, 'scripts', 'terminfo', 'history-cases.mjs'),
-        historyCaptureSourceSha256: join(repo, 'scripts', 'terminfo', 'history-capture.mjs'),
-        historySuiteSourceSha256: join(repo, 'scripts', 'terminfo', 'history.mjs'),
-        terminalOutputSourceSha256: join(repo, 'scripts', 'terminfo', 'terminal-output.mjs'),
-        receiptSourceSha256: join(repo, 'scripts', 'terminfo', 'receipt.mjs'),
-        collectorManifestSha256: join(repo, 'scripts', 'terminfo', 'collector-package.json'),
-        collectorLockSha256: join(repo, 'scripts', 'terminfo', 'collector-package-lock.json'),
-    };
+    const sources = Object.fromEntries(Object.entries(ownedSourceFiles).map(([key, file]) => [key,
+        join(repo, 'scripts', file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file)]));
+    if (sources.ownershipSourceSha256 !== ownerModule || sources.workerSourceSha256 !== workerScript)
+        throw new Error('Executed worker or ownership source differs from the retained inventory.');
     const digests = {};
     for (const [field, path] of Object.entries(sources)) {
         const bytes = readFileSync(path);
@@ -590,10 +552,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'metadata-snapshots.jsonl'), JSON.stringify(state.observer.frames.at(-1)) + '\n');
                 return result;
             } catch (error) {
-                if (state.observer.lastAttempt && !(request.kind === 'metadata-start'
-                    && ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code)))
-                    writeJson(join(output, 'metadata-failed-observation.json'), state.observer.lastAttempt);
-                if (request.kind === 'metadata-start' && ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code)
+                retainFailedMetadataAttempt(output, request, error, state.observer);
+                if (initialMetadataRefusal(request, error)
                     && !state.observer.baseline && !state.observer.frames.length) recordMetadataUnavailable(error.code);
                 throw error;
             }

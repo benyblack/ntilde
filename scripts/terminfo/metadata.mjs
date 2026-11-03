@@ -38,6 +38,13 @@ function validateFrame(frame, index, last, first, stage) {
         && (index === 0 ? frame.barrier === null : typeof frame.barrier === 'string'
             && frame.barrier.length <= 128 && /^\x1b\[\?[\d;]+c$/.test(frame.barrier)));
 }
+function notificationPreconditions(item, comparisons, frames) {
+    if (item.id !== 'metadata.notification.osc9') return true;
+    return comparisons.filter(value => ['control', 'observed'].includes(value.stageId)).every(value => {
+        const p = frames[value.snapshot].before.metadata.presentation;
+        return !p.windowActive && p.paneActive && p.windowVisible && !p.focusMode && p.notificationsEnabled;
+    });
+}
 /** Reconstruct the fixed complete staged plan and preserve controlled negatives/inconclusive probes. */
 export function buildMetadataReport(frames, runId) {
     check(/^[a-f\d]{32}$/.test(runId ?? '') && Array.isArray(frames) && frames.length >= 3);
@@ -55,7 +62,7 @@ export function buildMetadataReport(frames, runId) {
         const comparisons = item.stages.map(stage => { const frame = frames[offset++];
             return { stageId: stage.id, snapshot: frame.index, passed: matchesMetadataExpected(frame.before, stage.expected, screen, runId) }; });
         const [control, ...assertions] = comparisons;
-        const preconditions = item.id === 'metadata.notification.osc9' ? !frames[control.snapshot].before.metadata.presentation.windowActive : true;
+        const preconditions = notificationPreconditions(item, comparisons, frames);
         let result = assertions.every(value => value.passed) ? 'passed' : 'failed';
         if (!control.passed || !preconditions || item.qualification === 'inconclusive') result = 'inconclusive';
         return { featureId: item.id, control, positiveDeliveryPreconditions: preconditions, assertions, result,

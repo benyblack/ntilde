@@ -28,7 +28,7 @@ test('title, cwd, hyperlink and progress input bytes remain explicit rather than
 test('fixed preparation preserves main-screen shell status and has an explicit final blank-screen boundary', () => {
     const f = metadataFixture(runId); assert.equal(f.nonce.length, 42); assert.ok(f.title.length < 20);
     assert.ok(!f.setup.includes('\x1b[?1049h')); assert.ok(f.setup.endsWith(f.nonce));
-    assert.ok(!f.finish.includes(f.nonce)); assert.ok(f.finish.includes('\x1b]9;4;0\x07'));
+    assert.ok(!f.finish.includes(f.nonce)); assert.ok(f.finish.includes('\x1b[H\x1b[128M')); assert.ok(f.finish.includes('\x1b]9;4;0\x07'));
     assert.ok(f.finish.includes('\x1b]133;D;0\x07')); assert.ok(f.finish.includes('\x1b]2;' + f.title + '\x07'));
 });
 for (const [rows, cols] of [[9, 60], [129, 60], [40, 47], [40, 257], [128, 128]]) test('rejects unbounded geometry ' + rows + 'x' + cols, () => {
