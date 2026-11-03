@@ -241,6 +241,7 @@ namespace Ntilde.Shell
                     if (!_isReady)
                     {
                         _isReady = true;
+                        LastCompletedResizeDispatch = default; // Only the latest attempt may prove completion.
                         // No session is attached yet at first layout, so DefersBufferResizeToSession
                         // is still false here regardless of what the pane will set once it is ready
                         // (see Ready below); the initial grid always applies straight to the buffer.
@@ -388,6 +389,7 @@ namespace Ntilde.Shell
             {
                 if (_pendingCols > 0 && _pendingRows > 0 && _buffer != null)
                 {
+                    LastCompletedResizeDispatch = default; // Repeated geometry cannot inherit an older success.
                     _lastPtyResizeTime = DateTime.UtcNow;
 
                     // CRITICAL ORDER: Resize buffer FIRST (synchronously, under lock)

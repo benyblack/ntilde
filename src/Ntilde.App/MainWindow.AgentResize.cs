@@ -62,7 +62,8 @@ public partial class MainWindow
         internal AgentPaneResizeOperation(MainWindow window, TerminalPane pane, int cols, int rows, CancellationToken cancellationToken)
         {
             _window = window; _pane = pane; _view = pane.TermView;
-            _buffer = pane.Buffer!; _session = pane.Session!;
+            _buffer = pane.Buffer ?? throw new InvalidOperationException("The pane buffer is unavailable.");
+            _session = pane.Session ?? throw new InvalidOperationException("The pane session is unavailable.");
             _cols = cols; _rows = rows; _cancellationToken = cancellationToken;
         }
 

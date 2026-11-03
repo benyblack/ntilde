@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Ntilde.AgentHost;
 using Ntilde.Shell;
 using Ntilde.VT;
 
@@ -61,11 +62,39 @@ public sealed class TerminalViewResizeCompletionTests
             window.Width = 600;
             Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal(before, view.LastCompletedResizeDispatch);
+            Assert.NotEqual((view.Cols, view.Rows), view.LastCompletedResizeDispatch);
             Assert.Equal(0, completions);
             buffer.Lock.EnterReadLock();
             try { Assert.NotEqual(before, (buffer.Cols, buffer.Rows)); }
             finally { buffer.Lock.ExitReadLock(); }
+        }
+        finally { window.Close(); Dispatcher.UIThread.RunJobs(); }
+    }
+
+    [AvaloniaFact]
+    public void Returning_to_an_earlier_grid_does_not_reuse_its_stale_success_after_failed_callbacks()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        var view = new TerminalView();
+        view.SetBuffer(buffer);
+        var window = new Window { Content = view, Width = 800, Height = 400 };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var original = view.LastCompletedResizeDispatch;
+            view.OnResize += (_, _) => throw new InvalidOperationException("expected resize failure");
+            view.ReleaseResizeThrottleForTest();
+
+            window.Width = 600;
+            Dispatcher.UIThread.RunJobs();
+            window.Width = 800;
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(original, (view.Cols, view.Rows));
+            Assert.True(AgentPaneResizeObservation.TryRead(buffer, view.Cols, view.Rows, view.LastCompletedResizeDispatch, out var actual));
+            Assert.Equal((original.Rows, original.Cols), (actual.Rows, actual.Cols));
+            Assert.False(actual.LayoutSettled);
         }
         finally { window.Close(); Dispatcher.UIThread.RunJobs(); }
     }

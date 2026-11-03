@@ -123,6 +123,7 @@ namespace Ntilde.Shell
 
                         if (cols > 0 && rows > 0 && fontGridChanged)
                         {
+                            LastCompletedResizeDispatch = default;
                             if (!DefersBufferResizeToSession) _buffer.Resize(cols, rows);
                             ResetMouseMotionTracking(); // Issue #269: grid reflowed, cell coords are stale.
                             OnResize?.Invoke(cols, rows);
