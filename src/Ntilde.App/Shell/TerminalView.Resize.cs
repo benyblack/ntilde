@@ -14,6 +14,17 @@ namespace Ntilde.Shell
     {
         public event Action<int, int>? Ready;
         public event Action<int, int>? OnResize;
+
+        /// <summary>UI thread: all session resize subscribers returned successfully; this is not kernel attestation.</summary>
+        internal event Action<int, int>? ResizeDispatchCompleted;
+        internal (int Cols, int Rows) LastCompletedResizeDispatch { get; private set; }
+
+        private void CompleteResizeDispatch(int cols, int rows)
+        {
+            LastCompletedResizeDispatch = (cols, rows);
+            ResizeDispatchCompleted?.Invoke(cols, rows);
+        }
+
         private bool _isReady;
 
         // Discrete resize: the grid the buffer and the PTY were last actually told about, so a
@@ -243,6 +254,7 @@ namespace Ntilde.Shell
                         // This path dispatches inline rather than through the throttle, so it
                         // records the dispatch itself.
                         RecordGridSent(cols, rows);
+                        CompleteResizeDispatch(cols, rows);
                     }
 
                     if (dimensionsChanged)
@@ -398,6 +410,7 @@ namespace Ntilde.Shell
 
                     ResetMouseMotionTracking(); // Issue #269: grid reflowed, cell coords are stale.
                     OnResize?.Invoke(_pendingCols, _pendingRows);
+                    CompleteResizeDispatch(_pendingCols, _pendingRows);
                     if (_pendingResizeStartedAt != DateTime.MinValue)
                     {
                         long latencyMs = (long)Math.Max(0, (DateTime.UtcNow - _pendingResizeStartedAt).TotalMilliseconds);

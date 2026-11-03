@@ -26,8 +26,8 @@ namespace Ntilde.AgentHost
     /// on Windows, a unix domain socket (mode 0600) elsewhere — and writes an
     /// <see cref="EndpointDescriptor"/> discovery file next to settings.json.
     ///
-    /// The protocol is observe-only by construction: no input, spawn, or close
-    /// methods exist in v1. Screen reads go through the deterministic
+    /// The protocol separates observe access from explicitly enabled acting access: input, spawn, close
+    /// and visible-pane resize methods require the separate act permission. Screen reads go through the deterministic
     /// <see cref="BufferSnapshot"/> path under the buffer's read lock — the same
     /// snapshot boundary the replay/parity tests use.
     /// </summary>
@@ -898,6 +898,7 @@ namespace Ntilde.AgentHost
                     AgentHostProtocol.Methods.SendInput => await HandleSendInputAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.SpawnSession => await HandleSpawnSessionAsync(request).ConfigureAwait(false),
                     AgentHostProtocol.Methods.CloseSession => await HandleCloseSessionAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.ResizePane => await HandleResizePaneAsync(request, cancellationToken).ConfigureAwait(false),
                     _ => Error(request.Id, AgentHostProtocol.ErrorCodes.UnknownMethod, $"Unknown method '{request.Method}'."),
                 };
             }
@@ -1425,6 +1426,69 @@ namespace Ntilde.AgentHost
             };
             return Journaled(request, AgentHostProtocol.Methods.SpawnSession, spawn.PaneId, spawn.ProfileName,
                 Ok(request.Id, JsonSerializer.SerializeToElement(dto, AgentHostJsonContext.Default.SpawnSessionResult)));
+        }
+
+        private async Task<AgentHostResponse> HandleResizePaneAsync(AgentHostRequest request, CancellationToken cancellationToken)
+        {
+            ResizePaneParams? p;
+            try { p = DeserializeParams(request, AgentHostJsonContext.Default.ResizePaneParams); }
+            catch (JsonException) { p = null; }
+            if (p == null || p.Rows < 1 || p.Rows > AgentHostProtocol.MaxResizeRows || p.Cols < 1 || p.Cols > AgentHostProtocol.MaxResizeCols)
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p?.PaneId, "pane",
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest,
+                        "resizePane requires a paneId and rows/cols within the visible-pane resize limits."));
+            }
+            if (!_actEnabled)
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, "pane",
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.ActDisabled,
+                        "Acting is disabled. Enable Settings → Agent access (observe) → Agent access (act), then retry."));
+            }
+            if (!_registry.TryGet(p.PaneId, out var registration))
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, "pane",
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, "No visible pane has the requested paneId."));
+            }
+            if (!string.Equals(registration.Kind, "local", StringComparison.Ordinal))
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName,
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.ResizeUnavailable, "Only a visible direct local pane can resize its App window."));
+            }
+            var executor = _actionExecutor;
+            if (executor == null)
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName,
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.ActUnavailable, "The App resize executor is not available."));
+            }
+            AgentPaneResizeResult? observed;
+            try { observed = await executor.ResizePaneAsync(p.PaneId, p.Cols, p.Rows, cancellationToken).ConfigureAwait(false); }
+            catch (OperationCanceledException)
+            {
+                _journal.Record(AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName, "cancelled");
+                throw;
+            }
+            catch (Exception)
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName,
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.Internal, "The App could not observe the resize result."));
+            }
+            if (observed is not { Rows: > 0, Cols: > 0 } actual)
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName,
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.ResizeUnavailable,
+                        "The pane must be the single visible direct local pane in a resizable normal window."));
+            }
+            TryNoteWrote(registration, AgentHostProtocol.Methods.ResizePane);
+            var result = new ResizePaneResult
+            {
+                Rows = actual.Rows,
+                Cols = actual.Cols,
+                LayoutSettled = actual.LayoutSettled,
+                Exact = actual.LayoutSettled && actual.Rows == p.Rows && actual.Cols == p.Cols,
+            };
+            return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName,
+                Ok(request.Id, JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.ResizePaneResult)));
         }
 
         private async Task<AgentHostResponse> HandleCloseSessionAsync(AgentHostRequest request, CancellationToken cancellationToken)

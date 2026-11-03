@@ -140,6 +140,7 @@ namespace Ntilde.Shell
                             // recording what it actually dispatched is what keeps the field
                             // honest either way.
                             RecordGridSent(cols, rows);
+                            CompleteResizeDispatch(cols, rows);
                         }
                     }
                 }

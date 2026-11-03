@@ -274,6 +274,7 @@ namespace Ntilde.Shell
                 _buffer.OnInvalidate -= InvalidateBuffer; // Idempotent remove
                 _buffer.OnScreenSwitched -= OnScreenSwitched;
             }
+            if (!ReferenceEquals(_buffer, buffer)) LastCompletedResizeDispatch = default;
             _buffer = buffer;
             _textBlink.Restart(clearCells: true);
             if (_buffer != null)

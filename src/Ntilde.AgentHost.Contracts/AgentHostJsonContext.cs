@@ -37,6 +37,8 @@ namespace Ntilde.AgentHost.Contracts;
 [JsonSerializable(typeof(SpawnSessionResult))]
 [JsonSerializable(typeof(CloseSessionParams))]
 [JsonSerializable(typeof(CloseSessionResult))]
+[JsonSerializable(typeof(ResizePaneParams))]
+[JsonSerializable(typeof(ResizePaneResult))]
 public sealed partial class AgentHostJsonContext : JsonSerializerContext
 {
 }
