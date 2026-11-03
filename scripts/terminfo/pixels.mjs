@@ -1,7 +1,7 @@
 import { screenSnapshot, snapshotHash } from './agent-observer.mjs';
 import { pristineCursorBaseline } from './cursor.mjs';
 import { pixelPlan, pixelScenes, pixelSuiteId, pixelRegion, blankRegion, controlRegion, cursorRegion } from './pixels-cases.mjs';
-import { retainedPixel, stablePixelContext, totalPixelLimit } from './pixels-capture.mjs';
+import { retainedPixel, stablePixelContext, totalPixelLimit, defaultCursorPolicy } from './pixels-capture.mjs';
 
 /** Exact cell rectangles from the actual pixel grid, bounded inside this PNG. */
 export function regionPixels(image, grid, region) {
@@ -48,6 +48,7 @@ export function validatePixelFrames(frames, runId, output) {
         || frames.reduce((sum, frame) => sum + frame.pixel.width * frame.pixel.height, 0) > totalPixelLimit) throw new Error('Pixel suite decoded budget exhausted.');
     const first = frames[0], last = frames.at(-1);
     const pane = first.paneId, context = stablePixelContext(first.pixel.renderDetails);
+    const defaultPolicy = defaultCursorPolicy(first.screen, first.pixel.renderDetails);
     if (!pristineCursorBaseline(first.screen) || first.screen.cellDetails.some(cell => cell.overline) || snapshotHash(first.screen) !== snapshotHash(last.screen)
         || first.pixel.sha256 !== last.pixel.sha256) throw new Error('Pixel restoration was not verified.');
     const images = frames.map((frame, index) => {
@@ -59,6 +60,7 @@ export function validatePixelFrames(frames, runId, output) {
             || frame.pixel.presentationTimeMs !== plan.timeMs || frame.sceneId !== (plan.sceneId ?? null)
             || frame.pixel.file !== `pixels/frame-${String(index).padStart(3, '0')}.png`
             || stablePixelContext(frame.pixel.renderDetails) !== context
+            || (frame.screen.cursorMode.isDefault && defaultCursorPolicy(frame.screen, frame.pixel.renderDetails) !== defaultPolicy)
             || (index === 0 ? frame.barrier !== null : !/^\x1b\[\?[\d;]+c$/.test(frame.barrier ?? ''))) throw new Error('Invalid pixel journal order or binding.');
         return retainedPixel(output, frame);
     });

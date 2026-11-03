@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { captureRequest, agentRequest } from './agent-observer.mjs';
 import { OwnedPixelObserver, validatePixelCapture, retainedPixel } from './pixels-capture.mjs';
-import { pixelCapture, pixelScreen, pixelPaneId } from './fixtures/pixel-capture.mjs';
+import { pixelCapture, pixelScreen, pixelPaneId, syntheticPng } from './fixtures/pixel-capture.mjs';
 import { pixelPlan, collectPixels, pixelScenes } from './pixels-cases.mjs';
 import { regionPixels, countColorCoverage } from './pixels.mjs';
 const barrier = '\x1b[?62;4;22c';
@@ -87,6 +87,7 @@ test('pixel observer retains immutable PNGs and refuses out-of-order/early-finis
 }));
 for (const [name, change] of [
     ['changed screen during capture', f => f.setCapture(() => { const s = pixelScreen(); s.lines[0] = 'changed'; f.setScreen(s); })],
+    ['changed host-default cursor preference', f => f.setCapture(r => { r.renderDetails.presentation.cursorStyle = 1; })],
     ['changed font', f => f.setCapture(r => { r.renderDetails.font.primarySha256 = 'b'.repeat(64); })],
     ['another pane', f => f.setSessions([{ paneId: '22222222-2222-2222-2222-222222222222', kind: 'local', profileName: 'fixture', rows: 10, cols: 60 }])],
     ['changed geometry', f => f.setSessions([{ paneId: pixelPaneId, kind: 'local', profileName: 'fixture', rows: 11, cols: 60 }])],
@@ -119,3 +120,13 @@ test('coverage distinguishes antialiased green from background, gray and unrelat
     assert.equal(regionPixels(image, { originXPx: 0, originYPx: 0, cellWidthPx: 1, cellHeightPx: 1 }, { row: 1, col: 1, rows: 1, cols: 1 }).length, 4);
     assert.throws(() => regionPixels(image, { originXPx: 0, originYPx: 0, cellWidthPx: 1, cellHeightPx: 1 }, { row: 1, col: 2, rows: 1, cols: 1 }));
 });
+
+test('initial oversized decoded suite is rejected before retaining a frame', async () => fixture(async f => {
+    f.setCapture(r => {
+        const bytes = syntheticPng(2400, 1000);
+        Object.assign(r, { width: 2400, height: 1000, pngBase64: bytes.toString('base64'), byteCount: bytes.length });
+        Object.assign(r.renderDetails.grid, { renderWidthPx: 2400, renderHeightPx: 1000, cellWidthDip: 40, cellHeightDip: 100, cellWidthPx: 40, cellHeightPx: 100 });
+    });
+    await assert.rejects(f.call('pixel-start'), /decoded budget/);
+    assert.equal(f.observer.frames.length, 0);
+}));

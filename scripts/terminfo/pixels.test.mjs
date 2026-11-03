@@ -26,6 +26,8 @@ for (const [name, mutate] of [
     ['missing capture', f => f.frames.pop()], ['another pane', f => { f.frames[2].paneId = '22222222-2222-2222-2222-222222222222'; }],
     ['reordered scene', f => { f.frames[2].sceneId = 'bold'; }], ['changed clock', f => { f.frames[2].pixel.presentationTimeMs = 530; }],
     ['unfenced sample', f => { f.frames[2].barrier = null; }], ['changed font', f => { f.frames[2].pixel.renderDetails.font.primarySha256 = 'b'.repeat(64); }],
+    ['decoded suite budget exhausted', f => { for (const frame of f.frames) { frame.pixel.width = 8192; frame.pixel.height = 8192; } }],
+    ['changed host cursor preference', f => { f.frames[2].pixel.renderDetails.presentation.cursorStyle = 1; }],
     ['changed state', f => { f.frames[2].screen.lines[0] = 'leftover'; }], ['changed after state', f => { f.frames[2].afterScreen.cursorCol++; }],
     ['changed after hash', f => { f.frames[2].afterSha256 = 'b'.repeat(64); }], ['escaped PNG path', f => { f.frames[2].pixel.file = '../outside.png'; }],
     ['changed PNG bytes', f => writeFileSync(join(f.output, f.frames[2].pixel.file), 'not a PNG')],

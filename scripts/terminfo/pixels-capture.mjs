@@ -57,6 +57,11 @@ export function validatePixelCapture(result, screen, timeMs) {
     return { bytes, image, details: structuredClone(result.renderDetails) };
 }
 
+export function defaultCursorPolicy(screen, details) {
+    const phase = details.presentation;
+    return screen.cursorMode.isDefault ? `${phase.cursorStyle}/${phase.cursorBlinkEnabled}` : null;
+}
+
 export function stablePixelContext(details) {
     const { presentation, ...stable } = details;
     return snapshotHash(stable);
@@ -101,6 +106,9 @@ export class OwnedPixelObserver {
             if (snapshotHash(result.screen) !== snapshotHash(after)) throw new Error('Pixel capture changed the observed screen.');
             const { bytes, details } = validatePixelCapture(capture, result.screen, request.timeMs);
             if (capture.width * capture.height * (pixelPlan.length + 3) > totalPixelLimit) throw new Error('Pixel suite decoded budget exhausted.');
+            const policy = defaultCursorPolicy(result.screen, details);
+            if (this.defaultCursor && policy && policy !== this.defaultCursor) fail();
+            this.defaultCursor ??= policy;
             const stable = stablePixelContext(details);
             if (this.context && stable !== this.context) fail();
             this.context ??= stable;
