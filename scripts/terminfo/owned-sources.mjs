@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { join } from 'node:path';
 // Complete source/input inventory shared by retention and v8 validation.
 export const ownedSourceFiles = Object.freeze({
     runnerSourceSha256: 'terminfo-owned.mjs',
@@ -52,3 +55,12 @@ export const ownedSourceFiles = Object.freeze({
     collectorLockSha256: 'collector-package-lock.json',
     sourceRegistrySourceSha256: 'owned-sources.mjs',
 });
+
+export const ownedSourcePath = (root, file) => join(root, 'scripts', file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file);
+/** Reject edits after the original snapshot, before publishing completed observation evidence. */
+export function assertOwnedSourcesUnchanged(root, context) {
+    for (const [key, file] of Object.entries(ownedSourceFiles)) {
+        const digest = createHash('sha256').update(readFileSync(ownedSourcePath(root, file))).digest('hex');
+        if (digest !== context[key]) throw new Error('Owned source changed before completion: ' + file);
+    }
+}

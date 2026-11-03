@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { ownedSourceFiles } from './terminfo/owned-sources.mjs';
+import { ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged } from './terminfo/owned-sources.mjs';
 import { OwnedMetadataObserver } from './terminfo/metadata-capture.mjs';
 import { metadataSuiteId, ownedMetadataPolicy } from './terminfo/metadata-cases.mjs';
 import { buildMetadataReport } from './terminfo/metadata.mjs';
@@ -121,7 +121,7 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
     const sourceDirectory = join(output, 'sources');
     mkdirSync(sourceDirectory, { mode: 0o700 });
     const sources = Object.fromEntries(Object.entries(ownedSourceFiles).map(([key, file]) => [key,
-        join(repo, 'scripts', file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file)]));
+        ownedSourcePath(repo, file)]));
     if (sources.ownershipSourceSha256 !== ownerModule || sources.workerSourceSha256 !== workerScript)
         throw new Error('Executed worker or ownership source differs from the retained inventory.');
     const digests = {};
@@ -228,6 +228,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let resizeEvidence;
     let savedEvidence;
     let metadataEvidence;
+    let sourceContext;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
@@ -307,6 +308,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
             cursorModes: 'stored cursor style/blink/default/visibility; pristine owned DECSTR cleanup, no host appearance or blink phase',
         };
+        sourceContext = context;
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata'])
@@ -667,6 +669,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             deadline = setTimeout(() => rejectDone(new Error('Owned collection exceeded 5 minutes.')), 300000);
             console.log(`Collecting in disposable Ntilde pid ${app.pid}; results: ${output}`);
             await done;
+            assertOwnedSourcesUnchanged(repo, context);
             const summary = collectionSummary(output, args[3]);
             cellEvidence = retainCellReport(output, cellObserver, runId);
             sgrEvidence = retainCellReport(output, sgrObserver, runId, buildSgrReport, 'sgr-observations.json');
@@ -724,7 +727,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(output, 'failure.json'), { error: interruption.message, at: new Date().toISOString() });
         throw interruption;
     }
-    try { completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence }); }
+    try {
+        assertOwnedSourcesUnchanged(repo, sourceContext);
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence });
+    }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
 

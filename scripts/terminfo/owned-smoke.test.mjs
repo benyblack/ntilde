@@ -47,7 +47,7 @@ function withCollectorFixture(receipt, lockfile, action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
     try {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
-            'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs', 'terminfo/terminal-output.mjs',
+            'terminfo/worker.mjs', 'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs', 'terminfo/terminal-output.mjs',
             'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs', 'terminfo/editing-state.mjs', 'terminfo/editing-cases.mjs', 'terminfo/editing-expectations.mjs', 'terminfo/editing-capture.mjs', 'terminfo/editing.mjs', 'terminfo/history-cases.mjs', 'terminfo/history-capture.mjs', 'terminfo/history.mjs',
             'terminfo/owned-sources.mjs', 'terminfo/metadata-cases.mjs', 'terminfo/metadata-capture.mjs', 'terminfo/metadata-state.mjs', 'terminfo/metadata-expectations.mjs', 'terminfo/metadata.mjs', 'terminfo/metadata-receipt.mjs',
             'terminfo/saved-cases.mjs', 'terminfo/saved-capture.mjs', 'terminfo/saved.mjs', 'terminfo/saved-expectations.mjs', 'terminfo/saved-receipt.mjs',
@@ -552,3 +552,25 @@ test('an initial pixel detail refusal after restored cursor evidence retains typ
         assert.ok(readFileSync(log, 'utf8').includes('pixelBudgetRefusal'));
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test('a post-snapshot module edit in a disposable clone prevents the real collection receipt', {
+    skip: !prepared || !process.env.NTILDE_TERMINFO_TEST_EXECUTABLE,
+}, () => withCollectorFixture(upstreamReceipt, true, root => {
+    const preload = new URL('./fixtures/source-mutation.mjs', import.meta.url).href;
+    const result = spawnSync(process.execPath, [join(root, 'scripts/terminfo-owned.mjs'), '--executable',
+        process.env.NTILDE_TERMINFO_TEST_EXECUTABLE, '--app-version', '0.0.0'], {
+        cwd: root, encoding: 'utf8', timeout: 35000,
+        env: { ...process.env, NTILDE_TERMINFO_TEST_SOURCE_ROOT: root,
+            NODE_OPTIONS: [process.env.NODE_OPTIONS, '--import=' + preload].filter(Boolean).join(' ') },
+    });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /Owned source changed before completion: metadata-state.mjs/);
+    const output = /results: ([^\n]+)/.exec(result.stdout)[1];
+    const proof = JSON.parse(readFileSync(join(output, 'ownership-proof.json')));
+    assert.equal(proof.completed, true); assert.ok(proof.cleanedUpAt);
+    assert.ok(!existsSync(join(output, 'cell-receipt.json')));
+    const archived = readFileSync(join(output, 'sources', 'metadata-state.mjs'));
+    assert.notDeepEqual(archived, readFileSync(join(root, 'scripts', 'terminfo', 'metadata-state.mjs')));
+    const settings = JSON.parse(readFileSync(join(output, 'initial-settings.json')));
+    assert.ok(!existsSync(dirname(settings.Profiles[0].Command)));
+}));
