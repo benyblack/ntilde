@@ -78,6 +78,12 @@ invariant changes.
   suppresses glyphs and decorations while preserving backgrounds. Animated rows bypass
   picture/span reuse and retire older cached versions; ordinary rows keep their cache path.
   Offscreen snapshots default to visible text and accept an explicit deterministic phase.
+- **Controlled capture uses one draw's facts.** VT snapshots include cursor visibility/blink
+  alongside cursor style; App alone interprets optional synthetic presentation time. Capture
+  background fill and opt-in metadata use the exact render snapshot, including a detached palette.
+  Font stream fingerprints are bounded and opt-in. Live photographs reject synthetic time and
+  render provenance; default capture wire shapes/phases stay unchanged. No request changes the
+  live animation clock or terminal state. See `docs/qa/terminfo/controlled-capture.md`.
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
 - **Cursor save state is shared by DECSC/DECRC and modes 1048/1049.** The per-screen banks
   retain position, rendition, pending wrap, origin mode and G0-G3/GL. Saved character sets

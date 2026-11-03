@@ -71,6 +71,38 @@ public class AgentHostWindowlessCaptureTests : IDisposable
         => service.HandleRequestLineAsync(line, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
 
     [Fact]
+    public void Controlled_render_returns_the_borrowed_font_and_the_windowless_grid_facts()
+    {
+        var registry = new AgentSessionRegistry();
+        RegisterMeasuredPane(registry);
+        var source = new StubWindowlessSource();
+        var session = source.Add("windowless frame", cols: 100, rows: 30);
+        using var service = NewService(registry, new AgentActivityJournal());
+        service.SetWindowlessSource(source);
+        var parameters = JsonSerializer.Serialize(new CaptureScreenParams
+        {
+            PaneId = session.SessionId,
+            PresentationTimeMs = 530,
+            IncludeRenderDetails = true,
+        }, AgentHostJsonContext.Default.CaptureScreenParams);
+        var line = $"{{\"v\":{AgentHostProtocol.Version},\"id\":1,\"method\":\"{AgentHostProtocol.Methods.CaptureScreen}\",\"params\":{parameters}}}";
+        var response = Handle(service, line);
+        Assert.Null(response.Error);
+        var result = response.Result!.Value.Deserialize(AgentHostJsonContext.Default.CaptureScreenResult)!;
+        Assert.Equal(530, result.PresentationTimeMs);
+        var details = Assert.IsType<CaptureRenderDetails>(result.RenderDetails);
+        Assert.Equal(530, details.Presentation.TimeMs);
+        Assert.False(details.Presentation.TextBlinkVisible);
+        Assert.Equal(100, result.Cols);
+        Assert.Equal(30, result.Rows);
+        Assert.Equal(800, details.Grid.RenderWidthPx);
+        Assert.Equal(480, details.Grid.RenderHeightPx);
+        Assert.Equal(8, details.Grid.CellWidthDip);
+        Assert.Equal(14, details.Font.SizeDip);
+        Assert.Matches("^[a-f0-9]{64}$", details.Font.PrimarySha256!);
+    }
+
+    [Fact]
     public void Render_draws_the_sessions_own_grid_at_a_panes_cell_size_and_is_journaled()
     {
         var registry = new AgentSessionRegistry();

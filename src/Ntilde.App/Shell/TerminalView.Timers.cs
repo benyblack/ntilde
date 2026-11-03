@@ -169,6 +169,8 @@ namespace Ntilde.Shell
         /// Deliberately not folded into ShouldRunUiTimers(): that gates the render timer
         /// too, and stopping *that* on focus loss would freeze output from a background
         /// shell - a correctness bug, not a saving.
+        internal bool PreferredCursorBlink => _cursorBlinkEnabled;
+
         private bool ResolveCursorBlinkEnabled(ModeState modes) =>
             modes.IsCursorVisible && (modes.CursorStyleIsDefault ? _cursorBlinkEnabled : modes.IsCursorBlinkEnabled);
 

@@ -1,9 +1,18 @@
 using System;
 using Ntilde.Shell;
+using Ntilde.AgentHost.Contracts;
 using Ntilde.VT;
 
 namespace Ntilde.AgentHost
 {
+    /// <summary>Additive controls for an offscreen capture, independent of the live clock.</summary>
+    public readonly record struct AgentCaptureOptions(long? PresentationTimeMs = null, bool IncludeRenderDetails = false)
+    {
+        // Per-call seam for deterministic concurrent-resize regressions; never set by the wire handler.
+        internal Action? BeforeRenderForTest { get; init; }
+        internal Action? BeforeDrawForTest { get; init; }
+    }
+
     /// <summary>A rendered pane screenshot (A5), as returned by <see cref="AgentSessionRegistration.TryCapturePng"/>.</summary>
     public readonly record struct AgentCaptureInfo(
         byte[] Png,
@@ -12,7 +21,8 @@ namespace Ntilde.AgentHost
         int Cols,
         int Rows,
         bool Downscaled,
-        double Scale);
+        double Scale,
+        CaptureRenderDetails? RenderDetails = null);
 
     /// <summary>Why a capture could not be produced; mapped to a protocol error code by the endpoint.</summary>
     public enum AgentCaptureError
@@ -412,7 +422,8 @@ namespace Ntilde.AgentHost
         /// Neither is taken from the user's monitor, so a capture cannot vary with
         /// the machine it runs on.
         /// </summary>
-        public bool TryCapturePng(int maxWidth, double scale, out AgentCaptureInfo info, out AgentCaptureError error)
+        public bool TryCapturePng(int maxWidth, double scale, out AgentCaptureInfo info, out AgentCaptureError error,
+            AgentCaptureOptions captureOptions = default)
         {
             if (RenderParameters is not { } parameters || !parameters.IsUsable)
             {
@@ -421,7 +432,7 @@ namespace Ntilde.AgentHost
                 return false;
             }
 
-            return TryRenderPng(Buffer, parameters, maxWidth, scale, out info, out error);
+            return TryRenderPng(Buffer, parameters, maxWidth, scale, out info, out error, captureOptions);
         }
 
         /// <summary>
@@ -431,7 +442,8 @@ namespace Ntilde.AgentHost
         /// </summary>
         internal static bool TryRenderPng(
             TerminalBuffer buffer, PaneRenderParameters parameters, int maxWidth, double scale,
-            out AgentCaptureInfo info, out AgentCaptureError error)
+            out AgentCaptureInfo info, out AgentCaptureError error,
+            AgentCaptureOptions captureOptions = default)
         {
             info = default;
             error = AgentCaptureError.Unavailable;
@@ -442,13 +454,11 @@ namespace Ntilde.AgentHost
             }
 
             int cols, rows;
-            bool cursorVisible;
             buffer.Lock.EnterReadLock();
             try
             {
                 cols = buffer.Cols;
                 rows = buffer.Rows;
-                cursorVisible = buffer.Modes.IsCursorVisible;
             }
             finally
             {
@@ -502,11 +512,13 @@ namespace Ntilde.AgentHost
                 EnableComplexShaping = parameters.EnableComplexShaping,
                 MinimumContrast = parameters.MinimumContrast,
                 PreferredCursorStyle = parameters.PreferredCursorStyle,
+                PreferredCursorBlink = parameters.PreferredCursorBlink,
+                PresentationTimeMs = captureOptions.PresentationTimeMs,
+                BeforeDrawForTest = captureOptions.BeforeDrawForTest,
 
-                // Follows the buffer's cursor mode, never the control's blink
-                // phase or focus: a blinking cursor would make consecutive
-                // captures of an idle session disagree.
-                HideCursor = !cursorVisible,
+                // Visibility/shape/blink facts come from the draw's own snapshot.
+                // No live focus or clock is read; absent synthetic time keeps visible phases.
+                HideCursor = false,
 
                 // The caller's scale, not the monitor's. Worth stating plainly
                 // because passing anything but 1.0 here was broken until #346:
@@ -534,7 +546,16 @@ namespace Ntilde.AgentHost
                 using var glyphCache = new Ntilde.Rendering.GlyphCache();
                 options = options with { GlyphCache = glyphCache };
 
-                using var bitmap = TerminalSnapshotRenderer.Capture(buffer, parameters.Metrics, width, height, options);
+                captureOptions.BeforeRenderForTest?.Invoke();
+                using var bitmap = TerminalSnapshotRenderer.CaptureWithContext(buffer, parameters.Metrics, width, height,
+                    options, captureOptions.IncludeRenderDetails, out var captureFrame);
+                if (captureFrame.Cols != cols || captureFrame.Rows != rows ||
+                    captureFrame.BufferCols != cols || captureFrame.BufferRows != rows)
+                {
+                    // The bitmap was sized before a concurrent resize. Retry rather than
+                    // presenting a cropped/expanded viewport as a qualified full-grid frame.
+                    return false;
+                }
                 using var downscaled = TerminalSnapshotRenderer.DownscaleToWidth(bitmap, maxWidth);
                 var final = downscaled ?? bitmap;
                 info = new AgentCaptureInfo(
@@ -544,7 +565,8 @@ namespace Ntilde.AgentHost
                     cols,
                     rows,
                     Downscaled: downscaled != null,
-                    Scale: effectiveScale);
+                    Scale: effectiveScale,
+                    RenderDetails: captureFrame.Context == null ? null : AgentCaptureDetails.From(captureFrame.Context));
                 return true;
             }
             catch (Exception ex)

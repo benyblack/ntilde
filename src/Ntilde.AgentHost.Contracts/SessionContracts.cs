@@ -248,6 +248,16 @@ public sealed record CaptureScreenParams
     /// </summary>
     [JsonPropertyName("mode")]
     public string? Mode { get; init; }
+
+    /// <summary>Synthetic milliseconds since a visible phase (0..60,000), for render mode only.
+    /// Does not sample, advance or reset the live view's clock. Absent preserves visible phases.</summary>
+    [JsonPropertyName("presentationTimeMs")]
+    public long? PresentationTimeMs { get; init; }
+
+    /// <summary>Include the actual render font, pixel grid, palette and presentation facts. Render mode only.</summary>
+    [JsonPropertyName("includeRenderDetails")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IncludeRenderDetails { get; init; }
 }
 
 /// <summary>Result payload for <c>captureScreen</c> (A5).</summary>
@@ -308,6 +318,13 @@ public sealed record CaptureScreenResult
     /// </summary>
     [JsonPropertyName("inlineOmitted")]
     public bool InlineOmitted { get; init; }
+
+    /// <summary>Echoed only when explicitly requested, so an older endpoint cannot silently supply another phase.</summary>
+    [JsonPropertyName("presentationTimeMs")]
+    public long? PresentationTimeMs { get; init; }
+
+    [JsonPropertyName("renderDetails")]
+    public CaptureRenderDetails? RenderDetails { get; init; }
 }
 
 /// <summary>Params for <c>readScrollback</c> (ranged read, oldest line = 0).</summary>

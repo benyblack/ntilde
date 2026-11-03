@@ -44,6 +44,11 @@ namespace Ntilde.Shell
         private readonly float _opacity;
         private readonly bool _hideCursor;
         private readonly bool _textBlinkVisible;
+        private readonly long? _presentationTimeMs;
+        private readonly bool _preferredCursorBlink;
+        private readonly bool _fillBackground;
+        private readonly bool _collectRenderDetails;
+        internal RenderedFrameInfo? RenderedFrame { get; private set; }
         private readonly Action<bool>? _reportTextBlinkCells;
         private readonly CursorStyle? _preferredCursorStyle;
         private readonly double _renderScaling;
@@ -151,6 +156,8 @@ namespace Ntilde.Shell
             public SKColor ThemeFg;
             public SKColor CursorColor;
             public CursorStyle CursorStyle;
+            public bool CursorVisible { get; set; }
+            public bool CursorBlinkEnabled { get; set; }
             public TerminalRenderColors RenderColors;
             public List<RowRenderItem> RowItems = new();
             public List<RenderImageSnapshot> Images = new();
@@ -232,7 +239,11 @@ namespace Ntilde.Shell
             Action? requestImageFrame = null,
             CursorStyle? preferredCursorStyle = null,
             bool textBlinkVisible = true,
-            Action<bool>? reportTextBlinkCells = null)
+            Action<bool>? reportTextBlinkCells = null,
+            long? presentationTimeMs = null,
+            bool preferredCursorBlink = true,
+            bool fillBackground = false,
+            bool collectRenderDetails = false)
         {
             _bounds = bounds;
             _preferredCursorStyle = preferredCursorStyle;
@@ -255,7 +266,12 @@ namespace Ntilde.Shell
             _fallbackChain = fallbackChain;
             _opacity = (float)Math.Clamp(opacity, 0.0, 1.0);
             _hideCursor = hideCursor;
-            _textBlinkVisible = textBlinkVisible;
+            _textBlinkVisible = presentationTimeMs.HasValue
+                ? TextBlinkAnimation.IsVisibleAtMilliseconds(presentationTimeMs.Value) : textBlinkVisible;
+            _presentationTimeMs = presentationTimeMs;
+            _preferredCursorBlink = preferredCursorBlink;
+            _fillBackground = fillBackground;
+            _collectRenderDetails = collectRenderDetails;
             _reportTextBlinkCells = reportTextBlinkCells;
             _renderScaling = renderScaling;
             _bufferRows = snapshotRows;
@@ -357,7 +373,7 @@ namespace Ntilde.Shell
             }
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "S3776", Justification = "Pre-existing rendering pipeline; this change only passes the snapshot session through to capture without adding branches. Splitting the frame pipeline is outside this lifetime fix.")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "S3776", Justification = "Pre-existing frame pipeline. Controlled captures record snapshot presentation facts and fill their own background here to preserve one-draw provenance; splitting the full pipeline is outside this capture change.")]
         private TerminalRenderSnapshot? DrawTerminalInternalCore(SKCanvas canvas, int snapshotSession)
         {
             try
@@ -430,6 +446,20 @@ namespace Ntilde.Shell
                 frame.CursorStyle = renderSnapshot.CursorStyleIsDefault
                     ? _preferredCursorStyle ?? renderSnapshot.CursorStyle : renderSnapshot.CursorStyle;
                 frame.RenderColors = TerminalRenderColors.For(renderSnapshot.Theme.Source ?? UnthemedSnapshotTheme);
+                frame.CursorBlinkEnabled = renderSnapshot.CursorStyleIsDefault ? _preferredCursorBlink : renderSnapshot.CursorBlinkEnabled;
+                frame.CursorVisible = !_hideCursor && renderSnapshot.CursorVisible &&
+                    (!_presentationTimeMs.HasValue || !frame.CursorBlinkEnabled || _textBlinkVisible);
+                if (_collectRenderDetails)
+                {
+                    RenderedFrame = new RenderedFrameInfo(renderSnapshot.Theme, frame.RenderColors, _pixelGrid,
+                        bufferRows, bufferCols, renderSnapshot.CursorRow, renderSnapshot.CursorCol,
+                        frame.CursorStyle, frame.CursorVisible, frame.CursorBlinkEnabled);
+                }
+                if (_fillBackground)
+                {
+                    var background = renderSnapshot.Theme.Background;
+                    canvas.Clear(new SKColor(background.R, background.G, background.B, background.A));
+                }
 
                 if (renderSnapshot.Images.Length > 0 && renderSnapshot.Images.Array != null)
                 {
@@ -880,7 +910,7 @@ namespace Ntilde.Shell
                 }
 
                 // Cursor (optional policy: hide cursor when scrolled back)
-                if (!_hideCursor && _scrollOffset == 0)
+                if (frame.CursorVisible && _scrollOffset == 0)
                 {
                     int absCursorRow = (renderSnapshot.TotalLines - bufferRows) + renderSnapshot.CursorRow;
                     int visualRow = absCursorRow - absDisplayStart;

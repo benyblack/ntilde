@@ -111,6 +111,9 @@ namespace Ntilde.VT
     {
         public int ViewportRows { get; init; }
         public int ViewportCols { get; init; }
+        /// <summary>Actual terminal dimensions at snapshot copy, independent of the requested viewport.</summary>
+        public int BufferRows { get; init; }
+        public int BufferCols { get; init; }
         public int TotalLines { get; init; }
         public int AbsDisplayStart { get; init; }
         public int ScrollOffset { get; init; }
@@ -118,6 +121,8 @@ namespace Ntilde.VT
         public int CursorCol { get; init; }
         public CursorStyle CursorStyle { get; init; }
         public bool CursorStyleIsDefault { get; init; }
+        public bool CursorVisible { get; init; }
+        public bool CursorBlinkEnabled { get; init; }
         public RenderThemeSnapshot Theme { get; init; }
         public PooledArray<DirtySpan> DirtySpans { get; init; }
         public PooledArray<RenderRowSnapshot> RowsData { get; init; }

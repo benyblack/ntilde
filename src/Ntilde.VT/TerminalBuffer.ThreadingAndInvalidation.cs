@@ -342,11 +342,14 @@ namespace Ntilde.VT
             int viewportRows = Math.Max(0, req.ViewportRows);
             int viewportCols = Math.Max(0, req.ViewportCols);
             int totalLines = 0;
+            int bufferRows, bufferCols;
             int absDisplayStart = 0;
             int cursorRow = 0;
             int cursorCol = 0;
             CursorStyle cursorStyle;
             bool cursorStyleIsDefault;
+            bool cursorVisible;
+            bool cursorBlinkEnabled;
             RenderThemeSnapshot theme = default;
             var rowsData = viewportRows > 0 ? new PooledArray<RenderRowSnapshot>(System.Buffers.ArrayPool<RenderRowSnapshot>.Shared.Rent(viewportRows), viewportRows) : PooledArray<RenderRowSnapshot>.Empty;
             PooledArray<RenderImageSnapshot> images = PooledArray<RenderImageSnapshot>.Empty;
@@ -361,12 +364,16 @@ namespace Ntilde.VT
                 Lock.EnterReadLock();
                 try
                 {
+                    bufferRows = Rows;
+                    bufferCols = Cols;
                     totalLines = InternalTotalLines;
                     absDisplayStart = Math.Max(0, totalLines - viewportRows - req.ScrollOffset);
                     cursorRow = _cursorRow;
                     cursorCol = _cursorCol;
                     cursorStyle = Modes.CursorStyle;
                     cursorStyleIsDefault = Modes.CursorStyleIsDefault;
+                    cursorVisible = Modes.IsCursorVisible;
+                    cursorBlinkEnabled = Modes.IsCursorBlinkEnabled;
 
                     var visibleImages = GetVisibleImagesSnapshot(absDisplayStart, viewportRows);
                     if (visibleImages.Count > 0)
@@ -408,6 +415,8 @@ namespace Ntilde.VT
                 {
                     ViewportRows = viewportRows,
                     ViewportCols = viewportCols,
+                    BufferRows = bufferRows,
+                    BufferCols = bufferCols,
                     TotalLines = totalLines,
                     AbsDisplayStart = absDisplayStart,
                     ScrollOffset = req.ScrollOffset,
@@ -415,6 +424,8 @@ namespace Ntilde.VT
                     CursorCol = cursorCol,
                     CursorStyle = cursorStyle,
                     CursorStyleIsDefault = cursorStyleIsDefault,
+                    CursorVisible = cursorVisible,
+                    CursorBlinkEnabled = cursorBlinkEnabled,
                     Theme = theme,
                     DirtySpans = dirtySpans,
                     RowsData = rowsData,

@@ -221,6 +221,11 @@ Each milestone is independently shippable and announceable. Estimates assume
 - [x] Caller-named `scale` (1–3) so an agent can render text large enough to
       read back out of the image. Named by the caller, never taken from the
       monitor, so a capture stays reproducible. Unblocked by #346.
+- [x] Optional controlled offscreen captures: `presentationTimeMs` selects a synthetic
+      text/cursor phase; `includeRenderDetails` returns actual primary-font identity,
+      palette, snapped geometry and presentation facts. Both reject `live` mode and leave
+      the live clock/terminal untouched. Defaults retain fixed-visible phases. See
+      [controlled capture](../qa/terminfo/controlled-capture.md) for provenance limits.
 - [x] The snapshot renderer (`TerminalSnapshotRenderer`) promoted out of test
       infrastructure into the App, so the golden-PNG baselines, the agent
       capture path, and any future CLI PNG output are one code path. Renders

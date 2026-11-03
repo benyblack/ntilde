@@ -225,6 +225,117 @@ public class AgentHostClientTests : IDisposable
         return new NetworkStream(socket, ownsSocket: true);
     }
 
+    [Theory]
+    [InlineData(530L, null, false, "did not confirm")]
+    [InlineData(530L, 0L, false, "did not confirm")]
+    [InlineData(null, null, true, "did not provide")]
+    [InlineData(530L, 530L, true, "did not provide")]
+    public async Task Controlled_capture_refuses_an_endpoint_that_ignores_the_requested_evidence(
+        long? requestedTime, long? responseTime, bool details, string expected)
+    {
+        var text = await CaptureReplyAsync(requestedTime, responseTime, details);
+        Assert.StartsWith("Error:", text, StringComparison.Ordinal);
+        Assert.Contains(expected, text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Screenshot written", text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0L)]
+    [InlineData(530L)]
+    [InlineData(60000L)]
+    public async Task Controlled_capture_forwards_time_and_identifies_the_returned_synthetic_frame(long time)
+    {
+        var text = await CaptureReplyAsync(time, time, false);
+        Assert.Contains($"synthetic time {time} ms", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("no cursor blink", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Controlled_capture_returns_requested_render_details_on_a_successful_reply()
+    {
+        var text = await CaptureReplyAsync(530, 530, true, replyDetails: true);
+        Assert.StartsWith("Screenshot written:", text, StringComparison.Ordinal);
+        Assert.Contains("Render details: ", text, StringComparison.Ordinal);
+        Assert.Contains("\"primaryFamily\":\"Fixture Mono\"", text, StringComparison.Ordinal);
+        Assert.Contains("\"timeMs\":530", text, StringComparison.Ordinal);
+    }
+
+    private static CaptureRenderDetails FakeCaptureDetails(long? time) => new()
+    {
+        Platform = "test",
+        Architecture = "x64",
+        Font = new CaptureFontDetails
+        {
+            ConfiguredFamily = "Fixture Mono",
+            PrimaryFamily = "Fixture Mono",
+            PrimarySha256 = new string('a', 64),
+            Slant = "Upright",
+            FallbackFamilies = Array.Empty<string>(),
+            SizeDip = 14,
+            Weight = 400,
+            Width = 5,
+        },
+        Grid = new CaptureGridDetails
+        {
+            RenderWidthPx = 8,
+            RenderHeightPx = 16,
+            CellWidthDip = 8,
+            CellHeightDip = 16,
+            BaselineDip = 12,
+            CellWidthPx = 8,
+            CellHeightPx = 16,
+        },
+        Theme = new CaptureThemeDetails { AnsiPaletteArgb = new uint[256], ForegroundArgb = 0xffffffffU, BackgroundArgb = 0xff000000U },
+        Presentation = new CapturePresentationDetails { TimeMs = time, HalfPeriodMs = 530 },
+    };
+
+    private async Task<string> CaptureReplyAsync(long? requestedTime, long? responseTime, bool details, bool replyDetails = false)
+    {
+        var endpoint = OperatingSystem.IsWindows()
+            ? "ntilde-capture-client-" + Guid.NewGuid().ToString("N") : Path.Combine(_tempDir, "cap.sock");
+        var pane = Guid.NewGuid();
+        var capture = new CaptureScreenResult
+        {
+            FilePath = "test-capture.png",
+            Width = 8,
+            Height = 16,
+            Rows = 1,
+            Cols = 1,
+            ByteCount = 10,
+            Downscaled = false,
+            PresentationTimeMs = responseTime,
+            RenderDetails = replyDetails ? FakeCaptureDetails(responseTime) : null,
+        };
+        using var serverCts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        serverCts.CancelAfter(TimeSpan.FromSeconds(10));
+        async Task Serve()
+        {
+            await using var stream = await AcceptOneAsync(endpoint, serverCts.Token);
+            using var reader = new StreamReader(stream, new UTF8Encoding(false), leaveOpen: true);
+            await using var writer = new StreamWriter(stream, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true };
+            var line = await reader.ReadLineAsync(serverCts.Token);
+            var request = JsonSerializer.Deserialize(line!, AgentHostJsonContext.Default.AgentHostRequest)!;
+            Assert.Equal(AgentHostProtocol.Methods.CaptureScreen, request.Method);
+            var parameters = request.Params!.Value.Deserialize(AgentHostJsonContext.Default.CaptureScreenParams)!;
+            Assert.Equal(pane, parameters.PaneId);
+            Assert.Equal(requestedTime, parameters.PresentationTimeMs);
+            Assert.Equal(details, parameters.IncludeRenderDetails);
+            var response = new AgentHostResponse
+            {
+                Version = AgentHostProtocol.Version,
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(capture, AgentHostJsonContext.Default.CaptureScreenResult),
+            };
+            await writer.WriteLineAsync(JsonSerializer.Serialize(response, AgentHostJsonContext.Default.AgentHostResponse).AsMemory(), serverCts.Token);
+        }
+        var server = Serve();
+        WriteDescriptor(endpoint);
+        var blocks = await SessionTools.CaptureScreen(new AgentHostClient(DiscoveryPath), pane.ToString(),
+            presentationTimeMs: requestedTime, includeRenderDetails: details, cancellationToken: TestContext.Current.CancellationToken);
+        await server.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        return Assert.IsType<TextContentBlock>(Assert.Single(blocks)).Text;
+    }
+
     /// <summary>Serves exactly one connection and one request, then exits.</summary>
     private static async Task RunFakeEndpointOnceAsync(string endpoint, ListSessionsResult reply, CancellationToken token)
     {
@@ -588,6 +699,21 @@ public class SessionToolsFormattingTests
         Assert.Contains("downscaled to fit maxWidth", text, StringComparison.Ordinal);
         Assert.Contains("inline image was omitted", text, StringComparison.Ordinal);
         Assert.Contains("smaller maxWidth", text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(-1L, "render", false, "must be between")]
+    [InlineData(60001L, "render", false, "must be between")]
+    [InlineData(0L, "live", false, "require mode 'render'")]
+    [InlineData(null, "live", true, "require mode 'render'")]
+    public async Task CaptureScreen_rejects_invalid_controlled_options_before_any_ipc(long? time, string mode, bool details, string message)
+    {
+        var client = new AgentHostClient(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "nothing.json"));
+        var blocks = await SessionTools.CaptureScreen(client, Guid.NewGuid().ToString(), mode: mode,
+            presentationTimeMs: time, includeRenderDetails: details, cancellationToken: TestContext.Current.CancellationToken);
+        var text = Assert.IsType<TextContentBlock>(Assert.Single(blocks)).Text;
+        Assert.StartsWith("Error:", text, StringComparison.Ordinal);
+        Assert.Contains(message, text, StringComparison.Ordinal);
     }
 
     [Fact]
