@@ -279,4 +279,45 @@ public class OverlineTests
         buffer.Resize(20, 6);
         for (int col = 0; col < 3; col++) Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(col, row));
     }
+
+    [Theory]
+    [InlineData(20, 16, 12, "B")]
+    [InlineData(20, 6, 12, "B")]
+    [InlineData(6, 8, 2, "BCD")]
+    public void SparseReflow_KeepsDecoratedGapsAsAuthoredContent(int oldCols, int newCols, int gap, string right)
+    {
+        var buffer = new TerminalBuffer(oldCols, 6);
+        new AnsiParser(buffer).Process("A\x1b[53m" + new string(' ', gap) + "\x1b[55m" + right);
+        buffer.Resize(newCols, 6);
+        for (int col = 1; col <= gap; col++)
+            Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(col % newCols, col / newCols));
+        Assert.Equal('A', buffer.GetGrapheme(0, 0)[0]);
+        for (int index = 0; index < right.Length; index++)
+        {
+            int col = gap + 1 + index;
+            Assert.Equal(right[index].ToString(), buffer.GetGrapheme(col % newCols, col / newCols));
+        }
+    }
+
+    [Fact]
+    public void SparseReflow_PreservesDecoratedTailOfRightPinnedText()
+    {
+        var buffer = new TerminalBuffer(24, 6);
+        new AnsiParser(buffer).Process("A" + new string(' ', 12) + "B\x1b[53m  \x1b[55m");
+        buffer.Resize(20, 6);
+        Assert.Equal("B", buffer.GetGrapheme(17, 0));
+        Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(18, 0));
+        Assert.Equal(CellUnderline.OverlineOnly, buffer.GetUnderlineAbsolute(19, 0));
+    }
+
+    [Fact]
+    public void SparseReflow_PlainGapsKeepTheirExistingRightPinnedWidth()
+    {
+        var buffer = new TerminalBuffer(20, 6);
+        new AnsiParser(buffer).Process("A" + new string(' ', 12) + "B");
+        buffer.Resize(16, 6);
+        Assert.Equal("A", buffer.GetGrapheme(0, 0));
+        Assert.Equal("B", buffer.GetGrapheme(15, 0));
+        for (int col = 1; col < 15; col++) Assert.Null(buffer.GetUnderlineAbsolute(col, 0));
+    }
 }

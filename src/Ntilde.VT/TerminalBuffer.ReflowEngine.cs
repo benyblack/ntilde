@@ -745,7 +745,7 @@ namespace Ntilde.VT
                             for (int scan = physRow.Cells.Length - 1; scan >= 0; scan--)
                             {
                                 var cell = physRow.Cells[scan];
-                                if (cell.Character != ' ' && cell.Character != '\0')
+                                if ((cell.Character != ' ' && cell.Character != '\0') || physRow.GetUnderline(scan) != null)
                                 {
                                     lastContentIndex = scan;
                                     break;
@@ -759,7 +759,8 @@ namespace Ntilde.VT
                                 for (int scan = 0; scan <= lastContentIndex; scan++)
                                 {
                                     var cell = physRow.Cells[scan];
-                                    bool isSpace = (cell.Character == ' ' || cell.Character == '\0');
+                                    // Visible decoration is authored content, never an adjustable layout gap.
+                                    bool isSpace = (cell.Character == ' ' || cell.Character == '\0') && physRow.GetUnderline(scan) == null;
 
                                     if (isSpace)
                                     {
