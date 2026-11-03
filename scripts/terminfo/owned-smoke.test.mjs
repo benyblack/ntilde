@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
+import { ownedSourceFiles } from './owned-sources.mjs';
 import { upstreamReceipt } from './collector.mjs';
 import { installLockedCollector } from './runtime.mjs';
 import { terminateRecordedWorker } from './ownership.mjs';
@@ -46,12 +47,8 @@ function withCollectorFixture(receipt, lockfile, action) {
     // Clone the small runner fixture so tests never mutate the real tool cache.
     const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
     try {
-        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
-            'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs', 'terminfo/terminal-output.mjs',
-            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs', 'terminfo/editing-state.mjs', 'terminfo/editing-cases.mjs', 'terminfo/editing-expectations.mjs', 'terminfo/editing-capture.mjs', 'terminfo/editing.mjs', 'terminfo/history-cases.mjs', 'terminfo/history-capture.mjs', 'terminfo/history.mjs',
-            'terminfo/saved-cases.mjs', 'terminfo/saved-capture.mjs', 'terminfo/saved.mjs', 'terminfo/saved-expectations.mjs', 'terminfo/saved-receipt.mjs',
-            'terminfo/resize-cases.mjs', 'terminfo/resize-capture.mjs', 'terminfo/resize.mjs', 'terminfo/resize-action.mjs', 'terminfo/resize-receipt.mjs',
-            'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
+        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', ...Object.values(ownedSourceFiles)
+            .map(file => file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file)]) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
             copyFileSync(join(repo, 'scripts', file), target);
@@ -131,12 +128,14 @@ function launch(executable, interrupt, observation = {}) {
         let output = '';
         let errors = '';
         let sent = false;
-        // Complete runs include 151 paired state/history frames, 75 PNGs and six App actions
-        // with before/after process proofs. The resistant-worker run completes its receipt in
-        // 20.06s (measured through process exit), including the bounded SIGTERM/SIGKILL path.
-        // Allow 25s only for completed collections; interruption-only cases retain 15s.
+        // Complete runs add 46 paired metadata observations and a deliberate 6.5s toast
+        // wait to the previously measured 20.06s resistant-worker lifecycle. At f476,
+        // collection completed and cleanup finished at 24.23s after context creation;
+        // installation/launch caused the old 25s outer deadline to fire during cleanup.
+        // Budget that added work only for complete collections; interruption-only cases
+        // keep 15s and individual RPC/worker-termination limits are unchanged.
         const collected = observation.stubborn || observation.phase === 'fixture-removal' && !interrupt;
-        const timeoutMs = collected ? 25000 : 15000;
+        const timeoutMs = collected ? 35000 : 15000;
         let lifecycleError, terminationTimer;
         const timer = setTimeout(() => {
             lifecycleError = new Error('Adapter lifecycle did not finish.');
@@ -165,7 +164,7 @@ function assertRetainedCollector(output) {
     const digest = bytes => createHash('sha256').update(bytes).digest('hex');
     assert.equal(digest(readFileSync(join(output, context.retainedAdapterBundle))), context.adapterBundleSha256);
     for (const [field, source] of [
-        ['runnerSourceSha256', 'terminfo-owned.mjs'], ['adapterSourceSha256', 'terminfo/collector.mjs'],
+        ['runnerSourceSha256', 'terminfo-owned-runner.mjs'], ['adapterSourceSha256', 'terminfo/collector.mjs'],
         ['ownershipSourceSha256', 'terminfo/ownership.mjs'], ['workerSourceSha256', 'terminfo/worker.mjs'],
         ['runtimeSourceSha256', 'terminfo/runtime.mjs'],
         ['observerSourceSha256', 'terminfo/agent-observer.mjs'], ['cellSuiteSourceSha256', 'terminfo/cells.mjs'],
@@ -182,6 +181,10 @@ function assertRetainedCollector(output) {
         ['editingSuiteSourceSha256', 'terminfo/editing.mjs'],
         ['historyCasesSourceSha256', 'terminfo/history-cases.mjs'], ['historyCaptureSourceSha256', 'terminfo/history-capture.mjs'],
         ['historySuiteSourceSha256', 'terminfo/history.mjs'],
+        ['sourceRegistrySourceSha256', 'terminfo/owned-sources.mjs'], ['sourceInventorySha256', 'terminfo/owned-source-inventory.json'],
+        ['metadataCasesSourceSha256', 'terminfo/metadata-cases.mjs'], ['metadataCaptureSourceSha256', 'terminfo/metadata-capture.mjs'],
+        ['metadataStateSourceSha256', 'terminfo/metadata-state.mjs'], ['metadataExpectationsSourceSha256', 'terminfo/metadata-expectations.mjs'],
+        ['metadataSuiteSourceSha256', 'terminfo/metadata.mjs'], ['metadataReceiptSourceSha256', 'terminfo/metadata-receipt.mjs'],
         ['savedCasesSourceSha256', 'terminfo/saved-cases.mjs'], ['savedCaptureSourceSha256', 'terminfo/saved-capture.mjs'],
         ['savedSuiteSourceSha256', 'terminfo/saved.mjs'], ['savedExpectationsSourceSha256', 'terminfo/saved-expectations.mjs'],
         ['savedReceiptSourceSha256', 'terminfo/saved-receipt.mjs'],
@@ -414,7 +417,21 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 7);
+        assert.equal(receipt.schemaVersion, 8);
+        assert.equal(receipt.metadataEvidence.sha256, digest('metadata-observations.json'));
+        const metadata = JSON.parse(readFileSync(join(output, 'metadata-observations.json')));
+        assert.equal(metadata.snapshots.length, 46); assert.equal(metadata.observations.length, 13);
+        assert.ok(metadata.observations.every(item => item.control.passed));
+        const emptyTitle = metadata.observations.find(item => item.featureId === 'metadata.title.empty');
+        assert.equal(emptyTitle.result, 'failed');
+        assert.equal(metadata.observations.filter(item => item.featureId.startsWith('metadata.shell.P.')).every(item => item.result === 'inconclusive'), true);
+        assert.ok(metadata.observations.filter(item => ![emptyTitle.featureId, 'metadata.notification.osc9'].includes(item.featureId)
+            && !item.featureId.startsWith('metadata.shell.P.')).every(item => item.result === 'passed'));
+        const metadataCounts = metadata.observations.reduce((counts, item) => ({ ...counts, [item.result]: (counts[item.result] ?? 0) + 1 }), {});
+        assert.deepEqual(receipt.metadataEvidence.counts, metadataCounts);
+        assert.deepEqual(metadata.snapshots, readFileSync(join(output, 'metadata-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+        assert.equal(metadata.snapshots[0].paneId, report.snapshots[0].paneId);
+        assert.deepEqual(metadata.snapshots[0].before.screen, metadata.snapshots.at(-1).before.screen);
         assert.equal(receipt.savedEvidence.sha256, digest('saved-observations.json'));
         const saved = JSON.parse(readFileSync(join(output, 'saved-observations.json')));
         assert.equal(saved.snapshots.length, 57);
@@ -531,3 +548,28 @@ test('an initial pixel detail refusal after restored cursor evidence retains typ
         assert.ok(readFileSync(log, 'utf8').includes('pixelBudgetRefusal'));
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test('original-clone edits before worker launch cannot change the captured parent/worker graph', {
+    skip: !prepared || !process.env.NTILDE_TERMINFO_TEST_EXECUTABLE,
+}, () => withCollectorFixture(upstreamReceipt, true, root => {
+    const preload = new URL('./fixtures/source-mutation.mjs', import.meta.url).href;
+    const result = spawnSync(process.execPath, [join(root, 'scripts/terminfo-owned.mjs'), '--executable',
+        process.env.NTILDE_TERMINFO_TEST_EXECUTABLE, '--app-version', '0.0.0'], {
+        cwd: root, encoding: 'utf8', timeout: 35000,
+        env: { ...process.env, NTILDE_TERMINFO_TEST_SOURCE_ROOT: root,
+            NODE_OPTIONS: [process.env.NODE_OPTIONS, '--import=' + preload].filter(Boolean).join(' ') },
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const output = /results: ([^\n]+)/.exec(result.stdout)[1];
+    const proof = JSON.parse(readFileSync(join(output, 'ownership-proof.json')));
+    assert.equal(proof.completed, true); assert.ok(proof.cleanedUpAt);
+    assert.ok(existsSync(join(output, 'cell-receipt.json')));
+    assert.ok(proof.sourceSnapshot?.removedAt); assert.ok(!existsSync(proof.sourceSnapshot.root));
+    const archived = readFileSync(join(output, 'sources', 'metadata-cases.mjs'));
+    assert.notDeepEqual(archived, readFileSync(join(root, 'scripts', 'terminfo', 'metadata-cases.mjs')));
+    assert.ok(!archived.toString().includes('MUTATED-base-'));
+    const metadata = JSON.parse(readFileSync(join(output, 'metadata-observations.json')));
+    assert.ok(metadata.snapshots[1].before.metadata.oscTitle.startsWith('MD-base-'));
+    const settings = JSON.parse(readFileSync(join(output, 'initial-settings.json')));
+    assert.ok(!existsSync(dirname(settings.Profiles[0].Command)));
+}));

@@ -1,0 +1,114 @@
+import { createHash } from 'node:crypto';
+import { lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { ownedSourceFiles, legacyV8SourceFiles, sourceSnapshotPolicy } from './owned-sources.mjs';
+import { buildMetadataReport } from './metadata.mjs';
+import { metadataSuiteId, ownedMetadataPolicy } from './metadata-cases.mjs';
+import { validateOutputGeometry } from './terminal-output.mjs';
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const check = value => { if (!value) throw new Error('Invalid or incomplete v8 owned metadata-state receipt.'); };
+export const metadataSources = {
+    metadataCasesSourceSha256: 'metadata-cases.mjs', metadataCaptureSourceSha256: 'metadata-capture.mjs',
+    metadataSuiteSourceSha256: 'metadata.mjs', metadataStateSourceSha256: 'metadata-state.mjs',
+    metadataExpectationsSourceSha256: 'metadata-expectations.mjs', metadataReceiptSourceSha256: 'metadata-receipt.mjs',
+    sourceRegistrySourceSha256: 'owned-sources.mjs',
+};
+function present(path) {
+    try { lstatSync(path); return true; }
+    catch (error) {
+        if (error.code === 'ENOENT') return false;
+        throw error;
+    }
+}
+function bytes(output, file, maximum = 16 * 1024 * 1024) {
+    const path = join(output, file), stat = lstatSync(path);
+    check(stat.isFile() && !stat.isSymbolicLink() && stat.size <= maximum);
+    const value = readFileSync(path); check(value.length <= maximum); return value;
+}
+/** Any retained suite/source/journal or parent declaration makes the complete v8 chain mandatory. */
+export function includesMetadataEvidence(output, evidence, context, proof) {
+    return context.metadataSuiteId !== undefined || context.ownedMetadataPolicy !== undefined || evidence.metadataEvidence !== undefined
+        || Object.keys(metadataSources).some(key => context[key] !== undefined)
+        || proof.proofs?.some(value => value.metadata !== undefined) === true
+        || context.sourceSnapshotPolicy !== undefined || context.sourceInventorySha256 !== undefined
+        || proof.sourceSnapshot !== undefined || present(join(output, 'source-snapshot.json'))
+        || present(join(output, 'sources', 'owned-source-inventory.json'))
+        || present(join(output, 'sources', 'terminfo-owned-runner.mjs'))
+        || present(join(output, 'metadata-failed-observation.json'))
+        || present(join(output, 'metadata-snapshots.jsonl'))
+        || present(join(output, 'metadata-observations.json')) || present(join(output, 'metadata-unavailable.json'))
+        || Object.values(metadataSources).some(file => present(join(output, 'sources', file)));
+}
+function snapshotMode(output, context) {
+    return context.sourceSnapshotPolicy !== undefined || context.sourceInventorySha256 !== undefined
+        || present(join(output, 'source-snapshot.json')) || present(join(output, 'sources', 'owned-source-inventory.json'))
+        || present(join(output, 'sources', 'terminfo-owned-runner.mjs'));
+}
+function checkSnapshot(output, context, proof) {
+    check(context.sourceSnapshotPolicy === sourceSnapshotPolicy && /^[a-f\d]{64}$/.test(context.sourceSnapshotManifestSha256 ?? ''));
+    const data = bytes(output, 'source-snapshot.json', 65536), manifest = JSON.parse(data);
+    check(hash(data) === context.sourceSnapshotManifestSha256 && manifest.schemaVersion === 1 && manifest.policy === sourceSnapshotPolicy
+        && Object.keys(manifest.hashes ?? {}).length === Object.keys(ownedSourceFiles).length
+        && Object.keys(ownedSourceFiles).every(key => manifest.hashes[key] === context[key]));
+    check(proof.sourceSnapshot?.policy === sourceSnapshotPolicy && typeof context.sourceSnapshotRoot === 'string'
+        && proof.sourceSnapshot.root === context.sourceSnapshotRoot && !present(context.sourceSnapshotRoot)
+        && Number.isFinite(Date.parse(proof.sourceSnapshot.removedAt))
+        && Date.parse(proof.sourceSnapshot.removedAt) >= Date.parse(proof.cleanedUpAt));
+}
+function checkSources(output, context, marker) {
+    check(context.metadataSuiteId === metadataSuiteId && context.ownedMetadataPolicy === ownedMetadataPolicy && marker?.policy === ownedMetadataPolicy
+        && Object.keys(marker).every(key => ['policy', 'paneId', 'geometry'].includes(key)));
+    check(context.retainedSources === 'sources' && context.retainedAdapterBundle === 'collector-adapter.mjs'
+        && /^[a-f\d]{64}$/.test(context.adapterBundleSha256 ?? '')
+        && hash(bytes(output, 'collector-adapter.mjs')) === context.adapterBundleSha256
+        && hash(bytes(output, 'package-lock.json')) === context.collectorLockSha256);
+    const dir = lstatSync(join(output, 'sources')); check(dir.isDirectory() && !dir.isSymbolicLink());
+    const inventory = snapshotMode(output, context) ? ownedSourceFiles : legacyV8SourceFiles;
+    check(Object.keys(context).filter(key => key.endsWith('SourceSha256')).every(key => Object.hasOwn(inventory, key)));
+    const retained = readdirSync(join(output, 'sources')), expected = Object.values(inventory);
+    check(retained.length === expected.length && retained.every(file => expected.includes(file)));
+    for (const [key, file] of Object.entries(inventory)) {
+        check(/^[a-f\d]{64}$/.test(context[key] ?? '') && hash(bytes(output, join('sources', file), 2 * 1024 * 1024)) === context[key]);
+    }
+}
+/** Re-derive every staged active-state observation and match its original common-pane/kernel proof. */
+export function checkMetadataEvidence(output, binding, runId, context, proof) {
+    const marker = proof.proofs?.[0]?.metadata;
+    checkSources(output, context, marker);
+    if (snapshotMode(output, context)) checkSnapshot(output, context, proof);
+    check(!present(join(output, 'metadata-failed-observation.json')));
+    check(binding?.runId === runId && binding.suiteId === metadataSuiteId
+        && ['metadata-observations.json', 'metadata-unavailable.json'].includes(binding.file));
+    const otherReport = binding.file === 'metadata-observations.json' ? 'metadata-unavailable.json' : 'metadata-observations.json';
+    check(!present(join(output, otherReport)));
+    check(Object.keys(binding).every(key => ['runId', 'suiteId', 'file', 'sha256', 'counts', 'provisionalUntil', 'status', 'reason'].includes(key)));
+    const reportBytes = bytes(output, binding.file);
+    check(/^[a-f\d]{64}$/.test(binding.sha256 ?? '') && hash(reportBytes) === binding.sha256);
+    const report = JSON.parse(reportBytes);
+    check(report.runId === runId && report.suiteId === metadataSuiteId);
+    const text = bytes(output, 'metadata-snapshots.jsonl').toString('utf8').trim();
+    const frames = text ? text.split('\n').map(line => JSON.parse(line)) : [];
+    if (binding.file === 'metadata-unavailable.json') {
+        check(report.status === 'unavailable' && ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(report.reason)
+            && report.fixtureStarted === false && report.plannedExperiments === 13 && frames.length === 0
+            && marker.paneId === undefined && marker.geometry === undefined
+            && binding.status === 'unavailable' && binding.reason === report.reason && same(binding.counts, {}));
+        return;
+    }
+    check(binding.status === undefined && binding.reason === undefined);
+    const settingsBytes = bytes(output, 'initial-settings.json');
+    check(hash(settingsBytes) === context.initialSettingsSha256);
+    const settings = JSON.parse(settingsBytes);
+    check(settings.Osc9NotificationsEnabled === true && settings.Osc9ProgressReportingEnabled === true
+        && settings.AgentAccessObserveEnabled === true && settings.TabStripOrientation === 'Horizontal');
+    const derived = buildMetadataReport(frames, runId);
+    check(same(report, derived) && marker.paneId === frames[0].paneId
+        && same(marker.geometry, { rows: frames[0].before.screen.rows, cols: frames[0].before.screen.cols }));
+    const cell = JSON.parse(bytes(output, 'cell-observations.json'));
+    check(cell.snapshots?.[0]?.paneId === marker.paneId && cell.snapshots[0].screen.rows === marker.geometry.rows
+        && cell.snapshots[0].screen.cols === marker.geometry.cols);
+    validateOutputGeometry(proof.proofs[0].terminalOutput.description, marker.geometry.rows, marker.geometry.cols);
+    const counts = report.observations.reduce((values, item) => ({ ...values, [item.result]: (values[item.result] ?? 0) + 1 }), {});
+    check(same(counts, binding.counts));
+}

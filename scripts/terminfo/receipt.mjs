@@ -1,3 +1,4 @@
+import { includesMetadataEvidence, checkMetadataEvidence } from './metadata-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
 import { createHash } from 'node:crypto';
@@ -108,6 +109,18 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
     if (report.snapshots) validateOutputGeometry(mode.description, report.snapshots[0].screen.rows, report.snapshots[0].screen.cols);
 }
 
+function ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata) {
+    let schemaVersion = 1;
+    if (context.pixelSuiteId) schemaVersion = 2;
+    if (context.colorSuiteId) schemaVersion = 3;
+    if (includesEditing) schemaVersion = 4;
+    if (includesHistory) schemaVersion = 5;
+    if (includesResize) schemaVersion = 6;
+    if (includesSaved) schemaVersion = 7;
+    if (includesMetadata) schemaVersion = 8;
+    return schemaVersion;
+}
+
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
 export function completeOwnedReceipt(output, scratch, evidence) {
     const proofBytes = readFileSync(join(output, 'ownership-proof.json'));
@@ -128,19 +141,15 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     const historyMarkers = ['historySuiteId', 'terminalOutput', 'historyCasesSourceSha256', 'historyCaptureSourceSha256', 'historySuiteSourceSha256', 'terminalOutputSourceSha256'];
     const includesHistory = evidence.historyEvidence !== undefined || historyMarkers.some(key => context[key] !== undefined)
         || proof.proofs?.some(entry => entry.terminalOutput !== undefined) === true;
-    const includesSaved = includesSavedEvidence(output, evidence, context, proof);
+    const includesMetadata = includesMetadataEvidence(output, evidence, context, proof);
+    const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     if (includesEditing || includesHistory || includesResize) checkEditingSuites(output, evidence, runId, context);
     if (includesHistory || includesResize) checkHistoryProof(output, evidence, runId, context, proof);
     if (includesResize) checkResizeEvidence(output, evidence.resizeEvidence, runId, context, proof);
     if (includesSaved) checkSavedEvidence(output, evidence.savedEvidence, runId, context, proof);
-    let schemaVersion = 1;
-    if (context.pixelSuiteId) schemaVersion = 2;
-    if (context.colorSuiteId) schemaVersion = 3;
-    if (includesEditing) schemaVersion = 4;
-    if (includesHistory) schemaVersion = 5;
-    if (includesResize) schemaVersion = 6;
-    if (includesSaved) schemaVersion = 7;
+    if (includesMetadata) checkMetadataEvidence(output, evidence.metadataEvidence, runId, context, proof);
+    const schemaVersion = ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata);
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

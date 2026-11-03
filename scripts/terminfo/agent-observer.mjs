@@ -32,7 +32,7 @@ export function observerEndpoint(appData, ownerPid) {
 
 /** Read one correlated response from the private read-only endpoint; preserve typed refusals. */
 export function agentRequest(endpoint, method, params, timeoutMs) {
-    if (!['listSessions', 'readScreen', 'readScrollback'].includes(method)) throw new Error('Observer method is not read-only.');
+    if (!['listSessions', 'readScreen', 'readScrollback', 'readPaneMetadata', 'getSessionStatus'].includes(method)) throw new Error('Observer method is not read-only.');
     return privateRequest(endpoint, method, params, timeoutMs, 512 * 1024);
 }
 

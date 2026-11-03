@@ -931,6 +931,21 @@ requires public test classes.
   settled requires the view and successful current-session callback to agree.
   Changing the buffer or session invalidates older completion evidence. Neither the
   leaf DTOs nor this completion signal attest kernel PTY size or undo reflow.
+- **Owned metadata QA observes host effects independently.** The adapter pairs
+  complete active-cell/attribute reads with actual bounded UI/host/status facts.
+  Controls and fixed inputs qualify prepared title/cwd restoration, per-cell links,
+  shell lifecycle and private tab/toast properties; original null metadata and
+  hidden-control contents are not claimed restored. Notification grades require
+  observed settings/focus, and P consumption cannot become a semantic grade.
+  Version 8 binds all thirteen suites, exact retained source/report bytes and
+  parsed paired journal frames through verified disposable teardown. The BCL-only
+  trusted launcher captures 52 measured source/input files before importing the
+  runner; parent and worker use the same read-only private graph. It binds the
+  manifest and requires source-tree removal after App/worker cleanup, before the
+  receipt. Node/BCL, launcher and operator environment are trusted, not attested;
+  historical 51-file v8 evidence keeps its recorded scope. Partial initial reads
+  stay fatal. At most two disagreement retries share existing budgets and retain
+  their complete mismatched pairs; stable wrong effects cannot become passes.
 - **Owned resize QA is a separate caller boundary.** `scripts/terminfo-owned.mjs`
   enables act access only in its disposable settings root. Its source plan selects
   six App actions, re-proves process/PTY ownership before and after each action,
