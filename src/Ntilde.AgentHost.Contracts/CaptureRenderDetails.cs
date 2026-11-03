@@ -120,7 +120,8 @@ public sealed record CaptureThemeDetails
     /// <summary>Actual selection paint color; may be a translucent host-derived tint.</summary>
     [JsonPropertyName("effectiveSelectionBackgroundArgb")]
     public uint EffectiveSelectionBackgroundArgb { get; init; }
-    /// <summary>Null means selected cells keep their own foreground, rather than a concrete override.</summary>
+    /// <summary>Null means no shared selection foreground override; cells use their own foreground,
+    /// subject to the minimum contrast setting.</summary>
     [JsonPropertyName("effectiveSelectionForegroundArgb"), JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public uint? EffectiveSelectionForegroundArgb { get; init; }
     [JsonPropertyName("cursorOverride")]

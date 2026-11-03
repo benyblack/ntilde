@@ -39,7 +39,9 @@ span must be ordered, nonnegative and fit the actual local or imported windowles
 grid; malformed spans are rejected before attention/export. A concurrent resize
 returns retryable unavailability. Selection rows are resolved against the actual
 captured viewport, including scrollback or a scroll between preparation and draw,
-and never sampled from the UI selection. When details are requested, their
+and never sampled from the UI selection. Windowless bounds require reading the
+remote screen first; that actual read is journaled even when its span is refused,
+without exporting a PNG or lighting the read-success indicator. When details are requested, their
 `syntheticSelection` comes from the actual selected snapshot rows. Qualification
 callers must confirm the requested echoes rather than accepting an older endpoint that
 silently ignores a new control.
@@ -54,10 +56,10 @@ Default requests and responses omit the new optional controls and echoes.
 - Resolved fallback family names. Their bytes and per-glyph selection are **not** attested. A primary-font hash alone does not qualify fallback glyphs.
 - Cell dimensions in DIPs and the actual snapped pixel origin, cell dimensions, baseline, underline and strike offsets. Pixel coordinates and `renderWidthPx`/`renderHeightPx` describe the original draw **before** optional `maxWidth` resampling. Qualification callers should reject `downscaled: true` when asserting original pixel coordinates.
 - Snapshot foreground/background/cursor colors, cursor text color and all 256 effective palette entries. Stream override flags distinguish foreground, background, cursor and both selection colors; `paletteOverrideIndices` lists the overridden slots even if their colors equal the host defaults. The captured palette and value metadata are detached from later buffer/theme edits. Background fill uses that same draw snapshot.
-- Nullable `selectionBackgroundArgb`/`selectionForegroundArgb` are the effective theme values used for OSC queries, before App color derivation. Explicit null is meaningful: an unset query default may have no concrete reply. `effectiveSelectionBackgroundArgb` is the actual paint tint, which may be host-derived and translucent. Nullable `effectiveSelectionForegroundArgb` means selected cells retain their own foreground when no contrast override is needed. These are distinct facts; a painted selection tint does not imply a concrete OSC 17/19 reply.
+- Nullable `selectionBackgroundArgb`/`selectionForegroundArgb` are the effective theme values used for OSC queries, before App color derivation. Explicit null is meaningful: an unset query default may have no concrete reply. `effectiveSelectionBackgroundArgb` is the actual paint tint, which may be host-derived and translucent. Nullable `effectiveSelectionForegroundArgb` means there is no shared selection foreground override; selected cells use their own foreground, subject to per-cell minimum-contrast adjustment. These are distinct facts; a painted selection tint does not imply a concrete OSC 17/19 reply.
 - Actual synthetic time, text phase, effective cursor shape/blink/visibility and cursor position; ligature/shaping and minimum-contrast settings.
 
-Windowless captures use their imported terminal snapshot and the font metrics/preferences borrowed from a measured pane. They remain render-only and do not prove that the same session was displayed on a desktop.
+Windowless captures use their imported terminal snapshot and the font metrics/preferences borrowed from a measured pane. Theme-derived values describe the receiving host's borrowed theme and imported overrides, not independent remote query policy. They remain render-only and do not prove that the same session was displayed on a desktop.
 
 Offscreen capture canvases include the complete snapped cell grid and its pixel origin.
 Sizing and the allocation budget use the same snapping as the draw; multiplying

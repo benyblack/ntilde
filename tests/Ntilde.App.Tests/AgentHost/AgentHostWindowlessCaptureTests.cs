@@ -130,7 +130,11 @@ public class AgentHostWindowlessCaptureTests : IDisposable
         var before = journal.Snapshot().Count;
         var invalid = Handle(service, Line(p with { SyntheticSelection = range with { EndRow = 30 } }));
         Assert.Equal(AgentHostProtocol.ErrorCodes.MalformedRequest, invalid.Error?.Code);
-        Assert.Equal(before, journal.Snapshot().Count);
+        Assert.Equal(before + 1, journal.Snapshot().Count);
+        var read = journal.Snapshot()[0];
+        Assert.Equal(AgentHostProtocol.Methods.CaptureScreen, read.Method);
+        Assert.Equal(AgentHostProtocol.ErrorCodes.MalformedRequest, read.Outcome);
+        Assert.True(read.Windowless);
         Assert.Single(Directory.GetFiles(_exportDir));
     }
 

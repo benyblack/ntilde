@@ -1835,7 +1835,8 @@ namespace Ntilde.AgentHost
             }
 
             if (!CaptureSelectionValidation.FitsBuffer(p.SyntheticSelection, buffer))
-                return Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest, "syntheticSelection must fit the imported viewport.");
+                return WindowlessRead(request, method, p.PaneId, screen,
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest, "syntheticSelection must fit the imported viewport."));
 
             if (!AgentSessionRegistration.TryRenderPng(buffer, render.Parameters, maxWidth, scale, out var capture, out var captureError,
                 new AgentCaptureOptions(p.PresentationTimeMs, p.IncludeRenderDetails, p.SyntheticSelection)))
