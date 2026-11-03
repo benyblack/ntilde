@@ -185,6 +185,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.NotNull(host.GetClient(Patient));
         // Holds the loop's Schedule until the loss is heard, or for half a second: an event queued ahead of the wait is
         // heard while the wait does not exist yet; one queued after it is not heard in that time.
+        // Short on purpose: the half-second window is what separates the two orderings described above.
         _clock.BeforeSchedule = () => lostHeard.Wait(TimeSpan.FromMilliseconds(500));
 
         _remote.CutLink();
@@ -971,6 +972,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         while (started.Wait(0, TestContext.Current.CancellationToken)) { }   // the attempts so far
         _clock.Advance(MuxReconnectLoop.Budget);
         Assert.Equal(0, _clock.PendingCount);   // nothing armed after the give-up
+        // Short on purpose: a negative check; it waits only to give a wrongly armed attempt time to show up.
         Assert.False(await started.WaitAsync(TimeSpan.FromMilliseconds(200), CancellationToken.None), "no attempt started after the give-up");
         Assert.Equal(2, _remote.StartCount);   // one automatic attempt, not one every 30 s
         Assert.Empty(user.Asked);
@@ -1219,6 +1221,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.True(started.Wait(0, TestContext.Current.CancellationToken));   // that one attempt
         _clock.Advance(MuxReconnectLoop.Budget);
         Assert.Equal(0, _clock.PendingCount);   // nothing armed after the give-up
+        // Short on purpose: a negative check; it waits only to give a wrongly armed attempt time to show up.
         Assert.False(await started.WaitAsync(TimeSpan.FromMilliseconds(200), CancellationToken.None), "no attempt started after the give-up");
         Assert.Equal(1, Volatile.Read(ref automaticAttempts));
     }

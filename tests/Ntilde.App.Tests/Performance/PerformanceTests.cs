@@ -5,6 +5,7 @@ using Ntilde.Rendering;
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using Ntilde.Tests.Infra;
 using Xunit;
@@ -57,6 +58,9 @@ namespace Ntilde.Tests.Performance
             // the same shard the run before and after. A real regression slows every pass, so the
             // fastest one still catches it; a scheduling hiccup slows only the pass it lands in.
             const int timedPasses = 3;
+            long bytes = Encoding.UTF8.GetByteCount(data);
+            double megabytes = bytes / 1024.0 / 1024.0;
+            var passRates = new double[timedPasses];
             double seconds = double.MaxValue;
             for (int pass = 0; pass < timedPasses; pass++)
             {
@@ -68,13 +72,18 @@ namespace Ntilde.Tests.Performance
                 parser.Process(data);
                 sw.Stop();
 
+                passRates[pass] = megabytes / sw.Elapsed.TotalSeconds;
                 seconds = Math.Min(seconds, sw.Elapsed.TotalSeconds);
             }
 
-            long bytes = Encoding.UTF8.GetByteCount(data);
-            double mbPerSec = (bytes / 1024.0 / 1024.0) / seconds;
+            double mbPerSec = megabytes / seconds;
 
-            _output.WriteLine($"Processed {bytes / 1024.0 / 1024.0:F2} MB in {seconds:F4}s (best of {timedPasses} passes)");
+            // Every pass, in the form scripts/ci/app-tests-timing.py collects into each CI job's summary. The
+            // threshold above is a judgement; these samples, gathered run after run on the real runners, are the
+            // distribution to check it against before moving it.
+            _output.WriteLine(
+                "BENCH LargeThroughput MB/s " + string.Join(' ', passRates.Select(rate => rate.ToString("F3", CultureInfo.InvariantCulture))));
+            _output.WriteLine($"Processed {megabytes:F2} MB in {seconds:F4}s (best of {timedPasses} passes)");
             _output.WriteLine($"Throughput: {mbPerSec:F2} MB/s");
             _output.WriteLine($"Threshold: {thresholdMbPerSec:F2} MB/s");
 

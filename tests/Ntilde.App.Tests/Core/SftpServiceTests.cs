@@ -585,7 +585,8 @@ public sealed class SftpServiceTests
             statusAfterAddReturns = job.StatusText;
         });
 
-        Assert.True(interop.Started.Wait(TimeSpan.FromSeconds(2)), "Native transfer worker did not start.");
+        // 30 s, not 2: the worker is a pool task, and a worker that never starts still fails; Wait returns once it does.
+        Assert.True(interop.Started.Wait(TimeSpan.FromSeconds(30)), "Native transfer worker did not start.");
         Assert.Equal(TransferState.Running, stateAfterAddReturns);
         Assert.Equal("Transferring...", statusAfterAddReturns);
         Assert.Equal(TransferState.Running, job.State);

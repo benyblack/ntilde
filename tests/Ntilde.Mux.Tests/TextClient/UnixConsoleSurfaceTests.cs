@@ -42,6 +42,7 @@ public sealed class UnixConsoleSurfaceTests
             var reader = new Thread(() => result = UnixConsoleSurface.ReadFd(fds[0], buffer, buffer.Length)) { IsBackground = true };
             reader.Start();
 
+            // Short on purpose: a negative check; it waits only to give a wrong early return time to happen.
             Assert.False(reader.Join(200), "ReadFd returned before any input arrived (EAGAIN treated as end of input).");
             Assert.Equal(2, write(fds[1], "hi"u8.ToArray(), 2));
 

@@ -7,6 +7,8 @@ using Ntilde.Platform.Ssh.Sessions;
 
 namespace Ntilde.Platform.Tests.Ssh;
 
+// Exit waits allow 30 s: they return the moment the session exits, so only a broken session pays for it. See the
+// comment on NativeSshTerminalParityTests for the 2 s timeout these replaced.
 public sealed class NativeSshSessionInteractionTests
 {
     [Fact]
@@ -38,7 +40,7 @@ public sealed class NativeSshSessionInteractionTests
 
         handler.Complete(SshInteractionResponse.AcceptHostKey());
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
         Assert.Equal("""{"accept":true}""", interop.Submissions.Single().PayloadJson);
         Assert.Contains("ready", outputs.Single());
     }

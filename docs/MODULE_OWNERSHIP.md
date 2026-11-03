@@ -1022,11 +1022,12 @@ requires public test classes.
 
 **Owns** the layering and namespace-alignment rules. Adding a new architectural invariant means adding a fact here. See `docs/ARCHITECTURE.md` § 12 for the current enforced rule set.
 
-Four files, by concern:
+The main files, by concern:
 - `LayeringTests.cs` — assembly-level dependency rules (`Vt_must_be_a_leaf_assembly`, `Pty_must_not_depend_on_Vt`, …)
 - `ProjectFileLayeringTests.cs` — the same rules asserted against the `.csproj` files, so a stray `ProjectReference` fails even if no code uses it yet
 - `NamespaceAlignmentTests.cs` — one assembly, one namespace prefix
 - `DiagnosticSinkTests.cs` — GUI and library code must not write diagnostics to the console; CLI tools may
+- `ShortTestWaitTests.cs` — a test-suite rule rather than a product one: no test waits under 5 s for something that must happen, unless a `// Short on purpose:` comment says why
 
 ### `tests/Ntilde.VT.Tests/` + `tests/Ntilde.Rendering.Tests/`
 
