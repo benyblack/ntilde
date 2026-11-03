@@ -140,6 +140,12 @@ The terminal engine is the **single source of truth** for terminal semantics. Th
   checkpoint independently of prior seek history: if necessary, it retires older retained
   rectangles to make room, while live output refuses a new reservation. An unchanged budget
   refusal does not rescan history; eviction/reset or screen replacement invalidates pruning.
+- Agent editing observations are read-only snapshots: App's opt-in `readScreen`
+  `bufferState` copies margins, origin/wrap/insert modes, pending wrap, active screen
+  and local retained history count under the same VT read lock as text/cell details.
+  Windowless viewport imports report an explicitly unknown history count; imported
+  empty storage cannot prove empty daemon history. This projection does not alter
+  parser state or enable acting methods, and Contracts remains a leaf.
 - Provide read-only snapshots for rendering and replay
 
 ### 3.2 Components

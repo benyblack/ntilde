@@ -503,6 +503,33 @@ public class AgentHostServiceTests : IDisposable
     }
 
     [Fact]
+    public void ReadScreen_buffer_state_retains_main_history_count_while_alternate_screen_is_active()
+    {
+        var buffer = new TerminalBuffer(20, 3);
+        var parser = new AnsiParser(buffer);
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, buffer);
+        using var service = NewService(registry);
+        var request = RequestLine(AgentHostProtocol.Methods.ReadScreen, paramsObj: new ReadScreenParams
+        {
+            PaneId = registration.PaneId,
+            IncludeBufferState = true,
+        });
+        parser.Process("OLD1\r\nOLD2\r\nKEEP1\r\nKEEP2\r\nKEEP3\x1b[?1049h");
+        var alternate = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.True(alternate.BufferState!.AlternateScreen);
+        Assert.Equal(2, alternate.BufferState.ScrollbackLines);
+        Assert.All(alternate.Lines, line => Assert.Empty(line));
+        parser.Process("\x1b[?1049l");
+        var main = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.False(main.BufferState!.AlternateScreen);
+        Assert.Equal(2, main.BufferState.ScrollbackLines);
+        Assert.Equal(new[] { "KEEP1", "KEEP2", "KEEP3" }, main.Lines);
+        parser.Process("\x1b[3J");
+        Assert.Equal(2, alternate.BufferState.ScrollbackLines);
+    }
+
+    [Fact]
     public void ReadScreen_buffer_state_observes_ED3_history_removal_without_changing_viewport()
     {
         var buffer = new TerminalBuffer(20, 3);
