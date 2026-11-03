@@ -14,6 +14,14 @@ namespace Ntilde.AgentHost.Contracts;
 /// </summary>
 public static class AgentHostProtocol
 {
+    /// <summary>Limits for the explicitly requested stored-cell projection of readScreen.</summary>
+    public const int MaxCellDetailCells = 8192;
+    public const int MaxCellDetailRuns = 1024;
+
+    /// <summary>Bounds on explicitly requested visible-pane grids.</summary>
+    public const int MaxResizeRows = 128;
+    public const int MaxResizeCols = 256;
+
     /// <summary>
     /// Wire protocol version. The server rejects requests whose version does
     /// not match with <see cref="ErrorCodes.VersionMismatch"/>.
@@ -64,6 +72,9 @@ public static class AgentHostProtocol
     /// </summary>
     public const int MaxInlineCaptureBytes = 3 * 1024 * 1024;
 
+    /// <summary>Bounded synthetic presentation time for controlled offscreen captures.</summary>
+    public const long MaxCapturePresentationTimeMs = 60_000;
+
     /// <summary>
     /// Ceiling on <c>captureScreen</c>'s render scale. A pane renders at 1 device
     /// pixel per DIP by default, which for a typical 8x16 cell puts an 80x24 grid
@@ -96,6 +107,7 @@ public static class AgentHostProtocol
     {
         public const string ListSessions = "listSessions";
         public const string ReadScreen = "readScreen";
+        public const string ReadPaneMetadata = "readPaneMetadata";
         public const string ReadScrollback = "readScrollback";
         public const string GetSessionStatus = "getSessionStatus";
         public const string WaitForEvents = "waitForEvents";
@@ -121,6 +133,9 @@ public static class AgentHostProtocol
 
         /// <summary>A3: closes a live pane by id.</summary>
         public const string CloseSession = "closeSession";
+
+        /// <summary>Permissioned App-window resize for a single visible direct local pane.</summary>
+        public const string ResizePane = "resizePane";
 
         /// <summary>
         /// A5: captures a pane as a PNG and returns its path (plus, on request, the
@@ -205,6 +220,10 @@ public static class AgentHostProtocol
         public const string SessionNotFound = "sessionNotFound";
         public const string Internal = "internal";
 
+        /// <summary>The requested complete cell-detail projection exceeds its cell or run budget.</summary>
+        public const string ScreenDetailsUnavailable = "screenDetailsUnavailable";
+        public const string PaneMetadataUnavailable = "paneMetadataUnavailable";
+
         /// <summary>
         /// A4: <c>exportReplay</c> was called but the user has not enabled
         /// "Agent replay export" in settings (a second default-off gate on top
@@ -246,6 +265,9 @@ public static class AgentHostProtocol
         /// this instant — safe to retry.
         /// </summary>
         public const string ActUnavailable = "actUnavailable";
+
+        /// <summary>The pane cannot safely use the visible local-window resize operation.</summary>
+        public const string ResizeUnavailable = "resizeUnavailable";
 
         /// <summary>A3: <c>spawnSession</c> resolved a profile but the tab failed to open.</summary>
         public const string SpawnFailed = "spawnFailed";

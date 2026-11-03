@@ -114,6 +114,7 @@ namespace Ntilde.VT.Export
             if (cell.IsFaint) sb.Append(";2");
             if (cell.IsItalic) sb.Append(";3");
             if (cell.IsUnderline) sb.Append(";4");
+            if (cell.Underline?.Overline == true) sb.Append(";53");
             if (cell.IsBlink) sb.Append(";5");
             if (cell.IsInverse) sb.Append(";7");
             if (cell.IsHidden) sb.Append(";8");

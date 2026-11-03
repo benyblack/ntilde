@@ -8,6 +8,14 @@ shard prints its own breakdown to the log and the job summary.
 Each row also counts the test results it covers, which is what a shard's gate floor is made of:
 moving a namespace between shards moves that many results, and both shards' floors with them.
 
+It also collects benchmark samples. A test that writes a line of the form
+
+    BENCH <name> <unit> <value> <value> ...
+
+to its test output (ITestOutputHelper) gets a row with every value and their spread. A
+benchmark's threshold is a judgement call; these rows, one set per CI run in each job's summary,
+are the distribution to check it against before moving it.
+
 Times are the per-test durations the trx records, summed. They leave out what happens between
 tests (class fixtures, collection setup, host startup), so a shard's total here is below its
 wall-clock time; compare shards with each other, not with the step's duration.
@@ -16,6 +24,7 @@ Usage: app-tests-timing.py <trx> [<trx> ...]
 """
 
 import os
+import statistics
 import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
@@ -36,7 +45,22 @@ def namespace_of(class_name: str, depth: int) -> str:
     return ".".join(parts[:depth]) or "(none)"
 
 
-def read(path: str, per_class: dict, per_ns: dict, class_counts: dict, ns_counts: dict) -> int:
+def benches_in(output: str) -> list[tuple[str, str, list[float]]]:
+    found = []
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) < 4 or parts[0] != "BENCH":
+            continue
+        try:
+            values = [float(v) for v in parts[3:]]
+        except ValueError:
+            continue
+        found.append((parts[1], parts[2], values))
+    return found
+
+
+def read(path: str, per_class: dict, per_ns: dict, class_counts: dict, ns_counts: dict,
+         benches: list | None = None) -> int:
     root = ET.parse(path).getroot()
     classes = {}
     # `{*}` matches any XML namespace: trx files declare the TeamTest 2010 one, and matching by
@@ -54,6 +78,9 @@ def read(path: str, per_class: dict, per_ns: dict, class_counts: dict, ns_counts
         class_counts[cls] += 1
         ns_counts[namespace_of(cls, 4)] += 1
         count += 1
+        stdout = result.find("{*}Output/{*}StdOut")
+        if benches is not None and stdout is not None and stdout.text:
+            benches += benches_in(stdout.text)
     return count
 
 
@@ -76,6 +103,19 @@ def table(title: str, totals: dict, counts: dict, limit: int) -> list[str]:
     return out + [""]
 
 
+def bench_table(benches: list) -> list[str]:
+    if not benches:
+        return []
+    out = ["#### Benchmark samples", "", "| benchmark | unit | samples | min | median | max | spread |",
+           "|---|---|---|---:|---:|---:|---:|"]
+    for name, unit, values in benches:
+        low, high = min(values), max(values)
+        spread = (high - low) / high * 100 if high else 0.0
+        samples = " ".join(f"{v:g}" for v in values)
+        out.append(f"| `{name}` | {unit} | {samples} | {low:g} | {statistics.median(values):g} | {high:g} | {spread:.1f}% |")
+    return out + [""]
+
+
 def main() -> int:
     if len(sys.argv) < 2:
         print("usage: app-tests-timing.py <trx> [<trx> ...]", file=sys.stderr)
@@ -84,10 +124,11 @@ def main() -> int:
     per_ns: dict = defaultdict(float)
     class_counts: dict = defaultdict(int)
     ns_counts: dict = defaultdict(int)
+    benches: list = []
     count = 0
     for path in sys.argv[1:]:
         try:
-            count += read(path, per_class, per_ns, class_counts, ns_counts)
+            count += read(path, per_class, per_ns, class_counts, ns_counts, benches)
         except (OSError, ET.ParseError) as error:
             print(f"app-tests-timing: skipping {path}: {error}")
     total = sum(per_class.values())
@@ -95,6 +136,7 @@ def main() -> int:
         [f"### App.Tests time by namespace ({count} results, {total:.0f} s of test time)", ""]
         + table("Namespaces", per_ns, ns_counts, 40)
         + table(f"Slowest {TOP} classes", per_class, class_counts, TOP)
+        + bench_table(benches)
     )
     return 0
 

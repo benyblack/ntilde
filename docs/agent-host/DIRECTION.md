@@ -120,6 +120,7 @@ Ntilde.McpServer  ── local IPC (named pipe / unix socket) ──▶  Ntilde.
 | notifications (completion / stall) | off | same toggle |
 | live indicators (pane status segment, tab marker, window light) | off | tied to observe / act; cannot be silenced separately |
 | send input, spawn/close sessions & panes | off | separate explicit opt-in, per-profile allowlist for SSH |
+| resize a single visible direct local pane (raw AgentHost `resizePane`) | off | separate explicit act opt-in; normal resizable window, active single-pane tab only |
 | replay export | off | observe permission + explicit export action |
 | screenshot (render a pane to PNG) | off | observe permission |
 
@@ -168,6 +169,36 @@ Each milestone is independently shippable and announceable. Estimates assume
   state)
 - Stall detection has an explicit, documented definition (no output for N s
   while `running`) — no heuristics that can't be tested
+
+### Controlled visible-pane resize
+
+The raw AgentHost method `resizePane` accepts `{paneId, rows, cols}` with rows
+1–128 and columns 1–256. It uses the separate default-off act permission and
+journals attempts that reach the operation, including malformed parameters,
+refusals and cancellations. Frames rejected before method dispatch, including
+unsupported protocol versions, are not journaled.
+It is not an MCP tool. Only the current single direct local pane in the selected
+tab of a visible, normal, resizable window is eligible. Remote, mux/deferred,
+windowless, split, inactive and focus-mode targets are refused without activating
+a tab or directly resizing the VT buffer. Restored command-based local panes
+remain eligible when their saved profile no longer resolves.
+
+App changes its actual window client size using measured cell/chrome dimensions
+and starts a two-second observation timeout for the ordinary view → buffer →
+session resize path. Timeout observation and event cleanup run on the UI dispatcher;
+this is a responsive-UI bound, not a hard request deadline. A stalled dispatcher
+or contended buffer write lock can delay the response. Qualification callers need
+their own transport deadline and disposable-process cleanup.
+
+The result `{rows, cols, layoutSettled, exact}` contains observed buffer geometry. `layoutSettled` requires agreement with the view and a successfully
+returned current-session resize callback. Changing the buffer or session clears
+older completion evidence; `exact` additionally requires the requested
+grid. Native window limits or a callback failure can produce partial results.
+A busy buffer is sampled without waiting; unavailable observation returns
+`resizeUnavailable`. Cancellation and timeout do not undo terminal reflow or
+promise restoration. A qualification runner must restore and verify geometry
+separately. Session callback completion does not attest the child's kernel PTY
+size; independent PTY observation is required for that claim.
 
 ### A3 — Act (permissioned)
 
@@ -221,6 +252,11 @@ Each milestone is independently shippable and announceable. Estimates assume
 - [x] Caller-named `scale` (1–3) so an agent can render text large enough to
       read back out of the image. Named by the caller, never taken from the
       monitor, so a capture stays reproducible. Unblocked by #346.
+- [x] Optional controlled offscreen captures: `presentationTimeMs` selects a synthetic
+      text/cursor phase; `includeRenderDetails` returns actual primary-font identity,
+      palette, snapped geometry and presentation facts. Both reject `live` mode and leave
+      the live clock/terminal untouched. Defaults retain fixed-visible phases. See
+      [controlled capture](../qa/terminfo/controlled-capture.md) for provenance limits.
 - [x] The snapshot renderer (`TerminalSnapshotRenderer`) promoted out of test
       infrastructure into the App, so the golden-PNG baselines, the agent
       capture path, and any future CLI PNG output are one code path. Renders
@@ -286,3 +322,38 @@ registry wins when both name the same id.
 
 Agent-facing reads and events are only trustworthy because they are built on
 the deterministic core — that is the product.
+
+### Raw read-only pane metadata
+
+`readPaneMetadata({paneId})` observes an attached, visible, current, direct local
+pane through the existing observe endpoint; it requires no act opt-in. It does
+not activate a tab, type input, open a hyperlink or create a notification.
+An unknown/windowless identity returns `sessionNotFound`. An unavailable UI,
+hidden/remote/mux-backed/replaced pane, busy parser or excessive snapshot returns
+`paneMetadataUnavailable`, never an empty substitute for absent evidence.
+
+The result contains raw OSC title, host cwd, display title, a bounded active-buffer
+projection (geometry, cursor, links, input-window/anchor facts), and actual UI
+properties (focus/settings, tab text, stored progress with owner, optional actual
+vertical progress bar, window-global toast visibility/title/message). Link run
+coordinates are zero-based in the active viewport, excluding scrollback. Link
+`identity` values are meaningful only within that snapshot. Shell anchors are raw
+stored coordinates: consumers must check screen, history generation and eviction
+before resolving them. Main-history count, generation and eviction counters are
+included even while alternate is active; alternate anchors use their own screen
+coordinates. These counters do not describe alternate-screen history.
+
+The buffer portion is captured under one immediate read lock. UI properties are
+read on the UI dispatcher; asynchronous parser-to-UI effects may still be pending.
+These components are not a globally atomic transaction. Clients qualifying an
+effect must compare actual host values after their controlled output and retain
+independent controls. A response receipt or consumed marker does not prove it.
+
+Budgets are 8,192 cells, 128 complete link runs, 4,096 UTF-16 code units per
+metadata field and 32,768 combined text code units, including repeated run URIs.
+Nothing is truncated. The endpoint applies a two-second await deadline and
+revalidates the registration/session after completion; clients should also bound
+their transport. No new fields appear in existing method responses. This API
+foundation adds observation, not live protocol qualification or a stock grade.
+UI visibility is Avalonia control visibility, not proof of occlusion or paint;
+OS notifications/taskbar state and pixel output require separate evidence.

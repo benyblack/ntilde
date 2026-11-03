@@ -1,0 +1,2322 @@
+{
+  "schemaVersion": 1,
+  "rawArtifact": "artifacts/terminfo/owned-lZP2Uv/raw.json",
+  "rawSha256": "2ad91173e34040c19bd4ee4a97833d724d609e3cf7a2bc99a5fa1b9a99edc018",
+  "collectorSourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+  "appSourceHint": "5aa7481b2d3187325378168f68c0548111322ac3",
+  "appVersionHint": "0.12.0+5aa7481b2d3187325378168f68c0548111322ac3",
+  "sourceAuditRevision": "c1befd9e32b5efb843fca5216eaf2c5c73b8ff8b",
+  "measuredAt": "2026-11-01T18:58:01.465Z",
+  "identity": "unverified",
+  "suiteComplete": false,
+  "originalOutcomes": {
+    "supported": 78,
+    "unsupported": 0,
+    "inconclusive": 177
+  },
+  "scope": "Offline source/evidence triage; no new runtime or terminal-emulator measurements, no regrading.",
+  "actions": {
+    "Q01": {
+      "title": "Observe cells, geometry and history",
+      "owner": "VT + App QA",
+      "nextMeasurement": "Use a disposable pane with independently confirmed rows/columns; compare cell contents, cursor, margins and scrollback before/after, then retain the observation and cleanup receipt. For insert/replace mode, write controlled text under SM/RM 4 and compare shifted versus overwritten cells after each transition. CPR alone cannot prove content or erasure.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "src/Ntilde.VT/TerminalBuffer.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs"
+      ]
+    },
+    "Q02": {
+      "title": "Observe attributes and rendered pixels",
+      "owner": "VT + Rendering + App QA",
+      "nextMeasurement": "Assert decoded cell attributes/charset mapping and independently capture controlled rendered pixels. Use a controlled clock for blink; preserve the input, capture hashes and restored fixture state. For OSC 104/110/111/112/117/119, save prior colors and host defaults, set known overrides, issue the exact reset, then compare palette/default/cursor/selection state and pixels against the known defaults. Query where a concrete reply exists; an unset selection default may have no concrete reply. Restore prior state and verify restoration. Cursor advance is insufficient.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs",
+        "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs",
+        "src/Ntilde.VT/AnsiParser.Colors.cs",
+        "src/Ntilde.VT/TerminalBuffer.RuntimeColors.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ]
+    },
+    "Q03": {
+      "title": "Observe host metadata and UI effects",
+      "owner": "App QA + VT callbacks",
+      "nextMeasurement": "Read the private pane's title, cwd, hyperlink/shell-marker metadata or notification/progress presentation through an independent host observer. Record private setting/focus preconditions and verify restoration. A consumed marker or DA sentinel is insufficient.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Osc.cs",
+        "tests/Ntilde.App.Tests/OscShellIntegrationTests.cs",
+        "tests/Ntilde.VT.Tests/Osc9NotificationProgressTests.cs",
+        "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs"
+      ]
+    },
+    "Q04": {
+      "title": "Observe image pixels and playback",
+      "owner": "Rendering + App QA",
+      "nextMeasurement": "Capture decoded/rendered pixels and placement in a private fixture; animation requires timed frame evidence. Do not infer pixel output, placeholders or playback from query recognition or cursor movement.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Images.cs",
+        "src/Ntilde.VT/AnsiParser.KittyGraphics.cs",
+        "tests/Ntilde.App.Tests/GraphicsTests.cs",
+        "tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs"
+      ]
+    },
+    "Q05": {
+      "title": "Generate and validate input events",
+      "owner": "App input + QA",
+      "nextMeasurement": "Inject a controlled key/keypad/mouse event in an owned pane and compare the actual encoded child-input report, including coordinates and modifiers. A mode response does not prove input encoding.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs",
+        "tests/Ntilde.App.Tests/MouseReportingTests.cs"
+      ]
+    },
+    "Q06": {
+      "title": "Observe saved/restored terminal state",
+      "owner": "VT + App QA",
+      "nextMeasurement": "Compare complete main/alternate buffer contents, saved cursor and relevant mode/attribute state before entry, while active, and after restoration. A responsive cursor after exit is insufficient.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "src/Ntilde.VT/TerminalBuffer.StateTransfer.cs",
+        "tests/Ntilde.App.Tests/AlternateScreenTests.cs",
+        "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs"
+      ]
+    },
+    "Q07": {
+      "title": "Unimplemented query variant",
+      "owner": "VT protocol backlog",
+      "nextMeasurement": "The reviewed dispatcher has no reply for this exact query variant. Add a narrowly scoped contract and request/reply regression before implementation, or explicitly document the variant as intentionally unavailable. Rerun the owned query after any change; retain the original inconclusive grade.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "src/Ntilde.VT/AnsiParser.Osc.cs",
+        "src/Ntilde.VT/AnsiParser.Images.cs",
+        "docs/vt_coverage_matrix.md"
+      ]
+    },
+    "Q08": {
+      "title": "Conditional selection-color query",
+      "owner": "VT colors + App theme QA",
+      "nextMeasurement": "OSC 17/19 are implemented, but unset derived selection colors can be null and intentionally produce no concrete reply. In a private fixture, set a known override, query it, restore it and verify restoration; test host-derived defaults separately.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Colors.cs",
+        "src/Ntilde.VT/TerminalBuffer.RuntimeColors.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
+        "docs/vt_coverage_matrix.md"
+      ]
+    },
+    "Q09": {
+      "title": "Kitty image-number/acknowledgement gap",
+      "owner": "VT graphics + App ownership QA",
+      "nextMeasurement": "The probe sends uppercase I image numbers. The reviewed implementation reads lowercase i and emits replies for a=q, not correlated allocation acknowledgements for these a=t/T probes. Add image-number allocation/ack/cleanup contract tests; existing basic image decoding is separate evidence.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.KittyGraphics.cs",
+        "tests/Ntilde.App.Tests/GraphicsTests.cs",
+        "tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs",
+        "docs/vt_coverage_matrix.md"
+      ]
+    },
+    "Q10": {
+      "title": "Source-reviewed limited or missing variant",
+      "owner": "VT/App protocol backlog",
+      "nextMeasurement": "The exact spelling/variant has a source limitation listed with this row. Add a focused state/effect contract and owned observer, implement separately if desired, and rerun; do not equate related supported protocols with this variant.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "src/Ntilde.VT/AnsiParser.Osc.cs",
+        "src/Ntilde.VT/AnsiParser.KittyGraphics.cs",
+        "docs/vt_coverage_matrix.md"
+      ]
+    },
+    "Q11": {
+      "title": "Keep clipboard ownership refusal",
+      "owner": "App native QA + collector policy",
+      "nextMeasurement": "These OSC 52 packets were not sent. Keep them refused until the owned collector itself has a disposable clipboard and verified restoration/cleanup. Separate native CI interchange results do not retroactively qualify these observations. OSC 52 reads intentionally return denial.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Osc.cs",
+        "scripts/terminfo/ownership.mjs",
+        "docs/qa/clipboard-native.md",
+        "docs/qa/terminfo/2026-11-01-clipboard.md"
+      ]
+    },
+    "Q12": {
+      "title": "Negative query response is not a full capability result",
+      "owner": "VT protocol QA",
+      "nextMeasurement": "DECRQSS and XTGETTCAP return well-formed failure responses for the requested setting/name. Preserve that evidence; enumerate and test individual supported/unsupported settings before claiming the whole query family.",
+      "sourceFiles": [
+        "src/Ntilde.VT/AnsiParser.Images.cs",
+        "docs/vt_coverage_matrix.md"
+      ]
+    },
+    "Q13": {
+      "title": "Collector API/legacy evidence gap",
+      "owner": "QA adapter",
+      "nextMeasurement": "This is an adapter/API observation, not proof of missing VT behavior. Add an owned reset/state readback adapter or replace the legacy feature hint with explicit assertions. Do not invoke an unowned app reset or use a legacy hint as support evidence.",
+      "sourceFiles": [
+        "scripts/terminfo/collector.mjs",
+        "scripts/terminfo/ownership.mjs",
+        "src/Ntilde.VT/AnsiParser.cs"
+      ]
+    }
+  },
+  "sourceFileSha256": {
+    "docs/qa/clipboard-native.md": "28412f8baca6cf48c252072468ee2628d2a7dd4d40b90f76879fdabb4e4d3c60",
+    "docs/qa/terminfo/2026-11-01-clipboard.md": "0acfb782a54b7088aeb85d2ccadc4538855177c44b35c43e906faafe071e9582",
+    "docs/vt_coverage_matrix.md": "1f651f9cff91cb26fa83a8bb0ec6f4abc77eb09b70155af23510e5e3415a529f",
+    "scripts/terminfo/collector.mjs": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
+    "scripts/terminfo/ownership.mjs": "1bf16d996f4d4dfdb98cc2ec7011e64c6567de1515271bb2a4244ae48996d50f",
+    "src/Ntilde.VT/AnsiParser.Colors.cs": "15d8159d7978c70d333a1e4b5a349e1297feebf2d72e02b04d9463fc14e8fc2c",
+    "src/Ntilde.VT/AnsiParser.Csi.cs": "4cd834548768cbc5262c7740d5f18ee006c257467b8e294dfcdb5277876f8c24",
+    "src/Ntilde.VT/AnsiParser.Images.cs": "0db131050ff043af5f0b651fc84f7ed05193acf1b6b750f5f306029ce179bec4",
+    "src/Ntilde.VT/AnsiParser.KittyGraphics.cs": "b13aab001736bdb0f3e022a0f0167383cf867f120155a9d44928b1d921e5b8de",
+    "src/Ntilde.VT/AnsiParser.Osc.cs": "38595ffa92917b98b506ce7ebfe1f32f8c7d3124d15a3e4edf9e4525708f8dd3",
+    "src/Ntilde.VT/AnsiParser.Sgr.cs": "4583126079cab9a5bad9e86e376e56a2b1b897c7aa9923d8fd47913a0331b9ac",
+    "src/Ntilde.VT/AnsiParser.cs": "87a4b30391421125f11256711e6e25e49a88ceb106b4156e564c976ba72007a9",
+    "src/Ntilde.VT/TerminalBuffer.RuntimeColors.cs": "489690c44e92733ca8bc19c3bab373d0d0b82a0bb34476ee5f850718953c1d69",
+    "src/Ntilde.VT/TerminalBuffer.StateTransfer.cs": "83423c25055dac2474e35ffba618030c42860a2256b9fe27bc0977e4ee741672",
+    "src/Ntilde.VT/TerminalBuffer.cs": "ba79e0e26afce123476cef854315579db783e789ef532157e2b92b3dc56bc72b",
+    "tests/Ntilde.App.Tests/AlternateScreenTests.cs": "84bd245bd938fe9c7d054645dcd187deddbb9f8a08e2418aea865686167aa552",
+    "tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs": "a8d4784744c6bfcb746f6f017ab181f986e49e19cb8f26ca1d9b0239c3084f25",
+    "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs": "60ff2987c348bf9b500d8b09520b6ce1497ee6e6027a01c4a6feeddb1d434e36",
+    "tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs": "1ec2df4a9253c15c68878b422ddfb99d0da1f045bfb570d73a5288594a5c82c1",
+    "tests/Ntilde.App.Tests/GraphicsTests.cs": "cda1696718f721e85ae36433e78de641253b10c6bfe36b268a9a1e4f7d0a0f8f",
+    "tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs": "4618146fe1473226a8d0cd4dc68f49ae7d54a22785e257ca869278e133c892d5",
+    "tests/Ntilde.App.Tests/MouseReportingTests.cs": "fbb73ebda7b9545a57b1fcad067f1c44f0a33a8e81ae47137d7bfefae7d0ed6d",
+    "tests/Ntilde.App.Tests/OscShellIntegrationTests.cs": "456d542734315d9f8e4248afdd5f899d414b6a94a1c2f6dbe317d32fc02eef38",
+    "tests/Ntilde.App.Tests/RenderTests/RuntimeColorRenderTests.cs": "fc33721ef5886571fb6457b91e25516d84dc10ecb66a716c98b69a2975048f71",
+    "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs": "2f93f1f99ec68638ac654460b400850b8553bad6894a762135897341e60959b7",
+    "tests/Ntilde.App.Tests/SgrAttributeTests.cs": "a8e0aead4866d944b61de62046ff1a643c28829be0a8ee38c28f76b649389c87",
+    "tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs": "f87396b5085aa50c21c034f84f38ab8c6a4434d50f3edccbdb15370726744d1d",
+    "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs": "149830db91c7019d5c869adb87069bd984f8050a718f507a0dec1db4c76790d8",
+    "tests/Ntilde.VT.Tests/Osc9NotificationProgressTests.cs": "fa37f56c36a5ef4a846724aeace3c751bf929d8f8b7f2c10dd8270e3a3e4bb46",
+    "tests/Ntilde.VT.Tests/RuntimeColorTests.cs": "09eeb40269f0122213bc8204996515df2f3d3aa8e2720b7049da8cd9a3f900e5",
+    "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs": "2118c2a6ad6ec57d60bc4a1f1c4c98eac297841a85f27468125b362453a6f4f9"
+  },
+  "observations": [
+    {
+      "original": {
+        "featureId": "extensions.truecolor",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "SGR was consumed; RGB cell color was not measured",
+        "rawReplyRef": "extensions.truecolor"
+      },
+      "action": "Q02",
+      "traceSha256": "4638b65926e7e0f9cf153256ab3c8b5953ca8157150e8b3fd65d6c7c698084dc"
+    },
+    {
+      "original": {
+        "featureId": "extensions.kitty-graphics.transmit",
+        "outcome": "inconclusive",
+        "evidence": "query",
+        "reason": "no-response",
+        "note": "No matching image allocation reply; no image ownership or transmission conclusion",
+        "rawReplyRef": "extensions.kitty-graphics.transmit"
+      },
+      "action": "Q09",
+      "traceSha256": "c30b073b4800ae8889d0b7a89514cc9c699f026489e33d658e7a0784d96562d5"
+    },
+    {
+      "original": {
+        "featureId": "extensions.kitty-graphics.display",
+        "outcome": "inconclusive",
+        "evidence": "query",
+        "reason": "no-response",
+        "note": "No matching image allocation reply; no image ownership or transmission conclusion",
+        "rawReplyRef": "extensions.kitty-graphics.display"
+      },
+      "action": "Q09",
+      "traceSha256": "5b6b90994e2459ebbb2c640b82c0f57f2d663ef2c84982c67ff8e8e9834ebf09"
+    },
+    {
+      "original": {
+        "featureId": "extensions.kitty-graphics.animation",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No timed frame playback or pixel readback for Kitty animation",
+        "rawReplyRef": "extensions.kitty-graphics.animation"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "Graphics dispatch handles a=t/T and q; only cursor-anchored placement is implemented, not the tested animation/Unicode-placeholder variants."
+    },
+    {
+      "original": {
+        "featureId": "extensions.kitty-graphics.unicode-placeholders",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders",
+        "rawReplyRef": "extensions.kitty-graphics.unicode-placeholders"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "Graphics dispatch handles a=t/T and q; only cursor-anchored placement is implemented, not the tested animation/Unicode-placeholder variants."
+    },
+    {
+      "original": {
+        "featureId": "extensions.sixel",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No pixel readback for Sixel rendering",
+        "rawReplyRef": "extensions.sixel"
+      },
+      "action": "Q04",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc8",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor movement cannot verify OSC 8 link metadata or click behavior",
+        "rawReplyRef": "extensions.osc8"
+      },
+      "action": "Q03",
+      "traceSha256": "093382bbe81d702d62e2eef3d267cb81b0f72a1cbf317af99614d8701a493aa1"
+    },
+    {
+      "original": {
+        "featureId": "extensions.reflow",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No controlled resize and cell-content readback to measure reflow",
+        "rawReplyRef": "extensions.reflow"
+      },
+      "action": "Q01",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.semantic-prompts",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No shell prompt integration metadata or behavior readback for OSC 133",
+        "rawReplyRef": "extensions.semantic-prompts"
+      },
+      "action": "Q03",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc2-title",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "OSC 2 window title was not attempted; this probe has no effect readback or prior-state restoration",
+        "rawReplyRef": "extensions.osc2-title"
+      },
+      "action": "Q03",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc0-icon-title",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No icon-name and window-title readback for OSC 0",
+        "rawReplyRef": "extensions.osc0-icon-title"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "OSC 0/2 route to window-title changes; there is no separate OSC 1 icon-name handler/state. The combined icon/title variant is partial."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc7-cwd",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No working-directory metadata readback for OSC 7",
+        "rawReplyRef": "extensions.osc7-cwd"
+      },
+      "action": "Q03",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc-633-vscode",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No VS Code shell integration metadata or behavior readback for OSC 633",
+        "rawReplyRef": "extensions.osc-633-vscode"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "OSC 633 has no matching dispatch case; OSC 133 shell markers are a different protocol."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc133-a",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc133-a"
+      },
+      "action": "Q03",
+      "traceSha256": "67aafdf56d5499c793c5df5ee1d5356101ba50dc4ef32fa5358f83749be9c065"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc133-b",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc133-b"
+      },
+      "action": "Q03",
+      "traceSha256": "59bc5039b56539f2f1e44de335c0195575f04624d573749fd436884dd29a02b3"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc133-c",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc133-c"
+      },
+      "action": "Q03",
+      "traceSha256": "005a17bc5bf903ee59b610ea872b837a9df8824fa0f43f38a2a6b5bafb83a3fe"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc133-d",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc133-d"
+      },
+      "action": "Q03",
+      "traceSha256": "0a36d00586a907c53c820b1dd81256fe58596fa800a6729131203b425d7d81d3"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc133-p",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc133-p"
+      },
+      "action": "Q03",
+      "traceSha256": "d1bd263e6f1965ee3c8bc179ff6b39f6e61f46391a530426c3091c7fb787a42b"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc633-a",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc633-a"
+      },
+      "action": "Q10",
+      "traceSha256": "22bbb0647f6cfd886d27e4ed6f9a6ca873ae0e2ad5e33393c82f0e954c3761fa",
+      "sourceLimitation": "OSC 633 has no matching dispatch case; OSC 133 shell markers are a different protocol."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc633-b",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc633-b"
+      },
+      "action": "Q10",
+      "traceSha256": "84754dc3570d9447b42616d8b99307ca91e0a8ef9e4a29959350ba8305a9e1a4",
+      "sourceLimitation": "OSC 633 has no matching dispatch case; OSC 133 shell markers are a different protocol."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc633-c",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc633-c"
+      },
+      "action": "Q10",
+      "traceSha256": "74e4ac7c3bc84756052f90c7d260d22866fff5a341dcd7565006d228cc1f7a7f",
+      "sourceLimitation": "OSC 633 has no matching dispatch case; OSC 133 shell markers are a different protocol."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc633-d",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc633-d"
+      },
+      "action": "Q10",
+      "traceSha256": "c878e65ade9b8c661ef6e2ff6407e24dc6fa9e2d80ceda89d02e44d97eae5828",
+      "sourceLimitation": "OSC 633 has no matching dispatch case; OSC 133 shell markers are a different protocol."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc633-e",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc633-e"
+      },
+      "action": "Q10",
+      "traceSha256": "388faa59a6f85ebbcabe859b867961d3d1ec3420295613f8a37b4ac10a25e010",
+      "sourceLimitation": "OSC 633 has no matching dispatch case; OSC 133 shell markers are a different protocol."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc633-p",
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed",
+        "rawReplyRef": "extensions.osc633-p"
+      },
+      "action": "Q10",
+      "traceSha256": "5af9c3c4ddf113875b7de176e79f77e394fa915cdda6b0cb7997aaa16da77db5",
+      "sourceLimitation": "OSC 633 has no matching dispatch case; OSC 133 shell markers are a different protocol."
+    },
+    {
+      "original": {
+        "featureId": "extensions.notifications",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No desktop notification delivery readback for OSC 9",
+        "rawReplyRef": "extensions.notifications"
+      },
+      "action": "Q03",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.iterm2-images",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No pixel readback for iTerm2 inline image rendering",
+        "rawReplyRef": "extensions.iterm2-images"
+      },
+      "action": "Q04",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc1337-cellsize",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc1337-cellsize"
+      },
+      "action": "Q07",
+      "traceSha256": "c31a2b386f316382e06a2ab93f24921196c263f04d4d736130b2e930b533cdc4"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc1337-capabilities",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc1337-capabilities"
+      },
+      "action": "Q07",
+      "traceSha256": "d3669c85a2679ac272947ae5ad57e48f29c9b50a4e8fa306b5732196b3d3163c"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc9-progress",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "OSC 9;4 progress display was not attempted; this probe has no effect readback or prior-state restoration",
+        "rawReplyRef": "extensions.osc9-progress"
+      },
+      "action": "Q03",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc1-icon",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No icon-name readback for OSC 1",
+        "rawReplyRef": "extensions.osc1-icon"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "OSC 0/2 route to window-title changes; there is no separate OSC 1 icon-name handler/state. The combined icon/title variant is partial."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc5-special-color",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc5-special-color"
+      },
+      "action": "Q07",
+      "traceSha256": "477402b7ea16424015569fb5db972c0b31918e42f34b85ad2ab2a0e77e44b91c"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc104-reset-palette",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "OSC 104 palette reset was not attempted; this probe has no effect readback or prior-state restoration",
+        "rawReplyRef": "extensions.osc104-reset-palette"
+      },
+      "action": "Q02",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc110-reset-fg",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "OSC 110 foreground reset was not attempted; this probe has no effect readback or prior-state restoration",
+        "rawReplyRef": "extensions.osc110-reset-fg"
+      },
+      "action": "Q02",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc111-reset-bg",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "OSC 111 background reset was not attempted; this probe has no effect readback or prior-state restoration",
+        "rawReplyRef": "extensions.osc111-reset-bg"
+      },
+      "action": "Q02",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc112-reset-cursor",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "OSC 112 cursor-color reset was not attempted; this probe has no effect readback or prior-state restoration",
+        "rawReplyRef": "extensions.osc112-reset-cursor"
+      },
+      "action": "Q02",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc117-reset-highlight-bg",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor answered; highlight background was not read back",
+        "rawReplyRef": "extensions.osc117-reset-highlight-bg"
+      },
+      "action": "Q02",
+      "traceSha256": "942478031d910a5d4db6367c643ec01053dac959d2d370f097e65864d99d4fe2"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc119-reset-highlight-fg",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor answered; highlight foreground was not read back",
+        "rawReplyRef": "extensions.osc119-reset-highlight-fg"
+      },
+      "action": "Q02",
+      "traceSha256": "2c2afb804bc5efcc1a558a590a825937c8a73982ef6cbc08acf9890aa1f0ba3a"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc17-highlight-bg",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc17-highlight-bg"
+      },
+      "action": "Q08",
+      "traceSha256": "f3b27df2f4792e1aad63769cdb30e8259a44022ef6b68e1b8f1fd84ad946f360"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc19-highlight-fg",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc19-highlight-fg"
+      },
+      "action": "Q08",
+      "traceSha256": "c81231fb022fa41c06e4cc436f4b4f5c302f90d3575100b4023eb278a5b1128d"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc22-pointer",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc22-pointer"
+      },
+      "action": "Q10",
+      "traceSha256": "0cdae137bce46638ce72ebb3e465b0e9b5c4a4b51cc38dfea6602deb85ff085e",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc99-kitty-notify",
+        "outcome": "inconclusive",
+        "evidence": "query",
+        "reason": "no-response",
+        "note": "No matching notification query reply; OS display was not tested",
+        "rawReplyRef": "extensions.osc99-kitty-notify"
+      },
+      "action": "Q07",
+      "traceSha256": "86971e39efdbd67699e06827e73fab858ae27365a35cf073923f98541db9ee0c"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc777-notify",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc777-notify"
+      },
+      "action": "Q10",
+      "traceSha256": "e6a493dc27edee5bedc98433a71e6e9daab79b098575f076c761dff40fa53b88",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc666-termprop",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc666-termprop"
+      },
+      "action": "Q10",
+      "traceSha256": "4ac7ecc7f2f0b94b1e36b393dd54c12e98db4f9ffbff15a37d42ee8e7428596a",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc3008-context",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc3008-context"
+      },
+      "action": "Q10",
+      "traceSha256": "529aaf789820dea29b015ad84b48fd6e11781702cbe847928fea123116c006e9",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc113-reset-pointer-fg",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor answered; pointer foreground restoration was not measured",
+        "rawReplyRef": "extensions.osc113-reset-pointer-fg"
+      },
+      "action": "Q10",
+      "traceSha256": "660111f2489f2c171958fd1e70a522e698e268ad5bd0ef3809e2a58ca74da726",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc114-reset-pointer-bg",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor answered; pointer background restoration was not measured",
+        "rawReplyRef": "extensions.osc114-reset-pointer-bg"
+      },
+      "action": "Q10",
+      "traceSha256": "9be1039666d9171879185afa75e0e591a47c3e646bf52c3c591d86da5ec5ea83",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc21-kitty-color",
+        "outcome": "inconclusive",
+        "evidence": "query",
+        "reason": "no-response",
+        "note": "No OSC 21 reply; color rendering was not tested",
+        "rawReplyRef": "extensions.osc21-kitty-color"
+      },
+      "action": "Q07",
+      "traceSha256": "ee92240705334a95846a159050d0b55c795f9be74806c9752254783776768c37"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc176-app-id",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc176-app-id"
+      },
+      "action": "Q10",
+      "traceSha256": "eb70f7f924c40d96ab09b8419f22d75479b69c71a54c97c50baa22f2fad82f4b",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc555-flash",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc555-flash"
+      },
+      "action": "Q10",
+      "traceSha256": "8fe9b269b4592caa520735934de075e31298a23a2f5475d01a9cd1bd20883504",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc440-audio",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc440-audio"
+      },
+      "action": "Q10",
+      "traceSha256": "d56f2c4169c593219ef6a1423f4564604ea97f5bc129b47cc9565b1a9a097ccb",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc7770-font-size",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc7770-font-size"
+      },
+      "action": "Q07",
+      "traceSha256": "30a06c564f37703f86ebb1d7a598139d44b46139b952a67cedc7cae01aec040c"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc7777-font-window-size",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc7777-font-window-size"
+      },
+      "action": "Q07",
+      "traceSha256": "542dc05e6964b534f54eccfd95dda589fcc1c61d95241c5f630b10db18cbff16"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc701-locale",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc701-locale"
+      },
+      "action": "Q07",
+      "traceSha256": "84e17121aba0bad7b9b00ff78248acd4dd02c2afc427148da0355c1a6b996c3e"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc702-version",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc702-version"
+      },
+      "action": "Q07",
+      "traceSha256": "cd66feefea4bb6d14ace0a1fdf57b9f79606a1d7349bba45caefacfe66e185ba"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc710-font-normal",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "OSC 710 font selection was not attempted; this probe has no effect readback or prior-state restoration",
+        "rawReplyRef": "extensions.osc710-font-normal"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc720-scroll-up",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor answered; scrollback viewport was not measured",
+        "rawReplyRef": "extensions.osc720-scroll-up"
+      },
+      "action": "Q10",
+      "traceSha256": "41990f899689ae1c5a6e72f94ae18bd0f7a628c552b7a762e2a9650a7ea60abf",
+      "sourceLimitation": "The exact OSC code has no handler in the reviewed OSC/color dispatchers; consuming the stream or answering a sentinel does not implement its effect."
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc776-cell-size",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc776-cell-size"
+      },
+      "action": "Q07",
+      "traceSha256": "b749f14d3662935ac923dec1c5b0db7303fab88e23f0a387ec65fdcd0e03579e"
+    },
+    {
+      "original": {
+        "featureId": "extensions.sixel-geometry-report",
+        "outcome": "inconclusive",
+        "evidence": "query",
+        "reason": "no-response",
+        "note": "No Sixel geometry response for item 2",
+        "rawReplyRef": "extensions.sixel-geometry-report"
+      },
+      "action": "Q07",
+      "traceSha256": "9edc724c9445a7056ed2a4450c02b1a27e3133551cd20c34c0c343878cacd042"
+    },
+    {
+      "original": {
+        "featureId": "sgr.bold",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.bold"
+      },
+      "action": "Q02",
+      "traceSha256": "30e20f65fe7ffdd6f98516c99357d27064f79e640178e96c132b074d48aedd0c"
+    },
+    {
+      "original": {
+        "featureId": "sgr.faint",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.faint"
+      },
+      "action": "Q02",
+      "traceSha256": "1a049ebdfe1ca95ab34c9b4d6123a6b64d3c644a56de93a1de0d797b0b9a88a2"
+    },
+    {
+      "original": {
+        "featureId": "sgr.italic",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.italic"
+      },
+      "action": "Q02",
+      "traceSha256": "e020360452e006bc5d09f5732741a31fc5bd9bcf3bf43fae421ebe2aeeab343e"
+    },
+    {
+      "original": {
+        "featureId": "sgr.underline.single",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.underline.single"
+      },
+      "action": "Q02",
+      "traceSha256": "08ba10a9c4e058162a607b818f770c041476215adfe4175f4bfedf061dfdc059"
+    },
+    {
+      "original": {
+        "featureId": "sgr.underline.double",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.underline.double"
+      },
+      "action": "Q02",
+      "traceSha256": "2ad9a90917ddb14df8e2c61de2792f8f9a1da37057a5a15bf8a610fc5b36f121"
+    },
+    {
+      "original": {
+        "featureId": "sgr.underline.curly",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.underline.curly"
+      },
+      "action": "Q02",
+      "traceSha256": "8a9218ef5a474c5d7acd757115243f770b81d55bf68e2e3cc9e49f5407ad2b12"
+    },
+    {
+      "original": {
+        "featureId": "sgr.underline.dotted",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.underline.dotted"
+      },
+      "action": "Q02",
+      "traceSha256": "4cf2891853353d6e595b2976fc7135e4bb26053c93a5be99a5873a618c82f765"
+    },
+    {
+      "original": {
+        "featureId": "sgr.underline.dashed",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.underline.dashed"
+      },
+      "action": "Q02",
+      "traceSha256": "08ffe7d061d34f782a7810dd69aed79c76c7282c6f4369cd00e1ec35006ea476"
+    },
+    {
+      "original": {
+        "featureId": "sgr.blink",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.blink"
+      },
+      "action": "Q02",
+      "traceSha256": "8abdb168c823b3edec9707d20c76cfde6a33a71c270ce7fdaea84e532c45f629"
+    },
+    {
+      "original": {
+        "featureId": "sgr.inverse",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.inverse"
+      },
+      "action": "Q02",
+      "traceSha256": "869216b28d606d161d5affeaa37b470b7dcc8fa30249e63407dc12e724bca9ce"
+    },
+    {
+      "original": {
+        "featureId": "sgr.hidden",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.hidden"
+      },
+      "action": "Q02",
+      "traceSha256": "54dfec22c85db1cddfa8c59a22c086703147543ee37644fbcfedf19b96238c06"
+    },
+    {
+      "original": {
+        "featureId": "sgr.strikethrough",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.strikethrough"
+      },
+      "action": "Q02",
+      "traceSha256": "5b21499e8a5ddf661a2c2a11b643de4aba3a02e43c0c7aad91aad2d5cfcbaf20"
+    },
+    {
+      "original": {
+        "featureId": "sgr.overline",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.overline"
+      },
+      "action": "Q02",
+      "traceSha256": "164209d46da947f46c63d8e89915ce9cbbcb434c9f736b3294890c847e402d58"
+    },
+    {
+      "original": {
+        "featureId": "sgr.underline.color",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.underline.color"
+      },
+      "action": "Q02",
+      "traceSha256": "7bda7391de5b9522291c3f5edc21e68fdae100d5d66850d81705bccd972e0681"
+    },
+    {
+      "original": {
+        "featureId": "sgr.underline-color-indexed",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.underline-color-indexed"
+      },
+      "action": "Q02",
+      "traceSha256": "9f2c3a8cff9f9400c8a268d19276d0df6ca68399be39cb847d77d11199754411"
+    },
+    {
+      "original": {
+        "featureId": "sgr.underline-color-rgb",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.underline-color-rgb"
+      },
+      "action": "Q02",
+      "traceSha256": "7bda7391de5b9522291c3f5edc21e68fdae100d5d66850d81705bccd972e0681"
+    },
+    {
+      "original": {
+        "featureId": "sgr.underline-color-reset",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.underline-color-reset"
+      },
+      "action": "Q02",
+      "traceSha256": "ce3f00b56ffd5dfb11ec06aa9af466259619c64a34c5b20522b4973bb448c009"
+    },
+    {
+      "original": {
+        "featureId": "sgr.fg.standard",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.fg.standard"
+      },
+      "action": "Q02",
+      "traceSha256": "dd628aa2ffd050644a0137efb5b0df4f02728f425a5a0a57fe9a8329fc89a860"
+    },
+    {
+      "original": {
+        "featureId": "sgr.bg.standard",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.bg.standard"
+      },
+      "action": "Q02",
+      "traceSha256": "828aebd2386799d6ba770512211092881bafc5bb2498fbe15dd00f570b99cb4c"
+    },
+    {
+      "original": {
+        "featureId": "sgr.fg.bright",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.fg.bright"
+      },
+      "action": "Q02",
+      "traceSha256": "bc086d58662586fcc0667fd1ee526c2b3cc6eca189c0a0d142bf11f0b0296bff"
+    },
+    {
+      "original": {
+        "featureId": "sgr.bg.bright",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.bg.bright"
+      },
+      "action": "Q02",
+      "traceSha256": "9991590f5466c329e663fc92d04e80d5d729582fbf07ba17a386d49cfd037e0e"
+    },
+    {
+      "original": {
+        "featureId": "sgr.fg.default",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.fg.default"
+      },
+      "action": "Q02",
+      "traceSha256": "710ca9345551e45842416b74e9fe97d893184f0a5af6bfdd6164a2b152375f71"
+    },
+    {
+      "original": {
+        "featureId": "sgr.bg.default",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.bg.default"
+      },
+      "action": "Q02",
+      "traceSha256": "c1d8101ce00148f26ec2dc30cfe890734e151788d4cec36c9551513e103e4850"
+    },
+    {
+      "original": {
+        "featureId": "sgr.fg.256",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.fg.256"
+      },
+      "action": "Q02",
+      "traceSha256": "3da0bb4693192f33e5ebdf9cbfae419eef6c626366e7434ff41de7bd610877fb"
+    },
+    {
+      "original": {
+        "featureId": "sgr.bg.256",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.bg.256"
+      },
+      "action": "Q02",
+      "traceSha256": "c7da8e486c324324784d4a2221b6e0325278fc5a70e0cc3a30d9d63252ac9a4d"
+    },
+    {
+      "original": {
+        "featureId": "sgr.fg.truecolor",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.fg.truecolor"
+      },
+      "action": "Q02",
+      "traceSha256": "f37202ae5e5aa783fed6b3a5c6d4e6a28e10e310883f3680a4f34af4d14faf51"
+    },
+    {
+      "original": {
+        "featureId": "sgr.bg.truecolor",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling",
+        "rawReplyRef": "sgr.bg.truecolor"
+      },
+      "action": "Q02",
+      "traceSha256": "042fdff49e34f14cc87b29aa544f4dc10493b8683dc8c940739bef655d0ec0be"
+    },
+    {
+      "original": {
+        "featureId": "sgr.selective-reset.bold",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR reset",
+        "rawReplyRef": "sgr.selective-reset.bold"
+      },
+      "action": "Q02",
+      "traceSha256": "5677d4b357a76dd373f1cbcaf6ec76137d9086bfc8ddfc88023fc75bf9f310af"
+    },
+    {
+      "original": {
+        "featureId": "sgr.selective-reset.underline",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR reset",
+        "rawReplyRef": "sgr.selective-reset.underline"
+      },
+      "action": "Q02",
+      "traceSha256": "92c61a00d6be0c6f31de29b74269d413f31fa5ba63deefafdd1cb84c46939bf8"
+    },
+    {
+      "original": {
+        "featureId": "sgr.selective-reset.italic",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR reset",
+        "rawReplyRef": "sgr.selective-reset.italic"
+      },
+      "action": "Q02",
+      "traceSha256": "c88672b5ee124f22257eb65614f4aaf3b594c7fe85c474fd437a4b4769faa161"
+    },
+    {
+      "original": {
+        "featureId": "sgr.selective-reset.inverse",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR reset",
+        "rawReplyRef": "sgr.selective-reset.inverse"
+      },
+      "action": "Q02",
+      "traceSha256": "88350556f412de4c04b654b1b5bf5bb08dfe450b8430fa038f646853a154e262"
+    },
+    {
+      "original": {
+        "featureId": "sgr.reset",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR reset",
+        "rawReplyRef": "sgr.reset"
+      },
+      "action": "Q02",
+      "traceSha256": "30a86f028bef5953fb62b43d972cd3eb1e97a7e2175a07b8fc065e0858e4777f"
+    },
+    {
+      "original": {
+        "featureId": "cursor.hide",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "Cursor pixel fixture needs capture and measured 3x6 geometry; measured 41x140",
+        "rawReplyRef": "cursor.hide"
+      },
+      "action": "Q02",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "cursor.shape",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No cursor pixel readback for shape",
+        "rawReplyRef": "cursor.shape"
+      },
+      "action": "Q02",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "cursor.cup-scroll-region",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "DECOM makes CPR region-relative (VT100: region top is 1, bottom is 11); measured 1;1, 2;1, 11;1 — the physical row 5 and the margins still need an independent observable",
+        "rawReplyRef": "cursor.cup-scroll-region"
+      },
+      "action": "Q01",
+      "traceSha256": "057a15530b8139da1bb3bb73c8b6c6a21f0e718f3d8568bb206f0c04ac2db992"
+    },
+    {
+      "original": {
+        "featureId": "text.basic",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "text.basic"
+      },
+      "action": "Q01",
+      "traceSha256": "8d93a62829e093d4e1bc0275f39855326f562617b36be65f634156f3d8b19cb2"
+    },
+    {
+      "original": {
+        "featureId": "text.overwrite",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "text.overwrite"
+      },
+      "action": "Q01",
+      "traceSha256": "cef21f4e32e4ab62be98d7d800cdb490cef2ac38cd5cf3e437a66425c8f28cc1"
+    },
+    {
+      "original": {
+        "featureId": "text.reverse-index-scroll",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "text.reverse-index-scroll"
+      },
+      "action": "Q01",
+      "traceSha256": "c6bdd65452746534feb54afed94868f092b1bc175226511cb8089b3d81bb4740"
+    },
+    {
+      "original": {
+        "featureId": "erase.line.right",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "Erase pixel fixture needs capture and measured 2x6 geometry; measured 41x140",
+        "rawReplyRef": "erase.line.right"
+      },
+      "action": "Q01",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "erase.line.left",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "Erase pixel fixture needs capture and measured 2x6 geometry; measured 41x140",
+        "rawReplyRef": "erase.line.left"
+      },
+      "action": "Q01",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "erase.line.all",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "Erase pixel fixture needs capture and measured 2x6 geometry; measured 41x140",
+        "rawReplyRef": "erase.line.all"
+      },
+      "action": "Q01",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "erase.screen.below",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "Erase pixel fixture needs capture and measured 3x6 geometry; measured 41x140",
+        "rawReplyRef": "erase.screen.below"
+      },
+      "action": "Q01",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "erase.screen.above",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "Erase pixel fixture needs capture and measured 3x6 geometry; measured 41x140",
+        "rawReplyRef": "erase.screen.above"
+      },
+      "action": "Q01",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "erase.screen.all",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "Erase pixel fixture needs capture and measured 3x6 geometry; measured 41x140",
+        "rawReplyRef": "erase.screen.all"
+      },
+      "action": "Q01",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "erase.screen.scrollback",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "erase.screen.scrollback"
+      },
+      "action": "Q01",
+      "traceSha256": "b312a8e106dfcd9da0aebd1beab951a6838b2008bafb3ca14511d1d48300460d"
+    },
+    {
+      "original": {
+        "featureId": "erase.character",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "erase.character"
+      },
+      "action": "Q01",
+      "traceSha256": "f5e4ee34cdd6b8ee952107562f4ba03acc3a088bfa51bfd1aee52662c5f2a7be"
+    },
+    {
+      "original": {
+        "featureId": "erase.selective",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "erase.selective"
+      },
+      "action": "Q10",
+      "traceSha256": "20809786c4c3e5a15aa8e9cc6d78671f00c23c21a1466b1d0c168a2154b61e9c",
+      "sourceLimitation": "DECSED/DECSEL alias ordinary erase because DECSCA protected-character state is unimplemented. Protection-sensitive behavior is not supported by that alias."
+    },
+    {
+      "original": {
+        "featureId": "erase.el-with-attrs",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "erase.el-with-attrs"
+      },
+      "action": "Q01",
+      "traceSha256": "2f92207a28861458cdcff777dd1e8b4de53a5bb2a44e6a3be711d05b43aa9c38"
+    },
+    {
+      "original": {
+        "featureId": "erase.ed-scroll-region",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "erase.ed-scroll-region"
+      },
+      "action": "Q01",
+      "traceSha256": "5e58b91f7bfee0ec43b6c2aee8549da83af53092e27a121625115201552f7fc7"
+    },
+    {
+      "original": {
+        "featureId": "editing.insert-chars",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.insert-chars"
+      },
+      "action": "Q01",
+      "traceSha256": "9c01b0a4a31d73ca1883deaea134473a155471a7a2305a5fcfa4c9eed479185b"
+    },
+    {
+      "original": {
+        "featureId": "editing.delete-chars",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.delete-chars"
+      },
+      "action": "Q01",
+      "traceSha256": "b5947d41b4a4299e5e0b6a9fad330e9087f4e8dcb45d9a97e8d6b47101427a09"
+    },
+    {
+      "original": {
+        "featureId": "editing.insert-lines",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.insert-lines"
+      },
+      "action": "Q01",
+      "traceSha256": "97fd2f3453728ecc8aa45905c98421b76b81bbce3a4428a4c01b1d7d03f66ffa"
+    },
+    {
+      "original": {
+        "featureId": "editing.delete-lines",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.delete-lines"
+      },
+      "action": "Q01",
+      "traceSha256": "ceecd601bb7813a380d7ef3fd2ea1231997d60b205260345f0a0ca81f3474802"
+    },
+    {
+      "original": {
+        "featureId": "editing.repeat-char",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.repeat-char"
+      },
+      "action": "Q01",
+      "traceSha256": "e23985e9b02220f4876a7135e38aa577ff545bccdf47b36f69e039a75e9e07c2"
+    },
+    {
+      "original": {
+        "featureId": "editing.decfra",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.decfra"
+      },
+      "action": "Q10",
+      "traceSha256": "b8c776f609dc88d2bf5ec119b1286ce7c21f974dadd5e4adadd6b55bdcd1be48",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "editing.decera",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.decera"
+      },
+      "action": "Q10",
+      "traceSha256": "e9e98d98ea5fddbf57ba11bd4af00548f08654eab64c9d920c71b980e9249110",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "editing.decsera",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.decsera"
+      },
+      "action": "Q10",
+      "traceSha256": "85279472496173455c76a06b600d7906706430335b75d8fc6d7e186d3695c189",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "editing.deccra",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.deccra"
+      },
+      "action": "Q10",
+      "traceSha256": "5179eba1e2dbbc273ce1e1c708c4c1902a825723bae33590ae76182bf84c13c7",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "editing.deccara",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.deccara"
+      },
+      "action": "Q10",
+      "traceSha256": "78f430f05cd090b1d1b7d9ca6ecb5124250835c30d797b52aea838bc80970ce2",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "editing.decrara",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.decrara"
+      },
+      "action": "Q10",
+      "traceSha256": "5b86bde3cb989a5c1057c47a0e18b203efb29855ea3b4fcd4517b45e52f09da6",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "editing.decsace",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "DECSACE was not attempted; this probe does not measure attribute-change extent",
+        "rawReplyRef": "editing.decsace"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "editing.decrqcra",
+        "outcome": "inconclusive",
+        "evidence": "query",
+        "reason": "no-response",
+        "rawReplyRef": "editing.decrqcra"
+      },
+      "action": "Q07",
+      "traceSha256": "f1812b9502fea4d5f039a700c95cf67b655c0d5e4b7183ac2d1ec98d931f48ba"
+    },
+    {
+      "original": {
+        "featureId": "editing.sl",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.sl"
+      },
+      "action": "Q10",
+      "traceSha256": "f53d97c0e12447cd9f76b6f907073f10491ba0dd559f9efdb2a9eeb485259c4d",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "editing.sr",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.sr"
+      },
+      "action": "Q10",
+      "traceSha256": "85bfb34939850fc31a71a753db02a34165ce63dfa7c08a7ca0500bb32625d560",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "editing.decic",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.decic"
+      },
+      "action": "Q10",
+      "traceSha256": "1e37a314acf9e9d153e51adc787b5ab7c2b4cb3b8d859b211f4450694213dd62",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "editing.decdc",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "editing.decdc"
+      },
+      "action": "Q10",
+      "traceSha256": "97f4360d73c9e82a8545495ce995f1792e9ceff0d02b04e2a27a1f0ea3da2f73",
+      "sourceLimitation": "These rectangle, attribute-extent, horizontal-scroll or column-edit variants are not handled by the reviewed CSI dispatcher; ordinary ICH/DCH/IL/DL/REP are separate paths."
+    },
+    {
+      "original": {
+        "featureId": "modes.alt-screen.exit",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor responsiveness after exit does not measure the restored buffer",
+        "rawReplyRef": "modes.alt-screen.exit"
+      },
+      "action": "Q06",
+      "traceSha256": "fdc7bdfb003dbc7dcaf2ab5c7318cbbab61069c666135ceb39fa573a13ebbc2e"
+    },
+    {
+      "original": {
+        "featureId": "modes.reverse-video",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "DECRPM mode 5: not recognized; mode behavior unmeasured",
+        "rawReplyRef": "modes.reverse-video"
+      },
+      "action": "Q10",
+      "traceSha256": "af0fb5c7e88c1aea0804b758930a77e3d4bc126ac264a16fb11f0f8ac60501c1",
+      "sourceLimitation": "The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior."
+    },
+    {
+      "original": {
+        "featureId": "modes.insert-replace",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor advance does not measure whether X displaced the existing cells",
+        "rawReplyRef": "modes.insert-replace"
+      },
+      "action": "Q01",
+      "traceSha256": "67f52efec9924e6aede5cac98f733f04c18e07ef5f474fc6208378ccb15407ba"
+    },
+    {
+      "original": {
+        "featureId": "modes.application-keypad",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "Keypad mode left unchanged; this probe does not measure keypad input encoding",
+        "rawReplyRef": "modes.application-keypad"
+      },
+      "action": "Q05",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "modes.left-right-margin",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "Margin mode left unchanged; this probe does not measure left/right margin behavior",
+        "rawReplyRef": "modes.left-right-margin"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior."
+    },
+    {
+      "original": {
+        "featureId": "modes.altscreen-47",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "Alternate buffer left unchanged; this probe does not measure its visible contents",
+        "rawReplyRef": "modes.altscreen-47"
+      },
+      "action": "Q06",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "modes.altscreen-1047",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "DECRPM status does not measure alternate-buffer clearing",
+        "rawReplyRef": "modes.altscreen-1047"
+      },
+      "action": "Q06",
+      "traceSha256": "7814d077ec6245e3cc3c2c53b97bb4a01b1649372d3ee0845afbd905757ea430"
+    },
+    {
+      "original": {
+        "featureId": "modes.alt-scroll-1007",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "DECRPM mode 1007: not recognized; mode behavior unmeasured",
+        "rawReplyRef": "modes.alt-scroll-1007"
+      },
+      "action": "Q10",
+      "traceSha256": "43ff7603b6d964bfd6a655b5b90fa81b310b8f3d1790da20ea6657e48c839522",
+      "sourceLimitation": "The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior."
+    },
+    {
+      "original": {
+        "featureId": "modes.utf8-mouse-1005",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "DECRPM mode 1005: not recognized; mode behavior unmeasured",
+        "rawReplyRef": "modes.utf8-mouse-1005"
+      },
+      "action": "Q10",
+      "traceSha256": "bc3b7f23fc85eec76cea64cd27a326d6ef01548079dbee200cce708893a1b3e7",
+      "sourceLimitation": "The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior."
+    },
+    {
+      "original": {
+        "featureId": "modes.deccolm",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "DECRPM mode 3: not recognized; mode behavior unmeasured",
+        "rawReplyRef": "modes.deccolm"
+      },
+      "action": "Q10",
+      "traceSha256": "ab1f0f14d4e86e780c211eaacdcec7c2ff7f4288a73c98b7fe1442c3edd90b5d",
+      "sourceLimitation": "The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior."
+    },
+    {
+      "original": {
+        "featureId": "modes.decsclm",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "DECRPM mode 4: not recognized; mode behavior unmeasured",
+        "rawReplyRef": "modes.decsclm"
+      },
+      "action": "Q10",
+      "traceSha256": "c138d261d6f6b212d88807b11aa628abfc650de85f6cc2954ceb4e8129027af6",
+      "sourceLimitation": "The corresponding DEC private mode has no tracked/implemented case in the reviewed private-mode dispatcher; DECRPM zero is not evidence of its behavior."
+    },
+    {
+      "original": {
+        "featureId": "modes.xtpushsgr",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtpushsgr"
+      },
+      "action": "Q10",
+      "traceSha256": "dce5f7cc29f1be6042c5f4e78b67516cc907a75d3af1c3bc1de180291978d2ff",
+      "sourceLimitation": "These xterm save/restore or stack/title variants are not handled. Kitty OSC 30001/30101 color stacks and ordinary cursor save/restore are different spellings/contracts."
+    },
+    {
+      "original": {
+        "featureId": "modes.xtpopsgr",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtpopsgr"
+      },
+      "action": "Q10",
+      "traceSha256": "19c86df226ee8ab4b6264a3fa5b0bfaaf0dcfb28d40e058e3ea14d59fecef5f2",
+      "sourceLimitation": "These xterm save/restore or stack/title variants are not handled. Kitty OSC 30001/30101 color stacks and ordinary cursor save/restore are different spellings/contracts."
+    },
+    {
+      "original": {
+        "featureId": "modes.xtsave",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtsave"
+      },
+      "action": "Q10",
+      "traceSha256": "0e5e607a04eb4800b21bc553781cfbec285361b84fa128e0a99741ac963c62e1",
+      "sourceLimitation": "These xterm save/restore or stack/title variants are not handled. Kitty OSC 30001/30101 color stacks and ordinary cursor save/restore are different spellings/contracts."
+    },
+    {
+      "original": {
+        "featureId": "modes.xtrestore",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtrestore"
+      },
+      "action": "Q10",
+      "traceSha256": "5607025fed1df1c1e38208d6383215516dba89a987ba01218d057edd1fa84377",
+      "sourceLimitation": "These xterm save/restore or stack/title variants are not handled. Kitty OSC 30001/30101 color stacks and ordinary cursor save/restore are different spellings/contracts."
+    },
+    {
+      "original": {
+        "featureId": "modes.xtpushcolors",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtpushcolors"
+      },
+      "action": "Q10",
+      "traceSha256": "e0029cad793a5a6a83cf1f0f9e6410f8c3570bd9336b3ff39084204090dbbbf9",
+      "sourceLimitation": "These xterm save/restore or stack/title variants are not handled. Kitty OSC 30001/30101 color stacks and ordinary cursor save/restore are different spellings/contracts."
+    },
+    {
+      "original": {
+        "featureId": "modes.xtpopcolors",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtpopcolors"
+      },
+      "action": "Q10",
+      "traceSha256": "6bd12d3b37ae89fb77890ec0bf1b4b6e6fb2abdc8fc56a4cb79fbe9cac8f7849",
+      "sourceLimitation": "These xterm save/restore or stack/title variants are not handled. Kitty OSC 30001/30101 color stacks and ordinary cursor save/restore are different spellings/contracts."
+    },
+    {
+      "original": {
+        "featureId": "device.tertiary-da",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "device.tertiary-da"
+      },
+      "action": "Q07",
+      "traceSha256": "a3c7261213b86841c24d5ea55b35ed715e0c7539593e654ad3942d8c7908b8ef"
+    },
+    {
+      "original": {
+        "featureId": "device.decrqss",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Requested setting or name refused; other settings or names unmeasured",
+        "rawReplyRef": "device.decrqss"
+      },
+      "action": "Q12",
+      "traceSha256": "3dd073b9eadb77f6f84aa3b7ae177cbeec02ae54e2c688334734f520beba6f46"
+    },
+    {
+      "original": {
+        "featureId": "device.xtgettcap",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Requested setting or name refused; other settings or names unmeasured",
+        "rawReplyRef": "device.xtgettcap"
+      },
+      "action": "Q12",
+      "traceSha256": "90570bc3f196f337bc65e1e44d4a0c6a9540acfaff975c3ce22b53cab2023bb9"
+    },
+    {
+      "original": {
+        "featureId": "device.term-features",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "legacy"
+      },
+      "action": "Q13",
+      "traceSha256": null
+    },
+    {
+      "original": {
+        "featureId": "device.xtwinops-18",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "device.xtwinops-18"
+      },
+      "action": "Q07",
+      "traceSha256": "587590cc0907c710755440925b78d43692a052fffcc6af06a07602b0dc4a86b3"
+    },
+    {
+      "original": {
+        "featureId": "device.xtwinops-20",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "device.xtwinops-20"
+      },
+      "action": "Q07",
+      "traceSha256": "a0a7bff9d15751850e0ad4ac5c2897a94fbde4194c6fe368ba969dbe2835eace"
+    },
+    {
+      "original": {
+        "featureId": "device.xtwinops-21",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "device.xtwinops-21"
+      },
+      "action": "Q07",
+      "traceSha256": "d42a6883efee7aeb1a461a8c96b9d2dee180d6dce63174261e2d10317cd14f35"
+    },
+    {
+      "original": {
+        "featureId": "device.xtwinops-22",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "rawReplyRef": "device.xtwinops-22"
+      },
+      "action": "Q10",
+      "traceSha256": "1e1a810e38ca95599b330dd984dc96841873f53deccc706a1053e2ecbb58ad7b",
+      "sourceLimitation": "These xterm save/restore or stack/title variants are not handled. Kitty OSC 30001/30101 color stacks and ordinary cursor save/restore are different spellings/contracts."
+    },
+    {
+      "original": {
+        "featureId": "device.xtwinops-23",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "rawReplyRef": "device.xtwinops-23"
+      },
+      "action": "Q10",
+      "traceSha256": "ea7174d8f2a62fce5e66bd959c35b0777e074ab8f513b14d068f6a3730adb766",
+      "sourceLimitation": "These xterm save/restore or stack/title variants are not handled. Kitty OSC 30001/30101 color stacks and ordinary cursor save/restore are different spellings/contracts."
+    },
+    {
+      "original": {
+        "featureId": "device.xtreportcolors",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "device.xtreportcolors"
+      },
+      "action": "Q07",
+      "traceSha256": "15e882e85e1fc17050e1dcdc315a51c5e77885cbd8a56a8e295f0ce612ea9e23"
+    },
+    {
+      "original": {
+        "featureId": "device.xtgetxres",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "device.xtgetxres"
+      },
+      "action": "Q07",
+      "traceSha256": "65c5dd0263855429c2a8af0ec4d921dedf07ba64dab21a59f7f9bb6fbd1b6f07"
+    },
+    {
+      "original": {
+        "featureId": "input.modify-other-keys",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No generated input event and encoded report were validated",
+        "rawReplyRef": "input.modify-other-keys"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "Xterm modifyOtherKeys and pixel/urxvt mouse encodings are not implemented; Kitty keyboard and legacy X10/SGR mouse paths are different contracts."
+    },
+    {
+      "original": {
+        "featureId": "input.pixel-mouse",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No generated input event and encoded report were validated",
+        "rawReplyRef": "input.pixel-mouse"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "Xterm modifyOtherKeys and pixel/urxvt mouse encodings are not implemented; Kitty keyboard and legacy X10/SGR mouse paths are different contracts."
+    },
+    {
+      "original": {
+        "featureId": "input.urxvt-mouse",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No generated input event and encoded report were validated",
+        "rawReplyRef": "input.urxvt-mouse"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "Xterm modifyOtherKeys and pixel/urxvt mouse encodings are not implemented; Kitty keyboard and legacy X10/SGR mouse paths are different contracts."
+    },
+    {
+      "original": {
+        "featureId": "input.x10-mouse",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No generated input event and encoded report were validated",
+        "rawReplyRef": "input.x10-mouse"
+      },
+      "action": "Q05",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "input.modify-other-keys-3",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No generated input event and encoded report were validated",
+        "rawReplyRef": "input.modify-other-keys-3"
+      },
+      "action": "Q10",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "sourceLimitation": "Xterm modifyOtherKeys and pixel/urxvt mouse encodings are not implemented; Kitty keyboard and legacy X10/SGR mouse paths are different contracts."
+    },
+    {
+      "original": {
+        "featureId": "input.button-event-mouse",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No generated input event and encoded report were validated",
+        "rawReplyRef": "input.button-event-mouse"
+      },
+      "action": "Q05",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "reset.sgr",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not measure SGR styling after reset",
+        "rawReplyRef": "reset.sgr"
+      },
+      "action": "Q02",
+      "traceSha256": "8742b056346366d9869e56a40caff40e1017717717a0cdde01d45f9802c5ce92"
+    },
+    {
+      "original": {
+        "featureId": "reset.decaln",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "DECALN pixel fixture needs capture and measured 2x2 geometry; measured 41x140",
+        "rawReplyRef": "reset.decaln"
+      },
+      "action": "Q01",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "reset.method",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "The app context has no reset() method or equivalent state readback",
+        "rawReplyRef": "reset.method"
+      },
+      "action": "Q13",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "scrollback.accumulate",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor position does not measure scrollback history",
+        "rawReplyRef": "scrollback.accumulate"
+      },
+      "action": "Q01",
+      "traceSha256": "197ce6ed63bca6a160ad9395b0560709234dbe3170d0a059ed892d6cac6d13a4"
+    },
+    {
+      "original": {
+        "featureId": "scrollback.total-lines",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor position does not measure total scrollback lines",
+        "rawReplyRef": "scrollback.total-lines"
+      },
+      "action": "Q01",
+      "traceSha256": "f13ccfaf4dc1b22c09ee122c6526b2eaef937434d343883a1006fbcac70d81e4"
+    },
+    {
+      "original": {
+        "featureId": "scrollback.scroll-up",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor position does not measure scroll-up contents",
+        "rawReplyRef": "scrollback.scroll-up"
+      },
+      "action": "Q01",
+      "traceSha256": "ef24d28ebfe56c642f5c74641451ba4c5b8f3f8a0bc925caa21adbb3eed8d667"
+    },
+    {
+      "original": {
+        "featureId": "scrollback.reverse-index",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor position does not measure reverse-index contents",
+        "rawReplyRef": "scrollback.reverse-index"
+      },
+      "action": "Q01",
+      "traceSha256": "7ee6058bf59b9558d38c6966380b591b2cebf7b1d263815a6e14d699de6ee04f"
+    },
+    {
+      "original": {
+        "featureId": "scrollback.scroll-down",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor position does not measure scroll-down contents",
+        "rawReplyRef": "scrollback.scroll-down"
+      },
+      "action": "Q01",
+      "traceSha256": "f3188472da8c3e9b7ca31c88b92f8121ba1f0b564d6f532e8f1cc815bcbe6a12"
+    },
+    {
+      "original": {
+        "featureId": "scrollback.set-region",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor position does not measure the scrolling region",
+        "rawReplyRef": "scrollback.set-region"
+      },
+      "action": "Q01",
+      "traceSha256": "7aa3fd9a242904cfc0d1bffe6b169ebdb9e8d6a51dfbd6c8d74acf6020549237"
+    },
+    {
+      "original": {
+        "featureId": "scrollback.alt-screen",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor positions do not measure retained main-screen contents",
+        "rawReplyRef": "scrollback.alt-screen"
+      },
+      "action": "Q01",
+      "traceSha256": "9f6ac9e9418ba032f9a2c2fbdd5ced60b11260d47331bdd64ddf01731b6e509c"
+    },
+    {
+      "original": {
+        "featureId": "scrollback.decstbm",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor position does not measure whether FIXED_TOP survived scrolling",
+        "rawReplyRef": "scrollback.decstbm"
+      },
+      "action": "Q01",
+      "traceSha256": "12099763e5f9eac2320c1fb881eb901feb2e1255f66ae60719535d039f69582c"
+    },
+    {
+      "original": {
+        "featureId": "scrollback.decstbm-reset",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "CUD and cursor position do not measure scrollback after DECSTBM reset",
+        "rawReplyRef": "scrollback.decstbm-reset"
+      },
+      "action": "Q01",
+      "traceSha256": "4f289e569a9d2eb3b388dae29f208ac54c47ab8454c95fe4125656e548a03c79"
+    },
+    {
+      "original": {
+        "featureId": "charsets.dec-special",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor movement does not verify charset glyph rendering or mapping",
+        "rawReplyRef": "charsets.dec-special"
+      },
+      "action": "Q02",
+      "traceSha256": "95bc03b3f8cb23ee0f670c9960d1b60be5b38bce055a7b649beb799f28ba56a7"
+    },
+    {
+      "original": {
+        "featureId": "charsets.utf8",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor movement does not verify charset glyph rendering or mapping",
+        "rawReplyRef": "charsets.utf8"
+      },
+      "action": "Q02",
+      "traceSha256": "25edda78f7cfe409b202e938fcaebe00f552b99205455ad3f3b2e729c89b2c81"
+    },
+    {
+      "original": {
+        "featureId": "charsets.g0-g1-switching",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor movement does not verify charset glyph rendering or mapping",
+        "rawReplyRef": "charsets.g0-g1-switching"
+      },
+      "action": "Q02",
+      "traceSha256": "dd179f8ff9288a63ddfb475b3993f607cc8ea2aa3bf5fe5ca2ab18046da19787"
+    },
+    {
+      "original": {
+        "featureId": "charsets.dec-line-drawing",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor movement does not verify charset glyph rendering or mapping",
+        "rawReplyRef": "charsets.dec-line-drawing"
+      },
+      "action": "Q02",
+      "traceSha256": "549bd8d39ac1d845940bcb619d92ea039734a5b3b3ffe10523bddaac3f8e825a"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc52-clipboard",
+        "outcome": "inconclusive",
+        "reason": "policy-refused",
+        "evidence": "none",
+        "note": "Collector policy: no owned disposable clipboard with verified restoration; OSC 52 was not sent",
+        "rawReplyRef": "extensions.osc52-clipboard"
+      },
+      "action": "Q11",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc52-write",
+        "outcome": "inconclusive",
+        "reason": "policy-refused",
+        "evidence": "none",
+        "note": "Collector policy: no owned disposable clipboard with verified restoration; OSC 52 was not sent",
+        "rawReplyRef": "extensions.osc52-write"
+      },
+      "action": "Q11",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    },
+    {
+      "original": {
+        "featureId": "extensions.osc52-read",
+        "outcome": "inconclusive",
+        "reason": "policy-refused",
+        "evidence": "none",
+        "note": "Collector policy: no owned disposable clipboard with verified restoration; OSC 52 was not sent",
+        "rawReplyRef": "extensions.osc52-read"
+      },
+      "action": "Q11",
+      "traceSha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8"
+    }
+  ]
+}

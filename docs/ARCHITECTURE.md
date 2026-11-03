@@ -131,12 +131,29 @@ The terminal engine is the **single source of truth** for terminal semantics. Th
   separately capped at 16 MiB, carries payload/options through history, render snapshots,
   complete state transfer and replay without growing the 12-byte packed cell. VT owns geometry
   and edit semantics; App paints scaled/shaped glyphs and decorations through each row's clip.
+  Overline (SGR 53/55) also uses sparse row decoration metadata, independently of underline,
+  through saved pens, reflow, history, state transfer and replay. App paints its top stroke
+  in the foreground; AgentHost cell runs include it only when explicitly requested.
   The mux text client uses a bounded normal-size fallback until the outer terminal negotiates
   sizing; ordinary text extraction emits each block payload once. Detected URL hit areas carry
   coherent start/end column maps for the full top-row block width. Legacy replay restores the
   checkpoint independently of prior seek history: if necessary, it retires older retained
   rectangles to make room, while live output refuses a new reservation. An unchanged budget
   refusal does not rescan history; eviction/reset or screen replacement invalidates pruning.
+- Agent editing observations are read-only snapshots: App's opt-in `readScreen`
+  `bufferState` copies margins, origin/wrap/insert modes, pending wrap, active screen
+  and local retained history count under the same VT read lock as text/cell details.
+  Windowless viewport imports report an explicitly unknown history count; imported
+  empty storage cannot prove empty daemon history. This projection does not alter
+  parser state or enable acting methods, and Contracts remains a leaf.
+- Owned QA controls PTY output processing outside VT: only the proved disposable
+  worker's exact PTY is changed, with a parent-observed untranslated-output proof
+  before cell observations and saved-mode restoration before stock collection.
+  Node raw input alone cannot establish unmodified LF delivery. This adapter
+  path selects no personal terminal and adds no I/O to VT.
+- Normalize default-one CSI counts in the parser: ECH, IL and DL map omitted/zero
+  parameters to one before invoking buffer operations. Direct buffer zero-count
+  calls remain no-ops, independently of cursor, margins and saved history.
 - Provide read-only snapshots for rendering and replay
 
 ### 3.2 Components
@@ -150,6 +167,22 @@ State machine for ESC, CSI, OSC, DEC-private modes. Emits **semantic operations*
 #### `TerminalBuffer`
 
 Applies semantic operations to terminal state. Maintains cursor, modes, tab stops, margins. Owns main + alternate screen buffers and scrollback.
+
+Alternate-screen clearing follows the selected mode. Modes 47 and 1047 retain the
+alternate cells and its per-screen cursor/pen on entry. Mode 1047 clears active
+alternate text and row metadata before returning to main; resetting it while main
+is active leaves stashed alternate content intact. Mode 1049 clears on entry and
+arms the complete main saved cursor, consumed by the first alternate exit.
+The 1047 clear-on-exit distinction follows the
+[xterm control reference](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html).
+
+The owned saved-state QA suite uses paired active-cell/mode/history observations
+and newly written pen/charset witnesses. Invisible banks are checked directly only
+by owning VT tests; a live cursor response alone cannot qualify restoration.
+Its source-defined fixture clearing is independent of RIS under test. V7 receipts
+bind all preceding suites, retained source/report hashes, parsed journal frames
+and verified cleanup;
+coherent reset negatives remain explicit for later fixes.
 
 DECSC/DECRC and private modes 1048/1049 share per-screen saved cursor banks, including
 rendition, pending wrap, origin mode and character-set context. Mux state transfer
@@ -379,12 +412,49 @@ Shell composition glue (startup orchestration, app paths/logging/services, sessi
 - The Agent Output panel (`AgentOutput/`): tracks the current command's output region and renders it as markdown into an Avalonia control tree. Parsing is Markdig; the control-tree rendering is this assembly's own `MarkdownRenderer`
 - Agent Output scheduling: the first invalidation fixes a read deadline; later chunks cannot postpone it. Background reads are serialized, with one dirty follow-up. Completion retains its bounded synchronous read before the prompt repaints; generations reject stale UI deliveries. A BCL `TimeProvider` supplies deterministic timer tests.
 - Pane resizing (pixel → row/col calculation)
+- Permissioned raw AgentHost `resizePane`: App owns measured window sizing, the
+  responsive-UI two-second observation timeout and refusal of inactive/split/remote/deferred panes.
+  It uses the existing resize path and samples actual buffer geometry without
+  waiting for its lock. Existing synchronous resize work can still wait for a buffer
+  write lock; a blocked UI dispatcher delays timeout delivery and cleanup. Settled means view/buffer agreement after the session
+  callback returned for the current buffer/session; changing either invalidates
+  the previous completion evidence. It does not attest kernel PTY size or reversible reflow.
+  The leaf contracts carry only request/result facts; no UI dependency enters VT.
 - The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 
 ### Non-Responsibilities
 - VT parsing (delegated to VT)
 - Buffer mutation (except via explicit APIs)
 - Rendering logic (Skia primitives in Rendering; Avalonia binding shell here is intentionally thin — though see Known Tech Debt)
+
+The owned QA runner is an external App client: its v6 resize plan enables the
+existing act permission only in a private disposable root, selects bounded geometry
+in the parent, re-proves the exact App/worker/PTY before and after each action and
+reads kernel dimensions separately. Paired state/history observations and action
+proofs are bound into the cleanup receipt. Ordinary observers stay read-only.
+See [owned resize qualification](qa/terminfo/owned-resize.md).
+
+### Read-only pane metadata boundary
+
+The raw AgentHost `readPaneMetadata` method uses an App-owned `IAgentPaneObserver`,
+independent of act permission. Its UI dispatcher reads current pane/title/cwd and
+actual tab/progress/toast properties without activating or changing controls.
+Its active-buffer projection takes an immediate read lock, retaining complete
+viewport hyperlink runs and raw shell anchors with history generation/eviction
+facts. Snapshot-local hyperlink reference identities never become durable ids.
+The endpoint bounds its await to two seconds and rechecks registration/session
+identity before returning; observer or deadline cancellation, busy, replaced or
+oversized observations return `paneMetadataUnavailable`, without partial success.
+Caller cancellation propagates as `OperationCanceledException` and ends the request
+without a typed response.
+
+UI and VT observations are separate components, not one atomic parser-to-UI
+transaction. A marker or callback alone does not qualify host presentation.
+Window-global toast controls and tab progress include their scope/owner; stored
+properties do not prove painted pixels, occlusion, desktop timing or native
+notification/taskbar delivery. The contract leaf gains DTOs only and keeps zero
+project references. Owning tests: `AgentPaneMetadataCaptureTests`,
+`AgentHostMetadataProtocolTests`, `MainWindowAgentMetadataTests`.
 
 ### Persistent-session scrollback policy
 

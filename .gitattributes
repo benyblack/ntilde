@@ -25,6 +25,11 @@
 # Shell scripts must be LF or they fail to execute on Linux, regardless of authoring platform.
 *.sh        text eol=lf
 
+# These inputs are validated by byte-exact SHA-256 pins before npm can run.
+# Windows autocrlf must not change their dependency-provenance bytes.
+scripts/terminfo/collector-package.json      text eol=lf
+scripts/terminfo/collector-package-lock.json text eol=lf
+
 # The remote shell-integration snippets (V2 Phase 2b) are pasted onto a remote POSIX host, so a CRLF
 # working tree would put `$'\r': command not found` on every line of the file the user just wrote.
 # `*.sh` above already covers most of them. `RemoteShellIntegrationSnippets.Read` normalizes as

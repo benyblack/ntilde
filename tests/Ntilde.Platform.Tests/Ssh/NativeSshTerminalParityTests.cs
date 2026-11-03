@@ -7,6 +7,12 @@ using Ntilde.VT;
 
 namespace Ntilde.Platform.Tests.Ssh;
 
+// Every exit wait here allows 30 s. The fake interop's events are all queued before the wait starts, so a session
+// that works exits within milliseconds and the wait returns then; one that never reports its exit still fails, just
+// later. The 2 s these waits used to allow was a guess about scheduling, not a claim about the code:
+// ChunkedAlternateScreenSequences_DoNotPolluteScrollback timed out at 2 s on a busy ubuntu runner (PR #728), and the
+// re-run passed. Every path out of NativeSshSession's poll loop reports an exit, so the wait had to be outrun by the
+// poll thread getting no CPU time, not by a lost exit. Architecture.Tests' ShortTestWaitTests keeps new ones honest.
 public sealed class NativeSshTerminalParityTests
 {
     private static readonly string[] EchoHiScreen = ["echo hi", "hi", "nova$"];
@@ -38,7 +44,7 @@ public sealed class NativeSshTerminalParityTests
         interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
 
         Assert.Null(resizeException);
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
 
         string viewportText = GetViewportText(buffer);
         Assert.Contains("nova$", viewportText, StringComparison.Ordinal);
@@ -72,7 +78,7 @@ public sealed class NativeSshTerminalParityTests
         interop.Enqueue(NativeSshEvent.ExitStatus(0));
         interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
         Assert.Equal(initialScrollbackCount, buffer.Scrollback.Count);
         Assert.DoesNotContain("mc alt ui", GetScrollbackText(buffer), StringComparison.Ordinal);
     }
@@ -95,7 +101,7 @@ public sealed class NativeSshTerminalParityTests
         interop.Enqueue(NativeSshEvent.ExitStatus(0));
         interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
 
         Assert.Equal(EchoHiScreen, GetVisibleNonEmptyLines(buffer));
     }
@@ -116,7 +122,7 @@ public sealed class NativeSshTerminalParityTests
         interop.Enqueue(NativeSshEvent.ExitStatus(0));
         interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
 
         BufferSnapshot snapshot = BufferSnapshot.Capture(buffer);
         Assert.Equal("line-02", snapshot.Lines[0]);
@@ -158,7 +164,7 @@ public sealed class NativeSshTerminalParityTests
         interop.Enqueue(NativeSshEvent.ExitStatus(0));
         interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
 
         string[] visibleLines = buffer.ViewportRows.Select(GetRowText).ToArray();
 

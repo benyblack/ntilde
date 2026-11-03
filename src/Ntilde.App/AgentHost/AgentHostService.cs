@@ -26,8 +26,8 @@ namespace Ntilde.AgentHost
     /// on Windows, a unix domain socket (mode 0600) elsewhere — and writes an
     /// <see cref="EndpointDescriptor"/> discovery file next to settings.json.
     ///
-    /// The protocol is observe-only by construction: no input, spawn, or close
-    /// methods exist in v1. Screen reads go through the deterministic
+    /// The protocol separates observe access from explicitly enabled acting access: input, spawn, close
+    /// and visible-pane resize methods require the separate act permission. Screen reads go through the deterministic
     /// <see cref="BufferSnapshot"/> path under the buffer's read lock — the same
     /// snapshot boundary the replay/parity tests use.
     /// </summary>
@@ -281,6 +281,10 @@ namespace Ntilde.AgentHost
         // Closes over the window, so it is cleared on Stop like the allowlist
         // probe. Volatile: published from UI, read on IPC.
         private volatile IAgentActionExecutor? _actionExecutor;
+        private volatile IAgentPaneObserver? _paneObserver;
+
+        /// <summary>Publish a read-only UI observer independently of act permission.</summary>
+        public void SetPaneObserver(IAgentPaneObserver? observer) => _paneObserver = observer;
 
         /// <summary>Publishes (or clears) the spawn/close UI executor. UI thread.</summary>
         public void SetActionExecutor(IAgentActionExecutor? executor) => _actionExecutor = executor;
@@ -444,6 +448,7 @@ namespace Ntilde.AgentHost
             // do not leak, so they are left as-is.
             _sshProfileAllowlist = null;
             _actionExecutor = null; // closes over the window too — same pinning reason
+            _paneObserver = null;
             _windowlessSource = null; // so does its shownHere
 
             // The sweep that would put the windowless light out stops with the endpoint. Nobody is told: a stopped
@@ -889,6 +894,7 @@ namespace Ntilde.AgentHost
                 return request.Method switch
                 {
                     AgentHostProtocol.Methods.ListSessions => await HandleListSessionsAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.ReadPaneMetadata => await HandleReadPaneMetadataAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.ReadScreen => await HandleReadScreenAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.ReadScrollback => await HandleReadScrollbackAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.GetSessionStatus => await HandleGetSessionStatusAsync(request, cancellationToken).ConfigureAwait(false),
@@ -898,6 +904,7 @@ namespace Ntilde.AgentHost
                     AgentHostProtocol.Methods.SendInput => await HandleSendInputAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.SpawnSession => await HandleSpawnSessionAsync(request).ConfigureAwait(false),
                     AgentHostProtocol.Methods.CloseSession => await HandleCloseSessionAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.ResizePane => await HandleResizePaneAsync(request, cancellationToken).ConfigureAwait(false),
                     _ => Error(request.Id, AgentHostProtocol.ErrorCodes.UnknownMethod, $"Unknown method '{request.Method}'."),
                 };
             }
@@ -1109,6 +1116,18 @@ namespace Ntilde.AgentHost
                     $"Unknown capture mode '{p.Mode}'. Use '{AgentHostProtocol.CaptureModes.Render}' (the default) or '{AgentHostProtocol.CaptureModes.Live}'.");
             }
 
+            if (p.PresentationTimeMs is < 0 or > AgentHostProtocol.MaxCapturePresentationTimeMs)
+            {
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest,
+                    $"presentationTimeMs must be between 0 and {AgentHostProtocol.MaxCapturePresentationTimeMs}.");
+            }
+            if (!CaptureSelectionValidation.WellFormed(p.SyntheticSelection) ||
+                (live && (p.PresentationTimeMs.HasValue || p.IncludeRenderDetails || p.SyntheticSelection is not null)))
+            {
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest,
+                    "Synthetic controls require valid viewport coordinates and mode 'render'.");
+            }
+
             double scale = p.Scale <= 0 ? 1.0 : Math.Min(p.Scale, AgentHostProtocol.MaxCaptureScale);
             int maxWidth = Math.Max(0, p.MaxWidth);
 
@@ -1120,6 +1139,9 @@ namespace Ntilde.AgentHost
                 }
                 return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'.");
             }
+
+            if (!CaptureSelectionValidation.FitsBuffer(p.SyntheticSelection, registration.Buffer))
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest, "syntheticSelection must fit the current viewport.");
 
             // Marks the pane's agent-access indicator (#339) for both modes. This
             // is the visibility surface a capture has: it rides the observe toggle
@@ -1133,6 +1155,7 @@ namespace Ntilde.AgentHost
             int cols;
             int rows;
             bool downscaled;
+            CaptureRenderDetails? renderDetails = null;
 
             if (live)
             {
@@ -1183,7 +1206,8 @@ namespace Ntilde.AgentHost
             }
             else
             {
-                if (!registration.TryCapturePng(maxWidth, scale, out var capture, out var captureError))
+                if (!registration.TryCapturePng(maxWidth, scale, out var capture, out var captureError,
+                    new AgentCaptureOptions(p.PresentationTimeMs, p.IncludeRenderDetails, p.SyntheticSelection)))
                 {
                     var message = captureError == AgentCaptureError.TooLarge
                         ? $"This pane would render larger than the {AgentHostProtocol.MaxCapturePixels:N0}-pixel per-capture budget at scale {scale:0.##}. Lower the scale, make the window smaller, or raise the font size."
@@ -1197,9 +1221,11 @@ namespace Ntilde.AgentHost
                 cols = capture.Cols;
                 rows = capture.Rows;
                 downscaled = capture.Downscaled;
+                renderDetails = capture.RenderDetails;
             }
 
-            return CaptureResult(request, png, imageWidth, imageHeight, cols, rows, downscaled, live, scale, p.Inline);
+            return CaptureResult(request, png, imageWidth, imageHeight, cols, rows, downscaled, live, scale, p.Inline,
+                p.PresentationTimeMs, renderDetails, p.SyntheticSelection);
         }
 
         /// <summary>
@@ -1208,7 +1234,8 @@ namespace Ntilde.AgentHost
         /// </summary>
         private AgentHostResponse CaptureResult(
             AgentHostRequest request, byte[] png, int imageWidth, int imageHeight, int cols, int rows, bool downscaled,
-            bool live, double scale, bool inlineRequested)
+            bool live, double scale, bool inlineRequested,
+            long? presentationTimeMs = null, CaptureRenderDetails? renderDetails = null, CaptureSelection? syntheticSelection = null)
         {
             string filePath;
             try
@@ -1241,6 +1268,9 @@ namespace Ntilde.AgentHost
                 Scale = scale,
                 PngBase64 = inlineRequested && inlineFits ? Convert.ToBase64String(png) : null,
                 InlineOmitted = inlineRequested && !inlineFits,
+                PresentationTimeMs = presentationTimeMs,
+                RenderDetails = renderDetails,
+                SyntheticSelection = syntheticSelection,
             };
             return Ok(request.Id, JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.CaptureScreenResult));
         }
@@ -1404,6 +1434,70 @@ namespace Ntilde.AgentHost
                 Ok(request.Id, JsonSerializer.SerializeToElement(dto, AgentHostJsonContext.Default.SpawnSessionResult)));
         }
 
+        /// <summary>Validate and journal dispatched resize attempts; only observed App facts become a result.</summary>
+        private async Task<AgentHostResponse> HandleResizePaneAsync(AgentHostRequest request, CancellationToken cancellationToken)
+        {
+            ResizePaneParams? p;
+            try { p = DeserializeParams(request, AgentHostJsonContext.Default.ResizePaneParams); }
+            catch (JsonException) { p = null; }
+            if (p == null || p.Rows < 1 || p.Rows > AgentHostProtocol.MaxResizeRows || p.Cols < 1 || p.Cols > AgentHostProtocol.MaxResizeCols)
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p?.PaneId, "pane",
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest,
+                        "resizePane requires a paneId and rows/cols within the visible-pane resize limits."));
+            }
+            if (!_actEnabled)
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, "pane",
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.ActDisabled,
+                        "Acting is disabled. Enable Settings → Agent access (observe) → Agent access (act), then retry."));
+            }
+            if (!_registry.TryGet(p.PaneId, out var registration))
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, "pane",
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, "No visible pane has the requested paneId."));
+            }
+            if (!string.Equals(registration.Kind, "local", StringComparison.Ordinal))
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName,
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.ResizeUnavailable, "Only a visible direct local pane can resize its App window."));
+            }
+            var executor = _actionExecutor;
+            if (executor == null)
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName,
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.ActUnavailable, "The App resize executor is not available."));
+            }
+            AgentPaneResizeResult? observed;
+            try { observed = await executor.ResizePaneAsync(p.PaneId, p.Cols, p.Rows, cancellationToken).ConfigureAwait(false); }
+            catch (OperationCanceledException)
+            {
+                _journal.Record(AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName, "cancelled");
+                throw;
+            }
+            catch (Exception)
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName,
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.Internal, "The App could not observe the resize result."));
+            }
+            if (observed is not { Rows: > 0, Cols: > 0 } actual)
+            {
+                return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName,
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.ResizeUnavailable,
+                        "The pane must be the single visible direct local pane in a resizable normal window."));
+            }
+            TryNoteWrote(registration, AgentHostProtocol.Methods.ResizePane);
+            var result = new ResizePaneResult
+            {
+                Rows = actual.Rows,
+                Cols = actual.Cols,
+                LayoutSettled = actual.LayoutSettled,
+                Exact = actual.LayoutSettled && actual.Rows == p.Rows && actual.Cols == p.Cols,
+            };
+            return Journaled(request, AgentHostProtocol.Methods.ResizePane, p.PaneId, registration.ProfileName,
+                Ok(request.Id, JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.ResizePaneResult)));
+        }
+
         private async Task<AgentHostResponse> HandleCloseSessionAsync(AgentHostRequest request, CancellationToken cancellationToken)
         {
             CloseSessionParams? p;
@@ -1514,6 +1608,42 @@ namespace Ntilde.AgentHost
             return Ok(request.Id, JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.ListSessionsResult));
         }
 
+        private async Task<AgentHostResponse> HandleReadPaneMetadataAsync(AgentHostRequest request, CancellationToken cancellationToken)
+        {
+            var p = DeserializeParams(request, AgentHostJsonContext.Default.ReadPaneMetadataParams);
+            if (p == null || p.PaneId == Guid.Empty)
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest, "readPaneMetadata requires a nonempty paneId.");
+            if (!_registry.TryGet(p.PaneId, out var registration))
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, "No attached pane has that identity.");
+            var observer = _paneObserver;
+            var session = registration.ObservationSession;
+            if (observer == null || session == null)
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.PaneMetadataUnavailable, "A complete current UI observation is unavailable.");
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(TimeSpan.FromSeconds(2));
+            PaneMetadataResult? observed;
+            try
+            {
+                observed = await observer.ReadPaneMetadataAsync(registration, deadline.Token).WaitAsync(deadline.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.PaneMetadataUnavailable, "The UI observation was cancelled or exceeded its deadline.");
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception)
+            {
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.PaneMetadataUnavailable, "A complete current UI observation is unavailable.");
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            if (observed == null || observed.PaneId != p.PaneId || !ReferenceEquals(observer, _paneObserver)
+                || !_registry.TryGet(p.PaneId, out var current) || !ReferenceEquals(current, registration)
+                || !ReferenceEquals(session, registration.ObservationSession))
+                return Error(request.Id, AgentHostProtocol.ErrorCodes.PaneMetadataUnavailable, "The pane identity or observation is no longer current.");
+            TryNoteRead(registration);
+            return Ok(request.Id, JsonSerializer.SerializeToElement(observed, AgentHostJsonContext.Default.PaneMetadataResult));
+        }
+
         private async Task<AgentHostResponse> HandleReadScreenAsync(AgentHostRequest request, CancellationToken cancellationToken)
         {
             var p = DeserializeParams(request, AgentHostJsonContext.Default.ReadScreenParams);
@@ -1530,8 +1660,9 @@ namespace Ntilde.AgentHost
                 return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'.");
             }
 
-            TryNoteRead(registration);
-            return Ok(request.Id, ScreenResult(registration.Buffer, p.IncludeAttributes));
+            var response = ScreenResult(request.Id, registration.Buffer, p);
+            if (response.Error == null) TryNoteRead(registration);
+            return response;
         }
 
         /// <summary>
@@ -1539,15 +1670,46 @@ namespace Ntilde.AgentHost
         /// session's screen was imported into. Read under the buffer's read lock, through the deterministic
         /// <see cref="BufferSnapshot"/> path.
         /// </summary>
-        private static JsonElement ScreenResult(TerminalBuffer buffer, bool includeAttributes)
+        private static AgentHostResponse ScreenResult(long requestId, TerminalBuffer buffer, ReadScreenParams parameters, bool completeLocalHistory = true)
         {
             BufferSnapshot snapshot;
+            CellDetailRunDto[]? details = null;
+            CursorModeDto? cursorMode = null;
+            BufferStateDto? bufferState = null;
             bool cursorVisible;
             int rows, cols;
             buffer.Lock.EnterReadLock();
             try
             {
-                snapshot = BufferSnapshot.Capture(buffer, includeAttributes);
+                if (parameters.IncludeCellDetails && !CellDetailSnapshot.TryCapture(buffer, out details, parameters.IncludeOverline))
+                {
+                    return Error(requestId, AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable,
+                        $"Complete cell details require at most {AgentHostProtocol.MaxCellDetailCells} cells and {AgentHostProtocol.MaxCellDetailRuns} runs.");
+                }
+                snapshot = BufferSnapshot.Capture(buffer, parameters.IncludeAttributes);
+                if (parameters.IncludeCursorMode)
+                {
+                    cursorMode = new CursorModeDto
+                    {
+                        Style = (int)buffer.Modes.CursorStyle,
+                        Blink = buffer.Modes.IsCursorBlinkEnabled,
+                        IsDefault = buffer.Modes.CursorStyleIsDefault,
+                    };
+                }
+                if (parameters.IncludeBufferState)
+                {
+                    bufferState = new BufferStateDto
+                    {
+                        ScrollTop = buffer.ScrollTop,
+                        ScrollBottom = buffer.ScrollBottom,
+                        OriginMode = buffer.Modes.IsOriginMode,
+                        AutoWrap = buffer.Modes.IsAutoWrapMode,
+                        InsertMode = buffer.Modes.IsInsertMode,
+                        PendingWrap = buffer.IsPendingWrap,
+                        AlternateScreen = buffer.IsAltScreenActive,
+                        ScrollbackLines = completeLocalHistory ? buffer.Scrollback.Count : null,
+                    };
+                }
                 cursorVisible = buffer.IsCursorVisible;
                 rows = buffer.Rows;
                 cols = buffer.Cols;
@@ -1561,13 +1723,16 @@ namespace Ntilde.AgentHost
             {
                 Lines = snapshot.Lines,
                 AttributeLines = snapshot.AttributeLines,
+                CellDetails = details,
+                CursorMode = cursorMode,
+                BufferState = bufferState,
                 CursorRow = snapshot.CursorRow,
                 CursorCol = snapshot.CursorCol,
                 CursorVisible = cursorVisible,
                 Rows = rows,
                 Cols = cols,
             };
-            return JsonSerializer.SerializeToElement(dto, AgentHostJsonContext.Default.ScreenSnapshotDto);
+            return Ok(requestId, JsonSerializer.SerializeToElement(dto, AgentHostJsonContext.Default.ScreenSnapshotDto));
         }
 
         private async Task<AgentHostResponse> HandleReadScrollbackAsync(AgentHostRequest request, CancellationToken cancellationToken)
@@ -1693,8 +1858,12 @@ namespace Ntilde.AgentHost
         {
             var screen = await source.ReadScreenAsync(p.PaneId, 0, cancellationToken).ConfigureAwait(false);
             var (buffer, failure) = ImportScreen(request.Id, p.PaneId, AgentHostProtocol.Methods.ReadScreen, screen);
-            return WindowlessRead(request, AgentHostProtocol.Methods.ReadScreen, p.PaneId, screen,
-                failure ?? Ok(request.Id, ScreenResult(buffer!, p.IncludeAttributes)));
+            if (failure == null)
+            {
+                ArgumentNullException.ThrowIfNull(buffer);
+                failure = ScreenResult(request.Id, buffer, p, completeLocalHistory: false);
+            }
+            return WindowlessRead(request, AgentHostProtocol.Methods.ReadScreen, p.PaneId, screen, failure);
         }
 
         private async Task<AgentHostResponse> WindowlessScrollbackAsync(
@@ -1782,12 +1951,18 @@ namespace Ntilde.AgentHost
 
             var screen = await source.ReadScreenAsync(p.PaneId, 0, cancellationToken).ConfigureAwait(false);
             var (buffer, failure) = ImportScreen(request.Id, p.PaneId, method, screen, render.Theme);
-            if (failure != null)
+            if (failure != null || buffer is null)
             {
-                return WindowlessRead(request, method, p.PaneId, screen, failure);
+                return WindowlessRead(request, method, p.PaneId, screen, failure ?? Error(request.Id,
+                    AgentHostProtocol.ErrorCodes.CaptureUnavailable, "This session's screen could not be imported for capture."));
             }
 
-            if (!AgentSessionRegistration.TryRenderPng(buffer!, render.Parameters, maxWidth, scale, out var capture, out var captureError))
+            if (!CaptureSelectionValidation.FitsBuffer(p.SyntheticSelection, buffer))
+                return WindowlessRead(request, method, p.PaneId, screen,
+                    Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest, "syntheticSelection must fit the imported viewport."));
+
+            if (!AgentSessionRegistration.TryRenderPng(buffer, render.Parameters, maxWidth, scale, out var capture, out var captureError,
+                new AgentCaptureOptions(p.PresentationTimeMs, p.IncludeRenderDetails, p.SyntheticSelection)))
             {
                 var message = captureError == AgentCaptureError.TooLarge
                     ? $"This session would render larger than the {AgentHostProtocol.MaxCapturePixels:N0}-pixel per-capture budget at scale {scale:0.##}. Lower the scale."
@@ -1797,7 +1972,7 @@ namespace Ntilde.AgentHost
 
             return WindowlessRead(request, method, p.PaneId, screen, CaptureResult(
                 request, capture.Png, capture.Width, capture.Height, capture.Cols, capture.Rows, capture.Downscaled,
-                live: false, scale, p.Inline));
+                live: false, scale, p.Inline, p.PresentationTimeMs, capture.RenderDetails, p.SyntheticSelection));
         }
 
         /// <summary>

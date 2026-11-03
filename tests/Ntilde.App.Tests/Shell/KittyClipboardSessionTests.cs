@@ -20,6 +20,7 @@ public class KittyClipboardSessionTests
         public bool AllowRead;
         public ClipboardReadConsent? Consent;
         public ClipboardReadRequest? LastRequest;
+        public IReadOnlyList<string>? RequestedTypes;
         public int Prompts, Reads, Lists, Writes, ReadThread;
         public Exception? Failure;
         public Task? ProviderWait;
@@ -28,8 +29,9 @@ public class KittyClipboardSessionTests
         public int SnapshotsDisposed;
         public Func<CancellationToken, Task<bool>>? Confirmation;
         public Dictionary<string, byte[]> Values = new() { ["text/plain"] = Encoding.UTF8.GetBytes("private text"), ["image/png"] = new byte[8193] };
-        public async Task<IKittyClipboardSnapshot> OpenReadAsync()
+        public async Task<IKittyClipboardSnapshot> OpenReadAsync(IReadOnlyList<string>? requestedTypes = null)
         {
+            RequestedTypes = requestedTypes;
             Lists++;
             if (ProviderWait != null) await ProviderWait;
             return new Snapshot(this, Values.ToDictionary(p => p.Key, p => p.Value));
@@ -75,7 +77,7 @@ public class KittyClipboardSessionTests
         public readonly Queue<Func<Task>> Work = new();
         public bool WriteAllowed = true, Alive = true;
         public readonly KittyClipboardSession Session;
-        public Harness(TimeSpan? replyTimeout = null) => Session = new(Clipboard, reply => TrySendOverride?.Invoke(reply) ?? Record(reply),
+        public Harness(TimeSpan? replyTimeout = null, IKittyClipboard? primary = null) => Session = new(new ClipboardLocations(Clipboard, primary), reply => TrySendOverride?.Invoke(reply) ?? Record(reply),
             work => { Work.Enqueue(work); return Task.CompletedTask; }, () => WriteAllowed, () => Alive, Clock,
             replyPolicy: new ClipboardReplyPolicy((delay, cancellation) => DelayOverride?.Invoke(delay, cancellation) ?? Task.Delay(delay, cancellation), replyTimeout, work => { Work.Enqueue(work); return Task.CompletedTask; }));
         public bool Record(string reply)
@@ -92,6 +94,85 @@ public class KittyClipboardSessionTests
     private static string B64(string value) => KittyClipboardPacket.Encode(value);
     private static string Data(string mime, string value) => "type=wdata:mime=" + B64(mime) + ";" + value;
     private static string Read(string mime) => "type=read:id=request;" + B64(mime);
+
+    [Fact]
+    public async Task Primary_listing_opens_a_metadata_scope_and_approved_read_requests_only_its_MIMEs()
+    {
+        var primary = new FakeClipboard();
+        using var h = new Harness(primary: primary);
+        h.Send("type=read:loc=primary;" + B64(".")); await h.Drain();
+        Assert.NotNull(primary.RequestedTypes); Assert.Empty(primary.RequestedTypes);
+        Assert.Equal(0, primary.Reads); Assert.Equal(0, primary.Prompts);
+        primary.AllowRead = true;
+        h.Send("type=read:loc=primary;" + B64("text/plain")); await h.Drain();
+        Assert.Equal(new[] { "text/plain" }, primary.RequestedTypes);
+        Assert.Equal(1, primary.Reads); Assert.Equal(1, primary.Prompts);
+    }
+
+    [Fact]
+    public async Task Primary_write_inherits_initial_location_across_chunks_and_aliases()
+    {
+        var primary = new FakeClipboard();
+        using var h = new Harness(primary: primary);
+        h.Send("type=write:loc=primary:id=primary");
+        h.Send(Data("application/octet-stream", "AAEC/w=="));
+        h.Send("type=walias:mime=" + B64("application/octet-stream") + ";" + B64("application/x-alias"));
+        h.Send("type=wdata"); await h.Drain();
+        Assert.Contains("status=DONE:id=primary", Assert.Single(h.Replies));
+        Assert.Equal(new byte[] { 0, 1, 2, 255 }, primary.Values["application/x-alias"]);
+        Assert.Equal(1, primary.Writes); Assert.Equal(0, h.Clipboard.Writes);
+        h.Send("type=write:loc=primary"); h.Send("type=wdata"); await h.Drain();
+        Assert.Empty(primary.Values); Assert.Equal(2, primary.Writes); Assert.Equal(0, h.Clipboard.Writes);
+        h.WriteAllowed = false; h.Send("type=write:loc=primary"); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]); Assert.Equal(2, primary.Writes);
+    }
+
+    [Fact]
+    public async Task Remembered_primary_and_clipboard_read_permissions_are_separate_and_show_the_location()
+    {
+        var primary = new FakeClipboard { Consent = ClipboardReadConsent.AllowSession };
+        using var h = new Harness(primary: primary);
+        string read = NamedRead().Replace("type=read", "type=read:loc=primary", StringComparison.Ordinal);
+        h.Send(read); await h.Drain();
+        Assert.True(primary.LastRequest!.Primary);
+        h.Send(read); await h.Drain(); Assert.Equal(1, primary.Prompts);
+        h.Send(NamedRead()); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]); Assert.Equal(1, h.Clipboard.Prompts);
+        Assert.False(h.Clipboard.LastRequest!.Primary);
+        h.Session.Reset(); primary.Consent = ClipboardReadConsent.Deny;
+        h.Send(read); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]); Assert.Equal(2, primary.Prompts);
+    }
+
+    [Fact]
+    public async Task Default_clipboard_paste_token_never_authorizes_or_supplies_primary_data()
+    {
+        var primary = new FakeClipboard();
+        using var h = new Harness(primary: primary);
+        await h.Session.NotifyPasteAsync();
+        string token = h.Replies[0].Split(":pw=")[1][..^2]; h.Replies.Clear();
+        h.Send("type=read:loc=primary:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain")); await h.Drain();
+        Assert.Contains("status=EPERM", Assert.Single(h.Replies)); Assert.Equal(0, primary.Reads);
+        Assert.Equal(1, primary.Prompts);
+        h.Replies.Clear();
+        h.Send("type=read:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain")); await h.Drain();
+        Assert.Contains("status=DONE", h.Replies[^1]); Assert.Equal(0, h.Clipboard.Prompts);
+    }
+
+    [Theory]
+    [InlineData(":0", true)]
+    [InlineData(":123.1", true)]
+    [InlineData("unix:0", true)]
+    [InlineData("unix:1.2", true)]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData("remote:0", false)]
+    [InlineData("localhost:10.0", false)]
+    [InlineData(":", false)]
+    [InlineData(":0.", false)]
+    [InlineData(":0.1.2", false)]
+    public void Primary_backend_accepts_only_local_X11_displays(string? display, bool expected) =>
+        Assert.Equal(expected, XcbPrimaryClipboard.IsLocalDisplay(display));
 
     private static string NamedRead(string name = "Editor", string password = "per-launch random password", string mime = "text/plain") =>
         "type=read:name=" + B64(name) + ":pw=" + B64(password) + ";" + B64(mime);

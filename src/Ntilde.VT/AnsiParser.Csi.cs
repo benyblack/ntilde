@@ -416,21 +416,21 @@ namespace Ntilde.VT
                 case 'X': // Erase Character (ECH)
                     if (bare)
                     {
-                        int count = argCount > 0 ? validArgs[0] : 1;
+                        int count = GetCsiParamOrDefaultOne(validArgs, 0);
                         _buffer.EraseCharacters(count);
                     }
                     break;
                 case 'L': // Insert Line (IL)
                     if (bare)
                     {
-                        int linesToInsert = argCount > 0 ? validArgs[0] : 1;
+                        int linesToInsert = GetCsiParamOrDefaultOne(validArgs, 0);
                         _buffer.InsertLines(linesToInsert);
                     }
                     break;
                 case 'M': // Delete Line (DL)
                     if (bare)
                     {
-                        int linesToDelete = argCount > 0 ? validArgs[0] : 1;
+                        int linesToDelete = GetCsiParamOrDefaultOne(validArgs, 0);
                         _buffer.DeleteLines(linesToDelete);
                     }
                     break;
@@ -989,9 +989,9 @@ namespace Ntilde.VT
                         if (enable) _buffer.EnterAltScreen(clearAlt: false, saveCursorForExit: false);
                         else SwitchToMainScreen();
                         break;
-                    case 1047:  // Alternate screen
-                        if (enable) _buffer.EnterAltScreen(clearAlt: true, saveCursorForExit: false);
-                        else SwitchToMainScreen();
+                    case 1047:  // Alternate screen: retain on entry, clear on exit (xterm).
+                        if (enable) _buffer.EnterAltScreen(clearAlt: false, saveCursorForExit: false);
+                        else SwitchToMainScreen(clearAltBeforeExit: true);
                         break;
                     case 1048:  // Save/restore cursor, the same banks as DECSC/DECRC
                         if (enable) SaveCursor();

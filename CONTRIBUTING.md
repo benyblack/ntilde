@@ -397,13 +397,21 @@ scripts/build.sh test tests/Ntilde.App.Tests --filter "Lane!=PlatformBoot"
 scripts/build.sh test tests/Ntilde.App.Tests --filter "Lane=PlatformBoot"
 ```
 
-Three traps worth knowing:
+Four traps worth knowing:
 
 - **Real-shell PTY tests share one xUnit collection.** Adding a new one outside
   that collection reintroduces a thread-starvation hang. Follow the existing
   pattern.
 - **A build that fails reads as zero warnings.** Never take a diagnostic or
   coverage number from a red build.
+- **Don't wait a few seconds for something that must happen.** CI runs every
+  test class in parallel on 4-core runners, where a pool item or a thread can
+  go seconds without CPU time, so a 2 s wait for a session to exit is a guess
+  about the scheduler, and it lost twice (#702, #728). Give such waits a long
+  ceiling (30 s): they return as soon as the condition holds, so only a broken
+  run pays. A wait that must be short, such as a negative check, says why in a
+  `// Short on purpose:` comment. `ShortTestWaitTests` in Architecture.Tests
+  fails on any wait under 5 s without one.
 - **Run App.Tests with `--blame-hang-timeout 5m`**, and never two runs at once
   against the same results directory — concurrent runs corrupt the totals, and
   without the blame timeout an #81 teardown hang looks like an idle terminal.

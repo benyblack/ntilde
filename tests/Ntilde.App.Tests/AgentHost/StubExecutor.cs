@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Threading;
 using Ntilde.AgentHost;
 
 namespace Ntilde.AppTests.AgentHost;
@@ -32,6 +33,17 @@ internal sealed class StubExecutor : IAgentActionExecutor
     {
         LastClosePane = paneId;
         return Task.FromResult(OnClose?.Invoke(paneId) ?? false);
+    }
+
+    public Func<Guid, int, int, CancellationToken, Task<AgentPaneResizeResult?>>? OnResize;
+    public (Guid PaneId, int Cols, int Rows)? LastResize;
+    public int ResizeCalls;
+
+    public Task<AgentPaneResizeResult?> ResizePaneAsync(Guid paneId, int cols, int rows, CancellationToken cancellationToken)
+    {
+        ResizeCalls++;
+        LastResize = (paneId, cols, rows);
+        return OnResize?.Invoke(paneId, cols, rows, cancellationToken) ?? Task.FromResult<AgentPaneResizeResult?>(null);
     }
 
     public Guid? LastLiveCapturePane;

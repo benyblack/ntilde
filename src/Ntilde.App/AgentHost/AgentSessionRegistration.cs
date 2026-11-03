@@ -1,9 +1,18 @@
 using System;
 using Ntilde.Shell;
+using Ntilde.AgentHost.Contracts;
 using Ntilde.VT;
 
 namespace Ntilde.AgentHost
 {
+    /// <summary>Additive controls for an offscreen capture, independent of the live clock.</summary>
+    public readonly record struct AgentCaptureOptions(long? PresentationTimeMs = null, bool IncludeRenderDetails = false, CaptureSelection? SyntheticSelection = null)
+    {
+        // Per-call seam for deterministic concurrent-resize regressions; never set by the wire handler.
+        internal Action? BeforeRenderForTest { get; init; }
+        internal Action? BeforeDrawForTest { get; init; }
+    }
+
     /// <summary>A rendered pane screenshot (A5), as returned by <see cref="AgentSessionRegistration.TryCapturePng"/>.</summary>
     public readonly record struct AgentCaptureInfo(
         byte[] Png,
@@ -12,7 +21,8 @@ namespace Ntilde.AgentHost
         int Cols,
         int Rows,
         bool Downscaled,
-        double Scale);
+        double Scale,
+        CaptureRenderDetails? RenderDetails = null);
 
     /// <summary>Why a capture could not be produced; mapped to a protocol error code by the endpoint.</summary>
     public enum AgentCaptureError
@@ -169,6 +179,9 @@ namespace Ntilde.AgentHost
         // flight-recorder surface (ITerminalFlightRecorder) without touching
         // the pane; the sweep still uses only the lifecycle members.
         private volatile Ntilde.Pty.ITerminalSession? _session;
+
+        /// <summary>Identity-only lease for bounded read-only UI observations.</summary>
+        internal Ntilde.Pty.ITerminalSession? ObservationSession => _session;
 
         // Desired flight-recording state pushed by the endpoint (A4). Kept on
         // the registration because the pane may publish the session *after*
@@ -412,7 +425,8 @@ namespace Ntilde.AgentHost
         /// Neither is taken from the user's monitor, so a capture cannot vary with
         /// the machine it runs on.
         /// </summary>
-        public bool TryCapturePng(int maxWidth, double scale, out AgentCaptureInfo info, out AgentCaptureError error)
+        public bool TryCapturePng(int maxWidth, double scale, out AgentCaptureInfo info, out AgentCaptureError error,
+            AgentCaptureOptions captureOptions = default)
         {
             if (RenderParameters is not { } parameters || !parameters.IsUsable)
             {
@@ -421,7 +435,7 @@ namespace Ntilde.AgentHost
                 return false;
             }
 
-            return TryRenderPng(Buffer, parameters, maxWidth, scale, out info, out error);
+            return TryRenderPng(Buffer, parameters, maxWidth, scale, out info, out error, captureOptions);
         }
 
         /// <summary>
@@ -431,7 +445,8 @@ namespace Ntilde.AgentHost
         /// </summary>
         internal static bool TryRenderPng(
             TerminalBuffer buffer, PaneRenderParameters parameters, int maxWidth, double scale,
-            out AgentCaptureInfo info, out AgentCaptureError error)
+            out AgentCaptureInfo info, out AgentCaptureError error,
+            AgentCaptureOptions captureOptions = default)
         {
             info = default;
             error = AgentCaptureError.Unavailable;
@@ -442,47 +457,47 @@ namespace Ntilde.AgentHost
             }
 
             int cols, rows;
-            bool cursorVisible;
             buffer.Lock.EnterReadLock();
             try
             {
                 cols = buffer.Cols;
                 rows = buffer.Rows;
-                cursorVisible = buffer.Modes.IsCursorVisible;
             }
             finally
             {
                 buffer.Lock.ExitReadLock();
             }
 
-            if (cols <= 0 || rows <= 0)
+            if (cols <= 0 || rows <= 0 || !CaptureSelectionValidation.FitsGrid(captureOptions.SyntheticSelection, rows, cols))
             {
                 return false;
             }
 
-            // Cell metrics and grid size come from different places (the pane's
-            // last publish vs. the buffer just now), so a capture that lands
-            // between a font change and the resize it triggers pairs the new cell
-            // size with the pre-resize row/column count. That is not a torn image:
-            // the draw operation lays out exactly these rows/cols at exactly these
-            // metrics, so the content fills the canvas either way — it is the same
-            // one-frame transition the live control paints in that same window,
-            // which is what a screenshot of a resizing pane should look like.
-            var width = (int)Math.Ceiling(cols * (double)parameters.Metrics.CellWidth);
-            var height = (int)Math.Ceiling(rows * (double)parameters.Metrics.CellHeight);
-            if (width <= 0 || height <= 0)
+            // The draw snaps each cell independently and adds its pixel origin. Multiplying
+            // fractional DIP metrics by the grid count clips the right/bottom after snapping.
+            var effectiveScale = scale <= 0 ? 1.0 : Math.Min(scale, Contracts.AgentHostProtocol.MaxCaptureScale);
+            var grid = TerminalDrawOperation.CreatePixelGrid(parameters.Metrics, effectiveScale);
+            long gridWidth = grid.OriginXPx + (long)cols * grid.CellWidthPx;
+            long gridHeight = grid.OriginYPx + (long)rows * grid.CellHeightPx;
+            const long pixelBudget = Contracts.AgentHostProtocol.MaxCapturePixels;
+            if (gridWidth > pixelBudget || gridHeight > pixelBudget || gridWidth * gridHeight > pixelBudget)
             {
+                error = AgentCaptureError.TooLarge;
                 return false;
             }
-            // The budget guards the bitmap that actually gets allocated, so it has
-            // to be measured in device pixels. width/height above are DIPs, and the
-            // renderer multiplies both by the scale — so checking DIPs would
-            // under-count by scale squared and let a 3x capture allocate nine times
-            // the budget. Rounded the way the renderer rounds.
-            var effectiveScale = scale <= 0 ? 1.0 : Math.Min(scale, Contracts.AgentHostProtocol.MaxCaptureScale);
+            // Capture accepts integer DIP bounds. Round upward so every snapped device
+            // pixel fits, then budget the exact bitmap size the renderer will allocate.
+            double widthDip = Math.Ceiling(gridWidth / effectiveScale);
+            double heightDip = Math.Ceiling(gridHeight / effectiveScale);
+            if (widthDip > int.MaxValue || heightDip > int.MaxValue)
+            {
+                error = AgentCaptureError.TooLarge;
+                return false;
+            }
+            int width = (int)widthDip, height = (int)heightDip;
             var deviceWidth = (long)Math.Round(width * effectiveScale, MidpointRounding.AwayFromZero);
             var deviceHeight = (long)Math.Round(height * effectiveScale, MidpointRounding.AwayFromZero);
-            if (deviceWidth * deviceHeight > Contracts.AgentHostProtocol.MaxCapturePixels)
+            if (deviceWidth * deviceHeight > pixelBudget)
             {
                 error = AgentCaptureError.TooLarge;
                 return false;
@@ -502,11 +517,20 @@ namespace Ntilde.AgentHost
                 EnableComplexShaping = parameters.EnableComplexShaping,
                 MinimumContrast = parameters.MinimumContrast,
                 PreferredCursorStyle = parameters.PreferredCursorStyle,
+                PreferredCursorBlink = parameters.PreferredCursorBlink,
+                PresentationTimeMs = captureOptions.PresentationTimeMs,
+                BeforeDrawForTest = captureOptions.BeforeDrawForTest,
+                SelectionRelativeToViewport = captureOptions.SyntheticSelection is not null,
+                Selection = captureOptions.SyntheticSelection is { } selected ? new SelectionState
+                {
+                    IsActive = true,
+                    Start = (selected.StartRow, selected.StartCol),
+                    End = (selected.EndRow, selected.EndCol),
+                } : null,
 
-                // Follows the buffer's cursor mode, never the control's blink
-                // phase or focus: a blinking cursor would make consecutive
-                // captures of an idle session disagree.
-                HideCursor = !cursorVisible,
+                // Visibility/shape/blink facts come from the draw's own snapshot.
+                // No live focus or clock is read; absent synthetic time keeps visible phases.
+                HideCursor = false,
 
                 // The caller's scale, not the monitor's. Worth stating plainly
                 // because passing anything but 1.0 here was broken until #346:
@@ -534,7 +558,16 @@ namespace Ntilde.AgentHost
                 using var glyphCache = new Ntilde.Rendering.GlyphCache();
                 options = options with { GlyphCache = glyphCache };
 
-                using var bitmap = TerminalSnapshotRenderer.Capture(buffer, parameters.Metrics, width, height, options);
+                captureOptions.BeforeRenderForTest?.Invoke();
+                using var bitmap = TerminalSnapshotRenderer.CaptureWithContext(buffer, parameters.Metrics, width, height,
+                    options, captureOptions.IncludeRenderDetails, out var captureFrame);
+                if (captureFrame.Cols != cols || captureFrame.Rows != rows ||
+                    captureFrame.BufferCols != cols || captureFrame.BufferRows != rows)
+                {
+                    // The bitmap was sized before a concurrent resize. Retry rather than
+                    // presenting a cropped/expanded viewport as a qualified full-grid frame.
+                    return false;
+                }
                 using var downscaled = TerminalSnapshotRenderer.DownscaleToWidth(bitmap, maxWidth);
                 var final = downscaled ?? bitmap;
                 info = new AgentCaptureInfo(
@@ -544,7 +577,8 @@ namespace Ntilde.AgentHost
                     cols,
                     rows,
                     Downscaled: downscaled != null,
-                    Scale: effectiveScale);
+                    Scale: effectiveScale,
+                    RenderDetails: captureFrame.Context == null ? null : AgentCaptureDetails.From(captureFrame.Context));
                 return true;
             }
             catch (Exception ex)

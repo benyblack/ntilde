@@ -21,6 +21,7 @@ public sealed partial class TerminalDrawOperation
         public required SKTypeface Primary { get; init; }
         public bool DrawBackgrounds { get; init; }
         public bool HasVisibleText { get; init; }
+        public bool SuppressInk { get; init; }
         public SKColor? ForegroundOverride { get; init; }
         public SKColor? OverlayFill { get; init; }
     }
@@ -50,6 +51,7 @@ public sealed partial class TerminalDrawOperation
                 _bgFillPaint.Color = bg;
                 canvas.DrawRect(left, rowTop, right - left, rowHeight, _bgFillPaint);
             }
+            if (context.SuppressInk) return block.Width;
             float fraction = block.Options.Fraction;
             float heightScale = block.Height * fraction;
             float width = (right - left) * fraction;
@@ -96,14 +98,20 @@ public sealed partial class TerminalDrawOperation
         _decoStrokePaint.Style = SKPaintStyle.Stroke;
         float stroke = Math.Max(1f, rowHeight * 0.06f);
         _decoStrokePaint.StrokeWidth = stroke;
-        if (cell.IsUnderline && (cell.Underline != null || context.HasVisibleText))
+        bool styledUnderline = cell.Underline is { HasColor: true } || cell.Underline?.Style is > UnderlineStyle.Single;
+        if (cell.IsUnderline && (styledUnderline || context.HasVisibleText))
         {
             if (cell.Underline is { HasColor: true } underline)
                 _decoStrokePaint.Color = ResolveUnderlineColor(underline, context.Theme);
-            float start = cell.Underline == null ? 0 : geometry.BlockLeft;
-            float width = cell.Underline == null ? geometry.TextWidth : geometry.BlockWidth;
+            float start = styledUnderline ? geometry.BlockLeft : 0;
+            float width = styledUnderline ? geometry.BlockWidth : geometry.TextWidth;
             DrawUnderline(canvas, cell.Underline?.Style ?? UnderlineStyle.Single, start, start + width,
                 Math.Min(rowHeight - stroke, baseline + stroke), rowHeight, stroke);
+        }
+        if (cell.Underline?.Overline == true)
+        {
+            _decoStrokePaint.Color = fg;
+            canvas.DrawLine(geometry.BlockLeft, stroke / 2, geometry.BlockLeft + geometry.BlockWidth, stroke / 2, _decoStrokePaint);
         }
         if (cell.IsStrikethrough)
         {

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Ntilde.VT;
+using Ntilde.Pty;
 using Ntilde.Rendering;
 
 namespace Ntilde.Shell
@@ -14,6 +15,19 @@ namespace Ntilde.Shell
     {
         public event Action<int, int>? Ready;
         public event Action<int, int>? OnResize;
+
+        /// <summary>UI thread: all session resize subscribers returned successfully; this is not kernel attestation.</summary>
+        internal event Action<int, int>? ResizeDispatchCompleted;
+        internal (int Cols, int Rows) LastCompletedResizeDispatch { get; private set; }
+
+        /// <summary>Only an unchanged callback target may publish successful delivery for this grid.</summary>
+        private void CompleteResizeDispatch(int cols, int rows, (ITerminalSession? Session, TerminalBuffer? Buffer) target)
+        {
+            if (!ReferenceEquals(_session, target.Session) || !ReferenceEquals(_buffer, target.Buffer)) return;
+            LastCompletedResizeDispatch = (cols, rows);
+            ResizeDispatchCompleted?.Invoke(cols, rows);
+        }
+
         private bool _isReady;
 
         // Discrete resize: the grid the buffer and the PTY were last actually told about, so a
@@ -230,6 +244,7 @@ namespace Ntilde.Shell
                     if (!_isReady)
                     {
                         _isReady = true;
+                        LastCompletedResizeDispatch = default; // Only the latest attempt may prove completion.
                         // No session is attached yet at first layout, so DefersBufferResizeToSession
                         // is still false here regardless of what the pane will set once it is ready
                         // (see Ready below); the initial grid always applies straight to the buffer.
@@ -238,11 +253,13 @@ namespace Ntilde.Shell
                         Ready?.Invoke(cols, rows);
 
                         // Also trigger initial PTY resize to sync with layout
+                        var resizeTarget = (_session, _buffer);
                         OnResize?.Invoke(cols, rows);
 
                         // This path dispatches inline rather than through the throttle, so it
                         // records the dispatch itself.
                         RecordGridSent(cols, rows);
+                        CompleteResizeDispatch(cols, rows, resizeTarget);
                     }
 
                     if (dimensionsChanged)
@@ -376,6 +393,7 @@ namespace Ntilde.Shell
             {
                 if (_pendingCols > 0 && _pendingRows > 0 && _buffer != null)
                 {
+                    LastCompletedResizeDispatch = default; // Repeated geometry cannot inherit an older success.
                     _lastPtyResizeTime = DateTime.UtcNow;
 
                     // CRITICAL ORDER: Resize buffer FIRST (synchronously, under lock)
@@ -397,7 +415,9 @@ namespace Ntilde.Shell
                     RecordGridSent(_pendingCols, _pendingRows);
 
                     ResetMouseMotionTracking(); // Issue #269: grid reflowed, cell coords are stale.
+                    var resizeTarget = (_session, _buffer);
                     OnResize?.Invoke(_pendingCols, _pendingRows);
+                    CompleteResizeDispatch(_pendingCols, _pendingRows, resizeTarget);
                     if (_pendingResizeStartedAt != DateTime.MinValue)
                     {
                         long latencyMs = (long)Math.Max(0, (DateTime.UtcNow - _pendingResizeStartedAt).TotalMilliseconds);

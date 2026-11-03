@@ -688,6 +688,7 @@ namespace Ntilde.VT
                 IsFaint = cursor.IsFaint,
                 IsItalic = cursor.IsItalic,
                 IsUnderline = cursor.IsUnderline,
+                IsOverline = cursor.IsOverline,
                 UnderlineStyle = (byte)cursor.UnderlineStyle,
                 UnderlineColor = cursor.UnderlineColor?.ToUint(),
                 UnderlineColorIndex = cursor.UnderlineColorIndex,
@@ -717,6 +718,7 @@ namespace Ntilde.VT
             target.IsFaint = sgr.IsFaint;
             target.IsItalic = sgr.IsItalic;
             target.IsUnderline = sgr.IsUnderline;
+            target.IsOverline = sgr.IsOverline;
             target.UnderlineStyle = (UnderlineStyle)sgr.UnderlineStyle;
             target.UnderlineColor = sgr.UnderlineColor is { } targetColor ? TermColor.FromUint(targetColor) : null;
             target.UnderlineColorIndex = sgr.UnderlineColorIndex;
@@ -738,6 +740,7 @@ namespace Ntilde.VT
             IsFaint = _isFaint,
             IsItalic = _isItalic,
             IsUnderline = _isUnderline,
+            IsOverline = IsOverline,
             UnderlineStyle = (byte)_state.UnderlineStyle,
             UnderlineColor = _state.UnderlineColor?.ToUint(),
             UnderlineColorIndex = _state.UnderlineColorIndex,
@@ -766,6 +769,7 @@ namespace Ntilde.VT
             _isFaint = sgr.IsFaint;
             _isItalic = sgr.IsItalic;
             _isUnderline = sgr.IsUnderline;
+            IsOverline = sgr.IsOverline;
             UnderlineStyle = (UnderlineStyle)sgr.UnderlineStyle;
             UnderlineColor = sgr.UnderlineColor is { } liveColor ? TermColor.FromUint(liveColor) : null;
             UnderlineColorIndex = sgr.UnderlineColorIndex;
@@ -1249,6 +1253,7 @@ namespace Ntilde.VT
                     Style = (byte)underline.Style,
                     Color = underline.Color?.ToUint(),
                     ColorIndex = underline.ColorIndex,
+                    Overline = underline.Overline,
                 });
                 return index;
             }
@@ -1267,7 +1272,7 @@ namespace Ntilde.VT
                 underlines[i] = CellUnderline.For(
                     (UnderlineStyle)entry.Style,
                     entry.Color is { } color ? TermColor.FromUint(color) : null,
-                    entry.ColorIndex);
+                    entry.ColorIndex, entry.Overline);
             }
 
             return underlines;

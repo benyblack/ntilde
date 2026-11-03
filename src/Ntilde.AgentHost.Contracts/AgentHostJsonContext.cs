@@ -17,10 +17,13 @@ namespace Ntilde.AgentHost.Contracts;
 [JsonSerializable(typeof(EndpointDescriptor))]
 [JsonSerializable(typeof(SessionInfo))]
 [JsonSerializable(typeof(ListSessionsResult))]
+[JsonSerializable(typeof(ReadPaneMetadataParams))]
+[JsonSerializable(typeof(PaneMetadataResult))]
 [JsonSerializable(typeof(ReadScreenParams))]
 [JsonSerializable(typeof(ScreenSnapshotDto))]
 [JsonSerializable(typeof(CaptureScreenParams))]
 [JsonSerializable(typeof(CaptureScreenResult))]
+[JsonSerializable(typeof(CaptureRenderDetails))]
 [JsonSerializable(typeof(ReadScrollbackParams))]
 [JsonSerializable(typeof(ReadScrollbackResult))]
 [JsonSerializable(typeof(GetSessionStatusParams))]
@@ -36,6 +39,8 @@ namespace Ntilde.AgentHost.Contracts;
 [JsonSerializable(typeof(SpawnSessionResult))]
 [JsonSerializable(typeof(CloseSessionParams))]
 [JsonSerializable(typeof(CloseSessionResult))]
+[JsonSerializable(typeof(ResizePaneParams))]
+[JsonSerializable(typeof(ResizePaneResult))]
 public sealed partial class AgentHostJsonContext : JsonSerializerContext
 {
 }

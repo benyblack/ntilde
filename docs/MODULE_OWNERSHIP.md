@@ -37,6 +37,16 @@ invariant changes.
   "Export Snapshot (ANSI)" command relies on.
 
 **Invariants** (enforced by architecture tests and `tests/Ntilde.VT.Tests/`)
+- Alternate-screen clearing is mode-specific: 47 and 1047 retain the alternate cells and
+  per-screen cursor/pen on entry; 1047 clears active alternate text and row metadata on exit,
+  while an inactive reset does not clear stashed content. 1049 clears on entry and arms its
+  complete main saved cursor; the first alternate exit consumes that saved cursor.
+- **Saved-state QA distinguishes observation from hidden state.** The adapter pairs
+  bounded active-cell/mode/history reads and uses source-known restoration writes
+  to witness saved pens and G0/G1 behavior. It never substitutes cursor responses
+  for full state or claims direct inactive-bank inspection. Explicit fixture
+  clearing is independent of RIS under test; v7 binds every preceding suite and
+  retains a coherent reset negative rather than grading a method call as support.
 - Deterministic parsing — same byte stream produces the same semantic ops
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops ordinary text content. OSC 66 rectangles are
@@ -67,7 +77,44 @@ invariant changes.
   Writes extend the content boundary;
   structural edits discard the special boundary. Missing legacy metadata means full-row content.
   Cell layout/ABI is unchanged; malformed transferred boundaries are refused before mutation.
+- **Overline is sparse cell metadata.** SGR 53/55 is independent of underline and uses the
+  existing row decoration side table, preserving the 12-byte cell layout. Saved pens, reflow,
+  history, state transfer, replay and ANSI exports retain it. App paints it in the resolved
+  foreground; SGR 58 remains underline-only. AgentHost exposes it only through explicit opt-in.
+- **Text blink presentation belongs to App.** VT snapshots cache only an unhidden SGR 5
+  presence flag while copying cells; they carry no clock or UI state. App advances a monotonic
+  530 ms half-period on its existing render timer, independently of cursor focus/settings,
+  and animates only rendered blinking ink. Hidden/retired views do not advance. Blink-off
+  suppresses glyphs and decorations while preserving backgrounds. Animated rows bypass
+  picture/span reuse and retire older cached versions; ordinary rows keep their cache path.
+  Offscreen snapshots default to visible text and accept an explicit deterministic phase.
+- **Controlled capture uses one draw's facts.** VT snapshots include cursor visibility/blink
+  alongside cursor style; App alone interprets optional synthetic presentation time. Capture
+  background fill and opt-in metadata use the exact render snapshot, including a detached palette.
+  Font stream fingerprints are bounded and opt-in. Live photographs reject synthetic time and
+  render provenance; default capture wire shapes/phases stay unchanged. No request changes the
+  live animation clock or terminal state. Synthetic selection is a detached offscreen input:
+  VT projects viewport-relative ranges against the actual captured viewport, preserving the
+  ordinary absolute-history selection path. App validates ordered/in-bounds coordinates before
+  attention/export and echoes the actual draw's selected range in metadata. Nullable theme
+  selection values and stream override flags come from the same VT snapshot; App separately
+  reports derived selection paint colors, which do not imply a concrete OSC query default.
+  See `docs/qa/terminfo/controlled-capture.md`.
+- **Owned QA controls its proved transport outside VT.** The adapter verifies the
+  disposable worker's exact PTY before disabling output translation, obtains an
+  independent parent-observed mode proof before cell observations, and restores
+  the saved mode before stock collection. Node raw input alone does not prove
+  unmodified LF delivery; no personal terminal is selected by this path.
+- **VT normalizes CSI default-one counts at the parser boundary.** ECH, IL and DL
+  treat an omitted or explicit zero count as one. Buffer APIs retain their direct
+  zero-count no-op semantics; cursor, margins and saved history remain independent.
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
+- **Agent editing observations are read-only snapshots.** App's opt-in `readScreen`
+  `bufferState` copies margins, origin/wrap/insert modes, pending wrap, active screen
+  and local retained history count under the same VT read lock as text/cell details.
+  Contracts remain a leaf. Windowless viewport imports report unknown history count
+  explicitly; importing zero rows cannot prove an empty daemon history. The projection
+  does not alter parser state or enable acting methods.
 - **Cursor save state is shared by DECSC/DECRC and modes 1048/1049.** The per-screen banks
   retain position, rendition, pending wrap, origin mode and G0-G3/GL. Saved character sets
   are copied into mux and replay snapshots, never shared as mutable arrays. DECSTR preserves
@@ -317,7 +364,7 @@ invariant changes.
 
 **Namespace:** `Ntilde.AgentHost.Contracts`
 **Depends on:** *(leaf — only BCL)*
-**Public surface:** `AgentHostProtocol`, `AgentHostDiscovery`, `AgentHostJsonContext`, `Frames.*`, and the contract DTO groups (`ActContracts`, `SessionContracts`, `StatusContracts`, `ReplayContracts`)
+**Public surface:** `AgentHostProtocol`, `AgentHostDiscovery`, `AgentHostJsonContext`, `Frames.*`, and the contract DTO groups (`ActContracts`, `SessionContracts`, `StatusContracts`, `ReplayContracts`, `ResizePane`, `PaneMetadataContracts`)
 
 **Owns**
 - The wire protocol between the app's agent host and any external client (today: the MCP server)
@@ -813,6 +860,12 @@ requires public test classes.
   Everything else moved to `Ntilde.CommandAssist` in #114.
 - Startup orchestration (seven `Startup*.cs` files in `Shell/`)
 - `AgentOutputRegionTracker`: coalesced streaming/presence read deadlines, one background read at a time, dirty follow-ups, and cancellation on generation/lifetime changes. Completion reads synchronously without waiting for background work; output/presence deliveries reject stale generations. Timer metadata locks never span buffer reads or UI dispatch.
+- Read-only pane metadata observations: `IAgentPaneObserver` is separate from acting.
+  `readPaneMetadata` marshals real title/cwd and tab/toast control properties to the UI
+  thread, and copies complete bounded active-viewport links/raw shell anchors under
+  an immediate buffer read lock. It refuses stale registration/session/buffer identity,
+  unavailable controls and oversized observations; it never activates tabs or opens links.
+  UI properties and stored VT facts are observations, not pixel or OS-taskbar evidence.
 - Workspace and session lifecycle
 - SSH UI: connection manager, transfer center, remote files sidebar, vault, sftp service, ssh-askpass
 - Legacy OpenSSH SCP paths: `SftpService` backslash-escapes literal remote shell characters before
@@ -866,6 +919,25 @@ requires public test classes.
 - Windows launch support (`Shell/`): `LauncherRelease.cs` (sets the `ntilde.com` release event on the GUI path; discards it in the mux branch) and `UserPathRegistration.cs` (the install folder on the user `PATH`, from Velopack's install, update and uninstall hooks only); `AppVersionInfo.cs` (the app's version, for the About window, the editor and the release download); `VelopackHookLog.cs` (where a Velopack hook's lines go: Velopack's own log, since a hook exits before `AppLogger` starts)
 - `Shell/SshAskPassVaultPolicy.cs` (Phase 5 Task 2): whether the OpenSSH askpass helper may fill the vault password on a user's attempt through a jump host (not with ssh before 8.4, a hop named like the target, or a proxy in the extra arguments)
 - Updates and the multiplexer (`Update/`): `MuxUpdateCompatibility.cs` (R10: the protocol marker in the staged release notes, whether an apply keeps the daemon, and the startup auto-apply gate) and `UpdateSourceOverride.cs` (`NTILDE_UPDATE_SOURCE_DIR`, a local feed honoured only for the `NtildeSurvival` verification package id)
+- **Permissioned visible-pane resize belongs to App.** Raw AgentHost `resizePane`
+  requires the separate default-off act permission and journals attempts reaching
+  its method handler; frame-level rejections happen before that journal.
+  `MainWindow.AgentResize` only changes the normal window containing its current
+  single direct local pane; remote, deferred/mux, windowless, split and inactive
+  panes are not resized. The existing view → VT buffer → session ordering remains
+  authoritative. A two-second responsive-UI observation timeout reports actual
+  nonblocking buffer samples; synchronous resize work can still block on a write
+  lock and delay dispatcher timeout delivery.
+  settled requires the view and successful current-session callback to agree.
+  Changing the buffer or session invalidates older completion evidence. Neither the
+  leaf DTOs nor this completion signal attest kernel PTY size or undo reflow.
+- **Owned resize QA is a separate caller boundary.** `scripts/terminfo-owned.mjs`
+  enables act access only in its disposable settings root. Its source plan selects
+  six App actions, re-proves process/PTY ownership before and after each action,
+  and independently reads kernel geometry/output flags. V6 receipts require paired
+  full-state/history frames, exact action/source/settings bindings, verified cleanup
+  and all earlier suite bindings. Ordinary cell observers retain their read-only
+  allowlist; no action attests a personal or remote session.
 - The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 
 **Non-responsibilities**
@@ -950,11 +1022,12 @@ requires public test classes.
 
 **Owns** the layering and namespace-alignment rules. Adding a new architectural invariant means adding a fact here. See `docs/ARCHITECTURE.md` § 12 for the current enforced rule set.
 
-Four files, by concern:
+The main files, by concern:
 - `LayeringTests.cs` — assembly-level dependency rules (`Vt_must_be_a_leaf_assembly`, `Pty_must_not_depend_on_Vt`, …)
 - `ProjectFileLayeringTests.cs` — the same rules asserted against the `.csproj` files, so a stray `ProjectReference` fails even if no code uses it yet
 - `NamespaceAlignmentTests.cs` — one assembly, one namespace prefix
 - `DiagnosticSinkTests.cs` — GUI and library code must not write diagnostics to the console; CLI tools may
+- `ShortTestWaitTests.cs` — a test-suite rule rather than a product one: no test waits under 5 s for something that must happen, unless a `// Short on purpose:` comment says why
 
 ### `tests/Ntilde.VT.Tests/` + `tests/Ntilde.Rendering.Tests/`
 

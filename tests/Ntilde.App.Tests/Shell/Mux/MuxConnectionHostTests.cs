@@ -204,6 +204,7 @@ public sealed class MuxConnectionHostTests
 
         Task dispose = Task.Run(host.Dispose, TestContext.Current.CancellationToken);
 
+        // Short on purpose: a negative check; it waits only to give a wrong early return time to happen.
         Assert.False(dispose.Wait(300, TestContext.Current.CancellationToken), "Dispose returned before the kill was confirmed");
         kill.SetResult();
         Assert.True(dispose.Wait(5_000, TestContext.Current.CancellationToken), "Dispose returned once the kill was confirmed");

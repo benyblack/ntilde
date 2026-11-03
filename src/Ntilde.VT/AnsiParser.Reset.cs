@@ -18,10 +18,10 @@ namespace Ntilde.VT
             RestoreSavedCharsets();
         }
 
-        private void SwitchToMainScreen()
+        private void SwitchToMainScreen(bool clearAltBeforeExit = false)
         {
             bool restore = _buffer.IsAltScreenActive && _buffer.RestoresMainCursorOnAltExit;
-            _buffer.SwitchToMainScreen();
+            _buffer.SwitchToMainScreen(restoreSavedCursorIfArmed: true, clearAltBeforeExit: clearAltBeforeExit);
             if (restore) RestoreSavedCharsets();
         }
 

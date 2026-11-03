@@ -161,6 +161,70 @@ public class UnderlineStyleRenderTests
         Assert.Equal(LitRows(viaSgr4), LitRows(viaColon1));
     }
 
+    [AvaloniaFact]
+    public void Overline_PaintsTheTopOfBlanks_InForegroundNotUnderlineColor()
+    {
+        using SKBitmap bitmap = Render("\x1b[53;58;2;255;0;0m" + new string(' ', TextCells));
+        SKColor top = BrightestPixel(bitmap, 0, Bitmap(3));
+        Assert.True(IsWhiteish(top), $"overline is {top}");
+        Assert.Empty(LitRows(bitmap)); // no underline is implied by SGR 53
+    }
+
+    [AvaloniaFact]
+    public void OverlineAndUnderline_AreIndependent_AndKeepTheirOwnColors()
+    {
+        using SKBitmap bitmap = Render("\x1b[53;4;58;2;255;0;0m" + Text);
+        Assert.True(IsWhiteish(BrightestPixel(bitmap, 0, Bitmap(3))));
+        SKColor bottom = BrightestBandPixel(bitmap);
+        Assert.True(bottom.Red > 200 && bottom.Green < 80 && bottom.Blue < 80);
+    }
+
+    [AvaloniaFact]
+    public void Overline_FaintUsesTheDimmedForeground()
+    {
+        using SKBitmap plain = Render("\x1b[53m" + new string(' ', TextCells));
+        using SKBitmap faint = Render("\x1b[2;53m" + new string(' ', TextCells));
+        int bright = BrightestPixel(plain, 0, Bitmap(3)).Red;
+        int dim = BrightestPixel(faint, 0, Bitmap(3)).Red;
+        Assert.True(dim > 0 && dim < bright, $"overline foreground: plain={bright}, faint={dim}");
+    }
+
+    [AvaloniaFact]
+    public void Overline_HiddenCellsDoNotBridgeAdjacentRuns()
+    {
+        using SKBitmap bitmap = Render("\x1b[53m  \x1b[8m  \x1b[28m  ");
+        Assert.True(LitTopAt(bitmap, 1));
+        Assert.False(LitTopAt(bitmap, 3));
+        Assert.True(LitTopAt(bitmap, 5));
+    }
+
+    [AvaloniaTheory]
+    [InlineData("\x1b[55m")]
+    [InlineData("\x1b[0m")]
+    public void Overline_ResetStopsPainting(string reset)
+    {
+        using SKBitmap bitmap = Render("\x1b[53m" + reset + new string(' ', TextCells));
+        Assert.False(IsLit(BrightestPixel(bitmap, 0, Bitmap(3))));
+    }
+
+    [AvaloniaTheory]
+    [InlineData("\x1b[55m")]
+    [InlineData("\x1b[0m")]
+    public void Overline_ResetPreservesEarlierOverlinedCells(string reset)
+    {
+        using SKBitmap bitmap = Render("\x1b[53m  " + reset + "  ");
+        Assert.True(LitTopAt(bitmap, 1));
+        Assert.False(LitTopAt(bitmap, 3));
+    }
+
+    private static bool LitTopAt(SKBitmap bitmap, int column)
+    {
+        int x = Bitmap(4 + column * Metrics.CellWidth);
+        for (int y = 0; y < Bitmap(3); y++)
+            if (IsLit(bitmap.GetPixel(x, y))) return true;
+        return false;
+    }
+
     // ---------------------------------------------------------------- rendering
 
     private static SKBitmap Render(string sequence, TerminalTheme? theme = null)

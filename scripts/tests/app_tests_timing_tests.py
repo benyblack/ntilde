@@ -16,7 +16,12 @@ TRX = """<?xml version="1.0" encoding="utf-8"?>
 <TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
   <Results>
     <UnitTestResult testId="a" duration="00:00:02.5000000" outcome="Passed" />
-    <UnitTestResult testId="b" duration="00:00:01.0000000" outcome="Passed" />
+    <UnitTestResult testId="b" duration="00:00:01.0000000" outcome="Passed">
+      <Output><StdOut>Processed 1.00 MB
+BENCH LargeThroughput MB/s 2.000 2.500 2.400
+BENCH broken MB/s fast
+Threshold: 1.75 MB/s</StdOut></Output>
+    </UnitTestResult>
     <UnitTestResult testId="c" duration="00:01:00.0000000" outcome="Passed" />
   </Results>
   <TestDefinitions>
@@ -51,6 +56,9 @@ def main():
         check("| 3.5 | 2 | `Ntilde.Tests.Shell.Mux` |" in out, "a nested class counts toward its namespace")
         check("| 2.5 | 1 | `Ntilde.Tests.Shell.Mux.FooTests` |" in out, "classes carry their own count")
         check(out.index("Ntilde.Tests.Core") < out.index("Ntilde.Tests.Shell.Mux"), "slowest first")
+        check("| `LargeThroughput` | MB/s | 2 2.5 2.4 | 2 | 2.4 | 2.5 | 20.0% |" in out,
+              "a BENCH line in a test's output becomes a row with every sample and its spread")
+        check("`broken`" not in out, "a BENCH line that is not all numbers is skipped")
 
         proc = subprocess.run(
             [sys.executable, str(SCRIPT), str(broken), str(Path(tmp) / "missing.trx"), str(trx)],
@@ -63,8 +71,13 @@ def main():
         bare.write_text(TRX.replace(' xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"', ""),
                         encoding="utf-8")
         proc = subprocess.run([sys.executable, str(SCRIPT), str(bare)], capture_output=True, text=True)
-        check(proc.returncode == 0 and "3 results" in proc.stdout,
+        check(proc.returncode == 0 and "3 results" in proc.stdout and "`LargeThroughput`" in proc.stdout,
               "elements are matched by local name, with or without the trx namespace")
+
+        quiet = Path(tmp) / "quiet.trx"
+        quiet.write_text(TRX.replace("BENCH ", "NOT A BENCH "), encoding="utf-8")
+        proc = subprocess.run([sys.executable, str(SCRIPT), str(quiet)], capture_output=True, text=True)
+        check("Benchmark samples" not in proc.stdout, "no benchmark lines, no benchmark section")
 
         proc = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True)
         check(proc.returncode == 2, "no arguments is a usage error")

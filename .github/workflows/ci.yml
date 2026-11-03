@@ -95,7 +95,7 @@ jobs:
 
   # Single build job per OS: Rust native + .NET in one step.
   # Eliminates the artifact round-trip that the old build_native → build_dotnet split required.
-  # The CI scripts' own self-tests: plain Python against stubs and fixtures, needing neither the
+  # The CI scripts' own self-tests: Python/Node against stubs and fixtures, needing neither the
   # SDK nor the build. They used to run as the first steps of `build`, which put ~40 s of them on
   # the Windows critical path (Build windows -> Unit Tests windows) for no reason but placement.
   # Here they run beside it on the same OS matrix, so every script is still exercised on every
@@ -164,6 +164,23 @@ jobs:
           py=python3
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/analyzer_gate_tests.py
+
+      - name: Self-test the pinned terminfo triage inventory
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/terminfo_triage_tests.py
+          "$py" scripts/terminfo-triage.py --check
+
+      - name: Select Node for terminfo adapter self-tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Self-test terminfo cell observations without a desktop or collector installation
+        shell: bash
+        run: node --test scripts/terminfo/agent-observer.test.mjs scripts/terminfo/cells.test.mjs scripts/terminfo/terminal-fence.test.mjs scripts/terminfo/runtime.test.mjs scripts/terminfo/attributes.test.mjs scripts/terminfo/sgr.test.mjs scripts/terminfo/cell-details.test.mjs scripts/terminfo/rgb.test.mjs scripts/terminfo/rendition.test.mjs scripts/terminfo/cursor.test.mjs scripts/terminfo/receipt.test.mjs scripts/terminfo/pixels-png.test.mjs scripts/terminfo/pixels-capture.test.mjs scripts/terminfo/pixels.test.mjs scripts/terminfo/color-query.test.mjs scripts/terminfo/colors.test.mjs scripts/terminfo/editing-state.test.mjs scripts/terminfo/editing-cases.test.mjs scripts/terminfo/editing-expectations.test.mjs scripts/terminfo/editing-observer.test.mjs scripts/terminfo/editing-capture.test.mjs scripts/terminfo/editing.test.mjs scripts/terminfo/editing-receipt.test.mjs scripts/terminfo/editing-collector.test.mjs scripts/terminfo/history-cases.test.mjs scripts/terminfo/history.test.mjs scripts/terminfo/history-capture.test.mjs scripts/terminfo/history-collector.test.mjs scripts/terminfo/history-receipt.test.mjs scripts/terminfo/terminal-output.test.mjs scripts/terminfo/resize-action.test.mjs scripts/terminfo/resize-capture.test.mjs scripts/terminfo/resize-cases.test.mjs scripts/terminfo/resize-collector.test.mjs scripts/terminfo/resize-receipt.test.mjs scripts/terminfo/resize-request.test.mjs scripts/terminfo/resize.test.mjs scripts/terminfo/saved-capture.test.mjs scripts/terminfo/saved-cases.test.mjs scripts/terminfo/saved-collector.test.mjs scripts/terminfo/saved-receipt.test.mjs scripts/terminfo/saved-request.test.mjs scripts/terminfo/saved.test.mjs
 
       # The check below decides whether dotnet build may skip compiling the Rust libraries, so a
       # wrong "skip" would ship a build with none: scripts/ci/native-libs-present.sh, tested here.

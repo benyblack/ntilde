@@ -79,7 +79,7 @@ internal sealed class DrawPathHarness : IDisposable
     };
 
     /// <summary>One frame, as the render thread draws it: the operation built, drawn, disposed.</summary>
-    public void DrawFrame()
+    public void DrawFrame(bool textBlinkVisible = true, Action<bool>? reportTextBlinkCells = null)
     {
         int rows;
         int cols;
@@ -126,7 +126,9 @@ internal sealed class DrawPathHarness : IDisposable
             cursorCol: cursorCol,
             rowCache: RowCache,
             enableComplexShaping: true,
-            glyphCache: GlyphCache);
+            glyphCache: GlyphCache,
+            textBlinkVisible: textBlinkVisible,
+            reportTextBlinkCells: reportTextBlinkCells);
         // A compositor frame starts clean; so does this one, or a stale row would hide under the last frame's pixels.
         _surface.Canvas.Clear(SKColors.Black);
         try

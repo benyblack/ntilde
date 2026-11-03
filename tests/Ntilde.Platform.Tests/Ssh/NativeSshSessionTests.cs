@@ -9,6 +9,8 @@ using Ntilde.Platform.Ssh.Sessions;
 
 namespace Ntilde.Platform.Tests.Ssh;
 
+// Exit waits allow 30 s: they return the moment the session exits, so only a broken session pays for it. See the
+// comment on NativeSshTerminalParityTests for the 2 s timeout these replaced.
 public sealed class NativeSshSessionTests
 {
     private static readonly string[] EuroSignOnly = ["\u20AC"];
@@ -247,7 +249,7 @@ public sealed class NativeSshSessionTests
         session.OnOutputReceived += outputs.Add;
         session.OnExit += code => exit.TrySetResult(code);
 
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
         Assert.Equal(EuroSignOnly, outputs);
     }
 
@@ -271,7 +273,7 @@ public sealed class NativeSshSessionTests
         // replays its code to a late subscriber, so subscribing here is race-free.
         var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         session.OnExit += code => exit.TrySetResult(code);
-        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(0, await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
 
         var outputs = new ConcurrentQueue<string>();
         session.OnOutputReceived += outputs.Enqueue; // late subscriber → replay fires here
@@ -378,7 +380,7 @@ public sealed class NativeSshSessionTests
             exit.TrySetResult(code);
         };
 
-        Assert.Equal(23, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(23, await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
         await WaitUntilAsync(() => interop.CloseCallCount > 0);
         Assert.Equal(ExitCode23Only, exits);
     }
@@ -396,7 +398,7 @@ public sealed class NativeSshSessionTests
 
         session.OnExit += code => exit.TrySetResult(code);
 
-        Assert.Equal(17, await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        Assert.Equal(17, await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -657,7 +659,7 @@ public sealed class NativeSshSessionTests
         var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         session.OnExit += code => exit.TrySetResult(code);
 
-        await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         Assert.Equal(new byte[] { 0xE2, 0x82, 0xAC, (byte)'!' }, raw.SelectMany(b => b).ToArray());
     }
 
@@ -673,7 +675,7 @@ public sealed class NativeSshSessionTests
         var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         session.OnExit += code => exit.TrySetResult(code);
 
-        await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         Assert.Equal("auth failed" + Environment.NewLine, Encoding.UTF8.GetString(raw.SelectMany(b => b).ToArray()));
     }
 
@@ -696,7 +698,7 @@ public sealed class NativeSshSessionTests
         var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         session.OnExit += code => exit.TrySetResult(code);
 
-        await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await exit.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         await WaitUntilAsync(() => string.Concat(text).Contains("auth failed", StringComparison.Ordinal));
 
         string decodedRaw = Encoding.UTF8.GetString(raw.SelectMany(b => b).ToArray());

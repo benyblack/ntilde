@@ -402,14 +402,14 @@ namespace Ntilde.VT
         /// It then goes further than reflow does, because the stakes differ: reflow is deciding
         /// where to trim a row, this is deciding whether to throw the row away. Inverse swaps
         /// foreground and background, so a run of inverse spaces paints a solid bar while every
-        /// cell still reports the default background; underline and strikethrough draw a rule
+        /// cell still reports the default background; underline, overline and strikethrough draw a rule
         /// through blank cells. All three are visible, so none of them is padding. Bold, italic,
         /// faint, blink and a non-default foreground draw nothing at all on a space, so they are
         /// not consulted.
         /// </remarks>
         private static bool IsRowPadding(TerminalRow row)
         {
-            if (row.GetTextSizingMap() is { Count: > 0 }) return false;
+            if (row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 }) return false;
             bool rowHasLinks = row.GetHyperlinkMap() is { Count: > 0 };
             var cells = row.Cells;
 

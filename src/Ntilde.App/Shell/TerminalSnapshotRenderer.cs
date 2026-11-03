@@ -50,7 +50,8 @@ namespace Ntilde.Shell
         bool EnableLigatures,
         bool EnableComplexShaping,
         double MinimumContrast = 1.0,
-        CursorStyle? PreferredCursorStyle = null)
+        CursorStyle? PreferredCursorStyle = null,
+        bool PreferredCursorBlink = true)
     {
         /// <summary>
         /// False before the control has measured its font (a pane that was just
@@ -68,8 +69,17 @@ namespace Ntilde.Shell
     {
         /// <summary>Selection to paint, or null for "nothing selected".</summary>
         public SelectionState? Selection { get; init; }
+        /// <summary>Resolve supplied selection rows against the actual captured viewport, not history coordinates.</summary>
+        public bool SelectionRelativeToViewport { get; init; }
 
         public bool HideCursor { get; init; }
+
+        /// <summary>Explicit foreground phase for SGR 5; default captures keep blinking text visible.</summary>
+        public bool TextBlinkVisible { get; init; } = true;
+        /// <summary>Synthetic time since a visible phase, never the live control's animation clock.</summary>
+        public long? PresentationTimeMs { get; init; }
+        internal Action? BeforeDrawForTest { get; init; }
+        public bool PreferredCursorBlink { get; init; } = true;
         public CursorStyle? PreferredCursorStyle { get; init; }
         public bool EnableLigatures { get; init; }
         public bool EnableComplexShaping { get; init; } = true;
@@ -165,17 +175,23 @@ namespace Ntilde.Shell
             int width,
             int height,
             TerminalSnapshotOptions? options = null)
+            => CaptureWithContext(buffer, metrics, width, height, options, false, out _);
+
+        internal static SKBitmap CaptureWithContext(
+            TerminalBuffer buffer, CellMetrics metrics, int width, int height,
+            TerminalSnapshotOptions? options, bool includeRenderDetails, out SnapshotCaptureInfo captureInfo)
         {
+            captureInfo = default;
             ArgumentNullException.ThrowIfNull(buffer);
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
             options ??= new TerminalSnapshotOptions();
+            if (options.PresentationTimeMs is { } time) ArgumentOutOfRangeException.ThrowIfNegative(time);
 
             // Snapshot the geometry/cursor values under the read lock, then let go:
             // DrawTerminalInternal re-enters the lock, and the buffer's lock has no
             // recursion policy to fall back on.
             int snapshotRows, snapshotCols, totalLines, cursorRow, cursorCol;
-            TerminalTheme theme;
             buffer.Lock.EnterReadLock();
             try
             {
@@ -184,7 +200,6 @@ namespace Ntilde.Shell
                 totalLines = buffer.InternalTotalLines;
                 cursorRow = buffer.InternalCursorRow;
                 cursorCol = buffer.InternalCursorCol;
-                theme = buffer.Theme;
             }
             finally
             {
@@ -262,6 +277,7 @@ namespace Ntilde.Shell
                 fallbackChain: fallbackChain,
                 opacity: options.Opacity,
                 hideCursor: options.HideCursor,
+                textBlinkVisible: options.TextBlinkVisible,
                 renderScaling: renderScaling,
                 snapshotRows: snapshotRows,
                 snapshotCols: snapshotCols,
@@ -277,17 +293,22 @@ namespace Ntilde.Shell
                 // out every change made before this capture.
                 isolatedSnapshot: true,
                 minimumContrast: options.MinimumContrast,
-                preferredCursorStyle: options.PreferredCursorStyle);
+                preferredCursorStyle: options.PreferredCursorStyle,
+                presentationTimeMs: options.PresentationTimeMs,
+                preferredCursorBlink: options.PreferredCursorBlink,
+                fillBackground: options.FillBackground,
+                collectRenderDetails: includeRenderDetails,
+                selectionRelativeToViewport: options.SelectionRelativeToViewport);
 
             try
             {
-                if (options.FillBackground)
-                {
-                    var bg = theme.Background;
-                    canvas.Clear(new SKColor(bg.R, bg.G, bg.B, bg.A));
-                }
-
-                op.DrawTerminalInternal(canvas);
+                options.BeforeDrawForTest?.Invoke();
+                using var snapshot = op.DrawTerminalInternal(canvas);
+                SnapshotRenderContext? renderContext = null;
+                if (includeRenderDetails && op.RenderedFrame is { } frame)
+                    renderContext = SnapshotRenderContext.Create(frame, skTypeface.Typeface ?? SKTypeface.Default, fallbackChain, metrics, options, bitmap.Width, bitmap.Height);
+                captureInfo = new SnapshotCaptureInfo(snapshot?.ViewportRows ?? 0, snapshot?.ViewportCols ?? 0,
+                    snapshot?.BufferRows ?? 0, snapshot?.BufferCols ?? 0, renderContext);
                 return bitmap;
             }
             catch
