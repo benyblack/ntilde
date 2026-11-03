@@ -68,8 +68,9 @@ fractional DIP metrics by the column/row count alone can clip the final cells.
 
 Compare controlled fixtures within recorded platform, renderer, font and geometry preconditions. Font hashes do not make rasterization identical across OS or renderer versions. Keep the original PNG, exact input, returned metadata, executable/source hashes and restoration/cleanup evidence with each observation. A state flag or cursor movement alone is not pixel evidence.
 
-These additive color facts and synthetic-selection controls prepare runtime-color
-reset qualification under #764. They do not by themselves supply owned OSC-reset
-measurements; that suite and its retained evidence remain the next slice.
+These additive color facts and synthetic-selection controls are used by the
+[owned runtime color suite](owned-colors.md) for #764. Its
+[retained measurement](2026-11-03-colors.md) combines fenced replies, actual theme
+sources and selected/unselected PNGs; API metadata alone is not a measurement.
 
 The [owned pixel suite](owned-pixels.md) invokes this API in the disposable runner and retains its PNGs, complete state brackets and metadata. It does not change the frozen stock collector grades (78 supported, 0 unsupported, 177 inconclusive), historical reports or `suiteComplete: false`.

@@ -34,7 +34,7 @@ function validateDetails(details, screen, image, timeMs) {
     if (!theme || !['foregroundArgb', 'backgroundArgb', 'cursorArgb', 'cursorTextArgb'].every(key => integer(theme[key], 0xff000000, 0xffffffff))
         || !Array.isArray(theme.ansiPaletteArgb) || theme.ansiPaletteArgb.length !== 256
         || !theme.ansiPaletteArgb.every(color => integer(color, 0xff000000, 0xffffffff))
-        || theme.foregroundOverride !== false || theme.backgroundOverride !== false) fail();
+        || typeof theme.foregroundOverride !== 'boolean' || typeof theme.backgroundOverride !== 'boolean') fail();
     const visiblePhase = Math.floor(timeMs / 530) % 2 === 0;
     const mode = screen.cursorMode;
     if (!phase || phase.timeMs !== timeMs || phase.halfPeriodMs !== 530 || phase.textBlinkVisible !== visiblePhase
@@ -45,7 +45,7 @@ function validateDetails(details, screen, image, timeMs) {
 }
 
 /** Refuse resamples, clock substitutions, malformed inline bytes, dimensions and ambiguous provenance. */
-export function validatePixelCapture(result, screen, timeMs) {
+export function validateRenderedCapture(result, screen, timeMs) {
     if (result?.mode !== 'render' || result.scale !== 1 || result.downscaled !== false || result.inlineOmitted !== false
         || result.presentationTimeMs !== timeMs || result.rows !== screen.rows || result.cols !== screen.cols
         || !integer(result.byteCount, 1, limits.bytes) || typeof result.pngBase64 !== 'string'
@@ -56,6 +56,14 @@ export function validatePixelCapture(result, screen, timeMs) {
     if (result.width !== image.width || result.height !== image.height) fail();
     validateDetails(result.renderDetails, screen, image, timeMs);
     return { bytes, image, details: structuredClone(result.renderDetails) };
+}
+
+/** The original fixed suite requires the original palette/default-color and no-selection policy. */
+export function validatePixelCapture(result, screen, timeMs) {
+    const value = validateRenderedCapture(result, screen, timeMs);
+    if (value.details.theme.foregroundOverride || value.details.theme.backgroundOverride
+        || result.syntheticSelection != null || value.details.syntheticSelection != null) fail();
+    return value;
 }
 
 export function defaultCursorPolicy(screen, details) {
@@ -69,15 +77,24 @@ export function stablePixelContext(details) {
 }
 
 /** Read a retained image without accepting path traversal, symlinks or changed bytes. */
-export function retainedPixel(output, frame) {
+function retainedCaptureResult(output, frame, color = false) {
     const pixel = frame?.pixel;
-    if (!pixel || !/^pixels\/frame-\d{3}\.png$/.test(pixel.file ?? '') || !sha(pixel.sha256)) fail();
+    const pattern = color ? /^color-pixels\/frame-\d{3}\.png$/ : /^pixels\/frame-\d{3}\.png$/;
+    if (!pixel || !pattern.test(pixel.file ?? '') || !sha(pixel.sha256)) fail();
     const path = join(output, pixel.file), entry = lstatSync(path);
     if (!entry.isFile() || entry.isSymbolicLink() || entry.size > limits.bytes) fail();
     const bytes = readFileSync(path);
     if (bytes.length !== pixel.byteCount || pngHash(bytes) !== pixel.sha256) fail();
     const result = { ...pixel, pngBase64: bytes.toString('base64'), renderDetails: pixel.renderDetails };
-    return validatePixelCapture(result, frame.screen, pixel.presentationTimeMs).image;
+    return result;
+}
+
+export function retainedPixel(output, frame) {
+    return validatePixelCapture(retainedCaptureResult(output, frame), frame.screen, frame.pixel.presentationTimeMs).image;
+}
+
+export function retainedColorCaptureResult(output, frame) {
+    return retainedCaptureResult(output, frame, true);
 }
 
 /** Each logical capture brackets a fixed render with two independently bounded complete state reads. */

@@ -45,3 +45,56 @@ test('idle input, write errors, timeout and disposal reject pending barriers', a
     const unsolicited = new Input(), idle = terminalFence(unsolicited, { write() {} });
     unsolicited.emit('data', Buffer.from('x')); await assert.rejects(idle.write(''), /Unexpected/); idle.dispose();
 });
+
+test('typed query uses one ordering fence and handles fragmented replies', async () => {
+    const input = new Input(); let written;
+    const fence = terminalFence(input, { write(value, callback) { written = value; callback(); } });
+    const pending = fence.query({ code: 4, index: 200 }, '\x1b[0m');
+    assert.equal(written, '\x1b[0m\x1b]4;200;?\x1b\\\x1b[c');
+    await assert.rejects(fence.write(''), /Concurrent/);
+    const raw = '\x1b]4;200;rgb:1212/3434/5656\x1b\\';
+    for (const byte of Buffer.from(raw + '\x1b[?62;4;22c')) input.emit('data', Buffer.from([byte]));
+    assert.deepEqual(await pending, { barrier: '\x1b[?62;4;22c', reply: { raw, channels16: [0x1212, 0x3434, 0x5656] } });
+    fence.dispose(); assert.equal(input.isRaw, false); assert.equal(input.paused, true);
+});
+
+test('explicit absent query reply completes only with DA, and late input poisons the fence', async () => {
+    const input = new Input(), fence = terminalFence(input, { write(_, callback) { callback(); } });
+    const pending = fence.query({ code: 17 });
+    input.emit('data', Buffer.from('\x1b[?62;4;22c'));
+    assert.deepEqual(await pending, { barrier: '\x1b[?62;4;22c', reply: null });
+    input.emit('data', Buffer.from('\x1b]17;rgb:1212/3434/5656\x1b\\'));
+    await assert.rejects(fence.write(''), /Unexpected/); fence.dispose();
+});
+
+test('typed query mismatches and over-budget frames remain fatal', async () => {
+    for (const response of ['\x1b]19;rgb:1212/3434/5656\x1b\\\x1b[?62c', '\x1b]' + 'x'.repeat(513)]) {
+        const input = new Input(), fence = terminalFence(input, { write(_, callback) { callback(); } });
+        const pending = fence.query({ code: 17 });
+        input.emit('data', Buffer.from(response));
+        await assert.rejects(pending); await assert.rejects(fence.write('')); fence.dispose();
+    }
+});
+
+test('cleanup cannot bypass a healthy fence, revive failed reads or run after disposal', async () => {
+    const input = new Input(), writes = [];
+    const fence = terminalFence(input, { write(value, callback) { writes.push(value); callback(); } });
+    await assert.rejects(fence.writeCleanup('reset'), /failed/);
+    assert.deepEqual(writes, []);
+    input.emit('data', Buffer.from('unsolicited'));
+    assert.equal(fence.failed, true);
+    await assert.rejects(fence.writeCleanup('x'.repeat(4097)), /bounded/);
+    await fence.writeCleanup('reset'); assert.deepEqual(writes, ['reset']);
+    await assert.rejects(fence.query({ code: 10 }), /Unexpected/);
+    fence.dispose(); await assert.rejects(fence.writeCleanup('reset'), /active/);
+});
+for (const mode of ['callback-error', 'throw', 'timeout']) test(`cleanup remains bounded when output ${mode}`, async () => {
+    const input = new Input();
+    const fence = terminalFence(input, { write(_, callback) {
+        if (mode === 'callback-error') callback(new Error('cleanup output failed'));
+        else if (mode === 'throw') throw new Error('cleanup output threw');
+    } }, 5);
+    input.emit('data', Buffer.from('unsolicited'));
+    try { await assert.rejects(fence.writeCleanup('reset'), /cleanup output|timed out/); }
+    finally { fence.dispose(); }
+});

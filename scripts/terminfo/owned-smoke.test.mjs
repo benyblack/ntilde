@@ -48,7 +48,7 @@ function withCollectorFixture(receipt, lockfile, action) {
     try {
         for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', 'terminfo/collector.mjs', 'terminfo/ownership.mjs', 'terminfo/runtime.mjs',
             'terminfo/agent-observer.mjs', 'terminfo/cells.mjs', 'terminfo/terminal-fence.mjs',
-            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs',
+            'terminfo/attributes.mjs', 'terminfo/sgr.mjs', 'terminfo/cell-details.mjs', 'terminfo/rgb.mjs', 'terminfo/rendition.mjs', 'terminfo/cursor.mjs', 'terminfo/receipt.mjs', 'terminfo/pixels.mjs', 'terminfo/pixels-capture.mjs', 'terminfo/pixels-cases.mjs', 'terminfo/pixels-png.mjs', 'terminfo/color-query.mjs', 'terminfo/color-cases.mjs', 'terminfo/color-capture.mjs', 'terminfo/colors.mjs',
             'terminfo/collector-package.json', 'terminfo/collector-package-lock.json']) {
             const target = join(root, 'scripts', file);
             mkdirSync(dirname(target), { recursive: true });
@@ -129,7 +129,10 @@ function launch(executable, interrupt, observation = {}) {
         let output = '';
         let errors = '';
         let sent = false;
-        const timer = setTimeout(() => { child.kill('SIGTERM'); reject(new Error('Adapter lifecycle did not finish.')); }, 15000);
+        // The resistant-worker case adds a bounded SIGKILL escalation after all 75 PNG captures.
+        // A normal collected run measures ~12.5s; retain the original 15s ceiling for every other case.
+        const timeoutMs = observation.stubborn ? 20000 : 15000;
+        const timer = setTimeout(() => { child.kill('SIGTERM'); reject(new Error('Adapter lifecycle did not finish.')); }, timeoutMs);
         child.on('error', reject);
         child.stdout.on('data', chunk => {
             output += chunk;
@@ -158,6 +161,8 @@ function assertRetainedCollector(output) {
         ['renditionSuiteSourceSha256', 'terminfo/rendition.mjs'], ['cursorSuiteSourceSha256', 'terminfo/cursor.mjs'],
         ['pixelCaptureSourceSha256', 'terminfo/pixels-capture.mjs'], ['pixelSuiteSourceSha256', 'terminfo/pixels.mjs'],
         ['pixelCasesSourceSha256', 'terminfo/pixels-cases.mjs'], ['pixelPngSourceSha256', 'terminfo/pixels-png.mjs'],
+        ['colorQuerySourceSha256', 'terminfo/color-query.mjs'], ['colorCaptureSourceSha256', 'terminfo/color-capture.mjs'],
+        ['colorCasesSourceSha256', 'terminfo/color-cases.mjs'], ['colorSuiteSourceSha256', 'terminfo/colors.mjs'],
         ['receiptSourceSha256', 'terminfo/receipt.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
@@ -185,6 +190,8 @@ test('an oversized real viewport records RGB unavailable while retaining stock r
         assert.equal(receipt.cursorEvidence.status, 'unavailable');
         assert.equal(receipt.pixelEvidence.status, 'unavailable');
         assert.deepEqual(receipt.pixelEvidence.counts, {});
+        assert.equal(receipt.colorEvidence.status, 'unavailable');
+        assert.equal(readFileSync(join(output, 'color-snapshots.jsonl'), 'utf8'), '');
         assert.equal(readFileSync(join(output, 'pixel-snapshots.jsonl'), 'utf8'), '');
         assert.deepEqual(receipt.rgbEvidence.counts, {});
         assert.equal(unavailable.fixtureStarted, false);
@@ -375,7 +382,7 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 2);
+        assert.equal(receipt.schemaVersion, 3);
         assert.equal(receipt.pixelEvidence.sha256, digest('pixel-observations.json'));
         const pixels = JSON.parse(readFileSync(join(output, 'pixel-observations.json')));
         assert.equal(pixels.snapshots.length, 40);
@@ -384,6 +391,15 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.equal(pixels.snapshots[0].pixel.sha256, pixels.snapshots.at(-1).pixel.sha256);
         for (const frame of pixels.snapshots) assert.equal(frame.pixel.sha256, digest(frame.pixel.file));
         assert.ok(pixels.observations.filter(item => item.featureId !== 'rendition.bold').every(item => item.result === 'passed'), JSON.stringify(pixels.observations));
+        assert.equal(receipt.colorEvidence.sha256, digest('color-observations.json'));
+        const colors = JSON.parse(readFileSync(join(output, 'color-observations.json')));
+        assert.equal(colors.snapshots.length, 35);
+        assert.equal(colors.observations.length, 10);
+        assert.deepEqual(colors.snapshots, readFileSync(join(output, 'color-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+        assert.deepEqual(receipt.colorEvidence.counts, { passed: 10 });
+        assert.equal(colors.snapshots[0].pixel.sha256, colors.snapshots.at(-1).pixel.sha256);
+        for (const frame of colors.snapshots) assert.equal(frame.pixel.sha256, digest(frame.pixel.file));
+        assert.ok(colors.observations.every(item => item.result === 'passed'), JSON.stringify(colors.observations));
         for (const [prefix, count] of [['rendition', 19], ['cursor', 9]]) {
             assert.equal(receipt[prefix + 'Evidence'].sha256, digest(prefix + '-observations.json'));
             const extra = JSON.parse(readFileSync(join(output, prefix + '-observations.json')));
@@ -435,6 +451,8 @@ test('an initial pixel detail refusal after restored cursor evidence retains typ
         assert.equal(receipt.pixelEvidence.status, 'unavailable');
         assert.equal(receipt.pixelEvidence.reason, 'screenDetailsUnavailable');
         assert.deepEqual(receipt.pixelEvidence.counts, {});
+        assert.equal(receipt.colorEvidence.status, 'unavailable');
+        assert.equal(readFileSync(join(output, 'color-snapshots.jsonl'), 'utf8'), '');
         assert.equal(receipt.cursorEvidence.counts.passed, 9);
         assert.equal(JSON.parse(readFileSync(join(output, 'pixel-unavailable.json'))).fixtureStarted, false);
         assert.equal(readFileSync(join(output, 'pixel-snapshots.jsonl'), 'utf8'), '');

@@ -348,6 +348,20 @@ Windows/Linux qualification remains #775. The earlier
 [2026-11-02 rendition/cursor measurement](terminfo/2026-11-02-rendition-cursor.md)
 retains its historical scope and exact limits.
 
+### Supplemental runtime color resets and queries
+
+The [owned color suite](terminfo/owned-colors.md) follows the fixed pixel suite.
+It adds ten baseline/override/reset experiments, 35 parent-owned PNGs, exact
+fenced OSC 4/10/11/12/17/19 replies and independent OSC 104/110/111/112/117/119
+reset checks. Selection colors use an isolated synthetic render selection.
+An unset selection default is an explicit absent reply, not unsupported.
+Runtime colors are cleared explicitly before alternate-screen exit because
+DECSTR does not restore them. Receipt v3 preserves the six prior bindings and
+adds re-derived color evidence after verified cleanup. The
+[2026-11-03 measurement](terminfo/2026-11-03-colors.md) retains all ten passing
+comparisons and original PNGs. This is supplemental
+owned offscreen evidence; stock collector grades stay frozen.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh
@@ -453,6 +467,7 @@ Existing stock grades and retained cell/query observations are unchanged.
 The controlled-capture API also records cursor/selection/palette override evidence
 and distinguishes nullable theme selection defaults from derived selection paint.
 Its optional AgentHost `syntheticSelection` paints a validated viewport span in an
-offscreen image without changing live selection or terminal state. This is
-infrastructure for #764; the owned color-reset/query/pixel suite and its retained
-measurements remain a follow-up, and no stock observations are regraded.
+offscreen image without changing live selection or terminal state. The
+[owned color suite](terminfo/owned-colors.md) now uses these facts for #764; its
+[retained measurement](terminfo/2026-11-03-colors.md) records ten passing reset/query/pixel
+comparisons. No stock observations are regraded.
