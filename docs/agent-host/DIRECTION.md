@@ -322,3 +322,38 @@ registry wins when both name the same id.
 
 Agent-facing reads and events are only trustworthy because they are built on
 the deterministic core — that is the product.
+
+### Raw read-only pane metadata
+
+`readPaneMetadata({paneId})` observes an attached, visible, current, direct local
+pane through the existing observe endpoint; it requires no act opt-in. It does
+not activate a tab, type input, open a hyperlink or create a notification.
+An unknown/windowless identity returns `sessionNotFound`. An unavailable UI,
+hidden/remote/mux-backed/replaced pane, busy parser or excessive snapshot returns
+`paneMetadataUnavailable`, never an empty substitute for absent evidence.
+
+The result contains raw OSC title, host cwd, display title, a bounded active-buffer
+projection (geometry, cursor, links, input-window/anchor facts), and actual UI
+properties (focus/settings, tab text, stored progress with owner, optional actual
+vertical progress bar, window-global toast visibility/title/message). Link run
+coordinates are zero-based in the active viewport, excluding scrollback. Link
+`identity` values are meaningful only within that snapshot. Shell anchors are raw
+stored coordinates: consumers must check screen, history generation and eviction
+before resolving them. Main-history count, generation and eviction counters are
+included even while alternate is active; alternate anchors use their own screen
+coordinates. These counters do not describe alternate-screen history.
+
+The buffer portion is captured under one immediate read lock. UI properties are
+read on the UI dispatcher; asynchronous parser-to-UI effects may still be pending.
+These components are not a globally atomic transaction. Clients qualifying an
+effect must compare actual host values after their controlled output and retain
+independent controls. A response receipt or consumed marker does not prove it.
+
+Budgets are 8,192 cells, 128 complete link runs, 4,096 UTF-16 code units per
+metadata field and 32,768 combined text code units, including repeated run URIs.
+Nothing is truncated. The endpoint applies a two-second await deadline and
+revalidates the registration/session after completion; clients should also bound
+their transport. No new fields appear in existing method responses. This API
+foundation adds observation, not live protocol qualification or a stock grade.
+UI visibility is Avalonia control visibility, not proof of occlusion or paint;
+OS notifications/taskbar state and pixel output require separate evidence.

@@ -22,7 +22,7 @@ namespace Ntilde
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
         Justification = "A window is not disposed: its shutdown path (MainWindow.Shutdown) disposes the hotkey and the " +
                         "snapshot scheduler, in its teardown order.")]
-    public partial class MainWindow : Window, AgentHost.IAgentActionExecutor
+    public partial class MainWindow : Window, AgentHost.IAgentActionExecutor, AgentHost.IAgentPaneObserver
     {
         internal readonly record struct ShellOpenRequest(string FileName, string? Arguments);
 

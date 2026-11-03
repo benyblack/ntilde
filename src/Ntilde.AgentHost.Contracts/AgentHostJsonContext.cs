@@ -17,6 +17,8 @@ namespace Ntilde.AgentHost.Contracts;
 [JsonSerializable(typeof(EndpointDescriptor))]
 [JsonSerializable(typeof(SessionInfo))]
 [JsonSerializable(typeof(ListSessionsResult))]
+[JsonSerializable(typeof(ReadPaneMetadataParams))]
+[JsonSerializable(typeof(PaneMetadataResult))]
 [JsonSerializable(typeof(ReadScreenParams))]
 [JsonSerializable(typeof(ScreenSnapshotDto))]
 [JsonSerializable(typeof(CaptureScreenParams))]

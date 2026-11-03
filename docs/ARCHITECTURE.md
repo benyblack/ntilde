@@ -434,6 +434,26 @@ reads kernel dimensions separately. Paired state/history observations and action
 proofs are bound into the cleanup receipt. Ordinary observers stay read-only.
 See [owned resize qualification](qa/terminfo/owned-resize.md).
 
+### Read-only pane metadata boundary
+
+The raw AgentHost `readPaneMetadata` method uses an App-owned `IAgentPaneObserver`,
+independent of act permission. Its UI dispatcher reads current pane/title/cwd and
+actual tab/progress/toast properties without activating or changing controls.
+Its active-buffer projection takes an immediate read lock, retaining complete
+viewport hyperlink runs and raw shell anchors with history generation/eviction
+facts. Snapshot-local hyperlink reference identities never become durable ids.
+The endpoint bounds its await to two seconds and rechecks registration/session
+identity before returning; cancelled, busy, replaced or oversized observations
+return `paneMetadataUnavailable`, without a partial-success result.
+
+UI and VT observations are separate components, not one atomic parser-to-UI
+transaction. A marker or callback alone does not qualify host presentation.
+Window-global toast controls and tab progress include their scope/owner; stored
+properties do not prove painted pixels, occlusion, desktop timing or native
+notification/taskbar delivery. The contract leaf gains DTOs only and keeps zero
+project references. Owning tests: `AgentPaneMetadataCaptureTests`,
+`AgentHostMetadataProtocolTests`, `MainWindowAgentMetadataTests`.
+
 ### Persistent-session scrollback policy
 
 The GUI forwards `MaxHistory` at spawn and in presentation updates. The daemon owns the chosen

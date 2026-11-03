@@ -281,6 +281,7 @@ namespace Ntilde
             AgentHost.AgentHostService.Instance.ActEnabled = _settings.AgentAccessActEnabled;
             AgentHost.AgentHostService.Instance.SetSshProfileAllowlist(IsSshProfileAgentAllowed);
             AgentHost.AgentHostService.Instance.SetActionExecutor(this);
+            AgentHost.AgentHostService.Instance.SetPaneObserver(this);
             // After ApplySessionPersistenceSetting, which builds the hosts when persistence was just turned on.
             AgentHost.AgentHostService.Instance.SetWindowlessSource(WindowlessSessions);
             AgentHost.AgentHostService.Instance.Apply(_settings.AgentAccessObserveEnabled);
