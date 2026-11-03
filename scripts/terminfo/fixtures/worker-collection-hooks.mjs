@@ -1,7 +1,7 @@
 // Test-only child preload: exercise worker orchestration without an App, PTY or production bypass.
 import { registerHooks } from 'node:module';
 const root = new URL('../', import.meta.url);
-const log = `import { appendFileSync } from 'node:fs'; const record = value => appendFileSync(process.env.NTILDE_WORKER_TEST_LOG, value + '\\n');`;
+const log = String.raw`import { appendFileSync } from 'node:fs'; const record = value => appendFileSync(process.env.NTILDE_WORKER_TEST_LOG, value + '\n');`;
 const code = new Map();
 code.set(new URL('ownership.mjs', root).href, log + `
     export function assertPrivateFile() { record('private-config'); }
