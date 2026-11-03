@@ -5,6 +5,7 @@ namespace Ntilde.AgentHost;
 /// <summary>Read actual VT geometry without blocking the UI or touching controls inside the buffer lock.</summary>
 internal static class AgentPaneResizeObservation
 {
+    /// <summary>Try one immediate lock acquisition; compare actual dimensions against the current view and dispatch proof.</summary>
     internal static bool TryRead(TerminalBuffer buffer, int viewCols, int viewRows,
         (int Cols, int Rows) delivered, out AgentPaneResizeResult observed)
     {

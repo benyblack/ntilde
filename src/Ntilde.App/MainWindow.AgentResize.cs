@@ -12,6 +12,7 @@ public partial class MainWindow
 {
     private bool _agentPaneResizeInProgress;
 
+    /// <summary>Marshal an eligible visible-pane resize onto this window's dispatcher without activating tabs.</summary>
     async Task<AgentPaneResizeResult?> IAgentActionExecutor.ResizePaneAsync(Guid paneId, int cols, int rows, CancellationToken cancellationToken)
     {
         var operation = await Dispatcher.InvokeAsync(async () =>
@@ -32,6 +33,7 @@ public partial class MainWindow
         return await operation.ConfigureAwait(false);
     }
 
+    /// <summary>Only one visible direct local pane may own the normal window's sizing operation.</summary>
     private bool CanAgentResizePane(TerminalPane pane)
     {
         if (!IsVisible || !pane.IsEffectivelyVisible || !ReferenceEquals(TopLevel.GetTopLevel(pane), this) ||
@@ -46,7 +48,7 @@ public partial class MainWindow
             && _paneOwnerTab.Count(pair => ReferenceEquals(pair.Value, tab)) == 1;
     }
 
-    /// <summary>UI-thread lease for one bounded layout operation; it never activates tabs or directly resizes VT.</summary>
+    /// <summary>UI-thread lease with a responsive-UI observation timeout; it never activates tabs or directly resizes VT.</summary>
     private sealed class AgentPaneResizeOperation
     {
         private readonly MainWindow _window;
@@ -67,12 +69,15 @@ public partial class MainWindow
             _cols = cols; _rows = rows; _cancellationToken = cancellationToken;
         }
 
+        /// <summary>Observe existing layout/session dispatch; a blocked UI can delay timeout delivery and cleanup.</summary>
         internal async Task<AgentPaneResizeResult?> RunAsync(Size targetSize)
         {
             _view.ResizeDispatchCompleted += OnResizeCompleted;
             _window.Closed += OnClosed;
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
             using var cancelled = _cancellationToken.Register(() => _completion.TrySetCanceled(_cancellationToken));
+            // Sampling and event teardown require the UI thread. Callers must bound their transport
+            // separately: synchronous resize work or a stalled dispatcher can delay this timeout.
             using var expired = deadline.Token.Register(() => _window.Dispatcher.Post(CompletePartial, DispatcherPriority.Background));
             try
             {
@@ -97,6 +102,7 @@ public partial class MainWindow
 
         private void OnClosed(object? sender, EventArgs args) => _completion.TrySetResult(null);
 
+        /// <summary>Read actual geometry without waiting; unavailable identity and a temporarily busy buffer are distinct.</summary>
         private bool TrySnapshot(out AgentPaneResizeResult? observed)
         {
             observed = null;
@@ -109,6 +115,7 @@ public partial class MainWindow
             return true;
         }
 
+        /// <summary>Only current matching view/buffer/completed-dispatch facts may complete early.</summary>
         private void TryCompleteExact()
         {
             if (_completion.Task.IsCompleted) return;
@@ -117,6 +124,7 @@ public partial class MainWindow
                 _completion.TrySetResult(observed);
         }
 
+        /// <summary>At the UI-delivered timeout return measured facts, or unavailable if no safe sample exists.</summary>
         private void CompletePartial()
         {
             if (_completion.Task.IsCompleted) return;

@@ -1428,6 +1428,7 @@ namespace Ntilde.AgentHost
                 Ok(request.Id, JsonSerializer.SerializeToElement(dto, AgentHostJsonContext.Default.SpawnSessionResult)));
         }
 
+        /// <summary>Validate and journal dispatched resize attempts; only observed App facts become a result.</summary>
         private async Task<AgentHostResponse> HandleResizePaneAsync(AgentHostRequest request, CancellationToken cancellationToken)
         {
             ResizePaneParams? p;

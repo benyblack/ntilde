@@ -74,7 +74,7 @@ namespace Ntilde.AgentHost
         Task<bool> ClosePaneAsync(Guid paneId);
 
         /// <summary>
-        /// Attempts a bounded resize of one active visible direct local pane without activating tabs.
+        /// Attempts a resize with a responsive-UI observation timeout, without activating tabs.
         /// Null means unavailable before a usable observation. A partial attempt returns actual App
         /// facts, because restoring window bounds cannot undo terminal reflow. Implementations marshal
         /// to the UI thread; unsupported executors keep the safe unavailable default.

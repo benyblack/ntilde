@@ -904,11 +904,14 @@ requires public test classes.
 - `Shell/SshAskPassVaultPolicy.cs` (Phase 5 Task 2): whether the OpenSSH askpass helper may fill the vault password on a user's attempt through a jump host (not with ssh before 8.4, a hop named like the target, or a proxy in the extra arguments)
 - Updates and the multiplexer (`Update/`): `MuxUpdateCompatibility.cs` (R10: the protocol marker in the staged release notes, whether an apply keeps the daemon, and the startup auto-apply gate) and `UpdateSourceOverride.cs` (`NTILDE_UPDATE_SOURCE_DIR`, a local feed honoured only for the `NtildeSurvival` verification package id)
 - **Permissioned visible-pane resize belongs to App.** Raw AgentHost `resizePane`
-  requires the separate default-off act permission and journals each attempt.
+  requires the separate default-off act permission and journals attempts reaching
+  its method handler; frame-level rejections happen before that journal.
   `MainWindow.AgentResize` only changes the normal window containing its current
   single direct local pane; remote, deferred/mux, windowless, split and inactive
   panes are not resized. The existing view → VT buffer → session ordering remains
-  authoritative. A two-second operation reports actual nonblocking buffer samples;
+  authoritative. A two-second responsive-UI observation timeout reports actual
+  nonblocking buffer samples; synchronous resize work can still block on a write
+  lock and delay dispatcher timeout delivery.
   settled requires the view and successful session callback to agree. Neither the
   leaf DTOs nor this completion signal attest kernel PTY size or undo reflow.
 - The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)

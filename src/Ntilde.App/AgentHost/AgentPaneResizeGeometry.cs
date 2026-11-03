@@ -10,6 +10,7 @@ internal readonly record struct AgentPaneResizeLayout(
 /// <summary>Translate a requested cell grid into a client-size change without assuming hidden chrome dimensions.</summary>
 internal static class AgentPaneResizeGeometry
 {
+    /// <summary>Fit a bounded cell grid using measured chrome and native limits before changing a window.</summary>
     internal static bool TryGetClientSize(AgentPaneResizeLayout layout, int cols, int rows, out Size target)
     {
         target = default;

@@ -174,16 +174,22 @@ Each milestone is independently shippable and announceable. Estimates assume
 
 The raw AgentHost method `resizePane` accepts `{paneId, rows, cols}` with rows
 1–128 and columns 1–256. It uses the separate default-off act permission and
-journals every attempt, including malformed, refused and cancelled requests.
+journals attempts that reach the operation, including malformed parameters,
+refusals and cancellations. Frames rejected before method dispatch, including
+unsupported protocol versions, are not journaled.
 It is not an MCP tool. Only the current single direct local pane in the selected
 tab of a visible, normal, resizable window is eligible. Remote, mux/deferred,
 windowless, split, inactive and focus-mode targets are refused without activating
 a tab or directly resizing the VT buffer.
 
 App changes its actual window client size using measured cell/chrome dimensions
-and waits at most two seconds for the ordinary view → buffer → session resize
-path. The result `{rows, cols, layoutSettled, exact}` contains observed buffer
-geometry. `layoutSettled` requires agreement with the view and a successfully
+and starts a two-second observation timeout for the ordinary view → buffer →
+session resize path. Timeout observation and event cleanup run on the UI dispatcher;
+this is a responsive-UI bound, not a hard request deadline. A stalled dispatcher
+or contended buffer write lock can delay the response. Qualification callers need
+their own transport deadline and disposable-process cleanup.
+
+The result `{rows, cols, layoutSettled, exact}` contains observed buffer geometry. `layoutSettled` requires agreement with the view and a successfully
 returned session resize callback; `exact` additionally requires the requested
 grid. Native window limits or a callback failure can produce partial results.
 A busy buffer is sampled without waiting; unavailable observation returns
