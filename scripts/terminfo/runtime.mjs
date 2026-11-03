@@ -109,8 +109,9 @@ export function createPrivateScratch(root = join(homedir(), '.ntilde-qa')) {
     }
     // Darwin sockaddr_un allows 103 path bytes plus its terminating NUL.
     // Reject before making the fixture so a long home path leaves no scratch data.
-    if (Buffer.byteLength(join(root, 'nt-123456', 'owner.sock')) > 103) {
-        throw new Error('The private QA directory path is too long for a macOS owner socket.');
+    // The observe-only AgentHost socket is longer than the owner socket.
+    if (Buffer.byteLength(join(root, 'nt-123456', 'appdata', 'agent.sock')) > 103) {
+        throw new Error('The private QA directory path is too long for a macOS observer socket.');
     }
     return mkdtempSync(join(root, 'nt-'));
 }

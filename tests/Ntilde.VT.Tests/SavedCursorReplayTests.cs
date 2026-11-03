@@ -24,7 +24,7 @@ public sealed class SavedCursorReplayTests
             var live = new TerminalBuffer(10, 8);
             var parser = new AnsiParser(live);
             if (alternate) parser.Process("\u001b[?47h");
-            parser.Process("\u001b[3;10H\u001b[31;1;4:3;58:5:2mX\u001b(0\u001b[?1048h\u001b(B\u001b[1;1H\u001b[0m");
+            parser.Process("\u001b[3;10H\u001b[31;1;4:3;58:5:2;53mX\u001b(0\u001b[?1048h\u001b(B\u001b[1;1H\u001b[0m");
             const string tail = "\u001b[?1048lq";
             using (var recorder = new PtyRecorder(path, 10, 8))
             {
@@ -53,6 +53,7 @@ public sealed class SavedCursorReplayTests
             Assert.Equal(BufferSnapshot.Capture(live).ToFormattedString(), BufferSnapshot.Capture(restored).ToFormattedString());
             Assert.True(restored.IsBold);
             Assert.Equal(UnderlineStyle.Curly, restored.UnderlineStyle);
+            Assert.True(restored.IsOverline);
             Assert.Equal((short)2, restored.UnderlineColorIndex);
         }
         finally { File.Delete(path); }

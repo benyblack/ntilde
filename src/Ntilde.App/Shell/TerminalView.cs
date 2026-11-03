@@ -67,8 +67,13 @@ namespace Ntilde.Shell
             }
         }
 
-        public TerminalView()
+        public TerminalView() : this(new TextBlinkAnimation()) { }
+
+        internal TerminalView(TextBlinkAnimation textBlink)
         {
+            ArgumentNullException.ThrowIfNull(textBlink);
+            _textBlink = textBlink;
+            _reportTextBlinkCells = _textBlink.ReportCells;
             Focusable = true;
             ClipToBounds = true;
 
@@ -119,6 +124,8 @@ namespace Ntilde.Shell
         private bool _isAttachedToVisualTree;
         private volatile bool _isUiRenderable;
         private bool _cursorBlinkPhase = true;
+        private readonly TextBlinkAnimation _textBlink;
+        private readonly Action<bool> _reportTextBlinkCells;
         private bool _cursorBlinkEnabled = true;
         private bool _bellAudioEnabled = true;
         private bool _bellVisualEnabled = true;
@@ -267,7 +274,9 @@ namespace Ntilde.Shell
                 _buffer.OnInvalidate -= InvalidateBuffer; // Idempotent remove
                 _buffer.OnScreenSwitched -= OnScreenSwitched;
             }
+            if (!ReferenceEquals(_buffer, buffer)) LastCompletedResizeDispatch = default;
             _buffer = buffer;
+            _textBlink.Restart(clearCells: true);
             if (_buffer != null)
             {
                 _buffer.OnInvalidate -= InvalidateBuffer; // Ensure no duplicates
@@ -335,7 +344,11 @@ namespace Ntilde.Shell
         /// </summary>
         public void SetSession(ITerminalSession? session)
         {
-            if (!ReferenceEquals(_session, session)) ResetKittyKeyTracking();
+            if (!ReferenceEquals(_session, session))
+            {
+                ResetKittyKeyTracking();
+                LastCompletedResizeDispatch = default; // A previous session cannot prove this target received a resize.
+            }
             _session = session;
         }
 

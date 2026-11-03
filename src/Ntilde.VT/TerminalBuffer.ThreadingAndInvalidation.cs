@@ -34,6 +34,7 @@ namespace Ntilde.VT
         private uint[] _cachedRenderRowRevisions = Array.Empty<uint>();
         private int[] _cachedRenderRowCols = Array.Empty<int>();
         private RenderCellSnapshot[][] _cachedRenderRowCells = Array.Empty<RenderCellSnapshot[]>();
+        private bool[] _cachedRenderRowContainsBlink = Array.Empty<bool>();
         private int _lastSnapshotCols = -1;
         private int _lastSnapshotThemeEpoch;
         private bool _hasSnapshotState;
@@ -341,11 +342,14 @@ namespace Ntilde.VT
             int viewportRows = Math.Max(0, req.ViewportRows);
             int viewportCols = Math.Max(0, req.ViewportCols);
             int totalLines = 0;
+            int bufferRows, bufferCols;
             int absDisplayStart = 0;
             int cursorRow = 0;
             int cursorCol = 0;
             CursorStyle cursorStyle;
             bool cursorStyleIsDefault;
+            bool cursorVisible;
+            bool cursorBlinkEnabled;
             RenderThemeSnapshot theme = default;
             var rowsData = viewportRows > 0 ? new PooledArray<RenderRowSnapshot>(System.Buffers.ArrayPool<RenderRowSnapshot>.Shared.Rent(viewportRows), viewportRows) : PooledArray<RenderRowSnapshot>.Empty;
             PooledArray<RenderImageSnapshot> images = PooledArray<RenderImageSnapshot>.Empty;
@@ -360,12 +364,16 @@ namespace Ntilde.VT
                 Lock.EnterReadLock();
                 try
                 {
+                    bufferRows = Rows;
+                    bufferCols = Cols;
                     totalLines = InternalTotalLines;
                     absDisplayStart = Math.Max(0, totalLines - viewportRows - req.ScrollOffset);
                     cursorRow = _cursorRow;
                     cursorCol = _cursorCol;
                     cursorStyle = Modes.CursorStyle;
                     cursorStyleIsDefault = Modes.CursorStyleIsDefault;
+                    cursorVisible = Modes.IsCursorVisible;
+                    cursorBlinkEnabled = Modes.IsCursorBlinkEnabled;
 
                     var visibleImages = GetVisibleImagesSnapshot(absDisplayStart, viewportRows);
                     if (visibleImages.Count > 0)
@@ -400,13 +408,15 @@ namespace Ntilde.VT
                     readLockMs = lockSw.ElapsedMilliseconds;
                 }
 
-                selectionRows = BuildSelectionRows(req.Selection, absDisplayStart, viewportRows, viewportCols);
+                selectionRows = BuildSelectionRows(req.Selection, absDisplayStart, viewportRows, viewportCols, req.SelectionRelativeToViewport);
                 searchHighlights = BuildSearchHighlights(req.SearchMatches, req.ActiveSearchIndex, absDisplayStart, viewportRows, viewportCols);
 
                 return new TerminalRenderSnapshot
                 {
                     ViewportRows = viewportRows,
                     ViewportCols = viewportCols,
+                    BufferRows = bufferRows,
+                    BufferCols = bufferCols,
                     TotalLines = totalLines,
                     AbsDisplayStart = absDisplayStart,
                     ScrollOffset = req.ScrollOffset,
@@ -414,6 +424,8 @@ namespace Ntilde.VT
                     CursorCol = cursorCol,
                     CursorStyle = cursorStyle,
                     CursorStyleIsDefault = cursorStyleIsDefault,
+                    CursorVisible = cursorVisible,
+                    CursorBlinkEnabled = cursorBlinkEnabled,
                     Theme = theme,
                     DirtySpans = dirtySpans,
                     RowsData = rowsData,
@@ -459,12 +471,14 @@ namespace Ntilde.VT
 
                 if (row != null)
                 {
+                    var (cells, containsBlink) = GetOrBuildCachedRenderRowCells_NoLock(r, row, viewportCols);
                     rowSnapshot = new RenderRowSnapshot
                     {
                         AbsRow = absRow,
                         Revision = row.Revision,
                         Cols = viewportCols,
-                        Cells = GetOrBuildCachedRenderRowCells_NoLock(r, row, viewportCols),
+                        Cells = cells,
+                        ContainsBlink = containsBlink,
                         RowId = row.Id
                     };
                     rowId = rowSnapshot.RowId;
@@ -474,6 +488,7 @@ namespace Ntilde.VT
                 {
                     // Scrollback row (paged)
                     long absRowId = _scrollback.TotalRowsEvicted + absRow;
+                    var (cells, containsBlink) = GetOrBuildCachedPagedRenderRowCells_NoLock(r, absRow, absRowId, viewportCols, PagedRenderRevision);
                     rowSnapshot = new RenderRowSnapshot
                     {
                         AbsRow = absRow,
@@ -482,7 +497,8 @@ namespace Ntilde.VT
                         // revision invalidates the paged-row snapshot cache and render-side caches.
                         Revision = PagedRenderRevision,
                         Cols = viewportCols,
-                        Cells = GetOrBuildCachedPagedRenderRowCells_NoLock(r, absRow, absRowId, viewportCols, PagedRenderRevision),
+                        Cells = cells,
+                        ContainsBlink = containsBlink,
                         RowId = absRowId
                     };
                     rowId = rowSnapshot.RowId;
@@ -502,6 +518,7 @@ namespace Ntilde.VT
                     _cachedRenderRowRevisions[r] = 0;
                     _cachedRenderRowCols[r] = 0;
                     _cachedRenderRowCells[r] = Array.Empty<RenderCellSnapshot>();
+                    _cachedRenderRowContainsBlink[r] = false;
                 }
 
                 if (viewportRows > 0 && rowsData.Array != null)
@@ -576,13 +593,14 @@ namespace Ntilde.VT
                 if (row != null)
                 {
                     var cells = viewportCols > 0 ? new RenderCellSnapshot[viewportCols] : Array.Empty<RenderCellSnapshot>();
-                    PopulateRenderCellsFromRow_NoLock(row, viewportCols, cells);
+                    bool containsBlink = PopulateRenderCellsFromRow_NoLock(row, viewportCols, cells);
                     rowSnapshot = new RenderRowSnapshot
                     {
                         AbsRow = absRow,
                         Revision = row.Revision,
                         Cols = viewportCols,
                         Cells = cells,
+                        ContainsBlink = containsBlink,
                         RowId = row.Id
                     };
                 }
@@ -590,12 +608,14 @@ namespace Ntilde.VT
                 {
                     // Same id and combined revision the live path stamps on a paged row, so a
                     // caller's own row-picture cache keys it the same way.
+                    var cells = BuildPagedRenderRowCells_NoLock(absRow, viewportCols, out bool containsBlink);
                     rowSnapshot = new RenderRowSnapshot
                     {
                         AbsRow = absRow,
                         Revision = PagedRenderRevision,
                         Cols = viewportCols,
-                        Cells = BuildPagedRenderRowCells_NoLock(absRow, viewportCols),
+                        Cells = cells,
+                        ContainsBlink = containsBlink,
                         RowId = _scrollback.TotalRowsEvicted + absRow
                     };
                 }
@@ -653,6 +673,11 @@ namespace Ntilde.VT
                 AnsiPalette = palette,
                 HasForegroundOverride = overrides.Foreground.HasValue,
                 HasBackgroundOverride = overrides.Background.HasValue,
+                HasCursorOverride = overrides.Cursor.HasValue,
+                HasSelectionBackgroundOverride = overrides.SelectionBackground.HasValue,
+                HasSelectionForegroundOverride = overrides.SelectionForeground.HasValue,
+                SelectionBackground = theme.SelectionBackground,
+                SelectionForeground = theme.SelectionForeground,
                 PaletteOverrides = new PaletteOverrideMask(masks[0], masks[1], masks[2], masks[3]),
                 Source = theme
             };
@@ -674,36 +699,35 @@ namespace Ntilde.VT
             Array.Resize(ref _cachedRenderRowRevisions, newLen);
             Array.Resize(ref _cachedRenderRowCols, newLen);
             Array.Resize(ref _cachedRenderRowCells, newLen);
+            Array.Resize(ref _cachedRenderRowContainsBlink, newLen);
         }
 
-        private RenderCellSnapshot[] GetOrBuildCachedRenderRowCells_NoLock(int rowIndex, TerminalRow row, int viewportCols)
+        private (RenderCellSnapshot[] Cells, bool ContainsBlink) GetOrBuildCachedRenderRowCells_NoLock(int rowIndex, TerminalRow row, int viewportCols)
         {
             if (viewportCols <= 0)
             {
-                return Array.Empty<RenderCellSnapshot>();
+                return (Array.Empty<RenderCellSnapshot>(), false);
             }
 
             RenderCellSnapshot[]? cachedCells = _cachedRenderRowCells[rowIndex];
-            bool canReuse =
-                cachedCells != null &&
+            if (cachedCells != null &&
                 cachedCells.Length == viewportCols &&
                 _cachedRenderRowIds[rowIndex] == row.Id &&
                 _cachedRenderRowRevisions[rowIndex] == row.Revision &&
-                _cachedRenderRowCols[rowIndex] == viewportCols;
-
-            if (canReuse)
+                _cachedRenderRowCols[rowIndex] == viewportCols)
             {
-                return cachedCells!;
+                return (cachedCells, _cachedRenderRowContainsBlink[rowIndex]);
             }
 
             var rebuiltCells = new RenderCellSnapshot[viewportCols];
-            PopulateRenderCellsFromRow_NoLock(row, viewportCols, rebuiltCells);
+            bool containsBlink = PopulateRenderCellsFromRow_NoLock(row, viewportCols, rebuiltCells);
 
             _cachedRenderRowIds[rowIndex] = row.Id;
             _cachedRenderRowRevisions[rowIndex] = row.Revision;
             _cachedRenderRowCols[rowIndex] = viewportCols;
             _cachedRenderRowCells[rowIndex] = rebuiltCells;
-            return rebuiltCells;
+            _cachedRenderRowContainsBlink[rowIndex] = containsBlink;
+            return (rebuiltCells, containsBlink);
         }
 
         private void AppendChangedSpansForRow_NoLock(int rowIndex, RenderCellSnapshot[] currentCells, int viewportCols, List<DirtySpan> dirtySpans)
@@ -847,7 +871,7 @@ namespace Ntilde.VT
             return PooledArray<DirtySpan>.Empty;
         }
 
-        private static PooledArray<SelectionRowSnapshot> BuildSelectionRows(SelectionState? selection, int absDisplayStart, int viewportRows, int viewportCols)
+        private static PooledArray<SelectionRowSnapshot> BuildSelectionRows(SelectionState? selection, int absDisplayStart, int viewportRows, int viewportCols, bool relativeToViewport)
         {
             if (selection == null || !selection.IsActive || viewportRows <= 0 || viewportCols <= 0)
             {
@@ -858,7 +882,7 @@ namespace Ntilde.VT
             int absEnd = absDisplayStart + viewportRows;
             for (int absRow = absDisplayStart; absRow < absEnd; absRow++)
             {
-                var (isSelected, colStart, colEnd) = selection.GetSelectionRangeForRow(absRow, viewportCols);
+                var (isSelected, colStart, colEnd) = selection.GetSelectionRangeForRow(relativeToViewport ? absRow - absDisplayStart : absRow, viewportCols);
                 if (!isSelected)
                 {
                     continue;
@@ -969,39 +993,38 @@ namespace Ntilde.VT
             intervals.Insert(index, new SearchInterval(start, end));
         }
 
-        private RenderCellSnapshot[] GetOrBuildCachedPagedRenderRowCells_NoLock(int rowIndex, int absRow, long rowId, int viewportCols, uint revision)
+        private (RenderCellSnapshot[] Cells, bool ContainsBlink) GetOrBuildCachedPagedRenderRowCells_NoLock(int rowIndex, int absRow, long rowId, int viewportCols, uint revision)
         {
             if (viewportCols <= 0)
             {
-                return Array.Empty<RenderCellSnapshot>();
+                return (Array.Empty<RenderCellSnapshot>(), false);
             }
 
             RenderCellSnapshot[]? cachedCells = _cachedRenderRowCells[rowIndex];
-            bool canReuse =
-                cachedCells != null &&
+            if (cachedCells != null &&
                 cachedCells.Length == viewportCols &&
                 _cachedRenderRowIds[rowIndex] == rowId &&
                 _cachedRenderRowRevisions[rowIndex] == revision &&
-                _cachedRenderRowCols[rowIndex] == viewportCols;
-
-            if (canReuse)
+                _cachedRenderRowCols[rowIndex] == viewportCols)
             {
-                return cachedCells!;
+                return (cachedCells, _cachedRenderRowContainsBlink[rowIndex]);
             }
 
             // Sizing edits can mutate retained rows; their dedicated revision invalidates both cell and picture caches.
-            var rebuiltCells = BuildPagedRenderRowCells_NoLock(absRow, viewportCols);
+            var rebuiltCells = BuildPagedRenderRowCells_NoLock(absRow, viewportCols, out bool containsBlink);
 
             _cachedRenderRowIds[rowIndex] = rowId;
             _cachedRenderRowRevisions[rowIndex] = revision;
             _cachedRenderRowCols[rowIndex] = viewportCols;
             _cachedRenderRowCells[rowIndex] = rebuiltCells;
+            _cachedRenderRowContainsBlink[rowIndex] = containsBlink;
 
-            return rebuiltCells;
+            return (rebuiltCells, containsBlink);
         }
 
-        private RenderCellSnapshot[] BuildPagedRenderRowCells_NoLock(int absRow, int viewportCols)
+        private RenderCellSnapshot[] BuildPagedRenderRowCells_NoLock(int absRow, int viewportCols, out bool containsBlink)
         {
+            containsBlink = false;
             if (viewportCols <= 0)
             {
                 return Array.Empty<RenderCellSnapshot>();
@@ -1026,6 +1049,7 @@ namespace Ntilde.VT
                 if (c < copyLen)
                 {
                     var cell = sourceCells[c];
+                    containsBlink |= cell.IsBlink && !cell.IsHidden;
                     rebuiltCells[c] = new RenderCellSnapshot
                     {
                         Character = cell.Character,
@@ -1046,7 +1070,7 @@ namespace Ntilde.VT
                         IsFaint = cell.IsFaint,
                         IsItalic = cell.IsItalic,
                         IsUnderline = cell.IsUnderline,
-                        Underline = cell.IsUnderline && underlines != null && underlines.TryGet(c, out CellUnderline? underline)
+                        Underline = underlines != null && underlines.TryGet(c, out CellUnderline? underline)
                             ? underline
                             : null,
                         IsBlink = cell.IsBlink,

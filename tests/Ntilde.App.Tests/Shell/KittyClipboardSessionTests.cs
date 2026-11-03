@@ -18,6 +18,9 @@ public class KittyClipboardSessionTests
     {
         public bool Available { get; set; } = true;
         public bool AllowRead;
+        public ClipboardReadConsent? Consent;
+        public ClipboardReadRequest? LastRequest;
+        public IReadOnlyList<string>? RequestedTypes;
         public int Prompts, Reads, Lists, Writes, ReadThread;
         public Exception? Failure;
         public Task? ProviderWait;
@@ -26,8 +29,9 @@ public class KittyClipboardSessionTests
         public int SnapshotsDisposed;
         public Func<CancellationToken, Task<bool>>? Confirmation;
         public Dictionary<string, byte[]> Values = new() { ["text/plain"] = Encoding.UTF8.GetBytes("private text"), ["image/png"] = new byte[8193] };
-        public async Task<IKittyClipboardSnapshot> OpenReadAsync()
+        public async Task<IKittyClipboardSnapshot> OpenReadAsync(IReadOnlyList<string>? requestedTypes = null)
         {
+            RequestedTypes = requestedTypes;
             Lists++;
             if (ProviderWait != null) await ProviderWait;
             return new Snapshot(this, Values.ToDictionary(p => p.Key, p => p.Value));
@@ -54,7 +58,12 @@ public class KittyClipboardSessionTests
             Writes++;
             Values = data.ToDictionary(p => p.Key, p => p.Value);
         }
-        public Task<bool> ConfirmReadAsync(string name, CancellationToken cancellation) { Prompts++; return Confirmation?.Invoke(cancellation) ?? Task.FromResult(AllowRead); }
+        public async Task<ClipboardReadConsent> ConfirmReadAsync(ClipboardReadRequest request, CancellationToken cancellation)
+        {
+            Prompts++; LastRequest = request;
+            bool allowed = Confirmation == null ? AllowRead : await Confirmation(cancellation);
+            return Consent ?? (allowed ? ClipboardReadConsent.AllowOnce : ClipboardReadConsent.Deny);
+        }
     }
     private sealed class Harness : IDisposable
     {
@@ -68,7 +77,7 @@ public class KittyClipboardSessionTests
         public readonly Queue<Func<Task>> Work = new();
         public bool WriteAllowed = true, Alive = true;
         public readonly KittyClipboardSession Session;
-        public Harness(TimeSpan? replyTimeout = null) => Session = new(Clipboard, reply => TrySendOverride?.Invoke(reply) ?? Record(reply),
+        public Harness(TimeSpan? replyTimeout = null, IKittyClipboard? primary = null) => Session = new(new ClipboardLocations(Clipboard, primary), reply => TrySendOverride?.Invoke(reply) ?? Record(reply),
             work => { Work.Enqueue(work); return Task.CompletedTask; }, () => WriteAllowed, () => Alive, Clock,
             replyPolicy: new ClipboardReplyPolicy((delay, cancellation) => DelayOverride?.Invoke(delay, cancellation) ?? Task.Delay(delay, cancellation), replyTimeout, work => { Work.Enqueue(work); return Task.CompletedTask; }));
         public bool Record(string reply)
@@ -85,6 +94,221 @@ public class KittyClipboardSessionTests
     private static string B64(string value) => KittyClipboardPacket.Encode(value);
     private static string Data(string mime, string value) => "type=wdata:mime=" + B64(mime) + ";" + value;
     private static string Read(string mime) => "type=read:id=request;" + B64(mime);
+
+    [Fact]
+    public async Task Primary_listing_opens_a_metadata_scope_and_approved_read_requests_only_its_MIMEs()
+    {
+        var primary = new FakeClipboard();
+        using var h = new Harness(primary: primary);
+        h.Send("type=read:loc=primary;" + B64(".")); await h.Drain();
+        Assert.NotNull(primary.RequestedTypes); Assert.Empty(primary.RequestedTypes);
+        Assert.Equal(0, primary.Reads); Assert.Equal(0, primary.Prompts);
+        primary.AllowRead = true;
+        h.Send("type=read:loc=primary;" + B64("text/plain")); await h.Drain();
+        Assert.Equal(new[] { "text/plain" }, primary.RequestedTypes);
+        Assert.Equal(1, primary.Reads); Assert.Equal(1, primary.Prompts);
+    }
+
+    [Fact]
+    public async Task Primary_write_inherits_initial_location_across_chunks_and_aliases()
+    {
+        var primary = new FakeClipboard();
+        using var h = new Harness(primary: primary);
+        h.Send("type=write:loc=primary:id=primary");
+        h.Send(Data("application/octet-stream", "AAEC/w=="));
+        h.Send("type=walias:mime=" + B64("application/octet-stream") + ";" + B64("application/x-alias"));
+        h.Send("type=wdata"); await h.Drain();
+        Assert.Contains("status=DONE:id=primary", Assert.Single(h.Replies));
+        Assert.Equal(new byte[] { 0, 1, 2, 255 }, primary.Values["application/x-alias"]);
+        Assert.Equal(1, primary.Writes); Assert.Equal(0, h.Clipboard.Writes);
+        h.Send("type=write:loc=primary"); h.Send("type=wdata"); await h.Drain();
+        Assert.Empty(primary.Values); Assert.Equal(2, primary.Writes); Assert.Equal(0, h.Clipboard.Writes);
+        h.WriteAllowed = false; h.Send("type=write:loc=primary"); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]); Assert.Equal(2, primary.Writes);
+    }
+
+    [Fact]
+    public async Task Remembered_primary_and_clipboard_read_permissions_are_separate_and_show_the_location()
+    {
+        var primary = new FakeClipboard { Consent = ClipboardReadConsent.AllowSession };
+        using var h = new Harness(primary: primary);
+        string read = NamedRead().Replace("type=read", "type=read:loc=primary", StringComparison.Ordinal);
+        h.Send(read); await h.Drain();
+        Assert.True(primary.LastRequest!.Primary);
+        h.Send(read); await h.Drain(); Assert.Equal(1, primary.Prompts);
+        h.Send(NamedRead()); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]); Assert.Equal(1, h.Clipboard.Prompts);
+        Assert.False(h.Clipboard.LastRequest!.Primary);
+        h.Session.Reset(); primary.Consent = ClipboardReadConsent.Deny;
+        h.Send(read); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]); Assert.Equal(2, primary.Prompts);
+    }
+
+    [Fact]
+    public async Task Default_clipboard_paste_token_never_authorizes_or_supplies_primary_data()
+    {
+        var primary = new FakeClipboard();
+        using var h = new Harness(primary: primary);
+        await h.Session.NotifyPasteAsync();
+        string token = h.Replies[0].Split(":pw=")[1][..^2]; h.Replies.Clear();
+        h.Send("type=read:loc=primary:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain")); await h.Drain();
+        Assert.Contains("status=EPERM", Assert.Single(h.Replies)); Assert.Equal(0, primary.Reads);
+        Assert.Equal(1, primary.Prompts);
+        h.Replies.Clear();
+        h.Send("type=read:pw=" + token + ":name=" + B64("Paste event") + ";" + B64("text/plain")); await h.Drain();
+        Assert.Contains("status=DONE", h.Replies[^1]); Assert.Equal(0, h.Clipboard.Prompts);
+    }
+
+    [Theory]
+    [InlineData(":0", true)]
+    [InlineData(":123.1", true)]
+    [InlineData("unix:0", true)]
+    [InlineData("unix:1.2", true)]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData("remote:0", false)]
+    [InlineData("localhost:10.0", false)]
+    [InlineData(":", false)]
+    [InlineData(":0.", false)]
+    [InlineData(":0.1.2", false)]
+    public void Primary_backend_accepts_only_local_X11_displays(string? display, bool expected) =>
+        Assert.Equal(expected, XcbPrimaryClipboard.IsLocalDisplay(display));
+
+    private static string NamedRead(string name = "Editor", string password = "per-launch random password", string mime = "text/plain") =>
+        "type=read:name=" + B64(name) + ":pw=" + B64(password) + ";" + B64(mime);
+
+    [Fact]
+    public async Task Explicit_session_consent_reuses_only_the_same_name_and_password_on_this_TTY()
+    {
+        using var h = new Harness();
+        using var other = new Harness();
+        h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead()); await h.Drain();
+        Assert.True(h.Clipboard.LastRequest!.CanRemember);
+        Assert.Equal("Editor", h.Clipboard.LastRequest.Name);
+        h.Clipboard.Consent = ClipboardReadConsent.Deny;
+        h.Clipboard.Values["text/plain"] = Encoding.UTF8.GetBytes("updated clipboard");
+        h.Send(NamedRead()); await h.Drain();
+        Assert.Equal(1, h.Clipboard.Prompts);
+        Assert.Contains("status=DONE", h.Replies[^1]);
+        Assert.Contains(h.Replies, r => r.Contains(B64("updated clipboard"), StringComparison.Ordinal));
+        h.Send(NamedRead(password: "different")); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+        h.Send(NamedRead(name: "Different editor")); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+        Assert.Equal(3, h.Clipboard.Prompts);
+        other.Send(NamedRead()); await other.Drain();
+        Assert.Equal(1, other.Clipboard.Prompts);
+        Assert.Contains("status=EPERM", other.Replies[^1]);
+    }
+
+    [Fact]
+    public async Task Consent_shows_the_full_name_including_suffixes_after_a_shared_long_prefix()
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        string prefix = new('x', 100);
+        h.Send(NamedRead(name: prefix + "first")); await h.Drain();
+        Assert.Equal(prefix + "first", h.Clipboard.LastRequest!.Name);
+        h.Send(NamedRead(name: prefix + "second")); await h.Drain();
+        Assert.Equal(prefix + "second", h.Clipboard.LastRequest!.Name);
+        Assert.Equal(2, h.Clipboard.Prompts);
+    }
+
+    [Theory]
+    [InlineData((int)ClipboardReadConsent.Deny)]
+    [InlineData((int)ClipboardReadConsent.AllowOnce)]
+    public async Task Denial_and_allow_once_never_create_a_remembered_grant(int consent)
+    {
+        using var h = new Harness(); h.Clipboard.Consent = (ClipboardReadConsent)consent;
+        h.Send(NamedRead()); await h.Drain();
+        h.Clipboard.Consent = ClipboardReadConsent.Deny;
+        h.Send(NamedRead()); await h.Drain();
+        Assert.Equal(2, h.Clipboard.Prompts);
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+    }
+
+    [Theory]
+    [InlineData("", "password")]
+    [InlineData("Editor", "")]
+    [InlineData("   ", "password")]
+    [InlineData("\u034f\ufe0f", "password")]
+    [InlineData("\U000e0100", "password")]
+    [InlineData("\u115f\u1160\u3164\uffa0", "password")]
+    [InlineData("\u2800", "password")]
+    [InlineData("\u00a0\u2003\t", "password")]
+    [InlineData("\u0000\u202e", "password")]
+    public async Task Missing_or_invisible_identity_never_offers_or_stores_a_session_grant(string name, string password)
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead(name, password)); await h.Drain();
+        Assert.False(h.Clipboard.LastRequest!.CanRemember);
+        h.Send(NamedRead(name, password)); await h.Drain();
+        Assert.Equal(2, h.Clipboard.Prompts);
+    }
+
+    [Theory]
+    [InlineData("Editor\ufe0f")]
+    [InlineData("é\u0301ditor")]
+    [InlineData("\U0001f9ea")]
+    public async Task Visible_names_with_shaping_marks_or_supplementary_symbols_can_be_remembered(string name)
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead(name)); await h.Drain();
+        Assert.True(h.Clipboard.LastRequest!.CanRemember);
+        Assert.Equal(name, h.Clipboard.LastRequest.Name);
+        h.Send(NamedRead(name)); await h.Drain();
+        Assert.Equal(1, h.Clipboard.Prompts);
+    }
+
+    [Fact]
+    public async Task Reset_revokes_session_grants_and_late_approval_cannot_restore_them()
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead()); await h.Drain();
+        h.Session.Reset(); h.Clipboard.Consent = ClipboardReadConsent.Deny;
+        h.Send(NamedRead()); await h.Drain();
+        Assert.Equal(2, h.Clipboard.Prompts);
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+        var consent = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        h.Clipboard.Confirmation = _ => consent.Task;
+        h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead()); var waiting = h.Drain();
+        h.Session.Reset(); consent.SetResult(true); await waiting;
+        h.Clipboard.Confirmation = null; h.Clipboard.Consent = ClipboardReadConsent.Deny;
+        h.Send(NamedRead()); await h.Drain();
+        Assert.Equal(4, h.Clipboard.Prompts);
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+    }
+
+    [Fact]
+    public async Task Session_read_grant_never_overrides_the_write_setting_or_authorizes_primary_selection()
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        h.Send(NamedRead()); await h.Drain(); h.WriteAllowed = false;
+        h.Send("type=write:name=" + B64("Editor") + ":pw=" + B64("per-launch random password")); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+        Assert.Equal(0, h.Clipboard.Writes);
+        h.Send(NamedRead().Replace("type=read", "type=read:loc=primary", StringComparison.Ordinal)); await h.Drain();
+        Assert.Contains("status=ENOSYS", h.Replies[^1]);
+        Assert.Equal(1, h.Clipboard.Prompts);
+    }
+
+    [Fact]
+    public async Task Session_permission_capacity_evicts_oldest_without_silently_accepting_new_credentials()
+    {
+        using var h = new Harness(); h.Clipboard.Consent = ClipboardReadConsent.AllowSession;
+        for (int i = 0; i <= ClipboardSessionPermissions.Capacity; i++)
+        {
+            h.Send(NamedRead(password: "credential-" + i)); await h.Drain();
+        }
+        Assert.Equal(ClipboardSessionPermissions.Capacity + 1, h.Clipboard.Prompts);
+        h.Clipboard.Consent = ClipboardReadConsent.Deny;
+        h.Send(NamedRead(password: "credential-1")); await h.Drain();
+        Assert.Contains("status=DONE", h.Replies[^1]);
+        h.Send(NamedRead(password: "credential-0")); await h.Drain();
+        Assert.Contains("status=EPERM", h.Replies[^1]);
+        Assert.Equal(ClipboardSessionPermissions.Capacity + 2, h.Clipboard.Prompts);
+    }
 
     [Fact]
     public async Task Writes_binary_and_text_atomically_with_split_base64_and_forward_aliases()
@@ -671,6 +895,16 @@ public class KittyClipboardSessionTests
         Assert.Contains("status=EIO", Assert.Single(h.Replies));
         h.Send("type=write"); h.Clock.Now = h.Clock.Now.AddMinutes(2); h.Send("type=wdata");
         Assert.Contains("status=EBUSY", h.Replies[^1]);
+    }
+
+    [Fact]
+    public async Task Native_pixel_or_representation_limit_reports_EFBIG_without_success()
+    {
+        using var h = new Harness();
+        h.Clipboard.Failure = new ClipboardSizeLimitException("Native clipboard budget exceeded.");
+        h.Send("type=write:id=large"); h.Send(Data("application/octet-stream", "AA==")); h.Send("type=wdata");
+        await h.Drain();
+        Assert.Contains("status=EFBIG:id=large", Assert.Single(h.Replies));
     }
 
     [Theory]

@@ -72,6 +72,24 @@
       "matrixFeature": "MIME clipboard paste notifications",
       "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
       "contractCase": "mime-clipboard-paste"
+    },
+    {
+      "key": "CSI:53m",
+      "mnemonic": "Overline on",
+      "support": "supported",
+      "description": "Enable overline independently of underline; SGR 0 resets both.",
+      "matrixFeature": "Overline on",
+      "evidencePath": "tests/Ntilde.VT.Tests/OverlineTests.cs",
+      "contractCase": "sgr-overline-on"
+    },
+    {
+      "key": "CSI:55m",
+      "mnemonic": "Overline off",
+      "support": "supported",
+      "description": "Disable overline without changing underline style or color.",
+      "matrixFeature": "Overline off",
+      "evidencePath": "tests/Ntilde.VT.Tests/OverlineTests.cs",
+      "contractCase": "sgr-overline-off"
     }
   ]
 }

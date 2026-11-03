@@ -13,21 +13,26 @@ namespace Ntilde.VT
     }
 
     /// <summary>
-    /// What sets an underline apart from a plain one: its style (SGR 4:x, 21) and its own color (SGR 58),
-    /// either an RGB value or a palette index that, like the foreground's, follows the theme.
+    /// Sparse cell decoration: underline style (SGR 4:x, 21), its own color (SGR 58), and independent overline (53/55).
+    /// An underline color is either an RGB value or a palette index that, like the foreground's, follows the theme.
     /// </summary>
     /// <remarks>
     /// Kept in <see cref="TerminalRow"/>'s side table, not in <see cref="TerminalCell"/>: the cell's flags
     /// are full, and widening every cell (scrollback included) for an attribute few cells carry is the
     /// wrong trade (#270). Whether a cell is underlined at all is still <see cref="TerminalCellFlags.Underline"/>;
-    /// a straight underline in the text color has no entry, and only the cells that need one carry this.
+    /// a straight underline in the text color has no entry, and only the cells that need one carry this. Overline (SGR 53) also uses this side table,
+    /// independently of the underline flag, without widening the packed cell.
     /// Cells written with one pen share one instance, as a hyperlink run shares one identity.
     /// </remarks>
+    /// <param name="Overline">Whether SGR 53 draws a line above the cell, in the text color.</param>
     /// <param name="Style">The underline's style.</param>
     /// <param name="Color">The SGR 58 RGB color; <c>null</c> when it is a palette index or unset (the text color).</param>
     /// <param name="ColorIndex">The SGR 58 palette index, or -1.</param>
-    public sealed record CellUnderline(UnderlineStyle Style, TermColor? Color = null, short ColorIndex = -1)
+    public sealed record CellUnderline(UnderlineStyle Style, TermColor? Color = null, short ColorIndex = -1, bool Overline = false)
     {
+        /// <summary>Shared side entry for overline without an underline.</summary>
+        public static CellUnderline OverlineOnly { get; } = new(UnderlineStyle.Single, Overline: true);
+
         /// <summary>True when SGR 58 gave the underline a color of its own.</summary>
         public bool HasColor => Color.HasValue || ColorIndex >= 0;
 
@@ -35,9 +40,11 @@ namespace Ntilde.VT
         /// The side-table entry for a pen, or <c>null</c> for a straight underline in the text color: that one
         /// needs nothing beyond the cell's flag.
         /// </summary>
-        public static CellUnderline? For(UnderlineStyle style, TermColor? color, short colorIndex)
-            => style == UnderlineStyle.Single && !color.HasValue && colorIndex < 0
-                ? null
-                : new CellUnderline(style, colorIndex >= 0 ? null : color, colorIndex);
+        public static CellUnderline? For(UnderlineStyle style, TermColor? color, short colorIndex, bool overline = false)
+        {
+            if (style == UnderlineStyle.Single && !color.HasValue && colorIndex < 0 && !overline) return null;
+            if (colorIndex >= 0) color = null;
+            return new CellUnderline(style, color, colorIndex, overline);
+        }
     }
 }

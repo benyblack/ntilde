@@ -2,13 +2,18 @@ using System.Runtime.InteropServices;
 
 namespace Ntilde.Shell.Clipboard;
 
-/// <summary>macOS exposes UTIs; other platforms can carry MIME-named custom byte formats.</summary>
+/// <summary>Maps MIME names to macOS UTIs or Windows registered PNG/HTML formats; aliases remain custom formats.</summary>
 internal static class ClipboardMimeNames
 {
-    public static string ToPlatform(string mime) => OperatingSystem.IsMacOS() ? ConvertMac(mime, toMime: false) ?? mime : mime;
+    public static string ToPlatform(string mime)
+    {
+        if (OperatingSystem.IsWindows()) return WindowsClipboardFormats.ToNative(mime);
+        return OperatingSystem.IsMacOS() ? ConvertMac(mime, toMime: false) ?? mime : mime;
+    }
     public static string? ToMime(string platform)
     {
         if (platform.Contains('/')) return platform;
+        if (OperatingSystem.IsWindows()) return WindowsClipboardFormats.ToMime(platform);
         return OperatingSystem.IsMacOS() ? ConvertMac(platform, toMime: true) : null;
     }
 

@@ -9,6 +9,8 @@ namespace Ntilde.VT
         public int ViewportCols { get; init; }
         public int ScrollOffset { get; init; }
         public SelectionState? Selection { get; init; }
+        /// <summary>Interpret selection rows relative to this actual captured viewport; default uses absolute history rows.</summary>
+        public bool SelectionRelativeToViewport { get; init; }
         public IReadOnlyList<SearchMatch>? SearchMatches { get; init; }
         public int ActiveSearchIndex { get; init; }
 
@@ -51,6 +53,11 @@ namespace Ntilde.VT
         public TermColor[] AnsiPalette { get; init; }
         public bool HasForegroundOverride { get; init; }
         public bool HasBackgroundOverride { get; init; }
+        public bool HasCursorOverride { get; init; }
+        public bool HasSelectionBackgroundOverride { get; init; }
+        public bool HasSelectionForegroundOverride { get; init; }
+        public TermColor? SelectionBackground { get; init; }
+        public TermColor? SelectionForeground { get; init; }
         public PaletteOverrideMask PaletteOverrides { get; init; }
 
         /// <summary>
@@ -111,6 +118,9 @@ namespace Ntilde.VT
     {
         public int ViewportRows { get; init; }
         public int ViewportCols { get; init; }
+        /// <summary>Actual terminal dimensions at snapshot copy, independent of the requested viewport.</summary>
+        public int BufferRows { get; init; }
+        public int BufferCols { get; init; }
         public int TotalLines { get; init; }
         public int AbsDisplayStart { get; init; }
         public int ScrollOffset { get; init; }
@@ -118,6 +128,8 @@ namespace Ntilde.VT
         public int CursorCol { get; init; }
         public CursorStyle CursorStyle { get; init; }
         public bool CursorStyleIsDefault { get; init; }
+        public bool CursorVisible { get; init; }
+        public bool CursorBlinkEnabled { get; init; }
         public RenderThemeSnapshot Theme { get; init; }
         public PooledArray<DirtySpan> DirtySpans { get; init; }
         public PooledArray<RenderRowSnapshot> RowsData { get; init; }
@@ -169,6 +181,8 @@ namespace Ntilde.VT
         public int Cols;
         public RenderCellSnapshot[] Cells;
         public long RowId;
+        /// <summary>At least one unhidden SGR 5 cell in this immutable row projection.</summary>
+        public bool ContainsBlink { get; set; }
     }
 
     public struct RenderImageSnapshot

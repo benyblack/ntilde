@@ -189,7 +189,9 @@ namespace Ntilde.Shell
                 minimumContrast: _minimumContrast,
                 cacheLease: cacheLease,
                 requestImageFrame: offscreen ? null : () => Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Render),
-                preferredCursorStyle: _preferredCursorStyle
+                preferredCursorStyle: _preferredCursorStyle,
+                textBlinkVisible: _textBlink.ForegroundVisible,
+                reportTextBlinkCells: offscreen ? null : _reportTextBlinkCells
             ));
 
             if (_hoveredLink != null)

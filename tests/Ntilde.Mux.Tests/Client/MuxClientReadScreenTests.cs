@@ -50,6 +50,24 @@ public sealed class MuxClientReadScreenTests
         Assert.NotNull(read.Status.LastOutputUnixMs);
     }
 
+    [Fact]
+    public async Task ReadScreen_decodes_nondefault_insert_and_autowrap_modes()
+    {
+        using var host = new MuxTestHost();
+        MuxClient viewer = await host.ConnectClientAsync();
+        MuxClient agent = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(viewer);
+        host.Fake(id).Emit(Lines(40) + "\x1b[4h\x1b[?7lprompt> ");
+        await host.Mux(id).FlushAsync();
+
+        MuxScreenRead? read = await agent.ReadScreenAsync(id, 100, Ct);
+
+        Assert.NotNull(read);
+        (TerminalBuffer buffer, _) = Restore(read.Snapshot);
+        Assert.True(buffer.Modes.IsInsertMode);
+        Assert.False(buffer.Modes.IsAutoWrapMode);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]

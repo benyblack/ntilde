@@ -40,6 +40,8 @@ public sealed class VtCapabilityContractTests
             ["color-scheme-query"] = AssertColorSchemeQuery,
             ["color-scheme-notifications"] = AssertColorSchemeNotifications,
             ["mime-clipboard-paste"] = AssertMimeClipboardPaste,
+            ["sgr-overline-on"] = AssertOverline,
+            ["sgr-overline-off"] = AssertOverline,
         };
 
     private static readonly Dictionary<string, string> ContractSequences =
@@ -53,7 +55,19 @@ public sealed class VtCapabilityContractTests
             ["color-scheme-query"] = "\x1b[?996n",
             ["color-scheme-notifications"] = "\x1b[?2031h\x1b[?2031$p",
             ["mime-clipboard-paste"] = "\x1b[?5522h\x1b[?5522$p",
+            ["sgr-overline-on"] = "\x1b[53mA",
+            ["sgr-overline-off"] = "\x1b[53mA\x1b[55mB",
         };
+
+    private static void AssertOverline()
+    {
+        var buffer = new TerminalBuffer(20, 3);
+        new AnsiParser(buffer).Process("\x1b[53mA\x1b[55mB\x1b[53mC\x1b[0mD");
+        Assert.True(buffer.GetUnderlineAbsolute(0, 0)?.Overline);
+        Assert.Null(buffer.GetUnderlineAbsolute(1, 0));
+        Assert.True(buffer.GetUnderlineAbsolute(2, 0)?.Overline);
+        Assert.Null(buffer.GetUnderlineAbsolute(3, 0));
+    }
 
     public static IEnumerable<object[]> SupportedCapabilities()
         => VtCapabilityCatalog.All

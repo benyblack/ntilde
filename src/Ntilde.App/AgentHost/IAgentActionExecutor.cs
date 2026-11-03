@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Ntilde.AgentHost
 {
@@ -50,9 +51,12 @@ namespace Ntilde.AgentHost
         int Height,
         bool Downscaled);
 
+    /// <summary>Actual App buffer grid and whether its view/session resize dispatch has settled.</summary>
+    public readonly record struct AgentPaneResizeResult(int Rows, int Cols, bool LayoutSettled);
+
     /// <summary>
-    /// UI-thread bridge the agent-host endpoint uses to open and close sessions
-    /// (A3 spawn/close). Implemented by MainWindow and published on the service
+    /// UI-thread bridge the agent-host endpoint uses to open, close and resize sessions
+    /// (A3 acting). Implemented by MainWindow and published on the service
     /// while the window lives; the service never touches Avalonia directly.
     /// Implementations marshal to the UI thread themselves.
     /// </summary>
@@ -68,6 +72,15 @@ namespace Ntilde.AgentHost
 
         /// <summary>Closes the pane with <paramref name="paneId"/>. False if no such live pane.</summary>
         Task<bool> ClosePaneAsync(Guid paneId);
+
+        /// <summary>
+        /// Attempts a resize with a responsive-UI observation timeout, without activating tabs.
+        /// Null means unavailable before a usable observation. A partial attempt returns actual App
+        /// facts, because restoring window bounds cannot undo terminal reflow. Implementations marshal
+        /// to the UI thread; unsupported executors keep the safe unavailable default.
+        /// </summary>
+        Task<AgentPaneResizeResult?> ResizePaneAsync(Guid paneId, int cols, int rows, CancellationToken cancellationToken)
+            => Task.FromResult<AgentPaneResizeResult?>(null);
 
         /// <summary>
         /// Photographs the pane's live control (A5 <c>live</c> mode), scaled by

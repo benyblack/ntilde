@@ -281,6 +281,7 @@ namespace Ntilde.VT
             target.IsFaint = IsFaint;
             target.IsItalic = IsItalic;
             target.IsUnderline = IsUnderline;
+            target.IsOverline = IsOverline;
             target.UnderlineStyle = UnderlineStyle;
             target.UnderlineColor = UnderlineColor;
             target.UnderlineColorIndex = UnderlineColorIndex;
@@ -305,6 +306,7 @@ namespace Ntilde.VT
             IsFaint = source.IsFaint;
             IsItalic = source.IsItalic;
             IsUnderline = source.IsUnderline;
+            IsOverline = source.IsOverline;
             UnderlineStyle = source.UnderlineStyle;
             UnderlineColor = source.UnderlineColor;
             UnderlineColorIndex = source.UnderlineColorIndex;
@@ -363,6 +365,7 @@ namespace Ntilde.VT
             IsFaint = false;
             IsItalic = false;
             IsUnderline = false;
+            IsOverline = false;
             UnderlineStyle = UnderlineStyle.Single;
             UnderlineColor = null;
             UnderlineColorIndex = -1;
@@ -392,6 +395,7 @@ namespace Ntilde.VT
             state.IsFaint = false;
             state.IsItalic = false;
             state.IsUnderline = false;
+            state.IsOverline = false;
             state.UnderlineStyle = UnderlineStyle.Single;
             state.UnderlineColor = null;
             state.UnderlineColorIndex = -1;
@@ -852,12 +856,17 @@ namespace Ntilde.VT
         /// Switch back to main screen buffer
         /// </summary>
         public void SwitchToMainScreen(bool restoreSavedCursorIfArmed = true)
+            => SwitchToMainScreen(restoreSavedCursorIfArmed, clearAltBeforeExit: false);
+
+        // Parser-owned 1047 clearing stays under the same write lock as the screen transition.
+        internal void SwitchToMainScreen(bool restoreSavedCursorIfArmed, bool clearAltBeforeExit)
         {
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
                 if (!_isAltScreen) return;
 
+                if (clearAltBeforeExit) ClearAltScreenNoLock();
                 SaveActiveScreenStateNoLock();
                 _altScreen = _viewport;    // Save current viewport as alt screen
                 _isAltScreen = false;
@@ -951,17 +960,19 @@ namespace Ntilde.VT
                 RowId = row.Id
             };
 
-            PopulateRenderCellsFromRow_NoLock(row, bufferCols, snapshot.Cells);
+            snapshot.ContainsBlink = PopulateRenderCellsFromRow_NoLock(row, bufferCols, snapshot.Cells);
 
             return snapshot;
         }
 
-        private static void PopulateRenderCellsFromRow_NoLock(TerminalRow row, int bufferCols, RenderCellSnapshot[] destination)
+        private static bool PopulateRenderCellsFromRow_NoLock(TerminalRow row, int bufferCols, RenderCellSnapshot[] destination)
         {
+            bool containsBlink = false;
             int colsToWrite = Math.Min(bufferCols, destination.Length);
             for (int c = 0; c < colsToWrite; c++)
             {
                 var cell = (c < row.Cells.Length) ? row.Cells[c] : TerminalCell.Default;
+                containsBlink |= cell.IsBlink && !cell.IsHidden;
                 destination[c] = new RenderCellSnapshot
                 {
                     Character = cell.Character,
@@ -979,13 +990,14 @@ namespace Ntilde.VT
                     IsFaint = cell.IsFaint,
                     IsItalic = cell.IsItalic,
                     IsUnderline = cell.IsUnderline,
-                    Underline = cell.IsUnderline ? row.GetUnderline(c) : null,
+                    Underline = row.GetUnderline(c),
                     IsBlink = cell.IsBlink,
                     IsStrikethrough = cell.IsStrikethrough,
                     FgIndex = cell.FgIndex,
                     BgIndex = cell.BgIndex
                 };
             }
+            return containsBlink;
         }
 
         public List<RenderImageSnapshot> GetVisibleImagesSnapshot(int absDisplayStart, int bufferRows)
@@ -1108,6 +1120,7 @@ namespace Ntilde.VT
                 IsFaint = snapshot.IsFaint;
                 IsItalic = snapshot.IsItalic;
                 IsUnderline = snapshot.IsUnderline;
+                IsOverline = snapshot.IsOverline;
                 // A recording is read from disk, so a value no SGR could have set falls back to the default.
                 UnderlineStyle = snapshot.UnderlineStyle is >= 1 and <= 5 ? (UnderlineStyle)snapshot.UnderlineStyle : UnderlineStyle.Single;
                 UnderlineColor = snapshot.UnderlineColor is { } penColor ? TermColor.FromUint(penColor) : null;
@@ -1169,7 +1182,7 @@ namespace Ntilde.VT
                 // become one instance, as the cells written with one pen shared one.
                 if (snapshot.Underlines != null && snapshot.Cols > 0)
                 {
-                    var interned = new Dictionary<(byte, uint?, short), CellUnderline?>();
+                    var interned = new Dictionary<(byte, uint?, short, bool), CellUnderline?>();
                     foreach (var kvp in snapshot.Underlines)
                     {
                         TerminalUnderlineEntry? entry = kvp.Value;
@@ -1179,14 +1192,14 @@ namespace Ntilde.VT
                         int c = kvp.Key % snapshot.Cols;
                         if (r >= _viewport.Length || c >= Cols) continue;
 
-                        var key = (entry.Style, entry.Color, entry.ColorIndex);
+                        var key = (entry.Style, entry.Color, entry.ColorIndex, entry.Overline);
                         if (!interned.TryGetValue(key, out CellUnderline? underline))
                         {
                             // None for a straight underline in the text color, as on the live path.
                             underline = CellUnderline.For(
                                 (UnderlineStyle)entry.Style,
                                 entry.Color is { } rgb ? TermColor.FromUint(rgb) : null,
-                                entry.ColorIndex);
+                                entry.ColorIndex, entry.Overline);
                             interned[key] = underline;
                         }
 

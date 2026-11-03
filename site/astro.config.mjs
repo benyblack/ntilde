@@ -52,9 +52,18 @@ function userGuideLinks() {
       node.children.forEach(walk);
     }
   };
+  // Blog posts are written for the site, so `/docs/ssh/` means that page on the site: add the base.
+  const sitePrefix = base.replace(/\/$/, '');
+  const walkPost = (node) => {
+    if ((node.type === 'link' || node.type === 'definition') && /^\/(?!\/)/.test(node.url ?? '')) {
+      node.url = `${sitePrefix}${node.url}`;
+    }
+    node.children?.forEach(walkPost);
+  };
   return () => (tree, file) => {
     const where = (file.path ?? file.history?.[0] ?? '').split(path.sep).join('/');
     if (where.includes('/src/content/docs/')) walk(tree);
+    else if (where.includes('/src/content/posts/')) walkPost(tree);
   };
 }
 

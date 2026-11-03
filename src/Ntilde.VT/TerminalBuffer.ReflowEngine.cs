@@ -257,7 +257,7 @@ namespace Ntilde.VT
                                 break;
                             }
                         }
-                        if (!isEmpty || row.GetTextSizingMap() is { Count: > 0 } || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
+                        if (!isEmpty || row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
                     }
 
                     int vpRowsToTake = lastActiveVpRow + 1;
@@ -682,7 +682,7 @@ namespace Ntilde.VT
                                 var cell = physRow.Cells[scan];
                                 if ((cell.Character != ' ' && cell.Character != '\0') || !cell.IsDefaultBackground || cell.HasExtendedText
                                     || (rowHasLinks && physRow.GetHyperlink(scan) != null)
-                                    || (rowHasUnderlines && cell.IsUnderline && physRow.GetUnderline(scan) != null))
+                                    || (rowHasUnderlines && physRow.GetUnderline(scan) != null))
                                 {
                                     lastContentIdx = scan;
                                 }
@@ -745,7 +745,7 @@ namespace Ntilde.VT
                             for (int scan = physRow.Cells.Length - 1; scan >= 0; scan--)
                             {
                                 var cell = physRow.Cells[scan];
-                                if (cell.Character != ' ' && cell.Character != '\0')
+                                if ((cell.Character != ' ' && cell.Character != '\0') || physRow.GetUnderline(scan) != null)
                                 {
                                     lastContentIndex = scan;
                                     break;
@@ -759,7 +759,8 @@ namespace Ntilde.VT
                                 for (int scan = 0; scan <= lastContentIndex; scan++)
                                 {
                                     var cell = physRow.Cells[scan];
-                                    bool isSpace = (cell.Character == ' ' || cell.Character == '\0');
+                                    // Visible decoration is authored content, never an adjustable layout gap.
+                                    bool isSpace = (cell.Character == ' ' || cell.Character == '\0') && physRow.GetUnderline(scan) == null;
 
                                     if (isSpace)
                                     {
@@ -1019,7 +1020,8 @@ namespace Ntilde.VT
                             if (!nextRow.IsWrapped)
                             {
                                 // Check if row has any actual content
-                                bool hasContent = nextRow.GetTextSizingMap() is { Count: > 0 };
+                                bool hasContent = nextRow.GetTextSizingMap() is { Count: > 0 }
+                                    || nextRow.GetUnderlineMap() is { Count: > 0 };
                                 for (int c = 0; c < nextRow.Cells.Length; c++)
                                 {
                                     if (nextRow.Cells[c].Character != ' ' && nextRow.Cells[c].Character != '\0')

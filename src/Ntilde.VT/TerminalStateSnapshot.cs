@@ -203,6 +203,7 @@ namespace Ntilde.VT
         [JsonPropertyName("faint")] public bool IsFaint { get; set; }
         [JsonPropertyName("italic")] public bool IsItalic { get; set; }
         [JsonPropertyName("ul")] public bool IsUnderline { get; set; }
+        [JsonPropertyName("ol"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsOverline { get; set; }
 
         /// <summary>The underline's style (#270), an <c>UnderlineStyle</c> value; 1 (straight) when absent.</summary>
         [JsonPropertyName("uls")] public byte UnderlineStyle { get; set; } = 1;
@@ -259,10 +260,11 @@ namespace Ntilde.VT
         [JsonPropertyName("zwj")] public bool IsAfterZwj { get; set; }
     }
 
-    /// <summary>One underline style and color (#270), as a <c>CellUnderline</c> holds it.</summary>
+    /// <summary>One sparse underline/overline decoration, as a <c>CellUnderline</c> holds it.</summary>
     public sealed class TerminalUnderlineEntry
     {
         [JsonPropertyName("s")] public byte Style { get; set; } = 1;
+        [JsonPropertyName("ol"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool Overline { get; set; }
         [JsonPropertyName("rgb")] public uint? Color { get; set; }
         [JsonPropertyName("idx")] public short ColorIndex { get; set; } = -1;
     }

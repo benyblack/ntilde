@@ -30,6 +30,7 @@ namespace Ntilde.Shell
         private readonly CellMetrics _metrics;
         private readonly int _scrollOffset;
         private readonly SelectionState _selection;
+        private readonly bool _selectionRelativeToViewport;
         private readonly List<SearchMatch>? _searchMatches;
         private readonly int _activeSearchIndex;
         private readonly Typeface _typeface;
@@ -43,6 +44,13 @@ namespace Ntilde.Shell
         private readonly SKTypeface[] _fallbackChain;
         private readonly float _opacity;
         private readonly bool _hideCursor;
+        private readonly bool _textBlinkVisible;
+        private readonly long? _presentationTimeMs;
+        private readonly bool _preferredCursorBlink;
+        private readonly bool _fillBackground;
+        private readonly bool _collectRenderDetails;
+        internal RenderedFrameInfo? RenderedFrame { get; private set; }
+        private readonly Action<bool>? _reportTextBlinkCells;
         private readonly CursorStyle? _preferredCursorStyle;
         private readonly double _renderScaling;
         private readonly int _bufferRows;
@@ -140,6 +148,7 @@ namespace Ntilde.Shell
             public int AbsRow;
             public SKPicture? CachedPicture;
             public RenderRowSnapshot? Snapshot;
+            public bool HasBlinkInk { get; set; }
         }
 
         private class FrameSnapshot
@@ -148,6 +157,8 @@ namespace Ntilde.Shell
             public SKColor ThemeFg;
             public SKColor CursorColor;
             public CursorStyle CursorStyle;
+            public bool CursorVisible { get; set; }
+            public bool CursorBlinkEnabled { get; set; }
             public TerminalRenderColors RenderColors;
             public List<RowRenderItem> RowItems = new();
             public List<RenderImageSnapshot> Images = new();
@@ -227,7 +238,14 @@ namespace Ntilde.Shell
             double minimumContrast = 1.0,
             IDisposable? cacheLease = null,
             Action? requestImageFrame = null,
-            CursorStyle? preferredCursorStyle = null)
+            CursorStyle? preferredCursorStyle = null,
+            bool textBlinkVisible = true,
+            Action<bool>? reportTextBlinkCells = null,
+            long? presentationTimeMs = null,
+            bool preferredCursorBlink = true,
+            bool fillBackground = false,
+            bool collectRenderDetails = false,
+            bool selectionRelativeToViewport = false)
         {
             _bounds = bounds;
             _preferredCursorStyle = preferredCursorStyle;
@@ -235,6 +253,7 @@ namespace Ntilde.Shell
             _buffer = buffer;
             _scrollOffset = scrollOffset;
             _selection = selection;
+            _selectionRelativeToViewport = selectionRelativeToViewport;
             _searchMatches = searchMatches;
             _activeSearchIndex = activeSearchIndex;
             _metrics = metrics;
@@ -250,6 +269,13 @@ namespace Ntilde.Shell
             _fallbackChain = fallbackChain;
             _opacity = (float)Math.Clamp(opacity, 0.0, 1.0);
             _hideCursor = hideCursor;
+            _textBlinkVisible = presentationTimeMs.HasValue
+                ? TextBlinkAnimation.IsVisibleAtMilliseconds(presentationTimeMs.Value) : textBlinkVisible;
+            _presentationTimeMs = presentationTimeMs;
+            _preferredCursorBlink = preferredCursorBlink;
+            _fillBackground = fillBackground;
+            _collectRenderDetails = collectRenderDetails;
+            _reportTextBlinkCells = reportTextBlinkCells;
             _renderScaling = renderScaling;
             _bufferRows = snapshotRows;
             _bufferCols = snapshotCols;
@@ -260,19 +286,33 @@ namespace Ntilde.Shell
             _showRenderHud = showRenderHud;
             _isolatedSnapshot = isolatedSnapshot;
             _requestImageFrame = requestImageFrame;
-            _cellWidthDevicePx = Math.Max(1, ToDevicePx(_metrics.CellWidth));
-            _cellHeightDevicePx = Math.Max(1, ToDevicePx(_metrics.CellHeight));
-            int baselineOffsetPx = ToDevicePx(_metrics.Baseline);
-            int underlineOffsetPx = ToDevicePx(_metrics.CellHeight - Math.Max(1.5f, _metrics.CellHeight * 0.12f));
-            int strikeOffsetPx = (int)Math.Round(_cellHeightDevicePx * 0.52, MidpointRounding.AwayFromZero);
-            _pixelGrid = new PixelGrid(
-                originXPx: ToDevicePx(4f),
+            _pixelGrid = CreatePixelGrid(_metrics, _renderScaling);
+            _cellWidthDevicePx = _pixelGrid.CellWidthPx;
+            _cellHeightDevicePx = _pixelGrid.CellHeightPx;
+        }
+
+        // Capture sizing and painting must use exactly the same snapping and origin.
+        internal static PixelGrid CreatePixelGrid(CellMetrics metrics, double renderScaling)
+        {
+            int DevicePx(double logical) => (int)Math.Round(logical * renderScaling, MidpointRounding.AwayFromZero);
+            int cellHeight = Math.Max(1, DevicePx(metrics.CellHeight));
+            return new PixelGrid(
+                originXPx: DevicePx(4f),
                 originYPx: 0,
-                cellWidthPx: _cellWidthDevicePx,
-                cellHeightPx: _cellHeightDevicePx,
-                baselineOffsetPx: baselineOffsetPx,
-                underlineOffsetPx: underlineOffsetPx,
-                strikeOffsetPx: strikeOffsetPx);
+                cellWidthPx: Math.Max(1, DevicePx(metrics.CellWidth)),
+                cellHeightPx: cellHeight,
+                baselineOffsetPx: DevicePx(metrics.Baseline),
+                underlineOffsetPx: DevicePx(metrics.CellHeight - Math.Max(1.5f, metrics.CellHeight * 0.12f)),
+                strikeOffsetPx: (int)Math.Round(cellHeight * 0.52, MidpointRounding.AwayFromZero));
+        }
+
+        private SnapshotSelectionRange? CaptureSyntheticSelection(TerminalRenderSnapshot snapshot)
+        {
+            if (!_selectionRelativeToViewport || snapshot.SelectionRows.Length == 0) return null;
+            var first = snapshot.SelectionRows.Array[0];
+            var last = snapshot.SelectionRows.Array[snapshot.SelectionRows.Length - 1];
+            return new SnapshotSelectionRange(first.AbsRow - snapshot.AbsDisplayStart, first.ColStart,
+                last.AbsRow - snapshot.AbsDisplayStart, last.ColEnd);
         }
 
         public void Dispose()
@@ -350,7 +390,7 @@ namespace Ntilde.Shell
             }
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "S3776", Justification = "Pre-existing rendering pipeline; this change only passes the snapshot session through to capture without adding branches. Splitting the frame pipeline is outside this lifetime fix.")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "S3776", Justification = "Pre-existing frame pipeline. Controlled captures record snapshot presentation facts and fill their own background here to preserve one-draw provenance; splitting the full pipeline is outside this capture change.")]
         private TerminalRenderSnapshot? DrawTerminalInternalCore(SKCanvas canvas, int snapshotSession)
         {
             try
@@ -376,6 +416,7 @@ namespace Ntilde.Shell
                     ViewportCols = _bufferCols,
                     ScrollOffset = _scrollOffset,
                     Selection = _selection,
+                    SelectionRelativeToViewport = _selectionRelativeToViewport,
                     SearchMatches = _searchMatches,
                     ActiveSearchIndex = _activeSearchIndex,
                     Isolated = _isolatedSnapshot,
@@ -423,6 +464,21 @@ namespace Ntilde.Shell
                 frame.CursorStyle = renderSnapshot.CursorStyleIsDefault
                     ? _preferredCursorStyle ?? renderSnapshot.CursorStyle : renderSnapshot.CursorStyle;
                 frame.RenderColors = TerminalRenderColors.For(renderSnapshot.Theme.Source ?? UnthemedSnapshotTheme);
+                frame.CursorBlinkEnabled = renderSnapshot.CursorStyleIsDefault ? _preferredCursorBlink : renderSnapshot.CursorBlinkEnabled;
+                frame.CursorVisible = !_hideCursor && renderSnapshot.CursorVisible &&
+                    (!_presentationTimeMs.HasValue || !frame.CursorBlinkEnabled || _textBlinkVisible);
+                if (_collectRenderDetails)
+                {
+                    RenderedFrame = new RenderedFrameInfo(renderSnapshot.Theme, frame.RenderColors, _pixelGrid,
+                        bufferRows, bufferCols, renderSnapshot.CursorRow, renderSnapshot.CursorCol,
+                        frame.CursorStyle, frame.CursorVisible, frame.CursorBlinkEnabled,
+                        CaptureSyntheticSelection(renderSnapshot));
+                }
+                if (_fillBackground)
+                {
+                    var background = renderSnapshot.Theme.Background;
+                    canvas.Clear(new SKColor(background.R, background.G, background.B, background.A));
+                }
 
                 if (renderSnapshot.Images.Length > 0 && renderSnapshot.Images.Array != null)
                 {
@@ -450,6 +506,7 @@ namespace Ntilde.Shell
                     _rowCache.RequestClear();
                 }
                 _wasAltScreenLastFrame = isAltScreen;
+                bool containsTextBlinkInk = false;
 
                 for (int r = 0; r < bufferRows; r++)
                 {
@@ -474,7 +531,11 @@ namespace Ntilde.Shell
                     bool hasRenderableRow = rowSnapshot.Cols > 0 && rowSnapshot.Cells.Length >= rowSnapshot.Cols && rowSnapshot.RowId != 0;
                     if (hasRenderableRow)
                     {
-                        item.CachedPicture = useRowCache ? _rowCache?.Get(rowSnapshot.RowId, rowSnapshot.Revision) : null;
+                        item.HasBlinkInk = ContainsBlinkInk(rowSnapshot);
+                        containsTextBlinkInk |= item.HasBlinkInk;
+                        // A pre-animation picture must not become the span baseline when blinking ends.
+                        if (useRowCache && item.HasBlinkInk) _rowCache?.InvalidateRow(rowSnapshot.RowId);
+                        item.CachedPicture = useRowCache && !item.HasBlinkInk ? _rowCache?.Get(rowSnapshot.RowId, rowSnapshot.Revision) : null;
 
                         if (item.CachedPicture != null)
                         {
@@ -492,7 +553,7 @@ namespace Ntilde.Shell
 
                     frame.RowItems.Add(item);
                 }
-
+                _reportTextBlinkCells?.Invoke(containsTextBlinkInk);
 
                 // --------------------
                 // Render Phase (LOCK RELEASED)
@@ -555,8 +616,7 @@ namespace Ntilde.Shell
                     if (item.Snapshot.HasValue)
                     {
                         var snapshot = item.Snapshot.Value;
-                        bool hasDirtySpans = rowSpans != null && rowSpans.Count > 0;
-                        bool shouldUseSpanRendering = hasDirtySpans && ShouldUseSpanRenderingForRow(rowSpans!, snapshot.Cols);
+                        bool shouldUseSpanRendering = !item.HasBlinkInk && rowSpans is { Count: > 0 } && ShouldUseSpanRenderingForRow(rowSpans, snapshot.Cols);
 
                         SKPicture? previousRowPicture = null;
                         if (shouldUseSpanRendering)
@@ -618,7 +678,7 @@ namespace Ntilde.Shell
 
                             // Refresh cache entry for the new revision (full-row picture for future frames).
                             // Skip when useRowCache=false (AltScreen) — no point recording a picture we won't store.
-                            if (useRowCache && buildsThisFrame < maxBuilds)
+                            if (useRowCache && !item.HasBlinkInk && buildsThisFrame < maxBuilds)
                             {
                                 var recSw = System.Diagnostics.Stopwatch.StartNew();
                                 using var recorder = new SKPictureRecorder();
@@ -651,7 +711,7 @@ namespace Ntilde.Shell
                         else if (buildsThisFrame < maxBuilds)
                         {
                             rowRenderCount++;
-                            if (useRowCache)
+                            if (useRowCache && !item.HasBlinkInk)
                             {
                                 // Record into a picture so it can be cached and replayed on future frames.
                                 var recSw = System.Diagnostics.Stopwatch.StartNew();
@@ -869,7 +929,7 @@ namespace Ntilde.Shell
                 }
 
                 // Cursor (optional policy: hide cursor when scrolled back)
-                if (!_hideCursor && _scrollOffset == 0)
+                if (frame.CursorVisible && _scrollOffset == 0)
                 {
                     int absCursorRow = (renderSnapshot.TotalLines - bufferRows) + renderSnapshot.CursorRow;
                     int visualRow = absCursorRow - absDisplayStart;
@@ -1234,6 +1294,24 @@ namespace Ntilde.Shell
             _shapingCache.Clear();
         }
 
+        private static bool ContainsBlinkInk(RenderRowSnapshot row)
+        {
+            if (!row.ContainsBlink) return false;
+            for (int col = 0; col < Math.Min(row.Cols, row.Cells.Length); col++)
+                if (CellHasBlinkInk(row.Cells[col])) return true;
+            return false;
+        }
+
+        private static bool CellHasBlinkInk(RenderCellSnapshot cell)
+        {
+            if (!cell.IsBlink || cell.IsHidden || cell.IsWideContinuation) return false;
+            if (cell.IsStrikethrough || cell.Underline?.Overline == true) return true;
+            if (cell.IsUnderline && (cell.Underline is { HasColor: true } || cell.Underline?.Style is > UnderlineStyle.Single)) return true;
+            if (cell.TextSizing is { } sized) return ContainsNonWhitespace(sized.Block.Text);
+            if (cell.Text is { } text) return ContainsNonWhitespace(text);
+            return cell.Character != '\0' && !char.IsWhiteSpace(cell.Character);
+        }
+
         private int DrawRowTextFromSnapshot(
             SKCanvas canvas,
             RenderRowSnapshot snapshot,
@@ -1295,10 +1373,15 @@ namespace Ntilde.Shell
                 var runBuilder = _runBuilder;
                 var runCellTexts = _runCellTexts;
 
-                for (int c = 0; c < snapshot.Cols; c++)
+                int c = 0;
+                while (c < snapshot.Cols)
                 {
                     var cell = snapshot.Cells[c];
-                    if (cell.IsWideContinuation || cell.IsHidden) continue;
+                    if (cell.IsWideContinuation)
+                    {
+                        c++;
+                        continue;
+                    }
                     if (cell.TextSizing is { } sized)
                     {
                         if (sized.ColumnOffset == 0)
@@ -1315,9 +1398,11 @@ namespace Ntilde.Shell
                                 Primary = primaryTf,
                                 DrawBackgrounds = drawBackgrounds,
                                 HasVisibleText = ContainsNonWhitespace(sized.Block.Text),
+                                SuppressInk = cell.IsHidden || (cell.IsBlink && !_textBlinkVisible),
                                 ForegroundOverride = foregroundOverride,
                                 OverlayFill = overlayFill
                             });
+                        c++;
                         continue;
                     }
 
@@ -1325,9 +1410,11 @@ namespace Ntilde.Shell
                     var cf = ResolveCellForeground(cell, themeFg, alpha, themeSnapshot);
                     bool runIsItalic = cell.IsItalic;
                     bool runIsUnderline = cell.IsUnderline;
-                    CellUnderline? runUnderline = cell.IsUnderline ? cell.Underline : null;
+                    CellUnderline? runUnderline = cell.Underline;
                     bool runIsStrikethrough = cell.IsStrikethrough;
                     bool runIsFaint = cell.IsFaint;
+                    bool runIsHidden = cell.IsHidden;
+                    bool runIsBlink = cell.IsBlink;
                     var bg = cell.IsInverse ? cf : cb;
                     var fg = EnforceMinimumContrast(cell.IsInverse ? cb : cf, bg, overlayFill);
                     if (runIsFaint)
@@ -1352,7 +1439,7 @@ namespace Ntilde.Shell
                     {
                         var next = snapshot.Cells[k];
                         if (next.TextSizing != null) break;
-                        if (next.IsHidden || next.IsWideContinuation)
+                        if (next.IsWideContinuation)
                         {
                             k++;
                             continue;
@@ -1376,9 +1463,11 @@ namespace Ntilde.Shell
                             break;
                         if (next.IsItalic != runIsItalic ||
                             next.IsUnderline != runIsUnderline ||
-                            !Equals(next.IsUnderline ? next.Underline : null, runUnderline) ||
+                            !Equals(next.Underline, runUnderline) ||
                             next.IsStrikethrough != runIsStrikethrough ||
-                            next.IsFaint != runIsFaint)
+                            next.IsFaint != runIsFaint ||
+                            next.IsHidden != runIsHidden ||
+                            next.IsBlink != runIsBlink)
                             break;
 
                         string cellText = NormalizeTextElementForRender(next.Text ?? next.Character.ToString());
@@ -1420,7 +1509,7 @@ namespace Ntilde.Shell
                     int runEndCol = c + totalRunWidth;
                     if (runEndCol <= effectiveSpanStart)
                     {
-                        c = k - 1;
+                        c = k;
                         continue;
                     }
 
@@ -1444,6 +1533,13 @@ namespace Ntilde.Shell
                         _bgFillPaint.IsAntialias = false;
                         canvas.DrawRect(rx, rowTopYDip, rw, snappedCellHeight, _bgFillPaint);
                         IncrementRectDrawCall();
+                    }
+
+                    if (runIsHidden || (runIsBlink && !_textBlinkVisible))
+                    {
+                        cellsRendered += totalRunWidth;
+                        c = k;
+                        continue;
                     }
 
                     bool appliedItalicTransform = false;
@@ -1487,15 +1583,15 @@ namespace Ntilde.Shell
                         if (_glyphCache != null && !runIsItalic)
                         {
                             // The shortcut skips the decorations below, so a run of blanks carrying a styled or colored
-                            // underline (#270) takes the per-glyph path instead; its blanks draw nothing there either.
-                            if (runUnderline is null && ShouldDrawRunDirectWhenGlyphCacheEnabled(runText))
+                            // underline (#270) or strikethrough takes the per-glyph path so its decoration is painted.
+                            if (runUnderline is null && !runIsStrikethrough && ShouldDrawRunDirectWhenGlyphCacheEnabled(runText))
                             {
                                 FlushBatches(canvas);
                                 canvas.DrawText(runText, rx, baselineYDip, font, fgPaint);
                                 IncrementTextDrawCall();
                                 IncrementDirectDrawTextCall();
                                 cellsRendered += totalRunWidth;
-                                c = k - 1;
+                                c = k;
                                 continue;
                             }
 
@@ -1716,9 +1812,9 @@ namespace Ntilde.Shell
                     // came with a CSI-leader misparse fix). A styled or colored one (#270) is only ever there because
                     // an application asked for it with SGR 4:x, 21 or 58 - an editor's squiggle on trailing whitespace,
                     // say - so it is drawn across the whole run, blanks included, as other terminals draw it.
-                    bool styledUnderline = runUnderline is not null;
+                    bool styledUnderline = runUnderline is { HasColor: true } || runUnderline?.Style is > UnderlineStyle.Single;
                     bool underlineHasVisibleText = runIsUnderline && (styledUnderline || ContainsNonWhitespace(runText));
-                    if (underlineHasVisibleText || runIsStrikethrough)
+                    if (underlineHasVisibleText || runIsStrikethrough || runUnderline?.Overline == true)
                     {
                         _decoStrokePaint.Color = fg;
                         _decoStrokePaint.IsAntialias = true;
@@ -1746,6 +1842,14 @@ namespace Ntilde.Shell
                             IncrementRectDrawCall();
                         }
 
+                        if (runUnderline?.Overline == true)
+                        {
+                            _decoStrokePaint.Color = fg;
+                            float overlineY = rowTopYDip + (strokeWidth / 2);
+                            canvas.DrawLine(rx, overlineY, rx + rw, overlineY, _decoStrokePaint);
+                            IncrementRectDrawCall();
+                        }
+
                         if (runIsStrikethrough)
                         {
                             _decoStrokePaint.Color = fg; // the underline may have taken its own color
@@ -1755,7 +1859,7 @@ namespace Ntilde.Shell
                         }
                     }
 
-                    c = k - 1;
+                    c = k;
                 }
 
                 FlushBatches(canvas);

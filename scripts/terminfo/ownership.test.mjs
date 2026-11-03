@@ -115,6 +115,20 @@ test('an owner success response resolves with its measured owner PID', async () 
     }
 });
 
+test('owner refusal transport preserves only the known optional RGB budget code', async () => {
+    let code = 'screenDetailsUnavailable';
+    const server = createServer(socket => {
+        socket.once('data', () => socket.end(JSON.stringify({ ok: false, error: 'refused', code }) + '\n'));
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+        const config = { socket: { host: '127.0.0.1', port: server.address().port }, token: 'test', runId: 'a'.repeat(32) };
+        await assert.rejects(requestOwner(config, 'rgb-start'), error => error.code === code);
+        code = 'untrustedCode';
+        await assert.rejects(requestOwner(config, 'rgb-start'), error => error.code === undefined);
+    } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
 async function withRecordedChild(program, action) {
     const child = spawn(process.execPath, ['--input-type=module', '--eval', program, '--',
         `--ntilde-terminfo-worker=${workerRun}`], { stdio: ['ignore', 'pipe', 'pipe'] });
