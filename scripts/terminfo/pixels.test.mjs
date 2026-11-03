@@ -85,3 +85,15 @@ test('published pixel measurements re-derive from original PNGs and match their 
     assert.ok(data.stockCollector.ungradedDiagnostics['cursor.reverse-wrap']);
     assert.deepEqual(derived.observations.filter(item => item.result !== 'passed').map(item => item.featureId), ['rendition.bold']);
 });
+
+test('changed fixture text cannot qualify an otherwise matching published pixel comparison', () => {
+    const data = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-03-pixels.json', import.meta.url)));
+    const frames = structuredClone(data.pixelReport.snapshots);
+    const frame = frames.find(item => item.sceneId === 'italic');
+    frame.screen.lines[2] = 'unexpected glyphs'; frame.afterScreen = structuredClone(frame.screen);
+    // This simulates coherent but wrong terminal output, not a corrupted snapshot hash.
+    frame.sha256 = pngHash(Buffer.from(JSON.stringify(frame.screen))); frame.afterSha256 = frame.sha256;
+    const root = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-03-pixels/', import.meta.url));
+    const report = buildPixelReport(frames, data.context.runId, root);
+    assert.equal(report.observations.find(item => item.featureId === 'rendition.italic').result, 'inconclusive');
+});

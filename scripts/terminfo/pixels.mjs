@@ -38,6 +38,21 @@ export function countColorCoverage(bytes, foreground, background = [16, 16, 16, 
 }
 const solid = (bytes, rgba) => countColor(bytes, rgba) === bytes.length / 4;
 const changed = (left, right) => !left.equals(right);
+function sceneContentReady(frame) {
+    const screen = frame.screen, lines = Array(screen.rows).fill('');
+    if (frame.sceneId === 'colors') {
+        lines[4] = '  ' + '\u2588'.repeat(32); lines[6] = '      ' + '\u2588'.repeat(4);
+    } else { lines[2] = '    HMWqg_|'; lines[6] = lines[2]; }
+    return screen.cursorRow === 8 && screen.cursorCol === 8 && snapshotHash(screen.lines) === snapshotHash(lines);
+}
+function expectedCursorMode(parameter) {
+    if (parameter === 'default') return { style: 2, blink: true, isDefault: true };
+    const code = parameter === 'hidden' ? 1 : Number(parameter);
+    let style = 0;
+    if (code >= 5) style = 1;
+    else if (code >= 3) style = 2;
+    return { style, blink: code === 0 || code % 2 === 1, isDefault: false };
+}
 const ink = bytes => bytes.length / 4 - countColor(bytes, [16, 16, 16, 255]);
 
 /** Revalidate the complete journal and every retained PNG before calculating any observations. */
@@ -77,13 +92,14 @@ export function buildPixelReport(frames, runId, output) {
     frames.forEach((frame, index) => { if (frame.sceneId) entries.set(`${frame.sceneId}:${frame.pixel.presentationTimeMs}`, { frame, image: images[index] }); });
     const region = (id, area = pixelRegion, time = 0) => regionPixels(entries.get(`${id}:${time}`).image, grid, area);
     const normal = region('normal'), blank = region('normal', blankRegion), control = region('normal', controlRegion);
-    const ready = ink(normal) > 10 && solid(blank, [16, 16, 16, 255]) && normal.equals(control);
+    const content = id => sceneContentReady(entries.get(`${id}:0`).frame);
+    const ready = content('normal') && ink(normal) > 10 && solid(blank, [16, 16, 16, 255]) && normal.equals(control);
     const observations = [];
     const add = (featureId, controls, assertions, snapshots) => observations.push({ featureId, snapshots,
         controls, assertions, result: controls.every(item => item.passed) ? (assertions.every(item => item.passed) ? 'passed' : 'failed') : 'inconclusive' });
     const check = (description, passed) => ({ description, passed });
     const targetIndex = id => entries.get(`${id}:0`).frame.index;
-    const common = id => [check('normal glyphs and blank positive controls', ready), check('non-target control unchanged', region(id, controlRegion).equals(control))];
+    const common = id => [check('target text and cursor match fixture input', content(id)), check('normal glyphs and blank positive controls', ready), check('non-target control unchanged', region(id, controlRegion).equals(control))];
     for (const id of ['bold', 'italic', 'faint', 'hidden', 'reverse', 'strike', 'overline', ...[1, 2, 3, 4, 5].map(style => `underline.${style}`)]) {
         const target = region(id), empty = region(id, blankRegion);
         let assertions;
@@ -96,7 +112,7 @@ export function buildPixelReport(frames, runId, output) {
         add(`rendition.${id}`, common(id), assertions, [targetIndex('normal'), targetIndex(id)]);
     }
     const underlines = [1, 2, 3, 4, 5].map(style => region(`underline.${style}`, blankRegion));
-    add('underline.distinct-styles', [check('all five blank-cell controls carry green underline pixels', underlines.every(bytes => countColorCoverage(bytes, [32, 224, 96, 255]) > 0))],
+    add('underline.distinct-styles', [check('all underline inputs match the recorded text/cursor', [1, 2, 3, 4, 5].every(style => content(`underline.${style}`))), check('all five blank-cell controls carry green underline pixels', underlines.every(bytes => countColorCoverage(bytes, [32, 224, 96, 255]) > 0))],
         [check('five local underline masks are distinct', new Set(underlines.map(bytes => bytes.toString('hex'))).size === 5)], [1, 2, 3, 4, 5].map(style => targetIndex(`underline.${style}`)));
     const palette = entries.get('colors:0'), paletteAssertions = [];
     for (let index = 0; index < 16; index++) {
@@ -108,9 +124,9 @@ export function buildPixelReport(frames, runId, output) {
     }
     for (const col of [2, 6]) paletteAssertions.push(check(`RGB ${col === 2 ? 'background' : 'foreground'} interior`,
         countColor(regionPixels(palette.image, grid, { row: 6, col, rows: 1, cols: 4 }), [23, 91, 173, 255]) > grid.cellWidthPx * grid.cellHeightPx));
-    add('colors.palette-and-rgb', [check('palette has multiple distinguishable entries', new Set(palette.frame.pixel.renderDetails.theme.ansiPaletteArgb.slice(0, 16)).size > 8)], paletteAssertions, [palette.frame.index]);
+    add('colors.palette-and-rgb', [check('color patches match the recorded text/cursor', content('colors')), check('palette has multiple distinguishable entries', new Set(palette.frame.pixel.renderDetails.theme.ansiPaletteArgb.slice(0, 16)).size > 8)], paletteAssertions, [palette.frame.index]);
     const blink = [0, 529, 530, 1059, 1060].map(time => region('text-blink', pixelRegion, time));
-    add('blink.text-phases', [check('visible glyphs and decorations present', ink(blink[0]) > 10),
+    add('blink.text-phases', [check('identical input text/cursor at all phases', [0, 529, 530, 1059, 1060].every(time => sceneContentReady(entries.get(`text-blink:${time}`).frame))), check('visible glyphs and decorations present', ink(blink[0]) > 10),
         check('non-target control stable at all phases', [0, 529, 530, 1059, 1060].every(time => region('text-blink', controlRegion, time).equals(control)))],
         [check('same input visible at 0/529/1060ms', blink[0].equals(blink[1]) && blink[0].equals(blink[4])),
             check('glyphs and decorations absent at 530/1059ms with background retained', solid(blink[2], [16, 16, 16, 255]) && blink[2].equals(blink[3])
@@ -120,8 +136,11 @@ export function buildPixelReport(frames, runId, output) {
         const id = `cursor.${parameter}`, on = region(id, cursorRegion), off = region(id, cursorRegion, 530);
         const phase = entries.get(`${id}:0`).frame.pixel.renderDetails.presentation;
         const hidden = parameter === 'hidden';
-        add(id, [check('normal glyph positive control', ready), check('non-cursor glyph control unchanged', region(id).equals(normal))],
-            [check('visible-phase cursor agrees with visibility control', hidden ? on.equals(cursorOff) : changed(on, cursorOff)),
+        const stored = entries.get(`${id}:0`).frame.screen;
+        const wanted = expectedCursorMode(parameter);
+        add(id, [check('target text and cursor match fixture input', content(id)), check('normal glyph positive control', ready), check('non-cursor glyph control unchanged', region(id).equals(normal))],
+            [check('stored shape/blink/default/visibility match the exact requested mode', Object.keys(wanted).every(key => stored.cursorMode[key] === wanted[key]) && stored.cursorVisible === !hidden),
+                check('visible-phase cursor agrees with visibility control', hidden ? on.equals(cursorOff) : changed(on, cursorOff)),
                 check('off-phase follows effective blinking mode', hidden || phase.cursorBlinkEnabled ? off.equals(cursorOff) : off.equals(on))],
             [entries.get(`${id}:0`).frame.index, entries.get(`${id}:530`).frame.index]);
     }
