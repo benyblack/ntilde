@@ -529,3 +529,7 @@ new output witnesses for saved pens and character sets. V7 receipts require all
 preceding bindings, the source-defined stage order, archived sources and verified
 cleanup. Setup does not depend on the RIS operation under test; its cell-clearing
 negative remains explicit for #773. No new stock grade is inferred.
+
+The [2026-11-03 saved-state measurement](terminfo/2026-11-03-saved-state.md)
+retains eight passes and one controlled RIS cell-clearing negative for #773,
+with all nine controls passing and a completed v7 receipt.

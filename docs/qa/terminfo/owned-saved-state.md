@@ -34,11 +34,12 @@ The first exploratory run used RIS as setup and produced invalid controls; its
 report and exact archived source remain unchanged. Revised controls distinguish
 fixture setup from the observed reset behavior.
 
-The controlled exploratory run qualified eight cases and retained one explicit
+The [committed-source measurement](2026-11-03-saved-state.md) qualified eight
+cases and retained one explicit
 RIS cell-clearing negative: RIS while alternate is active leaves the inactive
 main text visible. Its cursor-bank witnesses still passed. This limitation is
 retained for #773; it is not hidden by the successful bank reset or counted as
-supported. A committed-source measurement is required before closing #767.
+supported. All nine independent controls passed in that measurement.
 
 ## Binding, bounds and cleanup
 
