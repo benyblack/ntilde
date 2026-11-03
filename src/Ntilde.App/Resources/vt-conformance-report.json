@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "2191a7dd76e978a47cb33fa922b1c7b596f76e302f678e3f05273ba3ed522f61",
+  "matrixSha256": "211659153a59303ce24f7dd1f72df8f66daafecde878d6095e015a50017074eb",
   "summary": {
     "totalRows": 82,
     "supportedCount": 41,
@@ -1277,12 +1277,20 @@
       "feature": "Basic SGR (0,1,2,3,4,5,7,9,22,23,24,25,27,29)",
       "status": "\u26A0 Partial",
       "specOrNotes": "Bold/dim/italic/underline/blink/reverse/strike",
-      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/SgrAttributeTests.cs\u0060; VTTEST: sgr scenario",
+      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/SgrAttributeTests.cs\u0060; render: \u0060tests/Ntilde.App.Tests/RenderTests/TextBlinkRenderTests.cs\u0060; clock/lifetime: \u0060tests/Ntilde.App.Tests/Core/TerminalViewTextBlinkTests.cs\u0060; VTTEST: sgr scenario",
       "evidenceKinds": [
         "external",
         "unit"
       ],
       "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/Core/TerminalViewTextBlinkTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/TextBlinkRenderTests.cs",
+          "exists": true
+        },
         {
           "path": "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
           "exists": true
@@ -1291,7 +1299,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BRenderer",
-      "knownDeviations": "Underline style/color tracked separately",
+      "knownDeviations": "Underline style/color tracked separately. SGR 5 text blink uses an App-owned monotonic 530 ms half-period; blink-off/hidden ink preserves backgrounds and animated rows cannot reuse stale pictures. Deterministic phase and visible-view timer tests cover the shared draw path; an owned live pixel/timing qualification remains outstanding.",
       "sourceLine": 141
     },
     {

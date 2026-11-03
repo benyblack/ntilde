@@ -70,6 +70,9 @@ namespace Ntilde.Shell
         public SelectionState? Selection { get; init; }
 
         public bool HideCursor { get; init; }
+
+        /// <summary>Explicit foreground phase for SGR 5; default captures keep blinking text visible.</summary>
+        public bool TextBlinkVisible { get; init; } = true;
         public CursorStyle? PreferredCursorStyle { get; init; }
         public bool EnableLigatures { get; init; }
         public bool EnableComplexShaping { get; init; } = true;
@@ -262,6 +265,7 @@ namespace Ntilde.Shell
                 fallbackChain: fallbackChain,
                 opacity: options.Opacity,
                 hideCursor: options.HideCursor,
+                textBlinkVisible: options.TextBlinkVisible,
                 renderScaling: renderScaling,
                 snapshotRows: snapshotRows,
                 snapshotCols: snapshotCols,

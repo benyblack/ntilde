@@ -955,17 +955,19 @@ namespace Ntilde.VT
                 RowId = row.Id
             };
 
-            PopulateRenderCellsFromRow_NoLock(row, bufferCols, snapshot.Cells);
+            snapshot.ContainsBlink = PopulateRenderCellsFromRow_NoLock(row, bufferCols, snapshot.Cells);
 
             return snapshot;
         }
 
-        private static void PopulateRenderCellsFromRow_NoLock(TerminalRow row, int bufferCols, RenderCellSnapshot[] destination)
+        private static bool PopulateRenderCellsFromRow_NoLock(TerminalRow row, int bufferCols, RenderCellSnapshot[] destination)
         {
+            bool containsBlink = false;
             int colsToWrite = Math.Min(bufferCols, destination.Length);
             for (int c = 0; c < colsToWrite; c++)
             {
                 var cell = (c < row.Cells.Length) ? row.Cells[c] : TerminalCell.Default;
+                containsBlink |= cell.IsBlink && !cell.IsHidden;
                 destination[c] = new RenderCellSnapshot
                 {
                     Character = cell.Character,
@@ -990,6 +992,7 @@ namespace Ntilde.VT
                     BgIndex = cell.BgIndex
                 };
             }
+            return containsBlink;
         }
 
         public List<RenderImageSnapshot> GetVisibleImagesSnapshot(int absDisplayStart, int bufferRows)

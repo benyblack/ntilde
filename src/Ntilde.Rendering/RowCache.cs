@@ -102,6 +102,25 @@ namespace Ntilde.Rendering
             }
         }
 
+        /// <summary>Forget every recorded version of one row; retire pictures at the next safe render boundary.</summary>
+        public void InvalidateRow(long rowId)
+        {
+            lock (_sync)
+            {
+                var node = _lru.First;
+                while (node != null)
+                {
+                    var next = node.Next;
+                    if (node.Value.RowId == rowId && _cache.Remove(node.Value, out var entry))
+                    {
+                        _lru.Remove(node);
+                        _pendingDispose.Add(entry.Picture);
+                    }
+                    node = next;
+                }
+            }
+        }
+
         public void Add(long rowId, uint revision, SKPicture picture)
         {
             lock (_sync)

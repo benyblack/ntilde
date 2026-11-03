@@ -21,6 +21,7 @@ public sealed partial class TerminalDrawOperation
         public required SKTypeface Primary { get; init; }
         public bool DrawBackgrounds { get; init; }
         public bool HasVisibleText { get; init; }
+        public bool SuppressInk { get; init; }
         public SKColor? ForegroundOverride { get; init; }
         public SKColor? OverlayFill { get; init; }
     }
@@ -50,6 +51,7 @@ public sealed partial class TerminalDrawOperation
                 _bgFillPaint.Color = bg;
                 canvas.DrawRect(left, rowTop, right - left, rowHeight, _bgFillPaint);
             }
+            if (context.SuppressInk) return block.Width;
             float fraction = block.Options.Fraction;
             float heightScale = block.Height * fraction;
             float width = (right - left) * fraction;

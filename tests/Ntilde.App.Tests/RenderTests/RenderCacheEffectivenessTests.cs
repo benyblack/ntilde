@@ -143,6 +143,35 @@ namespace Ntilde.Tests.RenderTests
                 + "the cursor row if it differs.");
         }
 
+        [AvaloniaTheory]
+        [InlineData("\x1b[5mBLINK", 1)]
+        [InlineData("\x1b[5m     ", 0)]
+        [InlineData("\x1b[5;8mHIDDEN", 0)]
+        [InlineData("\x1b[5;4m     ", 0)]
+        [InlineData("\x1b[5;4:3m     ", 1)]
+        [InlineData("\x1b[5;9m     ", 1)]
+        public void BlinkPhaseChange_RedrawsOnlyAnimatedInk_AndRestoresCachingAfterRemoval(string content, int animatedRows)
+        {
+            using var harness = new DrawPathHarness(Cols, Rows);
+            harness.Parser.Process("\x1b[?25l" + content + "\x1b[0m\r\nsteady");
+            harness.DrawFrame();
+            var visible = harness.Pixels();
+
+            RendererStatistics.Reset();
+            harness.DrawFrame(textBlinkVisible: false);
+            if (animatedRows == 0) Assert.Equal(visible, harness.Pixels());
+            else Assert.NotEqual(visible, harness.Pixels());
+            Assert.Equal(Rows - animatedRows, RendererStatistics.RowCacheHits);
+            Assert.Equal(animatedRows, RendererStatistics.RowCacheMisses);
+
+            harness.Parser.Process("\x1b[1;1HBLINK");
+            harness.DrawFrame(); // record the now-steady row
+            RendererStatistics.Reset();
+            harness.DrawFrame();
+            Assert.Equal(Rows, RendererStatistics.RowCacheHits);
+            Assert.Equal(0, RendererStatistics.RowCacheMisses);
+        }
+
         [AvaloniaFact]
         public void GlyphAtlasIsReusedAcrossFrames_WithoutResetting()
         {
