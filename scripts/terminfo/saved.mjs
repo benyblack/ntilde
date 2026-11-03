@@ -5,7 +5,7 @@ import { makeSavedCases, savedSuiteId, ownedSavedPolicy } from './saved-cases.mj
 import { compressSavedExpected, matchesSavedExpected } from './saved-expectations.mjs';
 const same = (left, right) => snapshotHash(left) === snapshotHash(right);
 const check = value => { if (!value) throw new Error('Invalid or incomplete owned saved-state evidence.'); };
-const keys = ['index', 'kind', 'paneId', 'barrier', 'screen', 'sha256', 'afterScreen', 'afterSha256', 'caseId', 'stageId'].sort();
+const keys = new Set(['index', 'kind', 'paneId', 'barrier', 'screen', 'sha256', 'afterScreen', 'afterSha256', 'caseId', 'stageId']);
 function frameKind(index, last) {
     if (index === 0) return 'start';
     if (index === 1) return 'bind';
@@ -13,7 +13,8 @@ function frameKind(index, last) {
     return 'read';
 }
 function validateFrame(frame, index, last, first, stage) {
-    check(frame && same(Object.keys(frame).sort(), keys));
+    const frameKeys = Object.keys(frame ?? {});
+    check(frame && frameKeys.length === keys.size && frameKeys.every(key => keys.has(key)));
     const screen = screenSnapshot(frame.screen, false, true, true, true, true);
     const after = screenSnapshot(frame.afterScreen, false, true, true, true, true);
     check(frame.index === index && frame.kind === 'saved-' + frameKind(index, last)
