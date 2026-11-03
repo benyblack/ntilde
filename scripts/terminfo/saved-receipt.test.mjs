@@ -55,3 +55,18 @@ test('unavailable v7 refuses a started fixture despite a matching report digest'
     const report=unavailable(f,'savedGeometryUnavailable');report.fixtureStarted=true;f.write('saved-unavailable.json',report);
     f.evidence.savedEvidence.sha256=snapshotHash(report);assert.throws(f.finish);
 }));
+
+for (const file of ['saved-observations.json', 'saved-unavailable.json']) {
+    test('retained ' + file + ' alone prevents v7 downgrade after all other saved markers are stripped', () => fixture(f => {
+        if (file === 'saved-unavailable.json') {
+            unavailable(f, 'savedGeometryUnavailable');
+            unlinkSync(join(f.output, 'saved-observations.json'));
+        }
+        strip(f);
+        delete f.proof.proofs[0].saved;
+        f.write('ownership-proof.json', f.proof);
+        unlinkSync(join(f.output, 'saved-snapshots.jsonl'));
+        for (const source of Object.values(savedSources)) unlinkSync(join(f.output, 'sources', source));
+        assert.throws(f.finish);
+    }));
+}

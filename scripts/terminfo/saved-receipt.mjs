@@ -29,6 +29,7 @@ export function includesSavedEvidence(output, evidence, context, proof) {
         || Object.keys(savedSources).some(key => context[key] !== undefined)
         || proof.proofs?.some(value => value.saved !== undefined) === true
         || present(join(output, 'saved-snapshots.jsonl'))
+        || present(join(output, 'saved-observations.json')) || present(join(output, 'saved-unavailable.json'))
         || Object.values(savedSources).some(file => present(join(output, 'sources', file)));
 }
 function checkSources(output, context, marker) {
