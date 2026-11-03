@@ -43,13 +43,21 @@ test('retained action streams prevent downgrade after all context and parent mar
 function unavailable(f, reason) {
     const value = { schemaVersion: 1, runId, suiteId: f.context.resizeSuiteId, status: 'unavailable', reason, fixtureStarted: false, plannedExperiments: 3 };
     f.write('resize-unavailable.json', value); writeFileSync(join(f.output, 'resize-snapshots.jsonl'), ''); writeFileSync(join(f.output, 'resize-actions.jsonl'), '');
-    f.proof.proofs[0].resize.actions = []; f.write('ownership-proof.json', f.proof);
+    f.proof.proofs[0].resize.actions = [];
+    delete f.proof.proofs[0].resize.paneId; delete f.proof.proofs[0].resize.originalGeometry;
+    f.write('ownership-proof.json', f.proof);
     Object.assign(f.evidence.resizeEvidence, { file: 'resize-unavailable.json', sha256: snapshotHash(value), status: 'unavailable', reason, counts: {} });
     return value;
 }
 for (const reason of ['screenDetailsUnavailable', 'resizeGeometryUnavailable']) test('v6 retains initial ' + reason + ' with empty streams', () => fixture(f => {
     unavailable(f, reason); assert.equal(f.finish().schemaVersion, 6);
 }));
+for (const [key, value] of [['paneId', '11111111-1111-1111-1111-111111111111'], ['originalGeometry', { rows: 12, cols: 60 }]]) {
+    test('v6 refuses unavailable evidence with retained parent ' + key, () => fixture(f => {
+        unavailable(f, 'resizeGeometryUnavailable'); f.proof.proofs[0].resize[key] = value;
+        f.write('ownership-proof.json', f.proof); assert.throws(f.finish);
+    }));
+}
 for (const [name, mutate] of [
     ['started fixture', value => { value.fixtureStarted = true; }],
     ['different count', value => { value.plannedExperiments = 0; }],

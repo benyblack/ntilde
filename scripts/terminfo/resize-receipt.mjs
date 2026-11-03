@@ -66,6 +66,7 @@ export function checkResizeEvidence(output, binding, runId, context, proof) {
     if (binding.file === 'resize-unavailable.json') {
         check(report.status === 'unavailable' && ['screenDetailsUnavailable', 'resizeGeometryUnavailable'].includes(report.reason)
             && report.fixtureStarted === false && report.plannedExperiments === 3 && frames.length === 0 && actions.length === 0
+            && marker.paneId === undefined && marker.originalGeometry === undefined
             && binding.status === 'unavailable' && binding.reason === report.reason && same(binding.counts, {}));
         return;
     }

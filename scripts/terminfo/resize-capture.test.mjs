@@ -77,6 +77,16 @@ test('a changing history read cannot qualify a paired resize frame', async () =>
     await assert.rejects(f.call('read', { caseId: f.observer.cases[0].id, stageId: 'control' }));
     assert.equal(f.observer.frames.length, 2);
 });
+test('a helper failure after its App request retains the attempted target and error without advancing', async () => {
+    const f = fixture(); await bind(f); const item = await control(f);
+    const failure = new Error('Post-request kernel proof failed.');
+    f.proof(() => { throw failure; });
+    await assert.rejects(f.call('apply', { caseId: item.id, stageId: 'after' }), error => error === failure);
+    assert.deepEqual(f.observer.actions, [{ index: 0, caseId: item.id, stageId: 'after',
+        target: item.target, observed: null, error: failure.message }]);
+    assert.equal(f.observer.next, 1); assert.equal(f.observer.frames.length, 3);
+    await assert.rejects(f.call('finish')); assert.equal(f.observer.restored, false);
+});
 test('abort can request only the original geometry and permanently prevents completion', async () => {
     const f = fixture(); await bind(f); await control(f);
     await f.call('abort'); assert.deepEqual(f.actions, [{ rows: 12, cols: 60 }]);

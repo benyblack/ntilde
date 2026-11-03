@@ -39,10 +39,15 @@ export class OwnedResizeObserver {
         check(this.bound && stage && stage.stageId !== 'control' && this.actionAtNext !== this.next
             && request.caseId === stage.caseId && request.stageId === stage.stageId
             && request.rows === undefined && request.cols === undefined && request.target === undefined);
-        const observed = await this.performResize(stage.target.rows, stage.target.cols, budget);
         const action = { index: this.actions.length, caseId: stage.caseId, stageId: stage.stageId,
-            target: structuredClone(stage.target), observed: structuredClone(observed) };
+            target: structuredClone(stage.target), observed: null };
         this.actions.push(action);
+        try { action.observed = structuredClone(await this.performResize(stage.target.rows, stage.target.cols, budget)); }
+        catch (error) {
+            action.error = error instanceof Error ? error.message : String(error);
+            throw error;
+        }
+        const observed = action.observed;
         const actual = observed?.app;
         check(observed?.paneId === this.paneId && observed.runId === this.runId
             && typeof observed.observedAt === 'string' && Number.isFinite(Date.parse(observed.observedAt))
