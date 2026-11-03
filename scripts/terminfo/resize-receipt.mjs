@@ -13,7 +13,10 @@ export const resizeSources = {
 };
 function present(path) {
     try { lstatSync(path); return true; }
-    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+    catch (error) {
+        if (error.code === 'ENOENT') return false;
+        throw error;
+    }
 }
 function bytes(output, file, maximum = 16 * 1024 * 1024) {
     const path = join(output, file), stat = lstatSync(path);

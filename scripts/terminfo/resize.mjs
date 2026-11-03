@@ -8,6 +8,26 @@ const same = (left, right) => snapshotHash(left) === snapshotHash(right);
 const check = value => { if (!value) throw new Error('Invalid or incomplete owned resize evidence.'); };
 const geometry = screen => ({ rows: screen.rows, cols: screen.cols });
 
+function frameKind(index, last) {
+    if (index === 0) return 'start';
+    if (index === 1) return 'bind';
+    if (index === last) return 'finish';
+    return 'read';
+}
+
+/** Validate the independent App and kernel facts for one source-selected action. */
+function validateAction(action, expectedAction, stage, paneId, runId) {
+    const observed = action?.observed;
+    check(action?.index === expectedAction && action.caseId === stage.caseId && action.stageId === stage.stageId
+        && same(action.target, stage.target) && observed?.paneId === paneId && observed.runId === runId
+        && typeof observed.observedAt === 'string' && Number.isFinite(Date.parse(observed.observedAt))
+        && new Date(observed.observedAt).toISOString() === observed.observedAt
+        && observed.app?.exact === true && observed.app.layoutSettled === true
+        && same(geometry(observed.app), stage.target) && observed.terminalOutput?.tool === '/bin/stty'
+        && observed.terminalOutput.outputProcessing === false);
+    validateOutputGeometry(observed.terminalOutput.description, stage.target.rows, stage.target.cols);
+}
+
 /** Derive each geometry and complete state from the retained source plan, never worker-supplied expectations. */
 export function validateResizeFrames(frames, actions, runId) {
     check(/^[a-f\d]{32}$/.test(runId ?? '') && Array.isArray(frames) && frames.length === 12
@@ -20,7 +40,7 @@ export function validateResizeFrames(frames, actions, runId) {
     let actionIndex = 0;
     for (const [index, frame] of frames.entries()) {
         const stage = plan[index - 2];
-        const kind = index === 0 ? 'start' : index === 1 ? 'bind' : index === frames.length - 1 ? 'finish' : 'read';
+        const kind = frameKind(index, frames.length - 1);
         const expectedAction = stage && stage.stageId !== 'control' ? actionIndex++ : null;
         const screen = screenSnapshot(frame.screen, false, true, true, true, true);
         const after = screenSnapshot(frame.afterScreen, false, true, true, true, true);
@@ -32,17 +52,7 @@ export function validateResizeFrames(frames, actions, runId) {
             && frame.actionIndex === expectedAction
             && (index === 0 ? frame.barrier === null : typeof frame.barrier === 'string'
                 && frame.barrier.length <= 128 && /^\x1b\[\?[\d;]+c$/.test(frame.barrier)));
-        if (expectedAction !== null) {
-            const action = actions[expectedAction], observed = action?.observed;
-            check(action?.index === expectedAction && action.caseId === stage.caseId && action.stageId === stage.stageId
-                && same(action.target, stage.target) && observed?.paneId === first.paneId && observed.runId === runId
-                && typeof observed.observedAt === 'string' && Number.isFinite(Date.parse(observed.observedAt))
-                && new Date(observed.observedAt).toISOString() === observed.observedAt
-                && observed.app?.exact === true && observed.app.layoutSettled === true
-                && same(geometry(observed.app), stage.target) && observed.terminalOutput?.tool === '/bin/stty'
-                && observed.terminalOutput.outputProcessing === false);
-            validateOutputGeometry(observed.terminalOutput.description, stage.target.rows, stage.target.cols);
-        }
+        if (expectedAction !== null) validateAction(actions[expectedAction], expectedAction, stage, first.paneId, runId);
     }
     check(pristineEditing(first.screen) && same(first.screen, last.screen));
     const bound = structuredClone(first.screen);
@@ -71,7 +81,8 @@ export function buildResizeReport(frames, actions, runId) {
             { description: 'exact top-anchored viewport, cursor and complete retained history after independently verified geometry restoration',
                 passed: compare(restored, item.restored) },
         ];
-        const result = controls.some(value => !value.passed) ? 'inconclusive' : assertions.some(value => !value.passed) ? 'failed' : 'passed';
+        let result = assertions.some(value => !value.passed) ? 'failed' : 'passed';
+        if (controls.some(value => !value.passed)) result = 'inconclusive';
         return { featureId: item.id, snapshots: [control.index, changed.index, restored.index],
             actions: [changed.actionIndex, restored.actionIndex], controls, assertions, result };
     });

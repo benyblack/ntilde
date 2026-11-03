@@ -72,23 +72,31 @@ export async function collectResize({ config, fence, owner }) {
     try {
         await owner('resize-bind', await fence.write('\x1b[?1049h\x1b[!p\x1b[?6l\x1b[r\x1b[4l\x1b[0m\x1b[HNTILDE_RZ_' + config.runId));
         bound = true;
-        for (const item of cases) {
+        await cases.reduce((previous, item) => previous.then(async () => {
             await owner('resize-read', await fence.write(item.setup), { caseId: item.id, stageId: 'control' });
-            for (const stageId of ['after', 'restored']) {
+            await ['after', 'restored'].reduce((prior, stageId) => prior.then(async () => {
                 await owner('resize-apply', null, { caseId: item.id, stageId });
                 // The parent chose and verified the geometry. Fence later output before reading its state.
                 await owner('resize-read', await fence.write(''), { caseId: item.id, stageId });
-            }
-        }
+            }), Promise.resolve());
+        }), Promise.resolve());
         await owner('resize-finish', await fence.write(finalRestore));
     } catch (error) {
-        const failures = [error];
-        if (bound) { try { await owner('resize-abort'); } catch (failure) { failures.push(failure); } }
-        try {
-            if (fence.failed) await fence.writeCleanup(finalRestore);
-            else await fence.write(finalRestore);
-        } catch (failure) { failures.push(failure); }
-        if (failures.length > 1) throw new AggregateError(failures, 'Resize collection and cleanup failed.');
-        throw error;
+        return restoreAfterFailure(error, bound, owner, fence);
     }
+}
+
+/** Attempt geometry and output cleanup independently, preserving every failure. */
+async function restoreAfterFailure(error, bound, owner, fence) {
+    const failures = [error];
+    if (bound) {
+        try { await owner('resize-abort'); }
+        catch (error_) { failures.push(error_); }
+    }
+    try {
+        if (fence.failed) await fence.writeCleanup(finalRestore);
+        else await fence.write(finalRestore);
+    } catch (error_) { failures.push(error_); }
+    if (failures.length > 1) throw new AggregateError(failures, 'Resize collection and cleanup failed.');
+    throw error;
 }

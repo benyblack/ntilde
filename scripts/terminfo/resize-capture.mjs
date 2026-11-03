@@ -61,6 +61,33 @@ export class OwnedResizeObserver {
         return this.performResize(this.original.rows, this.original.cols, budget);
     }
 
+    validateCaptureRequest(request, operation) {
+        const stage = operation === 'read' ? this.plan?.[this.next] : null;
+        check(request.caseId === (stage?.caseId ?? undefined) && request.stageId === (stage?.stageId ?? undefined));
+        if (operation === 'start') check(!this.baseline);
+        else check(this.baseline && (operation === 'bind' ? !this.bound : this.bound));
+        if (operation === 'read') check(stage && (stage.stageId === 'control' || this.actionAtNext === this.next));
+        if (operation === 'finish') check(this.next === this.plan.length);
+        return stage;
+    }
+
+    acceptInitialPair(operation, pair) {
+        if (operation === 'start') {
+            check(pristineEditing(pair.screen));
+            this.cases = makeResizeCases(pair.screen.rows, pair.screen.cols);
+            this.baseline = pair.screen; this.original = geometry(pair.screen);
+            this.plan = this.cases.flatMap(item => ['control', 'after', 'restored'].map(stageId => ({
+                caseId: item.id, stageId, target: stageId === 'after' ? item.target : this.original,
+            })));
+        }
+        if (operation === 'bind') {
+            const expected = structuredClone(this.baseline);
+            expected.lines[0] = this.nonce; expected.cursorCol = this.nonce.length;
+            expected.bufferState.alternateScreen = true;
+            check(same(pair.screen, expected)); this.bound = true;
+        }
+    }
+
     /** Pair complete screen/history reads at each exact planned grid and require pristine original restoration. */
     async handle(request, budget) {
         check(!this.busy && !this.finished && !this.aborted);
@@ -72,27 +99,9 @@ export class OwnedResizeObserver {
             if (operation === 'apply') return await this.apply(request, budget);
             check(operation === 'start' ? request.barrier === null : typeof request.barrier === 'string'
                 && request.barrier.length <= 128 && /^\x1b\[\?[\d;]+c$/.test(request.barrier));
-            const stage = operation === 'read' ? this.plan?.[this.next] : null;
-            check(request.caseId === (stage?.caseId ?? undefined) && request.stageId === (stage?.stageId ?? undefined));
-            if (operation === 'start') check(!this.baseline);
-            else check(this.baseline && (operation === 'bind' ? !this.bound : this.bound));
-            if (operation === 'read') check(stage && (stage.stageId === 'control' || this.actionAtNext === this.next));
-            if (operation === 'finish') check(this.next === this.plan.length);
+            const stage = this.validateCaptureRequest(request, operation);
             const pair = await this.capture(stage?.target ?? this.original, budget);
-            if (operation === 'start') {
-                check(pristineEditing(pair.screen));
-                this.cases = makeResizeCases(pair.screen.rows, pair.screen.cols);
-                this.baseline = pair.screen; this.original = geometry(pair.screen);
-                this.plan = this.cases.flatMap(item => ['control', 'after', 'restored'].map(stageId => ({
-                    caseId: item.id, stageId, target: stageId === 'after' ? item.target : this.original,
-                })));
-            }
-            if (operation === 'bind') {
-                const expected = structuredClone(this.baseline);
-                expected.lines[0] = this.nonce; expected.cursorCol = this.nonce.length;
-                expected.bufferState.alternateScreen = true;
-                check(same(pair.screen, expected)); this.bound = true;
-            }
+            this.acceptInitialPair(operation, pair);
             if (operation === 'finish') { check(same(pair.screen, this.baseline)); this.finished = true; }
             const frame = { index: this.frames.length, kind: request.kind, paneId: this.paneId, barrier: request.barrier,
                 ...pair, sha256: snapshotHash(pair.screen), afterSha256: snapshotHash(pair.afterScreen),
