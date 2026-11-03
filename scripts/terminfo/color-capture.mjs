@@ -47,8 +47,13 @@ export class OwnedColorObserver {
     }
     get restored() { return this.before.restored && this.frames.at(-1)?.kind === 'color-finish'; }
     get paneId() { return this.before.paneId; }
+    validateRestoration(kind, screen, pixel, details) {
+        if (!this.frames.length && (!pristineColorTheme(details.theme) || !pristineCursorBaseline(screen) || screen.cellDetails.some(cell => cell.overline))) fail();
+        if (kind === 'color-finish' && (pixel.sha256 !== this.frames[0].pixel.sha256
+            || snapshotHash(details.theme) !== snapshotHash(this.frames[0].pixel.renderDetails.theme))) throw new Error('Color baseline was not restored.');
+    }
     async handle(request, budget) {
-        if (this.busy || this.restored) throw new Error('Pixel observation busy or complete.');
+        if (this.busy || this.restored) throw new Error('Color observation busy or complete.');
         const expected = request.kind === 'color-read' ? colorPlan[this.next] : { selection: null, queries: [] };
         if (!expected || request.caseId !== expected.caseId || request.stageId !== expected.stageId
             || (request.kind === 'color-finish' && this.next !== colorPlan.length)) fail();
@@ -60,9 +65,9 @@ export class OwnedColorObserver {
             const endpoint = (this.before.endpoint ?? observerEndpoint)(this.before.appData, this.before.ownerPid);
             const capture = await this.captureRpc(endpoint, this.paneId, expected.selection, budget());
             const after = await this.after.capture(budget);
-            if (snapshotHash(result.screen) !== snapshotHash(after)) throw new Error('Pixel capture changed the observed screen.');
+            if (snapshotHash(result.screen) !== snapshotHash(after)) throw new Error('Color capture changed the observed screen.');
             const { bytes, details } = validateColorCapture(capture, result.screen, expected.selection);
-            if (capture.width * capture.height * (colorPlan.length + 3) > totalPixelLimit) throw new Error('Pixel suite decoded budget exhausted.');
+            if (capture.width * capture.height * (colorPlan.length + 3) > totalPixelLimit) throw new Error('Color suite decoded budget exhausted.');
             const policy = defaultCursorPolicy(result.screen, details);
             if (this.defaultCursor && policy && policy !== this.defaultCursor) fail();
             this.defaultCursor ??= policy;
@@ -73,8 +78,7 @@ export class OwnedColorObserver {
             const pixel = { file, sha256: pngHash(bytes), byteCount: bytes.length, width: capture.width, height: capture.height,
                 rows: capture.rows, cols: capture.cols, mode: capture.mode, scale: capture.scale, downscaled: false,
                 inlineOmitted: false, presentationTimeMs: 0, ...(expected.selection ? { syntheticSelection: structuredClone(expected.selection) } : {}), renderDetails: details };
-            if (!this.frames.length && (!pristineColorTheme(details.theme) || !pristineCursorBaseline(result.screen) || result.screen.cellDetails.some(cell => cell.overline))) fail();
-            if (request.kind === 'color-finish' && (pixel.sha256 !== this.frames[0].pixel.sha256 || snapshotHash(details.theme) !== snapshotHash(this.frames[0].pixel.renderDetails.theme))) throw new Error('Pixel baseline was not restored.');
+            this.validateRestoration(request.kind, result.screen, pixel, details);
             if (!this.frames.length) mkdirSync(join(this.output, 'color-pixels'), { mode: 0o700 });
             writeFileSync(join(this.output, file), bytes, { flag: 'wx', mode: 0o600 });
             this.frames.push({ ...this.before.frames.at(-1), afterScreen: after, afterSha256: snapshotHash(after), caseId: request.caseId ?? null, stageId: request.stageId ?? null, queries, pixel });

@@ -14,7 +14,7 @@ function input(index, cursor) {
         + at(6, 4) + '\x1b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\x1b[0m' + at(8, 8)
         + (cursor ? '\x1b[2 q\x1b[?25h' : '');
 }
-const experiment = (id, queries, override, resetSequence, selection = null, index, cursor = false) => ({ id, queries, selection,
+const experiment = (id, queries, override, resetSequence, selection, index, cursor = false) => ({ id, queries, selection: selection ?? null,
     stages: [{ id: 'baseline', sequence: input(index, cursor) }, { id: 'override', sequence: override }, { id: 'reset', sequence: resetSequence }] });
 export const colorCases = Object.freeze([
     experiment('palette.single-base', [{ code: 4, index: 1 }], set(4, 1), osc(104, ';1'), null, 1),
@@ -31,17 +31,22 @@ export const colorPlan = Object.freeze(colorCases.flatMap(item => item.stages.ma
 export async function collectColors({ config, fence, owner }) {
     let initial;
     try { initial = await owner('color-start'); }
-    catch (error) { if (error.code === 'screenDetailsUnavailable') return { status: 'unavailable', reason: error.code }; throw error; }
+    catch (error) {
+        if (error.code === 'screenDetailsUnavailable') return { status: 'unavailable', reason: error.code };
+        throw error;
+    }
     const { pristineCursorBaseline } = await import('./cursor.mjs');
     if (initial.screen.rows < 10 || !pristineCursorBaseline(initial.screen)) throw new Error('Colors require a pristine owned baseline.');
     try {
         await owner('color-bind', await fence.write('\x1b[?1049h' + reset + `NTILDE_CL_${config.runId}`));
-        for (const item of colorCases) for (const stage of item.stages) {
-            const barrier = await fence.write(stage.sequence);
-            const queries = [];
-            for (const spec of item.queries) queries.push({ spec, ...await fence.query(spec) });
-            await owner('color-read', barrier, { caseId: item.id, stageId: stage.id, queries });
-        }
+        // All writes, replies and observations share a serial chain on this one PTY.
+        await colorCases.flatMap(item => item.stages.map(stage => ({ item, stage })))
+            .reduce((previous, { item, stage }) => previous.then(async () => {
+                const barrier = await fence.write(stage.sequence);
+                const queries = await item.queries.reduce((prior, spec) => prior.then(async values =>
+                    [...values, { spec, ...await fence.query(spec) }]), Promise.resolve([]));
+                await owner('color-read', barrier, { caseId: item.id, stageId: stage.id, queries });
+            }), Promise.resolve());
     } finally {
         await owner('color-finish', await fence.write(clearColors + '\x1b[?1049l\x1b[!p'));
     }

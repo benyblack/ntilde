@@ -30,10 +30,28 @@ function expectedTheme(item, stage, baseline) {
     }
     return theme;
 }
+function themeSources(theme) {
+    const sources = { ...theme };
+    delete sources.effectiveSelectionForegroundArgb;
+    delete sources.effectiveSelectionBackgroundArgb;
+    delete sources.cursorTextArgb;
+    return sources;
+}
 function themeMatches(actual, expected) {
-    const { effectiveSelectionForegroundArgb, effectiveSelectionBackgroundArgb, cursorTextArgb, ...a } = actual;
-    const { effectiveSelectionForegroundArgb: ignoredFg, effectiveSelectionBackgroundArgb: ignoredBg, cursorTextArgb: ignoredCursorText, ...b } = expected;
-    return snapshotHash(a) === snapshotHash(b);
+    return snapshotHash(themeSources(actual)) === snapshotHash(themeSources(expected));
+}
+function targetRegion(id) {
+    if (id === 'cursor') return cursorRegion;
+    if (['background', 'selection-background'].includes(id)) return blankRegion;
+    return pixelRegion;
+}
+function partialPaintMatches(resetBg, baseline, override, partial, region) {
+    const blank = region(partial, blankRegion);
+    const wantedBlank = region(resetBg ? baseline : override, blankRegion);
+    const theme = baseline.pixel.renderDetails.theme;
+    const foreground = resetBg ? overrideGreen : theme.effectiveSelectionForegroundArgb ?? theme.foregroundArgb;
+    return blank.equals(wantedBlank)
+        && countColorCoverage(region(partial, pixelRegion), rgba(foreground), [...wantedBlank.subarray(0, 4)]) > 10;
 }
 function contentReady(frame, item) {
     const lines = new Array(frame.screen.rows).fill('');
@@ -84,12 +102,12 @@ export function buildColorReport(frames, runId, output) {
             check('unselected explicit RGB control stays unchanged', samples.every(frame => region(frame, controlRegion).equals(region(baseline, controlRegion))))];
         const assertions = [];
         for (const frame of samples) {
-            assertions.push(check(`${frame.stageId}: raw queries match exact 16-bit theme values or explicit unset defaults`, frame.queries.every(query => queryMatches(query, frame.pixel.renderDetails.theme))));
-            assertions.push(check(`${frame.stageId}: only requested runtime sources change`, themeMatches(frame.pixel.renderDetails.theme, expectedTheme(item, frame.stageId, baseline.pixel.renderDetails.theme))));
+            assertions.push(check(`${frame.stageId}: raw queries match exact 16-bit theme values or explicit unset defaults`, frame.queries.every(query => queryMatches(query, frame.pixel.renderDetails.theme))),
+                check(`${frame.stageId}: only requested runtime sources change`, themeMatches(frame.pixel.renderDetails.theme, expectedTheme(item, frame.stageId, baseline.pixel.renderDetails.theme))));
         }
-        assertions.push(check('reset restores complete theme including derived selection paints', snapshotHash(last.pixel.renderDetails.theme) === snapshotHash(baseline.pixel.renderDetails.theme)));
-        assertions.push(check('reset restores identical selected/unselected full PNG', last.pixel.sha256 === baseline.pixel.sha256));
-        const override = samples[1], target = item.id === 'cursor' ? cursorRegion : item.id === 'background' || item.id === 'selection-background' ? blankRegion : pixelRegion;
+        assertions.push(check('reset restores complete theme including derived selection paints', snapshotHash(last.pixel.renderDetails.theme) === snapshotHash(baseline.pixel.renderDetails.theme)),
+            check('reset restores identical selected/unselected full PNG', last.pixel.sha256 === baseline.pixel.sha256));
+        const override = samples[1], target = targetRegion(item.id);
         assertions.push(check('override changes target pixels', !region(override, target).equals(region(baseline, target))));
         const wanted = item.id.startsWith('selection.independent') ? overrideGreen : overrideBlue;
         const background = item.id.startsWith('selection.') ? rgba(overrideBlue) : [16, 16, 16, 255];
@@ -97,8 +115,9 @@ export function buildColorReport(frames, runId, output) {
         if (samples.length === 4) {
             const partial = samples[2], resetBg = item.id.endsWith('117');
             const theme = partial.pixel.renderDetails.theme;
-            assertions.push(check('partial reset retains the other independent source', resetBg ? theme.selectionForegroundOverride && !theme.selectionBackgroundOverride : theme.selectionBackgroundOverride && !theme.selectionForegroundOverride));
-            assertions.push(check('partial reset changes selected pixels while retaining its other override', !region(partial, pixelRegion).equals(region(override, pixelRegion)) && !region(partial, pixelRegion).equals(region(baseline, pixelRegion))));
+            assertions.push(check('partial reset retains the other independent source', resetBg ? theme.selectionForegroundOverride && !theme.selectionBackgroundOverride : theme.selectionBackgroundOverride && !theme.selectionForegroundOverride),
+                check('partial reset changes selected pixels while retaining its other override', partialPaintMatches(resetBg, baseline, override, partial, region)
+                    && !region(partial, pixelRegion).equals(region(override, pixelRegion)) && !region(partial, pixelRegion).equals(region(baseline, pixelRegion))));
         }
         let result = 'passed';
         if (!controls.every(value => value.passed)) result = 'inconclusive';

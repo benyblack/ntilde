@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pixelCapture, pixelScreen, pixelPaneId } from './fixtures/pixel-capture.mjs';
@@ -160,3 +160,21 @@ test('published color measurements rederive all original PNGs and match the fina
     const unset = derived.snapshots.find(frame => frame.caseId === 'selection-background' && frame.stageId === 'baseline');
     assert.equal(unset.pixel.renderDetails.theme.selectionBackgroundArgb, null); assert.equal(unset.queries[0].reply, null);
 });
+
+for (const [caseId, replacement] of [['selection.independent-117', 24], ['selection.independent-119', 28]]) {
+    test(`wrong partial-reset paint cannot pass ${caseId} with correct query/theme metadata`, () => {
+        const data = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-03-colors.json', import.meta.url)));
+        const source = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-03-colors/', import.meta.url));
+        const output = mkdtempSync(join(tmpdir(), 'nt-color-paint-'));
+        try {
+            cpSync(join(source, 'color-pixels'), join(output, 'color-pixels'), { recursive: true });
+            const frames = structuredClone(data.colorReport.snapshots);
+            const frame = frames.find(value => value.caseId === caseId && value.stageId === 'partial-reset');
+            const bytes = readFileSync(join(source, frames[replacement].pixel.file));
+            writeFileSync(join(output, frame.pixel.file), bytes);
+            frame.pixel.byteCount = bytes.length; frame.pixel.sha256 = createHash('sha256').update(bytes).digest('hex');
+            const report = buildColorReport(frames, data.context.runId, output);
+            assert.equal(report.observations.find(value => value.featureId === caseId).result, 'failed');
+        } finally { rmSync(output, { recursive: true, force: true }); }
+    });
+}
