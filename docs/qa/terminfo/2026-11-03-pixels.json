@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
-  "appBuildSource": "0c3b302afd645b3ed258896e03632907d402ecb4",
-  "adapterSource": "c1e6278db69814d359c7584d4f0eb8128c6c6d00",
-  "localEvidence": "artifacts/terminfo/owned-KTSWxy",
+  "appBuildSource": "c6e633969565eb348cc987982860f55b15008bbc",
+  "adapterSource": "c6e633969565eb348cc987982860f55b15008bbc",
+  "localEvidence": "artifacts/terminfo/owned-12fZOu",
   "context": {
     "adapter": "ntilde-owned-macos-v1",
     "adapterBundleSha256": "87e28f31543d1e7ee618d9a88dd3ccf427c1f92582a853cf10d2444074a89ef9",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
-    "appVersion": "0.13.0+0c3b302afd645b3ed258896e03632907d402ecb4",
+    "appVersion": "0.13.0+c6e633969565eb348cc987982860f55b15008bbc",
     "appVersionSource": "operator supplied; not independently verified",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "c0dab1719ce7ecdde676cc98f0b7c19a74ad55c0365db4f24ab67fb8d17bf81f",
+    "assemblySha256": "31d7d5b8b5064899893491ab2108944768f7a623098942d052eadf4b206eb3a2",
     "nodeVersion": "v24.22.1",
     "dependencyInstall": "isolated npm ci --ignore-scripts",
-    "startedAt": "2026-11-03T10:51:47.787Z",
-    "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
-    "runnerSourceSha256": "32a06493bced9eb33df2c16b1749e33627e0d8603f157c49e5899a7582e1c9dd",
+    "startedAt": "2026-11-03T11:12:11.395Z",
+    "runId": "67b4d2c180beda7a24ae6b0a6e3b81d7",
+    "runnerSourceSha256": "28dcfa6b5a89c7a5ad852d95b464186376862942f1ac72930d111779c78e5155",
     "adapterSourceSha256": "af10e90c89f12dcccd4651a85f380235c273235bc2e41a749457e3e885fefa81",
     "ownershipSourceSha256": "9667a6f6c3b182350828a3c9269d1c4dc745dde3da26e01390ec7831d4fbb390",
     "workerSourceSha256": "946b2b90b87b1fceedbada7aa44594ba9eb5f67395abe9d994eff61876ea4737",
@@ -29,11 +29,11 @@
     "rgbSuiteSourceSha256": "65911c9a13c9db222e3699d5a6b0acf74b3eea0e4158997082bde50976576351",
     "renditionSuiteSourceSha256": "4b662f3c34c047c0403b04c03ea6776cbe7c428f2e4ae7ce0e23bd61ec26c69e",
     "cursorSuiteSourceSha256": "861891583646ff6081185b267442e149e5397fdcc91ba68d95d01d96dd8713a9",
-    "pixelCaptureSourceSha256": "0b0db07599f214b813874045b9b0e64621a769e2020567e2afb651e498f6a4c4",
-    "pixelSuiteSourceSha256": "820f25800272371984aa2f27ae4ed137519644a9c6cb9dcea77108ce6483a55f",
-    "pixelCasesSourceSha256": "be77694b0ad4f546a55027c04751d69af1374abd191ff647c4c287b81c00e25e",
-    "pixelPngSourceSha256": "39712921102133810a067f78f0a808b64edb510383219dd14a968a2c5dec77eb",
-    "receiptSourceSha256": "6388acf0e8221553e22a496fc30967f009d273fbee1910059d26ac4ef25b5fe8",
+    "pixelCaptureSourceSha256": "bc4cf6100393780b4af7c7af049d555f2d7f63e8b6c238f684b5670e3d465818",
+    "pixelSuiteSourceSha256": "285329b2a2c352db242155ff2594b4cef4e1ccc437e7c1951536abedec6fb4a4",
+    "pixelCasesSourceSha256": "383c6155ffcc41000a5830de4bcfe398782a4b864038c246b7bc74740b8e2601",
+    "pixelPngSourceSha256": "256d09120ef732ab1d5456f89177f095ecd1183a3d06bc70da6e4f91238a3bce",
+    "receiptSourceSha256": "28f38fd6fcefe35a7e9216c85b879e75f189bc146d2845c37cd9b1531b7ecf40",
     "collectorManifestSha256": "56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e",
     "collectorLockSha256": "837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508",
     "retainedAdapterBundle": "collector-adapter.mjs",
@@ -47,7 +47,7 @@
     "cursorModes": "stored cursor style/blink/default/visibility; pristine owned DECSTR cleanup, no host appearance or blink phase"
   },
   "stockCollector": {
-    "runId": "b0645c3be1042dd8dc0b1699378296ee",
+    "runId": "6b570accf1c888e154aba40d995b9402",
     "suiteId": "16a690f34c0e",
     "suiteComplete": false,
     "ungradedDiagnostics": {
@@ -57,11 +57,11 @@
         "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
       }
     },
-    "measuredAt": "2026-11-03T10:51:56.789Z",
+    "measuredAt": "2026-11-03T11:12:26.234Z",
     "target": {
       "kind": "app",
       "id": "ntilde",
-      "version": "0.13.0+0c3b302afd645b3ed258896e03632907d402ecb4",
+      "version": "0.13.0+c6e633969565eb348cc987982860f55b15008bbc",
       "os": "macos",
       "osVersion": "27.0.1",
       "outerTerminal": null,
@@ -84,79 +84,79 @@
       "no-response": 22,
       "policy-refused": 3
     },
-    "rawSha256": "64e06f3f14a8221b0d581bbbab79adca68165ffdd614937163cbb2e6d75ac0c8"
+    "rawSha256": "3218335339330b8a27a46bf47e24373dcf2920198e6e324af8b1b2fef554a663"
   },
   "receipt": {
     "schemaVersion": 2,
-    "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
+    "runId": "67b4d2c180beda7a24ae6b0a6e3b81d7",
     "suiteId": "ntilde-owned-ascii-cells-v1",
     "file": "cell-observations.json",
-    "sha256": "e15580f699f17b8e8a8c07c8e8368406b40353a2893c2f051dd9cbbe7b0bdc18",
+    "sha256": "1961c10cd9c09c691de29b2c0a93048b0d8357cedc7cfe236b7879d2689b2386",
     "counts": {
       "passed": 8
     },
     "provisionalUntil": "cell-receipt.json",
     "sgrEvidence": {
-      "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
+      "runId": "67b4d2c180beda7a24ae6b0a6e3b81d7",
       "suiteId": "ntilde-owned-sgr-indices-v1",
       "file": "sgr-observations.json",
-      "sha256": "dba5bf17dbd392bdd53b8a8d7db3bc67648b9513d12ba0877ca592eafc368453",
+      "sha256": "ce669643520ca5dd36fa7e7238682438b59361ae6ae5da775adac94c5c6dc617",
       "counts": {
         "passed": 17
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "rgbEvidence": {
-      "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
+      "runId": "67b4d2c180beda7a24ae6b0a6e3b81d7",
       "suiteId": "ntilde-owned-rgb-underline-v1",
       "file": "rgb-observations.json",
-      "sha256": "e666f5c3f3eb9b981c8e42898be9ec91a1069f25f3f6a5c5e8ab93057f1b6483",
+      "sha256": "d17d96b3c15bef48483994c993eb89de6e9df27b1ac1e203b56aaa849a168309",
       "counts": {
         "passed": 20
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "renditionEvidence": {
-      "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
+      "runId": "67b4d2c180beda7a24ae6b0a6e3b81d7",
       "suiteId": "ntilde-owned-rendition-charsets-v3",
       "file": "rendition-observations.json",
-      "sha256": "9541994a2a322b26445421f9bb79caaf7acf319f8bf977ee8dd2812ce7d0b692",
+      "sha256": "37c36a836af8d1e845aa2004ede530a4dc07890b31f5e985e5ccc7bc5bb750b8",
       "counts": {
         "passed": 19
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "cursorEvidence": {
-      "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
+      "runId": "67b4d2c180beda7a24ae6b0a6e3b81d7",
       "suiteId": "ntilde-owned-cursor-modes-v1",
       "file": "cursor-observations.json",
-      "sha256": "e29c8c12eb302f89fe0f9bce3b6581976134f40be9a0aef9e6413721c5d3bef0",
+      "sha256": "f6737c333fdbe4684036479aa546242691e54b51311a9d51f246cc0375c9d811",
       "counts": {
         "passed": 9
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "pixelEvidence": {
-      "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
+      "runId": "67b4d2c180beda7a24ae6b0a6e3b81d7",
       "suiteId": "ntilde-owned-render-pixels-v1",
       "file": "pixel-observations.json",
-      "sha256": "6acbeaedc740c9f48027e7b18a103859d57ca19a9fd142e9d413cda34c51455a",
+      "sha256": "c5dbfe03c784db2f473714e8c420e6e1fe7142f901997f01dac8a0ffee991078",
       "counts": {
         "failed": 1,
         "passed": 24
       },
       "provisionalUntil": "cell-receipt.json"
     },
-    "ownershipProofSha256": "f5dd3e3bec3a8b21ba9003994319247aa2069eabccfb638e5799c515041433d7",
-    "contextSha256": "3e33d3b1bc31e77bb77feb8876eef7f3d1b7d0f66872e13d4f41d069bfca6474",
-    "rawSha256": "64e06f3f14a8221b0d581bbbab79adca68165ffdd614937163cbb2e6d75ac0c8",
+    "ownershipProofSha256": "63c55add16796433a0df1de72175a500f6fb383c25a0219422c4436bbb0d546b",
+    "contextSha256": "6808bea32e052e449ba46bb59e244ad88c8935e0a5255d374f9a341091343a43",
+    "rawSha256": "3218335339330b8a27a46bf47e24373dcf2920198e6e324af8b1b2fef554a663",
     "fixtureRemoved": true,
-    "completedAt": "2026-11-03T10:51:58.131Z"
+    "completedAt": "2026-11-03T11:12:27.902Z"
   },
   "pixelReport": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-render-pixels-v1",
-    "runId": "5ea69594a55c0a4e7a3ff5c705bcbb67",
+    "runId": "67b4d2c180beda7a24ae6b0a6e3b81d7",
     "complete": true,
     "scope": "Owned offscreen renderer pixels at synthetic 530ms half-period phases; local controls and retained primary font/context. No live desktop cadence, cross-platform font/fallback equivalence, clipboard, images or stock grades.",
     "inputs": [
@@ -372,7 +372,7 @@
       {
         "index": 0,
         "kind": "pixel-start",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": null,
         "screen": {
           "rows": 41,
@@ -517,10 +517,10 @@
         "sceneId": null,
         "pixel": {
           "file": "pixels/frame-000.png",
-          "sha256": "dc316b97e3ca74ccc0bde6305e91ddb2366156edd6bf44fd4560aa810652b622",
-          "byteCount": 5343,
-          "width": 1190,
-          "height": 759,
+          "sha256": "7ffddd17087ef5931f7648231c2af70b0ac61dee50f73f03e5d0423c81478d47",
+          "byteCount": 5773,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -550,8 +550,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -848,13 +848,13 @@
       {
         "index": 1,
         "kind": "pixel-bind",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
           "cols": 140,
           "lines": [
-            "NTILDE_PX_5ea69594a55c0a4e7a3ff5c705bcbb67",
+            "NTILDE_PX_67b4d2c180beda7a24ae6b0a6e3b81d7",
             "",
             "",
             "",
@@ -919,12 +919,12 @@
             "isDefault": true
           }
         },
-        "sha256": "b3c03a3d258c4706db239a2c6f06ede09ccb6f9823b6213b2d5c700fff754d1a",
+        "sha256": "d2eb9bf406f266898dc95894075abab143a6885bd8ba6527876a86d8336a1b45",
         "afterScreen": {
           "rows": 41,
           "cols": 140,
           "lines": [
-            "NTILDE_PX_5ea69594a55c0a4e7a3ff5c705bcbb67",
+            "NTILDE_PX_67b4d2c180beda7a24ae6b0a6e3b81d7",
             "",
             "",
             "",
@@ -989,14 +989,14 @@
             "isDefault": true
           }
         },
-        "afterSha256": "b3c03a3d258c4706db239a2c6f06ede09ccb6f9823b6213b2d5c700fff754d1a",
+        "afterSha256": "d2eb9bf406f266898dc95894075abab143a6885bd8ba6527876a86d8336a1b45",
         "sceneId": null,
         "pixel": {
           "file": "pixels/frame-001.png",
-          "sha256": "d0f516f0c2a797d034f213290050a2a4b714323b3b05d2640c54b62f9f3be226",
-          "byteCount": 9977,
-          "width": 1190,
-          "height": 759,
+          "sha256": "783580646f4dd2ca5007f05c707b2a3f3d09216894976cfbd76e5acc1c96b930",
+          "byteCount": 10571,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -1026,8 +1026,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -1324,7 +1324,7 @@
       {
         "index": 2,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -1613,10 +1613,10 @@
         "sceneId": "normal",
         "pixel": {
           "file": "pixels/frame-002.png",
-          "sha256": "7c3bc50665773253f14e85851e0f48897e3ca435405caa40e6101af6b26bc061",
-          "byteCount": 8014,
-          "width": 1190,
-          "height": 759,
+          "sha256": "fc91b9eb3972b53f7981c8e4434d9fea5dd8fa8e0f64bb7dab1193c6ad36b03b",
+          "byteCount": 8441,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -1646,8 +1646,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -1944,7 +1944,7 @@
       {
         "index": 3,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -2977,10 +2977,10 @@
         "sceneId": "colors",
         "pixel": {
           "file": "pixels/frame-003.png",
-          "sha256": "aebab7f01954c0d5ba30b39e47af5312eb4345b0b1ea2ec08a1ab27a8d02dfca",
-          "byteCount": 5495,
-          "width": 1190,
-          "height": 759,
+          "sha256": "a109cc4ef4db8a42d52643a1025a36f9ea9a91f3ba465c7f27176d99801b80af",
+          "byteCount": 5928,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -3010,8 +3010,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -3308,7 +3308,7 @@
       {
         "index": 4,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -3597,10 +3597,10 @@
         "sceneId": "bold",
         "pixel": {
           "file": "pixels/frame-004.png",
-          "sha256": "7c3bc50665773253f14e85851e0f48897e3ca435405caa40e6101af6b26bc061",
-          "byteCount": 8014,
-          "width": 1190,
-          "height": 759,
+          "sha256": "fc91b9eb3972b53f7981c8e4434d9fea5dd8fa8e0f64bb7dab1193c6ad36b03b",
+          "byteCount": 8441,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -3630,8 +3630,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -3928,7 +3928,7 @@
       {
         "index": 5,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -4217,10 +4217,10 @@
         "sceneId": "italic",
         "pixel": {
           "file": "pixels/frame-005.png",
-          "sha256": "18fa1549ab10b3da4341f7e516438bb5741febaac30163aafc85dc039aa8affa",
-          "byteCount": 8554,
-          "width": 1190,
-          "height": 759,
+          "sha256": "cc04fcb689c28ff4e162efd1b67e43c0e0faf54f28f22139041ae9020163e444",
+          "byteCount": 8973,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -4250,8 +4250,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -4548,7 +4548,7 @@
       {
         "index": 6,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -4837,10 +4837,10 @@
         "sceneId": "faint",
         "pixel": {
           "file": "pixels/frame-006.png",
-          "sha256": "ac84f0ee7b25b0ffe84ce7fa05de22b8b38c8c10dac702087770b9c823412675",
-          "byteCount": 8035,
-          "width": 1190,
-          "height": 759,
+          "sha256": "9bae9371b5728ae15605e7c3ed9b797c692647c1d99a40b676f5db9756100d24",
+          "byteCount": 8465,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -4870,8 +4870,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -5168,7 +5168,7 @@
       {
         "index": 7,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -5457,10 +5457,10 @@
         "sceneId": "hidden",
         "pixel": {
           "file": "pixels/frame-007.png",
-          "sha256": "0155f8b2aa4f03f63c16dfe65dcb4f1c1c20232f9dfeb3b86576ffe193aa89a1",
-          "byteCount": 6780,
-          "width": 1190,
-          "height": 759,
+          "sha256": "8aa7da396d076b1e9e97e941f65caed9960bfe82563f9bf0e99abfa81b68d72b",
+          "byteCount": 7227,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -5490,8 +5490,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -5788,7 +5788,7 @@
       {
         "index": 8,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -6077,10 +6077,10 @@
         "sceneId": "reverse",
         "pixel": {
           "file": "pixels/frame-008.png",
-          "sha256": "057395f86ed5603303991221e14e1321cb0943cc9bd33151eaa56ea52245a80f",
-          "byteCount": 8069,
-          "width": 1190,
-          "height": 759,
+          "sha256": "33317b1149d5c9f9aa85318629c0781b8227636cc2ff5c527f067b8a79fb0caa",
+          "byteCount": 8495,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -6110,8 +6110,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -6408,7 +6408,7 @@
       {
         "index": 9,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -6697,10 +6697,10 @@
         "sceneId": "strike",
         "pixel": {
           "file": "pixels/frame-009.png",
-          "sha256": "4d38d209a70eae8cbf1fcd83328a5e21b839f5b8d9ca5bdad467a43878b14633",
-          "byteCount": 8236,
-          "width": 1190,
-          "height": 759,
+          "sha256": "a288f1a992ab3a44ffdafe39386b2e531f914c888f086a8a6bb434f9a03ccb07",
+          "byteCount": 8663,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -6730,8 +6730,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -7028,7 +7028,7 @@
       {
         "index": 10,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -7317,10 +7317,10 @@
         "sceneId": "overline",
         "pixel": {
           "file": "pixels/frame-010.png",
-          "sha256": "c00b5e603819e6d67fc449352fe112302350939fde8c3b9c916889b9e1956a00",
-          "byteCount": 8030,
-          "width": 1190,
-          "height": 759,
+          "sha256": "e4b9653202f43a49d38d08948087bc382fdabbf70ada4d3fe1645fad954401d2",
+          "byteCount": 8456,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -7350,8 +7350,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -7648,7 +7648,7 @@
       {
         "index": 11,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -7937,10 +7937,10 @@
         "sceneId": "underline.1",
         "pixel": {
           "file": "pixels/frame-011.png",
-          "sha256": "f9427b66f56de951dff16fb0c2dc754b91e0dbf171b887c2671ba4b08faead5a",
-          "byteCount": 8117,
-          "width": 1190,
-          "height": 759,
+          "sha256": "497c8362aeba9e389e23a3be4452b3ee06442be28e8fc3704ee7720aab569610",
+          "byteCount": 8551,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -7970,8 +7970,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -8268,7 +8268,7 @@
       {
         "index": 12,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -8557,10 +8557,10 @@
         "sceneId": "underline.2",
         "pixel": {
           "file": "pixels/frame-012.png",
-          "sha256": "5ac9751ca1f2622707ae3d83a7f2e6b9320eba239f99926310a8d88e65f93044",
-          "byteCount": 8234,
-          "width": 1190,
-          "height": 759,
+          "sha256": "3f75b395d1c9a0ba9b2f7bb8a19f6fe65c582ebdf31f0a65db1cc99b62a1b944",
+          "byteCount": 8665,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -8590,8 +8590,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -8888,7 +8888,7 @@
       {
         "index": 13,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -9177,10 +9177,10 @@
         "sceneId": "underline.3",
         "pixel": {
           "file": "pixels/frame-013.png",
-          "sha256": "4240c495762bbc3be6afebd0d862a8763d6f911bdabfb217b12d925e834d6752",
-          "byteCount": 8507,
-          "width": 1190,
-          "height": 759,
+          "sha256": "eaf044a04a852b34db35fa861b924625d079c6b0048ec46f40a60b72ed6f159d",
+          "byteCount": 8922,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -9210,8 +9210,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -9508,7 +9508,7 @@
       {
         "index": 14,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -9797,10 +9797,10 @@
         "sceneId": "underline.4",
         "pixel": {
           "file": "pixels/frame-014.png",
-          "sha256": "ab6c704e2814c3075a93c2259d9250a8b993cb3c53a99a7b1e7940d7b7fcd791",
-          "byteCount": 8355,
-          "width": 1190,
-          "height": 759,
+          "sha256": "dbbd827d1c3254da7a60fb356f3ea3644b9635b9270e4fbdfd634c92c997bda5",
+          "byteCount": 8771,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -9830,8 +9830,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -10128,7 +10128,7 @@
       {
         "index": 15,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -10417,10 +10417,10 @@
         "sceneId": "underline.5",
         "pixel": {
           "file": "pixels/frame-015.png",
-          "sha256": "31bc03fa20a747cf5c8e7b6c0754d93744fb4a38291ec5705d8cb87b1e593cf9",
-          "byteCount": 8263,
-          "width": 1190,
-          "height": 759,
+          "sha256": "2fb837f8fee58a3d9200afb85dd8fba4bd9f5540b5081bd8abd7453865cc8e6d",
+          "byteCount": 8692,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -10450,8 +10450,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -10748,7 +10748,7 @@
       {
         "index": 16,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -11037,10 +11037,10 @@
         "sceneId": "text-blink",
         "pixel": {
           "file": "pixels/frame-016.png",
-          "sha256": "8fcb4355b5c77e139355035c75d1c07dae4447ee6aace6362ce22c0970b77e37",
-          "byteCount": 8280,
-          "width": 1190,
-          "height": 759,
+          "sha256": "20242e1dd5ee1f6045a2ff181ad1a19a2ee2d382165ded647ca0d7c0e9aa951d",
+          "byteCount": 8699,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -11070,8 +11070,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -11368,7 +11368,7 @@
       {
         "index": 17,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -11657,10 +11657,10 @@
         "sceneId": "text-blink",
         "pixel": {
           "file": "pixels/frame-017.png",
-          "sha256": "8fcb4355b5c77e139355035c75d1c07dae4447ee6aace6362ce22c0970b77e37",
-          "byteCount": 8280,
-          "width": 1190,
-          "height": 759,
+          "sha256": "20242e1dd5ee1f6045a2ff181ad1a19a2ee2d382165ded647ca0d7c0e9aa951d",
+          "byteCount": 8699,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -11690,8 +11690,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -11988,7 +11988,7 @@
       {
         "index": 18,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -12277,10 +12277,10 @@
         "sceneId": "text-blink",
         "pixel": {
           "file": "pixels/frame-018.png",
-          "sha256": "0155f8b2aa4f03f63c16dfe65dcb4f1c1c20232f9dfeb3b86576ffe193aa89a1",
-          "byteCount": 6780,
-          "width": 1190,
-          "height": 759,
+          "sha256": "8aa7da396d076b1e9e97e941f65caed9960bfe82563f9bf0e99abfa81b68d72b",
+          "byteCount": 7227,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -12310,8 +12310,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -12608,7 +12608,7 @@
       {
         "index": 19,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -12897,10 +12897,10 @@
         "sceneId": "text-blink",
         "pixel": {
           "file": "pixels/frame-019.png",
-          "sha256": "0155f8b2aa4f03f63c16dfe65dcb4f1c1c20232f9dfeb3b86576ffe193aa89a1",
-          "byteCount": 6780,
-          "width": 1190,
-          "height": 759,
+          "sha256": "8aa7da396d076b1e9e97e941f65caed9960bfe82563f9bf0e99abfa81b68d72b",
+          "byteCount": 7227,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -12930,8 +12930,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -13228,7 +13228,7 @@
       {
         "index": 20,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -13517,10 +13517,10 @@
         "sceneId": "text-blink",
         "pixel": {
           "file": "pixels/frame-020.png",
-          "sha256": "8fcb4355b5c77e139355035c75d1c07dae4447ee6aace6362ce22c0970b77e37",
-          "byteCount": 8280,
-          "width": 1190,
-          "height": 759,
+          "sha256": "20242e1dd5ee1f6045a2ff181ad1a19a2ee2d382165ded647ca0d7c0e9aa951d",
+          "byteCount": 8699,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -13550,8 +13550,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -13848,7 +13848,7 @@
       {
         "index": 21,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -14137,10 +14137,10 @@
         "sceneId": "cursor.default",
         "pixel": {
           "file": "pixels/frame-021.png",
-          "sha256": "9eb607f7d802afb47c30381c37c6b0619ab8b83b1f3aa5df2046dd6812621bac",
-          "byteCount": 8036,
-          "width": 1190,
-          "height": 759,
+          "sha256": "7543c6d8c1cc29c4cc137815aa2f3265e89d3cec0405c12855bcaef4ed04e5b3",
+          "byteCount": 8463,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -14170,8 +14170,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -14468,7 +14468,7 @@
       {
         "index": 22,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -14757,10 +14757,10 @@
         "sceneId": "cursor.default",
         "pixel": {
           "file": "pixels/frame-022.png",
-          "sha256": "7c3bc50665773253f14e85851e0f48897e3ca435405caa40e6101af6b26bc061",
-          "byteCount": 8014,
-          "width": 1190,
-          "height": 759,
+          "sha256": "fc91b9eb3972b53f7981c8e4434d9fea5dd8fa8e0f64bb7dab1193c6ad36b03b",
+          "byteCount": 8441,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -14790,8 +14790,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -15088,7 +15088,7 @@
       {
         "index": 23,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -15377,10 +15377,10 @@
         "sceneId": "cursor.0",
         "pixel": {
           "file": "pixels/frame-023.png",
-          "sha256": "5d62abb35ec1067a21d2884439fb583ab5a1a3b80bca8d845bef8361364390b3",
-          "byteCount": 8035,
-          "width": 1190,
-          "height": 759,
+          "sha256": "e87eb95316a4ef6339bf37a21ba24cea4b1e4392098369b194b88622cc5be00b",
+          "byteCount": 8463,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -15410,8 +15410,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -15708,7 +15708,7 @@
       {
         "index": 24,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -15997,10 +15997,10 @@
         "sceneId": "cursor.0",
         "pixel": {
           "file": "pixels/frame-024.png",
-          "sha256": "7c3bc50665773253f14e85851e0f48897e3ca435405caa40e6101af6b26bc061",
-          "byteCount": 8014,
-          "width": 1190,
-          "height": 759,
+          "sha256": "fc91b9eb3972b53f7981c8e4434d9fea5dd8fa8e0f64bb7dab1193c6ad36b03b",
+          "byteCount": 8441,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -16030,8 +16030,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -16328,7 +16328,7 @@
       {
         "index": 25,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -16617,10 +16617,10 @@
         "sceneId": "cursor.1",
         "pixel": {
           "file": "pixels/frame-025.png",
-          "sha256": "5d62abb35ec1067a21d2884439fb583ab5a1a3b80bca8d845bef8361364390b3",
-          "byteCount": 8035,
-          "width": 1190,
-          "height": 759,
+          "sha256": "e87eb95316a4ef6339bf37a21ba24cea4b1e4392098369b194b88622cc5be00b",
+          "byteCount": 8463,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -16650,8 +16650,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -16948,7 +16948,7 @@
       {
         "index": 26,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -17237,10 +17237,10 @@
         "sceneId": "cursor.1",
         "pixel": {
           "file": "pixels/frame-026.png",
-          "sha256": "7c3bc50665773253f14e85851e0f48897e3ca435405caa40e6101af6b26bc061",
-          "byteCount": 8014,
-          "width": 1190,
-          "height": 759,
+          "sha256": "fc91b9eb3972b53f7981c8e4434d9fea5dd8fa8e0f64bb7dab1193c6ad36b03b",
+          "byteCount": 8441,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -17270,8 +17270,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -17568,7 +17568,7 @@
       {
         "index": 27,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -17857,10 +17857,10 @@
         "sceneId": "cursor.2",
         "pixel": {
           "file": "pixels/frame-027.png",
-          "sha256": "5d62abb35ec1067a21d2884439fb583ab5a1a3b80bca8d845bef8361364390b3",
-          "byteCount": 8035,
-          "width": 1190,
-          "height": 759,
+          "sha256": "e87eb95316a4ef6339bf37a21ba24cea4b1e4392098369b194b88622cc5be00b",
+          "byteCount": 8463,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -17890,8 +17890,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -18188,7 +18188,7 @@
       {
         "index": 28,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -18477,10 +18477,10 @@
         "sceneId": "cursor.2",
         "pixel": {
           "file": "pixels/frame-028.png",
-          "sha256": "5d62abb35ec1067a21d2884439fb583ab5a1a3b80bca8d845bef8361364390b3",
-          "byteCount": 8035,
-          "width": 1190,
-          "height": 759,
+          "sha256": "e87eb95316a4ef6339bf37a21ba24cea4b1e4392098369b194b88622cc5be00b",
+          "byteCount": 8463,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -18510,8 +18510,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -18808,7 +18808,7 @@
       {
         "index": 29,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -19097,10 +19097,10 @@
         "sceneId": "cursor.3",
         "pixel": {
           "file": "pixels/frame-029.png",
-          "sha256": "9eb607f7d802afb47c30381c37c6b0619ab8b83b1f3aa5df2046dd6812621bac",
-          "byteCount": 8036,
-          "width": 1190,
-          "height": 759,
+          "sha256": "7543c6d8c1cc29c4cc137815aa2f3265e89d3cec0405c12855bcaef4ed04e5b3",
+          "byteCount": 8463,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -19130,8 +19130,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -19428,7 +19428,7 @@
       {
         "index": 30,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -19717,10 +19717,10 @@
         "sceneId": "cursor.3",
         "pixel": {
           "file": "pixels/frame-030.png",
-          "sha256": "7c3bc50665773253f14e85851e0f48897e3ca435405caa40e6101af6b26bc061",
-          "byteCount": 8014,
-          "width": 1190,
-          "height": 759,
+          "sha256": "fc91b9eb3972b53f7981c8e4434d9fea5dd8fa8e0f64bb7dab1193c6ad36b03b",
+          "byteCount": 8441,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -19750,8 +19750,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -20048,7 +20048,7 @@
       {
         "index": 31,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -20337,10 +20337,10 @@
         "sceneId": "cursor.4",
         "pixel": {
           "file": "pixels/frame-031.png",
-          "sha256": "9eb607f7d802afb47c30381c37c6b0619ab8b83b1f3aa5df2046dd6812621bac",
-          "byteCount": 8036,
-          "width": 1190,
-          "height": 759,
+          "sha256": "7543c6d8c1cc29c4cc137815aa2f3265e89d3cec0405c12855bcaef4ed04e5b3",
+          "byteCount": 8463,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -20370,8 +20370,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -20668,7 +20668,7 @@
       {
         "index": 32,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -20957,10 +20957,10 @@
         "sceneId": "cursor.4",
         "pixel": {
           "file": "pixels/frame-032.png",
-          "sha256": "9eb607f7d802afb47c30381c37c6b0619ab8b83b1f3aa5df2046dd6812621bac",
-          "byteCount": 8036,
-          "width": 1190,
-          "height": 759,
+          "sha256": "7543c6d8c1cc29c4cc137815aa2f3265e89d3cec0405c12855bcaef4ed04e5b3",
+          "byteCount": 8463,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -20990,8 +20990,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -21288,7 +21288,7 @@
       {
         "index": 33,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -21577,10 +21577,10 @@
         "sceneId": "cursor.5",
         "pixel": {
           "file": "pixels/frame-033.png",
-          "sha256": "b7d20b531cbe474e87ec2cf48ab80c1a959d59a53b04480881ad1453d40a3682",
-          "byteCount": 8027,
-          "width": 1190,
-          "height": 759,
+          "sha256": "49af3136068a1cd8d43209c597e95fd160112bbd4b0e4622b3e532b63d0387e3",
+          "byteCount": 8455,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -21610,8 +21610,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -21908,7 +21908,7 @@
       {
         "index": 34,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -22197,10 +22197,10 @@
         "sceneId": "cursor.5",
         "pixel": {
           "file": "pixels/frame-034.png",
-          "sha256": "7c3bc50665773253f14e85851e0f48897e3ca435405caa40e6101af6b26bc061",
-          "byteCount": 8014,
-          "width": 1190,
-          "height": 759,
+          "sha256": "fc91b9eb3972b53f7981c8e4434d9fea5dd8fa8e0f64bb7dab1193c6ad36b03b",
+          "byteCount": 8441,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -22230,8 +22230,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -22528,7 +22528,7 @@
       {
         "index": 35,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -22817,10 +22817,10 @@
         "sceneId": "cursor.6",
         "pixel": {
           "file": "pixels/frame-035.png",
-          "sha256": "b7d20b531cbe474e87ec2cf48ab80c1a959d59a53b04480881ad1453d40a3682",
-          "byteCount": 8027,
-          "width": 1190,
-          "height": 759,
+          "sha256": "49af3136068a1cd8d43209c597e95fd160112bbd4b0e4622b3e532b63d0387e3",
+          "byteCount": 8455,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -22850,8 +22850,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -23148,7 +23148,7 @@
       {
         "index": 36,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -23437,10 +23437,10 @@
         "sceneId": "cursor.6",
         "pixel": {
           "file": "pixels/frame-036.png",
-          "sha256": "b7d20b531cbe474e87ec2cf48ab80c1a959d59a53b04480881ad1453d40a3682",
-          "byteCount": 8027,
-          "width": 1190,
-          "height": 759,
+          "sha256": "49af3136068a1cd8d43209c597e95fd160112bbd4b0e4622b3e532b63d0387e3",
+          "byteCount": 8455,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -23470,8 +23470,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -23768,7 +23768,7 @@
       {
         "index": 37,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -24057,10 +24057,10 @@
         "sceneId": "cursor.hidden",
         "pixel": {
           "file": "pixels/frame-037.png",
-          "sha256": "7c3bc50665773253f14e85851e0f48897e3ca435405caa40e6101af6b26bc061",
-          "byteCount": 8014,
-          "width": 1190,
-          "height": 759,
+          "sha256": "fc91b9eb3972b53f7981c8e4434d9fea5dd8fa8e0f64bb7dab1193c6ad36b03b",
+          "byteCount": 8441,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -24090,8 +24090,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -24388,7 +24388,7 @@
       {
         "index": 38,
         "kind": "pixel-read",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -24677,10 +24677,10 @@
         "sceneId": "cursor.hidden",
         "pixel": {
           "file": "pixels/frame-038.png",
-          "sha256": "7c3bc50665773253f14e85851e0f48897e3ca435405caa40e6101af6b26bc061",
-          "byteCount": 8014,
-          "width": 1190,
-          "height": 759,
+          "sha256": "fc91b9eb3972b53f7981c8e4434d9fea5dd8fa8e0f64bb7dab1193c6ad36b03b",
+          "byteCount": 8441,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -24710,8 +24710,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
@@ -25008,7 +25008,7 @@
       {
         "index": 39,
         "kind": "pixel-finish",
-        "paneId": "b9c3d727-4985-4c7b-a8cd-44c24694c613",
+        "paneId": "f7d2af20-41c4-48ce-b6c0-932b8eeae464",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 41,
@@ -25153,10 +25153,10 @@
         "sceneId": null,
         "pixel": {
           "file": "pixels/frame-039.png",
-          "sha256": "dc316b97e3ca74ccc0bde6305e91ddb2366156edd6bf44fd4560aa810652b622",
-          "byteCount": 5343,
-          "width": 1190,
-          "height": 759,
+          "sha256": "7ffddd17087ef5931f7648231c2af70b0ac61dee50f73f03e5d0423c81478d47",
+          "byteCount": 5773,
+          "width": 1264,
+          "height": 779,
           "rows": 41,
           "cols": 140,
           "mode": "render",
@@ -25186,8 +25186,8 @@
               "sizeDip": 14
             },
             "grid": {
-              "renderWidthPx": 1190,
-              "renderHeightPx": 759,
+              "renderWidthPx": 1264,
+              "renderHeightPx": 779,
               "cellWidthDip": 8.5,
               "cellHeightDip": 18.5,
               "baselineDip": 14.5,
