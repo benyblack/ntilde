@@ -1563,11 +1563,12 @@ namespace Ntilde.AgentHost
         /// session's screen was imported into. Read under the buffer's read lock, through the deterministic
         /// <see cref="BufferSnapshot"/> path.
         /// </summary>
-        private static AgentHostResponse ScreenResult(long requestId, TerminalBuffer buffer, ReadScreenParams parameters)
+        private static AgentHostResponse ScreenResult(long requestId, TerminalBuffer buffer, ReadScreenParams parameters, bool completeLocalHistory = true)
         {
             BufferSnapshot snapshot;
             CellDetailRunDto[]? details = null;
             CursorModeDto? cursorMode = null;
+            BufferStateDto? bufferState = null;
             bool cursorVisible;
             int rows, cols;
             buffer.Lock.EnterReadLock();
@@ -1588,6 +1589,20 @@ namespace Ntilde.AgentHost
                         IsDefault = buffer.Modes.CursorStyleIsDefault,
                     };
                 }
+                if (parameters.IncludeBufferState)
+                {
+                    bufferState = new BufferStateDto
+                    {
+                        ScrollTop = buffer.ScrollTop,
+                        ScrollBottom = buffer.ScrollBottom,
+                        OriginMode = buffer.Modes.IsOriginMode,
+                        AutoWrap = buffer.Modes.IsAutoWrapMode,
+                        InsertMode = buffer.Modes.IsInsertMode,
+                        PendingWrap = buffer.IsPendingWrap,
+                        AlternateScreen = buffer.IsAltScreenActive,
+                        ScrollbackLines = completeLocalHistory ? buffer.Scrollback.Count : null,
+                    };
+                }
                 cursorVisible = buffer.IsCursorVisible;
                 rows = buffer.Rows;
                 cols = buffer.Cols;
@@ -1603,6 +1618,7 @@ namespace Ntilde.AgentHost
                 AttributeLines = snapshot.AttributeLines,
                 CellDetails = details,
                 CursorMode = cursorMode,
+                BufferState = bufferState,
                 CursorRow = snapshot.CursorRow,
                 CursorCol = snapshot.CursorCol,
                 CursorVisible = cursorVisible,
@@ -1738,7 +1754,7 @@ namespace Ntilde.AgentHost
             if (failure == null)
             {
                 ArgumentNullException.ThrowIfNull(buffer);
-                failure = ScreenResult(request.Id, buffer, p);
+                failure = ScreenResult(request.Id, buffer, p, completeLocalHistory: false);
             }
             return WindowlessRead(request, AgentHostProtocol.Methods.ReadScreen, p.PaneId, screen, failure);
         }

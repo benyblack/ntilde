@@ -207,6 +207,37 @@ public class AgentHostWindowlessProtocolTests
         Assert.Equal(new CursorModeDto { Style = 1, Blink = false, IsDefault = false }, screen.CursorMode);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReadScreen_windowless_buffer_state_uses_imported_modes_and_does_not_invent_history_count(bool alternate)
+    {
+        var source = new StubWindowlessSource();
+        var session = source.Add("OLD1\r\nOLD2\r\nKEEP1\r\nKEEP2\r\nKEEP3" + (alternate ? "\x1b[?1049h" : "") + "\x1b[2;3r\x1b[?6h\x1b[4h\x1b[?7lX", cols: 20, rows: 3);
+        using var service = NewService(new AgentSessionRegistry(), new AgentActivityJournal());
+        service.SetWindowlessSource(source);
+        var line = Line(AgentHostProtocol.Methods.ReadScreen,
+            JsonSerializer.Serialize(new ReadScreenParams { PaneId = session.SessionId, IncludeBufferState = true },
+                AgentHostJsonContext.Default.ReadScreenParams));
+        var response = Handle(service, line);
+        var screen = Result(response, AgentHostJsonContext.Default.ScreenSnapshotDto);
+        Assert.Equal(new BufferStateDto
+        {
+            ScrollTop = 1,
+            ScrollBottom = 2,
+            OriginMode = true,
+            AutoWrap = false,
+            InsertMode = true,
+            PendingWrap = false,
+            AlternateScreen = alternate,
+            ScrollbackLines = null
+        }, screen.BufferState);
+        Assert.Equal(1, screen.CursorRow);
+        Assert.Equal(1, screen.CursorCol);
+        Assert.Equal(JsonValueKind.Null, response.Result!.Value.GetProperty("bufferState").GetProperty("scrollbackLines").ValueKind);
+        Assert.Equal([(session.SessionId, 0)], source.Reads);
+    }
+
     [Fact]
     public void ReadScreen_of_a_pane_never_asks_the_source_even_when_a_daemon_has_the_same_id()
     {

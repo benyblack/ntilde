@@ -91,6 +91,12 @@ invariant changes.
   reports derived selection paint colors, which do not imply a concrete OSC query default.
   See `docs/qa/terminfo/controlled-capture.md`.
 - Alternate-screen isolation — main buffer is preserved across alt entries/exits
+- **Agent editing observations are read-only snapshots.** App's opt-in `readScreen`
+  `bufferState` copies margins, origin/wrap/insert modes, pending wrap, active screen
+  and local retained history count under the same VT read lock as text/cell details.
+  Contracts remain a leaf. Windowless viewport imports report unknown history count
+  explicitly; importing zero rows cannot prove an empty daemon history. The projection
+  does not alter parser state or enable acting methods.
 - **Cursor save state is shared by DECSC/DECRC and modes 1048/1049.** The per-screen banks
   retain position, rendition, pending wrap, origin mode and G0-G3/GL. Saved character sets
   are copied into mux and replay snapshots, never shared as mutable arrays. DECSTR preserves
