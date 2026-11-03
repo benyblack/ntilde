@@ -16,13 +16,14 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
 {
     public void Dispose() => TestMainWindowFactory.DisposeCreatedWindows();
 
-    private static (MainWindow Window, TerminalPane Pane, TerminalSettings Settings) CreateWindow(bool observeEnabled = false)
+    private static (MainWindow Window, TerminalPane Pane, TerminalSettings Settings) CreateWindow(bool observeEnabled = false, string orientation = "Horizontal")
     {
         var profile = new TerminalProfile { Name = "Owned metadata local", Type = ConnectionType.Local };
         var settings = new TerminalSettings
         {
             SessionPersistence = SessionPersistenceMode.Off,
             AgentAccessObserveEnabled = observeEnabled,
+            TabStripOrientation = orientation,
             AgentAccessActEnabled = false,
             CommandAssistShellIntegrationEnabled = false,
             Osc9NotificationsEnabled = true,
@@ -118,6 +119,42 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
     }
 
     [AvaloniaTheory]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public async Task Vertical_progress_readback_observes_actual_visibility_indeterminate_and_value(bool enabled, bool indeterminate)
+    {
+        using var service = new AgentHostService(new AgentSessionRegistry());
+        using var scope = AgentHostService.OverrideInstanceForTesting(service);
+        var (window, pane, settings) = CreateWindow(orientation: "Vertical");
+        Assert.True(window.IsVerticalTabStripActive);
+        var registration = Registration(pane);
+        settings.Osc9ProgressReportingEnabled = enabled;
+        pane.Parser!.Process(indeterminate ? "\u001b]9;4;3\a" : "\u001b]9;4;1;42\a");
+        Dispatcher.UIThread.RunJobs();
+        var observed = Assert.IsType<PaneMetadataResult>(await Read(window, registration));
+        Assert.Equal(indeterminate ? "Indeterminate" : "Normal", observed.Presentation.ProgressKind);
+        Assert.Equal(pane.PaneId, observed.Presentation.ProgressOwner);
+        Assert.Equal(enabled, observed.Presentation.ProgressEnabled);
+        var bar = Assert.IsType<PaneProgressBarMetadata>(observed.Presentation.ProgressBar);
+        Assert.Equal(enabled, bar.Visible);
+        Assert.Equal(enabled && indeterminate, bar.Indeterminate);
+        Assert.Equal(enabled && !indeterminate ? 42d : 0d, bar.Value);
+        Assert.DoesNotContain("42%", observed.Presentation.TabText);
+
+        pane.Parser.Process("\u001b]9;4;0\a");
+        Dispatcher.UIThread.RunJobs();
+        var cleared = Assert.IsType<PaneMetadataResult>(await Read(window, registration));
+        Assert.Null(cleared.Presentation.ProgressKind);
+        Assert.Null(cleared.Presentation.ProgressOwner);
+        var hidden = Assert.IsType<PaneProgressBarMetadata>(cleared.Presentation.ProgressBar);
+        Assert.False(hidden.Visible);
+        // Hiding the actual control preserves its last geometry/animation values.
+        Assert.Equal(bar.Indeterminate, hidden.Indeterminate); Assert.Equal(bar.Value, hidden.Value);
+    }
+
+    [AvaloniaTheory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task Notification_readback_observes_actual_toast_controls_and_focus_policy(bool enabled)
@@ -138,6 +175,7 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
     }
 
     [AvaloniaTheory]
+    [InlineData("unknown")]
     [InlineData("hidden")]
     [InlineData("session")]
     [InlineData("buffer")]
@@ -150,6 +188,10 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
         var (window, pane, _) = CreateWindow(); var registration = Registration(pane);
         switch (changed)
         {
+            case "unknown":
+                registration = new AgentSessionRegistration(Guid.NewGuid(), pane.Buffer!, "", "", "local", true);
+                registration.SetLifecycle(pane.Session);
+                break;
             case "hidden": pane.IsVisible = false; break;
             case "session": registration.SetLifecycle(new Ntilde.AppTests.AgentHost.InputStubSession()); break;
             case "buffer": registration = new AgentSessionRegistration(pane.PaneId, new Ntilde.VT.TerminalBuffer(80, 4), "", "", "local", true); registration.SetLifecycle(pane.Session); break;

@@ -19,7 +19,8 @@ public partial class MainWindow
     private PaneMetadataResult? ReadPaneMetadata(AgentSessionRegistration registration)
     {
         var pane = _paneOwnerTab.Keys.FirstOrDefault(candidate => candidate.PaneId == registration.PaneId);
-        if (!IsVisible || pane == null || !pane.IsEffectivelyVisible || !ReferenceEquals(TopLevel.GetTopLevel(pane), this)
+        if (pane == null) return null;
+        if (!IsVisible || !pane.IsEffectivelyVisible || !ReferenceEquals(TopLevel.GetTopLevel(pane), this)
             || !ReferenceEquals(_currentPane, pane) || pane.Profile?.Type == ConnectionType.SSH
             || pane.TermView.DefersBufferResizeToSession || pane.Session?.IsProcessRunning != true
             || !ReferenceEquals(pane.Session, registration.ObservationSession) || !ReferenceEquals(pane.Buffer, registration.Buffer)

@@ -443,8 +443,10 @@ Its active-buffer projection takes an immediate read lock, retaining complete
 viewport hyperlink runs and raw shell anchors with history generation/eviction
 facts. Snapshot-local hyperlink reference identities never become durable ids.
 The endpoint bounds its await to two seconds and rechecks registration/session
-identity before returning; cancelled, busy, replaced or oversized observations
-return `paneMetadataUnavailable`, without a partial-success result.
+identity before returning; observer or deadline cancellation, busy, replaced or
+oversized observations return `paneMetadataUnavailable`, without partial success.
+Caller cancellation propagates as `OperationCanceledException` and ends the request
+without a typed response.
 
 UI and VT observations are separate components, not one atomic parser-to-UI
 transaction. A marker or callback alone does not qualify host presentation.
