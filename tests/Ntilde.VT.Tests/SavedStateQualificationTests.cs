@@ -101,6 +101,7 @@ public sealed class SavedStateQualificationTests
         var (buffer, parser) = SeedBothBanks(); var defaults = new TerminalBuffer(20, 8).ExportState(0);
         parser.Process("\u001bc"); var after = buffer.ExportState(0);
         Assert.False(buffer.IsAltScreenActive); Assert.Equal((0, 0), (buffer.CursorRow, buffer.CursorCol));
+        Assert.False(buffer.IsPendingWrap);
         AssertDefaultBank(after.SavedCursorMain, defaults.Sgr); AssertDefaultBank(after.SavedCursorAlt, defaults.Sgr);
         Assert.Equal(Json(defaults.Sgr), Json(after.Sgr));
         Assert.Equal(new[] { 0, 0, 0, 0 }, parser.ExportState().Charsets); Assert.Equal(0, parser.ExportState().Gl);

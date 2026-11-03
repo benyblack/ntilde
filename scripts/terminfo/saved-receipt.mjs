@@ -46,6 +46,8 @@ export function checkSavedEvidence(output, binding, runId, context, proof) {
     checkSources(output, context, marker);
     check(binding?.runId === runId && binding.suiteId === savedSuiteId
         && ['saved-observations.json', 'saved-unavailable.json'].includes(binding.file));
+    const otherReport = binding.file === 'saved-observations.json' ? 'saved-unavailable.json' : 'saved-observations.json';
+    check(!present(join(output, otherReport)));
     check(Object.keys(binding).every(key => ['runId', 'suiteId', 'file', 'sha256', 'counts', 'provisionalUntil', 'status', 'reason'].includes(key)));
     const reportBytes = bytes(output, binding.file);
     check(/^[a-f\d]{64}$/.test(binding.sha256 ?? '') && hash(reportBytes) === binding.sha256);

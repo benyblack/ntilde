@@ -42,6 +42,7 @@ test('v7 still requires v6 identities after prior resize markers and binding are
 function unavailable(f,reason){
     const report={schemaVersion:1,runId,suiteId:f.context.savedSuiteId,status:'unavailable',reason,fixtureStarted:false,plannedExperiments:9};
     f.write('saved-unavailable.json',report);writeFileSync(join(f.output,'saved-snapshots.jsonl'),'');
+    unlinkSync(join(f.output,'saved-observations.json'));
     delete f.proof.proofs[0].saved.paneId;delete f.proof.proofs[0].saved.geometry;f.write('ownership-proof.json',f.proof);
     Object.assign(f.evidence.savedEvidence,{file:'saved-unavailable.json',sha256:snapshotHash(report),status:'unavailable',reason,counts:{}});return report;
 }
@@ -60,7 +61,6 @@ for (const file of ['saved-observations.json', 'saved-unavailable.json']) {
     test('retained ' + file + ' alone prevents v7 downgrade after all other saved markers are stripped', () => fixture(f => {
         if (file === 'saved-unavailable.json') {
             unavailable(f, 'savedGeometryUnavailable');
-            unlinkSync(join(f.output, 'saved-observations.json'));
         }
         strip(f);
         delete f.proof.proofs[0].saved;
@@ -70,3 +70,13 @@ for (const file of ['saved-observations.json', 'saved-unavailable.json']) {
         assert.throws(f.finish);
     }));
 }
+
+test('unavailable binding refuses a stale observations report', () => fixture(f => {
+    unavailable(f, 'savedGeometryUnavailable');
+    f.write('saved-observations.json', f.savedReport);
+    assert.throws(f.finish);
+}));
+test('available binding refuses a contradictory unavailable report', () => fixture(f => {
+    f.write('saved-unavailable.json', { status: 'unavailable' });
+    assert.throws(f.finish);
+}));

@@ -55,8 +55,9 @@ from zero. Only an initial typed screen-details or saved-geometry refusal can be
 unavailable, before fixture writes. A later failure remains a failure.
 
 The v7 receipt requires all eleven preceding suite bindings plus this saved-state
-binding. It hashes the exact retained source copies, journal and rederived report,
-checks the parent pane/geometry declaration and common cell/kernel facts, and
+binding. It hashes the exact retained source copies and rederived report,
+compares every parsed journal frame (not journal whitespace), rejects conflicting
+available/unavailable reports, checks the parent pane/geometry declaration and common cell/kernel facts, and
 requires verified worker/App/socket shutdown and fixture removal. Any retained
 saved identity, parent marker, journal or source file requires v7 validation;
 partial stripping cannot silently downgrade it. Contradictory error/status fields,
