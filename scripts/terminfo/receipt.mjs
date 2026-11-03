@@ -107,7 +107,8 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     for (const prefix of suites) checkEvidence(output, evidence[prefix + 'Evidence'], prefix, runId);
     if (context.pixelSuiteId !== undefined) checkPixelEvidence(output, evidence.pixelEvidence, runId, context.pixelSuiteId);
     if (context.colorSuiteId !== undefined) checkColorEvidence(output, evidence.colorEvidence, runId, context.colorSuiteId);
-    const includesEditing = context.eraseSuiteId !== undefined || context.editingSuiteId !== undefined;
+    const includesEditing = context.eraseSuiteId !== undefined || context.editingSuiteId !== undefined
+        || evidence.eraseEvidence !== undefined || evidence.editingEvidence !== undefined;
     if (includesEditing) checkEditingSuites(output, evidence, runId, context);
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;

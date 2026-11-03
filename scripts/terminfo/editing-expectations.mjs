@@ -12,6 +12,11 @@ export function compressExpected(state) {
             insertMode: false, pendingWrap: false, alternateScreen: state.alternate, scrollbackLines: history.length },
         history: { startLine: 0, totalLines: history.length, lines: [...history] }, expectedAttributeRuns: runs };
 }
+function matchesFlags(flags, mask, wanted) {
+    if (mask === undefined) return true;
+    const maskedFlags = Number(flags) & Number(mask);
+    return maskedFlags === wanted;
+}
 export function matchesExpected(actual, expected, attributes) {
     for (const key of ['lines', 'cursorRow', 'cursorCol', 'cursorVisible', 'bufferState', 'history']) {
         if (JSON.stringify(actual[key]) !== JSON.stringify(expected[key])) return false;
@@ -22,7 +27,7 @@ export function matchesExpected(actual, expected, attributes) {
         for (let count = 0; count < run.count; count++) {
             const cell = attributes[index++];
             if (!cell || !Object.keys(values).every(key => cell[key] === values[key])
-                || (flagsMask !== undefined && (cell.flags & flagsMask) !== flagsValue)) return false;
+                || !matchesFlags(cell.flags, flagsMask, flagsValue)) return false;
         }
     }
     return index === attributes.length;

@@ -47,6 +47,7 @@ for (const [name, mutate] of [
     ['missing new binding', f => { delete f.evidence.editingEvidence; }],
     ['missing prior binding', f => { delete f.evidence.pixelEvidence; }],
     ['missing companion suite', f => { delete f.context.eraseSuiteId; f.write('context.json', f.context); }],
+    ['both v4 identities removed', f => { delete f.context.eraseSuiteId; delete f.context.editingSuiteId; f.write('context.json', f.context); }],
     ['missing prior suite identity', f => { delete f.context.colorSuiteId; f.write('context.json', f.context); }],
     ['changed journal', f => { writeFileSync(join(f.output, 'erase-snapshots.jsonl'), '[]'); }],
     ['forged receipt counts', f => { f.evidence.editingEvidence.counts = { passed: 23 }; }],
