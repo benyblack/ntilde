@@ -48,6 +48,8 @@ export async function collectColors({ config, fence, owner }) {
                 await owner('color-read', barrier, { caseId: item.id, stageId: stage.id, queries });
             }), Promise.resolve());
     } finally {
-        await owner('color-finish', await fence.write(clearColors + '\x1b[?1049l\x1b[!p'));
+        const restore = clearColors + '\x1b[?1049l\x1b[!p';
+        if (fence.failed) await fence.writeCleanup(restore);
+        else await owner('color-finish', await fence.write(restore));
     }
 }

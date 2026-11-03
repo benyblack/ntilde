@@ -467,6 +467,7 @@ Existing stock grades and retained cell/query observations are unchanged.
 The controlled-capture API also records cursor/selection/palette override evidence
 and distinguishes nullable theme selection defaults from derived selection paint.
 Its optional AgentHost `syntheticSelection` paints a validated viewport span in an
-offscreen image without changing live selection or terminal state. This is
-infrastructure for #764; the owned color-reset/query/pixel suite and its retained
-measurements remain a follow-up, and no stock observations are regraded.
+offscreen image without changing live selection or terminal state. The
+[owned color suite](terminfo/owned-colors.md) now uses these facts for #764; its
+[retained measurement](terminfo/2026-11-03-colors.md) records ten passing reset/query/pixel
+comparisons. No stock observations are regraded.

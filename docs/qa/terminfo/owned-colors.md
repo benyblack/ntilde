@@ -37,8 +37,12 @@ Runtime colors survive alternate-screen exit and DECSTR. The fixture therefore
 requires a pristine private baseline before writing, then explicitly clears
 OSC 104/110/111/112/117/119 in its finally block before exiting the alternate
 screen. Original complete state, whole theme and PNG hash must match exactly.
-A malformed or missing capture fact fails before fixture writes; only an
-initial typed `screenDetailsUnavailable` can produce an unavailable marker.
+If query input becomes fatal, a separately bounded best-effort write still emits
+the color resets and alternate-screen exit. It accepts no reply, cannot revive
+the fence, and cannot qualify a finish snapshot or completion receipt. The
+failed run then requires termination of the disposable app and retains failure
+evidence. A write error or timeout is fatal too. A malformed or missing capture
+fact fails before fixture writes; only an initial typed `screenDetailsUnavailable` can produce an unavailable marker.
 
 Evidence consists of `color-snapshots.jsonl`, `color-observations.json` and
 `color-pixels/frame-NNN.png`. The runner archives query, scene, observer and

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash } from 'node:crypto';
+import { EventEmitter } from 'node:events';
+import { terminalFence } from './terminal-fence.mjs';
 import { fileURLToPath } from 'node:url';
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -176,5 +178,31 @@ for (const [caseId, replacement] of [['selection.independent-117', 24], ['select
             const report = buildColorReport(frames, data.context.runId, output);
             assert.equal(report.observations.find(value => value.featureId === caseId).result, 'failed');
         } finally { rmSync(output, { recursive: true, force: true }); }
+    });
+}
+
+for (const failure of ['malformed', 'oversized', 'timeout']) {
+    test(`real fatal ${failure} query emits bounded cleanup without qualifying completion`, async () => {
+        const input = new EventEmitter(); input.isRaw = false; input.isPaused = () => true;
+        input.setRawMode = value => { input.isRaw = value; }; input.resume = () => {}; input.pause = () => {};
+        const writes = [], observed = []; let queryCount = 0;
+        const fence = terminalFence(input, { write(value, callback) {
+            writes.push(value);
+            if (value.includes('\x1b]4;1;?')) {
+                queryCount++;
+                if (queryCount === 1) input.emit('data', Buffer.from('\x1b]4;1;rgb:1111/2222/3333\x1b\\' + barrier));
+                else if (failure === 'malformed') input.emit('data', Buffer.from('\x1b]19;rgb:1111/2222/3333\x1b\\' + barrier));
+                else if (failure === 'oversized') input.emit('data', Buffer.alloc(513, 65));
+            } else if (value.endsWith('\x1b[c')) input.emit('data', Buffer.from(barrier));
+            callback();
+        } }, 10);
+        try {
+            await assert.rejects(collectColors({ config: { runId }, fence, owner: async kind => { observed.push(kind); return { screen: pixelScreen() }; } }));
+            assert.ok(writes.some(value => value.includes('\x1b]4;1;#175bad')));
+            assert.equal(writes.at(-1), clearColors + '\x1b[?1049l\x1b[!p');
+            assert.ok(!observed.includes('color-finish'), 'Unfenced cleanup cannot qualify restoration or a completion receipt.');
+            await assert.rejects(fence.write('normal writes remain forbidden'));
+        } finally { fence.dispose(); }
+        assert.equal(input.isRaw, false);
     });
 }

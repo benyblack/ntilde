@@ -2,7 +2,7 @@ import { parseQueryFrame, querySequence, querySpec } from './color-query.mjs';
 // DA is an ordering barrier only. Cell/cursor assertions come from readScreen.
 export function terminalFence(input, output, timeoutMs = 1000) {
     const wasRaw = input.isRaw, wasPaused = input.isPaused();
-    let pending, fatal;
+    let pending, fatal, disposed = false;
     const fail = error => {
         fatal = error;
         pending?.finish(error);
@@ -36,13 +36,34 @@ export function terminalFence(input, output, timeoutMs = 1000) {
             output.write(sequence + '\x1b[c', error => { if (error) fail(error); });
         });
     };
+    // Best-effort writes after a fatal input error never request/accept a barrier and
+    // never revive the fence. Only disposable-fixture teardown uses this path.
+    const writeCleanup = sequence => {
+        if (!fatal || pending || disposed || typeof sequence !== 'string' || !sequence.length || sequence.length > 4096) {
+            return Promise.reject(new Error('Cleanup requires a failed, active fence and bounded bytes.'));
+        }
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const finish = error => {
+                if (settled) return;
+                settled = true; clearTimeout(timer);
+                if (error) reject(error); else resolve();
+            };
+            const timer = setTimeout(() => finish(new Error('Cleanup write timed out.')), timeoutMs);
+            try { output.write(sequence, finish); }
+            catch (error) { finish(error); }
+        });
+    };
     return {
+        get failed() { return Boolean(fatal); },
+        writeCleanup,
         write(sequence) { return request(sequence); },
         query(expected, prefix = '') {
             const spec = querySpec(expected);
             return request(prefix + querySequence(spec), spec);
         },
         dispose() {
+            disposed = true;
             pending?.finish(new Error('Cell barrier disposed.'));
             input.removeListener('data', receive); input.removeListener('error', fail);
             input.setRawMode(Boolean(wasRaw));

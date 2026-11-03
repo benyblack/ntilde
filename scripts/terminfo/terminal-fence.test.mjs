@@ -75,3 +75,26 @@ test('typed query mismatches and over-budget frames remain fatal', async () => {
         await assert.rejects(pending); await assert.rejects(fence.write('')); fence.dispose();
     }
 });
+
+test('cleanup cannot bypass a healthy fence, revive failed reads or run after disposal', async () => {
+    const input = new Input(), writes = [];
+    const fence = terminalFence(input, { write(value, callback) { writes.push(value); callback(); } });
+    await assert.rejects(fence.writeCleanup('reset'), /failed/);
+    assert.deepEqual(writes, []);
+    input.emit('data', Buffer.from('unsolicited'));
+    assert.equal(fence.failed, true);
+    await assert.rejects(fence.writeCleanup('x'.repeat(4097)), /bounded/);
+    await fence.writeCleanup('reset'); assert.deepEqual(writes, ['reset']);
+    await assert.rejects(fence.query({ code: 10 }), /Unexpected/);
+    fence.dispose(); await assert.rejects(fence.writeCleanup('reset'), /active/);
+});
+for (const mode of ['callback-error', 'throw', 'timeout']) test(`cleanup remains bounded when output ${mode}`, async () => {
+    const input = new Input();
+    const fence = terminalFence(input, { write(_, callback) {
+        if (mode === 'callback-error') callback(new Error('cleanup output failed'));
+        else if (mode === 'throw') throw new Error('cleanup output threw');
+    } }, 5);
+    input.emit('data', Buffer.from('unsolicited'));
+    try { await assert.rejects(fence.writeCleanup('reset'), /cleanup output|timed out/); }
+    finally { fence.dispose(); }
+});
