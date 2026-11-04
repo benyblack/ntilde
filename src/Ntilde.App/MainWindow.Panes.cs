@@ -26,6 +26,7 @@ namespace Ntilde
         private readonly Dictionary<TabItem, PaneZoomState> _paneZoomStateByTab = new();
         private readonly Dictionary<TabItem, Guid> _zoomedPaneIdByTab = new();
         private readonly HashSet<TabItem> _broadcastEnabledTabs = new();
+        private readonly BroadcastTextGate _broadcastTextGate = new();
         private readonly Dictionary<TabItem, PaneLayoutModel> _layoutModelByTab = new();
 
         private sealed class PaneZoomState
@@ -376,46 +377,77 @@ namespace Ntilde
             => kittyFlags == 0 && !ProducesNoTextInput(key, modifiers)
                 && TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, buffer?.Modes.ModifyOtherKeys.Level ?? 0, physical) != null;
 
+        /// <summary>One broadcast receiver: its modes, its effective kitty flags, and its input sink.</summary>
+        internal readonly record struct BroadcastReceiver(TerminalBuffer? Buffer, int KittyFlags, Action<string> Send);
+
         private void BroadcastKeyToSiblingPanes(KeyEventArgs e)
         {
             if (IsFocusOverlayVisible()) return;
             if (!TryGetSelectedTab(out var tabItem)) return;
             if (!_broadcastEnabledTabs.Contains(tabItem)) return;
             if (_currentPane == null) return;
-            if ((e.KeyModifiers & KeyModifiers.Alt) != 0) return;
 
-            bool focusedConsumesText = FocusedPaneConsumesText(e.Key, e.KeyModifiers, e.PhysicalKey,
-                _currentPane.Buffer, _currentPane.TermView.EffectiveKittyKeyboardFlags);
-            foreach (var pane in EnumeratePanes(tabItem.Content as Control))
-            {
-                if (pane == _currentPane) continue;
-                // Each receiver gets the bytes its own modes ask for (#829).
-                if (!TryMapBroadcastKey(e.Key, e.KeyModifiers, e.PhysicalKey, e.KeySymbol, pane.Buffer,
-                        pane.TermView.EffectiveKittyKeyboardFlags, focusedConsumesText, out var sequence)
-                    || string.IsNullOrEmpty(sequence)) continue;
-                // Broadcast bytes never went through the receiving pane's key handling, so its
-                // markless submission accumulator cannot model them.
-                pane.NotifyExternalInputSent();
-                pane.ScrollToInputLine();
-                pane.Session?.SendInput(sequence);
-            }
+            FanOutBroadcastKey(e.Key, e.KeyModifiers, e.PhysicalKey, e.KeySymbol, _currentPane.Buffer,
+                _currentPane.TermView.EffectiveKittyKeyboardFlags, SiblingReceivers(tabItem), _broadcastTextGate);
         }
 
         private void BroadcastTextToSiblingPanes(string text)
         {
             if (string.IsNullOrEmpty(text)) return;
-            if (IsFocusOverlayVisible()) return;
-            if (!TryGetSelectedTab(out var tabItem)) return;
-            if (!_broadcastEnabledTabs.Contains(tabItem)) return;
-            if (_currentPane == null) return;
+            if (IsFocusOverlayVisible() || !TryGetSelectedTab(out var tabItem)
+                || !_broadcastEnabledTabs.Contains(tabItem) || _currentPane == null)
+            {
+                _broadcastTextGate.TryConsumeText(); // a gesture's arming never outlives its text
+                return;
+            }
 
+            FanOutBroadcastText(text, SiblingReceivers(tabItem), _broadcastTextGate);
+        }
+
+        private List<BroadcastReceiver> SiblingReceivers(TabItem tabItem)
+        {
+            var receivers = new List<BroadcastReceiver>();
             foreach (var pane in EnumeratePanes(tabItem.Content as Control))
             {
                 if (pane == _currentPane) continue;
-                pane.NotifyExternalInputSent();
-                pane.ScrollToInputLine();
-                pane.Session?.SendInput(text);
+                var target = pane;
+                receivers.Add(new BroadcastReceiver(target.Buffer, target.TermView.EffectiveKittyKeyboardFlags, sequence =>
+                {
+                    // Broadcast bytes never went through the receiving pane's key handling, so its
+                    // markless submission accumulator cannot model them.
+                    target.NotifyExternalInputSent();
+                    target.ScrollToInputLine();
+                    target.Session?.SendInput(sequence);
+                }));
             }
+            return receivers;
+        }
+
+        /// <summary>
+        /// The keydown half of tab broadcast: each receiver gets the bytes its own modes ask for
+        /// (#829). When the focused pane consumes a text-capable chord itself, the gesture is
+        /// delivered here and <paramref name="gate"/> is armed so its trailing TextInput, which some
+        /// backends still raise after a handled keydown, is not broadcast again.
+        /// </summary>
+        internal static void FanOutBroadcastKey(Key key, KeyModifiers modifiers, PhysicalKey physical, string? keySymbol,
+            TerminalBuffer? focusedBuffer, int focusedKittyFlags, IReadOnlyList<BroadcastReceiver> receivers, BroadcastTextGate gate)
+        {
+            if ((modifiers & KeyModifiers.Alt) != 0) return;
+            bool focusedConsumesText = FocusedPaneConsumesText(key, modifiers, physical, focusedBuffer, focusedKittyFlags);
+            foreach (BroadcastReceiver receiver in receivers)
+            {
+                if (TryMapBroadcastKey(key, modifiers, physical, keySymbol, receiver.Buffer, receiver.KittyFlags,
+                        focusedConsumesText, out string? sequence) && !string.IsNullOrEmpty(sequence))
+                    receiver.Send(sequence);
+            }
+            if (focusedConsumesText) gate.MarkFannedOut(key, physical);
+        }
+
+        /// <summary>The text half: skipped once for a gesture the keydown half already delivered.</summary>
+        internal static void FanOutBroadcastText(string text, IReadOnlyList<BroadcastReceiver> receivers, BroadcastTextGate gate)
+        {
+            if (string.IsNullOrEmpty(text) || gate.TryConsumeText()) return;
+            foreach (BroadcastReceiver receiver in receivers) receiver.Send(text);
         }
 
         private void ToggleBroadcastForCurrentTab()

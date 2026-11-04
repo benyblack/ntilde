@@ -115,3 +115,86 @@ public sealed class ModifyOtherKeysBroadcastTests
         Assert.Equal("\x1b[A", up);
     }
 }
+
+// #829 review: a keydown fan-out and the trailing TextInput some backends still raise after a
+// handled keydown must deliver one gesture to each sibling exactly once.
+public sealed class ModifyOtherKeysBroadcastTextGateTests
+{
+    private static (List<string>[] Sent, MainWindow.BroadcastReceiver[] Receivers) Siblings(params string[] negotiations)
+    {
+        var sent = negotiations.Select(_ => new List<string>()).ToArray();
+        var receivers = negotiations.Select((negotiation, i) =>
+        {
+            var buffer = new TerminalBuffer(80, 24);
+            new AnsiParser(buffer).Process(negotiation);
+            return new MainWindow.BroadcastReceiver(buffer, buffer.Modes.KittyKeyboard.Flags, sent[i].Add);
+        }).ToArray();
+        return (sent, receivers);
+    }
+
+    private static TerminalBuffer LevelTwo()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        new AnsiParser(buffer).Process("\x1b[>4;2m");
+        return buffer;
+    }
+
+    [Fact]
+    public void ShiftSpace_FannedOutAtKeydown_IsNotBroadcastAgainByItsTrailingText()
+    {
+        var (sent, receivers) = Siblings("", "\x1b[>4;2m");
+        var gate = new BroadcastTextGate();
+
+        gate.KeyDown();
+        MainWindow.FanOutBroadcastKey(Key.Space, KeyModifiers.Shift, PhysicalKey.Space, " ", LevelTwo(), 0, receivers, gate);
+        MainWindow.FanOutBroadcastText(" ", receivers, gate); // backend raised TextInput anyway
+        gate.KeyUp(Key.Space, PhysicalKey.Space);
+        MainWindow.FanOutBroadcastText("x", receivers, gate); // later, unrelated text
+
+        Assert.Equal(new[] { " ", "x" }, sent[0]);
+        Assert.Equal(new[] { "\x1b[27;2;32~", "x" }, sent[1]);
+    }
+
+    [Fact]
+    public void BackendsThatSuppressTheText_DoNotLoseTheNextGesturesText()
+    {
+        var (sent, receivers) = Siblings("");
+        var gate = new BroadcastTextGate();
+
+        gate.KeyDown();
+        MainWindow.FanOutBroadcastKey(Key.Space, KeyModifiers.Shift, PhysicalKey.Space, " ", LevelTwo(), 0, receivers, gate);
+        // No TextInput and no release seen (focus moved, say); the next keydown starts afresh.
+        gate.KeyDown();
+        MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, "a", LevelTwo(), 0, receivers, gate);
+        MainWindow.FanOutBroadcastText("a", receivers, gate);
+
+        Assert.Equal(new[] { " ", "a" }, sent[0]);
+        Assert.False(gate.IsArmed);
+    }
+
+    [Fact]
+    public void LegacyFocusedPane_LeavesShiftSpaceToTheTextBroadcast()
+    {
+        var (sent, receivers) = Siblings("", "\x1b[>4;2m");
+        var gate = new BroadcastTextGate();
+
+        gate.KeyDown();
+        MainWindow.FanOutBroadcastKey(Key.Space, KeyModifiers.Shift, PhysicalKey.Space, " ", new TerminalBuffer(80, 24), 0, receivers, gate);
+        Assert.False(gate.IsArmed);
+        MainWindow.FanOutBroadcastText(" ", receivers, gate);
+
+        Assert.Equal(new[] { " " }, sent[0]);
+        Assert.Equal(new[] { " " }, sent[1]);
+    }
+
+    [Fact]
+    public void ReleaseOfAnotherKey_DoesNotDisarm_AndTheGateIsOneShot()
+    {
+        var gate = new BroadcastTextGate();
+        gate.MarkFannedOut(Key.Space, PhysicalKey.Space);
+        gate.KeyUp(Key.LeftShift, PhysicalKey.ShiftLeft);
+        Assert.True(gate.IsArmed);
+        Assert.True(gate.TryConsumeText());
+        Assert.False(gate.TryConsumeText());
+    }
+}

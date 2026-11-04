@@ -478,6 +478,7 @@ namespace Ntilde
         {
             // Synthetic QA events target the terminal encoder, never window commands or broadcast.
             if (_agentGeneratedInputInProgress) return;
+            _broadcastTextGate.KeyDown();
             // An in-flight tab reorder drag owns the pointer; Escape aborts it before
             // anything else - in particular before the broadcast-to-panes fallback at
             // the bottom of this handler, which would otherwise also feed the raw ESC
