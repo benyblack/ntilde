@@ -92,6 +92,7 @@ internal sealed record SnapshotRenderContext
         SelectionBackground = theme.SelectionBackground,
         SelectionForeground = theme.SelectionForeground,
         PaletteOverrides = theme.PaletteOverrides,
+        IsReverseVideo = theme.IsReverseVideo,
     };
 
     // Only an explicit provenance capture reads the resolved face's bytes. Never hash a font path

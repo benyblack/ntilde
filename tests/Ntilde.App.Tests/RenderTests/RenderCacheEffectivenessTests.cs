@@ -173,6 +173,31 @@ namespace Ntilde.Tests.RenderTests
         }
 
         [AvaloniaFact]
+        public void ReverseVideoToggle_RepaintsEveryRowOnce_ThenCachesAgain()
+        {
+            // DECSCNM (#831) recolors every row without changing a cell: the toggle frame must miss
+            // the row cache on every row (a stale picture would show the old colors), and the frame
+            // after it must be all hits again (no per-frame invalidation while the mode is set).
+            using var harness = new DrawPathHarness(Cols, Rows);
+            harness.Parser.Process("\x1b[?25lplain \x1b[7minverse\x1b[0m \x1b[31mred\x1b[0m\r\nsteady");
+            harness.DrawFrame();
+
+            foreach (string toggle in new[] { "\x1b[?5h", "\x1b[?5l" })
+            {
+                harness.Parser.Process(toggle);
+                RendererStatistics.Reset();
+                harness.DrawFrame();
+                Assert.Equal(0, RendererStatistics.RowCacheHits);
+                Assert.Equal(Rows, RendererStatistics.RowCacheMisses);
+
+                RendererStatistics.Reset();
+                harness.DrawFrame();
+                Assert.Equal(Rows, RendererStatistics.RowCacheHits);
+                Assert.Equal(0, RendererStatistics.RowCacheMisses);
+            }
+        }
+
+        [AvaloniaFact]
         public void GlyphAtlasIsReusedAcrossFrames_WithoutResetting()
         {
             var buffer = BufferWithContent();

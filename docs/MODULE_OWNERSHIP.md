@@ -22,7 +22,12 @@ invariant changes.
 - VT/ANSI state machine and parser
 - Exact bounded OSC 0/2 title payload callbacks, including empty and whitespace
   requests. App owns raw-title storage and profile/cwd/user-label presentation;
-  VT does not choose a UI fallback or model a separate OSC 1 icon name.
+  VT does not choose a UI fallback.
+- XTWINOPS title stack (`CSI 22/23 ; Ps t`, #830): VT retains the current raw title and
+  OSC 1 icon name plus a 10-entry stack (oldest discarded, empty pop silent), carried by
+  `AnsiParserState`. A pop raises the ordinary title callback with the saved raw text;
+  icon state has no host presentation. Session-wide across screens; DECSTR keeps it, RIS
+  clears it without retitling. Retained strings are capped at 8 Ki chars.
   Mux preserves raw session titles; its text listings choose command fallback. App's
   combined-host listing retains text cleaning/caps, and JSON keeps raw metadata.
 - OSC 5522 framing/strict base64 and the host-enabled DEC 5522 mode. Clipboard payloads, permission grants, transfer budgets and OS I/O belong to App; headless VT does not advertise a desktop service.
@@ -99,6 +104,12 @@ invariant changes.
   existing row decoration side table, preserving the 12-byte cell layout. Saved pens, reflow,
   history, state transfer, replay and ANSI exports retain it. App paints it in the resolved
   foreground; SGR 58 remains underline-only. AgentHost exposes it only through explicit opt-in.
+- **DECSCNM reverse video is presented by VT as data.** `ModeState.IsReverseVideo` (?5) is
+  screen-wide state; the render snapshot's theme already carries the xterm swap (default
+  foreground/background exchanged, a cursor color equal to a default following it, derived
+  render colors re-derived), cached per effective theme. Renderers draw the snapshot colors as
+  given and apply SGR 7 as usual; a mode change repaints through the theme-epoch/row-revision
+  invalidation. App host overlays use `TerminalBuffer.PresentedDefaultForeground`, which resolves OSC 10/11 overrides before the swap, as the snapshot does.
 - **Text blink presentation belongs to App.** VT snapshots cache only an unhidden SGR 5
   presence flag while copying cells; they carry no clock or UI state. App advances a monotonic
   530 ms half-period on its existing render timer, independently of cursor focus/settings,

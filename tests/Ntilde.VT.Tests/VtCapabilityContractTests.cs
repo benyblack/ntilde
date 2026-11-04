@@ -35,6 +35,8 @@ public sealed class VtCapabilityContractTests
             ["decrqss-top-bottom-margins"] = AssertDecrqssMargins,
             ["tertiary-device-attributes"] = AssertTertiaryDeviceAttributes,
             ["text-area-size-query"] = AssertTextAreaSizeQuery,
+            ["title-stack-push"] = AssertTitleStack,
+            ["title-stack-pop"] = AssertTitleStack,
             ["cursor-next-line"] = AssertCursorNextLine,
             ["cursor-previous-line"] = AssertCursorPreviousLine,
             ["cursor-horizontal-absolute"] = AssertCursorHorizontalAbsolute,
@@ -54,6 +56,8 @@ public sealed class VtCapabilityContractTests
             ["decrqss-top-bottom-margins"] = "\x1bP$qr\x1b\\",
             ["tertiary-device-attributes"] = "\x1b[=0c",
             ["text-area-size-query"] = "\x1b[18t",
+            ["title-stack-push"] = "\x1b]2;saved\a\x1b[22;0t",
+            ["title-stack-pop"] = "\x1b]2;saved\a\x1b[22;0t\x1b]2;vim\a\x1b[23;0t",
             ["cursor-next-line"] = "\x1b[2E",
             ["cursor-previous-line"] = "\x1b[2F",
             ["cursor-horizontal-absolute"] = "\x1b[4G",
@@ -87,6 +91,14 @@ public sealed class VtCapabilityContractTests
         var responses = new List<string>();
         new AnsiParser(new TerminalBuffer(86, 30)) { OnResponse = responses.Add }.Process("\x1b[18t");
         Assert.Equal("\x1b[8;30;86t", Assert.Single(responses));
+    }
+
+    private static void AssertTitleStack()
+    {
+        var titles = new List<string>();
+        new AnsiParser(new TerminalBuffer(40, 6)) { OnTitleChanged = titles.Add }
+            .Process("\x1b]2;saved\a\x1b[22;0t\x1b]2;vim\a\x1b[23;0t\x1b[23;0t");
+        Assert.Equal(new[] { "saved", "vim", "saved" }, titles);
     }
 
     private static void AssertOverline()

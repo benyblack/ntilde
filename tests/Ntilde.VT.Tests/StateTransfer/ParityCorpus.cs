@@ -122,6 +122,14 @@ internal static class ParityCorpus
             "\u001b]7;file:///tmp/somewhere\u0007" +
             "text"));
 
+        yield return ("xtwinops-title-stack", Utf8(
+            // #830: every cut lands inside or between saves/restores, so a snapshot taken mid-stack
+            // must carry the raw title, icon and saved entries for the tail's pops to agree.
+            "\u001b]1;icon\u0007\u001b]2;  shell  \u0007\u001b[22;0t" +
+            "\u001b]0;vim\u0007\u001b[22;2t\u001b]2;help\u0007\u001b[22;1t" +
+            "\u001b[?1049hinside\u001b[23;1t\u001b[23;2t\u001b[?1049l" +
+            "\u001b[23;0tafter\u001b[23;0t"));
+
         yield return ("osc8-hyperlinks", Utf8(
             "\u001b]8;id=alpha;https://example.com/a\u0007first\u001b]8;;\u0007 plain " +
             "\u001b]8;;https://example.com/b\u0007anonymous\u001b]8;;\u0007 " +
@@ -235,6 +243,13 @@ internal static class ParityCorpus
         yield return ("mode-1007-alternate-scroll", Utf8(
             "\u001b[?1049h\u001b[?1007l" + "pager on the alt screen" + "\u001b[?1007h" +
             "\u001b[?1007l" + "\u001b[?1049l" + "\u001bc" + "after RIS" + "\u001b[?1007h"));
+
+        yield return ("decscnm-reverse-video", Utf8(
+            // Screen-wide: set on main, carried into and out of the alternate screen, through a
+            // DECSTR that keeps it, and left set at the end so the snapshot carries it.
+            "\u001b[?5hnormal \u001b[7minverse\u001b[0m \u001b[31mred" +
+            "\u001b[?1049h\u001b[?5l\u001b[?5halt\u001b[?1049l\u001b[!p" +
+            "\u001bc\u001b[?5hafter reset"));
 
         yield return ("mixed-modes", Utf8(
             "\u001b[?1h\u001b[?7l\u001b[?6h\u001b[?25l\u001b[?2004h\u001b[?1000h\u001b[?1006h" +

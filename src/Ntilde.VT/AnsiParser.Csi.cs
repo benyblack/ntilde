@@ -549,10 +549,15 @@ namespace Ntilde.VT
                           //   CSI 16 t -> CSI 6 ; cellHeightPx ; cellWidthPx t
                           // CSI 16 t is the important one: without it the client assumes a
                           // hardcoded 16x32 px cell, renders its surface at the wrong size
-                          // AND aspect, and every frame arrives squashed. The remaining
-                          // window ops (stack, iconify, resize-by-cells) are ignored, and
+                          // AND aspect, and every frame arrives squashed. CSI 22/23 ; Ps t
+                          // push/pop the title stack (AnsiParser.Titles.cs). The remaining
+                          // window ops (iconify, resize-by-cells, ...) are ignored, and
                           // leader-prefixed variants stay unhandled.
-                    if (bare && arg0 == 18 && argCount == 1)
+                    if (bare && (arg0 == 22 || arg0 == 23))
+                    {
+                        HandleTitleStack(validArgs, validSeparators);
+                    }
+                    else if (bare && arg0 == 18 && argCount == 1)
                     {
                         // Process holds the batch write lock across both dimensions and this reply.
                         // XTWINOPS character geometry is VT-owned, independent of host pixel
@@ -902,6 +907,7 @@ namespace Ntilde.VT
             switch (mode)
             {
                 case 1: return _buffer.Modes.IsApplicationCursorKeys ? 1 : 2;    // DECCKM
+                case 5: return _buffer.Modes.IsReverseVideo ? 1 : 2;             // DECSCNM
                 case 6: return _buffer.Modes.IsOriginMode ? 1 : 2;               // DECOM
                 case 7: return _buffer.Modes.IsAutoWrapMode ? 1 : 2;             // DECAWM
                 case 9: return _buffer.Modes.MouseModeX10PressOnly ? 1 : 2;     // X10 compatibility
@@ -958,6 +964,9 @@ namespace Ntilde.VT
                 {
                     case 1: // DECCKM - Cursor Keys Mode
                         _buffer.Modes.IsApplicationCursorKeys = enable;
+                        break;
+                    case 5: // DECSCNM - screen-wide reverse video (terminfo flash / visual bell)
+                        _buffer.SetReverseVideo(enable);
                         break;
                     case 6: // DECOM - Origin Mode
                         _buffer.Modes.IsOriginMode = enable;
