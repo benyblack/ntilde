@@ -316,7 +316,8 @@ public static class MuxCli
         }
 
         stdout.WriteLine(ListHeader);
-        foreach (SessionSummary s in sessions) stdout.WriteLine(ListRow(s, s.Title));
+        foreach (SessionSummary s in sessions)
+            stdout.WriteLine(ListRow(s, string.IsNullOrWhiteSpace(s.Title) ? s.Command : s.Title));
         return 0;
     }
 

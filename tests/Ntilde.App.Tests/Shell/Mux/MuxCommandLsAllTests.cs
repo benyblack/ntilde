@@ -25,6 +25,7 @@ namespace Ntilde.Tests.Shell.Mux;
 public sealed class MuxCommandLsAllTests : IDisposable
 {
     private static readonly TimeSpan Patient = TimeSpan.FromSeconds(30);
+    private const string ScriptedCommand = "scripted";
 
     /// <summary>The table's header with a HOST column as wide as "this computer", the widest host in these tests.</summary>
     private const string Header = "HOST           ID                                    STATE               ATTACHED  SIZE       TITLE";
@@ -44,6 +45,7 @@ public sealed class MuxCommandLsAllTests : IDisposable
     private readonly ConcurrentQueue<string> _log = new();
     private readonly List<IDisposable> _owned = [];
     private MuxDaemonHost? _localDaemon;
+    private MuxServer? _localServer;
 
     public void Dispose()
     {
@@ -54,9 +56,10 @@ public sealed class MuxCommandLsAllTests : IDisposable
     }
 
     /// <summary>This computer's daemon, under the test's root, with one session called <paramref name="title"/>.</summary>
-    private async Task<Guid> StartLocalDaemonAsync(string title)
+    private async Task<Guid> StartLocalDaemonAsync(string title, string command = ScriptedCommand)
     {
         var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
+        _localServer = server;
         _localDaemon = new MuxDaemonHost(server, new MuxDaemonOptions
         {
             Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
@@ -66,7 +69,7 @@ public sealed class MuxCommandLsAllTests : IDisposable
         _localDaemon.Start();
         using Stream s = Ntilde.Mux.Transport.MuxEndpointConnector.Connect(MuxDiscovery.GetDefaultEndpoint(_root), TimeSpan.FromSeconds(5));
         using MuxClient c = await MuxClient.ConnectAsync(s, null, Ct);
-        return await c.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = title }, Ct);
+        return await c.SpawnAsync(new SpawnParams { Command = command, Cols = 80, Rows = 24, Title = title }, Ct);
     }
 
     /// <summary>A profile <c>user@host</c> in the test's store, and the host it reaches.</summary>
@@ -89,13 +92,13 @@ public sealed class MuxCommandLsAllTests : IDisposable
     }
 
     /// <summary>A session called <paramref name="title"/> on <paramref name="remote"/>'s daemon, spawned through a connection of its own.</summary>
-    private async Task<Guid> SpawnOnAsync(SshProfile profile, FakeRemoteHost remote, string title)
+    private async Task<Guid> SpawnOnAsync(SshProfile profile, FakeRemoteHost remote, string title, string command = ScriptedCommand)
     {
         var connector = new RemoteMuxConnector(profile, remote, "spawner", log: null);
         _owned.Add(connector);
         MuxClient client = await connector.ConnectAsync(interactive: true, Ct);
         _owned.Add(client);
-        return await client.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 100, Rows = 30, Title = title }, Ct);
+        return await client.SpawnAsync(new SpawnParams { Command = command, Cols = 100, Rows = 30, Title = title }, Ct);
     }
 
     /// <summary>The remote half the command is handed: the test's store, and each profile's connector as the command builds it.</summary>
@@ -529,6 +532,38 @@ public sealed class MuxCommandLsAllTests : IDisposable
     /// Ruling P2: a title another machine reports reaches the user's terminal without its control, bidi and format characters,
     /// and capped; this computer's is cleaned the same way (a local shell's OSC title can carry the same).
     /// </summary>
+    [Theory]
+    [InlineData("", ScriptedCommand, ScriptedCommand)]
+    [InlineData("   ", ScriptedCommand, ScriptedCommand)]
+    [InlineData("\u202e", "sh\u001b\u202eell", "shell")]
+    [Trait("Category", "Regression")]
+    public async Task Ls_all_uses_a_clean_command_fallback_for_cleared_local_and_remote_titles(string title, string command, string expectedDisplay)
+    {
+        Guid local = await StartLocalDaemonAsync("initial", command);
+        var (profile, remoteHost) = AddProfile("alpha", "a-host");
+        Guid remote = await SpawnOnAsync(profile, remoteHost, "initial", command);
+        Assert.True(_localServer!.TryGetSession(local, out var localOwner));
+        Assert.True(remoteHost.Server.TryGetSession(remote, out var remoteOwner));
+        Assert.IsType<ScriptedTerminalSession>(localOwner!.Inner).Emit($"\x1b]2;{title}\a");
+        Assert.IsType<ScriptedTerminalSession>(remoteOwner!.Inner).Emit($"\x1b]2;{title}\a");
+        await Task.WhenAll(localOwner.FlushAsync(), remoteOwner.FlushAsync()).WaitAsync(Patient, Ct);
+        var (code, output, error) = await RunAsync(Remotes(), "ls", "--all");
+        Assert.Equal(0, code); Assert.Empty(error);
+        Assert.Equal(Lines(Header,
+            Row("this computer", local, "running", 0, "80x24", expectedDisplay),
+            Row("nova@a-host", remote, "running", 0, "100x30", expectedDisplay)), output);
+        Assert.DoesNotContain('\u001b', output); Assert.DoesNotContain('\u202e', output);
+        var (jsonCode, json, jsonError) = await RunAsync(Remotes(), "ls", "--all", "--json");
+        Assert.Equal(0, jsonCode); Assert.Empty(jsonError);
+        using JsonDocument doc = JsonDocument.Parse(json);
+        foreach (JsonElement endpoint in doc.RootElement.GetProperty("endpoints").EnumerateArray())
+        {
+            JsonElement raw = Assert.Single(endpoint.GetProperty("sessions").EnumerateArray());
+            Assert.Equal(title, raw.GetProperty("title").GetString());
+            Assert.Equal(command, raw.GetProperty("command").GetString());
+        }
+    }
+
     [Fact]
     public async Task Titles_print_without_control_or_bidi_characters()
     {

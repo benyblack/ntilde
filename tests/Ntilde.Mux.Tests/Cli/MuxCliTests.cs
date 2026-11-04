@@ -16,6 +16,7 @@ namespace Ntilde.Mux.Tests.Cli;
 public sealed class MuxCliTests : IDisposable
 {
     private const string Prefix = "ntilde-mux";
+    private const string ScriptedCommand = "scripted";
 
     private const MuxCliVerbs Offered =
         MuxCliVerbs.Serve | MuxCliVerbs.Ls | MuxCliVerbs.Kill | MuxCliVerbs.KillServer | MuxCliVerbs.Attach | MuxCliVerbs.ProbeConsole;
@@ -23,6 +24,7 @@ public sealed class MuxCliTests : IDisposable
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
     private readonly string _root = Path.Combine(Path.GetTempPath(), "nmxc" + Guid.NewGuid().ToString("N")[..8]);
     private MuxDaemonHost? _host;
+    private MuxServer? _server;
 
     public void Dispose()
     {
@@ -45,6 +47,7 @@ public sealed class MuxCliTests : IDisposable
     private async Task<Guid> StartDaemonWithOneSessionAsync()
     {
         var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
+        _server = server;
         _host = new MuxDaemonHost(server, new MuxDaemonOptions
         {
             Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
@@ -187,6 +190,27 @@ public sealed class MuxCliTests : IDisposable
         Assert.Equal(0, code);
         Assert.Contains(id.ToString(), output);
         Assert.Contains("running", output);
+    }
+
+    [Theory]
+    [InlineData("", ScriptedCommand)]
+    [InlineData("   ", ScriptedCommand)]
+    [InlineData("  renamed  ", "  renamed  ")]
+    [Trait("Category", "Regression")]
+    public async Task Ls_uses_the_command_when_the_program_clears_its_raw_title(string title, string expectedDisplay)
+    {
+        Guid id = await StartDaemonWithOneSessionAsync();
+        Assert.True(_server!.TryGetSession(id, out var owner));
+        Assert.IsType<ScriptedTerminalSession>(owner!.Inner).Emit($"\x1b]2;{title}\a");
+        await owner.FlushAsync().WaitAsync(TimeSpan.FromSeconds(30), Ct);
+        var (jsonCode, json, jsonError) = Run("ls", "--json");
+        Assert.Equal(0, jsonCode); Assert.Empty(jsonError);
+        var raw = JsonSerializer.Deserialize(json, MuxJsonContext.Default.ListSessionsResult)!;
+        Assert.Equal(title, Assert.Single(raw.Sessions).Title);
+        var (code, output, error) = Run("ls");
+        Assert.Equal(0, code); Assert.Empty(error);
+        Assert.Contains(id.ToString(), output, StringComparison.Ordinal);
+        Assert.EndsWith($"  {expectedDisplay}{Environment.NewLine}", output, StringComparison.Ordinal);
     }
 
     [Fact]

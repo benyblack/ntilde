@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "34188b9389422c86119b0a91b35536aaf22e1ffbd473404be17db55970aec525",
+  "matrixSha256": "ecb2844b19f72ce43de391917636550007d107a4fca29c37bef3f324e4301fe3",
   "summary": {
     "totalRows": 86,
     "supportedCount": 43,
@@ -1683,7 +1683,7 @@
       "feature": "OSC 0/2",
       "status": "\u26A0 Partial",
       "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/StringSequenceCapTests.cs\u0060; Unit (App): \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/OscTitleTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/StringSequenceCapTests.cs\u0060; Unit (Mux): \u0060tests/Ntilde.Mux.Tests/Cli/MuxCliTests.cs\u0060; Unit (App): \u0060tests/Ntilde.App.Tests/Core/MainWindowAgentMetadataTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Core/TabTitleResolutionTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Shell/Mux/MuxCommandLsAllTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -1693,14 +1693,34 @@
           "exists": true
         },
         {
+          "path": "tests/Ntilde.App.Tests/Core/MainWindowAgentMetadataTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.App.Tests/Core/TabTitleResolutionTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.App.Tests/Shell/Mux/MuxCommandLsAllTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.Mux.Tests/Cli/MuxCliTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/OscTitleTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.VT.Tests/StringSequenceCapTests.cs",
           "exists": true
         }
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
-      "ownership": "VT\u002BApp UI",
-      "knownDeviations": "Title callback, bounded accumulation and handler wiring are tested; OSC 2 lacks dedicated qualification and native window-title presentation is outside this test scope. Empty/whitespace-only titles are ignored and surrounding whitespace is trimmed; App presentation can apply its own title policy.",
+      "ownership": "VT\u002BApp\u002BMux",
+      "knownDeviations": "Exact bounded title payloads include empty/whitespace requests, surrounding spaces, Unicode and split input. Headless App metadata observes raw replacement plus existing profile/cwd fallback and title precedence. Mux text listings choose command fallback, preserving raw JSON and App text cleaning/caps. OSC 1 icon state, native window-manager title effects and an empty visible tab label remain unqualified; frozen owned title observations are unchanged.",
       "sourceLine": 168
     },
     {

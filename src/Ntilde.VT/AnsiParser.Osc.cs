@@ -68,10 +68,8 @@ namespace Ntilde.VT
                 // OSC 0/2: Window title
                 case "0":
                 case "2":
-                    if (!string.IsNullOrWhiteSpace(data))
-                    {
-                        OnTitleChanged?.Invoke(data.Trim());
-                    }
+                    // Empty requests clear the old title; presentation fallback belongs to the host.
+                    OnTitleChanged?.Invoke(data);
                     break;
 
                 // OSC 7: current working directory URI
