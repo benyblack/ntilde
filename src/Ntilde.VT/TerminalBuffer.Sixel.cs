@@ -7,7 +7,7 @@ public partial class TerminalBuffer
     public SixelSourceBudget SixelSources { get; init; } = new();
 
     /// <summary>Applies SIXEL geometry even on headless hosts. Never writes placeholder text or wraps an image horizontally.</summary>
-    internal void PlaceSixelImage(object? handle, int widthCells, int heightCells, SixelSource? source = null)
+    internal bool PlaceSixelImage(object? handle, int widthCells, int heightCells, SixelSource? source = null)
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         try
@@ -30,7 +30,11 @@ public partial class TerminalBuffer
             };
             if (image is not null)
             {
-                RequireImageHandleAdmission(image.ImageHandle);
+                if (!TryAdmitImageHandle(image.ImageHandle))
+                {
+                    source?.Dispose();
+                    return false;
+                }
                 _images.Add(image);
             }
             if (display)
@@ -42,6 +46,7 @@ public partial class TerminalBuffer
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();
+        return true;
     }
 
     private static bool CanDiscardSixelHandle(object? handle) =>

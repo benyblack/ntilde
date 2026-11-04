@@ -31,7 +31,9 @@ Kitty admission. Generic grace is preserved; fresh handles avoid history scans,
 and bulk cleanup unlinks each placement before considering remaining aliases.
 Removed SIXEL source text retires independently of shared decoded handles, so
 source-budget eviction still favors retired text. Unstored-handle rejection checks
-ownership and queues retirement together under the buffer write lock.
+ownership and queues retirement together under the buffer write lock. Rejected
+SIXEL admission releases newly retained source text without throwing, moving the
+cursor or arming post-image newline suppression.
 Basic uppercase `I`/`N` deletion releases data once no relevant placement
 references it. `a`/`A` deletion affects visible placements; offscreen references
 keep their data. A delete command aborts an incomplete upload. Full clear/reset
