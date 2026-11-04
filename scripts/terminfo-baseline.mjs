@@ -37,7 +37,15 @@ function run(args, env, capture = false) {
     return result.stdout;
 }
 
+// The pinned collector cannot record results on native Windows: its JSON/file
+// output path throws "JSON/file collection requires a proved Windows controlling
+// TTY", and this runner always passes --output. Refuse before any directory,
+// dependency or collector step. Revisit this when the pinned version changes.
+const nativeWindowsRefusal = `terminfo.dev ${cliVersion} cannot record results on native Windows. `
+    + 'Run this from WSL inside a direct Ntilde tab instead; see "Windows: collect through WSL" in docs/qa/QA_TERMINFO.md.';
+
 function validateInvocation(args) {
+    if (process.platform === 'win32') fail(nativeWindowsRefusal);
     if (args.length !== 2 || args[0] !== '--app-version' || !/^\d[\dA-Za-z.+_-]*$/.test(args[1])) {
         fail('Supply --app-version VERSION; use --help for usage.');
     }
@@ -51,7 +59,6 @@ function validateInvocation(args) {
 
 function prepareCollector(tool, pkgManifest) {
     if (!existsSync(pkgManifest)) {
-        if (process.platform === 'win32') fail('Install the collector first using the Windows preparation command in docs/qa/QA_TERMINFO.md.');
         const { manifestBytes, lockBytes } = readPinnedCollectorInputs();
         installLockedCollector(tool, manifestBytes, lockBytes);
     }
@@ -73,6 +80,7 @@ recreates the locked dependencies in a separate installation for this run.
 Saves raw observations, detection, suite receipt, dependency lock, context and
 summary in a new private artifacts/terminfo/run-* directory. Nothing is uploaded.
 State-changing probes may be refused by the collector; these are inconclusive.
+Native Windows is refused: run from WSL inside a direct Ntilde tab instead.
 See docs/qa/QA_TERMINFO.md.`);
         return;
     }

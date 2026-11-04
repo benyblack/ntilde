@@ -63,22 +63,14 @@ cp scripts/terminfo/collector-package-lock.json artifacts/terminfo/tool/package-
 npm ci --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --include=prod --include=dev --include=optional
 ```
 
-On native Windows the runner does not prepare the cache itself. It can be
-prepared in PowerShell from the Ntilde repository root:
-
-```powershell
-New-Item -ItemType Directory -Force artifacts/terminfo/tool | Out-Null
-Copy-Item scripts/terminfo/collector-package.json artifacts/terminfo/tool/package.json
-Copy-Item scripts/terminfo/collector-package-lock.json artifacts/terminfo/tool/package-lock.json
-npm ci --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --include=prod --include=dev --include=optional
-```
-
-**A prepared cache does not make native Windows collection work.** The pinned
-`terminfo.dev@4.0.0` (the latest published version as of 2026-11-04) refuses to
-write results on `win32`. Its `openControllingTTY` throws "JSON/file collection
-requires a proved Windows controlling TTY" whenever `--output` or `--json` is
-used, and the runner always passes `--output raw.json`. The run then fails with
-`Collector exited 1` after creating its run directory.
+**Native Windows is not supported by the pinned collector.** `terminfo.dev@4.0.0`
+(the latest published version as of 2026-11-04) refuses to write results on
+`win32`. Its `openControllingTTY` throws "JSON/file collection requires a proved
+Windows controlling TTY" whenever `--output` or `--json` is used, and the runner
+always passes `--output raw.json`. The runner therefore refuses native Windows
+before creating a run directory, preparing a cache or starting the collector,
+and points here. Preparing a cache on native Windows does not help. Revisit this
+when the pinned collector version changes.
 
 ### Windows: collect through WSL
 
