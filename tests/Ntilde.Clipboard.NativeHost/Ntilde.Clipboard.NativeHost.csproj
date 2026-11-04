@@ -6,6 +6,10 @@
     <PublishAot>false</PublishAot>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" />
+    <Compile Include="../Ntilde.App.Tests/Shell/RecordingClipboardWindow.cs" Link="Headless/RecordingClipboardWindow.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../src/Ntilde.App/Ntilde.App.csproj" />
     <ProjectReference Include="../../src/Ntilde.Cli/Ntilde.Cli.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>

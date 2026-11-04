@@ -60,6 +60,18 @@ internal sealed class StubExecutor : IAgentActionExecutor
         return result;
     }
 
+    public Func<Ntilde.AgentHost.Contracts.ClipboardFixtureParams, AgentSessionRegistration, Func<bool>, CancellationToken,
+        Task<Ntilde.AgentHost.Contracts.ClipboardFixtureResult?>>? OnClipboardFixture;
+    public int ClipboardFixtureCalls;
+    public Task<Ntilde.AgentHost.Contracts.ClipboardFixtureResult?> ClipboardFixtureAsync(
+        Ntilde.AgentHost.Contracts.ClipboardFixtureParams input, AgentSessionRegistration registration,
+        Func<bool> isCurrent, CancellationToken token)
+    {
+        ClipboardFixtureCalls++;
+        return OnClipboardFixture?.Invoke(input, registration, isCurrent, token)
+            ?? Task.FromResult<Ntilde.AgentHost.Contracts.ClipboardFixtureResult?>(null);
+    }
+
     public Guid? LastLiveCapturePane;
     public int? LastLiveCaptureMaxWidth;
     public double? LastLiveCaptureScale;

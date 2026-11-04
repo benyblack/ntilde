@@ -17,6 +17,7 @@ namespace Ntilde.Controls
     {
         public void Reconnect()
         {
+            PrivateClipboardQa.Interrupt(this);
             // Phase 5 Task 23: the shell was let go for a restart that is still stopping the old daemon, whose connection the
             // host still holds - a shell started over it would end with the rest. Held until the restart ends.
             if (_muxRestartHold)
@@ -78,6 +79,7 @@ namespace Ntilde.Controls
             if (session is MuxClientSession) UnregisterRemoteMuxSession(); // its shell ended: nothing left to browse
             LastExitCode = code;
             _kittyClipboard?.Reset();
+            PrivateClipboardQa.Interrupt(this);
             if (Buffer != null) Buffer.Modes.IsClipboardPasteMode = false;
 
             if (Profile?.Type == ConnectionType.SSH)
@@ -232,6 +234,7 @@ namespace Ntilde.Controls
             if (_disposed) return null;
             _disposed = true;
             _kittyClipboard?.Dispose();
+            PrivateClipboardQa.Interrupt(this);
             UnsubscribeRecordingFailure(forgetAttempts: true);
 
             (_agentRegistry ?? Ntilde.AgentHost.AgentSessionRegistry.Instance).Unregister(PaneId);

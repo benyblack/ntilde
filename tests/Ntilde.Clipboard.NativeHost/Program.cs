@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Ntilde.Shell;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using Ntilde.Shell.Clipboard;
@@ -16,9 +18,27 @@ internal static class Program
     internal static string Root { get; private set; } = "";
     internal static bool Primary => Environment.GetEnvironmentVariable("NTILDE_CLIPBOARD_SELECTION") == "primary";
 
+    // Avalonia boot belongs in this standalone executable entry file, never an xUnit testhost.
+    internal static void InitializeHeadlessAppForStartupProof()
+    {
+        AppBuilder.Configure<global::Ntilde.App>()
+            .UseSkia()
+            .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
+            .WithInterFont()
+            .With(new Avalonia.Media.FontManagerOptions
+            {
+                FontFamilyMappings = BundledFontCatalog.CreateFontFamilyMappings(),
+                DefaultFamilyName = BundledFontCatalog.DefaultTerminalFontFamily,
+            })
+            .SetupWithoutStarting();
+    }
+
     [STAThread]
     public static int Main(string[] args)
     {
+        // Test-only fake-provider subprocesses never initialize a desktop platform.
+        if (HeadlessStartupProbe.IsHeadlessMode(args)) return HeadlessStartupProbe.Run(args);
+
         // CI provides a fresh OS clipboard; never default to a developer's desktop.
         if (Environment.GetEnvironmentVariable("CI") != "true" || args.Length != 2 || args[0] != "--isolated-desktop" || (Primary && !OperatingSystem.IsLinux()))
         {
@@ -27,6 +47,8 @@ internal static class Program
         }
         Root = Path.GetFullPath(args[1]);
         if (!Directory.Exists(Root)) return 2;
+        // Separate startup wiring proof, before native interchange qualification begins.
+        if (HeadlessStartupProbe.VerifyInSubprocesses(Root) != 0) return 1;
         AppBuilder.Configure<ClipboardQaApplication>().UsePlatformDetect().StartWithClassicDesktopLifetime([]);
         return Environment.ExitCode;
     }

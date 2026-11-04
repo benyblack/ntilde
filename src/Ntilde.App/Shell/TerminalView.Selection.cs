@@ -43,9 +43,10 @@ namespace Ntilde.Shell
                 if (!string.IsNullOrEmpty(text))
                 {
                     var topLevel = TopLevel.GetTopLevel(this);
-                    if (topLevel?.Clipboard != null)
+                    var clipboard = Ntilde.Shell.Clipboard.HostClipboardAccess.Get(topLevel);
+                    if (clipboard != null)
                     {
-                        await topLevel.Clipboard.SetTextAsync(text);
+                        await clipboard.SetTextAsync(text);
                         return true;
                     }
                 }
@@ -69,9 +70,10 @@ namespace Ntilde.Shell
             try
             {
                 var topLevel = TopLevel.GetTopLevel(this);
-                if (topLevel?.Clipboard != null)
+                var clipboard = Ntilde.Shell.Clipboard.HostClipboardAccess.Get(topLevel);
+                if (clipboard != null)
                 {
-                    await topLevel.Clipboard.SetTextAsync(text);
+                    await clipboard.SetTextAsync(text);
                     return true;
                 }
             }
