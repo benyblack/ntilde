@@ -32,9 +32,15 @@ export function validateInputBytes(value, expectedHex, used) {
         && value.barrier === value.nonces.map(n => `\x1b[?${n};0$y`).join(''));
     const key = value.nonces.join(','); checkInput(!used.has(key)); used.add(key);
 }
+function matchesInputRequest(actual, event, paneId) {
+    const expected = { paneId, ...event }, keys = Object.keys(expected);
+    return actual !== null && typeof actual === 'object' && !Array.isArray(actual)
+        && Object.keys(actual).length === keys.length
+        && keys.every(key => Object.hasOwn(actual, key) && actual[key] === expected[key]);
+}
 export function validateInputAction(action, item, paneId, runId, geometry, profileName) {
     checkInput(action?.paneId === paneId && action.runId === runId && action.rpcStarted === true && action.postVerified === true
-        && !action.error && sameInputFact(action.request, { paneId, ...item.event })
+        && !action.error && matchesInputRequest(action.request, item.event, paneId)
         && typeof action.observedAt === 'string' && new Date(action.observedAt).toISOString() === action.observedAt);
     for (const side of ['before', 'after']) {
         const fact = action[side];

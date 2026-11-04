@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateOwnedInput } from './input-action.mjs';
+import { validateInputAction } from './input-state.mjs';
+import { makeInputCases } from './input-cases.mjs';
+import { inputActionProof } from './fixtures/input-journal.mjs';
 const paneId = '11111111-1111-1111-1111-111111111111', runId = 'a'.repeat(32);
 function fixture() {
     const steps = [], config = { app: { pid: 42, exitCode: null, signalCode: null }, appData: '/private/fixture',
@@ -68,4 +71,12 @@ test('shared deadline exhausted before the RPC never marks or performs a started
         assert.equal(error.inputAttempt.rpcStarted, false); assert.equal(error.inputAttempt.app, null); return true;
     });
     assert.ok(!f.steps.includes('event'));
+});
+
+test('production ownership wrapper output is accepted by the exact action validator', async () => {
+    const f = fixture(), item = makeInputCases(12, 120)[0];
+    f.dependencies.rpc = async () => inputActionProof(item.event, item.modes).app;
+    const actual = await generateOwnedInput(f.config, item.event, () => 1000, f.dependencies);
+    assert.deepEqual(Object.keys(actual.request), ['modifiers', 'kind', 'key', 'paneId']);
+    assert.doesNotThrow(() => validateInputAction(actual, item, paneId, runId, { rows: 12, cols: 120 }, 'fixture'));
 });
