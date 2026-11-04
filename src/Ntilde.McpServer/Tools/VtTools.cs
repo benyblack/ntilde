@@ -337,16 +337,30 @@ public sealed class VtTools
 
     private static string ExplainDcs(string body, string original)
     {
-        bool literal = original.StartsWith('\x1b') || original.StartsWith('\u0090')
-            || original.StartsWith("\\x1b", StringComparison.OrdinalIgnoreCase)
+        bool literal = original.StartsWith('\x1b') || original.StartsWith('\u0090');
+        bool escaped = original.StartsWith("\\x1b", StringComparison.OrdinalIgnoreCase)
             || original.StartsWith("\\e", StringComparison.OrdinalIgnoreCase);
-        if (!literal) body = body.TrimStart(' '); // notation separator, never a literal DCS byte
-        bool standardTerminator = body.EndsWith("ESC\\", StringComparison.Ordinal) || body.EndsWith('\u009c');
+        if (literal || escaped)
+        {
+            // Preserve real escape bytes and literal ASCII ESC text as distinct input.
+            // Only an explicitly escaped input decodes the supported escape notation.
+            string framed = escaped
+                ? original.Replace("\\x1b", "\x1b", StringComparison.OrdinalIgnoreCase)
+                    .Replace("\\e", "\x1b", StringComparison.OrdinalIgnoreCase)
+                : original;
+            if (!framed.StartsWith("\x1bP", StringComparison.Ordinal) && !framed.StartsWith('\u0090'))
+                return "Invalid literal DCS framing: ESC must be adjacent to P, or use decoded C1 DCS.";
+            bool exact = framed is "\x1bP$qr\x1b\\" or "\x1bP$qr\u009c"
+                or "\u0090$qr\x1b\\" or "\u0090$qr\u009c";
+            return "DCS: " + (exact ? ContractSequenceTable["DCS:$qr"] : SequenceTable["DCS"]);
+        }
+
+        // Abstract identifiers may omit framing. Their formatting spaces/ESC token
+        // are notation only and must never reinterpret a literal control string.
+        body = body.TrimStart(' ');
         if (body.EndsWith("ESC\\", StringComparison.Ordinal)) body = body[..^4];
         else if (body.EndsWith('\u009c')) body = body[..^1];
-        return body == "$qr" && (!literal || standardTerminator)
-            ? "DCS: " + ContractSequenceTable["DCS:$qr"]
-            : "DCS: " + SequenceTable["DCS"];
+        return "DCS: " + (body == "$qr" ? ContractSequenceTable["DCS:$qr"] : SequenceTable["DCS"]);
     }
 
     private static string ExplainTertiaryDeviceAttributes(string prefix)
