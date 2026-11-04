@@ -17,12 +17,14 @@ public sealed class X10MouseTrackingTests
         Assert.Equal(new[] { "\u001b[?9;2$y", "\u001b[?9;1$y", "\u001b[?9;2$y" }, replies);
     }
 
+    public static IEnumerable<object[]> TrackingResetPairs =>
+        from selected in new[] { 9, 1000, 1002, 1003 }
+        from reset in new[] { 9, 1000, 1002, 1003 }
+        select new object[] { selected, reset };
+
     [Theory]
-    [InlineData(9)]
-    [InlineData(1000)]
-    [InlineData(1002)]
-    [InlineData(1003)]
-    public void Tracking_protocols_are_mutually_exclusive_and_any_recognized_reset_disables_tracking(int selected)
+    [MemberData(nameof(TrackingResetPairs))]
+    public void Tracking_protocols_are_mutually_exclusive_and_any_recognized_reset_disables_tracking(int selected, int reset)
     {
         var buffer = new TerminalBuffer(20, 5);
         var parser = new AnsiParser(buffer);
@@ -31,7 +33,7 @@ public sealed class X10MouseTrackingTests
         foreach (int mode in new[] { 9, 1000, 1002, 1003 }) parser.Process($"\u001b[?{mode}$p");
         Assert.Equal(new[] { 9, 1000, 1002, 1003 }.Select(mode => $"\u001b[?{mode};{(mode == selected ? 1 : 2)}$y"), replies);
         replies.Clear();
-        parser.Process("\u001b[?1000l");
+        parser.Process($"\u001b[?{reset}l");
         foreach (int mode in new[] { 9, 1000, 1002, 1003 }) parser.Process($"\u001b[?{mode}$p");
         Assert.Equal(new[] { 9, 1000, 1002, 1003 }.Select(mode => $"\u001b[?{mode};2$y"), replies);
     }
@@ -76,6 +78,17 @@ public sealed class X10MouseTrackingTests
         Assert.True(buffer.Modes.MouseModeX10PressOnly);
         Assert.False(buffer.Modes.MouseModeX10); Assert.False(buffer.Modes.MouseModeButtonEvent); Assert.False(buffer.Modes.MouseModeAnyEvent);
         parser.Process("\u001b[?1049h\u001b[?1049l"); Assert.True(buffer.Modes.MouseModeX10PressOnly);
+    }
+
+    [Fact]
+    public void Actual_OSC_prompt_dispatch_clears_press_only_tracking_and_its_coordinate_encoding()
+    {
+        var buffer = new TerminalBuffer(20, 5); var parser = new AnsiParser(buffer);
+        parser.Process("\u001b[?9;1006h");
+        Assert.True(buffer.IsMouseReportingActive()); Assert.True(buffer.Modes.MouseModeSGR);
+        parser.Process("\u001b]133;A\u0007");
+        Assert.False(buffer.Modes.MouseModeX10PressOnly); Assert.False(buffer.IsMouseReportingActive());
+        Assert.False(buffer.Modes.MouseModeSGR);
     }
 
     [Theory]

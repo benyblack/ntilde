@@ -264,6 +264,19 @@ public sealed class TextClientRendererTests
     }
 
     [Fact]
+    public void Historical_mixed_tracking_snapshot_keeps_any_event_priority_in_the_outer_terminal()
+    {
+        var inner = new Session(80, 24); var state = inner.Buffer.ExportState(0);
+        state.Modes.MouseModeX10 = true; state.Modes.MouseModeButtonEvent = true; state.Modes.MouseModeAnyEvent = true;
+        inner.Buffer.ImportState(state);
+        var renderer = new TextClientRenderer(inner.Buffer);
+        TerminalBuffer outer = Outer(renderer.Render(80, 24), 80, 24);
+        Assert.True(outer.Modes.MouseModeAnyEvent);
+        Assert.False(outer.Modes.MouseModeButtonEvent); Assert.False(outer.Modes.MouseModeX10);
+        Assert.False(outer.Modes.MouseModeX10PressOnly);
+    }
+
+    [Fact]
     public void The_detach_hint_survives_read_only_and_oversized_at_80_columns()
     {
         var s = new Session(120, 40);
