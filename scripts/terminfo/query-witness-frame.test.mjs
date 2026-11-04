@@ -75,3 +75,20 @@ test('byte evidence and challenge facts are immutable copies', () => {
     assert.equal(Object.isFrozen(result), true);
     assert.equal(Object.isFrozen(result.orderingNonces), true);
 });
+
+test('changing raw-fact and nonce getters cannot alter a validated comparison or returned evidence', () => {
+    const original = capture('\x1bP!|00000000\x1b\\'), reads = {};
+    const fact = {};
+    for (const key of Object.keys(original)) Object.defineProperty(fact, key, { enumerable: true,
+        get() { reads[key] = (reads[key] ?? 0) + 1; return reads[key] === 1 ? original[key] : null; } });
+    let nonceReads = 0;
+    Object.defineProperty(original.nonces, 0, { enumerable: true,
+        get() { return ++nonceReads === 1 ? 41001 : 0; } });
+    const result = inspectQueryWitness(context, 'q07.device.tertiary-da', fact);
+    assert.equal(result.contractMatched, true);
+    assert.equal(result.receivedHex, original.hex);
+    assert.equal(result.byteLength, original.byteLength);
+    assert.deepEqual(result.orderingNonces, [41001, 51002]);
+    assert.deepEqual(reads, { hex: 1, byteLength: 1, barrier: 1, nonces: 1 });
+    assert.equal(nonceReads, 1);
+});

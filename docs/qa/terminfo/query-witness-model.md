@@ -18,6 +18,8 @@ regressions. The model contains exactly 40 independently named contracts:
 | Individual unavailable/unknown/malformed/empty XTGETTCAP names/lists | 10 | Exact bounded negative reply |
 
 Requests, case identifiers and expectations are frozen in each returned plan.
+Each input field is copied once before validation, including nonce elements, so
+changing getters cannot alter validated values or returned evidence.
 Rows, columns and absolute one-based margins must be supplied as bounded integer
 facts; the model does not consult environment variables, pixel metrics, App title
 state or a terminal database. DA3's all-zero unit ID is explicitly unassigned and
@@ -64,9 +66,9 @@ receipts must remain fixed when that future phase versions the live graph.
 node --test scripts/terminfo/query-witness-cases.test.mjs scripts/terminfo/query-witness-frame.test.mjs
 ```
 
-Thirteen tests cover all 18 frozen Q07 identities, all 22 individually named Q12
+Fifteen tests cover all 18 frozen Q07 identities, all 22 individually named Q12
 requests, independent literal request/reply controls, wrong geometry/margins,
-framing/order evidence, duplicate/trailing/high-bit bytes, bounds and immutable
+framing/order evidence, duplicate/trailing/high-bit bytes, bounds, changing getters and immutable
 facts. The existing portable CI list runs these tests on Windows and Ubuntu.
 Synthetic data here is not a live App, physical keyboard or cross-platform
 terminal qualification claim.

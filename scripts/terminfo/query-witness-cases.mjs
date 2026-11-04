@@ -30,12 +30,16 @@ const tcap = [['terminal-name', '544e'], ['color-count', '436f'], ['colors', '63
 export function queryWitnessContext(value) {
     const keys = ['rows', 'cols', 'top', 'bottom'];
     if (!value || Object.keys(value).length !== keys.length || Object.keys(value).some(k => !keys.includes(k))
-        || !keys.every(k => Object.hasOwn(value, k) && Number.isSafeInteger(value[k]))
-        || value.rows < 1 || value.rows > 4096 || value.cols < 1 || value.cols > 4096
-        || value.top < 1 || value.bottom < value.top || value.bottom > value.rows) {
+        || !keys.every(k => Object.hasOwn(value, k))) {
         throw new Error('Expected bounded observed geometry and absolute one-based margins.');
     }
-    return Object.freeze(Object.fromEntries(keys.map(k => [k, value[k]])));
+    const snapshot = Object.freeze(Object.fromEntries(keys.map(k => [k, value[k]])));
+    if (!keys.every(k => Number.isSafeInteger(snapshot[k]))
+        || snapshot.rows < 1 || snapshot.rows > 4096 || snapshot.cols < 1 || snapshot.cols > 4096
+        || snapshot.top < 1 || snapshot.bottom < snapshot.top || snapshot.bottom > snapshot.rows) {
+        throw new Error('Expected bounded observed geometry and absolute one-based margins.');
+    }
+    return snapshot;
 }
 
 export function queryWitnessPlan(context) {

@@ -24,6 +24,9 @@ test('finite plan covers each frozen Q07 observation once, plus every audited Q1
 test('independent literal spelling controls preserve query families, case and terminators', () => {
     const plan = new Map(queryWitnessPlan(context).map(x => [x.id, x]));
     const literal = [
+        ['q07.device.tertiary-da', '1b5b3d63'],
+        ['q07.device.xtwinops-18', '1b5b313874'],
+        ['q12.decrqss.vertical-margins', '1b502471721b5c'],
         ['q07.device.xtgetxres', '1b502b51373436353732366434653631366436351b5c'],
         ['q07.device.xtreportcolors', '1b5b2352'],
         ['q07.extensions.sixel-geometry-report', '1b5b3f323b313b3053'],
@@ -53,11 +56,45 @@ test('geometry/margins are observed bounded integers, never environment guesses'
 test('all individually audited Q12 requests retain their exact payload and rejection contract', () => {
     const plan = queryWitnessPlan(context);
     const decrqss = plan.filter(x => x.id.startsWith('q12.decrqss.') && x.id !== 'q12.decrqss.vertical-margins');
-    assert.deepEqual(decrqss.map(x => x.request).sort(), ['m', 's', ' q', '"p', '"q', 't', '$|', '*|', '*x', 'unknown', '']
-        .map(s => '\x1bP$q' + s + '\x1b\\').sort());
+    assert.deepEqual(Object.fromEntries(decrqss.map(x => [x.id, x.request])), {
+        'q12.decrqss.sgr': '\x1bP$qm\x1b\\',
+        'q12.decrqss.horizontal-margins': '\x1bP$qs\x1b\\',
+        'q12.decrqss.cursor-style': '\x1bP$q q\x1b\\',
+        'q12.decrqss.conformance': '\x1bP$q"p\x1b\\',
+        'q12.decrqss.protection': '\x1bP$q"q\x1b\\',
+        'q12.decrqss.lines-per-page': '\x1bP$qt\x1b\\',
+        'q12.decrqss.columns-per-page': '\x1bP$q$|\x1b\\',
+        'q12.decrqss.number-lines': '\x1bP$q*|\x1b\\',
+        'q12.decrqss.change-extent': '\x1bP$q*x\x1b\\',
+        'q12.decrqss.unknown': '\x1bP$qunknown\x1b\\',
+        'q12.decrqss.empty': '\x1bP$q\x1b\\',
+    });
     for (const spec of decrqss) assert.equal(spec.expectedReply, '\x1bP0$r\x1b\\');
     const xtgettcap = plan.filter(x => x.id.startsWith('q12.xtgettcap.'));
-    assert.deepEqual(xtgettcap.map(x => x.request).sort(), ['544e', '436f', '636f6c6f7273', '524742', '6b63757531',
-        '544e;436f', '6e6f742d612d6361706162696c697479', '5', 'zz', ''].map(s => '\x1bP+q' + s + '\x1b\\').sort());
+    assert.deepEqual(Object.fromEntries(xtgettcap.map(x => [x.id, x.request])), {
+        'q12.xtgettcap.terminal-name': '\x1bP+q544e\x1b\\',
+        'q12.xtgettcap.color-count': '\x1bP+q436f\x1b\\',
+        'q12.xtgettcap.colors': '\x1bP+q636f6c6f7273\x1b\\',
+        'q12.xtgettcap.rgb': '\x1bP+q524742\x1b\\',
+        'q12.xtgettcap.cursor-up-key': '\x1bP+q6b63757531\x1b\\',
+        'q12.xtgettcap.list': '\x1bP+q544e;436f\x1b\\',
+        'q12.xtgettcap.unknown': '\x1bP+q6e6f742d612d6361706162696c697479\x1b\\',
+        'q12.xtgettcap.odd-hex': '\x1bP+q5\x1b\\',
+        'q12.xtgettcap.invalid-hex': '\x1bP+qzz\x1b\\',
+        'q12.xtgettcap.empty': '\x1bP+q\x1b\\',
+    });
     for (const spec of xtgettcap) assert.equal(spec.expectedReply, '\x1bP0+r\x1b\\');
+});
+
+test('changing context getters are read once and only the validated snapshot is used', () => {
+    const reads = { rows: 0, cols: 0, top: 0, bottom: 0 };
+    const value = Object.fromEntries(Object.entries(context));
+    for (const key of Object.keys(reads)) Object.defineProperty(value, key, { enumerable: true,
+        get() { return ++reads[key] === 1 ? context[key] : 0; } });
+    assert.equal(queryWitnessPlan(value).find(x => x.id === 'q07.device.xtwinops-18').expectedReply, '\x1b[8;42;90t');
+    assert.deepEqual(reads, { rows: 1, cols: 1, top: 1, bottom: 1 });
+    let attempts = 0;
+    const invalid = { ...context, get rows() { return ++attempts === 1 ? 0 : 42; } };
+    assert.throws(() => queryWitnessContext(invalid));
+    assert.equal(attempts, 1);
 });
