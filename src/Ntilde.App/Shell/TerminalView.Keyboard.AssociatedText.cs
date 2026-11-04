@@ -88,7 +88,7 @@ public partial class TerminalView
         PendingAssociatedKey? pending = _pendingAssociatedKey;
         ClearPendingKittyTextInput();
         ResetCursorBlink();
-        if (ForwardKittyTextPayload(pending, text)) TextInputObserved?.Invoke(text);
+        if (ForwardKittyTextPayload(pending, text) && !_generatedInputInProgress) TextInputObserved?.Invoke(text);
         return true;
     }
 

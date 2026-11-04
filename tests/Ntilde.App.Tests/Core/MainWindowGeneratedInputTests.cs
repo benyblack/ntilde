@@ -1,0 +1,215 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using Ntilde.AgentHost;
+using Ntilde.AgentHost.Contracts;
+using Ntilde.Controls;
+using Ntilde.Pty;
+using Ntilde.Shell;
+using Ntilde.Shell.Mux;
+using Ntilde.Tests.Controls;
+using Ntilde.VT;
+
+namespace Ntilde.Tests.Core;
+
+public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoot>, IDisposable
+{
+    public void Dispose() => TestMainWindowFactory.DisposeCreatedWindows();
+
+    private static (MainWindow Window, TerminalPane Pane, FakeTerminalSession Session) Create()
+    {
+        var profile = new TerminalProfile { Name = "Generated input local", Type = ConnectionType.Local };
+        var session = new FakeTerminalSession();
+        var settings = new TerminalSettings { SessionPersistence = SessionPersistenceMode.Off, AgentAccessActEnabled = true,
+            CommandAssistShellIntegrationEnabled = false, Profiles = [profile], DefaultProfileId = profile.Id };
+        var window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        { Settings = settings, SessionFactory = new RecordingSessionFactory(session), CommandAssist = TestCommandAssistServices.Instance });
+        window.Show(); Dispatcher.UIThread.RunJobs();
+        session.SentInput.Clear();
+        return (window, Assert.Single(window.AllPanesForTest()), session);
+    }
+
+    private static Task<GeneratePaneInputResult?> Dispatch(MainWindow window, TerminalPane pane, GeneratePaneInputParams input,
+        Func<bool>? guard = null, CancellationToken token = default)
+        => ((IAgentActionExecutor)window).GeneratePaneInputAsync(input, pane.AgentRegistrationForTesting!, guard ?? (() => true), token);
+
+    [AvaloniaTheory]
+    [InlineData("0", "\u001bOp")]
+    [InlineData("7", "\u001bOw")]
+    [InlineData("decimal", "\u001bOn")]
+    [InlineData("separator", "\u001bOl")]
+    [InlineData("add", "\u001bOk")]
+    [InlineData("subtract", "\u001bOm")]
+    [InlineData("multiply", "\u001bOj")]
+    [InlineData("divide", "\u001bOo")]
+    [InlineData("enter", "\u001bOM")]
+    public async Task Application_keypad_uses_actual_routed_key_events(string key, string expected)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b=");
+        int history = 0;
+        pane.TermView.KeyDownInterceptor = (_, _) => throw new InvalidOperationException("Synthetic input must not accept Command Assist suggestions.");
+        pane.TermView.EnterObserving += () => history++;
+        pane.TermView.EnterObserved += () => history++;
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = key });
+        Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.True(result.Handled);
+        Assert.Equal("avalonia-routed", result.Boundary); Assert.True(result.ApplicationKeypad);
+        Assert.Equal(expected, Assert.Single(session.SentInput)); Assert.Equal(0, history);
+    }
+
+    [AvaloniaFact]
+    public async Task Separate_text_callback_is_suppressed_once_then_keyup_releases_the_latch_without_history()
+    {
+        var (window, pane, session) = Create();
+        var parser = new AnsiParser(pane.Buffer!); parser.Process("\u001b=");
+        int history = 0; pane.TermView.TextInputObserved += _ => history++;
+        await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" });
+        await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "text", Text = "7" });
+        await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyUp", Key = "7" });
+        parser.Process("\u001b>");
+        var numeric = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "8" });
+        Assert.NotNull(numeric); Assert.False(numeric.Handled);
+        await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "text", Text = "8" });
+        Assert.Equal(new[] { "\u001bOw", "8" }, session.SentInput); Assert.Equal(0, history);
+        pane.TermView.RaiseEvent(new Avalonia.Input.TextInputEventArgs { RoutedEvent = Avalonia.Input.InputElement.TextInputEvent, Text = "human" });
+        Assert.Equal(1, history);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("mousePress", "left", 0, "\u001b[<0;3;2M")]
+    [InlineData("mouseRelease", "left", 0, "\u001b[<0;3;2m")]
+    [InlineData("mouseMove", "none", 0, "\u001b[<35;3;2M")]
+    [InlineData("mouseWheel", null, 1, "\u001b[<64;3;2M")]
+    [InlineData("mouseWheel", null, -1, "\u001b[<65;3;2M")]
+    public async Task Mouse_events_use_routed_pointer_coordinate_and_wheel_paths(string kind, string? button, int delta, string expected)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[?1003h\u001b[?1006h");
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = kind, Button = button,
+            Column = 3, Row = 2, WheelDelta = delta == 0 ? null : delta });
+        Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.True(result.Handled);
+        Assert.Equal((3, 2, 1003, true), (result.Column, result.Row, result.MouseTracking, result.MouseSgr));
+        Assert.Equal(2.5 * pane.TermView.Metrics.CellWidth, result.X);
+        Assert.Equal(1.5 * pane.TermView.Metrics.CellHeight, result.Y);
+        Assert.Equal(expected, Assert.Single(session.SentInput));
+    }
+
+    [AvaloniaFact]
+    public async Task True_X10_routes_presses_and_suppresses_release_and_wheel()
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[?9h\u001b[?1006h");
+        foreach (var kind in new[] { "mousePress", "mouseRelease", "mouseMove", "mouseWheel" })
+        {
+            var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = kind, Column = 3, Row = 2,
+                Button = kind == "mouseWheel" ? null : "left", WheelDelta = kind == "mouseWheel" ? 1 : null, Modifiers = 7 });
+            Assert.NotNull(result); Assert.Equal(9, result.MouseTracking); Assert.Equal(7, result.Modifiers);
+        }
+        Assert.Equal("\u001b[<0;3;2M", Assert.Single(session.SentInput));
+    }
+
+    [AvaloniaTheory]
+    [InlineData("guard")]
+    [InlineData("deferred")]
+    [InlineData("hidden")]
+    [InlineData("remote")]
+    [InlineData("maximized")]
+    [InlineData("cell")]
+    [InlineData("disabledMouse")]
+    [InlineData("viewBuffer")]
+    [InlineData("viewSession")]
+    public async Task Ineligible_targets_are_refused_without_any_session_input(string reason)
+    {
+        var (window, pane, session) = Create();
+        var input = new GeneratePaneInputParams { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" };
+        switch (reason)
+        {
+            case "viewBuffer": pane.TermView.SetBuffer(new TerminalBuffer(pane.Buffer!.Cols, pane.Buffer.Rows)); break;
+            case "viewSession": pane.TermView.SetSession(new FakeTerminalSession()); break;
+            case "deferred": pane.TermView.DefersBufferResizeToSession = true; break;
+            case "hidden": pane.IsVisible = false; break;
+            case "remote": pane.Profile!.Type = ConnectionType.SSH; break;
+            case "maximized": window.WindowState = WindowState.Maximized; break;
+            case "cell": input = new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", Column = 256, Row = 128 }; break;
+            case "disabledMouse": input = new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", Column = 1, Row = 1 }; break;
+        }
+        Assert.Null(await Dispatch(window, pane, input, () => reason != "guard"));
+        Assert.Empty(session.SentInput);
+    }
+
+    [AvaloniaFact]
+    public async Task Cancelled_queued_dispatch_cannot_emit_an_event_later()
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b=");
+        using var cancelled = new CancellationTokenSource();
+        var input = new GeneratePaneInputParams { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" };
+        // Invoke from a worker while the UI thread is deliberately occupied by this synchronous section.
+        using var enqueued = new ManualResetEventSlim();
+        var queued = Task.Run(() =>
+        {
+            var task = Dispatch(window, pane, input, token: cancelled.Token);
+            enqueued.Set();
+            return task;
+        });
+        Assert.True(enqueued.Wait(TimeSpan.FromSeconds(5)), "The worker must enqueue its dispatcher operation before cancellation.");
+        cancelled.Cancel();
+        Dispatcher.UIThread.RunJobs();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => queued);
+        Dispatcher.UIThread.RunJobs(); Assert.Empty(session.SentInput);
+    }
+
+    [AvaloniaFact]
+    public async Task Identity_changed_during_routed_event_has_no_successful_observation()
+    {
+        var (window, pane, session) = Create();
+        var registration = pane.AgentRegistrationForTesting!;
+        pane.TermView.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, (_, _) => registration.SetLifecycle(new FakeTerminalSession()),
+            Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" }));
+        Assert.Empty(session.SentInput);
+    }
+    [AvaloniaFact]
+    public async Task Split_and_inactive_tabs_are_not_activated_or_fed_input()
+    {
+        var (window, original, session) = Create();
+        var executor = (IAgentActionExecutor)window;
+        await executor.SpawnAsync(null); Dispatcher.UIThread.RunJobs();
+        var tabs = window.FindControl<TabControl>("Tabs")!; var selected = tabs.SelectedItem;
+        session.SentInput.Clear();
+        Assert.Null(await Dispatch(window, original, new() { PaneId = original.PaneId, Kind = "keyDown", Key = "7" }));
+        Assert.Same(selected, tabs.SelectedItem);
+        typeof(MainWindow).GetMethod("SplitPane", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .Invoke(window, [Avalonia.Layout.Orientation.Horizontal]);
+        Dispatcher.UIThread.RunJobs(); session.SentInput.Clear();
+        foreach (var pane in window.AllPanesForTest())
+            Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" }));
+        Assert.Empty(session.SentInput);
+    }
+
+    [AvaloniaFact]
+    public async Task Mouse_tracking_disabled_during_tunnel_cannot_fall_through_to_selection_or_links()
+    {
+        var (window, pane, session) = Create();
+        var parser = new AnsiParser(pane.Buffer!); parser.Process("\u001b[?1000h");
+        pane.TermView.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, (_, _) => parser.Process("\u001b[?1000l"),
+            Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", Column = 1, Row = 1 }));
+        Assert.Empty(session.SentInput);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(8)]
+    public async Task Modified_keypad_keeps_ordinary_unhandled_routing_without_window_commands(int modifiers)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b=");
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7", Modifiers = modifiers });
+        Assert.NotNull(result); Assert.False(result.Handled); Assert.Equal(modifiers, result.Modifiers);
+        Assert.Empty(session.SentInput);
+    }
+}

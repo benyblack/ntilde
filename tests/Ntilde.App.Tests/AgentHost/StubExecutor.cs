@@ -46,6 +46,18 @@ internal sealed class StubExecutor : IAgentActionExecutor
         return OnResize?.Invoke(paneId, cols, rows, cancellationToken) ?? Task.FromResult<AgentPaneResizeResult?>(null);
     }
 
+    public Func<Ntilde.AgentHost.Contracts.GeneratePaneInputParams, AgentSessionRegistration, Func<bool>, CancellationToken,
+        Task<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?>>? OnGenerateInput;
+    public int GenerateInputCalls;
+    public Task<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?> GeneratePaneInputAsync(
+        Ntilde.AgentHost.Contracts.GeneratePaneInputParams input, AgentSessionRegistration registration,
+        Func<bool> isCurrent, CancellationToken token)
+    {
+        GenerateInputCalls++;
+        return OnGenerateInput?.Invoke(input, registration, isCurrent, token)
+            ?? Task.FromResult<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?>(null);
+    }
+
     public Guid? LastLiveCapturePane;
     public int? LastLiveCaptureMaxWidth;
     public double? LastLiveCaptureScale;

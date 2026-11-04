@@ -31,7 +31,7 @@ namespace Ntilde.AgentHost
     /// <see cref="BufferSnapshot"/> path under the buffer's read lock — the same
     /// snapshot boundary the replay/parity tests use.
     /// </summary>
-    public sealed class AgentHostService : IDisposable
+    public sealed partial class AgentHostService : IDisposable
     {
         /// <summary>Process-wide instance used by the app wiring. Tests construct their own.</summary>
         public static AgentHostService Instance => _instanceOverride ?? ProcessInstance;
@@ -904,6 +904,7 @@ namespace Ntilde.AgentHost
                     AgentHostProtocol.Methods.SendInput => await HandleSendInputAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.SpawnSession => await HandleSpawnSessionAsync(request).ConfigureAwait(false),
                     AgentHostProtocol.Methods.CloseSession => await HandleCloseSessionAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.GeneratePaneInput => await HandleGeneratePaneInputAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.ResizePane => await HandleResizePaneAsync(request, cancellationToken).ConfigureAwait(false),
                     _ => Error(request.Id, AgentHostProtocol.ErrorCodes.UnknownMethod, $"Unknown method '{request.Method}'."),
                 };

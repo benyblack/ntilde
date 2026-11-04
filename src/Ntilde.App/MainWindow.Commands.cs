@@ -476,6 +476,8 @@ namespace Ntilde
         /// </summary>
         private void OnWindowKeyDown(object? sender, KeyEventArgs e)
         {
+            // Synthetic QA events target the terminal encoder, never window commands or broadcast.
+            if (_agentGeneratedInputInProgress) return;
             // An in-flight tab reorder drag owns the pointer; Escape aborts it before
             // anything else - in particular before the broadcast-to-panes fallback at
             // the bottom of this handler, which would otherwise also feed the raw ESC

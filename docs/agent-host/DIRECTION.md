@@ -200,6 +200,58 @@ promise restoration. A qualification runner must restore and verify geometry
 separately. Session callback completion does not attest the child's kernel PTY
 size; independent PTY observation is required for that claim.
 
+### Generated framework input (raw API)
+
+`generatePaneInput` is a permissioned raw AgentHost method, with no MCP tool or
+new setting. It accepts exactly one declared event per request: `keyDown`,
+`keyUp`, `text`, `mousePress`, `mouseRelease`, `mouseMove` or `mouseWheel`.
+The existing default-off act permission and visible-pane resize admission rules
+apply. The target must be the current single direct local pane in the selected
+tab of a visible, normal, resizable window. Deferred/mux, remote, windowless,
+split, inactive, hidden, stale and dead targets are unavailable.
+
+The BCL contract validates the following bounds before any UI work:
+
+- `key`: keypad `0`–`9`, `decimal`, `separator`, `add`, `subtract`, `multiply`,
+  `divide` or physical keypad `enter`, only for key events.
+- `text`: exactly one character from `0123456789.+-*/,=` or carriage return,
+  only for a separate text event. A key/text callback pair requires two calls.
+- `modifiers`: bits shift=1, control=2, alt=4, meta=8; text requires zero.
+- Pointer `column`/`row`: one-based viewport cells within 256×128 and the actual
+  agreeing view/buffer grid. `button` is `left`, `middle`, `right`; move also
+  permits `none`. Wheel accepts no held button and exactly one `wheelDelta`
+  of +1 or -1. Unrelated/unknown fields and combined events are rejected.
+
+App raises actual Avalonia routed key/text/pointer events at the TerminalView.
+Mouse positions are measured cell centers translated into the window's event
+coordinate space. Mouse events require active reporting immediately before the
+TerminalView handler, so a disabled protocol cannot fall through into selection
+or hyperlink activation. Such unavailable attempts are not no-byte evidence.
+Window shortcut/broadcast commands, Command Assist interception and user-command history observers are
+excluded during synthetic dispatch; terminal routing, keypad text-suppression,
+mouse coordinate conversion/coalescing, wheel accumulation, encoding and normal
+session transport remain in use. There is no native/global OS input injection,
+selector lookup or endpoint-level text/byte send bypass.
+
+A two-second request deadline cancels queued UI work. The permission,
+registration, pane, buffer and session identities are checked before dispatch,
+again at the TerminalView handler and after observation. Cancellation prevents
+queued events from running after expiry, but cannot undo an event already being
+processed or preempt synchronous framework/transport code. Attempts are recorded
+in the existing activity journal as method/target/outcome only, without event
+text or encoded bytes. Synthetic input does not feed command-history observers;
+child output retains its existing recording policy.
+
+The result reports `eventDispatched`, framework `handled`, boundary
+`avalonia-routed`, actual buffer/view geometry, view-local pointer coordinates,
+framework event modifiers, and post-dispatch parser mode samples (application keypad,
+tracking 0/9/1000/1002/1003, SGR encoding and Kitty flags). Handled does not mean
+bytes were emitted. Mode samples are not an atomic encoder snapshot. Neither
+result nor pane identity attests native input, fixture ownership or child byte
+delivery. Qualification requires separate disposable-process/PTY proof and
+independent child-byte capture; no stock or published terminfo result is regraded
+by this API.
+
 ### A3 — Act (permissioned)
 
 **Deliverables**

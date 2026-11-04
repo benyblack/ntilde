@@ -19,6 +19,11 @@ namespace Ntilde.Controls
         private AgentOutput.AgentOutputRegionTracker? _agentOutputTracker;
         private AgentOutput.AgentOutputPanel? _agentOutputPanelHost;
 
+        /// <summary>Identity lease for a bounded synthetic UI event; never substitutes another registration with the same pane id.</summary>
+        internal bool IsCurrentAgentRegistration(Ntilde.AgentHost.AgentSessionRegistration registration)
+            => ReferenceEquals(_agentRegistration, registration) && _agentRegistry != null
+                && _agentRegistry.TryGet(PaneId, out var current) && ReferenceEquals(current, registration);
+
         /// <summary>
         /// Pushes this pane's current metadata into its agent-session
         /// registration (UI thread only). Cheap and allocation-light; called

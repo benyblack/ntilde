@@ -228,6 +228,7 @@ namespace Ntilde.Shell
         // Mouse event handlers
         protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
         {
+            if (!CanApplyGeneratedInput) { e.Handled = true; return; }
             base.OnPointerWheelChanged(e);
             if (_buffer == null) return;
 

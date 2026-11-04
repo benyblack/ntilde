@@ -13,6 +13,7 @@ namespace Ntilde.Shell
     {
         protected override void OnPointerPressed(PointerPressedEventArgs e)
         {
+            if (!CanApplyGeneratedInput) { e.Handled = true; return; }
             base.OnPointerPressed(e);
 
             var point = e.GetCurrentPoint(this);
@@ -69,6 +70,7 @@ namespace Ntilde.Shell
 
         protected override void OnPointerMoved(PointerEventArgs e)
         {
+            if (!CanApplyGeneratedInput) { e.Handled = true; return; }
             base.OnPointerMoved(e);
 
             // Forward motion events if mouse reporting is active
@@ -121,6 +123,7 @@ namespace Ntilde.Shell
 
         protected override void OnPointerReleased(PointerReleasedEventArgs e)
         {
+            if (!CanApplyGeneratedInput) { e.Handled = true; return; }
             base.OnPointerReleased(e);
 
             // Forward release events if mouse reporting is active

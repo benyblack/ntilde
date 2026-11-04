@@ -135,6 +135,7 @@ public static class AgentHostProtocol
         public const string CloseSession = "closeSession";
 
         /// <summary>Permissioned App-window resize for a single visible direct local pane.</summary>
+        public const string GeneratePaneInput = "generatePaneInput";
         public const string ResizePane = "resizePane";
 
         /// <summary>
@@ -267,6 +268,7 @@ public static class AgentHostProtocol
         public const string ActUnavailable = "actUnavailable";
 
         /// <summary>The pane cannot safely use the visible local-window resize operation.</summary>
+        public const string GeneratedInputUnavailable = "generatedInputUnavailable";
         public const string ResizeUnavailable = "resizeUnavailable";
 
         /// <summary>A3: <c>spawnSession</c> resolved a profile but the tab failed to open.</summary>
