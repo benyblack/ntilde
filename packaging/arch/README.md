@@ -48,7 +48,7 @@ installs by design.
 
 ## Why `-bin`, and why the tarball
 
-A source-built `ntilde` would need SDK 10.0.400 (pinned in `global.json`,
+A source-built `ntilde` would need SDK 10.0.403 (pinned in `global.json`,
 which is not what Arch's `dotnet-sdk` tracks), the Rust natives, and a NuGet
 restore inside `build()` — and makepkg builds are meant to be network-free after
 `source=()`. The published tarball is the artifact `README.md` already offers as
