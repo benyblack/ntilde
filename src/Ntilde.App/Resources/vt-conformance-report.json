@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "122b52de5cb172c9ab9053ad66359b3384b9dd41c132e1bfc885246f991dec34",
+  "matrixSha256": "2d8b7504381e18f68ff6a00b6f7448039ca937c0290fabc3c075c11496f2bd62",
   "summary": {
     "totalRows": 90,
     "supportedCount": 46,
@@ -996,11 +996,15 @@
       "feature": "Application keypad",
       "status": "\u26A0 Partial",
       "specOrNotes": "Unmodified auxiliary-keypad digits, arithmetic, decimal/comma and physical keypad Enter use SS3 application frames",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ApplicationKeypadModeTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/ApplicationKeypadRoutingTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ApplicationKeypadModeTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/ApplicationKeypadRoutingTests.cs\u0060; owned child: \u0060docs/qa/terminfo/2026-11-04-input-observations.md\u0060",
       "evidenceKinds": [
         "unit"
       ],
       "evidenceLinks": [
+        {
+          "path": "docs/qa/terminfo/2026-11-04-input-observations.md",
+          "exists": true
+        },
         {
           "path": "tests/Ntilde.App.Tests/Input/ApplicationKeypadRoutingTests.cs",
           "exists": true
@@ -1013,7 +1017,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BInput\u002BReplay",
-      "knownDeviations": "VT owns mode state, clone, complete snapshots and legacy replay defaults; DECSTR/RIS restore numeric mode. Kitty reporting takes precedence. Routed Avalonia key/text events pin exact writes and one-shot duplicate-text suppression. Logical PC navigation and modified keys retain existing mappings; unavailable native NumLock state, VT52, extra keypad keys, broadcast mapping and real child-input delivery remain unqualified. See \u0060docs/qa/terminfo/application-keypad.md\u0060.",
+      "knownDeviations": "VT owns mode state, clone, complete snapshots and legacy replay defaults; DECSTR/RIS restore numeric mode. Kitty reporting takes precedence. Routed Avalonia key/text events pin exact writes and one-shot duplicate-text suppression. Logical PC navigation and modified keys retain existing mappings; unavailable native NumLock state, VT52, extra keypad keys, broadcast mapping and other runtime platforms remain unqualified. A retained macOS run observes normal key/text/up and eighteen application-keypad events through the generated routed-event path into the real local child; hardware input remains separate. See \u0060docs/qa/terminfo/application-keypad.md\u0060.",
       "sourceLine": 124
     },
     {
@@ -1075,11 +1079,15 @@
       "feature": "Mouse reporting",
       "status": "\u26A0 Partial",
       "specOrNotes": "Click (\u0060?1000\u0060) and drag-motion (\u0060?1002\u0060) tracking, plus hover motion with no buttons held under any-event tracking (\u0060?1003\u0060, issue #269); SGR (\u0060?1006\u0060) and legacy X10 coordinate encodings both supported. Motion reports are coalesced to at most one per distinct terminal cell (tracked last-reported cell, reset on buffer attach/resize, alternate-screen switch, pointer exit, and \u0060?1002\u0060/\u0060?1003\u0060 mode changes observed between two motion events) so a stationary-but-jittery pointer or a TUI toggling tracking modes doesn\u0027t flood the PTY",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/X10MouseTrackingTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/X10MouseRoutingTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/TextClient/TextClientRendererTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/TerminalViewMouseMotionTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/LegacyMouseByteInputTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/LegacyMouseByteInputPtyTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/Client/ByteInputTransportTests.cs\u0060, \u0060tests/Ntilde.Platform.Tests/Ssh/SshByteInputForwardingTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/X10MouseTrackingTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/X10MouseRoutingTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/TextClient/TextClientRendererTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/TerminalViewMouseMotionTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/LegacyMouseByteInputTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/LegacyMouseByteInputPtyTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/Client/ByteInputTransportTests.cs\u0060, \u0060tests/Ntilde.Platform.Tests/Ssh/SshByteInputForwardingTests.cs\u0060; owned child: \u0060docs/qa/terminfo/2026-11-04-input-observations.md\u0060",
       "evidenceKinds": [
         "unit"
       ],
       "evidenceLinks": [
+        {
+          "path": "docs/qa/terminfo/2026-11-04-input-observations.md",
+          "exists": true
+        },
         {
           "path": "tests/Ntilde.App.Tests/Input/LegacyMouseByteInputPtyTests.cs",
           "exists": true
@@ -1120,7 +1128,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Input layer",
-      "knownDeviations": "\u0060?1001\u0060 (highlight tracking) and urxvt (\u0060?1015\u0060)/pixel-position (\u0060?1016\u0060) mouse coordinate encodings are not implemented; only X10 and SGR (\u0060?1006\u0060) coordinate encodings are supported. Coordinates are viewport-relative and 1-based on every report path (motion, press, release, wheel); the legacy X10 encoding clamps coordinates to its 223 ceiling rather than promoting the report to the SGR form the application never requested. Legacy high bytes use optional byte-preserving PTY/SSH/mux input; old text-only peers retain ASCII reports and refuse high bytes. A real POSIX raw child verifies six exact high-coordinate octets; DECSET 9 is separately tested as modifier-free three-button presses only; parser tracking selectors are mutually exclusive and any recognized tracking reset disables tracking. Mux text output resets before enabling its target. Native pointer events, Windows and foreign-console input decoding remain unqualified. See \u0060docs/qa/terminfo/mouse-byte-input.md\u0060 and \u0060docs/qa/terminfo/x10-tracking.md\u0060.",
+      "knownDeviations": "\u0060?1001\u0060 (highlight tracking) and urxvt (\u0060?1015\u0060)/pixel-position (\u0060?1016\u0060) mouse coordinate encodings are not implemented; only X10 and SGR (\u0060?1006\u0060) coordinate encodings are supported. Coordinates are viewport-relative and 1-based on every report path (motion, press, release, wheel); the legacy X10 encoding clamps coordinates to its 223 ceiling rather than promoting the report to the SGR form the application never requested. Legacy high bytes use optional byte-preserving PTY/SSH/mux input; old text-only peers retain ASCII reports and refuse high bytes. A real POSIX raw child verifies six exact high-coordinate octets; DECSET 9 is separately tested as modifier-free three-button presses only; parser tracking selectors are mutually exclusive and any recognized tracking reset disables tracking. Mux text output resets before enabling its target. A retained macOS run observes eighteen generated mouse cases with independent raw child bytes, mode controls, suppression and coalescing. Native pointer events, Windows and foreign-console input decoding remain unqualified. See \u0060docs/qa/terminfo/mouse-byte-input.md\u0060 and \u0060docs/qa/terminfo/x10-tracking.md\u0060.",
       "sourceLine": 127
     },
     {
@@ -1584,12 +1592,16 @@
       "feature": "Basic SGR (0,1,2,3,4,5,7,9,22,23,24,25,27,29)",
       "status": "\u26A0 Partial",
       "specOrNotes": "Bold/dim/italic/underline/blink/reverse/strike",
-      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/SgrAttributeTests.cs\u0060; render: \u0060tests/Ntilde.App.Tests/RenderTests/TextBlinkRenderTests.cs\u0060; clock/lifetime: \u0060tests/Ntilde.App.Tests/Core/TerminalViewTextBlinkTests.cs\u0060; VTTEST: sgr scenario",
+      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/SgrAttributeTests.cs\u0060; render: \u0060tests/Ntilde.App.Tests/RenderTests/TextBlinkRenderTests.cs\u0060; clock/lifetime: \u0060tests/Ntilde.App.Tests/Core/TerminalViewTextBlinkTests.cs\u0060; owned pixels: \u0060docs/qa/terminfo/2026-11-04-input-observations.md\u0060; VTTEST: sgr scenario",
       "evidenceKinds": [
         "external",
         "unit"
       ],
       "evidenceLinks": [
+        {
+          "path": "docs/qa/terminfo/2026-11-04-input-observations.md",
+          "exists": true
+        },
         {
           "path": "tests/Ntilde.App.Tests/Core/TerminalViewTextBlinkTests.cs",
           "exists": true
@@ -1606,7 +1618,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BRenderer",
-      "knownDeviations": "Underline style/color tracked separately. SGR 5 text blink uses an App-owned monotonic 530 ms half-period; blink-off/hidden ink preserves backgrounds and animated rows cannot reuse stale pictures. Deterministic phase and visible-view timer tests cover the shared draw path; an owned live pixel/timing qualification remains outstanding.",
+      "knownDeviations": "Underline style/color tracked separately. SGR 5 text blink uses an App-owned monotonic 530 ms half-period; blink-off/hidden ink preserves backgrounds and animated rows cannot reuse stale pictures. Deterministic phase and visible-view timer tests cover the shared draw path; the retained macOS offscreen run records 25 passing text-pixel comparisons, including explicit-RGB bold under JetBrains Mono NL 14. The historical bold negative stays frozen; desktop cadence, other fonts and runtime platforms remain unqualified.",
       "sourceLine": 148
     },
     {

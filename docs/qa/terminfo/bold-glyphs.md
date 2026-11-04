@@ -30,7 +30,9 @@ normal/bold/normal cache reuse.
 
 These deterministic tests use no desktop window. They are not a new owned
 runtime collection, screen photograph or font-weight qualification on every
-platform/font. A fresh independently retained owned run is still required
-before replacing the current appearance limitation in compatibility summaries.
+platform/font. The separately retained [new owned run](2026-11-04-input-observations.md) records
+all25 text-pixel comparisons passing under its recorded font/configuration.
+The old negative stays frozen; other fonts/platforms and desktop cadence need
+their own measurements.
 Basic SGR stays Partial. No historical observation, collector grade, source
 inventory or receipt is rewritten.

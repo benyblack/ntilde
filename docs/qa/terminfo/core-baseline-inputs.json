@@ -1,0 +1,1685 @@
+{
+  "schemaVersion": 1,
+  "title": "Ntilde Core TUI baseline evidence map",
+  "asOf": "2026-11-04",
+  "sourceAuditRevision": "9648f5171b2d383f4954e2bcf6170c2b92e3f98e",
+  "catalogue": {
+    "repository": "beorn/terminfo.dev",
+    "revision": "2ee594d336a6ac8030e6bc0d938f22361d5e7447",
+    "path": "content/features.json",
+    "gitBlobSha": "8a99c9fa03229845502f8099d1c62b11903bc80e",
+    "attribution": "Core names, sequences and probe requirements excerpted from terminfo.dev by Bjorn Stabell; subset extraction and Ntilde evidence annotations are changes.",
+    "license": "Creative Commons Attribution 4.0 International License\n\nCopyright (c) 2025-2026 Bjorn Stabell\n\nYou are free to:\n  Share — copy and redistribute the material in any medium or format\n  Adapt — remix, transform, and build upon the material for any purpose,\n          even commercially\n\nUnder the following terms:\n  Attribution — You must give appropriate credit, provide a link to the\n                license, and indicate if changes were made.\n\nNo additional restrictions — You may not apply legal terms or technological\nmeasures that legally restrict others from doing anything the license permits.\n\nFull license text: https://creativecommons.org/licenses/by/4.0/legalcode\n",
+    "manualEnvironmentIds": [
+      "device.env-term"
+    ]
+  },
+  "archive": {
+    "path": "docs/qa/terminfo/2026-11-04-reset-observations-evidence.zip",
+    "sha256": "d3d85d29f5d90c17ef8dfb62739d94b29ce46018b258534c0c038e9fa3a7992d",
+    "runId": "65c6c0bd9d1c10793a084e1e79f9f9eb",
+    "appBuildSource": "dc4e2c297d9bcbf89ab0d3d34b3dfacc2fdec4d6",
+    "suiteId": "16a690f34c0e",
+    "report": "docs/qa/terminfo/2026-11-04-reset-observations.md"
+  },
+  "rows": [
+    {
+      "id": "sgr.bold",
+      "name": "Bold (SGR 1)",
+      "slug": "1-bold",
+      "sequence": "ESC [ 1 m",
+      "requirement": "Send <code>\\x1b[1m</code>X, verify the cell at (0,0) has <code>bold=true</code>. Confirms the SGR 1 attribute is parsed and applied to the character cell.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs",
+        "tests/Ntilde.App.Tests/RenderTests/BoldGlyphPixelTests.cs",
+        "docs/qa/terminfo/bold-glyphs.md"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.bold"
+        },
+        {
+          "report": "pixel-observations.json",
+          "featureId": "rendition.bold"
+        }
+      ],
+      "acceptanceBoundary": "Live cell bold flag passed, but the same measured build failed the explicit-RGB bold glyph comparison. A later source fix has deterministic pixel regressions; a fresh owned appearance run is still required. The Core cell-flag criterion and glyph appearance are separate claims."
+    },
+    {
+      "id": "sgr.faint",
+      "name": "Faint/dim (SGR 2)",
+      "slug": "2-faint-dim",
+      "sequence": "ESC [ 2 m",
+      "requirement": "Send <code>\\x1b[2m</code>X, verify the cell at (0,0) has <code>dim=true</code>. Confirms SGR 2 (faint) is parsed and stored as a distinct attribute.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "rendition-observations.json",
+          "featureId": "sgr.faint"
+        },
+        {
+          "report": "pixel-observations.json",
+          "featureId": "rendition.faint"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "sgr.italic",
+      "name": "Italic (SGR 3)",
+      "slug": "3-italic",
+      "sequence": "ESC [ 3 m",
+      "requirement": "Send <code>\\x1b[3m</code>X, verify the cell at (0,0) has <code>italic=true</code>.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.italic"
+        },
+        {
+          "report": "pixel-observations.json",
+          "featureId": "rendition.italic"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "sgr.underline.single",
+      "name": "Underline (SGR 4)",
+      "slug": "4-underline",
+      "sequence": "ESC [ 4 m",
+      "requirement": "Send <code>\\x1b[4m</code>X, verify the cell has a truthy <code>underline</code> attribute.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.underline"
+        },
+        {
+          "report": "pixel-observations.json",
+          "featureId": "rendition.underline.1"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "sgr.inverse",
+      "name": "Inverse video (SGR 7)",
+      "slug": "7-inverse-video",
+      "sequence": "ESC [ 7 m",
+      "requirement": "Send <code>\\x1b[7m</code>X, verify <code>inverse=true</code> on the cell.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.inverse"
+        },
+        {
+          "report": "pixel-observations.json",
+          "featureId": "rendition.reverse"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "sgr.hidden",
+      "name": "Hidden/invisible (SGR 8)",
+      "slug": "8-hidden",
+      "sequence": "ESC [ 8 m",
+      "requirement": "Send <code>\\x1b[8m</code>X, verify <code>hidden=true</code> on the cell.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "rendition-observations.json",
+          "featureId": "sgr.hidden"
+        },
+        {
+          "report": "pixel-observations.json",
+          "featureId": "rendition.hidden"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "sgr.strikethrough",
+      "name": "Strikethrough (SGR 9)",
+      "slug": "9-strikethrough",
+      "sequence": "ESC [ 9 m",
+      "requirement": "Send <code>\\x1b[9m</code>X, verify <code>strikethrough=true</code> on the cell.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "rendition-observations.json",
+          "featureId": "sgr.strikethrough"
+        },
+        {
+          "report": "pixel-observations.json",
+          "featureId": "rendition.strike"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "sgr.fg.standard",
+      "name": "Standard fg colors (SGR 30-37)",
+      "slug": "30-37-standard-fg",
+      "sequence": "ESC [ 30–37 m",
+      "requirement": "Headless: compare neutral C with SGR 31 X and SGR 34 Y; X must differ from the measured baseline and Y from X to show named foreground-color selection. Theme RGB values vary; equality or missing values cannot verify foreground selection. TTY cursor advance does not verify color.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.fg.standard"
+        }
+      ],
+      "acceptanceBoundary": "Owned cells cover all eight foreground indices; the pixel palette/RGB case is broader supporting evidence, not per-index pixel parity with another terminal."
+    },
+    {
+      "id": "sgr.bg.standard",
+      "name": "Standard bg colors (SGR 40-47)",
+      "slug": "40-47-standard-bg",
+      "sequence": "ESC [ 40–47 m",
+      "requirement": "Headless: compare neutral C with SGR 41 X and SGR 44 Y; X must differ from the measured baseline and Y from X to show named background-color selection. Theme RGB values vary; equality or missing values cannot verify background selection. TTY cursor advance does not verify color.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.bg.standard"
+        }
+      ],
+      "acceptanceBoundary": "Owned cells cover all eight background indices; pixel/theme behavior remains a distinct qualification scope."
+    },
+    {
+      "id": "sgr.fg.default",
+      "name": "Default fg color (SGR 39)",
+      "slug": "39-default-fg",
+      "sequence": "ESC [ 39 m",
+      "requirement": "Headless: measure neutral C, SGR 31 colored X, then SGR 39 reset R; require X to differ from C and R to match the measured foreground default, which may be RGB or null. TTY cursor advance provides no foreground-color evidence.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.fg.default"
+        }
+      ],
+      "acceptanceBoundary": "Owned indexed/default flags are measured; the upstream neutral/colored/reset comparison uses a different fixture."
+    },
+    {
+      "id": "sgr.bg.default",
+      "name": "Default bg color (SGR 49)",
+      "slug": "49-default-bg",
+      "sequence": "ESC [ 49 m",
+      "requirement": "Headless: measure neutral C, SGR 42 colored X, then SGR 49 reset R; require X to differ from C and R to match the measured background default, which may be RGB or null. TTY cursor advance provides no background-color evidence.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.bg.default"
+        }
+      ],
+      "acceptanceBoundary": "Owned indexed/default flags are measured; the upstream neutral/colored/reset comparison uses a different fixture."
+    },
+    {
+      "id": "sgr.selective-reset.bold",
+      "name": "Reset bold/dim (SGR 22)",
+      "slug": "22-reset-bold",
+      "sequence": null,
+      "requirement": "In a headless backend, compare neutral C, bold/dim/italic X, and SGR 22 Y: bold and dim must clear while italic remains. Missing style readback makes the attempted reset check TEST FAILURE; a TTY cursor reply does not verify styling.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.selective-reset.bold"
+        },
+        {
+          "report": "rendition-observations.json",
+          "featureId": "sgr.selective-reset.faint"
+        }
+      ],
+      "acceptanceBoundary": "The archived mixed-style bold-reset and separate faint-reset cases pass. The upstream combined bold+dim+italic fixture is a different exact input; retain the separate cases rather than claiming that exact fixture ran."
+    },
+    {
+      "id": "sgr.selective-reset.underline",
+      "name": "Reset underline (SGR 24)",
+      "slug": "24-reset-underline",
+      "sequence": null,
+      "requirement": "In a headless backend, compare neutral C, bold/underlined X, and SGR 24 Y: underline must clear while bold remains. Missing setup readback makes the attempted reset check TEST FAILURE; a TTY cursor reply does not verify styling.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.selective-reset.underline"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "sgr.selective-reset.inverse",
+      "name": "Reset inverse (SGR 27)",
+      "slug": "27-reset-inverse",
+      "sequence": null,
+      "requirement": "In a headless backend, compare neutral C, bold/inverse X, and SGR 27 Y: inverse must clear while bold remains. Missing setup readback makes the attempted reset check TEST FAILURE; a TTY cursor reply does not verify styling.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.selective-reset.inverse"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "sgr.selective-reset.italic",
+      "name": "Reset italic (SGR 23)",
+      "slug": "23-reset-italic",
+      "sequence": null,
+      "requirement": "In a headless backend, compare neutral C, bold/italic X, and SGR 23 Y: italic must clear while bold remains. Missing setup readback makes the attempted reset check TEST FAILURE; a TTY cursor reply does not verify styling.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.selective-reset.italic"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "sgr.reset",
+      "name": "Reset all (SGR 0)",
+      "slug": "0-reset",
+      "sequence": "ESC [ 0 m",
+      "requirement": "In a headless backend, compare neutral C, bold/italic/underlined X, and SGR 0 Y: all three measured attributes must clear. Missing setup readback makes the attempted reset check TEST FAILURE; a TTY cursor reply does not verify styling.",
+      "category": "sgr",
+      "owner": "VT cell state; App/Rendering pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Sgr.cs",
+        "tests/Ntilde.App.Tests/SgrAttributeTests.cs",
+        "tests/Ntilde.VT.Tests/RuntimeColorTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.reset"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.hide",
+      "name": "Hide cursor (DECTCEM)",
+      "slug": "dectcem-hide-cursor",
+      "sequence": "ESC [ ? 25 l",
+      "requirement": "Headless: measure initial visibility, establish a shown control, check the hidden state and verify restoration. App: with a measured raster, compare the cursor cell raw-pixel digest across shown, hidden and restored frames. Support needs the hidden digest to differ and the restored digest to equal the control; if the attempted check cannot establish a visible control or restored frame, it is TEST FAILURE. DECRQM mode 25 reports the state when no raster is available. If neither a measured raster nor usable DECRQM replies are available, the result is TEST TODO: shown, hidden and restored frames are captured as evidence, and capture alone does not establish support.",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "cursor-observations.json",
+          "featureId": "cursor.visibility"
+        },
+        {
+          "report": "pixel-observations.json",
+          "featureId": "cursor.hidden"
+        }
+      ],
+      "acceptanceBoundary": "Both live visibility state and shown/hidden cursor pixels pass in the owned fixture. This differs from the frozen stock 3x6 fixture precondition."
+    },
+    {
+      "id": "cursor.move.absolute",
+      "name": "Cursor position (CUP)",
+      "slug": "cup-cursor-position",
+      "sequence": "ESC [ row ; col H",
+      "requirement": "Send <code>\\x1b[5;10H</code> (CUP), verify cursor is at row 4, col 9 (0-based). In app mode, query with DSR 6 and verify response <code>\\x1b[5;10R</code>.",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "cell-observations.json",
+          "featureId": "cursor.move.absolute"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.move.up",
+      "name": "Cursor up (CUU)",
+      "slug": "cuu-cursor-up",
+      "sequence": "ESC [ N A",
+      "requirement": "Move cursor down 5 then up 2 via <code>\\x1b[5B\\x1b[2A</code>, verify cursor row is 3 (0-based).",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.move.down",
+      "name": "Cursor down (CUD)",
+      "slug": "cud-cursor-down",
+      "sequence": "ESC [ N B",
+      "requirement": "Send <code>\\x1b[3B</code> (CUD 3), verify cursor row is 3 (0-based).",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.move.forward",
+      "name": "Cursor forward (CUF)",
+      "slug": "cuf-cursor-forward",
+      "sequence": "ESC [ N C",
+      "requirement": "Send <code>\\x1b[5C</code> (CUF 5), verify cursor column is 5 (0-based).",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.move.back",
+      "name": "Cursor back (CUB)",
+      "slug": "cub-cursor-back",
+      "sequence": "ESC [ N D",
+      "requirement": "Write \"ABC\" then send <code>\\x1b[2D</code> (CUB 2), verify cursor column is 1 (0-based).",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.move.home",
+      "name": "Cursor home",
+      "slug": "home",
+      "sequence": "ESC [ H",
+      "requirement": "Write \"ABC\" then send <code>\\x1b[H</code> (CUP no params), verify cursor is at (0, 0).",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.save-restore",
+      "name": "Save/restore cursor (DECSC)",
+      "slug": "decsc-save-restore-cursor",
+      "sequence": "ESC 7 / ESC 8",
+      "requirement": "Write \"AB\", save with <code>\\x1b7</code> (DECSC), move to (5,5), restore with <code>\\x1b8</code> (DECRC), verify cursor returned to col 2, row 0.",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "saved-observations.json",
+          "featureId": "saved.cursor.alternate-dec"
+        },
+        {
+          "report": "saved-observations.json",
+          "featureId": "saved.cursor.main-ansi"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.cup-boundaries",
+      "name": "CUP at screen boundaries",
+      "slug": "cup-screen-boundaries",
+      "sequence": null,
+      "requirement": "Send <code>\\x1b[999;999H</code>, verify cursor is at (rows-1, cols-1) — not beyond the screen boundaries.",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.cuu-past-top",
+      "name": "CUU stops at top",
+      "slug": "cuu-past-top",
+      "sequence": null,
+      "requirement": "Position at row 3, send <code>\\x1b[999A</code> (CUU with count 999), verify cursor stopped at row 0.",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.cud-past-bottom",
+      "name": "CUD stops at bottom",
+      "slug": "cud-past-bottom",
+      "sequence": null,
+      "requirement": "Position at row 0, send <code>\\x1b[999B</code> (CUD with count 999), verify cursor stopped at the last row.",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.cup-scroll-region",
+      "name": "CUP with DECOM",
+      "slug": "cup-decom-scroll-region",
+      "sequence": null,
+      "requirement": "Set DECSTBM 5;15, enable DECOM, send <code>\\x1b[1;1H</code>, verify cursor is at row 4 (0-based scroll region top). Disable DECOM and reset scroll region.",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "cell-observations.json",
+          "featureId": "cursor.cup-scroll-region"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.margins.origin-home"
+        }
+      ],
+      "acceptanceBoundary": "Owned physical cursor/cell observations resolve origin-relative positioning in a small region. They are not a rerun of the upstream 5;15 fixture."
+    },
+    {
+      "id": "cursor.vpa",
+      "name": "VPA vertical position absolute (CSI d)",
+      "slug": "vpa-vertical-position-absolute",
+      "sequence": "CSI Ps d",
+      "requirement": "Position cursor at row 3, col 5, then send <code>\\x1b[10d</code> (VPA row 10), verify cursor moved to row 9 (0-based) while column remained at 5.",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.cpl",
+      "name": "CPL cursor preceding line (CSI F)",
+      "slug": "cpl-cursor-preceding-line",
+      "sequence": "CSI Ps F",
+      "requirement": "Position cursor at row 5, col 10, send <code>\\x1b[2F</code> (CPL 2), verify cursor is at row 3, column 0.",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "cursor.hpa",
+      "name": "HPA horizontal position absolute (CSI `)",
+      "slug": "hpa-horizontal-position-absolute",
+      "sequence": "CSI Ps `",
+      "requirement": "Write \"ABCDEFGH\" then send <code>\\x1b[5`</code> (HPA col 5), verify cursor column is 4 (0-based).",
+      "category": "cursor",
+      "owner": "VT position/state; App cursor pixels",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/CursorPositioningCompletionTests.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "erase.line.right",
+      "name": "Erase to EOL (EL 0)",
+      "slug": "el-0-erase-to-eol",
+      "sequence": "ESC [ 0 K",
+      "requirement": "Write \"XXXXX\", move to col 1 via <code>\\x1b[1G</code>, send <code>\\x1b[K</code> (EL 0), verify cell at (0,0) is blank.",
+      "category": "erase",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "cell-observations.json",
+          "featureId": "erase.line.right"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "erase.line.left",
+      "name": "Erase to BOL (EL 1)",
+      "slug": "el-1-erase-to-bol",
+      "sequence": "ESC [ 1 K",
+      "requirement": "Write \"XXXXX\", move to col 3, send <code>\\x1b[1K</code> (EL 1), verify cell at (0,0) is blank.",
+      "category": "erase",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "cell-observations.json",
+          "featureId": "erase.line.left"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "erase.line.all",
+      "name": "Erase line (EL 2)",
+      "slug": "el-2-erase-line",
+      "sequence": "ESC [ 2 K",
+      "requirement": "Write \"XXXXX\", send <code>\\x1b[2K</code> (EL 2), verify cell at (0,0) is blank.",
+      "category": "erase",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "cell-observations.json",
+          "featureId": "erase.line.all"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "erase.screen.above",
+      "name": "Erase above (ED 1)",
+      "slug": "ed-1-erase-above",
+      "sequence": "ESC [ 1 J",
+      "requirement": "Write three lines, position cursor at row 3 col 2, send <code>\\x1b[1J</code> (ED 1), verify cell at (0,0) is blank.",
+      "category": "erase",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "erase-observations.json",
+          "featureId": "erase.display.1"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "erase.screen.all",
+      "name": "Erase screen (ED 2)",
+      "slug": "ed-2-erase-screen",
+      "sequence": "ESC [ 2 J",
+      "requirement": "Write three lines, send <code>\\x1b[2J</code> (ED 2), verify all visible content is cleared.",
+      "category": "erase",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "erase-observations.json",
+          "featureId": "erase.display.2"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "erase.screen.below",
+      "name": "Erase below (ED 0)",
+      "slug": "ed-0-erase-below",
+      "sequence": "ESC [ 0 J",
+      "requirement": "Write three lines, move home, send <code>\\x1b[J</code> (ED 0), verify line 2 content is gone.",
+      "category": "erase",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "erase-observations.json",
+          "featureId": "erase.display.default"
+        },
+        {
+          "report": "erase-observations.json",
+          "featureId": "erase.display.0"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "erase.screen.scrollback",
+      "name": "Erase scrollback (ED 3)",
+      "slug": "ed-3-erase-scrollback",
+      "sequence": "ESC [ 3 J",
+      "requirement": "Write 30 lines to fill scrollback, send <code>\\x1b[3J</code> (ED 3), verify total line count is at most screen height.",
+      "category": "erase",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "erase-observations.json",
+          "featureId": "erase.saved-lines"
+        }
+      ],
+      "acceptanceBoundary": "Owned ED3 clears the known bounded history and preserves viewport/cursor. This run uses a smaller history than the upstream 30-line fixture."
+    },
+    {
+      "id": "erase.character",
+      "name": "Erase character (ECH)",
+      "slug": "ech-erase-character",
+      "sequence": "ESC [ N X",
+      "requirement": "Write \"ABCDE\", move to col 1, send <code>\\x1b[3X</code> (ECH 3), verify first 3 cells are blank and \"D\" remains at col 3.",
+      "category": "erase",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "erase-observations.json",
+          "featureId": "erase.characters.default"
+        },
+        {
+          "report": "erase-observations.json",
+          "featureId": "erase.characters.0"
+        },
+        {
+          "report": "erase-observations.json",
+          "featureId": "erase.characters.3"
+        },
+        {
+          "report": "erase-observations.json",
+          "featureId": "erase.characters.999"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "erase.el-with-attrs",
+      "name": "EL erases with bg color",
+      "slug": "el-erase-with-bg-color",
+      "sequence": null,
+      "requirement": "Set green background with <code>\\x1b[42m</code>, write text, move to start of line, send <code>\\x1b[K</code> (EL 0), verify erased cells have the green background color.",
+      "category": "erase",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The cell suite proves EL text erasure, but does not include erased-cell background attributes. Owned colored ED/ECH cases do not prove this EL requirement. Add a controlled green-background EL case with cell-attribute readback."
+    },
+    {
+      "id": "erase.ed-scroll-region",
+      "name": "ED at scroll region boundary",
+      "slug": "ed-scroll-region-boundary",
+      "sequence": null,
+      "requirement": "Write \"KEEP_THIS\" on row 0, set scroll region 3;10, move cursor inside region, send <code>\\x1b[J</code> (ED 0), verify row 0 still contains \"KEEP_THIS\".",
+      "category": "erase",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.VT.Tests/EraseInDisplayTests.cs",
+        "tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "erase-observations.json",
+          "featureId": "erase.display.0.margins"
+        }
+      ],
+      "acceptanceBoundary": "Owned ED0 with margins retains outside cells; the fixture differs from KEEP_THIS at row zero and margins 3;10."
+    },
+    {
+      "id": "modes.alt-screen.enter",
+      "name": "Enter alt screen (DECSET 1049)",
+      "slug": "decset-1049-alt-screen-enter",
+      "sequence": "ESC [ ? 1049 h",
+      "requirement": "App probe: query DECRPM for private mode 1049 with <code>CSI ? 1049 $ p</code>. Expected: DECRPM mode 1049 can be set.",
+      "category": "modes",
+      "owner": "VT; App presentation",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "src/Ntilde.VT/ModeState.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs",
+        "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs",
+        "tests/Ntilde.App.Tests/AlternateScreenTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "saved-observations.json",
+          "featureId": "saved.alternate.1049"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "modes.alt-screen.exit",
+      "name": "Exit alt screen (DECRST 1049)",
+      "slug": "decrst-1049-alt-screen-exit",
+      "sequence": "ESC [ ? 1049 l",
+      "requirement": "Enter then exit alt screen via <code>\\x1b[?1049h</code> / <code>\\x1b[?1049l</code>, verify <code>altScreen</code> mode is off.",
+      "category": "modes",
+      "owner": "VT; App presentation",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "src/Ntilde.VT/ModeState.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs",
+        "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs",
+        "tests/Ntilde.App.Tests/AlternateScreenTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "saved-observations.json",
+          "featureId": "saved.alternate.1049"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "modes.reverse-video",
+      "name": "Reverse video (DECSCNM)",
+      "slug": "decscnm-reverse-video",
+      "sequence": "ESC [ ? 5 h",
+      "requirement": "Library mode-state criterion: DECSET private mode 5, query DECRPM and read getMode, then DECRST, query and read again. Supported requires Ps 1 after set, Ps 2 after reset and getMode true then false. Ps 0, 2 or 4 after DECSET is Unsupported. No reply stays review TEST TODO; null or disagreeing getMode and every other reply pair, including Ps 3, stay TEST TODO. presentation (inverted frame) unmeasured; protocol measured. App protocol criterion: snapshot DECRPM mode 5. Ps 1 or 3 is Supported without mutation; Ps 0 or 4 is Unsupported without mutation. Ps 2 sends DECSET, queries again, then restores DECRST: Ps 1 or 3 is Supported; still Ps 2 is Unsupported (recognized but DECSET refused (mode kept reset)). No reply is TEST TODO: no DECRPM reply. Requires existing disposable-terminal authority. presentation (tearing, scroll cadence, inverted frame) unmeasured; protocol measured",
+      "category": "modes",
+      "owner": "VT; App presentation",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "src/Ntilde.VT/ModeState.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs",
+        "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "Private mode 5 is unrecognized in the retained reply and is absent from the audited tracked-mode cases. SGR 7 inverse pixels do not establish DECSCNM. Source limitation; no automatic stock regrade."
+    },
+    {
+      "id": "modes.auto-wrap",
+      "name": "Auto-wrap (DECAWM)",
+      "slug": "decawm-auto-wrap",
+      "sequence": "ESC [ ? 7 h",
+      "requirement": "App probe: query DECRPM for private mode 7. A set/reset reply establishes mode recognition only; unknown or no reply from the attempted query is TEST FAILURE. This does not measure line wrapping (the headless probe measures wrapping separately).",
+      "category": "modes",
+      "owner": "VT; App presentation",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "src/Ntilde.VT/ModeState.cs",
+        "tests/Ntilde.App.Tests/DecModeTests.cs",
+        "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The stock positive is mode recognition. Keep actual wrap behavior separate; existing PendingWrap tests are source references, not a fresh owned DECAWM on/off experiment."
+    },
+    {
+      "id": "scrollback.accumulate",
+      "name": "Scrollback accumulates",
+      "slug": "accumulates",
+      "sequence": null,
+      "requirement": "Write 30 lines (exceeding the 24-row screen), verify total line count exceeds 24.",
+      "category": "scrollback",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.VT.Tests/ScrollbackSideTableTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.accumulate.lf"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.accumulate.crlf"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "scrollback.total-lines",
+      "name": "Total line count",
+      "slug": "total-lines",
+      "sequence": null,
+      "requirement": "Write 10 more lines than the measured screen height and verify retained history grows by at least those 10 lines. Growth of 1 to 9 lines is Unsupported. No change in the count is TEST TODO, because nothing in the run shows that the reader counts history.",
+      "category": "scrollback",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.VT.Tests/ScrollbackSideTableTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.accumulate.lf"
+        }
+      ],
+      "acceptanceBoundary": "The owned fixture observes exact ordered history and count growth, but only up to four rows. It does not satisfy the upstream current criterion requiring at least ten extra retained lines."
+    },
+    {
+      "id": "scrollback.scroll-up",
+      "name": "Scroll up (SU)",
+      "slug": "su-scroll-up",
+      "sequence": "ESC [ N S",
+      "requirement": "Write \"TOP\" on row 1 then fill the screen, send <code>\\x1b[S</code> (SU 1), verify row 0 no longer starts with \"T\".",
+      "category": "scrollback",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.VT.Tests/ScrollbackSideTableTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.scroll-up.main.default"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.scroll-up.main.2"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.scroll-up.main.margins"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "scrollback.scroll-down",
+      "name": "Scroll down (SD)",
+      "slug": "sd-scroll-down",
+      "sequence": "ESC [ N T",
+      "requirement": "Write 3 lines, send <code>\\x1b[T</code> (SD 1), verify row 0 is now blank (content shifted down).",
+      "category": "scrollback",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.VT.Tests/ScrollbackSideTableTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.scroll-down.main.default"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.scroll-down.main.2"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.scroll-down.main.margins"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "scrollback.reverse-index",
+      "name": "Reverse index (RI)",
+      "slug": "ri-reverse-index",
+      "sequence": "ESC M",
+      "requirement": "Write 3 lines, move to row 0, send <code>\\x1bM</code> (RI), verify row 0 is now blank.",
+      "category": "scrollback",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.VT.Tests/ScrollbackSideTableTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.reverse-index.main.top"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.reverse-index.margins.middle"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "scrollback.set-region",
+      "name": "Scroll region (DECSTBM)",
+      "slug": "decstbm-scroll-region",
+      "sequence": "ESC [ top ; bottom r",
+      "requirement": "Send <code>\\x1b[5;10r</code> (DECSTBM), verify cursor moves to home position (0,0). Then reset with <code>\\x1b[r</code>.",
+      "category": "scrollback",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.VT.Tests/ScrollbackSideTableTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.margins.set"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.margins.origin-home"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "scrollback.alt-screen",
+      "name": "Alt screen separate scrollback",
+      "slug": "alt-screen-separate-scrollback",
+      "sequence": null,
+      "requirement": "Enter and leave the alternate screen, then inspect cursor position. This cannot establish independent retained scrollback without history readback, so the cursor-position attempt is TEST FAILURE for the scrollback claim without history readback.",
+      "category": "scrollback",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.VT.Tests/ScrollbackSideTableTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.scroll-up.alt.default"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.scroll-up.alt.margins"
+        }
+      ],
+      "acceptanceBoundary": "Owned alternate scrolling and 1049 entry/exit retain main history. These strengthen the cursor-only stock attempt without changing its frozen grade."
+    },
+    {
+      "id": "scrollback.decstbm",
+      "name": "DECSTBM constrains scrolling",
+      "slug": "decstbm-constrained-scrolling",
+      "sequence": null,
+      "requirement": "Write \"FIXED_TOP\" on row 0, set DECSTBM 3;10, move inside region, write enough lines to trigger scrolling, verify row 0 still contains \"FIXED_TOP\".",
+      "category": "scrollback",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.VT.Tests/ScrollbackSideTableTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.scroll-up.main.margins"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.reverse-index.margins.top"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "scrollback.decstbm-reset",
+      "name": "DECSTBM reset to full screen",
+      "slug": "decstbm-reset-full-screen",
+      "sequence": null,
+      "requirement": "Set DECSTBM 5;10, then send <code>\\x1b[r</code> (no params), write 30 lines, verify full-screen scrolling works (total lines > screen height).",
+      "category": "scrollback",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Csi.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.VT.Tests/ScrollbackSideTableTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.margins.default"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.margins.zero"
+        },
+        {
+          "report": "history-observations.json",
+          "featureId": "history.accumulate.lf"
+        }
+      ],
+      "acceptanceBoundary": "Owned cases separately observe full-margin reset and bounded history accumulation. Add one joined reset-plus-overflow case for the upstream 30-line criterion."
+    },
+    {
+      "id": "text.basic",
+      "name": "Basic text rendering",
+      "slug": "basic-text-rendering",
+      "sequence": null,
+      "requirement": "Write \"Hello\", verify the text buffer contains \"Hello\". In app mode, verify cursor advanced to column 6.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "cell-observations.json",
+          "featureId": "text.basic"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "text.wrap",
+      "name": "Text wraps at width",
+      "slug": "wrap-at-width",
+      "sequence": null,
+      "requirement": "Write 85 characters, verify text wrapped and a character appears on row 1.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "Stock cursor wrap is observed, while exact row-one content and DECAWM-off behavior need separately linked cell evidence."
+    },
+    {
+      "id": "text.wide.cjk",
+      "name": "CJK wide chars (2 cols)",
+      "slug": "cjk-wide-chars",
+      "sequence": null,
+      "requirement": "Write U+4E2D (CJK character), verify the cell has <code>wide=true</code> (occupies 2 columns).",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "rendition-observations.json",
+          "featureId": "charsets.utf8.wide"
+        }
+      ],
+      "acceptanceBoundary": "Stock cursor width and owned Unicode wide-cell facts have different methods. The retained rendition case is a sampled wide grapheme, not all CJK/UTF-8 byte forms."
+    },
+    {
+      "id": "text.tab",
+      "name": "Tab stops",
+      "slug": "ht-tab-stops",
+      "sequence": null,
+      "requirement": "Write tab then \"X\", verify X appears at column 8 (after the default 8-column tab stop).",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "Stock default-tab positions passed. Stored X placement is distinct from a cursor-only response; exact cell readback remains a separate variant."
+    },
+    {
+      "id": "unicode.tab-stops",
+      "name": "Tab Stops (HT)",
+      "slug": "tab-stops",
+      "sequence": null,
+      "requirement": "Send a tab character, verify cursor moves to column 8.",
+      "category": "unicode",
+      "owner": "VT",
+      "sourceReferences": [
+        "tests/Ntilde.App.Tests/TabSystemTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The stock tab-stop behavior is measured. This overlaps text.tab but is a distinct upstream feature identity and is counted once under each declared identity."
+    },
+    {
+      "id": "text.cr",
+      "name": "Carriage return",
+      "slug": "cr-carriage-return",
+      "sequence": null,
+      "requirement": "Write \"AB\\rC\", verify C overwrote A at col 0 while B remains at col 1.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The stock CPR witness confirms cursor movement only; it does not prove both C overwrote A and B survived. Add paired cell reads of AB\\rC for the exact content claim."
+    },
+    {
+      "id": "text.newline",
+      "name": "Line feed",
+      "slug": "lf-line-feed",
+      "sequence": null,
+      "requirement": "Headless: write \"A\\r\\nB\" and verify A and B on consecutive rows. App: establish row 3, column 5, write LF, and measure advancement to row 4; retain the final column without requiring it to stay unchanged.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The stock result permits TTY LF-to-CRLF translation. Owned history experiments separately used parent-verified -opost; do not merge these input-path claims."
+    },
+    {
+      "id": "text.backspace",
+      "name": "Backspace (BS)",
+      "slug": "bs-backspace",
+      "sequence": null,
+      "requirement": "Write \"AB\\x08C\", verify backspace moved cursor back so C overwrote B at col 1, while A remains at col 0.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The stock CPR witness confirms position only. Add paired cell reads of AB\\bC to prove both replacement and the unaffected A."
+    },
+    {
+      "id": "text.index",
+      "name": "Index (IND)",
+      "slug": "ind-index",
+      "sequence": null,
+      "requirement": "Write \"A\" then send <code>\\x1bD</code> (IND), verify cursor moved down to row 1.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.accumulate.index"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "text.next-line",
+      "name": "Next line (NEL)",
+      "slug": "nel-next-line",
+      "sequence": null,
+      "requirement": "Write \"ABC\" then send <code>\\x1bE</code> (NEL), verify cursor is at row 1, col 0.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "text.reverse-index-scroll",
+      "name": "Reverse Index at Scroll Top",
+      "slug": "reverse-index-scroll",
+      "sequence": null,
+      "requirement": "Set scroll region, write text at top row, send Reverse Index (<code>ESC M</code>), verify content shifted down by one line.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "history-observations.json",
+          "featureId": "history.reverse-index.margins.top"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "text.overwrite",
+      "name": "Overwrite at cursor",
+      "slug": "overwrite-at-cursor",
+      "sequence": null,
+      "requirement": "Write \"AB\", move to col 1 via <code>\\x1b[1G</code>, write \"C\", verify cell (0,0) is \"C\" (overwrote \"A\").",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "cell-observations.json",
+          "featureId": "text.overwrite"
+        }
+      ],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "text.hts",
+      "name": "HTS set tab stop (ESC H)",
+      "slug": "hts-set-tab-stop",
+      "sequence": "ESC H",
+      "requirement": "Clear all tab stops with <code>\\x1b[3g</code>, position cursor at column 5 and send <code>\\x1bH</code> (HTS), return to column 0 and send a tab — verify cursor advances to column 5.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "text.tbc",
+      "name": "TBC clear tab stop (CSI g)",
+      "slug": "tbc-clear-tab-stop",
+      "sequence": "CSI Ps g",
+      "requirement": "In a disposable fixture at least 34 columns wide, measure stops at columns 9, 17 and 25, clear all stops with <code>CSI 3 g</code>, then measure HT from column 1: it must reach the right margin. Reaching an old stop or staying at column 1 is unsupported. If the fixture prerequisite is absent before execution, status is TEST TODO; if an attempted setup cannot establish seeded stops, or the cursor reply is missing or ambiguous, status is TEST FAILURE. Restore conventional eight-column stops afterward.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "text.cht",
+      "name": "CHT forward tab (CSI I)",
+      "slug": "cht-forward-tab",
+      "sequence": "CSI Ps I",
+      "requirement": "Install known stops at columns 9 and 17 in a disposable fixture, then send <code>CSI 2 I</code> from column 1 and measure column 17. Restore conventional stops afterward.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "text.cbt",
+      "name": "CBT backward tab (CSI Z)",
+      "slug": "cbt-backward-tab",
+      "sequence": "CSI Ps Z",
+      "requirement": "Install known stops at columns 9 and 17 in a disposable fixture, position at column 21, then send <code>CSI Z</code> and measure column 17. Restore conventional stops afterward.",
+      "category": "text",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/TabSystemTests.cs",
+        "tests/Ntilde.App.Tests/ScrollAndWrapCorrectnessTests.cs",
+        "tests/Ntilde.App.Tests/PendingWrapTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "The retained case/query proves only its recorded method and fixture. Replay the pinned upstream requirement in a matched disposable context for a common grade; font/platform completeness is not implied."
+    },
+    {
+      "id": "reset.sgr",
+      "name": "SGR reset clears attributes",
+      "slug": "sgr-0-reset-clears-attributes",
+      "sequence": null,
+      "requirement": "Apply bold+italic+inverse via <code>\\x1b[1;3;7m</code>X then send <code>\\x1b[0m</code>Y, verify the second cell has all attributes cleared.",
+      "category": "reset",
+      "owner": "VT; App lifecycle",
+      "sourceReferences": [
+        "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs",
+        "tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "sgr-observations.json",
+          "featureId": "sgr.reset"
+        }
+      ],
+      "acceptanceBoundary": "The owned mixed-style SGR 0 case clears all tracked flags/default indices. Its seeded mixture differs from the upstream bold+italic+inverse X/Y fixture."
+    },
+    {
+      "id": "reset.ris",
+      "name": "Full reset (RIS)",
+      "slug": "ris-full-reset",
+      "sequence": "ESC c",
+      "requirement": "Write text, send <code>\\x1bc</code> (RIS), verify cursor reset to (0,0).",
+      "category": "reset",
+      "owner": "VT; App lifecycle",
+      "sourceReferences": [
+        "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs",
+        "tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "saved-observations.json",
+          "featureId": "saved.reset.full-both-banks"
+        }
+      ],
+      "acceptanceBoundary": "The latest owned both-bank reset passes after a VT fix. The older reset failure remains historical and unchanged; broader power-on defaults are outside the fixture."
+    },
+    {
+      "id": "reset.soft",
+      "name": "Soft reset (DECSTR)",
+      "slug": "decstr-soft-reset",
+      "sequence": "ESC [ ! p",
+      "requirement": "Enable app cursor mode (<code>\\x1b[?1h</code>), write text, send <code>\\x1b[!p</code> (DECSTR), verify <code>applicationCursor</code> mode is off.",
+      "category": "reset",
+      "owner": "VT; App lifecycle",
+      "sourceReferences": [
+        "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs",
+        "tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "saved-observations.json",
+          "featureId": "saved.reset.soft-active-bank"
+        }
+      ],
+      "acceptanceBoundary": "Owned active saved-bank/default-pen restoration passed. Exact application-cursor disablement also has source regressions; it is not inferred solely from saved-bank restoration."
+    },
+    {
+      "id": "reset.method",
+      "name": "Backend reset() method",
+      "slug": "backend-reset-method",
+      "sequence": null,
+      "requirement": "Write text, call backend <code>reset()</code> method, verify cursor returned to (0,0). Specific to the Termless testing framework.",
+      "category": "reset",
+      "owner": "VT; App lifecycle",
+      "sourceReferences": [
+        "tests/Ntilde.VT.Tests/SoftResetAndCursorSaveTests.cs",
+        "tests/Ntilde.VT.Tests/SavedCursorReplayTests.cs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "This row requires the Termless backend reset() API. A desktop app has no such method endpoint; RIS is a separate row and cannot substitute for it."
+    },
+    {
+      "id": "charsets.dec-special",
+      "name": "DEC Special Graphics",
+      "slug": "dec-special-graphics",
+      "sequence": null,
+      "requirement": "Headless: qualify ASCII controls and require exactly U+2500 after DEC Special Graphics designation. The app cursor reply does not establish glyph rendering.",
+      "category": "charsets",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "rendition-observations.json",
+          "featureId": "charsets.dec-special"
+        }
+      ],
+      "acceptanceBoundary": "Owned stored codepoints are observed directly. The glyphs' font-pixel appearance is a separate scope."
+    },
+    {
+      "id": "charsets.utf8",
+      "name": "UTF-8 mode",
+      "slug": "utf8-mode",
+      "sequence": null,
+      "requirement": "Headless: retain measured ASCII controls and require the sampled characters é and 世 in their target cells. This samples Unicode cell handling; it does not cover all UTF-8 byte forms or app-rendered pixels.",
+      "category": "charsets",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "rendition-observations.json",
+          "featureId": "charsets.utf8.bmp"
+        },
+        {
+          "report": "rendition-observations.json",
+          "featureId": "charsets.utf8.wide"
+        }
+      ],
+      "acceptanceBoundary": "Owned stored Unicode samples pass, including BMP and a wide grapheme. This does not qualify every raw UTF-8 byte form or every font/platform."
+    },
+    {
+      "id": "charsets.g0-g1-switching",
+      "name": "G0/G1 character set switching",
+      "slug": "g0-g1-charset-switching",
+      "sequence": null,
+      "requirement": "Headless: designate G0 as ASCII and G1 as DEC Special Graphics, then use SI/SO to require l, U+250C, l across three target cells with separate ASCII controls. The app callback does not verify G1 switching.",
+      "category": "charsets",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "rendition-observations.json",
+          "featureId": "charsets.g0-g1-switching"
+        }
+      ],
+      "acceptanceBoundary": "Owned SI/SO/G0/G1 stored-codepoint witnesses pass. Use exact upstream ASCII/DEC/ASCII controls before assigning a common collector grade."
+    },
+    {
+      "id": "charsets.dec-line-drawing",
+      "name": "DEC line drawing character set",
+      "slug": "dec-line-drawing-chars",
+      "sequence": null,
+      "requirement": "Headless: qualify the ASCII seed and unchanged control, then require exactly ┘┐┌└─│ for jklmqx under DEC Special Graphics. Arbitrary non-ASCII or blank cells do not pass; app pixels remain unmeasured.",
+      "category": "charsets",
+      "owner": "VT",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.cs",
+        "tests/Ntilde.App.Tests/DecSpecialGraphicsTests.cs"
+      ],
+      "ownedReferences": [
+        {
+          "report": "rendition-observations.json",
+          "featureId": "charsets.dec-line-drawing"
+        }
+      ],
+      "acceptanceBoundary": "Owned stored line-drawing codepoints pass; font pixels and the exact upstream jklmqx fixture are separate claims."
+    },
+    {
+      "id": "device.env-term",
+      "name": "TERM env variable",
+      "slug": "env-term",
+      "sequence": "$TERM (environment variable)",
+      "requirement": "Manual verification required — no automated probe available.",
+      "category": "device",
+      "owner": "Native PTY/App environment",
+      "sourceReferences": [
+        "src/Ntilde.App/native/src/lib.rs"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "Manual/ungraded in the pinned current scoring rule. Native spawn source sets xterm-256color, but no measured child environment is present in this stock run."
+    },
+    {
+      "id": "extensions.osc1-icon",
+      "name": "Icon name (OSC 1)",
+      "slug": "osc-1-icon-name",
+      "sequence": "ESC ] 1 ; Pt BEL",
+      "requirement": "Any headless title change is diagnostic only: title text does not establish icon-name behavior. No icon-name readback is available, so the attempted app check is TEST FAILURE for icon behavior.",
+      "category": "extensions",
+      "owner": "VT callback; App presentation",
+      "sourceReferences": [
+        "src/Ntilde.VT/AnsiParser.Osc.cs",
+        "docs/qa/terminfo/remaining-protocol-variants.md"
+      ],
+      "ownedReferences": [],
+      "acceptanceBoundary": "No independent icon-name state/readback is implemented by the audited App/VT path. OSC 0/2 title observations do not establish OSC 1 icon behavior."
+    }
+  ]
+}

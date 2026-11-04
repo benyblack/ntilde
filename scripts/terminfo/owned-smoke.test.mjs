@@ -191,6 +191,10 @@ function assertRetainedCollector(output) {
         ['resizeCasesSourceSha256', 'terminfo/resize-cases.mjs'], ['resizeCaptureSourceSha256', 'terminfo/resize-capture.mjs'],
         ['resizeSuiteSourceSha256', 'terminfo/resize.mjs'], ['resizeActionSourceSha256', 'terminfo/resize-action.mjs'],
         ['resizeReceiptSourceSha256', 'terminfo/resize-receipt.mjs'],
+        ['inputBytesSourceSha256', 'terminfo/input-bytes.mjs'], ['inputCasesSourceSha256', 'terminfo/input-cases.mjs'],
+        ['inputRequestSourceSha256', 'terminfo/input-request.mjs'], ['inputActionSourceSha256', 'terminfo/input-action.mjs'],
+        ['inputStateSourceSha256', 'terminfo/input-state.mjs'], ['inputCaptureSourceSha256', 'terminfo/input-capture.mjs'],
+        ['inputCollectorSourceSha256', 'terminfo/input-collector.mjs'], ['inputReceiptSourceSha256', 'terminfo/input-receipt.mjs'],
         ['receiptSourceSha256', 'terminfo/receipt.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
@@ -417,7 +421,21 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 8);
+        assert.equal(receipt.schemaVersion, 9);
+        assert.equal(receipt.inputEvidence.sha256, digest('input-observations.json'));
+        assert.deepEqual(receipt.inputEvidence.counts, { passed: 39 });
+        const input = JSON.parse(readFileSync(join(output, 'input-observations.json')));
+        assert.equal(input.runId, receipt.runId);
+        assert.equal(input.snapshots.length, 81); assert.equal(input.actions.length, 39);
+        assert.ok(input.observations.every(item => item.result === 'passed' && item.actualHex === item.expectedHex));
+        assert.deepEqual(input.snapshots, readFileSync(join(output, 'input-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+        assert.deepEqual(input.actions, readFileSync(join(output, 'input-actions.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+        assert.deepEqual(input.snapshots[0].screen, input.snapshots.at(-1).screen);
+        assert.equal(input.snapshots[0].paneId, report.snapshots[0].paneId);
+        assert.ok(input.actions.every(item => item.observed.postVerified && item.observed.app.eventDispatched && item.observed.app.observationAvailable));
+        assert.deepEqual(input.seal, proof.proofs[0].input.seal);
+        assert.equal(input.seal.failed, false); assert.equal(input.seal.disposed, true); assert.equal(input.seal.attempts, 80);
+        assert.deepEqual(proof.proofs[0].input.actions, input.actions);
         assert.equal(receipt.metadataEvidence.sha256, digest('metadata-observations.json'));
         const metadata = JSON.parse(readFileSync(join(output, 'metadata-observations.json')));
         assert.equal(metadata.snapshots.length, 46); assert.equal(metadata.observations.length, 13);
@@ -439,7 +457,7 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         const ris = saved.observations.find(item => item.featureId === 'saved.reset.full-both-banks');
         assert.ok(saved.observations.filter(item => item !== ris).every(item => item.result === 'passed'));
         assert.ok(ris.assertions.filter(item => item.stageId !== 'full-reset').every(item => item.passed));
-        assert.notEqual(ris.result, 'inconclusive'); // The known RIS cell-clearing negative remains visible for #773.
+        assert.notEqual(ris.result, 'inconclusive'); // Check this live outcome explicitly; frozen publications retain the earlier RIS negative.
         const savedCounts = saved.observations.reduce((counts, item) => ({ ...counts, [item.result]: (counts[item.result] ?? 0) + 1 }), {});
         assert.deepEqual(receipt.savedEvidence.counts, savedCounts);
         assert.equal(saved.snapshots[0].paneId, report.snapshots[0].paneId);

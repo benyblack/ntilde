@@ -5,6 +5,12 @@ observations. Use it to find compatibility gaps and small reproductions. This is
 a manual QA tool, outside the CI lanes. Ntilde's capability contract, parser
 tests, replay tests and rendering tests remain the release evidence.
 
+The [80-row Core TUI evidence map](terminfo/2026-11-04-core-baseline.md)
+reconciles the frozen stock results, retained owned variants, source/test references
+and remaining acceptance boundaries. Its machine-readable companion preserves
+original grades and case pointers; additional evidence is not a combined compliance
+score. Reproduce it offline with `python3 scripts/terminfo-core-report.py --check`.
+
 ## Run
 
 Requirements: Node 24+, an npm installation (or a prepared collector cache),
@@ -550,3 +556,13 @@ It adds 39 declared framework events with independent raw local-child bytes,
 pre-action mode controls, paired full-state reads and strict restoration. Source
 policy v2/schema 9 binds a fixed 60-file graph and all 14 suites. This implementation
 adds no runtime result or frozen-grade change; historical v8 scopes remain fixed.
+
+## Retained generated-input measurement
+
+The [completed v9 input run](terminfo/2026-11-04-input-observations.md) retains 39
+passing generated-event cases,81 paired frames and 80 raw child-input challenges,
+with all 14 receipt bindings and 60 source/input files. Both the initial request-
+order failure and the corrected complete collection are archived separately.
+Its25 passing text-pixel comparisons are a new observation; historical negative
+files and the original stock78/0/177 baseline remain frozen. Hardware/native
+keyboard or pointer input, remote/mux and Windows/Linux runtime are not qualified.
