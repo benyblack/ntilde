@@ -67,15 +67,20 @@ public sealed class ReplayRequiredPolicyIsolationTests
             var model = (ReplayViewModel)window.DataContext!;
             await model.Initialization;
             bool attempted = false;
+            Exception? replacementError = null;
             window.BeforeSeekRestoreForTest = () =>
             {
                 attempted = true;
-                try { File.Move(replacement, path, overwrite: true); }
-                catch (IOException ex) when (OperatingSystem.IsWindows() && (ex.HResult & 0xffff) == 32)
+                try
                 {
-                    // Windows may enforce the held reader's existing no-delete share policy.
-                    Assert.DoesNotContain("required_sixel_raster", File.ReadAllText(path));
+                    try { File.Move(replacement, path, overwrite: true); }
+                    catch (IOException ex) when (OperatingSystem.IsWindows() && (ex.HResult & 0xffff) == 32)
+                    {
+                        // Windows may enforce the held reader's existing no-delete share policy.
+                        Assert.DoesNotContain("required_sixel_raster", File.ReadAllText(path));
+                    }
                 }
+                catch (Exception ex) { replacementError = ex; throw; }
             };
             var buffer = Field<TerminalBuffer>(window, "_buffer");
             if (playback)
@@ -86,6 +91,7 @@ public sealed class ReplayRequiredPolicyIsolationTests
             }
             else await Invoke(window, "PerformSeek", 100L, CancellationToken.None);
             Assert.True(attempted);
+            Assert.True(replacementError is null, $"Replacement control failed before restoration: {replacementError?.GetType().Name}, HResult=0x{replacementError?.HResult:X8}: {replacementError}");
             Assert.Equal((20, 8), (buffer.Cols, buffer.Rows));
             Assert.Equal(checkpoint ? "checkpointO" : "O", BufferSnapshot.Capture(buffer).Lines[0]);
         }
