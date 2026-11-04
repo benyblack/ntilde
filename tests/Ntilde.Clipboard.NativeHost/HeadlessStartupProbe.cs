@@ -112,8 +112,9 @@ internal static class HeadlessStartupProbe
             text.SelectionStart = 0; text.SelectionEnd = 12;
             text.Copy(); Dispatcher.UIThread.RunJobs();
             Console.WriteLine(ResultPrefix + (guarded ? "private" : "ordinary") + "|" + recorder.Resolutions + "|" + recorder.Writes);
-            return guarded ? (recorder.Resolutions == 0 && recorder.Writes == 0 ? 0 : 1)
-                : (recorder.Resolutions == 1 && recorder.Writes == 1 ? 0 : 1);
+            int expected = guarded ? 0 : 1;
+            bool matches = recorder.Resolutions == expected && recorder.Writes == expected;
+            return matches ? 0 : 1;
         }
         finally { window.Close(); }
     }
