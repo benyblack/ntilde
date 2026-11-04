@@ -57,14 +57,16 @@ namespace Ntilde.Rendering
             public readonly float Size;
             public readonly float Scale;
             public readonly byte LuminanceClass;
+            public readonly bool Embolden;
 
-            public GlyphKey(string text, SKTypeface typeface, float size, float scale, byte luminanceClass)
+            public GlyphKey(string text, SKTypeface typeface, float size, float scale, byte luminanceClass, bool embolden)
             {
                 Text = text;
                 Typeface = typeface;
                 Size = size;
                 Scale = scale;
                 LuminanceClass = luminanceClass;
+                Embolden = embolden;
             }
 
             // Size and Scale compare by bit pattern: a cache key wants identity, and a tolerance
@@ -75,7 +77,7 @@ namespace Ntilde.Rendering
                        Typeface == other.Typeface &&
                        BitConverter.SingleToInt32Bits(Size) == BitConverter.SingleToInt32Bits(other.Size) &&
                        BitConverter.SingleToInt32Bits(Scale) == BitConverter.SingleToInt32Bits(other.Scale) &&
-                       LuminanceClass == other.LuminanceClass;
+                       LuminanceClass == other.LuminanceClass && Embolden == other.Embolden;
             }
 
             public override bool Equals(object? obj) => obj is GlyphKey other && Equals(other);
@@ -88,6 +90,7 @@ namespace Ntilde.Rendering
                 hash.Add(BitConverter.SingleToInt32Bits(Size));
                 hash.Add(BitConverter.SingleToInt32Bits(Scale));
                 hash.Add(LuminanceClass);
+                hash.Add(Embolden);
                 return hash.ToHashCode();
             }
         }
@@ -144,7 +147,7 @@ namespace Ntilde.Rendering
             lock (_lock)
             {
                 byte luminanceClass = WantsColorGlyph(text) ? ColorGlyphClass : LuminanceClassOf(foreground);
-                var key = new GlyphKey(text, font.Typeface, font.Size, scale, luminanceClass);
+                var key = new GlyphKey(text, font.Typeface, font.Size, scale, luminanceClass, font.Embolden);
 
                 if (_entries.TryGetValue(key, out var entry))
                 {
@@ -317,6 +320,7 @@ namespace Ntilde.Rendering
             // Use physically scaled font for the atlas to ensure bit-perfect sharpness
             float physicalSize = key.Size * key.Scale;
             using var physFont = new SKFont(key.Typeface, physicalSize);
+            physFont.Embolden = key.Embolden;
             physFont.Edging = SKFontEdging.Antialias;
             physFont.Hinting = SKFontHinting.Full;
             physFont.Subpixel = true;

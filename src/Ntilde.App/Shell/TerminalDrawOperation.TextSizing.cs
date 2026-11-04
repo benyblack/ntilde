@@ -60,6 +60,7 @@ public sealed partial class TerminalDrawOperation
             float y = blockTop + AlignedSizingOffset(block.Height * rowHeight - height, block.Options.VerticalAlignment);
             int missing = FindFirstMissingGlyphCodePoint(block.Text, primary);
             var resources = GetOrCreateShapingResources(missing == 0 ? primary : ResolveTypefaceForCodePoint(missing, primary));
+            resources.Font.Embolden = cell.IsBold;
             float naturalWidth = resources.Shaper.Shape(block.Text, resources.Font).Width;
             if (!(naturalWidth > 0)) return block.Width;
             float horizontalScale = Math.Min(heightScale, (right - left) / naturalWidth);
