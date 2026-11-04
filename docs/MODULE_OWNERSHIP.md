@@ -261,6 +261,9 @@ invariant changes.
   source-budget truncation would discard it. No parser path creates native intent.
   Replay rejects nonzero/malformed required-policy markers before callbacks or bytes;
   its shared reader gate also protects App indexing and checkpoint/initial-state restoration.
+  Replay retains its selected stream through a cancellation-aware validated-start host callback
+  and byte delivery; App restores state inside that boundary, outside VT locks. Indexing uses
+  one reader too. Live append remains supported; this does not seal arbitrary in-place writes.
   ordinary headers retain exact v2 bytes. App owns the detached presenter density P,
   published with font/grid inputs and withdrawn on detach; requested capture scale S
   remains independent. Neither changes draw sizing or `renderDetails`/`imageDetails` v1.

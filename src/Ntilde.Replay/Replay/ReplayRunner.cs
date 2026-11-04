@@ -30,6 +30,12 @@ namespace Ntilde.Replay
         /// This does not apply terminal state, advance the clock, or count replayed events.
         /// </summary>
         public Action<byte[]>? OnSkippedData { get; init; }
+        /// <summary>
+        /// Runs after required-policy/metric validation, before other callbacks or seeks.
+        /// The same selected reader remains open through preparation and data delivery.
+        /// False declines the run without delivering events.
+        /// </summary>
+        public Func<CancellationToken, Task<bool>>? OnValidatedStart { get; init; }
     }
 
     public sealed class ReplayRunResult
@@ -133,20 +139,26 @@ namespace Ntilde.Replay
                 if (header.RequiredSixelRasterPolicy != SixelRasterPolicy.EnabledVersion)
                     throw new InvalidDataException("The recording requires an unsupported SIXEL raster policy.");
                 _ = RecordingCellMetrics.FromOptional(header.SixelCellWidthPx, header.SixelCellHeightPx);
-                try
+            }
+            else if (startAfterLine > 0)
+            {
+                ValidateLegacyRecordingStart(line);
+            }
+
+            try
+            {
+                if (options?.OnValidatedStart is { } prepare && !await prepare(ct)) return result;
+                if (ct.IsCancellationRequested) return result;
+                if (header is not null)
                 {
                     if ((options?.ApplyHeaderResize ?? true) && onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
                     if (ct.IsCancellationRequested) return result;
                     if (onHeaderCallback is not null) await onHeaderCallback(header);
                 }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested)
-                {
-                    return result;
-                }
             }
-            else if (startAfterLine > 0)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
-                ValidateLegacyRecordingStart(line);
+                return result;
             }
 
             long lastOffset = -1;
@@ -275,18 +287,6 @@ namespace Ntilde.Replay
             }
             catch (JsonException) { return null; }
             return header is not null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2 ? header : null;
-        }
-
-        /// <summary>Checks required semantics before a host applies an out-of-stream seek snapshot.</summary>
-        public async Task ValidateRequiredPoliciesAsync(CancellationToken ct = default)
-        {
-            using var stream = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var reader = new StreamReader(stream);
-            string? line;
-            do { line = await reader.ReadLineAsync(ct); }
-            while (line is not null && string.IsNullOrWhiteSpace(line));
-            ct.ThrowIfCancellationRequested();
-            if (line is not null) _ = ReadHeader(line);
         }
 
         private static void ValidateRequiredSixelPolicy(JsonElement root)

@@ -81,7 +81,11 @@ public sealed class SixelRasterPolicyReplayTests
             await Assert.ThrowsAsync<InvalidDataException>(() => new ReplayRunner(path).RunWithResultAsync(
                 onDataCallback: _ => Observed(), onResizeCallback: (_, _) => Observed(),
                 onHeaderCallback: _ => Observed(),
-                options: new ReplayRunOptions { StartAfterLineNumber = startLine },
+                options: new ReplayRunOptions
+                {
+                    StartAfterLineNumber = startLine,
+                    OnValidatedStart = _ => { calls++; return Task.FromResult(true); }
+                },
                 startOffsetBytes: byteResume ? System.Text.Encoding.UTF8.GetByteCount(first) + 1 : 0,
                 ct: TestContext.Current.CancellationToken));
             Assert.Equal(0, calls);

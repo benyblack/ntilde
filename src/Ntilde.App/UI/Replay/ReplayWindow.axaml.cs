@@ -30,6 +30,7 @@ namespace Ntilde.UI.Replay
         private string? _filePath;
         private bool _isUserScrubbing;
         private long _displayedTimeMs;
+        internal Action? BeforeSeekRestoreForTest { get; set; }
 
         public ReplayWindow()
         {
@@ -192,12 +193,12 @@ namespace Ntilde.UI.Replay
             _playbackCts = null;
         }
 
-        private async Task ApplyInSessionAsync(int sessionId, Action apply)
+        private async Task ApplyInSessionAsync(int sessionId, Action apply, CancellationToken cancellationToken = default)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                if (_playbackSessionGate.IsCurrent(sessionId)) apply();
-            });
+                if (!cancellationToken.IsCancellationRequested && _playbackSessionGate.IsCurrent(sessionId)) apply();
+            }, DispatcherPriority.Normal, cancellationToken);
         }
 
         private Task ApplyHeaderMetricsAsync(int sessionId, ReplayHeader header, bool restoreHeader) =>
@@ -237,8 +238,8 @@ namespace Ntilde.UI.Replay
             }
 
             var snapEntry = _viewModel.GetNearestSeekCheckpoint(targetTimeMs);
-            long appliedTime = snapEntry?.TimeMs ?? 0;
-            if (!await ApplySeekSnapshotAsync(sessionId, snapEntry?.Snapshot, appliedTime)) return;
+            long appliedTime = _displayedTimeMs;
+            bool restored = false;
 
             bool reachedTarget = false;
             using var seekCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -262,10 +263,17 @@ namespace Ntilde.UI.Replay
                         StopAtTimeMs = targetTimeMs,
                         ApplyHeaderResize = snapEntry is null,
                         StartAfterLineNumber = snapEntry?.LineNumber ?? 0,
+                        OnValidatedStart = async token =>
+                        {
+                            restored = await ApplySeekSnapshotAsync(sessionId, snapEntry?.Snapshot, snapEntry?.TimeMs ?? 0, token);
+                            if (restored) appliedTime = snapEntry?.TimeMs ?? 0;
+                            return restored;
+                        },
                         OnSkippedData = data => { _ = DecodeChunk(decoder, data); }
                     },
                     minTimeMs: snapEntry?.TimeMs ?? 0,
                     ct: seekCts.Token);
+                if (!restored) return;
                 appliedTime = Math.Max(appliedTime, result.LastGoodOffset);
                 reachedTarget = !seekCts.IsCancellationRequested && !result.Truncated;
             }
@@ -275,22 +283,20 @@ namespace Ntilde.UI.Replay
             {
                 _displayedTimeMs = reachedTarget ? targetTimeMs : appliedTime;
                 _viewModel.CurrentTimeMs = _displayedTimeMs;
-            });
+            }, CancellationToken.None);
         }
 
-        private async Task<bool> ApplySeekSnapshotAsync(int sessionId, ReplaySnapshot? snapshot, long appliedTime)
+        private async Task<bool> ApplySeekSnapshotAsync(int sessionId, ReplaySnapshot? snapshot, long appliedTime, CancellationToken cancellationToken)
         {
             var buffer = _buffer;
             var parser = _parser;
             var viewModel = _viewModel;
             var initialState = _initialReplayState;
-            if (buffer is null || parser is null || viewModel is null || _filePath is not { } path) return false;
+            if (buffer is null || parser is null || viewModel is null) return false;
             bool applied = false;
             try
             {
-                // The index may predate a file change. Recheck before BOTH checkpoint and
-                // initial-state restoration, not merely before the runner's first bytes.
-                await new ReplayReader(path).ValidateRequiredPoliciesAsync();
+                BeforeSeekRestoreForTest?.Invoke();
                 await ApplyInSessionAsync(sessionId, () =>
                 {
                     if (snapshot is not null) ReplayRunner.ApplySnapshot(buffer, parser, snapshot);
@@ -299,13 +305,14 @@ namespace Ntilde.UI.Replay
                     _displayedTimeMs = appliedTime;
                     viewModel.CurrentTimeMs = appliedTime;
                     applied = true;
-                });
+                }, cancellationToken);
                 return applied;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
                 TerminalLogger.Error($"[ReplayWindow] Snapshot Error: {ex.Message}");
-                await ApplyInSessionAsync(sessionId, () => viewModel.CurrentTimeMs = _displayedTimeMs);
+                await ApplyInSessionAsync(sessionId, () => viewModel.CurrentTimeMs = _displayedTimeMs, CancellationToken.None);
                 return false;
             }
         }
@@ -323,12 +330,11 @@ namespace Ntilde.UI.Replay
                 var nearest = _viewModel.GetNearestSnapshotEntry(startTimeMs);
                 if (!HasValidSeekSnapshot(nearest?.Snapshot))
                 {
-                    await ApplyInSessionAsync(sessionId, () => _viewModel.CurrentTimeMs = _displayedTimeMs);
+                    await ApplyInSessionAsync(sessionId, () => _viewModel.CurrentTimeMs = _displayedTimeMs, CancellationToken.None);
                     return;
                 }
                 var snapEntry = _viewModel.GetNearestSeekCheckpoint(startTimeMs);
                 long minTime = snapEntry?.TimeMs ?? 0;
-                if (!await ApplySeekSnapshotAsync(sessionId, snapEntry?.Snapshot, startTimeMs)) return;
 
                 await runner.RunWithResultAsync(
                     onDataCallback: async (data) =>
@@ -363,6 +369,7 @@ namespace Ntilde.UI.Replay
                         PlaybackMode = ReplayPlaybackMode.Realtime,
                         ApplyHeaderResize = snapEntry is null,
                         StartAfterLineNumber = snapEntry?.LineNumber ?? 0,
+                        OnValidatedStart = token => ApplySeekSnapshotAsync(sessionId, snapEntry?.Snapshot, startTimeMs, token),
                         OnSkippedData = data => { _ = DecodeChunk(decoder, data); }
                     },
                     minTimeMs: minTime,

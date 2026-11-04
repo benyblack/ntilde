@@ -38,9 +38,16 @@ This does not qualify arbitrary Pan/Pad, P2 transparency, animation or placehold
   type cannot be hidden by another `type` key: all occurrences are inspected and
   ambiguous recognized headers are rejected before legacy fallback. Ordinary v2 writers and
   legacy placement/header bytes stay unchanged. No v3 writer is added.
-  App uses the same validation before indexing snapshots and rechecks the actual
-  file before restoring either a cached checkpoint or the initial state. The
-  later runner check still precedes callbacks and bytes. Future-version headers
+  App uses the same validation before indexing snapshots and keeps that reader
+  open through indexing. For seek/playback, Replay opens and validates once, then
+  invokes a cancellation-aware host callback before resize/header/data callbacks
+  or resume seeks. App restores either the cached checkpoint or the initial state
+  there; the same selected stream remains open through restoration and consumption.
+  Cancellation, declined preparation and callback failure dispose the reader.
+  Path replacement cannot switch the stream between validation/restoration/replay.
+  Existing live append (`FileShare.ReadWrite`) remains supported. This is not a
+  frozen-byte guarantee against arbitrary concurrent in-place file modification.
+  Future-version headers
   without a required-policy marker remain outside this foundation's guarantee;
   their legacy fallback/resume behavior needs a separate compatibility contract.
 

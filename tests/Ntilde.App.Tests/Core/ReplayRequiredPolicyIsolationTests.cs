@@ -12,6 +12,89 @@ public sealed class ReplayRequiredPolicyIsolationTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Cancellation_before_UI_restoration_preserves_state_and_releases_the_reader(bool checkpoint)
+    {
+        string path = Path.GetTempFileName();
+        ReplayWindow? window = null;
+        using var cts = new CancellationTokenSource();
+        try
+        {
+            var source = new TerminalBuffer(20, 8);
+            var item = checkpoint
+                ? new ReplayEvent { Type = "snapshot", TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { State = source.ExportState(0) } }
+                : new ReplayEvent { Type = "data", TimeOffsetMs = 100, Data = "WA==" };
+            await File.WriteAllTextAsync(path, JsonSerializer.Serialize(new ReplayHeader { Type = ReplayHeader.TypeToken }, ReplayJsonContext.Default.ReplayHeader) + "\n" +
+                JsonSerializer.Serialize(item, ReplayJsonContext.Default.ReplayEvent) + "\n", TestContext.Current.CancellationToken);
+            window = new ReplayWindow(path);
+            await ((ReplayViewModel)window.DataContext!).Initialization;
+            var buffer = Field<TerminalBuffer>(window, "_buffer");
+            var parser = Field<AnsiParser>(window, "_parser");
+            parser.Process("preserved\x1b[?25l\x1b[31;");
+            byte[] before = Pair(buffer, parser);
+            window.BeforeSeekRestoreForTest = cts.Cancel;
+            await Invoke(window, "PerformSeek", 100L, cts.Token);
+            Assert.True(cts.IsCancellationRequested);
+            Assert.Equal(before, Pair(buffer, parser));
+            using var exclusive = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        }
+        finally { window?.Close(); File.Delete(path); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Path_replacement_between_validation_and_restore_cannot_switch_the_replay_source(bool checkpoint, bool playback)
+    {
+        string path = Path.GetTempFileName();
+        string replacement = Path.GetTempFileName();
+        ReplayWindow? window = null;
+        try
+        {
+            string header = JsonSerializer.Serialize(new ReplayHeader { Type = ReplayHeader.TypeToken, Cols = 20, Rows = 8 }, ReplayJsonContext.Default.ReplayHeader);
+            var source = new TerminalBuffer(20, 8);
+            new AnsiParser(source).Process("checkpoint");
+            string snapshot = checkpoint ? JsonSerializer.Serialize(new ReplayEvent
+            {
+                Type = "snapshot",
+                TimeOffsetMs = 50,
+                Snapshot = new ReplaySnapshot { Cols = 20, Rows = 8, State = source.ExportState(0) }
+            }, ReplayJsonContext.Default.ReplayEvent) + "\n" : "";
+            await File.WriteAllTextAsync(path, header + "\n" + snapshot + "{\"t\":100,\"type\":\"data\",\"d\":\"Tw==\"}\n", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(replacement, header[..^1] + ",\"required_sixel_raster\":1}\n{\"t\":100,\"type\":\"data\",\"d\":\"WA==\"}\n", TestContext.Current.CancellationToken);
+            window = new ReplayWindow(path);
+            var model = (ReplayViewModel)window.DataContext!;
+            await model.Initialization;
+            bool attempted = false;
+            window.BeforeSeekRestoreForTest = () =>
+            {
+                attempted = true;
+                try { File.Move(replacement, path, overwrite: true); }
+                catch (IOException ex) when (OperatingSystem.IsWindows() && (ex.HResult & 0xffff) == 32)
+                {
+                    // Windows may enforce the held reader's existing no-delete share policy.
+                    Assert.DoesNotContain("required_sixel_raster", File.ReadAllText(path));
+                }
+            };
+            var buffer = Field<TerminalBuffer>(window, "_buffer");
+            if (playback)
+            {
+                model.CurrentTimeMs = 100;
+                int session = Field<PlaybackSessionGate>(window, "_playbackSessionGate").BeginSession();
+                await Invoke(window, "PlaybackLoop", session, CancellationToken.None);
+            }
+            else await Invoke(window, "PerformSeek", 100L, CancellationToken.None);
+            Assert.True(attempted);
+            Assert.Equal((20, 8), (buffer.Cols, buffer.Rows));
+            Assert.Equal(checkpoint ? "checkpointO" : "O", BufferSnapshot.Capture(buffer).Lines[0]);
+        }
+        finally { window?.Close(); File.Delete(path); File.Delete(replacement); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task Unsupported_policy_is_rejected_before_snapshots_are_indexed(bool leadingBlank)
     {
         string path = Path.GetTempFileName();
