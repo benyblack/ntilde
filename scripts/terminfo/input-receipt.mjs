@@ -22,11 +22,11 @@ const json = (output, file) => JSON.parse(bytes(output, file));
 const journal = (output, file) => bytes(output, file).toString().trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
 /** Coherent field/file stripping still cannot hide retained runner/worker imports of the new graph. */
 export function includesInputEvidence(output, evidence, context, proof) {
-    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v2' || context.inputSuiteId !== undefined
+    if (['readonly-owned-source-graph-v2', 'readonly-owned-source-graph-v3'].includes(context.sourceSnapshotPolicy) || context.inputSuiteId !== undefined
         || context.ownedInputPolicy !== undefined || evidence.inputEvidence !== undefined
         || Object.keys(inputSources).some(key => context[key] !== undefined)
         || proof.proofs?.some(value => value.input !== undefined) === true
-        || proof.sourceSnapshot?.policy === 'readonly-owned-source-graph-v2'
+        || ['readonly-owned-source-graph-v2', 'readonly-owned-source-graph-v3'].includes(proof.sourceSnapshot?.policy)
         || files.some(file => present(join(output, file)))) return true;
     const sourceDir = join(output, 'sources');
     if (!present(sourceDir)) return false;
@@ -36,7 +36,7 @@ export function includesInputEvidence(output, evidence, context, proof) {
 export function checkInputEvidence(output, binding, runId, context, proof) {
     const marker = proof.proofs?.[0]?.input;
     checkInput(context.inputSuiteId === inputSuiteId && context.ownedInputPolicy === ownedInputPolicy
-        && context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v2' && marker?.policy === ownedInputPolicy
+        && ['readonly-owned-source-graph-v2', 'readonly-owned-source-graph-v3'].includes(context.sourceSnapshotPolicy) && marker?.policy === ownedInputPolicy
         && Array.isArray(marker.actions) && !present(join(output, 'input-failed-observation.json')) && !present(join(output, 'input-raw-failure.json')));
     for (const [key, file] of Object.entries(inputSources)) checkInput(/^[a-f\d]{64}$/.test(context[key] ?? '')
         && hash(bytes(output, join('sources', file), 2 * 1024 * 1024)) === context[key]);

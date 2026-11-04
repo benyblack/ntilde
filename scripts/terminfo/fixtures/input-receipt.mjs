@@ -3,13 +3,16 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { ownedSnapshotReceiptFixture } from './metadata-receipt.mjs';
-import { capturedV9SourceFiles, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV9SourceFiles, capturedV9SourcePolicy as sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { historicalArchive } from './captured-sources.mjs';
 import { inputSuiteId, ownedInputPolicy } from '../input-cases.mjs';
 import { snapshotHash } from '../agent-observer.mjs';
 export function ownedInputReceiptFixture(action) {
     return ownedSnapshotReceiptFixture(f => {
+        const archived = historicalArchive('2026-11-04-input-observations');
         for (const [key, file] of Object.entries(capturedV9SourceFiles)) {
-            const bytes = readFileSync(new URL(file === 'terminfo-owned-runner.mjs' ? '../../' + file : '../' + file, import.meta.url));
+            const bytes = archived.get('sources/' + file);
+            if (!bytes) throw new Error('Missing frozen v9 source: ' + file);
             writeFileSync(join(f.output, 'sources', file), bytes); f.context[key] = createHash('sha256').update(bytes).digest('hex');
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,

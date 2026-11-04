@@ -5,6 +5,7 @@ import { once } from 'node:events';
 import { chmodSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import * as observerApi from './agent-observer.mjs';
 import { agentRequest, observerEndpoint, OwnedCellObserver, screenSnapshot } from './agent-observer.mjs';
 
 const paneId = '11111111-1111-1111-1111-111111111111', barrier = '\x1b[?62;4;22c';
@@ -277,4 +278,20 @@ test('overline observer opts in explicitly, retains booleans and includes them i
     value = initial;
     await observer.handle('rendition-finish', () => 1000, barrier);
     assert.equal(observer.restored, true);
+});
+
+test('only the image-specific capture wrapper opts in while default render request bytes stay unchanged', async () => {
+    assert.equal(typeof observerApi.imageCaptureRequest, 'function');
+    const params = [];
+    await withServer(socket => socket.once('data', data => {
+        const request = JSON.parse(data); params.push(request.params);
+        socket.end(JSON.stringify({ v: 1, id: 1, result: {} }) + '\n');
+    }), async endpoint => {
+        await observerApi.captureRequest(endpoint, paneId, 0, 1000);
+        await observerApi.imageCaptureRequest(endpoint, paneId, 0, 1000);
+        await observerApi.colorCaptureRequest(endpoint, paneId, null, 1000);
+    });
+    assert.deepEqual(params[0], { paneId, mode: 'render', inline: true, maxWidth: 0, scale: 1, includeRenderDetails: true, presentationTimeMs: 0 });
+    assert.deepEqual(params[1], { ...params[0], includeImageDetails: true });
+    assert.deepEqual(params[2], params[0]);
 });
