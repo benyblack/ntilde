@@ -18,9 +18,11 @@ The v8 receipt validator and published-data guard use these historical constants
 only live capture/unchanged-source checks use `ownedSourceFiles` and the active
 `sourceSnapshotPolicy`.
 
-Current live capture still has the same 52 inputs and v1 policy. This change adds
-no suite, measurement or grade. A larger future graph must introduce an explicit
-new policy/receipt path. A coherent expanded inventory cannot silently obtain a
+The routed-input implementation adds a fixed 60-input captured v9 map from the
+fixed captured-v8 map plus eight explicit input modules. Current capture uses
+`readonly-owned-source-graph-v2`; receipt schema 9 requires all 14 suites. The
+historical 51/52 maps and policy v1 stay unchanged. No fresh measurement or grade
+is added. Future growth must introduce another explicit policy/receipt path. A coherent expanded inventory cannot silently obtain a
 v8 receipt under v1. New source/plan versions must preserve the old builders and
 receipt branches rather than silently append stages or redefine published counts.
 
@@ -43,3 +45,9 @@ runs the new regressions on both operating-system lanes.
 The original 51-input run retains its static-import timing limitation. The newer
 run retains its pre-import capture and cleanup guarantees. Neither gains a new
 binary/source attestation claim from this compatibility fix.
+
+V8 synthetic fixtures read the immutable published source archives, not current
+runner/worker bytes. Retained literal relative imports must close over each fixed
+scope. New input files, context/proof markers, policy v2 or retained input-module
+imports force schema 9; stripping the visible suite markers cannot downgrade the
+executed new graph. Version 9 tests preserve both original v8 branches.

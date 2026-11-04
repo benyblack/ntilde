@@ -20,6 +20,9 @@ import { OwnedResizeObserver } from './terminfo/resize-capture.mjs';
 import { resizeSuiteId, ownedResizePolicy } from './terminfo/resize-cases.mjs';
 import { buildResizeReport } from './terminfo/resize.mjs';
 import { resizeOwnedPane } from './terminfo/resize-action.mjs';
+import { OwnedInputObserver } from './terminfo/input-capture.mjs';
+import { inputSuiteId, ownedInputPolicy } from './terminfo/input-cases.mjs';
+import { generateOwnedInput } from './terminfo/input-action.mjs';
 import { OwnedCellObserver } from './terminfo/agent-observer.mjs';
 import { buildCellReport } from './terminfo/cells.mjs';
 import { buildSgrReport } from './terminfo/sgr.mjs';
@@ -50,7 +53,7 @@ const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 /** Preserve only source-known initial App/geometry-budget refusal codes. */
 function ownerFailure(error) {
     return { ok: false, error: error.message,
-        ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
+        ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable', 'inputGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
 }
 
 function retainFailedMetadataAttempt(output, request, error, observer) {
@@ -187,7 +190,7 @@ async function main() {
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
-Enables Act access only in fresh private settings for parent-selected resize actions.
+Enables Act access only in fresh private settings for parent-selected resize and declared routed-input actions.
 Requires an npm installation (or NTILDE_TERMINFO_NPM_CLI) to recreate locked dependencies.
 Prepare terminfo.dev@4.0.0 under
 artifacts/terminfo/tool (see docs/qa/QA_TERMINFO.md). Launches a disposable
@@ -227,6 +230,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let resizeEvidence;
     let savedEvidence;
     let metadataEvidence;
+    let inputEvidence;
     let sourceContext;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
@@ -291,6 +295,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let resizeState;
         let savedState;
         let metadataState;
+        let inputState;
         let completed = false, outputModeVerified = false;
         const proofs = [];
         const image = statSync(executable);
@@ -304,7 +309,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             nodeVersion: process.version, dependencyInstall: 'isolated npm ci --ignore-scripts', startedAt: new Date().toISOString(), runId,
             ...retainCollectorEvidence(output, bundle, adapterBundleSha256, ownerModule, workerScript),
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
-            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
+            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             cells: 'private AgentHost readScreen; nonce-bound pane; separate ASCII cell-state suite',
             attributes: 'separate ASCII SGR flags and palette-index suite',
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
@@ -313,9 +318,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         sourceContext = context;
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
-        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata'])
+        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'input-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         /** Complete each prior suite before capturing this one; only initial typed refusal is optional. */
         const observeDetails = async (prefix, request, budget) => {
             const spec = detailSpecs[prefix];
@@ -563,8 +569,51 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             }
         };
         /** Route owned observations serially, preserving suite restoration and pane identity dependencies. */
+        const recordInputUnavailable = reason => {
+            const file = 'input-unavailable.json';
+            writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: inputSuiteId, status: 'unavailable',
+                reason, fixtureStarted: false, plannedExperiments: 39 });
+            inputState.unavailable = { runId, suiteId: inputSuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                status: 'unavailable', reason, counts: {} };
+        };
+        const observeInput = async (request, budget) => {
+            if (!metadataState?.observer?.restored && !metadataState?.unavailable) throw new Error('Metadata must restore before input observations.');
+            if (!inputState) {
+                inputState = { workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0 };
+                inputState.observer = new OwnedInputObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: 'NTILDE_IN_' + runId, expectedPaneId: cellObserver.paneId,
+                    performInput: (event, actionBudget) => generateOwnedInput({ app, appData, executable, image, profileName, runId,
+                        paneId: inputState.observer.paneId, uid: process.getuid(),
+                        workerPid: inputState.workerPid, tty: inputState.tty }, event, actionBudget) });
+                proofs[0].input.actions = inputState.observer.actions;
+            }
+            const state = inputState;
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('Input fixture ownership or availability changed.');
+            try {
+                const result = await state.observer.handle(request, budget);
+                if (request.kind === 'input-start') {
+                    if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error('Original geometry changed before input observations.');
+                    proofs[0].input.paneId = state.observer.paneId;
+                    proofs[0].input.geometry = state.observer.geometry;
+                }
+                if (request.kind === 'input-seal') proofs[0].input.seal = state.observer.seal;
+                return result;
+            } catch (error) {
+                const initial = request.kind === 'input-start' && ['screenDetailsUnavailable', 'inputGeometryUnavailable'].includes(error.code)
+                    && !state.observer.baseline && !state.observer.frames.length && !state.observer.actions.length;
+                if (initial) recordInputUnavailable(error.code);
+                else if (state.observer.lastAttempt) writeJson(join(output, 'input-failed-observation.json'), state.observer.lastAttempt);
+                throw error;
+            } finally {
+                for (const frame of state.observer.frames.slice(state.recordedFrames)) appendFileSync(join(output, 'input-snapshots.jsonl'), JSON.stringify(frame) + '\n');
+                state.recordedFrames = state.observer.frames.length;
+                for (const action of state.observer.actions.slice(state.recordedActions)) appendFileSync(join(output, 'input-actions.jsonl'), JSON.stringify(action) + '\n');
+                state.recordedActions = state.observer.actions.length;
+            }
+        };
         const observeCells = async (request, budget) => {
             const prefix = request.kind.split('-')[0];
+            if (prefix === 'input') return observeInput(request, budget);
             if (prefix === 'resize') return observeResize(request, budget);
             if (prefix === 'saved') return observeSaved(request, budget);
             if (prefix === 'metadata') return observeMetadata(request, budget);
@@ -590,7 +639,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         /** Retain the first measured lineage and PTY without storing the run capability. */
         const retainFirstProof = (owner, worker, tty) => {
             if (proofs.length !== 0) return;
-            proofs.push({ app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy } });
+            proofs.push({ app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] } });
         };
         /** Bind one kernel-observed output-mode proof to the already verified worker. */
         const attestOutputMode = (request, budget) => {
@@ -627,7 +676,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
                     if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
-                        || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)) {
+                        || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
+                        || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                         const result = await observeUntranslatedCells(request, queryTimeout);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
                         return;
@@ -638,6 +688,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     } else if (request.kind === 'raw-output') {
                         attestOutputMode(request, queryTimeout);
                     } else if (request.kind === 'done') {
+                        if (!inputState?.observer?.restored && !inputState?.unavailable) throw new Error('Input suite is not sealed or initially unavailable.');
                         completed = true;
                         resolveDone();
                     } else if (request.kind === 'failed') {
@@ -689,6 +740,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 (frames, id) => buildResizeReport(frames, resizeState.observer.actions, id), 'resize-observations.json');
             savedEvidence = savedState?.unavailable ?? retainCellReport(output, savedState?.observer, runId, buildSavedReport, 'saved-observations.json');
             metadataEvidence = metadataState?.unavailable ?? retainCellReport(output, metadataState?.observer, runId, buildMetadataReport, 'metadata-observations.json');
+            inputEvidence = inputState?.unavailable ?? retainCellReport(output, inputState?.observer, runId,
+                () => inputState.observer.report, 'input-observations.json');
+            summary.inputEvidence = inputEvidence;
             summary.metadataEvidence = metadataEvidence;
             summary.savedEvidence = savedEvidence;
             summary.resizeEvidence = resizeEvidence;
@@ -736,7 +790,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

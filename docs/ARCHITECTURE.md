@@ -603,6 +603,17 @@ maps/policy; live capture still uses the current inventory. Any expanded graph
 requires a new explicit policy/receipt path rather than redefining v8. See
 `docs/qa/terminfo/source-scope-versions.md`.
 
+The optional routed-input suite extends only the QA graph under explicit source
+policy v2/schema 9: fixed captured-v8 inputs plus eight input modules (60 files),
+all fourteen suites required. The parent selects 39 standalone App events only in
+its re-proved disposable local pane. Independent raw child bytes follow exact
+pre-action mode controls and fresh post-action FIFO challenges; paired complete
+state and restoration/seal are mandatory. Started/partial failures remain fatal
+and retained, never an unavailable downgrade. Historical v8 scopes remain fixed;
+retained relative imports cannot escape their selected scope. No native input,
+clipboard, remote/Windows delivery or fresh runtime grade is inferred. See
+`docs/qa/terminfo/owned-input.md`.
+
 ### Persistent-session scrollback policy
 
 The GUI forwards `MaxHistory` at spawn and in presentation updates. The daemon owns the chosen

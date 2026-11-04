@@ -98,3 +98,24 @@ for (const mode of ['callback-error', 'throw', 'timeout']) test(`cleanup remains
     try { await assert.rejects(fence.writeCleanup('reset'), /cleanup output|timed out/); }
     finally { fence.dispose(); }
 });
+
+test('healthy idle input handoff preserves modes, is exclusive and leaves restoration to outer dispose', async () => {
+    const input = new Input(), writes = [];
+    const fence = terminalFence(input, { write(value) { writes.push(value); } });
+    fence.detachInput();
+    assert.equal(input.listenerCount('data'), 0); assert.equal(input.listenerCount('error'), 0);
+    assert.equal(input.isRaw, true); assert.equal(input.paused, false);
+    await assert.rejects(fence.write('forbidden'), /detached|active/);
+    await assert.rejects(fence.query({ code: 10 }), /detached|active/);
+    assert.throws(() => fence.detachInput(), /detached|active/); assert.deepEqual(writes, []);
+    fence.dispose(); assert.equal(input.isRaw, false); assert.equal(input.paused, true);
+});
+test('pending, fatal or disposed fences cannot transfer input ownership', async () => {
+    const input = new Input(), fence = terminalFence(input, { write() {} });
+    const pending = fence.write('');
+    assert.throws(() => fence.detachInput(), /idle|pending/);
+    assert.equal(input.listenerCount('data'), 1);
+    input.emit('data', Buffer.from('bad')); await assert.rejects(pending);
+    assert.throws(() => fence.detachInput(), /healthy|failed/);
+    fence.dispose(); assert.throws(() => fence.detachInput(), /active|disposed/);
+});

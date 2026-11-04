@@ -544,3 +544,9 @@ The earlier RIS negative is unchanged. Four new reply-based collector outcomes
 unchanged. Acknowledgements do not qualify image pixels. This run's focused
 window leaves notification delivery inconclusive; the earlier inactive-window
 positive remains retained.
+
+The [owned routed-input suite](terminfo/owned-input.md) follows metadata restoration.
+It adds 39 declared framework events with independent raw local-child bytes,
+pre-action mode controls, paired full-state reads and strict restoration. Source
+policy v2/schema 9 binds a fixed 60-file graph and all 14 suites. This implementation
+adds no runtime result or frozen-grade change; historical v8 scopes remain fixed.

@@ -50,5 +50,13 @@
   "collectorManifestSha256": "collector-package.json",
   "collectorLockSha256": "collector-package-lock.json",
   "sourceRegistrySourceSha256": "owned-sources.mjs",
-  "sourceInventorySha256": "owned-source-inventory.json"
+  "sourceInventorySha256": "owned-source-inventory.json",
+  "inputBytesSourceSha256": "input-bytes.mjs",
+  "inputCasesSourceSha256": "input-cases.mjs",
+  "inputRequestSourceSha256": "input-request.mjs",
+  "inputActionSourceSha256": "input-action.mjs",
+  "inputStateSourceSha256": "input-state.mjs",
+  "inputCaptureSourceSha256": "input-capture.mjs",
+  "inputCollectorSourceSha256": "input-collector.mjs",
+  "inputReceiptSourceSha256": "input-receipt.mjs"
 }

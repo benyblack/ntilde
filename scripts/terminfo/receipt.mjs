@@ -1,4 +1,5 @@
 import { includesMetadataEvidence, checkMetadataEvidence } from './metadata-receipt.mjs';
+import { includesInputEvidence, checkInputEvidence } from './input-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
 import { createHash } from 'node:crypto';
@@ -141,7 +142,8 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     const historyMarkers = ['historySuiteId', 'terminalOutput', 'historyCasesSourceSha256', 'historyCaptureSourceSha256', 'historySuiteSourceSha256', 'terminalOutputSourceSha256'];
     const includesHistory = evidence.historyEvidence !== undefined || historyMarkers.some(key => context[key] !== undefined)
         || proof.proofs?.some(entry => entry.terminalOutput !== undefined) === true;
-    const includesMetadata = includesMetadataEvidence(output, evidence, context, proof);
+    const includesInput = includesInputEvidence(output, evidence, context, proof);
+    const includesMetadata = includesMetadataEvidence(output, evidence, context, proof) || includesInput;
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     if (includesEditing || includesHistory || includesResize) checkEditingSuites(output, evidence, runId, context);
@@ -149,7 +151,8 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (includesResize) checkResizeEvidence(output, evidence.resizeEvidence, runId, context, proof);
     if (includesSaved) checkSavedEvidence(output, evidence.savedEvidence, runId, context, proof);
     if (includesMetadata) checkMetadataEvidence(output, evidence.metadataEvidence, runId, context, proof);
-    const schemaVersion = ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata);
+    if (includesInput) checkInputEvidence(output, evidence.inputEvidence, runId, context, proof);
+    const schemaVersion = includesInput ? 9 : ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata);
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };
