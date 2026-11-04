@@ -396,6 +396,12 @@ This is **not** the terminal engine. It's a platform-utilities library: input ro
 
 This is also where session-orchestration helpers (such as a future `SessionBufferBinder`) belong.
 
+Native local, dynamic and incoming port-forward publication shares a gate with disposal's channel snapshot.
+A local/dynamic open that returns after disposal cannot publish a channel: its
+caller closes the newly issued SSH id and socket. Disposal still closes ids
+published before its snapshot. A canceled SOCKS refusal write cannot bypass
+channel cleanup. This does not wait for a blocked native open to finish.
+
 SSH profile save and delete are whole-file transactions across cooperating instances and processes.
 They hold a stable sibling `.lock` lease before loading and through atomic replacement; corruption
 recovery acquires the same lease and reloads before quarantining. Valid queries read complete snapshots
