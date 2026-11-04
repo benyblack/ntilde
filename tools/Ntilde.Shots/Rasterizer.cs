@@ -33,9 +33,12 @@ public static class Rasterizer
         SKBitmap bitmap = SKBitmap.Decode(stream)
             ?? throw new InvalidOperationException("Could not decode the captured frame.");
 
-        if (window is MainWindow && OperatingSystem.IsMacOS())
+        if (window is MainWindow mainWindow && OperatingSystem.IsMacOS())
         {
-            DrawTrafficLights(bitmap, window.RenderScaling);
+            // Focus mode's decorations theme shrinks the title band to the strip, and AppKit centres
+            // the buttons in whatever band it is given.
+            double band = mainWindow.IsFocusMode ? MainWindow.FocusStripHeight : 36;
+            DrawTrafficLights(bitmap, window.RenderScaling, band / 2);
         }
 
         return bitmap;
@@ -46,9 +49,10 @@ public static class Rasterizer
     /// left of the tab strip for the system's close/minimise/zoom buttons, which AppKit draws and
     /// the headless renderer never does - so a Mac capture showed a blank gap where every real Mac
     /// window has them. Painted at the standard size (12pt) and spacing (20pt between centres),
-    /// centred in the 36pt tab band, in the system's own fill and rim colours.
+    /// centred at <paramref name="centreY"/> (the middle of the 36pt tab band, or of focus mode's
+    /// strip), in the system's own fill and rim colours.
     /// </summary>
-    private static void DrawTrafficLights(SKBitmap bitmap, double scale)
+    private static void DrawTrafficLights(SKBitmap bitmap, double scale, double centreY)
     {
         (SKColor Fill, SKColor Rim)[] lights =
         [
@@ -62,7 +66,7 @@ public static class Rasterizer
         using var rim = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = (float)(0.5 * scale) };
 
         float radius = (float)(6 * scale);
-        float y = (float)(18 * scale);
+        float y = (float)(centreY * scale);
         for (int i = 0; i < lights.Length; i++)
         {
             float x = (float)((20 + 20 * i) * scale);

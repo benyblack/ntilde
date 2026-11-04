@@ -109,6 +109,7 @@ const SHOTS_FILES = [
   'tui-vim-site.webp',
   'themes-grid-site.png',
   'tabs-vertical-site.webp',
+  'focus-mode-site.webp',
   'search-overlay-site.webp',
   'command-assist-site.webp',
   'connection-manager-window-site.webp',

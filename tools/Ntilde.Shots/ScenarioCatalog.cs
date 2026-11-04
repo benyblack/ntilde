@@ -23,6 +23,7 @@ public static class ScenarioCatalog
         new HeroSingleScenario(),
         new HeroSplitScenario(),
         new TabsVerticalScenario(),
+        new FocusModeScenario(),
         new CommandPaletteScenario(),
         new SettingsAgentAccessScenario(),
         new SettingsAppearanceScenario(),

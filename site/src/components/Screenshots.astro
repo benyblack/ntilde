@@ -27,6 +27,7 @@ const groups = [
   {
     title: 'Everyday flow',
     items: [
+      { file: 'focus-mode-site.webp', title: 'Focus mode', caption: 'Tabs and title bar give way to a slim strip naming the tab, leaving the whole window to your splits.', alt: 'Ntilde in focus mode: only a slim strip at the top, and one tab split between vim editing Rust source and a shell with a test run and a git graph' },
       { file: 'tabs-vertical-site.webp', title: 'Vertical tabs', caption: 'Each tab previews its last line, so a build, an editor or an agent is easy to spot at a glance.', alt: 'Ntilde with the vertical tab sidebar: five tabs, each with a preview of its last line, and the selected build tab showing a banner and a passing test run' },
       { file: 'search-overlay-site.webp', title: 'Find in scrollback', caption: 'Incremental search with a match count and case and regex toggles, highlighted in place.', alt: 'The find bar open over a git log, with every match of "decoder" highlighted and a 1 of 7 match count' },
       { file: 'command-assist-site.webp', title: 'Command assist', caption: 'Suggestions from your own history as you type, narrowed to recent, this folder, or commands that worked.', alt: 'The command assist popup listing three git commands from history under a partly typed git command' },
@@ -131,7 +132,13 @@ const groups = [
           <h3 class="text-lg font-semibold tracking-tight text-white">
             {group.title}
           </h3>
-          <ul class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <ul
+            class={
+              'mt-5 grid gap-5 sm:grid-cols-2 ' +
+              // Four shots read as a 2x2 grid rather than three and an orphan.
+              (group.items.length === 4 ? 'lg:grid-cols-2' : 'lg:grid-cols-3')
+            }
+          >
             {group.items.map((item) => (
               <li>
                 <figure class="group flex h-full flex-col overflow-hidden rounded-xl border border-ink-800 bg-ink-900/50 shadow-lg shadow-black/20">
