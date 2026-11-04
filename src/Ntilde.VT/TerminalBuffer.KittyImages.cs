@@ -175,8 +175,13 @@ public partial class TerminalBuffer
 
     internal void RetireUnstoredKittyHandle(object handle)
     {
-        if (IsRetainedKittyHandle(handle) || _images.Any(image => ReferenceEquals(image.ImageHandle, handle))) return;
-        QueueImageHandleRetirement(handle, disposeImmediately: true);
+        bool lockTaken = EnterWriteLockIfNeeded();
+        try
+        {
+            if (IsRetainedKittyHandle(handle) || _images.Any(image => ReferenceEquals(image.ImageHandle, handle))) return;
+            QueueImageHandleRetirement(handle, disposeImmediately: true);
+        }
+        finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
     }
 
     private void ClearRetainedKittyImages()

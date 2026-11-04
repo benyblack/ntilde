@@ -90,10 +90,12 @@ namespace Ntilde.VT
         /// </summary>
         private void RetireImage(TerminalImage image, bool disposeImmediately = false)
         {
+            // Source text belongs to the removed placement, independently of an opaque
+            // decoded handle that another placement or retained Kitty asset may share.
+            (image.SixelSource ?? (image.ImageHandle as IDeferredSixelImage)?.Source)?.Retire();
             if (IsRetainedKittyHandle(image.ImageHandle) || HasOtherImageReference(image)) return;
             // A headless source handle has no renderer resources or in-flight bitmap users.
             if (image.ImageHandle is SixelSource source) { source.Dispose(); return; }
-            (image.SixelSource ?? (image.ImageHandle as IDeferredSixelImage)?.Source)?.Retire();
             QueueImageHandleRetirement(image.ImageHandle, disposeImmediately);
         }
 

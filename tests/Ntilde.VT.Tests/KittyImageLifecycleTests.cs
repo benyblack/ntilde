@@ -489,6 +489,52 @@ public sealed class KittyImageLifecycleTests
         buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Same(handle, Assert.Single(retired));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Removed_Sixel_source_retires_even_when_its_decoded_handle_remains_shared(bool retainedByKitty)
+    {
+        var buffer = new TerminalBuffer(80, 24) { SixelSources = new SixelSourceBudget(100, 2) };
+        var liveSource = buffer.SixelSources.Retain("q~");
+        var removedSource = buffer.SixelSources.Retain("q~~");
+        object shared = new();
+        if (retainedByKitty) buffer.StoreKittyImage(shared, 1, 1, 7, 0);
+        else buffer.AddImage(new TerminalImage(shared, 0, 0, 1, 1));
+        buffer.AddKittyFrame(new TerminalImage(shared, 1, 1, 1, 1) { SixelSource = removedSource }, 1);
+        buffer.AddKittyFrame(new TerminalImage(new object(), 1, 1, 1, 1), 1);
+        // Retired source text must be evicted before an older live source, even
+        // though another placement or retained asset still owns the decoded handle.
+        buffer.SixelSources.Retain("q~~~");
+        Assert.Equal("q~", liveSource.Data);
+        Assert.Null(removedSource.Data);
+        var retired = new List<object>(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.DoesNotContain(shared, retired);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task Unstored_handle_retirement_checks_ownership_under_the_buffer_write_lock()
+    {
+        var buffer = new TerminalBuffer(80, 24); object handle = new();
+        System.Threading.Tasks.Task? retiring = null;
+        bool waitedForOwner;
+        buffer.Lock.EnterWriteLock();
+        try
+        {
+            retiring = System.Threading.Tasks.Task.Run(() => buffer.RetireUnstoredKittyHandle(handle), TestContext.Current.CancellationToken);
+            Assert.True(System.Threading.SpinWait.SpinUntil(() => retiring.IsCompleted || buffer.Lock.WaitingWriteCount > 0,
+                TimeSpan.FromSeconds(30)));
+            waitedForOwner = buffer.Lock.WaitingWriteCount > 0;
+            buffer.AddImage(new TerminalImage(handle, 0, 0, 1, 1));
+        }
+        finally { buffer.Lock.ExitWriteLock(); }
+        await retiring!.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        Assert.True(waitedForOwner);
+        var retired = new List<object>(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Empty(retired); Assert.Same(handle, Assert.Single(buffer.Images).ImageHandle);
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Same(handle, Assert.Single(retired));
+    }
+
     private sealed class SharedHandleDecoder : IImageDecoder
     {
         private readonly object _handle = new();
