@@ -216,10 +216,11 @@ invariant changes.
   backpressure. App never writes overrides
   to theme files. Mux spawn
   and presentation metadata supply host defaults; only the authoritative parser replies.
-- **Kitty aspect fit is semantic data, painted by App.** VT snapshots project the
-  Kitty aspect-preservation flag by value; App fits within the original snapped
-  cell rectangle before clipping. Bitmap dimensions, cell reservation and handle
-  retirement retain their owners; non-Kitty protocols keep their existing policy.
+- **Protocol aspect fit is semantic data, painted by App.** VT snapshots project
+  Kitty fit and per-placement iTerm2 default/explicit aspect intent by value; App
+  fits within the original snapped cell rectangle before clipping. Explicit iTerm2
+  zero stretches. Bitmap dimensions, cell reservation, legacy/SIXEL policy and
+  handle retirement retain their owners; complete state-transfer policy is unchanged.
 - **Kitty image assets own handles; placements borrow them.** VT separates transmit,
   transmit/display and retained placement, including uint ids, terminal-allocated
   image numbers, newest-number lookup and exact quiet/correlated responses. Each

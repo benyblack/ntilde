@@ -183,6 +183,7 @@ namespace Ntilde.VT
             int width = 0;
             int height = 0;
             bool inline = false;
+            bool preserveAspectRatio = true;
 
             foreach (var arg in args)
             {
@@ -194,6 +195,7 @@ namespace Ntilde.VT
                 if (key == "width") width = ParseDimension(val, isHeight: false);
                 else if (key == "height") height = ParseDimension(val, isHeight: true);
                 else if (key == "inline") inline = (val == "1");
+                else if (key == "preserveaspectratio") preserveAspectRatio = val != "0";
             }
 
             if (!inline) return;
@@ -253,6 +255,7 @@ namespace Ntilde.VT
                 int absRow = ImageAnchorRow();
 
                 var img = new TerminalImage(imageHandle, _buffer.CursorCol, absRow, width, height);
+                img.PreserveAspectRatio = preserveAspectRatio;
                 _buffer.AddImage(img);
 
                 // Finalize placement
