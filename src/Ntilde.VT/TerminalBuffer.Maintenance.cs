@@ -360,6 +360,7 @@ namespace Ntilde.VT
         /// <summary>
         /// DECSTR, following xterm's soft-reset defaults. Content, current position, active screen,
         /// tab stops and reporting modes survive; only the active DECSC bank is reinitialized.
+        /// modifyOtherKeys is the exception among the input modes: xterm resets it here too.
         /// </summary>
         public void SoftReset()
         {
@@ -379,6 +380,10 @@ namespace Ntilde.VT
                 Modes.IsApplicationKeypad = false;
                 Modes.IsInsertMode = false;
                 Modes.IsCursorVisible = true;
+                // Unlike the kitty stacks and the other reporting modes, xterm's soft reset
+                // restores the key-modifier resources (modify_now = modify_1st in ReallyReset),
+                // so DECSTR returns modifyOtherKeys to 0 on both screens.
+                Modes.ModifyOtherKeys.Reset();
                 ResetCursorPresentationNoLock();
                 ResetSavedCursorStateToDefaultsNoLock(_isAltScreen ? _savedCursors.Alt : _savedCursors.Main);
             }
@@ -449,6 +454,8 @@ namespace Ntilde.VT
                 // Kitty keyboard protocol: RIS clears both per-screen flag stacks so the
                 // terminal comes back up in legacy key encoding.
                 Modes.KittyKeyboard.Reset();
+                // xterm RIS restores modifyOtherKeys' initial value (0) on both screens.
+                Modes.ModifyOtherKeys.Reset();
 
                 ResetTabStopsToDefaultsNoLock();
             }

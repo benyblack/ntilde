@@ -359,6 +359,7 @@ namespace Ntilde
 
             // Keyboard Shortcuts
             this.AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+            this.AddHandler(KeyUpEvent, (_, e) => _broadcastTextGate.KeyUp(e.Key, e.PhysicalKey), RoutingStrategies.Tunnel);
 
             this.AddHandler(TextInputEvent, (s, e) =>
             {

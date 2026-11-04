@@ -220,7 +220,7 @@ namespace Ntilde.VT
 
     /// <summary>
     /// Every property of <see cref="ModeState"/> except the kitty stacks and the host-owned
-    /// <see cref="ModeState.AlternateScrollDefault"/>.
+    /// <see cref="ModeState.AlternateScrollDefault"/> (modifyOtherKeys included).
     /// </summary>
     public sealed class TerminalModeState
     {
@@ -246,6 +246,16 @@ namespace Ntilde.VT
         [JsonPropertyName("irm")] public bool IsInsertMode { get; set; }
         [JsonPropertyName("lnm")] public bool IsLineFeedNewLineMode { get; set; }
         [JsonPropertyName("srm")] public bool IsEchoEnabled { get; set; } = true;
+
+        /// <summary>
+        /// xterm modifyOtherKeys level of the main screen (0-2). Optional: absent from legacy
+        /// peers, which never negotiated it, and imported as 0. Which screen's level is live
+        /// follows <see cref="TerminalStateSnapshot.IsAltScreenActive"/>.
+        /// </summary>
+        [JsonPropertyName("mok_main"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? ModifyOtherKeysMain { get; set; }
+
+        /// <summary>xterm modifyOtherKeys level of the alternate screen (0-2); see <see cref="ModifyOtherKeysMain"/>.</summary>
+        [JsonPropertyName("mok_alt"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? ModifyOtherKeysAlt { get; set; }
 
         /// <summary>
         /// ?1007 as the application set it; null (absent) means "never set since RIS", so the

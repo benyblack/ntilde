@@ -106,6 +106,13 @@ public sealed record MuxPresentation
     /// <summary>Supported progressive enhancements; absent on older clients means disambiguation only (1).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? KittyKeyboardSupportedFlags { get; init; }
+
+    /// <summary>
+    /// True when this client's input path encodes xterm modifyOtherKeys (#829). Absent means it
+    /// does not: older GUIs and the text client only ever send legacy key bytes.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? ModifyOtherKeysEnabled { get; init; }
 }
 
 /// <summary>The local fields of <c>TerminalSessionRequest</c>; SSH is not spawnable through the mux (spec §9.2).</summary>
@@ -359,6 +366,13 @@ public sealed record KeyboardCapabilitiesNotification
 {
     public Guid SessionId { get; init; }
     public int SupportedFlags { get; init; }
+
+    /// <summary>
+    /// Whether every interactive client can encode xterm modifyOtherKeys (#829). Absent (an older
+    /// daemon, which does not gate it) leaves the receiving client's own support unchanged.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? ModifyOtherKeysSupported { get; init; }
 }
 
 /// <summary>Params of <see cref="MuxMethods.SessionChanged"/>: the session's facts after the change.</summary>

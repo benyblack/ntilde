@@ -224,4 +224,19 @@ public sealed class SessionEventsClientTests
         session.DeliverKeyboardCapabilities(0);
         Assert.Equal(0, seen);
     }
+
+    [Fact]
+    public void ModifyOtherKeys_ceiling_follows_capability_frames_and_ignores_older_daemons()
+    {
+        using var host = new MuxTestHost();
+        using MuxClient client = Task.Run(() => host.ConnectClientAsync()).GetAwaiter().GetResult();
+        using MuxClientSession session = client.OpenSession(Guid.NewGuid(), "scripted");
+        Assert.True(session.ModifyOtherKeysSupported);
+        session.DeliverKeyboardCapabilities(3, modifyOtherKeys: false);
+        Assert.False(session.ModifyOtherKeysSupported);
+        session.DeliverKeyboardCapabilities(3); // an older daemon's frame has no field
+        Assert.False(session.ModifyOtherKeysSupported);
+        session.DeliverKeyboardCapabilities(3, modifyOtherKeys: true);
+        Assert.True(session.ModifyOtherKeysSupported);
+    }
 }

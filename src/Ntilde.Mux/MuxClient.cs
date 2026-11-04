@@ -686,7 +686,7 @@ public sealed class MuxClient : IDisposable
             case MuxMethods.KeyboardCapabilities:
                 {
                     KeyboardCapabilitiesNotification capabilities = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.KeyboardCapabilitiesNotification);
-                    if (_sessions.TryGetValue(capabilities.SessionId, out MuxClientSession? session)) session.DeliverKeyboardCapabilities(capabilities.SupportedFlags);
+                    if (_sessions.TryGetValue(capabilities.SessionId, out MuxClientSession? session)) session.DeliverKeyboardCapabilities(capabilities.SupportedFlags, capabilities.ModifyOtherKeysSupported);
                     break;
                 }
             case MuxMethods.SessionChanged:

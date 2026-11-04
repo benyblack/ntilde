@@ -284,6 +284,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     /// <summary>Tests: the parser's kitty keyboard flag, read on the parse thread after every control item queued before it.</summary>
     internal Task<bool> KittyKeyboardEnabled => InvokeAsync(() => _parser.KittyKeyboardEnabled);
+    internal Task<bool> ModifyOtherKeysEnabled => InvokeAsync(() => _buffer.Modes.ModifyOtherKeys.IsSupported);
     internal Task<int> KittyKeyboardSupportedFlags => InvokeAsync(() => _buffer.Modes.KittyKeyboard.SupportedFlagMask);
 
     internal int QueuedDataCount => _data.Count;
@@ -1330,11 +1331,42 @@ public sealed class HeadlessTerminalSession : IDisposable
         var (any, enabled, flags) = KittyCapabilities();
         if (!any) return;
         _parser.KittyKeyboardEnabled = enabled;
+        // modifyOtherKeys has its own ceiling on the same ordered capability frame (#829): a GUI
+        // sharing the session with a client that cannot encode it must stop encoding it too, or
+        // a child trusting the level-0 query reply would still receive CSI 27 sequences.
+        bool modifyOtherKeys = ModifyOtherKeysCapability();
+        if (_buffer.Modes.ModifyOtherKeys.IsSupported != modifyOtherKeys)
+        {
+            _buffer.Modes.ModifyOtherKeys.SetSupported(modifyOtherKeys);
+            _keyboardCapabilitiesPending = true;
+        }
         if (_buffer.Modes.KittyKeyboard.SupportedFlagMask == flags) return;
         _buffer.Modes.KittyKeyboard.SetSupportedFlags(flags);
         // Critical protocol state is separate from advisory, throttled sharing events.
         // Pending resize bursts are already coalesced per sender in PostResize.
         _keyboardCapabilitiesPending = true;
+    }
+
+    /// <summary>
+    /// Parse thread only. modifyOtherKeys is supported only while every interactive client encodes
+    /// it, the same AND the kitty enable flag uses (#829), optionally replacing one client's
+    /// presentation before an attach commits. With no interactive client the last value stays.
+    /// </summary>
+    private bool ModifyOtherKeysCapability(IMuxFrameSink? replacing = null, MuxPresentation? presentation = null, bool readOnly = false)
+    {
+        bool any = false, enabled = true;
+        foreach (IMuxFrameSink sink in _subscribers)
+        {
+            if (ReferenceEquals(sink, replacing) || _readOnlySinks.Contains(sink) || !_kittyBySink.TryGetValue(sink, out var value)) continue;
+            any = true;
+            enabled &= value.ModifyOtherKeysEnabled == true;
+        }
+        if (presentation is not null && !readOnly)
+        {
+            any = true;
+            enabled &= presentation.ModifyOtherKeysEnabled == true;
+        }
+        return any ? enabled : _buffer.Modes.ModifyOtherKeys.IsSupported;
     }
 
     /// <summary>Current intersection, optionally replacing one client's presentation before an attach commits.</summary>
@@ -1367,13 +1399,13 @@ public sealed class HeadlessTerminalSession : IDisposable
     private MuxOutboundFrame AttachKeyboardCapabilities(IMuxFrameSink sink, MuxPresentation presentation, bool readOnly)
     {
         var (_, _, flags) = KittyCapabilities(sink, presentation, readOnly);
-        return KeyboardCapabilitiesFrame(flags);
+        return KeyboardCapabilitiesFrame(flags, ModifyOtherKeysCapability(sink, presentation, readOnly));
     }
 
-    private MuxOutboundFrame KeyboardCapabilitiesFrame(int flags) => MuxFrames.Notification(new MuxNotification
+    private MuxOutboundFrame KeyboardCapabilitiesFrame(int flags, bool modifyOtherKeys) => MuxFrames.Notification(new MuxNotification
     {
         Method = MuxMethods.KeyboardCapabilities,
-        Params = MuxFrames.ToElement(new KeyboardCapabilitiesNotification { SessionId = Id, SupportedFlags = flags },
+        Params = MuxFrames.ToElement(new KeyboardCapabilitiesNotification { SessionId = Id, SupportedFlags = flags, ModifyOtherKeysSupported = modifyOtherKeys },
             MuxJsonContext.Default.KeyboardCapabilitiesNotification),
     });
 
@@ -1384,7 +1416,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         {
             _keyboardCapabilitiesPending = false;
             if (IsFaulted || _keyboardCapabilitySinks.Count == 0) return;
-            Broadcast(KeyboardCapabilitiesFrame(_buffer.Modes.KittyKeyboard.SupportedFlagMask), _keyboardCapabilitySinks.Contains);
+            Broadcast(KeyboardCapabilitiesFrame(_buffer.Modes.KittyKeyboard.SupportedFlagMask, _buffer.Modes.ModifyOtherKeys.IsSupported), _keyboardCapabilitySinks.Contains);
             // A refusing sink may change the intersection again. Publish that before the next item.
         }
     }

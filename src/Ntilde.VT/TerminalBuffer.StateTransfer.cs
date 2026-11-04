@@ -202,6 +202,13 @@ namespace Ntilde.VT
                     snapshot.KittyKeyboard.MainStack,
                     snapshot.KittyKeyboard.AltStack,
                     snapshot.KittyKeyboard.IsAltScreenActive);
+                // Absent (legacy peer) is level 0. A level this build does not honor is clamped
+                // to 0 rather than rejected, as kitty flags are masked, so a newer peer that
+                // learned level 3 cannot make an older importer refuse the whole snapshot.
+                Modes.ModifyOtherKeys.ImportForState(
+                    snapshot.Modes.ModifyOtherKeysMain ?? 0,
+                    snapshot.Modes.ModifyOtherKeysAlt ?? 0,
+                    snapshot.IsAltScreenActive);
 
                 _isSynchronizedOutput = snapshot.IsSynchronizedOutput;
                 _lastSyncStart = lastSyncStart;
@@ -799,6 +806,8 @@ namespace Ntilde.VT
             IsInsertMode = modes.IsInsertMode,
             IsLineFeedNewLineMode = modes.IsLineFeedNewLineMode,
             IsEchoEnabled = modes.IsEchoEnabled,
+            ModifyOtherKeysMain = modes.ModifyOtherKeys.MainLevel,
+            ModifyOtherKeysAlt = modes.ModifyOtherKeys.AltLevel,
             AlternateScrollOverride = modes.AlternateScrollOverride,
         };
 
