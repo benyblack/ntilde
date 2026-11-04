@@ -238,6 +238,13 @@ internal static class ParityCorpus
             "\u001b[?2048h" + "client wants in-band reports" + "\u001b[?2048l" +
             "\u001b[?2048h"));
 
+        yield return ("decscnm-reverse-video", Utf8(
+            // Screen-wide: set on main, carried into and out of the alternate screen, through a
+            // DECSTR that keeps it, and left set at the end so the snapshot carries it.
+            "\u001b[?5hnormal \u001b[7minverse\u001b[0m \u001b[31mred" +
+            "\u001b[?1049h\u001b[?5l\u001b[?5halt\u001b[?1049l\u001b[!p" +
+            "\u001bc\u001b[?5hafter reset"));
+
         yield return ("mixed-modes", Utf8(
             "\u001b[?1h\u001b[?7l\u001b[?6h\u001b[?25l\u001b[?2004h\u001b[?1000h\u001b[?1006h" +
             "\u001b[4h\u001b[20h" +

@@ -237,7 +237,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage, IDisposable
     {
         try
         {
-            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            var clipboard = Ntilde.Shell.Clipboard.HostClipboardAccess.Get(TopLevel.GetTopLevel(this));
             if (clipboard == null)
             {
                 ShowStatus(status, "Clipboard is not available.");
@@ -273,7 +273,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage, IDisposable
     {
         try
         {
-            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            var clipboard = Ntilde.Shell.Clipboard.HostClipboardAccess.Get(TopLevel.GetTopLevel(this));
             if (clipboard == null)
             {
                 ShowStatus(status, "Clipboard is not available.");

@@ -49,6 +49,43 @@ namespace Ntilde.Tests.RenderTests
         }
 
         [Fact]
+        public void CaptureRenderSnapshot_UnchangedReverseVideoFrames_AllocationsStayLowAfterWarmup()
+        {
+            // DECSCNM (#831): the swapped theme is cached per effective theme, not cloned per capture.
+            const int cols = 120;
+            const int rows = 40;
+            const int warmupCaptures = 10;
+            const int measuredCaptures = 200;
+            const double perCaptureCeilingBytes = 24_000;
+
+            var buffer = new TerminalBuffer(cols, rows);
+            new AnsiParser(buffer).Process(new string('A', cols) + "\u001b[?5h");
+            var req = new RenderSnapshotRequest { ViewportCols = cols, ViewportRows = rows };
+
+            for (int i = 0; i < warmupCaptures; i++)
+            {
+                using var warm = buffer.CaptureRenderSnapshot(req, out _);
+            }
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
+            long startAllocated = GC.GetAllocatedBytesForCurrentThread();
+            for (int i = 0; i < measuredCaptures; i++)
+            {
+                using var snapshot = buffer.CaptureRenderSnapshot(req, out _);
+                Assert.True(snapshot.Theme.IsReverseVideo);
+            }
+            long totalAllocated = GC.GetAllocatedBytesForCurrentThread() - startAllocated;
+
+            double perCapture = totalAllocated / (double)measuredCaptures;
+            Assert.True(
+                perCapture <= perCaptureCeilingBytes,
+                $"Expected low steady-state allocations for unchanged reversed frames, but measured {perCapture:F0} bytes/capture (ceiling={perCaptureCeilingBytes}).");
+        }
+
+        [Fact]
         public void CaptureRenderSnapshot_SingleRowMutation_AllocationIncreaseIsModest()
         {
             const int cols = 120;

@@ -400,6 +400,12 @@ namespace Ntilde.VT
                 ScrollTop = 0;
                 ScrollBottom = Rows - 1;
                 Modes.IsSixelDisplayMode = false;
+                // DECSCNM returns to normal video on RIS (xterm); DECSTR deliberately keeps it.
+                if (Modes.IsReverseVideo)
+                {
+                    Modes.IsReverseVideo = false;
+                    MarkRenderThemeChangedNoLock();
+                }
                 Modes.IsAutoWrapMode = true;
                 Modes.IsApplicationCursorKeys = false;
                 Modes.IsApplicationKeypad = false;

@@ -914,6 +914,7 @@ namespace Ntilde.VT
             switch (mode)
             {
                 case 1: return _buffer.Modes.IsApplicationCursorKeys ? 1 : 2;    // DECCKM
+                case 5: return _buffer.Modes.IsReverseVideo ? 1 : 2;             // DECSCNM
                 case 6: return _buffer.Modes.IsOriginMode ? 1 : 2;               // DECOM
                 case 7: return _buffer.Modes.IsAutoWrapMode ? 1 : 2;             // DECAWM
                 case 9: return _buffer.Modes.MouseModeX10PressOnly ? 1 : 2;     // X10 compatibility
@@ -969,6 +970,9 @@ namespace Ntilde.VT
                 {
                     case 1: // DECCKM - Cursor Keys Mode
                         _buffer.Modes.IsApplicationCursorKeys = enable;
+                        break;
+                    case 5: // DECSCNM - screen-wide reverse video (terminfo flash / visual bell)
+                        _buffer.SetReverseVideo(enable);
                         break;
                     case 6: // DECOM - Origin Mode
                         _buffer.Modes.IsOriginMode = enable;

@@ -194,7 +194,9 @@ namespace Ntilde.VT
                         ? links[snapshot.CurrentHyperlinkId]
                         : null;
 
+                bool wasReverseVideo = Modes.IsReverseVideo;
                 ImportModes(Modes, snapshot.Modes);
+                if (wasReverseVideo != Modes.IsReverseVideo) MarkRenderThemeChangedNoLock();
                 ImportRuntimeColors(snapshot.Colors);
                 Modes.KittyKeyboard.ImportStacksForState(
                     snapshot.KittyKeyboard.MainStack,
@@ -792,6 +794,7 @@ namespace Ntilde.VT
             IsApplicationKeypad = modes.IsApplicationKeypad,
             IsAutoWrapMode = modes.IsAutoWrapMode,
             IsOriginMode = modes.IsOriginMode,
+            IsReverseVideo = modes.IsReverseVideo,
             IsSixelDisplayMode = modes.IsSixelDisplayMode,
             IsFocusEventReporting = modes.IsFocusEventReporting,
             IsBracketedPasteMode = modes.IsBracketedPasteMode,
@@ -818,6 +821,7 @@ namespace Ntilde.VT
             target.IsApplicationKeypad = source.IsApplicationKeypad;
             target.IsAutoWrapMode = source.IsAutoWrapMode;
             target.IsOriginMode = source.IsOriginMode;
+            target.IsReverseVideo = source.IsReverseVideo;
             target.IsSixelDisplayMode = source.IsSixelDisplayMode;
             target.IsFocusEventReporting = source.IsFocusEventReporting;
             target.IsBracketedPasteMode = source.IsBracketedPasteMode;

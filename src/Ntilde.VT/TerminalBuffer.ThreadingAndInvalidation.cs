@@ -657,7 +657,8 @@ namespace Ntilde.VT
         /// </summary>
         private RenderThemeSnapshot CreateRenderThemeSnapshot_NoLock(TermColor[] palette)
         {
-            var theme = EffectiveRenderTheme();
+            var theme = PresentedRenderTheme();
+            bool reverseVideo = Modes.IsReverseVideo;
             Span<ulong> masks = stackalloc ulong[4] { 0, 0, 0, 0 };
             var overrides = _runtimeColors.Current;
             for (int i = 0; i < palette.Length; i++)
@@ -671,14 +672,16 @@ namespace Ntilde.VT
                 Background = theme.Background,
                 CursorColor = theme.CursorColor,
                 AnsiPalette = palette,
-                HasForegroundOverride = overrides.Foreground.HasValue,
-                HasBackgroundOverride = overrides.Background.HasValue,
+                // Under DECSCNM the presented defaults trade places, and each flag follows its color.
+                HasForegroundOverride = reverseVideo ? overrides.Background.HasValue : overrides.Foreground.HasValue,
+                HasBackgroundOverride = reverseVideo ? overrides.Foreground.HasValue : overrides.Background.HasValue,
                 HasCursorOverride = overrides.Cursor.HasValue,
                 HasSelectionBackgroundOverride = overrides.SelectionBackground.HasValue,
                 HasSelectionForegroundOverride = overrides.SelectionForeground.HasValue,
                 SelectionBackground = theme.SelectionBackground,
                 SelectionForeground = theme.SelectionForeground,
                 PaletteOverrides = new PaletteOverrideMask(masks[0], masks[1], masks[2], masks[3]),
+                IsReverseVideo = reverseVideo,
                 Source = theme
             };
         }

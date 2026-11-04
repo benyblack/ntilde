@@ -90,6 +90,12 @@ namespace Ntilde.AgentHost
             Func<bool> isCurrent, Action onInputSubmitted, CancellationToken cancellationToken)
             => Task.FromResult<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?>(null);
 
+        /// <summary>One bounded private clipboard fixture operation; no native clipboard access.</summary>
+        Task<Ntilde.AgentHost.Contracts.ClipboardFixtureResult?> ClipboardFixtureAsync(
+            Ntilde.AgentHost.Contracts.ClipboardFixtureParams input, AgentSessionRegistration registration,
+            Func<bool> isCurrent, CancellationToken cancellationToken)
+            => Task.FromResult<Ntilde.AgentHost.Contracts.ClipboardFixtureResult?>(null);
+
         /// <summary>
         /// Photographs the pane's live control (A5 <c>live</c> mode), scaled by
         /// <paramref name="scale"/> device pixels per DIP and resampled down to

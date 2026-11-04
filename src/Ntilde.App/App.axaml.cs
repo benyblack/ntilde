@@ -14,6 +14,9 @@ public partial class App : Application
 {
     public override void Initialize()
     {
+        // Process-lifetime guards: framework text controls must refuse native clipboard
+        // resolution too, including dialogs opened before a private fixture is bound.
+        _ = Ntilde.Shell.Clipboard.PrivateClipboardQaMode.Process.InstallControlGuards();
         AvaloniaXamlLoader.Load(this);
         InstallMacAppMenu();
 

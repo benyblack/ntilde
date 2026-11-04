@@ -905,6 +905,7 @@ namespace Ntilde.AgentHost
                     AgentHostProtocol.Methods.SpawnSession => await HandleSpawnSessionAsync(request).ConfigureAwait(false),
                     AgentHostProtocol.Methods.CloseSession => await HandleCloseSessionAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.GeneratePaneInput => await HandleGeneratePaneInputAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.ClipboardFixture => await HandleClipboardFixtureAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.ResizePane => await HandleResizePaneAsync(request, cancellationToken).ConfigureAwait(false),
                     _ => Error(request.Id, AgentHostProtocol.ErrorCodes.UnknownMethod, $"Unknown method '{request.Method}'."),
                 };
