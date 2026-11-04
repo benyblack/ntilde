@@ -18,6 +18,8 @@ public sealed record AppServiceBundle(
     TerminalSettings? Settings = null,
     ITerminalSessionFactory? SessionFactory = null)
 {
+    internal Ntilde.Shell.Clipboard.PrivateClipboardQaMode PrivateClipboardQa { get; init; } = Ntilde.Shell.Clipboard.PrivateClipboardQaMode.Process;
+
     /// <summary>
     /// For the window's startup restore (spec R2): the time no live local daemon session can predate - the boot, or on
     /// Windows the later of the boot and this logon - or null when the OS will not say. A session file saved before it

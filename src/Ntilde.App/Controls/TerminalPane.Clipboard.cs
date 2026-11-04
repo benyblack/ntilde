@@ -9,17 +9,33 @@ namespace Ntilde.Controls;
 public partial class TerminalPane
 {
     private KittyClipboardSession? _kittyClipboard;
+    internal PrivateClipboardQaMode PrivateClipboardQa { get; set; } = PrivateClipboardQaMode.Process;
     internal Func<Func<Task>, Task>? ClipboardSchedulerForTest { get; set; }
+
+    /// <summary>A private process never falls back to desktop I/O; retired parser callbacks cannot acquire a later fixture.</summary>
+    private bool TryHandlePrivateClipboardWrite(Ntilde.VT.AnsiParser source, string target, byte[] data, bool allowed)
+    {
+        if (!PrivateClipboardQa.IsEnabled) return false;
+        if (!ReferenceEquals(Parser, source)) PrivateClipboardQa.Interrupt(this);
+        else if (allowed) PrivateClipboardQa.For(this)?.AcceptOsc52(target, data);
+        return true;
+    }
 
     private void WireKittyClipboard(bool muxBacked)
     {
         _kittyClipboard?.Dispose();
         _kittyClipboard = null;
         if (Buffer != null) Buffer.Modes.IsClipboardPasteMode = false;
+        if (PrivateClipboardQa.IsEnabled)
+        {
+            PrivateClipboardQa.Interrupt(this);
+            if (Parser != null) Parser.OnKittyClipboardReset = () => PrivateClipboardQa.Interrupt(this);
+            return;
+        }
         if (muxBacked || Parser == null) return; // the authoritative daemon cannot perform desktop I/O
         var parser = Parser;
         parser.KittyClipboardEnabled = true;
-        var clipboard = new AvaloniaKittyClipboard(() => TopLevel.GetTopLevel(this)?.Clipboard, ConfirmClipboardReadAsync);
+        var clipboard = new AvaloniaKittyClipboard(() => Ntilde.Shell.Clipboard.HostClipboardAccess.Get(TopLevel.GetTopLevel(this)), ConfirmClipboardReadAsync);
         bool Alive() => !_disposed && ReferenceEquals(Parser, parser) && Session?.IsProcessRunning == true;
         bool TryReply(string reply)
         {

@@ -32,6 +32,8 @@ class Program
             // the install root (Phase 5 R10) - nor, with SessionPersistence off, behind any live daemon,
             // as before Phase 5: the in-app apply path asks before closing its sessions and shuts it
             // down first, and this one would do neither (spec §9).
+            _ = Ntilde.Shell.Clipboard.PrivateClipboardQaMode.Process;
+
             VelopackApp velopack = VelopackApp.Build();
 
             // The install directory goes on the user PATH, so a prompt finds ntilde.com there

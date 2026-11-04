@@ -169,7 +169,7 @@ public partial class AgentOutputPanel : UserControl
     {
         // TopLevel is null in headless tests and before the pane attaches; a copy that silently
         // does nothing there is the correct degradation.
-        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        var clipboard = Ntilde.Shell.Clipboard.HostClipboardAccess.Get(TopLevel.GetTopLevel(this));
         if (clipboard is not null)
         {
             await clipboard.SetTextAsync(text);

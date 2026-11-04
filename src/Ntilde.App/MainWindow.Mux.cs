@@ -222,7 +222,7 @@ namespace Ntilde
                 profile,
                 (source, report, progress) => CreateRemoteMuxInstaller(profile, source, report, progress),
                 AppVersionInfo.Version,
-                TopLevel.GetTopLevel(owner)?.Clipboard,
+                Ntilde.Shell.Clipboard.HostClipboardAccess.Get(TopLevel.GetTopLevel(owner)),
                 ThemedWindowChrome.Apply);
 
         /// <summary>
