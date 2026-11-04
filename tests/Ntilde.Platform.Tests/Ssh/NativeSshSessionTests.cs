@@ -35,6 +35,15 @@ public sealed class NativeSshSessionTests
     }
 
     [Fact]
+    public void Byte_input_reports_native_admission_refusal_without_using_the_void_write_path()
+    {
+        var interop = new FakeNativeSshInterop { AcceptInput = false };
+        using var session = new NativeSshSession(CreateProfile(), interop: interop);
+        Assert.False(session.TrySendInputBytes(new byte[] { 27, 91, 77, 32, 128, 255 }));
+        Assert.Empty(interop.Writes); Assert.Empty(interop.DeviceReplies);
+    }
+
+    [Fact]
     public void Byte_input_preserves_non_UTF8_protocol_octets_and_uses_the_user_input_path()
     {
         var interop = new FakeNativeSshInterop();
@@ -844,6 +853,12 @@ public sealed class NativeSshSessionTests
         public List<byte[]> Writes { get; } = new();
         public List<byte[]> DeviceReplies { get; } = new();
         public bool AcceptDeviceReplies { get; set; } = true;
+        public bool AcceptInput { get; set; } = true;
+        public bool TryWriteInput(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data)
+        {
+            if (!AcceptInput) return false;
+            Writes.Add(data.ToArray()); return true;
+        }
 
         public bool TryWriteDeviceReply(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data)
         {

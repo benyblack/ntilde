@@ -117,6 +117,8 @@ public interface INativeSshInterop
         return true;
     }
     void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data);
+    /// <summary>Admission to the ordinary input queue. Older providers conservatively decline.</summary>
+    bool TryWriteInput(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => false;
     /// <summary>Bounded, best-effort reply admission; false never falls back to the unbounded input path.</summary>
     bool TryWriteDeviceReply(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => false;
     void Resize(NovaSshSafeHandle sessionHandle, int cols, int rows);

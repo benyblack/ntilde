@@ -465,6 +465,9 @@ invariant changes.
   Server attach/read-only checks precede either route. `ITerminalByteInput` belongs
   to Pty; PTY/SSH implementations copy retained memory and use ordinary input
   ordering/backpressure, independently of nonblocking best-effort device replies.
+  Native SSH's ordinary-input interop returns acceptance only for native OK;
+  closure/disposal refuses, and unexpected errors remain visible. Older custom
+  interop providers decline rather than reuse a void write with unknown admission.
   App converts legacy mouse character values to exact Latin-1 bytes and refuses
   high bytes on text-only peers. Capability/acceptance is not a child-delivery ack;
   regression tests independently read a synthetic raw frame from a real POSIX child.

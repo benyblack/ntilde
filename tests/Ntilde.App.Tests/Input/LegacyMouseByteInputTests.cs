@@ -85,4 +85,22 @@ public sealed class LegacyMouseByteInputTests
         view.HandleMouseMoveCore(TerminalMouseButton.Left, 96, 223, KeyModifiers.None);
         Assert.Equal(2, attempts); Assert.Empty(text);
     }
+
+    [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void A_mode_change_after_encoding_cannot_change_the_encoded_frame_transport(bool sgr, bool supportsBytes)
+    {
+        var (view, buffer, _, text, bytes) = Create(supportsBytes);
+        buffer.Modes.MouseModeSGR = sgr;
+        string frame = TerminalInputModeEncoder.EncodeMouseEvent(buffer.Modes,
+            new TerminalMouseEvent(TerminalMouseEventKind.Press, TerminalMouseButton.Left, 96, 223, KeyModifiers.None))!;
+        buffer.Modes.MouseModeSGR = !sgr;
+        Assert.Equal(sgr || supportsBytes, view.SendEncodedMouseReport(frame));
+        if (sgr) { Assert.Equal("\u001b[<0;96;223M", Assert.Single(text)); Assert.Empty(bytes); }
+        else if (supportsBytes) { Assert.Equal(new byte[] { 27, 91, 77, 32, 128, 255 }, Assert.Single(bytes)); Assert.Empty(text); }
+        else { Assert.Empty(text); Assert.Empty(bytes); }
+    }
 }

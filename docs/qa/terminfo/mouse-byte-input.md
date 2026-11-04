@@ -6,7 +6,8 @@ UTF-8 expanded the last two bytes and changed what the child received.
 
 App now converts the legacy frame with Latin-1. The optional Pty-owned
 `ITerminalByteInput` interface preserves bytes through Rust PTY, native SSH,
-OpenSSH wrappers and negotiated mux connections. SGR frames remain ASCII text.
+OpenSSH wrappers and negotiated mux connections. SGR frames remain ASCII text. Routing follows the encoded frame prefix, so a concurrent
+SGR-mode change cannot turn an already encoded legacy frame into UTF-8 text.
 Old text-only peers keep ASCII mouse reports; high-coordinate legacy reports are
 refused. A declined raw write never falls back to a different text write, and a
 refused motion report can be retried at the same cell.
@@ -19,6 +20,10 @@ The retained-byte budget includes in-flight writes: UTF-16 storage for text and
 array length for raw input. A legacy child provider can accept strict UTF-8 via
 its text API; malformed bytes cannot become replacement characters. Acceptance
 is queue/transport acceptance and does not acknowledge execution by the child.
+Native SSH returns true only for the ordinary native input queue's OK result;
+worker closure or disposal during admission returns false, while unexpected
+native errors remain exceptions. Older custom interop providers conservatively
+decline byte admission.
 
 ## Evidence
 

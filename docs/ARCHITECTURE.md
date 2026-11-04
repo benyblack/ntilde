@@ -212,7 +212,10 @@ Legacy mouse reports contain octets outside UTF-8, even though their encoder use
 six character values as an intermediate representation. App converts that legacy
 frame with Latin-1 and requires the optional `ITerminalByteInput` transport for
 high bytes; text-only peers can carry its ASCII subset. SGR reports keep their
-ASCII text route. PTY and SSH preserve byte input, copying retained caller memory
+ASCII text route. The encoded prefix selects transport independently of later
+mode changes. Native SSH reports ordinary-queue admission only on native OK;
+closure/disposal refuses, while unexpected errors remain visible.
+PTY and SSH preserve byte input, copying retained caller memory
 and sharing ordinary input ordering/backpressure rather than the best-effort
 device-reply budget. Mux negotiates byte semantics in Hello/Welcome, preserves
 binary Input payloads and serializes them with text and parser replies in its

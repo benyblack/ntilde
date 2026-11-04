@@ -292,8 +292,15 @@ namespace Ntilde.Shell
             if (_session == null || _buffer == null) return false;
 
             string? sequence = TerminalInputModeEncoder.EncodeMouseEvent(_buffer.Modes, mouseEvent);
-            if (sequence == null) return false;
-            if (!_buffer.Modes.MouseModeSGR)
+            return sequence != null && SendEncodedMouseReport(sequence);
+        }
+
+        // The encoder and transport selection are separate stages; mode changes between
+        // them must not change the format of the already encoded frame.
+        internal bool SendEncodedMouseReport(string sequence)
+        {
+            if (_session == null || _buffer == null) return false;
+            if (sequence.StartsWith("\u001b[M", StringComparison.Ordinal))
             {
                 if (_session is ITerminalByteInput { SupportsByteInput: true } bytes)
                     return bytes.TrySendInputBytes(System.Text.Encoding.Latin1.GetBytes(sequence));
