@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLinuxStat, parseLinuxStatus, parseLinuxArgv, linuxControllingDevice,
-    readLinuxRecords, assertLinuxOwnedChild } from './linux-process-core.mjs';
+    readLinuxRecords, assertLinuxOwnedChild, linuxFileIdentity } from './linux-process-core.mjs';
 import { readLinuxProcessFacts } from './linux-process-provider.mjs';
 
 const start = '9007199254740993';
@@ -227,4 +227,37 @@ test('regular executable timestamp changes still invalidate its source identity'
         return path === '/opt/worker' && reader.statReads >= 2 ? { ...value, mtimeNs: 999n } : value;
     };
     assert.throws(() => records(reader), /identity changed/);
+});
+
+
+test('exact argv preserves a leading UTF8 BOM and detects its insertion between observations', () => {
+    const plain = Buffer.from('/opt/worker\0arg\0');
+    const withBom = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), plain]);
+    assert.deepEqual(parseLinuxArgv(withBom), ['\ufeff/opt/worker', 'arg']);
+    assert.notDeepEqual(parseLinuxArgv(withBom), parseLinuxArgv(plain));
+    const reader = synthetic(), read = reader.read;
+    reader.read = (handle, name) => {
+        const bytes = read(handle, name);
+        return name === 'cmdline' && reader.statReads >= 2 ? Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), bytes]) : bytes;
+    };
+    assert.throws(() => records(reader), /identity changed/);
+});
+
+
+test('high-bit unsigned inode/dev identities normalize losslessly from signed Node representations', () => {
+    const value = file({ ino: -9223372036854300301n });
+    const identity = linuxFileIdentity(value, 'isFile');
+    assert.equal(identity.ino, '9223372036855251315');
+    assert.equal(linuxFileIdentity({ ...value, dev: -1n }, 'isFile').dev, '18446744073709551615');
+    assert.equal(linuxFileIdentity({ ...value, rdev: -1n }, 'isFile').rdev, '18446744073709551615');
+    for (const ino of [-9223372036854775809n, 18446744073709551616n]) {
+        assert.throws(() => linuxFileIdentity({ ...value, ino }, 'isFile'), /range/);
+    }
+    for (const key of ['uid', 'mode', 'size', 'mtimeNs', 'ctimeNs']) {
+        assert.throws(() => linuxFileIdentity({ ...value, [key]: -1n }, 'isFile'), /negative/);
+    }
+    const reader = synthetic(), linkStat = reader.linkStat, pathStat = reader.pathStat;
+    reader.linkStat = (handle, entry) => entry === 'exe' ? value : linkStat(handle, entry);
+    reader.pathStat = path => path === '/opt/worker' ? { ...value, ino: 9223372036855251315n } : pathStat(path);
+    assert.equal(records(reader)[0].executableFile.ino, identity.ino);
 });

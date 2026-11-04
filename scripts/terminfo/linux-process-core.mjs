@@ -44,7 +44,7 @@ export function parseLinuxStatus(text, process) {
 /** cmdline can be changed by the process. It is an exact comparison fact, not provenance. */
 export function parseLinuxArgv(bytes) {
     if (!Buffer.isBuffer(bytes) || bytes.length < 2 || bytes.length > 32768 || bytes.at(-1) !== 0) throw new Error('Invalid Linux cmdline.');
-    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
     const argv = text.slice(0, -1).split('\0');
     if (argv.length > 128 || !argv[0] || argv.some(value => value.length > 8192)) throw new Error('Invalid Linux argv.');
     return argv;
@@ -54,8 +54,16 @@ function copyIdentity(stat, kind, fields) {
     if (!stat || typeof stat[kind] !== 'function' || !stat[kind]()) throw new Error('Linux file type mismatch.');
     const result = {};
     for (const key of fields) {
-        if (typeof stat[key] !== 'bigint' || stat[key] < 0n) throw new Error('Missing lossless Linux file identity.');
-        result[key] = stat[key].toString();
+        const value = stat[key];
+        if (typeof value !== 'bigint') throw new Error('Missing lossless Linux file identity.');
+        if (['dev', 'ino', 'rdev'].includes(key)) {
+            // Node/libuv may expose unsigned 64-bit identities as signed int64 BigInts.
+            if (value < -9223372036854775808n || value > 18446744073709551615n) throw new Error('Out-of-range Linux unsigned file identity.');
+            result[key] = BigInt.asUintN(64, value).toString();
+        } else {
+            if (value < 0n) throw new Error('Invalid negative Linux file metadata.');
+            result[key] = value.toString();
+        }
     }
     return result;
 }
@@ -87,8 +95,8 @@ function pathValue(path) {
 
 function snapshot(reader, handle, pid, pty, query) {
     const read = (name, limit) => query(() => reader.read(handle, name, limit, query));
-    const process = parseLinuxStat(new TextDecoder('utf-8', { fatal: true }).decode(read('stat', 8192)), pid);
-    const uids = parseLinuxStatus(new TextDecoder('utf-8', { fatal: true }).decode(read('status', 32768)), process);
+    const process = parseLinuxStat(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(read('stat', 8192)), pid);
+    const uids = parseLinuxStatus(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(read('status', 32768)), process);
     const directory = linuxFileIdentity(query(() => reader.directoryStat(handle)), 'isDirectory');
     if (directory.uid !== String(uids[0])) throw new Error('Linux proc directory owner mismatch.');
     const argv = parseLinuxArgv(read('cmdline', 32768));
@@ -147,7 +155,7 @@ export function readLinuxRecords(reader, requests, timeoutMs) {
         return before;
     } finally {
         let closeError;
-        for (const value of opened.reverse()) {
+        for (const value of opened.toReversed()) {
             try { reader.close(value.handle); } catch (error) { closeError ??= error; }
         }
         if (closeError) throw closeError;

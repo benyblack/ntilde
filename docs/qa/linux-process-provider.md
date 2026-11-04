@@ -61,11 +61,14 @@ The executable link must name an absolute canonical non-deleted path; its mapped
 file's lossless device/inode/mode/size/timestamps must match the named regular
 file. Deleted executable suffixes and dereference restrictions are documented in
 [proc_pid_exe(5)](https://man7.org/linux/man-pages/man5/proc_pid_exe.5.html).
+Unsigned 64-bit inode/device identities are normalized losslessly from Node's
+possible signed int64 representation, only after a strict 64-bit range check.
+Other metadata is not wrapped, and no identity passes through Number.
 This compares object/path facts; it does not hash the executable or establish
 source/build provenance. A future collector must separately pin that identity.
 
 Cmdline is bounded, valid UTF-8 and exactly NUL-separated/terminated; empty
-arguments and embedded spaces are preserved. The child comparison never shell
+arguments, embedded spaces and a leading UTF-8 BOM are preserved. The child comparison never shell
 splits a command string. A process can rewrite its command line, so matching argv
 is a comparison fact, not executable provenance or an unforgeable ownership
 marker. See [proc_pid_cmdline(5)](https://man7.org/linux/man-pages/man5/proc_pid_cmdline.5.html).
@@ -116,7 +119,10 @@ start identity and stdin/stdout/controlling-device equality. It sends only the
 fixture's shutdown command and signals only its own spawned children on failure.
 It retains a provider-only report after verified child exit. Stdout and stderr
 are each capped before append at 4096 bytes; overflow latches failure and later
-chunks are discarded without retention. The private child performs one bounded
+chunks are discarded without retention. Final output validation waits for the
+helper's `close` event, after stdio drains, rather than publishing at `exit`. A
+regression injects invalid buffered output between those events. See the
+[Node child-process events](https://nodejs.org/docs/latest-v22.x/api/child_process.html#event-close). The private child performs one bounded
 activity exchange before shutdown. The control crosses the kernel's actual
 eight-second tty timestamp bucket (at most 8.1 seconds idle within existing
 fixture ceilings), proving that ordinary traffic changes mtime while stable
@@ -129,7 +135,13 @@ Python 3.14.4. The original core/provider SHA-256 values matched the reported
 snapshot and passed 36 tests plus the idle self-test. The old timestamp-inclusive
 PTY projection failed the real activity comparison with an unchanged device and
 changed mtime. The corrected projection passed the same real activity control and
-40 deterministic tests with zero skips. This is provider evidence only; no App,
+44 deterministic tests with zero skips after review fixes. A separate real
+interruption control sends SIGTERM only to its spawned helper while the tagged
+PTY child deliberately resists SIGTERM. The helper converts termination into
+normal unwinding, escalates only its unreaped fork child to SIGKILL and reports
+the actual waitpid acknowledgement. The controller requires drained helper
+stdio, normal exit143 and the recorded child's absence before publishing any
+success. The existing six-second hard cleanup ceiling is unchanged. This is provider evidence only; no App,
 desktop/GUI collection, clipboard or personal process enumeration was performed.
 
 The report explicitly marks App, desktop and Linux full owned collection as

@@ -5,7 +5,7 @@ import { lstatSync, realpathSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { readLinuxProcessFacts, readLinuxOwnedChildFacts } from './linux-process-provider.mjs';
 import { assertLinuxOwnedChild } from './linux-process-core.mjs';
-import { LinuxProviderOutput } from './fixtures/linux-provider-output.mjs';
+import { LinuxProviderOutput, linuxProviderOutputClosed } from './fixtures/linux-provider-output.mjs';
 
 if (process.platform !== 'linux') throw new Error('Provider self-test requires Linux, not a simulated proc root.');
 if (process.argv.length !== 3) throw new Error('Expected a report path only.');
@@ -15,7 +15,7 @@ const executable = realpathSync(process.execPath), runId = randomBytes(16).toStr
 const script = fileURLToPath(new URL('./fixtures/linux-provider-child.mjs', import.meta.url));
 const helper = fileURLToPath(new URL('./fixtures/linux-provider-pty.py', import.meta.url));
 const self = readLinuxProcessFacts(process.pid);
-assert.equal(self.pid, process.pid); assert.deepEqual(self.uids, Array(4).fill(process.getuid()));
+assert.equal(self.pid, process.pid); assert.deepEqual(self.uids, new Array(4).fill(process.getuid()));
 const child = spawn('/usr/bin/python3', [helper, executable, script, runId], { stdio: ['pipe', 'pipe', 'pipe'] });
 child.stdin.on('error', () => {}); // Shutdown can race the explicitly spawned helper's own exit.
 const stdout = new LinuxProviderOutput(), stderr = new LinuxProviderOutput(), messages = [];
@@ -30,7 +30,7 @@ const stdoutData = bytes => {
     try {
         stdout.append(bytes);
         const text = stdout.text();
-        while (text.indexOf('\n', processed) >= 0) {
+        while (text.includes('\n', processed)) {
             const end = text.indexOf('\n', processed);
             if (++messageCount > 2) throw new Error('Unexpected extra provider fixture message.');
             const message = JSON.parse(text.slice(processed, end)); processed = end + 1;
@@ -45,7 +45,10 @@ child.once('exit', () => { if (pending) failOutput(new Error('Provider fixture e
 const exited = new Promise((resolve, reject) => {
     child.once('error', reject); child.once('exit', (code, signal) => resolve({ code, signal }));
 });
-exited.catch(() => {});
+const outputClosed = linuxProviderOutputClosed(child, () => { if (outputFailure) throw outputFailure; });
+async function ignoreFailure(promise) { try { await promise; } catch { /* Failure is observed at the bounded shutdown point. */ } }
+void ignoreFailure(exited);
+void ignoreFailure(outputClosed);
 async function nextMessage() {
     if (outputFailure) throw outputFailure;
     if (messages.length) return messages.shift();
@@ -94,7 +97,7 @@ try {
     assert.equal(activity.executableIdentitySame, true);
     if (outputFailure) throw outputFailure;
     child.stdin.end('exit\n');
-    const exit = await Promise.race([exited, new Promise((_, reject) => {
+    const exit = await Promise.race([outputClosed, new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error('Provider fixture exit timed out.')), 6000);
     })]);
     clearTimeout(timer);
@@ -111,7 +114,7 @@ try {
     clearTimeout(timer);
     if (child.pid && child.exitCode === null && child.signalCode === null) {
         child.stdin.end('exit\n');
-        const timeout = setTimeout(() => child.kill('SIGTERM'), 5000);
+        const timeout = setTimeout(() => child.kill('SIGTERM'), 3000);
         const escalation = setTimeout(() => child.kill('SIGKILL'), 6000);
         try { await exited; } finally { clearTimeout(timeout); clearTimeout(escalation); }
     }

@@ -11,3 +11,14 @@ export class LinuxProviderOutput {
     }
     text() { return Buffer.concat(this.#chunks, this.#used).toString('utf8'); }
 }
+
+
+/** Observe close, not exit: only close follows final stdout/stderr delivery. Caller bounds the shutdown wait. */
+export function linuxProviderOutputClosed(child, validate) {
+    return new Promise((resolve, reject) => {
+        child.once('error', reject);
+        child.once('close', (code, signal) => {
+            try { validate(); resolve({ code, signal }); } catch (error) { reject(error); }
+        });
+    });
+}

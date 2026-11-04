@@ -2,6 +2,7 @@
 const marker = process.argv[2];
 if (process.platform !== 'linux' || process.argv.length !== 3 || !/^--ntilde-terminfo-worker=[a-f\d]{32}$/.test(marker ?? '')) process.exit(2);
 const runId = marker.slice('--ntilde-terminfo-worker='.length);
+process.on('SIGTERM', () => {}); // Exercise the owning helper's bounded SIGKILL/reap fallback; this is a disposable fixture only.
 process.stdout.write('READY ' + runId + '\n');
 const deadline = setTimeout(() => process.exit(3), 15000);
 let text = '';
