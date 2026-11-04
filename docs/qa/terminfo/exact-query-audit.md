@@ -6,7 +6,8 @@ frozen triage, plus individually named Q12 settings. It does not replace any
 published raw trace or grade. The frozen stock result remains **78 supported,
 0 unsupported, 177 inconclusive**, with `suiteComplete=false`.
 
-The first implementation slice adds the VT-owned `CSI 18 t` report. Fresh owned
+The protocol foundations add the VT-owned `CSI 18 t` report and an unassigned
+DA3 unit-id report. Fresh owned
 runtime query receipts and remaining implementations are separate work; #771
 stays open. Source/unit evidence below is not a live terminal measurement.
 
@@ -19,10 +20,10 @@ correlation value; the regression uses a fixed synthetic identifier.
 
 | Frozen feature id | Exact request | Current disposition / scope |
 |---|---|---|
-| `device.tertiary-da` | `CSI = c` | Unavailable. No hardware unit-id model is claimed; DA1/DA2 and XTVERSION are separate supported questions. |
+| `device.tertiary-da` | `CSI = c` | Implemented for default/numeric-zero Ps: `DCS ! &#124; 00000000 ST`, following xterm's zero site/serial fields. This constant is unassigned and nonunique, never a hardware/host identity. |
 | `device.xtgetxres` | `DCS + Q 7465726d4e616d65 ST` | Unavailable. VT has no X resource database; `termName` is not guessed from App settings or a host environment. |
 | `device.xtreportcolors` | `CSI # R` | Unavailable. Do not substitute the distinct Kitty runtime-color stack for xterm's palette-stack contract. |
-| `device.xtwinops-18` | `CSI 18 t` | Implemented by this slice: `CSI 8 ; rows ; cols t`, from current VT buffer geometry. No host pixel metrics or mode-2048 subscription required. |
+| `device.xtwinops-18` | `CSI 18 t` | Implemented: `CSI 8 ; rows ; cols t`, from current VT buffer geometry. No host pixel metrics or mode-2048 subscription required. |
 | `device.xtwinops-20` | `CSI 20 t` | Unavailable. Icon-label state is not modeled by the existing title callback; OSC 1/title distinctions belong to the #772 audit. |
 | `device.xtwinops-21` | `CSI 21 t` | Unavailable. Actual host title state is not a VT buffer field. Do not echo stale App captions or invent restored titles. |
 | `editing.decrqcra` | `CSI 1;1;1;1;1;1 * y` | Unavailable. A rectangular checksum contract must specify pages, attributes, blanks, wide/combining cells and request-id correlation before implementation. |
@@ -38,11 +39,12 @@ correlation value; the regression uses a fixed synthetic identifier.
 | `extensions.osc99-kitty-notify` | `OSC 99;i=<id>:p=?; ST` | Unavailable. Existing OSC 9 notification handling does not implement Kitty's correlated OSC 99 service or attest OS display. |
 | `extensions.sixel-geometry-report` | `CSI ? 2;1;0 S` | Unavailable XTSMGRAPHICS spelling. Sixel layout/decoding is not a maximum-geometry attribute contract. The request must not be mistaken for scroll-up. |
 
-The seventeen unavailable requests have exact silent/no-state-mutation
+The sixteen unavailable requests have exact silent/no-state-mutation
 regressions in `QueryVariantAuditTests`, followed by an independent DA framing
 check. This is a scoped availability policy for these spellings, not a claim
 that the broader feature families are absent or that missing replies are
-negative capability scores. Further implementations require their own contracts
+negative capability scores. The positive DA3 contract is in
+`TertiaryDeviceAttributeTests`. Further implementations require their own contracts
 and fresh runtime evidence.
 
 ## Q12 negative responses, individually
@@ -82,3 +84,25 @@ this limited scope. Existing CSI 14/16 pixel reports retain their behavior.
 The response reports the parser's current VT geometry. It is not an independent
 measurement of kernel PTY size, native window pixels or child receipt. Those
 boundaries require separate owned runtime evidence.
+
+## Tertiary device-attribute contract
+
+[The DEC DA3 reference](https://vt100.net/docs/vt510-rm/DA3.html) defines a
+DECRPTUI response containing four hexadecimal byte pairs.
+[The xterm reference](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+explicitly uses zero site/serial fields. Ntilde returns the fixed seven-bit frame
+`DCS ! | 00000000 ST` for default or numeric-zero Ps, including leading-zero
+representations and seven-bit/C1 CSI inputs. No host name, hardware serial,
+network address, random/persistent identifier or process environment is read.
+This is an unassigned, nonunique compatibility identifier; it does not assert
+hardware manufacture, a unique terminal, or complete VT400 conformance.
+
+`TertiaryDeviceAttributeTests` pins exact framing, one fixed response, every input
+split, state preservation, DA1/DA2 separation and unsupported/malformed forms.
+Nonzero Ps, extra/colon parameters, intermediate changes and unknown leaders
+remain silent. The App hardening sweep retains `CSI = 1 c` as a negative; it is
+not broadened to exempt every `=` device-attribute spelling. The shared capability
+catalog and MCP explainer agree on default/zero versus ignored other parameters.
+The mux test checks the canonical reply at its scripted child writer. This is not
+a fresh owned/native child measurement, and historical no-response observations
+remain unchanged.

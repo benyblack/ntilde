@@ -226,6 +226,31 @@ public class ExplainEscapeSequenceTests
         Assert.DoesNotContain("DSR color scheme", VtTools.ExplainEscapeSequence(sequence), System.StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("CSI =c")]
+    [InlineData("CSI =0c")]
+    [InlineData("ESC[=000c")]
+    [InlineData("\x1b[=0c")]
+    public void TertiaryDeviceAttributes_ExplainTheUnassignedNonuniqueIdentifier(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Contains("DA3", result, System.StringComparison.Ordinal);
+        Assert.Contains("unassigned", result, System.StringComparison.Ordinal);
+        Assert.Contains("nonunique", result, System.StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("CSI =1c")]
+    [InlineData("CSI =0;0c")]
+    [InlineData("CSI =0:0c")]
+    [InlineData("CSI =;c")]
+    public void OtherTertiaryDeviceAttributeParameters_StayIgnoredInTheExplainer(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.DoesNotContain("nonunique", result, System.StringComparison.Ordinal);
+        Assert.Contains("parser ignores", result, System.StringComparison.Ordinal);
+    }
+
     [Fact]
     public void CatalogCapabilities_AgreeWithExplainerSupportClaims()
     {

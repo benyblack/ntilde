@@ -214,6 +214,11 @@ public sealed class VtTools
                      + "Ntilde's parser discards the whole sequence.";
             }
 
+            if (finalByte == 'c' && qualifiers == "=")
+            {
+                return ExplainTertiaryDeviceAttributes(prefix);
+            }
+
             // Parameter count can select a different function too, and the leader/intermediate
             // gate below cannot see it: CSI 1;2;3;4;5 T has no qualifier bytes at all, so it
             // reads as a plain parameter list and used to be described as SD - a sequence the
@@ -321,6 +326,15 @@ public sealed class VtTools
         }
 
         return $"Unrecognized sequence '{sequence}'. Use forms like 'ESC[2J', 'CSI ?25h', 'OSC 7', 'ESC c', 'DCS', or 'APC'.";
+    }
+
+    private static string ExplainTertiaryDeviceAttributes(string prefix)
+    {
+        // The parser accepts omitted/numeric-zero Ps only, without lists/subparameters.
+        return prefix.AsSpan(1).IndexOfAnyExcept('0') < 0
+            ? "CSI sequence, final byte 'c': " + ContractSequenceTable["CSI:=c"]
+            : "CSI tertiary device attributes: DA3 accepts only an omitted or zero single parameter; "
+                + "Ntilde's parser ignores this form.";
     }
 
     private static string FormatCapabilityDescription(VtCapability capability)

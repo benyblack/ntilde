@@ -501,7 +501,7 @@ public sealed class AnsiParserHardeningTests
     /// question than the one asked, which is worse than staying silent.
     /// </summary>
     [Theory]
-    [InlineData("\x1b[=c")] // DA3
+    [InlineData("\x1b[=1c")] // DA3 supports only default/zero Ps.
     [InlineData("\x1b[<c")]
     public void UnsupportedDeviceAttributeRequests_AreNotAnsweredWithDa1(string request)
     {

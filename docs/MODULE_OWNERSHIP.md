@@ -115,6 +115,12 @@ invariant changes.
   Contracts remain a leaf. Windowless viewport imports report unknown history count
   explicitly; importing zero rows cannot prove an empty daemon history. The projection
   does not alter parser state or enable acting methods.
+- **DA3 returns an unassigned compatibility identifier.** VT accepts the `=`
+  leader with default/single numeric-zero Ps and no intermediates, and returns
+  DECRPTUI with eight zero hex digits. It is nonunique, not a host or hardware
+  identity; no OS/environment identity is consulted. Nonzero, extra and colon
+  parameters cannot alias DA3, DA1 or DA2. The shared catalog/MCP explainer
+  describes the same default/zero boundary.
 - **Text-area queries report VT geometry.** Exact bare `CSI 18 t` returns
   `CSI 8 ; rows ; cols t` from the current buffer, without host pixel metrics or
   a mode-2048 subscription. Other leaders/intermediates and extra parameters do

@@ -32,6 +32,7 @@ public sealed class VtCapabilityContractTests
     private static readonly Dictionary<string, Action> ContractCases =
         new(StringComparer.Ordinal)
         {
+            ["tertiary-device-attributes"] = AssertTertiaryDeviceAttributes,
             ["text-area-size-query"] = AssertTextAreaSizeQuery,
             ["cursor-next-line"] = AssertCursorNextLine,
             ["cursor-previous-line"] = AssertCursorPreviousLine,
@@ -48,6 +49,7 @@ public sealed class VtCapabilityContractTests
     private static readonly Dictionary<string, string> ContractSequences =
         new(StringComparer.Ordinal)
         {
+            ["tertiary-device-attributes"] = "\x1b[=0c",
             ["text-area-size-query"] = "\x1b[18t",
             ["cursor-next-line"] = "\x1b[2E",
             ["cursor-previous-line"] = "\x1b[2F",
@@ -60,6 +62,13 @@ public sealed class VtCapabilityContractTests
             ["sgr-overline-on"] = "\x1b[53mA",
             ["sgr-overline-off"] = "\x1b[53mA\x1b[55mB",
         };
+
+    private static void AssertTertiaryDeviceAttributes()
+    {
+        var responses = new List<string>();
+        new AnsiParser(new TerminalBuffer(40, 6)) { OnResponse = responses.Add }.Process("\x1b[=0c");
+        Assert.Equal("\x1bP!|00000000\x1b\\", Assert.Single(responses));
+    }
 
     private static void AssertTextAreaSizeQuery()
     {
