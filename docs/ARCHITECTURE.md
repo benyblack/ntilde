@@ -169,8 +169,9 @@ Chunking, complete parser snapshots and import clipping preserve that latch; an
 active legacy snapshot without the optional marker is conservatively incomplete.
 Terminating or abandoning the DCS, or starting a new one, clears it. This is a
 query-framing prerequisite: a retained prefix cannot prove the complete request.
-Existing capped SIXEL decoding and negative DECRQSS/XTGETTCAP replies are preserved;
-this change adds no positive query setting or runtime qualification.
+Capped SIXEL decoding remains compatible. The loss marker alone qualifies no
+protocol or runtime behavior: positive setting reports additionally require exact
+payload and standard ST, while other settings retain bounded negative replies.
 
 OSC 0/2 forward exact bounded title payloads, including empty and whitespace
 requests. The host owns title presentation and fallback; an empty request can
@@ -222,6 +223,14 @@ changes publish normal batch-coalesced invalidation, including style-only output
 Settings update host defaults while preserving an explicit application cursor override.
 New replay snapshots embed the existing complete terminal/parser model without scrollback,
 with legacy viewport fields retained for older readers.
+
+DECRQSS reports only the current top/bottom margins for exact complete `$qr`
+terminated by standard ST. VT returns absolute one-based margin values with xterm's
+1-success/0-failure polarity, preserving its existing failures despite the VT510
+manual's opposite documented status. The parser's batch lock protects the owned
+state read; invalid margins, lost/unknown input and BEL recovery stay negative.
+This query changes no terminal state. Other DECRQSS settings and XTGETTCAP remain
+negative; no family-wide or fresh runtime support is inferred.
 
 Tertiary DA accepts only a default or single numeric-zero parameter with the `=`
 leader and no intermediates. Its DECRPTUI reply contains the fixed eight zero hex

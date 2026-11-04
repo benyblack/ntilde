@@ -138,6 +138,10 @@ public sealed class VtTools
             return "Provide a sequence, e.g. 'ESC[2J', 'CSI ?25h', 'OSC 7', or 'ESC c'.";
         }
 
+        // Classify DCS representations from untouched input before alias normalization.
+        string original = sequence.TrimStart();
+        DcsInputRepresentation dcsRepresentation = ClassifyDcsInput(original);
+
         // Normalize common notations to a canonical introducer + body.
         string s = sequence.Trim()
             .Replace("", "ESC", System.StringComparison.Ordinal)
@@ -302,10 +306,9 @@ public sealed class VtTools
 
         // DCS: literal "DCS" or the 7-bit introducer ESC P ("ESCP" / "ESC P"). Check before the
         // generic ESC handling so the 'P' isn't misread as a simple ESC sequence.
-        if (upper.StartsWith("DCS", System.StringComparison.Ordinal)
-            || upper.StartsWith("ESCP", System.StringComparison.Ordinal)
-            || upper.StartsWith("ESC P", System.StringComparison.Ordinal))
-            return "DCS: " + SequenceTable["DCS"];
+        int dcsPrefixLength = GetDcsPrefixLength(upper);
+        if (dcsPrefixLength > 0)
+            return ExplainDcs(original, dcsRepresentation);
 
         // APC: literal "APC" or the 7-bit introducer ESC _ ("ESC_" / "ESC _").
         if (upper.StartsWith("APC", System.StringComparison.Ordinal)
@@ -326,6 +329,58 @@ public sealed class VtTools
         }
 
         return $"Unrecognized sequence '{sequence}'. Use forms like 'ESC[2J', 'CSI ?25h', 'OSC 7', 'ESC c', 'DCS', or 'APC'.";
+    }
+
+    private static int GetDcsPrefixLength(string sequence)
+    {
+        if (sequence.StartsWith("DCS", StringComparison.Ordinal)) return 3;
+        if (sequence.StartsWith("ESCP", StringComparison.Ordinal)) return 4;
+        if (sequence.StartsWith("ESC P", StringComparison.Ordinal)) return 5;
+        return sequence.StartsWith('\u0090') ? 1 : 0;
+    }
+
+    private enum DcsInputRepresentation { Other, Raw, Escaped, Textual, Abstract }
+
+    private static DcsInputRepresentation ClassifyDcsInput(string original)
+    {
+        if (original.StartsWith('\x1b') || original.StartsWith('\u0090'))
+            return DcsInputRepresentation.Raw;
+        if (original.StartsWith("\\x1b", StringComparison.OrdinalIgnoreCase)
+            || original.StartsWith("\\e", StringComparison.OrdinalIgnoreCase))
+            return DcsInputRepresentation.Escaped;
+        if (original.StartsWith("ESC P", StringComparison.OrdinalIgnoreCase)
+            || original.StartsWith("ESCP", StringComparison.OrdinalIgnoreCase))
+            return DcsInputRepresentation.Textual;
+        return original.StartsWith("DCS", StringComparison.OrdinalIgnoreCase)
+            ? DcsInputRepresentation.Abstract : DcsInputRepresentation.Other;
+    }
+
+    private static string ExplainDcs(string original, DcsInputRepresentation representation)
+    {
+        // Each representation validates its complete grammar independently. A rejected
+        // form cannot fall through to a globally normalized positive alias.
+        bool exact = representation switch
+        {
+            DcsInputRepresentation.Raw => original is "\x1bP$qr\x1b\\" or "\x1bP$qr\u009c"
+                or "\u0090$qr\x1b\\" or "\u0090$qr\u009c",
+            DcsInputRepresentation.Escaped => IsEscapedMarginQuery(original),
+            DcsInputRepresentation.Textual => original[
+                (original.StartsWith("ESC P", StringComparison.OrdinalIgnoreCase) ? 5 : 4)..] == "$qrESC\\",
+            // Only the explicit abstract catalogue identifier may omit framing.
+            DcsInputRepresentation.Abstract => original[3..].TrimStart(' ') == "$qr",
+            _ => false
+        };
+        return "DCS: " + (exact ? ContractSequenceTable["DCS:$qr"] : SequenceTable["DCS"]);
+    }
+
+    private static bool IsEscapedMarginQuery(string original)
+    {
+        // Explicitly escaped input accepts supported escaped ST spellings only;
+        // actual control bytes belong to the raw representation.
+        if (original.AsSpan().IndexOfAny('\x1b', '\u0090', '\u009c') >= 0) return false;
+        string framed = original.Replace("\\x1b", "\x1b", StringComparison.OrdinalIgnoreCase)
+            .Replace("\\e", "\x1b", StringComparison.OrdinalIgnoreCase);
+        return framed == "\x1bP$qr\x1b\\";
     }
 
     private static string ExplainTertiaryDeviceAttributes(string prefix)

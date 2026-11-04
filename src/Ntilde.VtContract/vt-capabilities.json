@@ -108,6 +108,15 @@
       "matrixFeature": "Tertiary device attributes",
       "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
       "contractCase": "tertiary-device-attributes"
+    },
+    {
+      "key": "DCS:$qr",
+      "mnemonic": "DECRQSS top/bottom margins",
+      "support": "supported",
+      "description": "Report current absolute one-based VT margins with xterm status 1, only for exact complete r requests terminated by standard ST. BEL recovery and incomplete DCS stay negative; other settings are unavailable.",
+      "matrixFeature": "DECRQSS top/bottom margin query",
+      "evidencePath": "tests/Ntilde.VT.Tests/DecrqssMarginQueryTests.cs",
+      "contractCase": "decrqss-top-bottom-margins"
     }
   ]
 }

@@ -165,6 +165,21 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task Exact_margin_query_and_truncated_negative_reach_the_authoritative_child_writer()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            mux.PostResize(140, 40, presentation: null);
+            await mux.InvokeAsync(() => { mux.Parser.MaxStringSequenceChars = 3; return 0; });
+            fake.Emit("\x1b[2;35r\x1b[?6h\x1bP$qrjunk\x1b\\\x1bP$qr\x1b\\");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count == 2, "the margin query replies reached the child writer");
+            Assert.Equal(new[] { "\x1bP0$r\x1b\\", "\x1bP1$r2;35r\x1b\\" }, fake.SentInput.ToArray());
+        }
+    }
+
+    [Fact]
     public async Task Character_geometry_query_reaches_the_child_writer_after_the_ordered_resize()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();

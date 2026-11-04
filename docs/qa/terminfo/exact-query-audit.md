@@ -47,17 +47,19 @@ negative capability scores. The positive DA3 contract is in
 `TertiaryDeviceAttributeTests`. Further implementations require their own contracts
 and fresh runtime evidence.
 
-## Q12 negative responses, individually
+## Q12 settings and negative responses, individually
 
 `DcsAndCsiRoutingTests` already established one DECRQSS rejection and one XTGETTCAP
-rejection. `QueryVariantAuditTests` now enumerates each of these requests and
-checks the complete rejection at every split in the input. It also caps retained
+rejection. `QueryVariantAuditTests` enumerates the unavailable settings below and
+checks their complete rejection at every split in the input. The narrow positive
+`r` contract is covered separately by `DecrqssMarginQueryTests`. It also caps retained
 query text in a tiny fixture and verifies a constant-length rejection and parser
 recovery after overlong payloads. No request payload is reflected into a reply.
 
 | Family | Requested setting/name | Disposition and exact reply |
 |---|---|---|
-| DECRQSS | `m` (SGR), `r` (top/bottom margins), `s` (left/right margins), `SP q` (cursor style), `"p` (conformance), `"q` (protection), `t`, `$|`, `*|`, `*x` | Each unavailable setting receives `DCS 0 $ r ST`. A response rejecting SGR is not a successful SGR-state report. |
+| DECRQSS | `m` (SGR), `s` (left/right margins), `SP q` (cursor style), `"p` (conformance), `"q` (protection), `t`, `$|`, `*|`, `*x` | Each unavailable setting receives `DCS 0 $ r ST`. A response rejecting SGR is not a successful SGR-state report. |
+| DECRQSS | Exact `r` (top/bottom margins), complete DCS and standard ST only | Current absolute one-based margins as `DCS 1 $ r top ; bottom r ST`, using xterm status polarity. Truncation, unknown legacy completeness, BEL recovery and invalid VT margins retain bounded failure. Source/scripted-transport evidence only; no fresh owned measurement or historical regrade. |
 | DECRQSS | Unknown and empty setting | Same bounded `DCS 0 $ r ST` rejection. |
 | XTGETTCAP | `TN`, `Co`, `colors`, `RGB`, `kcuu1`, and the `TN;Co` list (each name hex-encoded) | Each receives `DCS 0 + r ST`. A valid failure is preserved as negative query evidence, not a successful terminal-name/color/key claim. |
 | XTGETTCAP | Unknown name, odd-length or invalid hex, empty list | Same bounded `DCS 0 + r ST` rejection. |
@@ -116,6 +118,31 @@ cap-length input remains complete until a character is actually discarded.
 Termination, malformed-escape abandonment and a new DCS clear the marker.
 `DcsTruncationStateTests` pins these contracts, including the production default
 cap. `StringSequenceCapTests` preserves existing truncated SIXEL decoding after
-state transfer. This prerequisite adds no positive DECRQSS/XTGETTCAP setting:
-current bounded failures remain negative evidence. A future positive handler must
-check completeness before accepting a retained query prefix.
+state transfer. This prerequisite alone adds no positive DECRQSS/XTGETTCAP
+setting. The separate margin-report contract below requires completeness before
+accepting a retained prefix; all other current bounded failures remain negative
+evidence.
+
+## Narrow DECRQSS margin report
+
+The [xterm control reference](https://invisible-island.net/xterm/ctlseqs/ctlseqs.txt)
+and [xterm-412 implementation](https://github.com/ThomasDickey/xterm-snapshots/blob/5c75ead9a75d4b2e666ca06fa94503b5766ed93f/misc.c#L4896)
+agree on exact `r`, one-based current top/bottom margins, and status 1 for success
+versus 0 for failure. The implementation's DECSTBM branch formats its owned margin
+values, then its common response branch writes that status and `$r` framing.
+The [VT510 DECRPSS manual](https://vt100.net/docs/vt510-rm/DECRPSS.html)
+documents the opposite status polarity. Ntilde deliberately follows xterm and its
+existing `0$r` failures; this is not a claim of the manual's full DEC conformance.
+The [DECSTBM description](https://vt100.net/docs/vt510-rm/DECSTBM.html)
+identifies the current page and full-page default margins.
+
+Only exact `$qr` with a standard ST terminator succeeds. Seven-bit and decoded C1
+introducers/ST use the actual parser paths; the reply is always seven-bit.
+Existing BEL recovery stays a bounded negative. Completeness, valid margins and
+current geometry are checked under the parser's existing batch write lock, so
+origin mode does not relativize the reported values. Query handling does not
+change cells, cursor, pen, margins, saved state, modes or active screen. Resize,
+reset and screen changes are observed from the resulting VT state. A single-row
+terminal reports its actual `1;1` region. No host geometry or terminal database is
+consulted. Scripted mux delivery does not substitute for a fresh owned child
+measurement, and SGR (`m`), other Q12 settings and all frozen grades stay unchanged.

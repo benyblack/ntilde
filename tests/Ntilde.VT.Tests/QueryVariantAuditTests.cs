@@ -44,7 +44,6 @@ public sealed class QueryVariantAuditTests
 
     [Theory]
     [InlineData("m")] // SGR
-    [InlineData("r")] // top/bottom margins
     [InlineData("s")] // left/right margins
     [InlineData(" q")] // cursor style
     [InlineData("\"p")] // conformance level

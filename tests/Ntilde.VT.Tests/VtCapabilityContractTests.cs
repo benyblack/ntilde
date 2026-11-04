@@ -32,6 +32,7 @@ public sealed class VtCapabilityContractTests
     private static readonly Dictionary<string, Action> ContractCases =
         new(StringComparer.Ordinal)
         {
+            ["decrqss-top-bottom-margins"] = AssertDecrqssMargins,
             ["tertiary-device-attributes"] = AssertTertiaryDeviceAttributes,
             ["text-area-size-query"] = AssertTextAreaSizeQuery,
             ["cursor-next-line"] = AssertCursorNextLine,
@@ -49,6 +50,7 @@ public sealed class VtCapabilityContractTests
     private static readonly Dictionary<string, string> ContractSequences =
         new(StringComparer.Ordinal)
         {
+            ["decrqss-top-bottom-margins"] = "\x1bP$qr\x1b\\",
             ["tertiary-device-attributes"] = "\x1b[=0c",
             ["text-area-size-query"] = "\x1b[18t",
             ["cursor-next-line"] = "\x1b[2E",
@@ -62,6 +64,14 @@ public sealed class VtCapabilityContractTests
             ["sgr-overline-on"] = "\x1b[53mA",
             ["sgr-overline-off"] = "\x1b[53mA\x1b[55mB",
         };
+
+    private static void AssertDecrqssMargins()
+    {
+        var responses = new List<string>();
+        new AnsiParser(new TerminalBuffer(40, 6)) { OnResponse = responses.Add }
+            .Process("\x1b[2;5r\x1bP$qr\x1b\\");
+        Assert.Equal("\x1bP1$r2;5r\x1b\\", Assert.Single(responses));
+    }
 
     private static void AssertTertiaryDeviceAttributes()
     {

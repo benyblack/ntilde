@@ -723,7 +723,7 @@ namespace Ntilde.VT
                                 }
                                 else if (c == '\a' || c == '\u009C')
                                 {
-                                    HandleDcs(TakeSequence(ref _dcsStringBuffer));
+                                    HandleDcs(TakeSequence(ref _dcsStringBuffer), standardTerminator: c != '\a');
                                     _dcsTruncated = false;
                                     _state = State.Normal;
                                 }

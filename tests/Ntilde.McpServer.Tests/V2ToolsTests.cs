@@ -251,6 +251,75 @@ public class ExplainEscapeSequenceTests
         Assert.Contains("parser ignores", result, System.StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("DCS $qr")]
+    [InlineData("ESC P$qrESC\\")]
+    [InlineData("ESCP$qrESC\\")]
+    [InlineData("\x1bP$qr\x1b\\")]
+    [InlineData("\u0090$qr\u009c")]
+    [InlineData("\\x1bP$qr\\x1b\\")]
+    [InlineData("\\eP$qr\\e\\")]
+    public void Exact_margin_query_explains_only_its_bounded_xterm_compatible_contract(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Contains("DECRQSS top/bottom margins", result, StringComparison.Ordinal);
+        Assert.Contains("standard ST", result, StringComparison.Ordinal);
+        Assert.Contains("other settings are unavailable", result, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("ESC P$qr")]
+    [InlineData("ESCP$qr")]
+    [InlineData("ESCP$qr\\x1b\\")]
+    [InlineData("ESC P$qr\\e\\")]
+    [InlineData("ESC P$qr\\x1b\\")]
+    [InlineData("ESCP$qr\\e\\")]
+    [InlineData("DCS $qm")]
+    [InlineData("DCS $qr;")]
+    [InlineData("\x1bP$qr\a")]
+    [InlineData("\x1bP $qr\x1b\\")]
+    [InlineData("\x1bP$qr \x1b\\")]
+    [InlineData("\x1bP$qr")]
+    [InlineData("\\x1bP$qr")]
+    [InlineData("\\eP$qr")]
+    [InlineData("\x1bP$qrESC\\")]
+    [InlineData("\x1b P$qr\x1b\\")]
+    [InlineData("\\x1b P$qr\\x1b\\")]
+    [InlineData("\\x1bP$qrESC\\")]
+    [InlineData("\x1bP$qr\\x1b\\")]
+    [InlineData("\x1bP$qr\\e\\")]
+    public void Other_DCS_payloads_or_incomplete_literal_frames_do_not_claim_a_margin_report(string sequence)
+    {
+        Assert.DoesNotContain("DECRQSS top/bottom margins", VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
+    }
+
+    public static System.Collections.Generic.IEnumerable<object[]> MarginQueryRepresentationCases()
+    {
+        (string Prefix, string Kind)[] prefixes =
+        [
+            ("\x1bP", "raw"), ("\u0090", "raw"),
+            ("\\x1bP", "escaped"), ("\\eP", "escaped"),
+            ("ESC P", "textual"), ("ESCP", "textual"), ("DCS ", "abstract")
+        ];
+        (string Suffix, string Kind)[] suffixes =
+        [
+            ("\x1b\\", "raw"), ("\u009c", "raw"),
+            ("\\x1b\\", "escaped"), ("\\e\\", "escaped"),
+            ("ESC\\", "textual"), ("", "abstract"), ("\a", "recovery")
+        ];
+        foreach (var prefix in prefixes)
+            foreach (var suffix in suffixes)
+                yield return [prefix.Prefix + "$qr" + suffix.Suffix, prefix.Kind == suffix.Kind];
+    }
+
+    [Theory]
+    [MemberData(nameof(MarginQueryRepresentationCases))]
+    public void Margin_query_prefix_and_terminator_representations_must_agree(string sequence, bool supported)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Equal(supported, result.Contains("DECRQSS top/bottom margins", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void CatalogCapabilities_AgreeWithExplainerSupportClaims()
     {
