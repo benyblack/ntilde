@@ -57,17 +57,22 @@ function kittyStaticCommand(stageId, number, firstId) {
     throw new Error('Static image command is not implemented.');
 }
 
-/** Exact seven-bit framing and positive uint32 fields; no normalization or status grading. */
+function replyFieldValue(key, value, error) {
+    return uint(value) || (key === 'i' && value === 0 && error);
+}
+/** Exact framing; unresolved numbered errors may echo i=0, never an allocated ID. */
 export function parseStaticKittyReply(raw) {
     if (typeof raw !== 'string' || raw.length > 512 || !raw.startsWith('\x1b_G') || !raw.endsWith('\x1b\\')) throw new Error('Malformed static Kitty reply.');
     const body = raw.slice(3, -2), match = /^([^;]+);([ -~]+)$/.exec(body);
     if (match?.[0] !== body) throw new Error('Malformed static Kitty reply.');
     const fields = {};
+    const error = /^E[A-Z\d]+(?::[ -~]*)?$/.test(match[2]);
     for (const part of match[1].split(',')) {
-        const field = /^([iIp])=([1-9]\d{0,9})$/.exec(part);
-        if (field?.[0] !== part || Object.hasOwn(fields, field[1]) || !uint(Number(field[2]))) throw new Error('Invalid Kitty reply fields.');
+        const field = /^([iIp])=(0|[1-9]\d{0,9})$/.exec(part);
+        if (field?.[0] !== part || Object.hasOwn(fields, field[1]) || !replyFieldValue(field[1], Number(field[2]), error)) throw new Error('Invalid Kitty reply fields.');
         fields[field[1]] = Number(field[2]);
     }
+    if (fields.i === 0 && !uint(fields.I)) throw new Error('Unresolved image errors require their positive image-number echo.');
     return { fields, status: match[2] };
 }
 

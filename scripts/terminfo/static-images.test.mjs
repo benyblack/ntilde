@@ -105,6 +105,24 @@ test('unframed, uncorrelated, duplicate or arbitrary replies cannot become seman
     for (const raw of ['OK', '\x1b_GI=18;ENOTSUP:disabled\x1b\\', '\x1b_GI=17,I=17;ENOTSUP\x1b\\', '\x1b_GI=17;x\x1b\\']) assert.throws(() => imageReply(raw, item, stage, state));
     assert.deepEqual(imageReply('', item, stage, state), { passed: false, id: null, status: null });
 });
+test('actual unresolved numbered allocation/deletion errors are negative evidence, not malformed bytes', () => {
+    const item = staticImageCases[3], state = { number: 137, firstId: null, ids: [] };
+    // ExecuteKittyCommand + ReplyKittyCommand: identity.Id remains zero on refusal.
+    const raw = '\x1b_Gi=0,I=137;ENOTSUP:Graphics disabled by host\x1b\\';
+    for (const id of ['store', 'hard-delete']) {
+        const result = imageReply(raw, item, item.stages.find(value => value.id === id), state);
+        assert.equal(result.passed, false); assert.equal(result.id, null); assert.match(result.status, /^ENOTSUP:/);
+    }
+});
+test('zero errors still require the exact number/placement and cannot bypass an explicit positive image ID', () => {
+    const item = staticImageCases[4], state = { number: 137, firstId: 99, ids: [99, 100] };
+    for (const raw of ['\x1b_Gi=0,p=1;ENOENT:Image not found\x1b\\', '\x1b_Gi=0,I=137,p=1;ENOENT:Image not found\x1b\\'])
+        assert.throws(() => imageReply(raw, item, item.stages.find(value => value.id === 'place-old-id'), state));
+    const numbered = staticImageCases[3], stage = numbered.stages.find(value => value.id === 'missing-place');
+    for (const raw of ['\x1b_Gi=0,I=138,p=1;ENOENT:Image not found\x1b\\', '\x1b_Gi=0,I=137,p=2;ENOENT:Image not found\x1b\\'])
+        assert.throws(() => imageReply(raw, numbered, stage, state));
+    assert.equal(imageReply('\x1b_Gi=0,I=137,p=1;ENOENT:Image not found\x1b\\', numbered, stage, state).passed, true);
+});
 test('a later successful allocation cannot stand in for a refused first allocation in old-ID stages', () => {
     const output = mkdtempSync(join(tmpdir(), 'nt-image-first-id-'));
     try {

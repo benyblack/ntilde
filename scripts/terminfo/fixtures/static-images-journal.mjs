@@ -49,9 +49,9 @@ export function imageOwnership(rows = 10, cols = 60, runId = inputRunId) {
 export function syntheticImageReply(item, stage, state, nextId) {
     if (!stage.reply) return '';
     if (stage.reply === 'allocate') return `\x1b_Gi=${nextId},I=${state.number};OK\x1b\\`;
-    if (stage.reply === 'missing') return `\x1b_GI=${state.number},p=1;ENOENT:Image not found\x1b\\`;
+    if (stage.reply === 'missing') return `\x1b_Gi=0,I=${state.number},p=1;ENOENT:Image not found\x1b\\`;
     if (stage.reply === 'place-old') return `\x1b_Gi=${state.firstId},p=1;OK\x1b\\`;
-    if (!state.ids.length) return `\x1b_GI=${state.number},p=1;ENOENT:Image not found\x1b\\`;
+    if (!state.ids.length) return `\x1b_Gi=0,I=${state.number},p=1;ENOENT:Image not found\x1b\\`;
     return `\x1b_Gi=${state.ids.at(-1)},I=${state.number},p=1;OK\x1b\\`;
 }
 function recordSyntheticAllocation(stage, skipped, raw, state, allocated, item) {

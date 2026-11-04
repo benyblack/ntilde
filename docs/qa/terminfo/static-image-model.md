@@ -49,6 +49,10 @@ explicitly inconclusive and emit no guessed request. Number-reuse stages require
 both distinct successful allocations; a silent delete of an empty scene cannot
 qualify a lifecycle that was never established. Malformed/unmatched replies, changed
 ownership/state/context, failed raw seals or restoration prevent completion.
+Unresolved numbered errors retain the actual `i=0` echo from Ntilde's reply
+producer. It is accepted only on an error with the exact positive `I`/`p`
+correlation, never as a successful allocation or replacement for an explicitly
+requested positive image ID.
 Once independent fixture controls pass, outside-envelope image bleed is a
 semantic failure. Completed collection does not mean every stage passed.
 

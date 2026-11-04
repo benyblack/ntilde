@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { staticImageCases, staticImageCommand, staticKittyReply } from './static-images-cases.mjs';
+import { staticImageCases, staticImageCommand, staticKittyReply, parseStaticKittyReply } from './static-images-cases.mjs';
 
 const reply = value => '\x1b_G' + value + '\x1b\\';
 test('finite planned stages generate bounded deterministic protocol bytes without any terminal I/O', () => {
@@ -66,4 +66,14 @@ test('each numeric Kitty field consumes its complete spelling before comma or se
         const raw = reply(`i=99${field === 'i' ? tail : ''},I=137${field === 'I' ? tail : ''},p=1${field === 'p' ? tail : ''};OK`);
         assert.throws(() => staticKittyReply(raw, { number: 137, expectedId: 99, placement: 1 }));
     }
+});
+test('actual numbered missing-placement error retains the unresolved zero image-id echo', () => {
+    // AnsiParser.KittyLifecycle.cs ReplyKittyCommand emits i unconditionally.
+    const raw = reply('i=0,I=137,p=1;ENOENT:Image not found');
+    assert.equal(staticKittyReply(raw, { number: 137, placement: 1, missing: true }).id, 0);
+});
+test('the zero error echo cannot become a successful ID, zero I/p, or noncanonical decimal spelling', () => {
+    for (const value of ['i=0,I=137;OK', 'i=0,I=0;ENOENT:missing', 'i=0,I=137,p=0;ENOENT:missing',
+        'i=00,I=137;ENOENT:missing', 'i=0,I=137;unknown status', 'i=0;ENOENT:missing']) assert.throws(() => parseStaticKittyReply(reply(value)));
+    assert.throws(() => staticKittyReply(reply('i=0,p=1;ENOENT:missing'), { expectedId: 99, placement: 1, missing: true }));
 });
