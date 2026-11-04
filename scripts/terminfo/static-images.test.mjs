@@ -26,6 +26,11 @@ for (const [name, mutate] of [
     ['late bytes', f => { f.seal.lastAttempt.hex += 'ff'; }],
     ['reused raw fence', f => { f.frames[4].capture = structuredClone(f.frames[3].capture); }],
     ['wrong fence spelling', f => { f.frames[4].capture.barrier += 'x'; }],
+    ['changed paired unpainted derived color', f => { f.frames[4].pixels[0].renderDetails.theme.cursorTextArgb = 0xff112233; }],
+    ['runtime background pin absent', f => { for (const pixel of f.frames[4].pixels) pixel.renderDetails.theme.backgroundOverride = false; }],
+    ['wrong independent background query', f => { f.frames[4].capture.hex = f.frames[4].capture.hex.replace(Buffer.from('rgb:1010/1010/1010').toString('hex'), Buffer.from('rgb:0000/0000/0000').toString('hex')); }],
+    ['reverse-video mode set', f => { f.frames[4].capture.hex = f.frames[4].capture.hex.replace(Buffer.from('\x1b[?5;2$y').toString('hex'), Buffer.from('\x1b[?5;1$y').toString('hex')); }],
+    ['unrestored original capture context', f => { for (const pixel of f.frames.at(-1).pixels) pixel.renderDetails.theme.cursorTextArgb = 0xff112233; }],
 ]) test(`report rejects ${name}`, () => fixture((output, f) => { mutate(f); assert.throws(() => derive(output, f)); }));
 test('input and image fences cannot reuse a challenge pair across suite boundaries', () => fixture((output, f) => {
     assert.throws(() => derive(output, f, [f.frames[1].capture.nonces.join(',')]));
@@ -59,10 +64,23 @@ test('correlated allocation error is negative; old-id stages are explicitly inco
         }, pixelOptions: () => ({ blank: true }) });
         const report = derive(output, f);
         assert.equal(report.observations.find(item => item.featureId === 'kitty.number-reuse.store-first').result, 'failed');
-        for (const stage of ['place-old-id', 'delete-old-id']) {
+        for (const stage of ['place-newest', 'delete-newest', 'place-old-id', 'delete-old-id']) {
             const item = report.observations.find(value => value.featureId === 'kitty.number-reuse.' + stage);
-            assert.equal(item.result, 'inconclusive'); assert.match(item.skipReason, /did not return a usable image id/);
+            assert.equal(item.result, 'inconclusive'); assert.match(item.skipReason, /both distinct successful allocations/);
             assert.equal(f.actions[item.actionIndex].firstId, null);
+        }
+    } finally { rmSync(output, { recursive: true, force: true }); }
+});
+test('a refused second allocation leaves all reuse-dependent stages inconclusive instead of qualifying blank deletion', () => {
+    const output = mkdtempSync(join(tmpdir(), 'nt-image-second-id-'));
+    try {
+        const f = syntheticImageJournal(output, { mutateReply: (entry, raw) => entry.stageId === 'store-second'
+            ? raw.replace(/i=\d+,/, '').replace(';OK', ';ENOTSUP:Second allocation refused') : raw });
+        const report = derive(output, f);
+        assert.equal(report.observations.find(value => value.featureId === 'kitty.number-reuse.store-second').result, 'failed');
+        for (const stage of ['place-newest', 'delete-newest', 'place-old-id', 'delete-old-id']) {
+            const item = report.observations.find(value => value.featureId === 'kitty.number-reuse.' + stage);
+            assert.equal(item.result, 'inconclusive'); assert.match(item.skipReason, /both distinct successful allocations/);
         }
     } finally { rmSync(output, { recursive: true, force: true }); }
 });
@@ -70,4 +88,18 @@ test('unframed, uncorrelated, duplicate or arbitrary replies cannot become seman
     const item = staticImageCases[3], stage = item.stages[1], state = { number: 17, firstId: null, ids: [] };
     for (const raw of ['OK', '\x1b_GI=18;ENOTSUP:disabled\x1b\\', '\x1b_GI=17,I=17;ENOTSUP\x1b\\', '\x1b_GI=17;x\x1b\\']) assert.throws(() => imageReply(raw, item, stage, state));
     assert.deepEqual(imageReply('', item, stage, state), { passed: false, id: null, status: null });
+});
+test('a later successful allocation cannot stand in for a refused first allocation in old-ID stages', () => {
+    const output = mkdtempSync(join(tmpdir(), 'nt-image-first-id-'));
+    try {
+        const f = syntheticImageJournal(output, { mutateReply: (entry, raw) => entry.stageId === 'store-first'
+            ? raw.replace(/i=\d+,/, '').replace(';OK', ';ENOTSUP:First allocation refused') : raw });
+        const report = derive(output, f);
+        assert.equal(report.observations.find(value => value.featureId === 'kitty.number-reuse.store-first').result, 'failed');
+        assert.equal(report.observations.find(value => value.featureId === 'kitty.number-reuse.store-second').reply.passed, true);
+        for (const stage of ['place-old-id', 'delete-old-id']) {
+            const item = report.observations.find(value => value.featureId === 'kitty.number-reuse.' + stage);
+            assert.equal(item.result, 'inconclusive'); assert.equal(f.actions[item.actionIndex].firstId, null);
+        }
+    } finally { rmSync(output, { recursive: true, force: true }); }
 });

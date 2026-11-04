@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { OwnedStaticImageObserver } from './static-images-capture.mjs';
 import { collectStaticImages } from './static-images-collector.mjs';
-import { imagePlan, imageBoundScreen, imageModeQueries as inputModeQueries, imageModeReplyHex } from './static-images.mjs';
+import { imagePlan, imageBoundScreen, imageModeQueries as inputModeQueries, imageModeReplyHex, imageBackgroundReply } from './static-images.mjs';
 import { staticImageCases } from './static-images-cases.mjs';
 import { initialInputScreen, inputRunId, inputPaneId } from './fixtures/input-journal.mjs';
 import { imageOwnership, syntheticImageCapture, syntheticImageReply } from './fixtures/static-images-journal.mjs';
@@ -39,11 +39,12 @@ async function fixture(action, { late = false, changedPair = false, changedWorke
         else if (text.endsWith(inputModeQueries)) {
             const entry = imagePlan[observer.next], spec = staticImageCases.find(value => value.id === entry.caseId);
             const stage = spec?.stages.find(value => value.id === entry.stageId), state = observer.states.get(entry.caseId);
-            let reply = stage ? syntheticImageReply(spec, stage, state, allocated) : '';
+            let reply = stage && !observer.actions.at(-1).skipReason ? syntheticImageReply(spec, stage, state, allocated) : '';
             if (stage?.reply === 'allocate') allocated++;
             if (badReply && reply) reply = 'unframed';
             screen = structuredClone(entry.kind === 'finish' ? baseline : bound);
-            queueMicrotask(() => input.emit('data', Buffer.concat([Buffer.from(reply), Buffer.from(badModes ? '' : imageModeReplyHex, 'hex')])));
+            const background = imageBackgroundReply(entry.kind === 'finish' ? 0xff000000 : 0xff101010);
+            queueMicrotask(() => input.emit('data', Buffer.concat([Buffer.from(reply + background), Buffer.from(badModes ? '' : imageModeReplyHex, 'hex')])));
         }
     } };
     const owner = async (kind, _, extra = {}) => {

@@ -6,6 +6,7 @@ const invalid = () => new Error('Invalid static image comparison.');
 const pixelAt = (image, x, y) => image.pixels.subarray((y * image.width + x) * 4, (y * image.width + x + 1) * 4);
 const same = (a, b) => a.every((value, index) => value === b[index]);
 const check = (description, passed) => ({ description, passed });
+const defaultCells = Object.freeze({ cols: 4, rows: 2 });
 function validateImage(image) {
     if (!image || !integer(image.width, 1, 8192) || !integer(image.height, 1, 8192)
         || image.width * image.height > 4_000_000 || !Buffer.isBuffer(image.pixels)
@@ -13,7 +14,7 @@ function validateImage(image) {
 }
 
 /** Cell envelope derives only from the actual controlled capture grid, not a guessed font/DPI. */
-export function staticImageEnvelope(image, grid, anchor, cells = { cols: 4, rows: 2 }) {
+export function staticImageEnvelope(image, grid, anchor, cells = defaultCells) {
     validateImage(image);
     if (!grid || !anchor || !cells || !integer(grid.originXPx, 0, image.width) || !integer(grid.originYPx, 0, image.height)
         || !integer(grid.cellWidthPx, 1, 256) || !integer(grid.cellHeightPx, 1, 512)

@@ -4,7 +4,13 @@ import { snapshotHash } from './agent-observer.mjs';
 import { staticImageSuiteId } from './static-images-cases.mjs';
 import { buildStaticImageReport, checkImages, ownedStaticImagePolicy, imageInputs, validateImageOwnership } from './static-images.mjs';
 import { pngHash } from './pixels-capture.mjs';
-const present = path => { try { lstatSync(path); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; } };
+function present(path) {
+    try { lstatSync(path); return true; }
+    catch (error) {
+        if (error.code === 'ENOENT') return false;
+        throw error;
+    }
+}
 const files = ['image-snapshots.jsonl', 'image-actions.jsonl', 'image-observations.json', 'image-unavailable.json', 'image-failed-observation.json', 'image-raw-failure.json', 'image-inputs', 'image-pixels'];
 function read(output, file, limit = 16 * 1024 * 1024) {
     const stat = lstatSync(join(output, file)); checkImages(stat.isFile() && !stat.isSymbolicLink() && stat.size <= limit);

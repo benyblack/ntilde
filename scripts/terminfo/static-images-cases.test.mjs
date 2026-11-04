@@ -55,3 +55,15 @@ test('reply parser does not accept batches, trailing data, controls or oversized
         assert.throws(() => staticKittyReply(raw, { number: 137 }));
     }
 });
+test('complete Kitty framing rejects line terminators both before and after ST', () => {
+    for (const tail of ['\n', '\r', '\r\n', '\u2028', '\u2029']) {
+        for (const raw of [reply('i=99,I=137;OK') + tail, reply('i=99,I=137;OK' + tail)])
+            assert.throws(() => staticKittyReply(raw, { number: 137, allocation: true }));
+    }
+});
+test('each numeric Kitty field consumes its complete spelling before comma or semicolon', () => {
+    for (const tail of ['\n', '\r', '\r\n', '\u2028', '\u2029']) for (const field of ['i', 'I', 'p']) {
+        const raw = reply(`i=99${field === 'i' ? tail : ''},I=137${field === 'I' ? tail : ''},p=1${field === 'p' ? tail : ''};OK`);
+        assert.throws(() => staticKittyReply(raw, { number: 137, expectedId: 99, placement: 1 }));
+    }
+});

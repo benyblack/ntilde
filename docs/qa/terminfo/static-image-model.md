@@ -30,11 +30,24 @@ replies, fences, admission/observation lineage facts, PNGs and seven immutable
 PNG/RGBA/SIXEL source inputs are retained and hash-bound. Source images are
 validated against fixed SHA-256 pins before use and during finalization.
 
+The fixture pins both the VT runtime OSC11 background and stored cell background
+to `#101010`. Every admitted write independently queries OSC11 and requires its
+exact retained RGB reply; every capture must agree on the literal background and
+active override. This qualifies matching controlled theme/cell backgrounds only.
+Compositing over differing cell/theme backgrounds remains unqualified. Original
+non-overridden theme, full render context and PNG must all return at finish.
+Font/grid/foreground/palette/other stored theme facts remain fixed throughout.
+Only the controlled background and unpainted derived cursor-text/effective
+selection colors may differ across phases; those full facts must still match
+exactly within each paired capture. Cursor is hidden during image observations,
+and synthetic selection is forbidden.
+
 The23 logical image stages retain ACK results separately from pixel assertions.
 A well-framed correlated error or missing expected reply is negative evidence;
-neither an ACK nor a consumed stream proves displayed pixels. If the first
-allocation provides no usable image ID, dependent old-ID stages are explicitly
-inconclusive and emit no guessed ID. Malformed/unmatched replies, changed
+neither an ACK nor a consumed stream proves displayed pixels. If an allocation provides no usable image ID, dependent lifecycle stages are
+explicitly inconclusive and emit no guessed request. Number-reuse stages require
+both distinct successful allocations; a silent delete of an empty scene cannot
+qualify a lifecycle that was never established. Malformed/unmatched replies, changed
 ownership/state/context, failed raw seals or restoration prevent completion.
 Once independent fixture controls pass, outside-envelope image bleed is a
 semantic failure. Completed collection does not mean every stage passed.

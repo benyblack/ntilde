@@ -7,7 +7,11 @@ import { imagePlan, imageRestore, imageModeQueries, checkImages } from './static
 const write = (output, bytes) => new Promise((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => finish(new Error('Image fixture write timed out.')), 1000);
-    const finish = error => { if (settled) return; settled = true; clearTimeout(timer); if (error) reject(error); else resolve(); };
+    const finish = error => {
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        if (error) reject(error); else resolve();
+    };
     try { output.write(bytes, finish); } catch (error) { finish(error); }
 });
 /** One exclusive byte reader after the input reader is sealed; no retries or native input. */
@@ -30,7 +34,7 @@ export async function collectStaticImages({ config, owner, fence, detachFence = 
     });
     let attempts = 0;
     try {
-        for (const entry of imagePlan) {
+        await imagePlan.reduce((previous, entry) => previous.then(async () => {
             const extra = { ...(entry.caseId ? { caseId: entry.caseId } : {}), ...(entry.stageId ? { stageId: entry.stageId } : {}) };
             const action = await owner('images-admit', null, extra);
             checkImages(typeof action.commandHex === 'string' && /^[a-f\d]*$/.test(action.commandHex)
@@ -43,7 +47,7 @@ export async function collectStaticImages({ config, owner, fence, detachFence = 
             attempts++;
             const sample = await capture.capture(() => write(output, command));
             await owner('images-' + entry.kind, null, { ...extra, capture: sample });
-        }
+        }), Promise.resolve());
         capture.dispose();
         await owner('images-seal', null, { captureStatus: { failed: capture.failed, disposed: true, attempts, lastAttempt: capture.lastAttempt } });
     } catch (error) {

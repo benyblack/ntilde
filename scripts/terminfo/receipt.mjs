@@ -155,7 +155,9 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (includesMetadata) checkMetadataEvidence(output, evidence.metadataEvidence, runId, context, proof);
     if (includesInput) checkInputEvidence(output, evidence.inputEvidence, runId, context, proof);
     if (includesImages) checkStaticImageEvidence(output, evidence.staticImageEvidence, runId, context, proof);
-    const schemaVersion = includesImages ? 10 : includesInput ? 9 : ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata);
+    let schemaVersion = ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata);
+    if (includesInput) schemaVersion = 9;
+    if (includesImages) schemaVersion = 10;
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

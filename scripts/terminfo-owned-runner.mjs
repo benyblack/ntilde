@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
-import { assertProcessOwnership, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
+import { assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
 import { OwnedSavedObserver } from './terminfo/saved-capture.mjs';
 import { savedSuiteId, ownedSavedPolicy } from './terminfo/saved-cases.mjs';
@@ -61,6 +61,9 @@ function ownerFailure(error) {
 
 function requireInputCompletion(state) {
     if (!state?.observer?.restored && !state?.unavailable) throw new Error('Input suite is not sealed or initially unavailable.');
+}
+function requireStaticImageCompletion(state) {
+    if (!state?.observer?.restored && !state?.unavailable) throw new Error('Static images must be restored and sealed.');
 }
 
 function retainFailedMetadataAttempt(output, request, error, observer) {
@@ -697,6 +700,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             proofs[0].terminalOutput = { ...mode, verifiedAt: new Date().toISOString() };
             outputModeVerified = true;
         };
+        const observeImageRequest = (request, budget, owner, worker) => {
+            if (!outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
+            const command = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='],
+                { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
+            if (!matchesRecordedWorker(worker, workerIdentity, command, runId)) throw new Error('Recorded image worker identity or marker changed.');
+            const ownership = { app: owner, worker, tty: request.tty, at: new Date().toISOString(),
+                terminalOutput: readOwnedOutputMode(request.tty, budget()) };
+            return observeImages(request, budget, ownership);
+        };
         const server = createServer(socket => {
             let buffer = '';
             socket.setTimeout(5000, () => socket.destroy());
@@ -715,7 +727,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) throw new Error('Owned app is no longer live.');
                     const currentImage = statSync(executable);
                     if (image.ino !== currentImage.ino || image.size !== currentImage.size || image.mtimeMs !== currentImage.mtimeMs) throw new Error('Owned executable changed during collection.');
-                    // Three serial queries must fit inside the existing 5s reply timeout.
+                    // All lineage/mode queries and observations share the existing 4s budget.
                     const queryTimeout = createProcessBudget(4000);
                     const owner = processRecord(app.pid, queryTimeout());
                     const worker = processRecord(request.workerPid, queryTimeout());
@@ -725,10 +737,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
                     if (/^images-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
-                        if (!outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
-                        const ownership = { app: owner, worker, tty: request.tty, at: new Date().toISOString(),
-                            terminalOutput: readOwnedOutputMode(request.tty, queryTimeout()) };
-                        const result = await observeImages(request, queryTimeout, ownership);
+                        const result = await observeImageRequest(request, queryTimeout, owner, worker);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
                         return;
                     }
@@ -746,7 +755,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         attestOutputMode(request, queryTimeout);
                     } else if (request.kind === 'done') {
                         requireInputCompletion(inputState);
-                        if (!staticImageState?.observer?.restored && !staticImageState?.unavailable) throw new Error('Static images must be restored and sealed.');
+                        requireStaticImageCompletion(staticImageState);
                         completed = true;
                         resolveDone();
                     } else if (request.kind === 'failed') {

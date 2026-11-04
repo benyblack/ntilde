@@ -31,7 +31,7 @@ const clear = '\x1b[2J\x1b[H';
 /** Exact bounded bytes. Numbers/allocated ids come from the proved run and raw replies, never guesses. */
 export function staticImageCommand(caseId, stageId, { number, firstId } = {}) {
     const spec = staticImageCases.find(item => item.id === caseId);
-    if (!spec || !spec.stages.some(item => item.id === stageId)) throw new Error('Unknown static image stage.');
+    if (!spec?.stages.some(item => item.id === stageId)) throw new Error('Unknown static image stage.');
     if (stageId === 'blank') return '';
     if (stageId === 'clear') return clear;
     if (caseId === 'sixel.native-raster') return staticSixel;
@@ -40,6 +40,9 @@ export function staticImageCommand(caseId, stageId, { number, firstId } = {}) {
         return '\x1b]1337;File=inline=1;width=4;height=2' + preserve + ':'
             + staticImageInput('alpha', 'png').bytes.toString('base64') + '\x1b\\';
     }
+    return kittyStaticCommand(stageId, number, firstId);
+}
+function kittyStaticCommand(stageId, number, firstId) {
     if (!uint(number)) throw new Error('Static image number must be an explicit positive uint32.');
     if (stageId.startsWith('store')) {
         const source = stageId === 'store-second' ? 'reversed' : 'alpha';
@@ -54,22 +57,28 @@ export function staticImageCommand(caseId, stageId, { number, firstId } = {}) {
     throw new Error('Static image command is not implemented.');
 }
 
+/** Exact seven-bit framing and positive uint32 fields; no normalization or status grading. */
+export function parseStaticKittyReply(raw) {
+    if (typeof raw !== 'string' || raw.length > 512 || !raw.startsWith('\x1b_G') || !raw.endsWith('\x1b\\')) throw new Error('Malformed static Kitty reply.');
+    const body = raw.slice(3, -2), match = /^([^;]+);([ -~]+)$/.exec(body);
+    if (!match || match[0] !== body) throw new Error('Malformed static Kitty reply.');
+    const fields = {};
+    for (const part of match[1].split(',')) {
+        const field = /^([iIp])=([1-9]\d{0,9})$/.exec(part);
+        if (!field || field[0] !== part || Object.hasOwn(fields, field[1]) || !uint(Number(field[2]))) throw new Error('Invalid Kitty reply fields.');
+        fields[field[1]] = Number(field[2]);
+    }
+    return { fields, status: match[2] };
+}
+
 /** Parse a single separately fenced reply. This verifies correlation, never freshness or pixels. */
 export function staticKittyReply(raw, { number = null, placement = null, expectedId = null, allocation = false, seenIds = [], missing = false } = {}) {
     if ((number === null ? !uint(expectedId) || allocation : !uint(number)) || (placement !== null && !uint(placement)) || (expectedId !== null && !uint(expectedId))
-        || !Array.isArray(seenIds) || seenIds.length > 2 || !seenIds.every(uint)
-        || typeof raw !== 'string' || raw.length > 512) throw new Error('Invalid static Kitty reply context.');
-    const match = /^\x1b_G([^;]+);([ -~]+)\x1b\\$/.exec(raw);
-    if (!match) throw new Error('Malformed static Kitty reply.');
-    const fields = {};
-    for (const part of match[1].split(',')) {
-        const field = /^(i|I|p)=([1-9][0-9]{0,9})$/.exec(part);
-        if (!field || Object.hasOwn(fields, field[1]) || !uint(Number(field[2]))) throw new Error('Invalid Kitty reply fields.');
-        fields[field[1]] = Number(field[2]);
-    }
+        || !Array.isArray(seenIds) || seenIds.length > 2 || !seenIds.every(uint)) throw new Error('Invalid static Kitty reply context.');
+    const { fields, status } = parseStaticKittyReply(raw);
     if ((number === null ? fields.I !== undefined : fields.I !== number) || (!missing && !uint(fields.i)) || (placement === null ? fields.p !== undefined : fields.p !== placement)
         || (expectedId !== null && fields.i !== expectedId)
         || (allocation && (!uint(fields.i) || seenIds.includes(fields.i)))
-        || (!missing && match[2] !== 'OK') || (missing && !/^ENOENT(?::|$)/.test(match[2]))) throw new Error('Uncorrelated static Kitty reply.');
-    return { id: fields.i ?? null, number: fields.I, placement: fields.p ?? null, status: match[2], raw };
+        || (!missing && status !== 'OK') || (missing && !/^ENOENT(?::|$)/.test(status))) throw new Error('Uncorrelated static Kitty reply.');
+    return { id: fields.i ?? null, number: fields.I, placement: fields.p ?? null, status, raw };
 }
