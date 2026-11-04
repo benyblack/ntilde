@@ -172,6 +172,10 @@ query-framing prerequisite: a retained prefix cannot prove the complete request.
 Existing capped SIXEL decoding and negative DECRQSS/XTGETTCAP replies are preserved;
 this change adds no positive query setting or runtime qualification.
 
+OSC 0/2 forward exact bounded title payloads, including empty and whitespace
+requests. The host owns title presentation and fallback; an empty request can
+clear a stale application title without forcing an empty tab label.
+
 #### `TerminalBuffer`
 
 Applies semantic operations to terminal state. Maintains cursor, modes, tab stops, margins. Owns main + alternate screen buffers and scrollback.

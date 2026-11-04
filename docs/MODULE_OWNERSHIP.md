@@ -20,6 +20,9 @@ invariant changes.
 
 **Owns**
 - VT/ANSI state machine and parser
+- Exact bounded OSC 0/2 title payload callbacks, including empty and whitespace
+  requests. App owns raw-title storage and profile/cwd/user-label presentation;
+  VT does not choose a UI fallback or model a separate OSC 1 icon name.
 - OSC 5522 framing/strict base64 and the host-enabled DEC 5522 mode. Clipboard payloads, permission grants, transfer budgets and OS I/O belong to App; headless VT does not advertise a desktop service.
 - Main + alternate screen buffers
 - Scrollback (`Buffer/ScrollbackPages.cs`) and lossless reflow (`TerminalBuffer.ReflowEngine.cs`)

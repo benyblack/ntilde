@@ -54,6 +54,39 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
         return await task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
     }
 
+    [AvaloniaTheory]
+    [InlineData("0", "")]
+    [InlineData("2", "")]
+    [InlineData("0", "   ")]
+    [InlineData("2", "   ")]
+    [Trait("Category", "Regression")]
+    public async Task Empty_or_blank_OSC_title_replaces_raw_request_and_uses_the_existing_tab_fallback(string code, string payload)
+    {
+        using var service = new AgentHostService(new AgentSessionRegistry());
+        using var scope = AgentHostService.OverrideInstanceForTesting(service);
+        var (window, pane, _) = CreateWindow(); var registration = Registration(pane);
+        string cwd = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "title-fixture"));
+        pane.Parser!.Process("\u001b]7;" + new Uri(cwd).AbsoluteUri + "\a");
+        Dispatcher.UIThread.RunJobs();
+        string fallback = pane.GetBaseTabTitle();
+        Assert.EndsWith("title-fixture", fallback, StringComparison.Ordinal);
+        var tabs = window.FindControl<TabControl>("Tabs")!; var selected = tabs.SelectedItem;
+        var size = window.ClientSize;
+        foreach (string terminator in new[] { "\a", "\u001b\\" })
+        {
+            pane.Parser.Process("\u001b]2;previous-title\a"); Dispatcher.UIThread.RunJobs();
+            Assert.Equal("previous-title", (await Read(window, registration))!.OscTitle);
+            pane.Parser.Process($"\u001b]{code};{payload}{terminator}"); Dispatcher.UIThread.RunJobs();
+            var observed = Assert.IsType<PaneMetadataResult>(await Read(window, registration));
+            Assert.Equal(payload, observed.OscTitle);
+            Assert.Equal(fallback, observed.DisplayTitle);
+            Assert.Contains(fallback, observed.Presentation.TabText, StringComparison.Ordinal);
+            Assert.DoesNotContain("previous-title", observed.Presentation.TabText, StringComparison.Ordinal);
+            Assert.NotEmpty(observed.Presentation.TabText);
+        }
+        Assert.Same(selected, tabs.SelectedItem); Assert.Equal(size, window.ClientSize);
+    }
+
     [AvaloniaFact]
     public async Task Initial_window_startup_publishes_the_read_observer_without_act_access()
     {
