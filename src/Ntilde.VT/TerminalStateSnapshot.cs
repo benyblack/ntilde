@@ -218,7 +218,10 @@ namespace Ntilde.VT
         [JsonPropertyName("hidden")] public bool IsHidden { get; set; }
     }
 
-    /// <summary>Every property of <see cref="ModeState"/> except the kitty stacks.</summary>
+    /// <summary>
+    /// Every property of <see cref="ModeState"/> except the kitty stacks and the host-owned
+    /// <see cref="ModeState.AlternateScrollDefault"/>.
+    /// </summary>
     public sealed class TerminalModeState
     {
         [JsonPropertyName("m_9")] public bool MouseModeX10PressOnly { get; set; }
@@ -243,6 +246,12 @@ namespace Ntilde.VT
         [JsonPropertyName("irm")] public bool IsInsertMode { get; set; }
         [JsonPropertyName("lnm")] public bool IsLineFeedNewLineMode { get; set; }
         [JsonPropertyName("srm")] public bool IsEchoEnabled { get; set; } = true;
+
+        /// <summary>
+        /// ?1007 as the application set it; null (absent) means "never set since RIS", so the
+        /// importing host's own default applies. Legacy payloads lack it and read as null.
+        /// </summary>
+        [JsonPropertyName("alt_scroll"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? AlternateScrollOverride { get; set; }
     }
 
     /// <summary>Both kitty keyboard flag stacks and which one is live.</summary>

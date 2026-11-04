@@ -52,6 +52,7 @@ public sealed class SettingsTools
         | `BellAudioEnabled` | bool | Default true. |
         | `BellVisualEnabled` | bool | Default true. |
         | `SmoothScrolling` | bool | Default true. |
+        | `AlternateScroll` | bool | Default true. Initial value of DEC mode `?1007` (alternate scroll): on the alternate screen with mouse reporting off, each wheel notch sends one Up/Down cursor key (`ESC O A`/`ESC O B` under application cursor mode, `CSI A`/`CSI B` otherwise), so `less`, `man` and pagers scroll. A program's own `CSI ? 1007 h/l` overrides it until a full reset (RIS); `CSI ? 1007 $ p` reports the effective value. When false, the wheel does nothing there unless a program sets the mode. |
         | `EnableLinkDetection` | bool | Default true. |
         | `EnableKittyKeyboardProtocol` | bool | Default true. Kill switch for the kitty keyboard protocol's disambiguate-escape-codes tier (issue #266). When false, key encoding always falls back to legacy sequences and the `CSI ? u` query always reports flags 0, even if a TUI pushed a flag onto the stack. |
         | `AllowOsc52ClipboardWrite` | bool | Default true. Settings gate for OSC 52 and OSC 5522 clipboard **write** (issue #268). OSC 5522 reads require approval or a one-use paste token. When false, a decoded OSC 52 write is not applied to the system clipboard. OSC 52 **read** (answering a query with real clipboard contents) is never implemented regardless of this setting — queries always get an empty-payload denial reply. |
@@ -121,6 +122,7 @@ public sealed class SettingsTools
           "BellAudioEnabled": true,
           "BellVisualEnabled": true,
           "SmoothScrolling": true,
+          "AlternateScroll": true,
           "EnableLinkDetection": true,
           "EnableKittyKeyboardProtocol": true,
           "AllowOsc52ClipboardWrite": true,
@@ -168,7 +170,7 @@ public sealed class SettingsTools
     internal static readonly string[] BoolFields =
     {
         "EnableLigatures", "EnableComplexShaping", "CursorBlink", "BellAudioEnabled",
-        "BellVisualEnabled", "SmoothScrolling", "EnableLinkDetection", "EnableKittyKeyboardProtocol",
+        "BellVisualEnabled", "SmoothScrolling", "AlternateScroll", "EnableLinkDetection", "EnableKittyKeyboardProtocol",
         "AllowOsc52ClipboardWrite", "AllowNativeKittyGraphics",
         "QuakeModeEnabled",
         "CommandAssistEnabled", "CommandAssistHistoryEnabled", "CommandAssistPassiveBubbleEnabled",
@@ -194,7 +196,7 @@ public sealed class SettingsTools
     {
         "FontSize", "MaxHistory", "FontFamily", "ThemeName", "WindowOpacity", "UiScale", "BlurEffect",
         "EnableLigatures", "EnableComplexShaping", "MinimumContrast", "CursorStyle", "CursorBlink", "TabStripOrientation", "VerticalTabStripWidth",
-        "BellAudioEnabled", "BellVisualEnabled", "SmoothScrolling", "EnableLinkDetection",
+        "BellAudioEnabled", "BellVisualEnabled", "SmoothScrolling", "AlternateScroll", "EnableLinkDetection",
         "EnableKittyKeyboardProtocol", "AllowOsc52ClipboardWrite", "AllowNativeKittyGraphics",
         "WheelLinesPerNotch", "PaneClosePolicy", "ShellExitPolicy", "AgentIndicatorTabRollup", "SessionPersistence",
         "Keybindings", "TabTemplateRules",

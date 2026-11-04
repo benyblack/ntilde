@@ -54,6 +54,11 @@ namespace Ntilde.Shell
         public bool BellAudioEnabled { get; set; } = true;
         public bool BellVisualEnabled { get; set; } = true;
         public bool SmoothScrolling { get; set; } = true;
+        // Initial value of DEC mode ?1007 (alternate scroll, issue #828). Default on, as in most
+        // terminals: on the alternate screen with mouse reporting off, the wheel sends Up/Down
+        // keys, so less, man and git's pager scroll. A program's own DECSET/DECRST ?1007 overrides
+        // this until RIS; off keeps the wheel inert there instead.
+        public bool AlternateScroll { get; set; } = true;
         public bool EnableLinkDetection { get; set; } = true;
         // Kill switch for Kitty keyboard disambiguation and repeat/release reporting
         // (issue #266 / PR #277 review, Blocker 2). Default on. When false: TerminalView

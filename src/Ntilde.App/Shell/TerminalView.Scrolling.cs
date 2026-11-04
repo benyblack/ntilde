@@ -13,9 +13,30 @@ namespace Ntilde.Shell
         private int _targetScrollOffset;
         // Carry fractional high-resolution wheel deltas so precision touchpads / hi-res
         // wheels (which emit sub-notch micro-events) produce one step per notch instead
-        // of one per micro-event. Separate accumulators for the two wheel code paths.
+        // of one per micro-event. One accumulator per wheel route, because each measures
+        // notches at its own sensitivity; see EnterWheelRoute.
         private readonly WheelStepAccumulator _wheelScrollAccumulator = new();
         private readonly WheelStepAccumulator _wheelReportAccumulator = new();
+        private readonly WheelStepAccumulator _wheelAlternateScrollAccumulator = new();
+        private WheelRoute _wheelRoute;
+
+        private enum WheelRoute { None, MouseReport, AlternateScroll, Scrollback }
+
+        /// <summary>
+        /// Drops every pending fraction when the wheel starts going somewhere else (mouse reporting
+        /// toggled, alternate screen entered or left, ?1007 changed mid-gesture). A remainder is
+        /// measured at its route's sensitivity, so carrying it across would let a quarter notch
+        /// on the new route complete a step it never received; one left over from an earlier
+        /// stint on the same route is just as stale.
+        /// </summary>
+        private void EnterWheelRoute(WheelRoute route)
+        {
+            if (route == _wheelRoute) return;
+            _wheelRoute = route;
+            _wheelScrollAccumulator.Reset();
+            _wheelReportAccumulator.Reset();
+            _wheelAlternateScrollAccumulator.Reset();
+        }
         private double _wheelLinesPerNotch = 3.0;
 
         private void OnScrollAnimationTick(object? sender, EventArgs e)
@@ -238,6 +259,7 @@ namespace Ntilde.Shell
             // (which otherwise floods a TUI with scroll commands -> runaway scrolling).
             if (_buffer.IsMouseReportingActive())
             {
+                EnterWheelRoute(WheelRoute.MouseReport);
                 // Classic stepped wheel (full notch) forwards 1 event per notch so
                 // list/menu TUIs advance one item; only sub-notch precision devices get
                 // the smoothing multiplier.
@@ -266,16 +288,54 @@ namespace Ntilde.Shell
 
             if (_generatedInputInProgress) { e.Handled = true; return; }
 
+            // Alternate scroll (?1007, issue #828): the alternate screen has no scrollback, so a
+            // pager or TUI without mouse support (less, man, htop) gets one cursor key per notch
+            // instead. Reporting above wins; the main screen keeps scrolling the scrollback.
+            if (_buffer.IsAltScreenActive && _buffer.Modes.IsAlternateScroll)
+            {
+                EnterWheelRoute(WheelRoute.AlternateScroll);
+                SendAlternateScroll(_wheelAlternateScrollAccumulator.Accumulate(e.Delta.Y, AlternateScrollKeysPerNotch));
+                e.Handled = true;
+                return;
+            }
+
             // Standard scrolling. Accumulate fractional deltas (lines per notch) so
             // sub-notch micro-events are summed line-by-line instead of being truncated
             // to zero each event.
             // Scroll up (positive) -> Increase Offset; scroll down (negative) -> Decrease.
+            EnterWheelRoute(WheelRoute.Scrollback);
             int delta = _wheelScrollAccumulator.Accumulate(e.Delta.Y, _wheelLinesPerNotch);
             if (delta != 0)
             {
                 ScrollByWheelLines(delta);
             }
         }
+
+        /// <summary>
+        /// One cursor key per notch, whatever <see cref="_wheelLinesPerNotch"/> says: that setting
+        /// sizes Ntilde's own scrollback steps, not how far a program moves per key. Sub-notch
+        /// deltas accumulate to whole notches.
+        /// </summary>
+        private const double AlternateScrollKeysPerNotch = 1.0;
+
+        /// <summary>
+        /// Sends <paramref name="notches"/> cursor keys (positive = up) encoded from this pane's own
+        /// modes, so DECCKM picks <c>ESC O A</c> or <c>CSI A</c>. Modifiers are not carried: the
+        /// wheel is not a key chord, and other terminals send the plain key here too.
+        /// </summary>
+        private void SendAlternateScroll(int notches)
+        {
+            if (notches == 0 || _buffer == null || _session == null) return;
+            string key = TerminalInputModeEncoder.EncodeAlternateScrollKey(_buffer.Modes, notches > 0);
+            SendUserInput(string.Concat(Enumerable.Repeat(key, Math.Abs(notches))));
+            AlternateScrollKeysSent?.Invoke();
+        }
+
+        /// <summary>
+        /// Cursor keys reached the session from the wheel (?1007), bypassing the key handling
+        /// that observers such as the markless submission accumulator watch.
+        /// </summary>
+        public event Action? AlternateScrollKeysSent;
 
         /// <summary>
         /// Scroll the terminal's own scrollback by whole lines from a wheel gesture (positive =

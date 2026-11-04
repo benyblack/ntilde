@@ -87,6 +87,19 @@ public class SettingsToolsTests
         Assert.Contains("'EnableLigatures'", result);
     }
 
+    /// <summary>Issue #828: the ?1007 host default is a known, type-checked, documented bool.</summary>
+    [Fact]
+    public void AlternateScroll_IsAKnownTypeCheckedBool()
+    {
+        Assert.Contains("`AlternateScroll`", SettingsTools.GetSettingsSchema());
+        Assert.StartsWith("VALID", SettingsTools.ValidateSettingsJson("""{ "AlternateScroll": false }"""));
+        Assert.DoesNotContain("Unknown", SettingsTools.ValidateSettingsJson("""{ "AlternateScroll": false }"""), StringComparison.OrdinalIgnoreCase);
+
+        var result = SettingsTools.ValidateSettingsJson("""{ "AlternateScroll": "on" }""");
+        Assert.StartsWith("INVALID", result);
+        Assert.Contains("'AlternateScroll'", result);
+    }
+
     [Fact]
     public void NonNumberFontSize_IsError()
     {

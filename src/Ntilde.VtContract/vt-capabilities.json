@@ -47,6 +47,15 @@
       "contractCase": "color-scheme-notifications"
     },
     {
+      "key": "DEC:1007",
+      "mnemonic": "Alternate scroll",
+      "support": "supported",
+      "description": "Wheel sends cursor-up/down keys on the alternate screen while mouse reporting is off; DECSET/DECRST override the host default and DECRQM reports the effective value.",
+      "matrixFeature": "Alternate scroll",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "alternate-scroll"
+    },
+    {
       "key": "OSC:30001",
       "mnemonic": "Color stack push",
       "support": "supported",

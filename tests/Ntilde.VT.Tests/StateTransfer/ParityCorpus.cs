@@ -240,6 +240,10 @@ internal static class ParityCorpus
             "\u001b[?2048h" + "client wants in-band reports" + "\u001b[?2048l" +
             "\u001b[?2048h"));
 
+        yield return ("mode-1007-alternate-scroll", Utf8(
+            "\u001b[?1049h\u001b[?1007l" + "pager on the alt screen" + "\u001b[?1007h" +
+            "\u001b[?1007l" + "\u001b[?1049l" + "\u001bc" + "after RIS" + "\u001b[?1007h"));
+
         yield return ("decscnm-reverse-video", Utf8(
             // Screen-wide: set on main, carried into and out of the alternate screen, through a
             // DECSTR that keeps it, and left set at the end so the snapshot carries it.

@@ -476,6 +476,14 @@ namespace Ntilde.Shell
             return code < 0 ? null : ((char)code).ToString();
         }
 
+        /// <summary>
+        /// One wheel notch under alternate scroll (?1007): the unmodified cursor key, so
+        /// application cursor mode (?1) selects <c>ESC O A</c>/<c>ESC O B</c> and normal mode
+        /// <c>CSI A</c>/<c>CSI B</c>, exactly what the arrow keys send.
+        /// </summary>
+        public static string EncodeAlternateScrollKey(ModeState modes, bool up)
+            => EncodeSpecialKey(up ? Key.Up : Key.Down, KeyModifiers.None, modes)!;
+
         public static string? EncodeFocusChanged(ModeState? modes, bool isFocused)
         {
             if (modes?.IsFocusEventReporting != true)

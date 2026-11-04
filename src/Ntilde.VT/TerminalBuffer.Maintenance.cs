@@ -414,6 +414,10 @@ namespace Ntilde.VT
                 Modes.MouseModeAnyEvent = false;
                 Modes.MouseModeSGR = false;
 
+                // ?1007 returns to the host's configured default, as xterm's RIS restores the
+                // alternateScroll resource. DECSTR leaves it alone (xterm's soft reset list).
+                Modes.AlternateScrollOverride = null;
+
                 _restoreMainCursorOnAltExit = false;
                 SwitchToMainScreen(restoreSavedCursorIfArmed: false);
 
