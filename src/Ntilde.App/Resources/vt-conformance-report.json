@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "2779840a4a95af354f69121af3621a504eae6a4c3f29cea3ba25d44b7e29aa12",
+  "matrixSha256": "588b0e52179ece0e270d8af9f2914442e037cde8cb8d384121926107d2a7c2f6",
   "summary": {
     "totalRows": 91,
     "supportedCount": 47,
@@ -2278,7 +2278,7 @@
       "feature": "OSC 1337",
       "status": "\u2705 Supported",
       "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs\u0060, Manual: \u0060docs/qa/QA_GRAPHICS.md\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ITermAspectIntentTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/ITermAspectRenderTests.cs\u0060; Manual: \u0060docs/qa/QA_GRAPHICS.md\u0060",
       "evidenceKinds": [
         "manual",
         "unit"
@@ -2289,14 +2289,22 @@
           "exists": true
         },
         {
+          "path": "tests/Ntilde.App.Tests/RenderTests/ITermAspectRenderTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/ITermAspectIntentTests.cs",
           "exists": true
         }
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
-      "knownDeviations": "Requires \u0060inline=1\u0060 and the \u0060File=\u0060 arg shape; no \u0060name=\u0060/\u0060size=\u0060 enforcement",
+      "knownDeviations": "Requires \u0060inline=1\u0060 and the \u0060File=\u0060 arg shape; no \u0060name=\u0060/\u0060size=\u0060 enforcement. Default/explicit aspect preservation and explicit-zero stretch have real parser/Skia/offscreen pixel controls across wide/tall sources and DPI, including clipping, history and snapshot-pinned clear. Legacy/SIXEL policy and complete opaque-image state-transfer exclusions remain unchanged. Native-pixel/default sizing, other OSC 1337 variants and owned runtime image pixels remain unqualified. See \u0060docs/qa/terminfo/iterm-aspect-fit.md\u0060.",
       "sourceLine": 187
     },
     {
