@@ -1,8 +1,8 @@
 {
   "//": "Pins the .NET SDK so hosted-runner bumps and local drift cannot change the toolchain silently (#174). CI installs this exact version via setup-dotnet's global-json-file input, so the workflows and this file cannot disagree the way `dotnet-version: 10.0.x` plus a hardcoded cache key did.",
-  "//rollForward": "latestPatch accepts servicing patches within the 10.0.4xx feature band but refuses a different band, keeping builds reproducible. 10.0.400 is a released SDK, so unlike the 10.0.300 preview this pin was on before, it is served from the normal release channel rather than depending on a build staying downloadable.",
+  "//rollForward": "latestPatch accepts servicing patches within the 10.0.4xx feature band but refuses a different band, keeping builds reproducible. The pin itself is the band's floor, so it has to move with security servicing: 10.0.403 carries runtime 10.0.14, and NuGet audit (warnings as errors) fails restore on the AOT projects' Microsoft.DotNet.ILCompiler below that (GHSA-p3jp-9v83-76w9). It is a released SDK, served from the normal release channel.",
   "sdk": {
-    "version": "10.0.400",
+    "version": "10.0.403",
     "rollForward": "latestPatch"
   }
 }
