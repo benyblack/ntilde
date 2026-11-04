@@ -56,10 +56,9 @@ export function copyLinuxOutputExpected(value, currentUid) {
     if (typeof pty.path !== 'string' || !/^\/dev\/pts\/(?:0|[1-9]\d{0,6})$/.test(pty.path) || Number(pty.path.slice(9)) > 1048575) fail('Invalid proved Linux PTY path.');
     pty.device = identity(pty.device, false);
     if (pty.device.uid !== String(result.uid) || (BigInt(pty.device.mode) & 2n) !== 0n) fail('Linux PTY ownership/world-write policy mismatch.');
-    for (const [process, role] of [[app, 'owner'], [worker, 'worker']]) {
-        const marker = '--ntilde-terminfo-' + role + '=' + result.runId;
-        if (process.argv.filter(arg => arg === marker).length !== 1) fail('Missing or duplicated Linux output run marker.');
-    }
+    const ownerMarker = '--ntilde-terminfo-owner=' + result.runId, workerMarker = '--ntilde-terminfo-worker=' + result.runId;
+    if (app.argv.filter(arg => arg === ownerMarker).length !== 1 || worker.argv.filter(arg => arg === workerMarker).length !== 1)
+        fail('Missing or duplicated Linux output run marker.');
     if (app.pid === worker.pid) fail('Linux output process roles must differ.');
     return Object.freeze({ runId: result.runId, uid: result.uid, app, worker, pty: Object.freeze(pty) });
 }
@@ -82,7 +81,12 @@ export function linuxOutputBudget(options, now) {
     return {
         deadlineNs, now, check,
         query(action) { check(); const value = action(); check(); return value; },
-        remainingMs() { check(); const value = Number((deadlineNs - now()) / 1000000n); if (value < 1) fail('Linux output deadline exhausted.'); return value; },
+        remainingMs() {
+            check();
+            const value = Number((deadlineNs - now()) / 1000000n);
+            if (value < 1) fail('Linux output deadline exhausted.');
+            return value;
+        },
         utilityMs() {
             if (++utilities > linuxOutputLimits.utilityCalls) fail('Linux output utility budget exhausted.');
             const value = this.remainingMs() - linuxOutputLimits.closeReserveMs;
@@ -103,24 +107,26 @@ export function parseLinuxOutputSize(value) {
     return Object.freeze({ rows, cols });
 }
 export function parseLinuxOutputProcessing(value) {
-    if (typeof value !== 'string' || Buffer.byteLength(value) > linuxOutputLimits.outputBytes || /[^\x09\x0a\x20-\x7e]/.test(value)) fail('Invalid GNU stty output description.');
+    const printable = code => code === 9 || code === 10 || (code >= 32 && code <= 126);
+    if (typeof value !== 'string' || Buffer.byteLength(value) > linuxOutputLimits.outputBytes
+        || [...value].some(char => !printable(char.charCodeAt(0)))) fail('Invalid GNU stty output description.');
     const matches = [...value.matchAll(/(?:^|[\s;])(-?opost)(?=$|[\s;])/g)];
     if (matches.length !== 1) fail('Missing or ambiguous GNU stty output processing.');
     return matches[0][1] === 'opost';
 }
 export function parseLinuxSttyVersion(value) {
     if (typeof value !== 'string' || Buffer.byteLength(value) > linuxOutputLimits.outputBytes
-        || !/^stty \(GNU coreutils\) [0-9]+(?:\.[0-9]+){1,2}\n/.test(value)) fail('Expected the pinned GNU stty utility.');
+        || !/^stty \(GNU coreutils\) \d+(?:\.\d+){1,2}\n/.test(value)) fail('Expected the pinned GNU stty utility.');
     return value.split('\n')[0];
 }
 function assertProcess(actual, expected, expectedUid) {
-    if (!actual || actual.platform !== 'linux' || actual.pid !== expected.pid || actual.startTimeTicks !== expected.startTimeTicks
+    if (actual?.platform !== 'linux' || actual.pid !== expected.pid || actual.startTimeTicks !== expected.startTimeTicks
         || actual.executable !== expected.executable || !isDeepStrictEqual(actual.argv, expected.argv)
         || !Array.isArray(actual.uids) || actual.uids.length !== 4 || actual.uids.some(value => value !== expectedUid)
         || !isDeepStrictEqual(actual.executableFile, expected.executableFile)) fail('Linux output launch identity no longer matches.');
 }
 function assertFacts(facts, expected) {
-    if (!facts || facts.qualification !== 'provider-foundation-only') fail('Invalid Linux output provider facts.');
+    if (facts?.qualification !== 'provider-foundation-only') fail('Invalid Linux output provider facts.');
     assertProcess(facts.parent, expected.app, expected.uid); assertProcess(facts.child, expected.worker, expected.uid);
     if (facts.parent.ppid !== expected.app.ppid || facts.child.ppid !== expected.app.pid
         || facts.child.pty?.selectedFd !== 1 || facts.child.pty.descriptors?.length !== 2) fail('Linux output direct ancestry or descriptor selection changed.');
@@ -129,6 +135,12 @@ function assertFacts(facts, expected) {
         if (descriptor.fd !== fd || descriptor.path !== expected.pty.path || !isDeepStrictEqual(descriptor.device, expected.pty.device)) fail('Linux output PTY descriptor identity changed.');
     }
 }
+function factContainer(item) {
+    const array = Array.isArray(item), prototype = Object.getPrototypeOf(item);
+    if (array ? prototype !== Array.prototype : ![Object.prototype, null].includes(prototype)) fail('Non-plain Linux output facts.');
+    if (array && item.length > 128) fail('Oversized Linux fact array.');
+    return { array, result: array ? [] : {} };
+}
 function detachedFacts(value) {
     let nodes = 0;
     const copy = (item, depth) => {
@@ -136,10 +148,7 @@ function detachedFacts(value) {
         if (item === null || typeof item === 'boolean' || typeof item === 'number') return item;
         if (typeof item === 'string' && item.length <= 32768) return item;
         if (!item || typeof item !== 'object') fail('Unsupported Linux output facts.');
-        const array = Array.isArray(item), prototype = Object.getPrototypeOf(item);
-        if (array ? prototype !== Array.prototype : ![Object.prototype, null].includes(prototype)) fail('Non-plain Linux output facts.');
-        if (array && item.length > 128) fail('Oversized Linux fact array.');
-        const result = array ? [] : {};
+        const { array, result } = factContainer(item);
         for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(item))) {
             if (array && key === 'length') continue;
             if (!Object.hasOwn(descriptor, 'value') || !descriptor.enumerable) fail('Accessor in Linux output facts.');
@@ -180,7 +189,10 @@ export async function prepareLinuxOutputWithIo(io, expectedInput, toolInput, opt
             const result = await io.run(heldTool, heldPty, kind, saved, phase);
             phase.check(); held(phase); if (ownership) verify(phase);
             return result;
-        } catch (error) { if (error.utilityCloseConfirmed === false) utilitySafe = false; throw error; }
+        } catch (error) {
+            if (error.utilityCloseConfirmed === false) utilitySafe = false;
+            throw error;
+        }
     };
     const inspect = async (phase, ownership = true) => {
         const mode = parseLinuxOutputMode(await run('mode', null, phase, ownership));
@@ -235,7 +247,10 @@ export async function prepareLinuxOutputWithIo(io, expectedInput, toolInput, opt
             finally { busy = false; }
         },
         async restore(phaseOptions) {
-            if (settled) { if (settled.error) throw settled.error; return settled.result; }
+            if (settled) {
+                if (settled.error) throw settled.error;
+                return settled.result;
+            }
             if (busy) throw mark(new Error('Overlapping Linux output operation.'));
             busy = true;
             const errors = [];

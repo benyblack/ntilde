@@ -26,6 +26,33 @@ def reply(value):
     print(json.dumps(value, separators=(",", ":")), flush=True)
 
 
+def control(master, slave, child, run_id):
+    for _ in range(20):
+        command = provider.read_control(5)
+        if command == "snapshot\n":
+            reply({"snapshot": snapshot(slave)})
+        elif command == "probe\n":
+            os.write(master, b"probe\n")
+            footer = ("END-" + run_id).encode("ascii")
+            data = provider.receive_private(master, lambda value, expected=footer: expected in value and value.endswith(b"\n"), 3)
+            reply({"hex": data.hex()})
+        elif command == "mutate-argv\n":
+            os.write(master, b"mutate-argv\n")
+            data = provider.receive_private(master, lambda value: value.endswith(b"\n"), 3)
+            if data not in (b"MUTATED\n", b"MUTATED\r\n"):
+                raise RuntimeError("Private output mutation acknowledgment mismatch")
+            reply({"mutated": True})
+        elif command == "exit\n":
+            os.write(master, b"exit\n")
+            status = child.wait(3)
+            if status is None or not os.WIFEXITED(status) or os.WEXITSTATUS(status) != 0:
+                raise RuntimeError("Private output worker did not exit successfully")
+            return {"childReaped": child.pid, "status": status, "final": snapshot(slave)}
+        else:
+            raise RuntimeError("Invalid bounded output fixture control")
+    raise RuntimeError("Private output fixture command bound exhausted")
+
+
 def run(executable, script, run_id):
     child = provider.OwnedChild()
     master, slave = os.openpty()
@@ -41,32 +68,7 @@ def run(executable, script, run_id):
         if ready != ("READY " + run_id + "\r\n").encode("ascii"):
             raise RuntimeError("Private output worker readiness mismatch")
         reply({"parentPid": os.getpid(), "childPid": child.pid, "tty": os.ttyname(slave), "initial": snapshot(slave)})
-        for _ in range(20):
-            command = provider.read_control(5)
-            if command == "snapshot\n":
-                reply({"snapshot": snapshot(slave)})
-            elif command == "probe\n":
-                os.write(master, b"probe\n")
-                footer = ("END-" + run_id).encode("ascii")
-                data = provider.receive_private(master, lambda value: footer in value and value.endswith(b"\n"), 3)
-                reply({"hex": data.hex()})
-            elif command == "mutate-argv\n":
-                os.write(master, b"mutate-argv\n")
-                data = provider.receive_private(master, lambda value: value.endswith(b"\n"), 3)
-                if data not in (b"MUTATED\n", b"MUTATED\r\n"):
-                    raise RuntimeError("Private output mutation acknowledgment mismatch")
-                reply({"mutated": True})
-            elif command == "exit\n":
-                os.write(master, b"exit\n")
-                status = child.wait(3)
-                if status is None or not os.WIFEXITED(status) or os.WEXITSTATUS(status) != 0:
-                    raise RuntimeError("Private output worker did not exit successfully")
-                result = {"childReaped": child.pid, "status": status, "final": snapshot(slave)}
-                break
-            else:
-                raise RuntimeError("Invalid bounded output fixture control")
-        if result is None:
-            raise RuntimeError("Private output fixture command bound exhausted")
+        result = control(master, slave, child, run_id)
     finally:
         if child.pid is not None and not child.reaped:
             provider.terminate_owned(child)

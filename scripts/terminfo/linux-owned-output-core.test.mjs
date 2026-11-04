@@ -214,7 +214,11 @@ test('preparation primary, restoration and both closes survive in order', async 
     assert.deepEqual(error.errors.map(e => e.message), ['after:disable', 'run:restore', 'closePty', 'closeTool']);
 });
 
-test('unsupported actual platforms cannot inject a fake proc/utility reader into the public API', () => {
-    if (globalThis.process.platform === 'linux') return;
-    assert.throws(() => prepareLinuxOwnedOutput(input(), tool(), { deadlineNs: 1n, reader: {} }), /actual Linux/);
+test('the public API cannot inject a fake proc/utility reader on any actual platform', async () => {
+    if (globalThis.process.platform === 'linux') {
+        const expected = input(); expected.uid = globalThis.process.getuid(); expected.pty.device.uid = String(expected.uid);
+        await assert.rejects(prepareLinuxOwnedOutput(expected, tool(), { deadlineNs: 1n, reader: {} }), /Unexpected Linux output fields/);
+    } else {
+        assert.throws(() => prepareLinuxOwnedOutput(input(), tool(), { deadlineNs: 1n, reader: {} }), /actual Linux/);
+    }
 });

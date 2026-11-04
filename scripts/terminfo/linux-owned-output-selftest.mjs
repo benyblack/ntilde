@@ -19,7 +19,6 @@ const utilityPath = existsSync('/usr/bin/gnustty') ? '/usr/bin/gnustty' : '/usr/
 const stty = { path: utilityPath, sha256: createHash('sha256').update(readFileSync(utilityPath)).digest('hex') };
 const phase = () => ({ deadlineNs: createLinuxOutputDeadline(4000) });
 const ownBefore = readLinuxProcessFacts(process.pid);
-const outcomes = [];
 const delay = (ms, value) => { let timer; return { promise: new Promise(resolve => { timer = setTimeout(() => resolve(value), ms); }), cancel: () => clearTimeout(timer) }; };
 
 async function fixture(action) {
@@ -68,7 +67,7 @@ async function fixture(action) {
         } finally { clearTimeout(timer); }
     }
     const command = async name => { child.stdin.write(name + '\n'); return next(); };
-    let result;
+    let result, completed, primary;
     try {
         const target = await next();
         assert.equal(target.parentPid, child.pid);
@@ -92,18 +91,22 @@ async function fixture(action) {
         assert.deepEqual(status, { code: 0, signal: null });
         if (failure) throw failure;
         assert.equal(errors.text(), ''); assert.equal(consumed, output.text().length); assert.equal(queue.length, 0);
-        return { ...result, runId, expected, cleanup };
-    } finally {
-        if (!closed) {
-            if (!exited) child.stdin.end('exit\n');
-            const terminate = setTimeout(() => { if (!exited) child.kill('SIGTERM'); }, 1000);
-            const force = setTimeout(() => { if (!exited) child.kill('SIGKILL'); }, 4000);
-            const ceiling = delay(6000, null);
-            try {
-                if (!(await Promise.race([close, ceiling.promise]))) throw new Error('Private fixture closure is unconfirmed.');
-            } finally { clearTimeout(terminate); clearTimeout(force); ceiling.cancel(); }
-        }
+        completed = { ...result, runId, expected, cleanup };
+    } catch (error) { primary = error; }
+    const cleanupErrors = [];
+    if (!closed) {
+        if (!exited) child.stdin.end('exit\n');
+        const terminate = setTimeout(() => { if (!exited) child.kill('SIGTERM'); }, 1000);
+        const force = setTimeout(() => { if (!exited) child.kill('SIGKILL'); }, 4000);
+        const ceiling = delay(6000, null);
+        try {
+            if (!(await Promise.race([close, ceiling.promise]))) cleanupErrors.push(new Error('Private fixture closure is unconfirmed.'));
+        } catch (error) { cleanupErrors.push(error); }
+        finally { clearTimeout(terminate); clearTimeout(force); ceiling.cancel(); }
     }
+    if (primary) cleanupErrors.unshift(primary);
+    if (cleanupErrors.length) throw new AggregateError(cleanupErrors, 'Private output fixture failed.');
+    return completed;
 }
 
 const probe = async (command, runId, translated) => {
@@ -113,7 +116,7 @@ const probe = async (command, runId, translated) => {
     return response.hex;
 };
 
-outcomes.push(await fixture(async ({ runId, target, expected, command }) => {
+const outcomes = [await fixture(async ({ runId, target, expected, command }) => {
     // Wrong identity and wrong executable digest are actual read-only admission refusals.
     await assert.rejects(prepareLinuxOwnedOutput({ ...expected, worker: { ...expected.worker,
         startTimeTicks: (BigInt(expected.worker.startTimeTicks) + 1n).toString() } }, stty, phase()));
@@ -143,9 +146,7 @@ outcomes.push(await fixture(async ({ runId, target, expected, command }) => {
         return { scenario: 'prepare-observe-restore', original: target.initial, prepared,
             beforeHex, preparedHex, afterHex, unsupportedDefaultChecked, observation, restoration };
     } finally { if (!restored) await lease.restore(phase()).catch(() => {}); }
-}));
-
-outcomes.push(await fixture(async ({ runId, target, expected, command }) => {
+}), await fixture(async ({ runId, target, expected, command }) => {
     const lease = await prepareLinuxOwnedOutput(expected, stty, phase());
     try {
         assert.deepEqual(await command('mutate-argv'), { mutated: true });
@@ -160,7 +161,7 @@ outcomes.push(await fixture(async ({ runId, target, expected, command }) => {
         assert.strictEqual(await lease.restore({}).catch(error => error), refusal);
         return { scenario: 'sticky-identity-abort-held-restore', original: target.initial, restoredHex, resources };
     } finally { await lease.restore(phase()).catch(() => {}); }
-}));
+})];
 
 const ownAfter = readLinuxProcessFacts(process.pid);
 assert.equal(ownAfter.controllingDevice, ownBefore.controllingDevice, 'Coordinator acquired a controlling terminal.');

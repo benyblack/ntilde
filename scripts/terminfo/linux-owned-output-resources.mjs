@@ -9,7 +9,7 @@ export function createLinuxOutputResources(filesystem = nodeFs) {
     const { constants, openSync, closeSync, fstatSync, lstatSync, realpathSync, readSync, statfsSync } = filesystem;
     function closeFailedOpen(fd, error, observation) {
         let closeError;
-        if (fd !== undefined) { try { closeSync(fd); } catch (failure) { closeError = failure; } }
+        if (fd !== undefined) { try { closeSync(fd); } catch (error_) { closeError = error_; } }
         const failure = new AggregateError(closeError ? [error, closeError] : [error], 'Linux output resource admission failed.');
         Object.defineProperty(failure, 'linuxOutputOpenResource', { value: Object.freeze({ ...observation, closeConfirmed: fd === undefined || !closeError }) });
         throw failure;
