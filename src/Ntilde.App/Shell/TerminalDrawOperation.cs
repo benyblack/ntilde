@@ -1412,6 +1412,7 @@ namespace Ntilde.Shell
 
                     var cb = ResolveCellBackground(cell, themeBg, alpha, themeSnapshot);
                     var cf = ResolveCellForeground(cell, themeFg, alpha, themeSnapshot);
+                    bool runIsBold = cell.IsBold;
                     bool runIsItalic = cell.IsItalic;
                     bool runIsUnderline = cell.IsUnderline;
                     CellUnderline? runUnderline = cell.Underline;
@@ -1465,7 +1466,8 @@ namespace Ntilde.Shell
 
                         if (nfg != fg || nbg != bg)
                             break;
-                        if (next.IsItalic != runIsItalic ||
+                        if (next.IsBold != runIsBold ||
+                            next.IsItalic != runIsItalic ||
                             next.IsUnderline != runIsUnderline ||
                             !Equals(next.Underline, runUnderline) ||
                             next.IsStrikethrough != runIsStrikethrough ||
@@ -1546,6 +1548,9 @@ namespace Ntilde.Shell
                         continue;
                     }
 
+                    // Fonts here and in the fallback/shaping caches belong to this draw operation.
+                    // Set every run, including normal runs, so adjacent styles cannot bleed.
+                    font.Embolden = runIsBold;
                     bool appliedItalicTransform = false;
                     if (runIsItalic)
                     {
@@ -1573,6 +1578,7 @@ namespace Ntilde.Shell
 
                         var shapingResources = GetOrCreateShapingResources(tfToUse ?? primaryTf);
                         var shapedFont = shapingResources.Font;
+                        shapedFont.Embolden = runIsBold;
                         var shaper = shapingResources.Shaper;
                         LogBoxRunDiagnostics(runText, totalRunWidth, shapedFont, shapedFont.MeasureText(runText));
                         canvas.DrawShapedText(shaper, runText, rx, baselineYDip, shapedFont, fgPaint);
@@ -1629,6 +1635,8 @@ namespace Ntilde.Shell
                                         glyphFont = GetOrCreateFallbackFont(glyphTf);
                                     }
                                 }
+
+                                glyphFont.Embolden = runIsBold;
 
                                 if (GlyphDiagnosticsEnabled && IsSingleRuneInRange(grapheme, 0x2500, 0x257F))
                                 {
@@ -2254,7 +2262,8 @@ namespace Ntilde.Shell
             using var crispFont = new SKFont(glyphFont.Typeface ?? SKTypeface.Default, glyphFont.Size)
             {
                 Edging = SKFontEdging.Alias,
-                Hinting = SKFontHinting.Full
+                Hinting = SKFontHinting.Full,
+                Embolden = glyphFont.Embolden
             };
             canvas.DrawText(grapheme, x, baselineY, crispFont, paint);
             IncrementTextDrawCall();

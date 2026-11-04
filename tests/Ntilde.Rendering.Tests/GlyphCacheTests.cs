@@ -162,6 +162,27 @@ public class GlyphCacheTests
         Assert.Equal(1, cache.EntryCount);
     }
 
+    [Fact]
+    public void EmboldenedGlyph_HasDistinctCacheIdentityAndMatchesDirectCoverage()
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+        using var cache = new GlyphCache();
+        using var typeface = SKTypeface.Default;
+        using var font = new SKFont(typeface, 16);
+        var normal = cache.GetOrAdd("M", font, 1.5f)!.Value;
+        font.Embolden = true;
+        var bold = cache.GetOrAdd("M", font, 1.5f)!.Value;
+        Assert.NotEqual(normal.Rect, bold.Rect);
+        Assert.Equal(2, cache.EntryCount);
+        byte[] actual = SpriteAlpha(cache, bold, out bool white);
+        Assert.True(white);
+        byte[] direct = DirectAlpha("M", typeface, 24, bold, SKColors.White, embolden: true);
+        Assert.Equal(direct, actual);
+        font.Embolden = false;
+        Assert.Equal(normal, cache.GetOrAdd("M", font, 1.5f)!.Value);
+        Assert.Equal(2, cache.EntryCount);
+    }
+
     /// <summary>The sprite's alpha, and whether its RGB is white coverage (premultiplied r=g=b=a).</summary>
     private static byte[] SpriteAlpha(GlyphCache cache, GlyphSprite sprite, out bool white)
     {
@@ -186,14 +207,15 @@ public class GlyphCacheTests
     }
 
     /// <summary>The coverage Skia draws for the glyph in <paramref name="color"/>, framed like the sprite.</summary>
-    private static byte[] DirectAlpha(string text, SKTypeface typeface, float physicalSize, GlyphSprite sprite, SKColor color)
+    private static byte[] DirectAlpha(string text, SKTypeface typeface, float physicalSize, GlyphSprite sprite, SKColor color, bool embolden = false)
     {
         int w = (int)sprite.Rect.Width, h = (int)sprite.Rect.Height;
         using var physFont = new SKFont(typeface, physicalSize)
         {
             Edging = SKFontEdging.Antialias,
             Hinting = SKFontHinting.Full,
-            Subpixel = true
+            Subpixel = true,
+            Embolden = embolden
         };
         using var surface = SKSurface.Create(new SKImageInfo(w, h, SKColorType.Rgba8888));
         surface.Canvas.Clear(SKColors.Transparent);
