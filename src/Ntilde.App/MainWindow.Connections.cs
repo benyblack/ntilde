@@ -369,7 +369,8 @@ namespace Ntilde
         private async Task CopySshLaunchCommandAsync(TerminalProfile profile, SshDiagnosticsLevel diagnosticsLevel, Window? owner = null)
         {
             var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel?.Clipboard == null)
+            var clipboard = Ntilde.Shell.Clipboard.HostClipboardAccess.Get(topLevel);
+            if (clipboard == null)
             {
                 await ShowSimpleMessageDialogAsync("Copy launch command", "Clipboard is not available.", owner);
                 return;
@@ -378,7 +379,7 @@ namespace Ntilde
             try
             {
                 string command = _sshConnectionService.BuildLaunchCommand(profile, diagnosticsLevel);
-                await topLevel.Clipboard.SetTextAsync(command);
+                await clipboard.SetTextAsync(command);
             }
             catch (Exception ex)
             {
@@ -423,9 +424,10 @@ namespace Ntilde
             copyButton.Click += async (_, __) =>
             {
                 var topLevel = TopLevel.GetTopLevel(dialog);
-                if (topLevel?.Clipboard != null)
+                var clipboard = Ntilde.Shell.Clipboard.HostClipboardAccess.Get(topLevel);
+                if (clipboard != null)
                 {
-                    await topLevel.Clipboard.SetTextAsync(details.CommandLine);
+                    await clipboard.SetTextAsync(details.CommandLine);
                 }
             };
 
