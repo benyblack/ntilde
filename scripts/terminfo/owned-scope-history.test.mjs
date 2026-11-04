@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { snapshotHash } from './agent-observer.mjs';
 import { ownedSnapshotReceiptFixture as fixture } from './fixtures/metadata-receipt.mjs';
+import { historicalArchive } from './fixtures/captured-sources.mjs';
+import { completeOwnedReceipt } from './receipt.mjs';
 
 for (const [name, grow, policy] of [
     ['future inventory', true, false],
@@ -25,11 +27,11 @@ for (const [name, grow, policy] of [
         if (policy) {
             const path = join(scripts, 'owned-sources.mjs');
             writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v2';"));
+                "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v3';"));
         }
         const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
-        assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 53 : 52);
-        assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v2' : 'readonly-owned-source-graph-v1');
+        assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 61 : 60);
+        assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v3' : 'readonly-owned-source-graph-v2');
         const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-04-metadata-snapshot.json', import.meta.url)));
         const paths = Object.keys(published.archive.fileSha256).filter(name => name.startsWith('sources/')).map(name => name.slice(8));
         assert.equal(paths.length, 52);
@@ -62,3 +64,20 @@ test('an expanded graph cannot silently acquire a v8 receipt under the historica
     f.context.sourceSnapshotManifestSha256 = snapshotHash(f.manifest); f.write('context.json', f.context);
     assert.throws(f.finish, /Invalid or incomplete v8/);
 }));
+
+for (const name of ['2026-11-03-metadata', '2026-11-04-metadata-snapshot', '2026-11-04-reset-observations'])
+    test('current finalizer reproduces every frozen v8 binding: ' + name, () => {
+        const output = mkdtempSync(join(tmpdir(), 'nt-v8-reproduce-'));
+        try {
+            for (const [file, bytes] of historicalArchive(name)) {
+                assert.ok(!file.split('/').includes('..') && !file.startsWith('/'));
+                const target = join(output, file); mkdirSync(join(target, '..'), { recursive: true }); writeFileSync(target, bytes);
+            }
+            const original = JSON.parse(readFileSync(join(output, 'cell-receipt.json')));
+            const { schemaVersion, ownershipProofSha256, contextSha256, rawSha256, fixtureRemoved, completedAt, ...evidence } = original;
+            unlinkSync(join(output, 'cell-receipt.json'));
+            const current = completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence);
+            current.completedAt = original.completedAt;
+            assert.deepEqual(current, original);
+        } finally { rmSync(output, { recursive: true, force: true }); }
+    });

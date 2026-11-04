@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
-export const sourceSnapshotPolicy = capturedV8SourcePolicy;
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v2';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -65,8 +65,30 @@ export const capturedV8SourceFiles = Object.freeze({
     runnerSourceSha256: 'terminfo-owned-runner.mjs',
     sourceInventorySha256: 'owned-source-inventory.json',
 });
+// The v9 scope is fixed independently of the evolving active inventory.
+export const capturedV9SourceFiles = Object.freeze({
+    ...capturedV8SourceFiles,
+    inputBytesSourceSha256: 'input-bytes.mjs', inputCasesSourceSha256: 'input-cases.mjs',
+    inputRequestSourceSha256: 'input-request.mjs', inputActionSourceSha256: 'input-action.mjs',
+    inputStateSourceSha256: 'input-state.mjs', inputCaptureSourceSha256: 'input-capture.mjs',
+    inputCollectorSourceSha256: 'input-collector.mjs', inputReceiptSourceSha256: 'input-receipt.mjs',
+});
 export const ownedSourcePath = (root, file) => join(root, 'scripts', file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+/** Literal relative imports must close over the retained fixed scope; never fall back to live sources. */
+export function assertRetainedSourceClosure(directory, inventory) {
+    const paths = new Set(Object.values(inventory));
+    for (const file of paths) {
+        if (!file.endsWith('.mjs')) continue;
+        const source = readFileSync(join(directory, file), 'utf8');
+        const imports = source.matchAll(/(?:\bfrom|\bimport\s*\()\s*['"]([^'"]+)['"]/g);
+        for (const [, target] of imports) {
+            if (target.startsWith('node:')) continue;
+            if (!/^\.\/(?:terminfo\/)?[a-z][a-z0-9-]*\.mjs$/.test(target)
+                || !paths.has(target.split('/').at(-1))) throw new Error('Retained source dependency is outside its versioned scope: ' + target);
+        }
+    }
+}
 export function assertOwnedSourcesUnchanged(root, context) {
     for (const [key, file] of Object.entries(ownedSourceFiles)) {
         if (digest(readFileSync(ownedSourcePath(root, file))) !== context[key]) throw new Error('Owned source changed before completion: ' + file);
@@ -75,6 +97,7 @@ export function assertOwnedSourcesUnchanged(root, context) {
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV9SourceFiles)) throw new Error('Invalid current v9 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

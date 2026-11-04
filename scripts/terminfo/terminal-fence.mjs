@@ -2,7 +2,7 @@ import { parseQueryFrame, querySequence, querySpec } from './color-query.mjs';
 // DA is an ordering barrier only. Cell/cursor assertions come from readScreen.
 export function terminalFence(input, output, timeoutMs = 1000) {
     const wasRaw = input.isRaw, wasPaused = input.isPaused();
-    let pending, fatal, disposed = false;
+    let pending, fatal, disposed = false, detached = false;
     const fail = error => {
         fatal = error;
         pending?.finish(error);
@@ -25,6 +25,7 @@ export function terminalFence(input, output, timeoutMs = 1000) {
     input.setRawMode(true);
     input.on('data', receive); input.on('error', fail); input.resume();
     const request = (sequence, expected = null) => {
+        if (disposed || detached) return Promise.reject(new Error('Cell barrier is not active (disposed or detached).'));
         if (fatal) return Promise.reject(fatal);
         if (pending) return Promise.reject(new Error('Concurrent cell barriers are forbidden.'));
         return new Promise((resolve, reject) => {
@@ -39,7 +40,7 @@ export function terminalFence(input, output, timeoutMs = 1000) {
     // Best-effort writes after a fatal input error never request/accept a barrier and
     // never revive the fence. Only disposable-fixture teardown uses this path.
     const writeCleanup = sequence => {
-        if (!fatal || pending || disposed || typeof sequence !== 'string' || !sequence.length || sequence.length > 4096) {
+        if (!fatal || pending || disposed || detached || typeof sequence !== 'string' || !sequence.length || sequence.length > 4096) {
             return Promise.reject(new Error('Cleanup requires a failed, active fence and bounded bytes.'));
         }
         return new Promise((resolve, reject) => {
@@ -61,6 +62,15 @@ export function terminalFence(input, output, timeoutMs = 1000) {
         query(expected, prefix = '') {
             const spec = querySpec(expected);
             return request(prefix + querySequence(spec), spec);
+        },
+        detachInput() {
+            if (disposed || detached) throw new Error('Expected an active, not detached fence.');
+            if (fatal) throw new Error('Expected a healthy, not failed fence.');
+            if (pending) throw new Error('Expected an idle fence without pending reads.');
+            detached = true;
+            input.removeListener('data', receive); input.removeListener('error', fail);
+            // The next exclusive reader inherits raw input and controlled -opost.
+            // Only outer dispose restores the modes captured by this original fence.
         },
         dispose() {
             disposed = true;

@@ -1053,6 +1053,15 @@ requires public test classes.
   full-state/history frames, exact action/source/settings bindings, verified cleanup
   and all earlier suite bindings. Ordinary cell observers retain their read-only
   allowlist; no action attests a personal or remote session.
+- **Owned routed-input QA is a separate parent-owned acting boundary.** Policy v2
+  captures a fixed 60-file graph and schema 9 requires all fourteen suites. Only
+  source-selected standalone App events may run in the re-proved disposable local
+  pane. Raw child bytes, pre-action mode replies, unpredictable post-action FIFO
+  challenges, paired complete state and final restoration/seal are independent
+  evidence. Original partial action facts survive failures; no retries or started
+  unavailable downgrade. The read-only observer allowlist remains unchanged.
+  Historical 51/52-file v8 scopes stay fixed, with retained-import closure checks.
+  No native/global input, clipboard, remote transport or binary attestation claim.
 - The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 
 **Non-responsibilities**

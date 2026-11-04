@@ -83,3 +83,42 @@ test('kernel geometry is independently checked against the captured App grid', (
     for (const [rows, cols] of [[40, 140], [41, 141]]) assert.throws(() => validateOutputGeometry(description, rows, cols), /geometry/);
     assert.throws(() => validateOutputGeometry('oflags: -opost onlcr', 41, 140), /geometry/);
 });
+
+test('real private PTY input-reader handoff preserves -opost and original raw/paused modes', { skip: process.platform !== 'darwin' }, () => {
+    const outputModule = new URL('./terminal-output.mjs', import.meta.url).href;
+    const fenceModule = new URL('./terminal-fence.mjs', import.meta.url).href;
+    const rawModule = new URL('./input-bytes.mjs', import.meta.url).href;
+    const program = `import {execFileSync} from 'node:child_process';
+        import {prepareOwnedOutput} from ${JSON.stringify(outputModule)};
+        import {terminalFence} from ${JSON.stringify(fenceModule)};
+        import {rawInputCapture} from ${JSON.stringify(rawModule)};
+        const tty=process.argv[1], read=()=>execFileSync('/bin/stty',['-f',tty,'-g'],{encoding:'utf8'});
+        const original=read(), paused=process.stdin.isPaused();
+        const fence=terminalFence(process.stdin,process.stdout), rawOriginal=read(), restore=prepareOwnedOutput(tty);
+        if(process.stdin.listenerCount('data')!==1)throw Error('old listener');
+        fence.detachInput();if(process.stdin.listenerCount('data')!==0)throw Error('detach listener');
+        const raw=rawInputCapture(process.stdin,process.stdout);
+        if(process.stdin.listenerCount('data')!==1)throw Error('raw listener');
+        raw.dispose();if(process.stdin.listenerCount('data')!==0||!process.stdin.isRaw)throw Error('raw restore');
+        process.stdout.write('A\\n',()=>{restore();if(read()!==rawOriginal)throw Error('controlled raw restoration');fence.dispose();
+          // libuv may set macOS PENDIN when restoring canonical mode. It is a kernel reprocessing flag.
+          const normalized=v=>v.replace(/lflag=([0-9a-f]+)/,(_,bits)=>'lflag='+((parseInt(bits,16)&~0x20000000)>>>0).toString(16));
+          if(normalized(read())!==normalized(original)||process.stdin.isRaw||process.stdin.isPaused()!==paused)throw Error('original modes');
+          process.stdin.pause();process.stdout.write('B\\n');});`;
+    const script = `import os,pty,subprocess,sys
+master,slave=pty.openpty()
+p=subprocess.Popen([sys.argv[1],'--input-type=module','-e',sys.argv[2],os.ttyname(slave)],stdin=slave,stdout=slave,stderr=slave)
+os.close(slave);data=b''
+while True:
+ try:
+  part=os.read(master,4096)
+  if not part:break
+  data+=part
+ except OSError:break
+p.wait();os.close(master)
+assert p.returncode==0,(p.returncode,data)
+assert data==bytes([65,10,66,13,10]),data
+print('exclusive listeners; handoff LF; original CRLF and termios restored')`;
+    const result = spawnSync('/usr/bin/python3', ['-c', script, process.execPath, program], { encoding: 'utf8', timeout: 5000 });
+    assert.equal(result.status, 0, result.stdout + result.stderr); assert.match(result.stdout, /termios restored/);
+});
