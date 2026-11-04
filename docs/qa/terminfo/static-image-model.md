@@ -244,3 +244,19 @@ all15-suite receipt. Frozen non-image v8/v9 archives retain their own source map
 and default capture payloads. The earlier incomplete and completed preflight
 artifacts remain unchanged diagnostics of the uncalibrated v1 model; they are not
 silently regraded or published as calibrated terminal geometry evidence.
+
+For an undersized4×2 fixture, native geometry remains unqualified even if legitimate
+source-predicted pixels extend beyond it. Independent non-target invariance uses
+the retained source-derived union of fractional native canvas and independently
+computed reservation, plus the fixed1px band, clipped to the full capture. The
+enlarged baseline region must independently be blank. With null/nonphysical units,
+no exact extent is guessed: the pinned16×18 source and known sanitizer minimum1
+bound the possible footprint to16×18 cells plus that band. Changes outside this
+conservative region (for example above/left of the anchor) remain independently
+negative; changes inside a potentially legitimate unknown footprint do not gain
+a false bleed classification. Returned placement cells and observed bounds never
+define either region. Both the region and its authority are retained explicitly.
+
+An exact fit of the source canvas/reservation in4×2 is eligible for native raster
+comparison: the independently blank enlarged region verifies the outer edge band.
+Only a genuinely larger projection is refused as an undersized fixed target.

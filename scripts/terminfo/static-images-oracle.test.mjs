@@ -187,3 +187,35 @@ test('distinct native and whole-cell transforms inside the fixed edge band remai
     assert.equal(value.measurement.nativeRaster.passed, true); assert.equal(value.measurement.compatibility.passed, true);
     assert.match(value.qualification, /discrimination/); assert.equal(value.assertions[0].passed, null);
 });
+
+test('undersized fixed target admits legitimate source-predicted overflow only as inconclusive', () => {
+    const d = calibration(1, 18), observed = projectSixel(10, 1);
+    const value = inspect(observed, { geometry: 'native', sourceId: 'opaque', imageDetails: d });
+    assert.match(value.qualification, /target/); assert.equal(value.controls[1].passed, true);
+    assert.deepEqual(value.measurement.nonTargetEnvelope, { x: 31, y: 75, width: 162, height: 20 });
+    observed.pixels.set([255, 0, 0, 255], 0);
+    const changed = inspect(observed, { geometry: 'native', sourceId: 'opaque', imageDetails: d });
+    assert.match(changed.qualification, /target/); assert.equal(changed.controls[1].passed, false);
+});
+test('null unknown-footprint provenance uses only the fixed-source sanitizer bound for independent invariance', () => {
+    const d = calibration(1, 18); d.placements[0].sixelPlacement = null;
+    const observed = projectSixel(10, 1);
+    const value = inspect(observed, { geometry: 'native', sourceId: 'opaque', imageDetails: d });
+    assert.match(value.qualification, /provenance/); assert.equal(value.controls[1].passed, true);
+    assert.deepEqual(value.measurement.nonTargetEnvelope, { x: 31, y: 75, width: 162, height: 85 });
+    observed.pixels.set([255, 0, 0, 255], 0);
+    assert.equal(inspect(observed, { geometry: 'native', sourceId: 'opaque', imageDetails: d }).controls[1].passed, false);
+});
+test('an enlarged source-predicted comparison region needs its own independently blank baseline', () => {
+    const before = baseline(); before.pixels.set([255, 0, 0, 255], (90 * before.width + 100) * 4);
+    const value = inspect(projectSixel(10, 1), { baseline: before, geometry: 'native', sourceId: 'opaque', imageDetails: calibration(1, 18) });
+    assert.equal(value.controls[0].passed, false);
+});
+
+test('native canvas that exactly fills the fixed target can qualify with an independently blank outer band', () => {
+    const exactGrid = { ...grid, cellWidthPx: 8 };
+    const observed = draw('opaque', { x: 26, y: 76, width: 32, height: 32 });
+    const value = inspect(observed, { grid: exactGrid, geometry: 'native', sourceId: 'opaque', imageDetails: calibration(4, 9) });
+    assert.equal(value.qualification, null); assert.ok(all(value.controls)); assert.ok(all(value.assertions));
+    assert.deepEqual(value.measurement.nativeProjection, { x: 26, y: 76, width: 32, height: 36, paintedWidth: 32, paintedHeight: 32 });
+});

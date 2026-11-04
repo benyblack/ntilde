@@ -84,13 +84,30 @@ export function inspectStaticImagePixels({ baseline, observed, grid, anchor, cel
         || typeof visible !== 'boolean') throw invalid();
     const envelope = staticImageEnvelope(observed, grid, anchor, cells);
     const bounds = contentBounds(observed, envelope);
-    const controls = [check('reference target is independently blank with the known background', backgroundOnly(baseline, envelope)),
-        check('all non-target capture pixels remain unchanged', outsideUnchanged(baseline, observed, envelope))];
     const native = geometry === 'native' && visible ? inspectNative(observed, envelope, grid, validateStaticImageDetails(imageDetails)) : null;
+    const comparison = native ? nativeComparisonRegion(observed, envelope, grid, native.measurement) : { envelope };
+    const controls = [check('reference target and comparison region are independently blank with the known background',
+        backgroundOnly(baseline, envelope) && backgroundOnly(baseline, comparison.envelope)),
+        check('all non-target capture pixels remain unchanged', outsideUnchanged(baseline, observed, comparison.envelope))];
     const assertions = imageAssertions(native, visible, observed, bounds, envelope, geometry, sourceId);
     return { scope: 'bounded static-image pixel/geometry comparison only; no ownership, live execution, freshness or stock grade',
         controls, assertions, qualification: native?.qualification ?? null,
-        measurement: { envelope, contentBounds: bounds, sourceWidth: 16, sourceHeight: 16, geometry, ...native?.measurement } };
+        measurement: { envelope, contentBounds: bounds, sourceWidth: 16, sourceHeight: 16, geometry, ...native?.measurement, ...(native ? { nonTargetEnvelope: comparison.envelope, nonTargetScope: comparison.scope } : undefined) } };
+}
+
+/** Only independent source/calibration facts define the possibly enlarged comparison region. */
+function nativeComparisonRegion(image, envelope, grid, measurement) {
+    const source = staticSixelCanvas(), projection = measurement.nativeProjection, cells = measurement.reservationCells;
+    const calibrated = projection && cells;
+    // Every admitted sanitizer denominator is >=1, even when its physical units are unqualified.
+    const width = calibrated ? Math.max(projection.width, cells.cols * grid.cellWidthPx) : source.width * grid.cellWidthPx;
+    const height = calibrated ? Math.max(projection.height, cells.rows * grid.cellHeightPx) : source.height * grid.cellHeightPx;
+    // Include only pixel centers within the fixed1px analytic edge band, clipped to the retained full capture.
+    const x = Math.max(0, Math.ceil(envelope.x - 1.5)), y = Math.max(0, Math.ceil(envelope.y - 1.5));
+    const right = Math.min(image.width, Math.ceil(envelope.x + width + 0.5));
+    const bottom = Math.min(image.height, Math.ceil(envelope.y + height + 0.5));
+    return { envelope: { x, y, width: right - x, height: bottom - y }, scope: calibrated
+        ? 'independent-native-and-reservation-union' : 'fixed-source-sanitizer-max-16x18-cells' };
 }
 
 function imageAssertions(native, visible, observed, bounds, envelope, geometry, sourceId) {
@@ -215,8 +232,8 @@ function inspectNative(image, envelope, grid, details) {
         compatibilityProjection: { width: nx * grid.cellWidthPx, height: ny * grid.cellHeightPx } };
     const placement = nativePlacementAssertions(p, source, grid, envelope);
     if (!placement.every(a => a.passed)) return { qualification: null, assertions: placement, measurement };
-    if (nativeProjection.width + 1 > envelope.width || nativeProjection.height + 1 > envelope.height
-        || nx * grid.cellWidthPx + 1 > envelope.width || ny * grid.cellHeightPx + 1 > envelope.height)
+    if (nativeProjection.width > envelope.width || nativeProjection.height > envelope.height
+        || nx * grid.cellWidthPx > envelope.width || ny * grid.cellHeightPx > envelope.height)
         return unqualifiedNative('insufficient independently blank target for calibrated native projection', measurement);
     const native = analyticRaster(image, envelope, projection), compatibility = analyticRaster(image, envelope, compatibilityProjection);
     Object.assign(measurement, { nativeRaster: native, compatibility });

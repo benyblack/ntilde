@@ -1,4 +1,7 @@
 import test from 'node:test';
+import { deflateSync } from 'node:zlib';
+import { pngChunk } from './fixtures/pixel-capture.mjs';
+import { staticImageInput } from './static-images-inputs.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -167,3 +170,31 @@ test('unqualified native geometry cannot hide an independent non-target semantic
         assert.equal(report.caseResults[0].result, 'failed');
     } finally { rmSync(output, { recursive: true, force: true }); }
 });
+
+function oversizedNativeFrame(output, frame, bleed) {
+    const { width, height } = frame.pixels[0], raw = Buffer.alloc(height * (width * 4 + 1));
+    const source = staticImageInput('opaque', 'rgba').bytes;
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) raw.set([16, 16, 16, 255], y * (width * 4 + 1) + 1 + x * 4);
+    // Explicit source16x16 ->128x16 fixture; independent of the oracle's transform builder.
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 128; x++) {
+        const at = (y * 16 + Math.floor(x / 8)) * 4;
+        raw.set(source.subarray(at, at + 4), (72 + y) * (width * 4 + 1) + 1 + (24 + x) * 4);
+    }
+    if (bleed) raw.set([255, 0, 0, 255], 1);
+    const header = Buffer.alloc(13); header.writeUInt32BE(width); header.writeUInt32BE(height, 4); header[8] = 8; header[9] = 6;
+    const bytes = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), pngChunk('IHDR', header),
+        pngChunk('IDAT', deflateSync(raw)), pngChunk('IEND', Buffer.alloc(0))]);
+    for (const pixel of frame.pixels) {
+        writeFileSync(join(output, pixel.file), bytes); Object.assign(pixel, { sha256: pngHash(bytes), byteCount: bytes.length });
+        pixel.imageDetails.placements[0].widthCells = 16;
+        pixel.imageDetails.placements[0].sixelPlacement.cellWidthPx = 1;
+    }
+}
+for (const bleed of [false, true]) test('undersized native comparison retains independent outcome with pixel0=' + bleed, () => fixture((output, f) => {
+    const frame = f.frames.find(value => value.caseId === 'sixel.native-raster' && value.stageId === 'show');
+    oversizedNativeFrame(output, frame, bleed);
+    const report = derive(output, f), show = report.observations.find(value => value.featureId === 'sixel.native-raster.show');
+    assert.match(show.pixelQualification, /target/); assert.equal(show.assertions[0].passed, null);
+    assert.equal(show.assertions.at(-1).passed, !bleed); assert.equal(show.result, bleed ? 'failed' : 'inconclusive');
+    assert.equal(report.observations.find(value => value.featureId === 'sixel.native-raster.clear').result, 'inconclusive');
+}));
