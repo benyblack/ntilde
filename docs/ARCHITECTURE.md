@@ -490,7 +490,9 @@ canvas/crop values are separate from the ephemeral reservation provenance above.
 Optional native state is omitted when null; the enabled policy ceiling remains zero
 and import refuses any native placement before resize, decode or mutation. Replay's
 optional required-policy marker is omitted at zero and rejects unsupported/malformed
-requirements before header callbacks or data. Existing v1/v2 recordings and ordinary
+requirements before header callbacks or data.
+GUI indexing uses that same parser, and every seek/playback rechecks required policy
+before restoring a cached checkpoint or the initial state. Existing v1/v2 recordings and ordinary
 v2 writers retain their formats; no v3 writer or mux capability is enabled.
 App carries an immutable presenter density P with the UI-published font/grid values,
 clearing it on detach. Offscreen requested scale S stays separate. This plumbing

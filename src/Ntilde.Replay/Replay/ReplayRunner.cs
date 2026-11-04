@@ -260,7 +260,11 @@ namespace Ntilde.Replay
                 throw new JsonException("Unrecognized replay header or malformed legacy first record.");
         }
 
-        private static ReplayHeader? ReadHeader(string line)
+        /// <summary>
+        /// Parses a supported header, or returns null for the legacy fallback. Required raster
+        /// policies and ambiguous recognized type keys are rejected even before that fallback.
+        /// </summary>
+        public static ReplayHeader? ReadHeader(string line)
         {
             ReplayHeader? header;
             try
@@ -271,6 +275,18 @@ namespace Ntilde.Replay
             }
             catch (JsonException) { return null; }
             return header is not null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2 ? header : null;
+        }
+
+        /// <summary>Checks required semantics before a host applies an out-of-stream seek snapshot.</summary>
+        public async Task ValidateRequiredPoliciesAsync(CancellationToken ct = default)
+        {
+            using var stream = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(stream);
+            string? line;
+            do { line = await reader.ReadLineAsync(ct); }
+            while (line is not null && string.IsNullOrWhiteSpace(line));
+            ct.ThrowIfCancellationRequested();
+            if (line is not null) _ = ReadHeader(line);
         }
 
         private static void ValidateRequiredSixelPolicy(JsonElement root)

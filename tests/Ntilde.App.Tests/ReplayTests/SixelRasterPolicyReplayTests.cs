@@ -109,7 +109,7 @@ public sealed class SixelRasterPolicyReplayTests
     }
 
     [Fact]
-    public async Task Version_three_is_not_enabled_by_the_foundation()
+    public async Task Required_native_policy_is_rejected_on_a_future_version_header()
     {
         string path = Path.GetTempFileName();
         try

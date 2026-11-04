@@ -284,10 +284,13 @@ namespace Ntilde.UI.Replay
             var parser = _parser;
             var viewModel = _viewModel;
             var initialState = _initialReplayState;
-            if (buffer is null || parser is null || viewModel is null) return false;
+            if (buffer is null || parser is null || viewModel is null || _filePath is not { } path) return false;
             bool applied = false;
             try
             {
+                // The index may predate a file change. Recheck before BOTH checkpoint and
+                // initial-state restoration, not merely before the runner's first bytes.
+                await new ReplayReader(path).ValidateRequiredPoliciesAsync();
                 await ApplyInSessionAsync(sessionId, () =>
                 {
                     if (snapshot is not null) ReplayRunner.ApplySnapshot(buffer, parser, snapshot);

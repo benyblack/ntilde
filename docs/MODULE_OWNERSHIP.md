@@ -260,6 +260,7 @@ invariant changes.
   is zero: every non-null native placement is rejected before state mutation, even if
   source-budget truncation would discard it. No parser path creates native intent.
   Replay rejects nonzero/malformed required-policy markers before callbacks or bytes;
+  its shared reader gate also protects App indexing and checkpoint/initial-state restoration.
   ordinary headers retain exact v2 bytes. App owns the detached presenter density P,
   published with font/grid inputs and withdrawn on detach; requested capture scale S
   remains independent. Neither changes draw sizing or `renderDetails`/`imageDetails` v1.

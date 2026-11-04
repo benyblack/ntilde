@@ -9,6 +9,53 @@ namespace Ntilde.Tests.RenderTests;
 
 public sealed class NativeRasterPresenterContextTests
 {
+    [AvaloniaFact]
+    public void Pane_publishes_density_to_its_registration_and_withdraws_it_on_detach()
+    {
+        UiScale.Apply(1);
+        using var pane = new Ntilde.Controls.TerminalPane
+        {
+            SessionFactory = new Ntilde.Tests.Controls.RecordingSessionFactory(new Ntilde.Tests.Controls.FakeTerminalSession()),
+        };
+        pane.CreateAndWireParser();
+        pane.WireReusedTermViewHandlers();
+        var window = new Window { Width = 400, Height = 300, Content = pane };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(AgentSessionRegistry.Instance.TryGet(pane.PaneId, out var registration));
+            Assert.Equal(1, registration.RenderParameters!.Value.NativeRasterPresenter!.DevicePixelsPerDip);
+            UiScale.PinScale(window, 1.5);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1.5, registration.RenderParameters!.Value.NativeRasterPresenter!.DevicePixelsPerDip);
+            window.Content = null;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Null(registration.RenderParameters!.Value.NativeRasterPresenter);
+        }
+        finally { window.Close(); UiScale.Apply(1); }
+    }
+
+    [AvaloniaFact]
+    public void Registration_copies_its_detached_presenter_into_the_actual_capture()
+    {
+        var buffer = new TerminalBuffer(10, 3);
+        var metrics = new CellMetrics { CellWidth = 10, CellHeight = 20, Baseline = 15, Ascent = 15, Descent = 5 };
+        var presenter = new NativeRasterPresenterContext(2);
+        var parameters = new PaneRenderParameters(metrics, TerminalSnapshotOptions.DefaultTypefaceFamily, 14, false, true)
+        {
+            NativeRasterPresenter = presenter,
+        };
+        SnapshotRenderContext? observed = null;
+        Assert.True(AgentSessionRegistration.TryRenderPng(buffer, parameters, 0, 1,
+            out _, out var error, new AgentCaptureOptions(IncludeRenderDetails: true)
+            {
+                AfterRenderForTest = context => observed = context,
+            }), error.ToString());
+        Assert.NotNull(observed);
+        Assert.Same(presenter, observed.NativeRasterPresenter);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

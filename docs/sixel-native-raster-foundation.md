@@ -38,6 +38,11 @@ This does not qualify arbitrary Pan/Pad, P2 transparency, animation or placehold
   type cannot be hidden by another `type` key: all occurrences are inspected and
   ambiguous recognized headers are rejected before legacy fallback. Ordinary v2 writers and
   legacy placement/header bytes stay unchanged. No v3 writer is added.
+  App uses the same validation before indexing snapshots and rechecks the actual
+  file before restoring either a cached checkpoint or the initial state. The
+  later runner check still precedes callbacks and bytes. Future-version headers
+  without a required-policy marker remain outside this foundation's guarantee;
+  their legacy fallback/resume behavior needs a separate compatibility contract.
 
 ## Gates before enabling version 1
 
