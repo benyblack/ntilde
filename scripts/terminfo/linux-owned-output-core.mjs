@@ -109,7 +109,7 @@ export function parseLinuxOutputSize(value) {
 export function parseLinuxOutputProcessing(value) {
     const printable = code => code === 9 || code === 10 || (code >= 32 && code <= 126);
     if (typeof value !== 'string' || Buffer.byteLength(value) > linuxOutputLimits.outputBytes
-        || [...value].some(char => !printable(char.charCodeAt(0)))) fail('Invalid GNU stty output description.');
+        || [...value].some(char => !printable(char.codePointAt(0)))) fail('Invalid GNU stty output description.');
     const matches = [...value.matchAll(/(?:^|[\s;])(-?opost)(?=$|[\s;])/g)];
     if (matches.length !== 1) fail('Missing or ambiguous GNU stty output processing.');
     return matches[0][1] === 'opost';

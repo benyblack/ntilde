@@ -95,11 +95,12 @@ test('GNU grammar treats-g andsize separately, requiring unambiguous actual outp
     assert.equal(parseLinuxOutputMode('1:5:3:4\n'), '1:5:3:4');
     assert.deepEqual(parseLinuxOutputSize('13 37\n'), { rows: 13, cols: 37 });
     assert.equal(parseLinuxOutputProcessing('opost -onlcr;\n'), true);
+    assert.equal(parseLinuxOutputProcessing('\topost\t-onlcr;\n'), true);
     assert.equal(parseLinuxOutputProcessing('-opost -onlcr;\n'), false);
     assert.equal(parseLinuxSttyVersion('stty (GNU coreutils) 9.8\nlicense\n'), 'stty (GNU coreutils) 9.8');
     for (const value of ['-echo\n', '1:2:3\n', '1:2:3:4\r\n', '1:2:3:4\nextra', '1:2:3:4;echo x\n']) assert.throws(() => parseLinuxOutputMode(value));
     for (const value of ['0 37\n', '65536 37\n', '13;37\n', '13 037\n', '13 37\nmore']) assert.throws(() => parseLinuxOutputSize(value));
-    for (const value of ['', 'xopost\n', '-opost opost\n', '-opost -opost\n', '-opost\0']) assert.throws(() => parseLinuxOutputProcessing(value));
+    for (const value of ['', 'xopost\n', '-opost opost\n', '-opost -opost\n', '-opost\0', 'opost🙂\n', 'opost\r\n', 'opost\u0085\n']) assert.throws(() => parseLinuxOutputProcessing(value));
     assert.throws(() => parseLinuxSttyVersion('stty (BSD)\n'));
 });
 
