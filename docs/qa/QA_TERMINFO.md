@@ -527,9 +527,20 @@ The [saved-state suite](terminfo/owned-saved-state.md) follows restored resize
 observations. Nine staged cases retain 57 paired active-state/history frames and
 new output witnesses for saved pens and character sets. V7 receipts require all
 preceding bindings, the source-defined stage order, archived sources and verified
-cleanup. Setup does not depend on the RIS operation under test; its cell-clearing
-negative remains explicit for #773. No new stock grade is inferred.
+cleanup. Setup does not depend on the RIS operation under test; the earlier cell-clearing
+negative stays frozen for #773. No new stock grade is inferred.
 
 The [2026-11-03 saved-state measurement](terminfo/2026-11-03-saved-state.md)
 retains eight passes and one controlled RIS cell-clearing negative for #773,
 with all nine controls passing and a completed v7 receipt.
+
+The [2026-11-04 fresh reset measurement](terminfo/2026-11-04-reset-observations.md)
+records nine passing saved-state cases and 57 paired frames after the owning
+screen-reset fix. Its complete 165-file archive retains all thirteen reports,
+75 PNGs, the captured 52-source graph and a completed v8 cleanup receipt.
+The earlier RIS negative is unchanged. Four new reply-based collector outcomes
+(18t, DA3 and Kitty transmit/placement acknowledgements) produce a separate
+82/0/173 raw summary; the frozen 78/0/177 baseline and ungraded reverse-wrap stay
+unchanged. Acknowledgements do not qualify image pixels. This run's focused
+window leaves notification delivery inconclusive; the earlier inactive-window
+positive remains retained.

@@ -2,8 +2,10 @@
 
 RIS is a reset of terminal state, not a report of which other protocols work.
 This document separates the legacy Q13 collector entries from concrete screen
-and state observations. The issue remains open until fresh owned runtime evidence
-and its cleanup/source receipt are retained.
+and state observations. A [fresh owned measurement](2026-11-04-reset-observations.md)
+now records the repaired screen boundary with independent controls and a
+completed source/cleanup receipt. Broader power-on state remains outside that
+bounded observation.
 
 ## What the legacy entries actually measured
 
@@ -49,14 +51,17 @@ screens' image handles retire exactly once and remain protected by an active
 snapshot pin. The integrated Kitty/generic regression shares one opaque handle
 between a retained main-screen Kitty asset and an alternate-screen generic
 placement. RIS clears both banks and the asset lookup; retirement yields that
-handle once, only after the active snapshot exits. Complete recorder/replay cuts and mux v1/v2 output/reattach tests
-check that cleared banks are retained across transport boundaries.
+handle once, only after the active snapshot exits. Complete recorder/replay cuts
+and mux v1/v2 output/reattach tests check that cleared banks are retained across
+transport boundaries.
 
-These are deterministic domain/transport observations. They do not by themselves
-complete the disposable App's runtime reset receipt, qualify every terminal
-power-on option or create an App `reset()` API. The existing fixed owned
-`saved.reset.full-both-banks` plan can supply the fresh runtime comparison after
-its source/provenance upgrade is coordinated.
+These deterministic domain/transport observations are complemented by the
+[fresh disposable-App run](2026-11-04-reset-observations.md). Its unchanged
+`saved.reset.full-both-banks` plan passes all five observed reset/bank witnesses;
+all nine saved-state controls/cases and 57 paired frames pass. The captured
+52-source v1 graph and full v8 receipt bind every preceding suite and completed
+cleanup. Neither result qualifies every terminal power-on option or creates an
+App `reset()` API.
 
 ## Initial-state policy and provenance
 
@@ -68,7 +73,7 @@ rather than the physical VT100's wrap-off default; the
 documents that distinction. This slice preserves that policy and tests both
 inherited wrap states.
 
-Published stock remains 78 supported / 0 unsupported / 177 inconclusive,
+Original published stock remains 78 supported / 0 unsupported / 177 inconclusive,
 `suiteComplete=false`. The historical RIS, RGB-bold and title observations and
 ungraded reverse-wrap diagnostic are unchanged. A later fresh observation must
 name its own source and cleanup evidence; it cannot rewrite those records.
