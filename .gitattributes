@@ -45,3 +45,4 @@ assets/shell-integration/**   text eol=lf
 # Rust sources: LF, matching cargo/rustfmt convention and the crates' own history.
 *.rs        text eol=lf
 *.toml      text eol=lf
+docs/qa/terminfo/2026-11-04-image-observations.json text eol=lf
