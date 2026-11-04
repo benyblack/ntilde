@@ -330,8 +330,8 @@ namespace Ntilde.VT
             string combinedPayload = _kittyPayloadBuffer.ToString();
             if (string.IsNullOrEmpty(combinedPayload)) return null;
 
-            // Handle optional 'G' prefix
-            if (combinedPayload.StartsWith('G')) combinedPayload = combinedPayload.Substring(1);
+            // The APC/tunnel command prefix was removed before splitting controls from payload.
+            // Every base64 character here is image data, including an initial 'G'.
 
             TerminalLogger.Debug($"[ANSI_PARSER] Kitty payload preview: {combinedPayload.Substring(0, Math.Min(combinedPayload.Length, 20))}...");
             byte[] data = Convert.FromBase64String(combinedPayload);

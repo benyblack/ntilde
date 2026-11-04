@@ -71,6 +71,37 @@ public sealed class KittyImageLifecyclePixelTests
         Assert.Same(bitmap, Assert.Single(retired)); bitmap.Dispose();
     }
 
+    [Theory]
+    [InlineData(24, 0x18)]
+    [InlineData(24, 0x1b)]
+    [InlineData(32, 0x18)]
+    [InlineData(32, 0x1b)]
+    public void Leading_G_base64_reaches_the_production_decoder_with_exact_pixel_channels(int format, byte red)
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+        var buffer = new TerminalBuffer(80, 24);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = new SkiaImageDecoder() };
+        var replies = new List<string>(); parser.OnResponse = replies.Add;
+        byte[] raw = format == 24 ? [red, 0x12, 0xab] : [red, 0x12, 0xab, 0xff];
+        string encoded = Convert.ToBase64String(raw);
+        Assert.Equal('G', encoded[0]);
+        parser.Process(Command($"a=T,f={format},s=1,v=1,i=42,C=1", encoded));
+        SKBitmap bitmap = Assert.IsType<SKBitmap>(Assert.Single(buffer.Images).ImageHandle);
+        var retired = new List<object>();
+        try
+        {
+            Assert.Equal("\x1b_Gi=42;OK\x1b\\", Assert.Single(replies));
+            Assert.Equal(1, bitmap.Width); Assert.Equal(1, bitmap.Height);
+            Assert.Equal(new SKColor(red, 0x12, 0xab, 0xff), bitmap.GetPixel(0, 0));
+        }
+        finally
+        {
+            buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+            foreach (IDisposable handle in retired.Distinct(ReferenceEqualityComparer.Instance)) handle.Dispose();
+        }
+        Assert.Equal(IntPtr.Zero, bitmap.Handle);
+    }
+
     private static void AssertPixels(SKBitmap bitmap)
     {
         Assert.NotEqual(IntPtr.Zero, bitmap.Handle);
