@@ -83,3 +83,16 @@ latch installed before window construction and removed after window teardown.
 The explicit production startup latch cannot be replaced. Framework control
 coverage uses a recording headless clipboard feature with normal-access positive
 controls, never an OS provider.
+
+The test-only NativeHost also runs a separate headless startup proof before its
+CI-only native interchange entry. Fresh ordinary/private child processes execute
+real `App.Initialize` with actual command-line/environment markers and a recording
+headless clipboard feature. They use no scoped override. The ordinary copy must
+resolve/write the recorder once; the private copy must not resolve it. Removing
+the production startup guard-install call makes the private control fail. This
+proof does not initialize a desktop backend or qualify native OS interchange.
+A local fake-only run is `scripts/build.sh run --project
+tests/Ntilde.Clipboard.NativeHost/Ntilde.Clipboard.NativeHost.csproj --no-build --
+--headless-startup-selftest <existing-private-scratch-root>` after building that
+project with the repository wrapper. Normal native qualification still requires
+its existing CI-only `--isolated-desktop` contract.

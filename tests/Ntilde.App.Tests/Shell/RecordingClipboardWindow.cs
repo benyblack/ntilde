@@ -60,11 +60,12 @@ public static class RecordingClipboardWindow
         public int Resolutions { get; set; }
         public int Reads { get; set; }
         public int Writes { get; set; }
+        public int Flushes { get; set; }
         internal IClipboard Facade { get; set; } = null!;
         private IAsyncDataTransfer? _stored;
         public Task ClearAsync() { Writes++; _stored?.Dispose(); _stored = null; return Task.CompletedTask; }
         public Task SetDataAsync(IAsyncDataTransfer? data) { Writes++; _stored?.Dispose(); _stored = data; return Task.CompletedTask; }
-        public Task FlushAsync() => Task.CompletedTask;
+        public Task FlushAsync() { Flushes++; return Task.CompletedTask; }
         public Task<IAsyncDataTransfer?> TryGetInProcessDataAsync() { Reads++; return Task.FromResult<IAsyncDataTransfer?>(null); }
         public Task<IAsyncDataTransfer?> TryGetDataAsync() { Reads++; return Task.FromResult<IAsyncDataTransfer?>(null); }
         public void Dispose() => _stored?.Dispose();
