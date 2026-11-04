@@ -740,6 +740,7 @@ namespace Ntilde.Controls
                     .Select(i => theme.GetAnsiColor(i % 8, i >= 8).ToUint()).ToArray(),
                 KittyKeyboardEnabled = _settings?.EnableKittyKeyboardProtocol ?? true,
                 KittyKeyboardSupportedFlags = KittyKeyboardState.SupportedFlags,
+                ModifyOtherKeysEnabled = true,
             };
         }
     }

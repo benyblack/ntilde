@@ -494,6 +494,13 @@ namespace Ntilde.Shell
         // TerminalView created outside the settings pipeline (as several tests do) still gets
         // the protocol, matching pre-kill-switch behavior.
         private bool _enableKittyKeyboardProtocol = true;
+
+        /// <summary>
+        /// The kitty flags this view's key path actually honors: zero while the kill switch is off,
+        /// whatever stack the child pushed. Tab broadcast uses it so a receiver is encoded exactly
+        /// as its own view would encode the key (#829).
+        /// </summary>
+        internal int EffectiveKittyKeyboardFlags => _enableKittyKeyboardProtocol ? _buffer?.Modes.KittyKeyboard.Flags ?? 0 : 0;
         public event Action<string>? TextInputObserved;
         public event Action? BackspaceObserved;
         /// <summary>

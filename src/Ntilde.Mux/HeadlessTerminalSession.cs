@@ -284,6 +284,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     /// <summary>Tests: the parser's kitty keyboard flag, read on the parse thread after every control item queued before it.</summary>
     internal Task<bool> KittyKeyboardEnabled => InvokeAsync(() => _parser.KittyKeyboardEnabled);
+    internal Task<bool> ModifyOtherKeysEnabled => InvokeAsync(() => _parser.ModifyOtherKeysEnabled);
     internal Task<int> KittyKeyboardSupportedFlags => InvokeAsync(() => _buffer.Modes.KittyKeyboard.SupportedFlagMask);
 
     internal int QueuedDataCount => _data.Count;
@@ -1330,11 +1331,27 @@ public sealed class HeadlessTerminalSession : IDisposable
         var (any, enabled, flags) = KittyCapabilities();
         if (!any) return;
         _parser.KittyKeyboardEnabled = enabled;
+        _parser.ModifyOtherKeysEnabled = ModifyOtherKeysCapability();
         if (_buffer.Modes.KittyKeyboard.SupportedFlagMask == flags) return;
         _buffer.Modes.KittyKeyboard.SetSupportedFlags(flags);
         // Critical protocol state is separate from advisory, throttled sharing events.
         // Pending resize bursts are already coalesced per sender in PostResize.
         _keyboardCapabilitiesPending = true;
+    }
+
+    /// <summary>
+    /// Parse thread only. modifyOtherKeys is reported only while every interactive client encodes
+    /// it, the same AND the kitty enable flag uses (#829). Call only when one exists.
+    /// </summary>
+    private bool ModifyOtherKeysCapability()
+    {
+        bool enabled = true;
+        foreach (IMuxFrameSink sink in _subscribers)
+        {
+            if (_readOnlySinks.Contains(sink) || !_kittyBySink.TryGetValue(sink, out var value)) continue;
+            enabled &= value.ModifyOtherKeysEnabled == true;
+        }
+        return enabled;
     }
 
     /// <summary>Current intersection, optionally replacing one client's presentation before an attach commits.</summary>

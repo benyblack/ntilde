@@ -267,4 +267,20 @@ public class ModifyOtherKeysProtocolTests
 
         Assert.Equal((0, 2), (target.Modes.ModifyOtherKeys.MainLevel, target.Modes.ModifyOtherKeys.AltLevel));
     }
+
+    [Fact]
+    public void HostWithoutModifyOtherKeys_StillTracksTheLevel_ButQueryReportsZero()
+    {
+        // Same gate as KittyKeyboardEnabled: the mux daemon clears it while a text client that
+        // forwards legacy bytes is attached.
+        var (buffer, parser, responses) = CreateTerminal();
+        parser.ModifyOtherKeysEnabled = false;
+
+        parser.Process("\x1b[>4;2m");
+
+        Assert.Equal(2, buffer.Modes.ModifyOtherKeys.Level);
+        Assert.Equal("\x1b[>4;0m", Query(parser, responses));
+        parser.ModifyOtherKeysEnabled = true;
+        Assert.Equal("\x1b[>4;2m", Query(parser, responses));
+    }
 }

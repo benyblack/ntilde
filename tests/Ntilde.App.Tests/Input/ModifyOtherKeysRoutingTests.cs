@@ -166,4 +166,15 @@ public sealed class ModifyOtherKeysRoutingTests
         view.Text("@");
         Assert.Equal(new[] { "@" }, sent);
     }
+
+    [AvaloniaFact]
+    public void KittyKillSwitch_LetsModifyOtherKeysEncode_AndIsTheEffectiveFlagBroadcastReads()
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;2m\x1b[>1u");
+        Assert.Equal(1, view.EffectiveKittyKeyboardFlags);
+        view.ApplySettings(new TerminalSettings { EnableKittyKeyboardProtocol = false });
+        Assert.Equal(0, view.EffectiveKittyKeyboardFlags);
+        Assert.True(view.Down(Key.I, KeyModifiers.Control).Handled);
+        Assert.Equal(new[] { "\x1b[27;5;105~" }, sent);
+    }
 }

@@ -1,5 +1,6 @@
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Pty;
 
 namespace Ntilde.Mux.Tests.Headless;
 
@@ -10,6 +11,15 @@ namespace Ntilde.Mux.Tests.Headless;
 /// </summary>
 public sealed class HeadlessModifyOtherKeysTests
 {
+    private static readonly MuxPresentation Gui = MuxTestHost.DefaultPresentation with { ModifyOtherKeysEnabled = true };
+
+    // What `ntilde mux attach`'s text client presents: it forwards legacy key bytes only.
+    private static readonly MuxPresentation TextClient = MuxTestHost.DefaultPresentation with
+    {
+        KittyKeyboardEnabled = false,
+        ModifyOtherKeysEnabled = false,
+    };
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
@@ -55,11 +65,49 @@ public sealed class HeadlessModifyOtherKeysTests
         using var host = new MuxTestHost();
         using var client = await host.ConnectClientAsync();
         Guid id = await MuxTestHost.SpawnAsync(client);
-        var pane = await MuxTestHost.AttachPaneAsync(client, id);
+        var pane = await MuxTestHost.AttachPaneAsync(client, id, Gui);
         host.Fake(id).Emit("\u001b[>4;2m\u001b[?4m");
         await host.SettleAsync(id, client);
         await TestWait.UntilAsync(() => !host.Fake(id).SentInput.IsEmpty, "the XTQMODKEYS reply reached the child");
         Assert.Equal("\u001b[>4;2m", Assert.Single(host.Fake(id).SentInput));
         Assert.Equal(2, pane.Buffer.Modes.ModifyOtherKeys.Level);
+    }
+
+    [Fact]
+    public async Task Query_reports_level_zero_while_an_interactive_client_cannot_encode_it()
+    {
+        var fake = new ScriptedTerminalSession(new TerminalSessionRequest("scripted", string.Empty, string.Empty, 80, 24, null, false, null));
+        using var mux = new HeadlessTerminalSession(Guid.NewGuid(), fake, new HeadlessSessionOptions
+        {
+            Command = "scripted",
+            Title = "t",
+            ForceConPtyFiltering = false,
+        });
+        var gui = new RecordingFrameSink();
+        var text = new RecordingFrameSink();
+        var observer = new RecordingFrameSink();
+
+        mux.PostAttach(gui, 1, 0, Gui, MuxProtocol.MaxFrameBytes);
+        Assert.True(await mux.ModifyOtherKeysEnabled);
+
+        // The text client forwards its outer terminal's legacy bytes, so while it types the
+        // child must not be told Ctrl+I will arrive as CSI 27;5;105~ (as kitty does).
+        mux.PostAttach(text, 2, 0, TextClient, MuxProtocol.MaxFrameBytes);
+        Assert.False(await mux.ModifyOtherKeysEnabled);
+        fake.Emit("\u001b[>4;2m\u001b[?4m");
+        await mux.FlushAsync();
+        await TestWait.UntilAsync(() => !fake.SentInput.IsEmpty, "the gated XTQMODKEYS reply reached the child");
+        Assert.Equal("\u001b[>4;0m", Assert.Single(fake.SentInput));
+        Assert.Equal(2, await mux.InvokeAsync(() => mux.Buffer.Modes.ModifyOtherKeys.Level)); // still negotiated
+
+        mux.PostDetach(text);
+        Assert.True(await mux.ModifyOtherKeysEnabled);
+
+        // A presentation without the field (an older GUI) cannot encode it either; a read-only
+        // observer takes no part.
+        mux.PostAttach(observer, 3, 0, MuxTestHost.DefaultPresentation, MuxProtocol.MaxFrameBytes, MuxAttachMode.ReadOnly);
+        Assert.True(await mux.ModifyOtherKeysEnabled);
+        mux.PostResize(gui, 80, 24, MuxTestHost.DefaultPresentation);
+        Assert.False(await mux.ModifyOtherKeysEnabled);
     }
 }

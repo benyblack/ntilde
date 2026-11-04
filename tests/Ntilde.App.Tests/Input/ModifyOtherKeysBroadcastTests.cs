@@ -25,9 +25,11 @@ public sealed class ModifyOtherKeysBroadcastTests
         Pane("\x1b[>4;2m\x1b[>1u"),        // kitty disambiguate over a negotiated level
     ];
 
-    private static string?[] Fanout(Key key, KeyModifiers modifiers)
-        => Panes.Select(buffer => MainWindow.TryMapBroadcastKey(key, modifiers, PhysicalKey.None, buffer, out string? sequence)
-            ? sequence : null).ToArray();
+    private static int Flags(TerminalBuffer buffer) => buffer.Modes.KittyKeyboard.Flags;
+
+    private static string?[] Fanout(Key key, KeyModifiers modifiers, bool focusedConsumesText = false, string? symbol = null)
+        => Panes.Select(buffer => MainWindow.TryMapBroadcastKey(key, modifiers, PhysicalKey.None, symbol, buffer, Flags(buffer),
+            focusedConsumesText, out string? sequence) ? sequence : null).ToArray();
 
     [Fact]
     public void CtrlLetter_IsC0_ForLegacyLevelOneAndKitty_AndCsi27_ForLevelTwo()
@@ -53,6 +55,39 @@ public sealed class ModifyOtherKeysBroadcastTests
     }
 
     [Fact]
+    public void ShiftSpace_ConsumedByALevelTwoFocusedPane_IsBroadcastInEachReceiversForm()
+    {
+        // The focused level-2 pane handles the keydown, so no TextInput (and no text broadcast)
+        // follows: siblings must get the chord from the key broadcast or lose the space.
+        Assert.True(MainWindow.FocusedPaneConsumesText(Key.Space, KeyModifiers.Shift, PhysicalKey.Space, Panes[2], Flags(Panes[2])));
+        Assert.Equal(new[] { " ", " ", "\x1b[27;2;32~", " " }, Fanout(Key.Space, KeyModifiers.Shift, focusedConsumesText: true, " "));
+    }
+
+    [Fact]
+    public void FocusedPaneConsumesText_OnlyForChordsItsOwnLevelEncodes()
+    {
+        Assert.False(MainWindow.FocusedPaneConsumesText(Key.Space, KeyModifiers.Shift, PhysicalKey.Space, Panes[0], 0));
+        Assert.False(MainWindow.FocusedPaneConsumesText(Key.Space, KeyModifiers.Shift, PhysicalKey.Space, Panes[1], 0));
+        Assert.False(MainWindow.FocusedPaneConsumesText(Key.Space, KeyModifiers.Shift, PhysicalKey.Space, Panes[3], Flags(Panes[3])));
+        Assert.False(MainWindow.FocusedPaneConsumesText(Key.A, KeyModifiers.Shift, PhysicalKey.A, Panes[2], 0));
+        // Ctrl chords never produce text, so they are broadcast as keys whoever is focused.
+        Assert.False(MainWindow.FocusedPaneConsumesText(Key.A, KeyModifiers.Control, PhysicalKey.A, Panes[2], 0));
+    }
+
+    [Fact]
+    public void KittyKillSwitch_UsesTheReceiversEffectiveFlags()
+    {
+        // Both protocols negotiated, then EnableKittyKeyboardProtocol turned off: the receiver's
+        // own view treats its raw kitty stack as zero and encodes modifyOtherKeys, so broadcast
+        // must too - not Tab for one pane and CSI 27;5;105~ for an identical one.
+        TerminalBuffer both = Pane("\x1b[>4;2m\x1b[>1u");
+        Assert.True(MainWindow.TryMapBroadcastKey(Key.I, KeyModifiers.Control, PhysicalKey.None, null, both, kittyFlags: 0, false, out string? off));
+        Assert.Equal("\x1b[27;5;105~", off);
+        Assert.True(MainWindow.TryMapBroadcastKey(Key.I, KeyModifiers.Control, PhysicalKey.None, null, both, Flags(both), false, out string? on));
+        Assert.Equal("\t", on);
+    }
+
+    [Fact]
     public void TextProducingChords_AreLeftToTheTextBroadcast()
     {
         // Shift+Space produces TextInput, which every sibling already receives as text;
@@ -74,9 +109,9 @@ public sealed class ModifyOtherKeysBroadcastTests
     public void CursorKeys_FollowTheReceiversOwnDeccKm()
     {
         TerminalBuffer application = Pane("\x1b[?1h");
-        Assert.True(MainWindow.TryMapBroadcastKey(Key.Up, KeyModifiers.None, PhysicalKey.None, application, out string? up));
+        Assert.True(MainWindow.TryMapBroadcastKey(Key.Up, KeyModifiers.None, PhysicalKey.None, null, application, 0, false, out string? up));
         Assert.Equal("\x1bOA", up);
-        Assert.True(MainWindow.TryMapBroadcastKey(Key.Up, KeyModifiers.None, PhysicalKey.None, Panes[0], out up));
+        Assert.True(MainWindow.TryMapBroadcastKey(Key.Up, KeyModifiers.None, PhysicalKey.None, null, Panes[0], 0, false, out up));
         Assert.Equal("\x1b[A", up);
     }
 }

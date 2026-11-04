@@ -281,7 +281,10 @@ namespace Ntilde
 
         /// <summary>
         /// Encodes a key for broadcast to one sibling pane, against that receiving pane's own
-        /// modes (<paramref name="buffer"/>): its DECCKM state and its modifyOtherKeys level.
+        /// modes (<paramref name="buffer"/>): its DECCKM state and its modifyOtherKeys level, which
+        /// applies only while the receiver's <em>effective</em> kitty flags
+        /// (<paramref name="kittyFlags"/>, zero under the kill switch) are zero - the same
+        /// precedence its own <see cref="TerminalView"/> applies.
         /// </summary>
         /// <remarks>
         /// Non-blocking review note (#277): this builds its own encoding independent of
@@ -297,14 +300,18 @@ namespace Ntilde
         ///
         /// modifyOtherKeys (#829) is applied per receiving pane, because a pane at level 2 (Vim)
         /// reads Ctrl+letters only in the <c>CSI 27 ; m ; code ~</c> form while its legacy
-        /// siblings need the C0 byte. A pane with kitty flags active keeps the legacy bytes
-        /// above: kitty wins over modifyOtherKeys there, and broadcast does not speak kitty.
-        /// Only chords that never produce TextInput take the modifyOtherKeys form here (Ctrl
-        /// chords and modified Enter/Tab/Backspace/Escape): text-producing keys reach every pane
-        /// through the separate text broadcast, so encoding them here as well would deliver
-        /// them twice. Alt chords stay unbroadcast, as before.
+        /// siblings need the C0 byte. A pane with kitty flags in effect keeps the legacy bytes:
+        /// kitty wins over modifyOtherKeys there, and broadcast does not speak kitty.
+        ///
+        /// Text-producing chords normally reach siblings through the separate text broadcast, so
+        /// they are not encoded here - unless the focused pane consumes the keydown itself
+        /// (<paramref name="focusedConsumesText"/>, e.g. Shift+Space at level 2), which suppresses
+        /// that TextInput. Then each sibling gets its own form here: the modifyOtherKeys sequence
+        /// if its level claims the chord, otherwise the chord's text. Alt chords stay unbroadcast
+        /// at every level, as before.
         /// </remarks>
-        internal static bool TryMapBroadcastKey(Key key, KeyModifiers modifiers, PhysicalKey physical, TerminalBuffer? buffer, out string? sequence)
+        internal static bool TryMapBroadcastKey(Key key, KeyModifiers modifiers, PhysicalKey physical, string? keySymbol,
+            TerminalBuffer? buffer, int kittyFlags, bool focusedConsumesText, out string? sequence)
         {
             sequence = null;
             bool isAlt = (modifiers & KeyModifiers.Alt) != 0;
@@ -312,12 +319,17 @@ namespace Ntilde
 
             if (isAlt) return false;
 
-            if (buffer?.Modes is { } modes && modes.KittyKeyboard.Flags == 0
-                && ((modifiers & KeyModifiers.Control) != 0 || key is Key.Enter or Key.Tab or Key.Back or Key.Escape))
+            int level = kittyFlags == 0 ? buffer?.Modes.ModifyOtherKeys.Level ?? 0 : 0;
+            if (!ProducesNoTextInput(key, modifiers))
             {
-                sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, modes.ModifyOtherKeys.Level, physical);
-                if (sequence != null) return true;
+                if (!focusedConsumesText) return false; // the text broadcast delivers it
+                sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical)
+                    ?? (key == Key.Space ? " " : PrintableKeySymbol(keySymbol));
+                return sequence != null;
             }
+
+            sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical);
+            if (sequence != null) return true;
 
             switch (key)
             {
@@ -343,6 +355,27 @@ namespace Ntilde
             return sequence != null;
         }
 
+        /// <summary>
+        /// True for keydowns that never raise TextInput: Ctrl chords (Avalonia drops control
+        /// characters) and keys with no printable text. Everything else may arrive as text.
+        /// </summary>
+        private static bool ProducesNoTextInput(Key key, KeyModifiers modifiers)
+            => (modifiers & KeyModifiers.Control) != 0
+                || !TerminalInputModeEncoder.MayProduceTextInput(key, null)
+                || key is Key.Enter or Key.Tab or Key.Back or Key.Escape;
+
+        private static string? PrintableKeySymbol(string? symbol)
+            => symbol is { Length: 1 } && !char.IsControl(symbol[0]) ? symbol : null;
+
+        /// <summary>
+        /// True when the focused pane's own view will encode this text-capable chord as
+        /// modifyOtherKeys and handle the keydown, so its TextInput (and the text broadcast) never
+        /// happens and siblings must be served by the key broadcast instead.
+        /// </summary>
+        internal static bool FocusedPaneConsumesText(Key key, KeyModifiers modifiers, PhysicalKey physical, TerminalBuffer? buffer, int kittyFlags)
+            => kittyFlags == 0 && !ProducesNoTextInput(key, modifiers)
+                && TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, buffer?.Modes.ModifyOtherKeys.Level ?? 0, physical) != null;
+
         private void BroadcastKeyToSiblingPanes(KeyEventArgs e)
         {
             if (IsFocusOverlayVisible()) return;
@@ -351,11 +384,14 @@ namespace Ntilde
             if (_currentPane == null) return;
             if ((e.KeyModifiers & KeyModifiers.Alt) != 0) return;
 
+            bool focusedConsumesText = FocusedPaneConsumesText(e.Key, e.KeyModifiers, e.PhysicalKey,
+                _currentPane.Buffer, _currentPane.TermView.EffectiveKittyKeyboardFlags);
             foreach (var pane in EnumeratePanes(tabItem.Content as Control))
             {
                 if (pane == _currentPane) continue;
                 // Each receiver gets the bytes its own modes ask for (#829).
-                if (!TryMapBroadcastKey(e.Key, e.KeyModifiers, e.PhysicalKey, pane.Buffer, out var sequence)
+                if (!TryMapBroadcastKey(e.Key, e.KeyModifiers, e.PhysicalKey, e.KeySymbol, pane.Buffer,
+                        pane.TermView.EffectiveKittyKeyboardFlags, focusedConsumesText, out var sequence)
                     || string.IsNullOrEmpty(sequence)) continue;
                 // Broadcast bytes never went through the receiving pane's key handling, so its
                 // markless submission accumulator cannot model them.
