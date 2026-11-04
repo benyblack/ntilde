@@ -88,6 +88,42 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
     }
 
     [AvaloniaFact]
+    [Trait("Category", "Regression")]
+    public async Task XTWINOPS_title_pop_restores_the_saved_raw_title_to_the_tab_label()
+    {
+        // #830: Vim's t_ST/t_RT. The pop raises the ordinary title callback with the saved raw text.
+        using var service = new AgentHostService(new AgentSessionRegistry());
+        using var scope = AgentHostService.OverrideInstanceForTesting(service);
+        var (window, pane, _) = CreateWindow(); var registration = Registration(pane);
+        string cwd = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "title-stack-fixture"));
+        pane.Parser!.Process("\u001b]7;" + new Uri(cwd).AbsoluteUri + "\a");
+        Dispatcher.UIThread.RunJobs();
+        string fallback = pane.GetBaseTabTitle();
+
+        pane.Parser.Process("\u001b]2;  shell title  \a\u001b[22;0t\u001b[?1049h\u001b]2;file.txt - VIM\a");
+        Dispatcher.UIThread.RunJobs();
+        var vim = Assert.IsType<PaneMetadataResult>(await Read(window, registration));
+        Assert.Equal("file.txt - VIM", vim.OscTitle);
+        Assert.Contains("file.txt - VIM", vim.Presentation.TabText, StringComparison.Ordinal);
+
+        pane.Parser.Process("\u001b[?1049l\u001b[23;0t");
+        Dispatcher.UIThread.RunJobs();
+        var restored = Assert.IsType<PaneMetadataResult>(await Read(window, registration));
+        Assert.Equal("  shell title  ", restored.OscTitle);
+        Assert.Equal("  shell title  ", pane.CurrentOscTitle);
+        Assert.Contains("shell title", restored.Presentation.TabText, StringComparison.Ordinal);
+        Assert.DoesNotContain("VIM", restored.Presentation.TabText, StringComparison.Ordinal);
+
+        // Saving an empty raw title restores the empty request, so the tab shows the existing fallback.
+        pane.Parser.Process("\u001bc\u001b]2;\a\u001b[22;0t\u001b]2;file.txt - VIM\a\u001b[23;0t");
+        Dispatcher.UIThread.RunJobs();
+        var cleared = Assert.IsType<PaneMetadataResult>(await Read(window, registration));
+        Assert.Equal(string.Empty, cleared.OscTitle);
+        Assert.Equal(fallback, cleared.DisplayTitle);
+        Assert.Contains(fallback, cleared.Presentation.TabText, StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
     public async Task Initial_window_startup_publishes_the_read_observer_without_act_access()
     {
         var registry = new AgentSessionRegistry();

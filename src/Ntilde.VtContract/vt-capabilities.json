@@ -101,6 +101,24 @@
       "contractCase": "text-area-size-query"
     },
     {
+      "key": "CSI:22t",
+      "mnemonic": "XTWINOPS push title",
+      "support": "supported",
+      "description": "Save the raw window title and/or icon name (Ps 0/1/2) on a 10-entry stack; the oldest entry is discarded on overflow.",
+      "matrixFeature": "XTWINOPS title push",
+      "evidencePath": "tests/Ntilde.VT.Tests/XtWinOpsTitleStackTests.cs",
+      "contractCase": "title-stack-push"
+    },
+    {
+      "key": "CSI:23t",
+      "mnemonic": "XTWINOPS pop title",
+      "support": "supported",
+      "description": "Restore the saved raw window title and/or icon name (Ps 0/1/2) and raise the title callback; an empty pop is a no-op.",
+      "matrixFeature": "XTWINOPS title pop",
+      "evidencePath": "tests/Ntilde.VT.Tests/XtWinOpsTitleStackTests.cs",
+      "contractCase": "title-stack-pop"
+    },
+    {
       "key": "CSI:=c",
       "mnemonic": "DA3",
       "support": "supported",

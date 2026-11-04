@@ -180,6 +180,12 @@ Mux text listings apply command fallback when a raw title is blank; App's combin
 listing applies its existing host text cleaning/cap to that fallback. JSON metadata
 keeps the exact raw title and command.
 
+XTWINOPS `CSI 22 ; Ps t` / `CSI 23 ; Ps t` (#830) save and restore the raw title and
+OSC 1 icon name on a 10-entry parser stack (`AnsiParser.Titles.cs`). A restore goes
+through the same title callback, so App and mux keep their raw storage and fallback
+unchanged; the stack itself travels in `AnsiParserState`, so a mux attach or replay
+checkpoint restores the same title when the tail pops it.
+
 #### `TerminalBuffer`
 
 Applies semantic operations to terminal state. Maintains cursor, modes, tab stops, margins. Owns main + alternate screen buffers and scrollback.

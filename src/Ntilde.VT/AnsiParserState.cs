@@ -84,6 +84,20 @@ namespace Ntilde.VT
         [JsonPropertyName("inband_resize")] public bool InBandResizeReportsEnabled { get; set; }
 
         /// <summary>
+        /// The raw window title the stream last requested (OSC 0/2), or restored from the title
+        /// stack. Empty before any request and in legacy snapshots; null when it was too long to
+        /// retain. Importing it raises no title callback.
+        /// </summary>
+        [JsonPropertyName("title")] public string? WindowTitle { get; set; } = string.Empty;
+
+        /// <summary>The raw icon name (OSC 0/1), with the same conventions as <see cref="WindowTitle"/>.</summary>
+        [JsonPropertyName("icon")] public string? IconName { get; set; } = string.Empty;
+
+        /// <summary>XTWINOPS 22/23 title stack, oldest first; null when empty.</summary>
+        [JsonPropertyName("title_stack"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<SavedTitleEntry>? TitleStack { get; set; }
+
+        /// <summary>
         /// Length of the parser's text-batching buffer at export. Always 0 in practice - the
         /// buffer is flushed before every state-affecting branch - and exported purely so that
         /// claim can be asserted rather than assumed. Not re-imported.
@@ -130,9 +144,26 @@ namespace Ntilde.VT
             sb.Append(" lastgfx=").Append(LastGraphicChar ?? "<null>");
             sb.Append(" color_scheme_reports=").Append(ColorSchemeReportsEnabled);
             sb.Append(" inband=").Append(InBandResizeReportsEnabled);
+            sb.Append(" title=").Append(Quote(WindowTitle));
+            sb.Append(" icon=").Append(Quote(IconName));
+            sb.Append(" title_stack=");
+            foreach (SavedTitleEntry entry in TitleStack ?? new List<SavedTitleEntry>())
+            {
+                sb.Append('(').Append(Quote(entry?.Icon)).Append(',').Append(Quote(entry?.Title)).Append(')');
+            }
+
             sb.Append(" sixel_cw=").Append(SixelCellWidthPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");
             sb.Append(" sixel_ch=").Append(SixelCellHeightPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");
             return sb.ToString();
         }
+
+        private static string Quote(string? value) => value is null ? "<null>" : "\"" + value + "\"";
+    }
+
+    /// <summary>One XTWINOPS title-stack entry. A null half was not saved and has nothing to restore.</summary>
+    public sealed class SavedTitleEntry
+    {
+        [JsonPropertyName("icon")] public string? Icon { get; set; }
+        [JsonPropertyName("title")] public string? Title { get; set; }
     }
 }
