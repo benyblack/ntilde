@@ -172,7 +172,7 @@ public sealed class ReplaySeekIsolationTests
         int session = fixture.Gate.BeginSession();
         fixture.Parser.SixelCellSizeOverride = new SixelCellSize(20, 6);
         fixture.Window.Close();
-        await fixture.InvokeTask("ApplyCellMetricsAsync", session, 10f, 20f);
+        await fixture.InvokeTask("ApplyCellMetricsAsync", session, 10f, 20f, CancellationToken.None);
         Assert.Equal(new SixelCellSize(20, 6), fixture.Parser.SixelCellSizeOverride);
     }
 

@@ -20,6 +20,10 @@ namespace Ntilde.VT
         [JsonPropertyName("v")]
         public int Version { get; set; } = 2;
 
+        /// <summary>Required semantics, not an advertisement. Zero preserves historical header bytes.</summary>
+        [JsonPropertyName("required_sixel_raster"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int RequiredSixelRasterPolicy { get; set; }
+
         [JsonPropertyName("cols")]
         public int Cols { get; set; }
 

@@ -485,6 +485,25 @@ default wire/PNG behavior and renderer geometry remain unchanged. This observes 
 and projection; it does not promise native-pixel fidelity. The source-to-pixel oracle must
 independently derive its input canvas and recompute reservation before checking pixels.
 
+The #851 native-raster foundation is deliberately inactive. VT's immutable versioned
+canvas/crop values are separate from the ephemeral reservation provenance above.
+Optional native state is omitted when null; the enabled policy ceiling remains zero
+and import refuses any native placement before resize, decode or mutation. Replay's
+optional required-policy marker is omitted at zero and rejects unsupported/malformed
+requirements before header callbacks or data.
+GUI indexing uses that same parser and retains its reader through index consumption.
+Every seek/playback validates its selected stream before a cancellation-aware host callback
+restores a cached checkpoint or the initial state, then consumes that same open stream.
+Path replacement cannot switch the validated input between restoration and replay;
+live append is preserved without promising immutable bytes against arbitrary in-place writes.
+Existing v1/v2 recordings and ordinary
+v2 writers retain their formats; no v3 writer or mux capability is enabled.
+App carries an immutable presenter density P with the UI-published font/grid values,
+clearing it on detach. Offscreen requested scale S stays separate. This plumbing
+changes neither geometry nor the raw v1 capture schemas. The
+[staged native-raster contract](sixel-native-raster-foundation.md) records the remaining
+transform, clipping, ownership and compatibility gates before activation.
+
 Skia-only helpers: glyph atlas (`GlyphAtlas`), glyph cache (`GlyphCache`), pixel grid math (`PixelGrid`), font wrappers (`SharedSKFont`, `SharedSKTypeface`), image registry, sixel decoder, render performance metrics.
 
 This module is intentionally **Avalonia-agnostic**. The actual Avalonia `DrawOperation` and viewport (`TerminalDrawOperation`, `TerminalView`) live in `src/Ntilde.App/Shell/` today — see Known Tech Debt below for the planned extraction.

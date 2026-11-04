@@ -71,6 +71,8 @@ internal sealed record SnapshotRenderContext
     internal bool EnableComplexShaping { get; init; }
     internal bool TextBlinkVisible { get; init; }
     internal long? PresentationTimeMs { get; init; }
+    // Internal production input. Deliberately absent from renderDetails/imageDetails v1.
+    internal NativeRasterPresenterContext? NativeRasterPresenter { get; init; }
     internal required CellMetrics Metrics { get; init; }
 
     internal static SnapshotRenderContext Create(RenderedFrameInfo frame, SKTypeface primary,
@@ -97,6 +99,7 @@ internal sealed record SnapshotRenderContext
             EnableLigatures = options.EnableLigatures,
             EnableComplexShaping = options.EnableComplexShaping,
             PresentationTimeMs = options.PresentationTimeMs,
+            NativeRasterPresenter = options.NativeRasterPresenter,
             TextBlinkVisible = options.PresentationTimeMs.HasValue
                 ? TextBlinkAnimation.IsVisibleAtMilliseconds(options.PresentationTimeMs.Value) : options.TextBlinkVisible,
         };

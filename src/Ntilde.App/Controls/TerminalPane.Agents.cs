@@ -58,7 +58,10 @@ namespace Ntilde.Controls
                 TermView.EnableComplexShaping,
                 TermView.MinimumContrast,
                 TermView.PreferredCursorStyle,
-                TermView.PreferredCursorBlink));
+                TermView.PreferredCursorBlink)
+            {
+                NativeRasterPresenter = TermView.NativeRasterPresenter,
+            });
         }
 
         // ------------------------------------------------------------- Agent Output panel
