@@ -347,6 +347,36 @@ public class ExplainEscapeSequenceTests
         Assert.Equal(supported, result.Contains("DECRQSS top/bottom margins", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData("DCS $qm", "DECRQSS SGR report")]
+    [InlineData("\x1bP$qm\x1b\\", "DECRQSS SGR report")]
+    [InlineData("\u0090$qm\u009c", "DECRQSS SGR report")]
+    [InlineData("\\eP$qm\\e\\", "DECRQSS SGR report")]
+    [InlineData("ESC P$qmESC\\", "DECRQSS SGR report")]
+    [InlineData("DCS $q q", "DECRQSS cursor style report")]
+    [InlineData("\x1bP$q q\x1b\\", "DECRQSS cursor style report")]
+    [InlineData("\\x1bP$q q\\x1b\\", "DECRQSS cursor style report")]
+    [InlineData("ESCP$q qESC\\", "DECRQSS cursor style report")]
+    public void Exact_sgr_and_cursor_style_queries_explain_their_reports(string sequence, string mnemonic)
+    {
+        Assert.Contains(mnemonic, VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("DCS $qm;")]
+    [InlineData("DCS $q  q")]
+    [InlineData("DCS $qq")]
+    [InlineData("\x1bP$qm\a")]
+    [InlineData("\x1bP$q q")]
+    [InlineData("ESC P$qm")]
+    [InlineData("\x1bP$q q\\e\\")]
+    public void Inexact_sgr_or_cursor_style_queries_claim_no_report(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.DoesNotContain("DECRQSS SGR report", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("DECRQSS cursor style report", result, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void CatalogCapabilities_AgreeWithExplainerSupportClaims()
     {

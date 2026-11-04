@@ -157,10 +157,28 @@
       "key": "DCS:$qr",
       "mnemonic": "DECRQSS top/bottom margins",
       "support": "supported",
-      "description": "Report current absolute one-based VT margins with xterm status 1, only for exact complete r requests terminated by standard ST. BEL recovery and incomplete DCS stay negative; other settings are unavailable.",
+      "description": "Report current absolute one-based VT margins with xterm status 1, only for exact complete r requests terminated by standard ST. BEL recovery and incomplete DCS stay negative; other settings are unavailable apart from the separately listed m and SP q reports.",
       "matrixFeature": "DECRQSS top/bottom margin query",
       "evidencePath": "tests/Ntilde.VT.Tests/DecrqssMarginQueryTests.cs",
       "contractCase": "decrqss-top-bottom-margins"
+    },
+    {
+      "key": "DCS:$qm",
+      "mnemonic": "DECRQSS SGR report",
+      "support": "supported",
+      "description": "Report the active pen as an SGR a client can replay, xterm style: status 1, a leading 0, attributes, 4:n underline styles, short ANSI or 38/48/58 semicolon color forms. Only exact complete m requests terminated by standard ST succeed.",
+      "matrixFeature": "DECRQSS SGR query",
+      "evidencePath": "tests/Ntilde.VT.Tests/DecrqssSettingReportTests.cs",
+      "contractCase": "decrqss-sgr"
+    },
+    {
+      "key": "DCS:$q q",
+      "mnemonic": "DECRQSS cursor style report",
+      "support": "supported",
+      "description": "Report the DECSCUSR value: 0 while the host's configured cursor is shown, otherwise xterm's 1-6 shape-and-blink code. Only exact complete SP q requests terminated by standard ST succeed.",
+      "matrixFeature": "DECRQSS cursor style query",
+      "evidencePath": "tests/Ntilde.VT.Tests/DecrqssSettingReportTests.cs",
+      "contractCase": "decrqss-cursor-style"
     }
   ]
 }

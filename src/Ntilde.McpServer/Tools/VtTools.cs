@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.ComponentModel;
 using System.Text;
 using ModelContextProtocol.Server;
@@ -361,32 +362,43 @@ public sealed class VtTools
             ? DcsInputRepresentation.Abstract : DcsInputRepresentation.Other;
     }
 
+    // DECRQSS settings with a positive report; each has a "DCS:<payload>" catalogue entry.
+    private static readonly string[] DecrqssReportPayloads = ["$qr", "$qm", "$q q"];
+
     private static string ExplainDcs(string original, DcsInputRepresentation representation)
     {
         // Each representation validates its complete grammar independently. A rejected
         // form cannot fall through to a globally normalized positive alias.
-        bool exact = representation switch
-        {
-            DcsInputRepresentation.Raw => original is "\x1bP$qr\x1b\\" or "\x1bP$qr\u009c"
-                or "\u0090$qr\x1b\\" or "\u0090$qr\u009c",
-            DcsInputRepresentation.Escaped => IsEscapedMarginQuery(original),
-            DcsInputRepresentation.Textual => original[
-                (original.StartsWith("ESC P", StringComparison.OrdinalIgnoreCase) ? 5 : 4)..] == "$qrESC\\",
-            // Only the explicit abstract catalogue identifier may omit framing.
-            DcsInputRepresentation.Abstract => original[3..].TrimStart(' ') == "$qr",
-            _ => false
-        };
-        return "DCS: " + (exact ? ContractSequenceTable["DCS:$qr"] : SequenceTable["DCS"]);
+        string? payload = DecrqssReportPayloads.FirstOrDefault(
+            candidate => IsExactDcs(original, representation, candidate));
+        return payload is null
+            ? "DCS: " + SequenceTable["DCS"]
+            : "DCS: " + ContractSequenceTable["DCS:" + payload];
     }
 
-    private static bool IsEscapedMarginQuery(string original)
+    private static bool IsExactDcs(string original, DcsInputRepresentation representation, string payload)
+        => representation switch
+        {
+            DcsInputRepresentation.Raw => original == "\x1bP" + payload + "\x1b\\"
+                || original == "\x1bP" + payload + "\u009c"
+                || original == "\u0090" + payload + "\x1b\\"
+                || original == "\u0090" + payload + "\u009c",
+            DcsInputRepresentation.Escaped => IsEscapedQuery(original, payload),
+            DcsInputRepresentation.Textual => original[
+                (original.StartsWith("ESC P", StringComparison.OrdinalIgnoreCase) ? 5 : 4)..] == payload + "ESC\\",
+            // Only the explicit abstract catalogue identifier may omit framing.
+            DcsInputRepresentation.Abstract => original[3..].TrimStart(' ') == payload,
+            _ => false
+        };
+
+    private static bool IsEscapedQuery(string original, string payload)
     {
         // Explicitly escaped input accepts supported escaped ST spellings only;
         // actual control bytes belong to the raw representation.
         if (original.AsSpan().IndexOfAny('\x1b', '\u0090', '\u009c') >= 0) return false;
         string framed = original.Replace("\\x1b", "\x1b", StringComparison.OrdinalIgnoreCase)
             .Replace("\\e", "\x1b", StringComparison.OrdinalIgnoreCase);
-        return framed == "\x1bP$qr\x1b\\";
+        return framed == "\x1bP" + payload + "\x1b\\";
     }
 
     private static string ExplainTertiaryDeviceAttributes(string prefix)

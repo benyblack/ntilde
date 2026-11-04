@@ -242,6 +242,13 @@ state read; invalid margins, lost/unknown input and BEL recovery stay negative.
 This query changes no terminal state. Other DECRQSS settings and XTGETTCAP remain
 negative; no family-wide or fresh runtime support is inferred.
 
+DECRQSS `m` and `SP q` (#844) use the same exact-request, standard-ST and
+completeness rules. `m` reports the active pen xterm style, starting with `0` so
+replaying the report reproduces the pen; underline styles use `4:n` and extended
+colors use semicolon forms. `SP q` reports `0` while the host's configured cursor
+is shown and xterm's 1-6 code for an application override. DECSCUSR 0 restores the
+host's configured cursor, so a saved report restores exactly what was shown.
+
 Tertiary DA accepts only a default or single numeric-zero parameter with the `=`
 leader and no intermediates. Its DECRPTUI reply contains the fixed eight zero hex
 digits used by xterm for unassigned site/serial fields. This is nonunique and
