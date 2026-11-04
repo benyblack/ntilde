@@ -52,21 +52,26 @@ public static class Program
             return 1;
         }
 
-        // Short on Unix on purpose: the agent host binds a Unix socket under the profile root, and a
-        // socket path is capped at 104 bytes on macOS. macOS's per-user temp directory alone is ~50, so
-        // a full GUID under it put agent.sock at 113 and the host silently never started; 8 hex digits
-        // put it at 89. On Unix the run's directory is owner-only, since the temp directory may be
-        // shared (csharpsquid:S5443).
-        string baseDirectory = Path.Combine(
-            Path.GetTempPath(),
-            "ntilde-shots",
-            OperatingSystem.IsWindows() ? Guid.NewGuid().ToString("N") : Guid.NewGuid().ToString("N")[..8]);
+        // Unix uses /tmp, not the per-user temp directory, for two reasons. The app shows paths under
+        // this root in published images (the transfer centre's local path, command assist's folder),
+        // and macOS's TMPDIR carries a machine-specific id (/var/folders/xx/<id>/T/). And the agent
+        // host binds a Unix socket under it, capped at 104 bytes on macOS: TMPDIR alone is ~50.
+        // csharpsquid:S5443 is answered by how it is made instead: a random name directly in /tmp,
+        // whose sticky bit stops anyone else renaming it, created owner-only and never reused.
+        string baseDirectory = OperatingSystem.IsWindows()
+            ? Path.Combine(Path.GetTempPath(), "ntilde-shots", Guid.NewGuid().ToString("N"))
+            : "/tmp/ntilde-shots-" + Guid.NewGuid().ToString("N")[..8]; // NOSONAR - S5443 reviewed: see above
         if (OperatingSystem.IsWindows())
         {
             Directory.CreateDirectory(baseDirectory);
         }
         else
         {
+            if (Directory.Exists(baseDirectory))
+            {
+                throw new InvalidOperationException($"{baseDirectory} already exists; refusing to reuse it.");
+            }
+
             Directory.CreateDirectory(
                 baseDirectory,
                 UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
