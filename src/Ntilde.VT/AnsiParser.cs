@@ -630,7 +630,7 @@ namespace Ntilde.VT
                                 }
                                 else if (c == '=' || c == '>') // DECKPAM / DECKPNM
                                 {
-                                    // Keypad application/numeric mode does not render visible text.
+                                    _buffer.Modes.IsApplicationKeypad = c == '=';
                                     _state = State.Normal;
                                 }
                                 else if (c == '(' || c == ')' || c == '*' || c == '+' || c == '-')

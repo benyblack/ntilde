@@ -272,6 +272,8 @@ namespace Ntilde.Shell
                 return true;
             }
 
+            if (TrySendApplicationKeypad(key, keyModifiers, physicalKey, kittyFlags, identity)) return true;
+
             // Alt/Meta-sends-ESC must run BEFORE the unconditional Enter/Back/Tab/Escape cases
             // below, which would otherwise swallow Alt+<those> and send the bare control byte.
             if ((keyModifiers & KeyModifiers.Alt) != 0)
@@ -302,6 +304,22 @@ namespace Ntilde.Shell
             }
 
             return false;
+        }
+
+        private bool TrySendApplicationKeypad(Key key, KeyModifiers modifiers, PhysicalKey physical, int kittyFlags, KittyKeyIdentity identity)
+        {
+            string? sequence = TerminalInputModeEncoder.EncodeApplicationKeypad(key, modifiers, physical, _buffer?.Modes);
+            if (sequence == null) return false;
+            // Keep legacy Enter's text-only recovery policy and observer ordering.
+            if (key == Key.Enter) return SendEnterKey(modifiers, physical, sequence, identity);
+            // A backend may still emit TextInput after a handled keypad event.
+            // Reserve its one-shot decision before sending: writes can reenter input.
+            _pendingKittyTextSuppression = true;
+            _pendingKittyTextKey = KeyIdentity(key, physical);
+            _pendingKittyTextFlags = kittyFlags;
+            _kittyTextInputGeneration++;
+            SendKeyInput(key, modifiers, physical, sequence, identity, trackKittyEvents: false);
+            return true;
         }
 
         /// <summary>Captures primary identity for flag 8, and optional metadata for flag 4.</summary>

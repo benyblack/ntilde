@@ -226,6 +226,7 @@ namespace Ntilde.VT
         [JsonPropertyName("m_any")] public bool MouseModeAnyEvent { get; set; }
         [JsonPropertyName("m_sgr")] public bool MouseModeSGR { get; set; }
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
+        [JsonPropertyName("kap")] public bool IsApplicationKeypad { get; set; }
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; } = true;
         [JsonPropertyName("decom")] public bool IsOriginMode { get; set; }
         [JsonPropertyName("sixel_display")] public bool IsSixelDisplayMode { get; set; }

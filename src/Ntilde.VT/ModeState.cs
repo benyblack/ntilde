@@ -14,6 +14,9 @@ namespace Ntilde.VT
         /// <summary>DECSDM (?80): xterm polarity, set = page-origin graphics without SIXEL-driven scrolling.</summary>
         public bool IsSixelDisplayMode { get; set; }
 
+        /// <summary>DECKPAM / DECKPNM and DECNKM (?66): application auxiliary keypad.</summary>
+        public bool IsApplicationKeypad { get; set; }
+
         // Cursor and display modes
         public bool IsApplicationCursorKeys { get; set; } // ?1 - DECCKM (Application Cursor Keys)
         public bool IsAutoWrapMode { get; set; } = true;  // ?7 - DECAWM (Auto Wrap Mode)
@@ -73,6 +76,7 @@ namespace Ntilde.VT
                 MouseModeAnyEvent = this.MouseModeAnyEvent,
                 MouseModeSGR = this.MouseModeSGR,
                 IsApplicationCursorKeys = this.IsApplicationCursorKeys,
+                IsApplicationKeypad = this.IsApplicationKeypad,
                 IsAutoWrapMode = this.IsAutoWrapMode,
                 IsOriginMode = this.IsOriginMode,
                 IsSixelDisplayMode = this.IsSixelDisplayMode,

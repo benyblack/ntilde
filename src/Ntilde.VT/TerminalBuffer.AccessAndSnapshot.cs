@@ -1103,6 +1103,7 @@ namespace Ntilde.VT
 
                 Modes.IsAutoWrapMode = snapshot.IsAutoWrapMode;
                 Modes.IsApplicationCursorKeys = snapshot.IsApplicationCursorKeys;
+                Modes.IsApplicationKeypad = snapshot.IsApplicationKeypad;
                 Modes.IsOriginMode = snapshot.IsOriginMode;
                 Modes.IsSixelDisplayMode = snapshot.IsSixelDisplayMode;
                 Modes.IsBracketedPasteMode = snapshot.IsBracketedPasteMode;
