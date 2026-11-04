@@ -104,7 +104,7 @@ invariant changes.
   foreground/background exchanged, a cursor color equal to a default following it, derived
   render colors re-derived), cached per effective theme. Renderers draw the snapshot colors as
   given and apply SGR 7 as usual; a mode change repaints through the theme-epoch/row-revision
-  invalidation. App host overlays use `TerminalBuffer.PresentedDefaultForeground`.
+  invalidation. App host overlays use `TerminalBuffer.PresentedDefaultForeground`, which resolves OSC 10/11 overrides before the swap, as the snapshot does.
 - **Text blink presentation belongs to App.** VT snapshots cache only an unhidden SGR 5
   presence flag while copying cells; they carry no clock or UI state. App advances a monotonic
   530 ms half-period on its existing render timer, independently of cursor focus/settings,

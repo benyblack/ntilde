@@ -127,10 +127,14 @@ public partial class TerminalBuffer
     }
 
     /// <summary>
-    /// The default foreground as the screen presents it: the theme's background while DECSCNM is
+    /// The default foreground as the screen presents it, matching the render snapshot: the
+    /// effective (OSC 10/11-overridden) foreground, or the effective background while DECSCNM is
     /// set. For host overlays drawn in "the text color" over the terminal (link hover, bell flash).
+    /// Reads the published runtime colors, so the UI thread may call it without the buffer lock.
     /// </summary>
-    public TermColor PresentedDefaultForeground => Modes.IsReverseVideo ? Theme.Background : Theme.Foreground;
+    public TermColor PresentedDefaultForeground => Modes.IsReverseVideo
+        ? RuntimeBackground ?? Theme.Background
+        : RuntimeForeground ?? Theme.Foreground;
 
     /// <summary>One reversed presentation of one effective theme, published as a unit.</summary>
     private sealed record ReverseVideoThemeCache(TerminalTheme Source, TerminalTheme SourceColors, TerminalTheme Presented);

@@ -272,4 +272,21 @@ public class ReverseVideoModeTests
         parser.Process("\u001b[?5h");
         Assert.Equal(Bg, buffer.PresentedDefaultForeground);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Presented_default_foreground_resolves_OSC_10_and_11_overrides(bool reverse)
+    {
+        // White-on-black host theme; the session overrides the defaults to black on red.
+        var (buffer, parser, _) = Terminal(new TerminalTheme { Foreground = TermColor.White, Background = TermColor.Black });
+        parser.Process("\u001b]10;#000000\u0007\u001b]11;#ff0000\u0007" + (reverse ? "\u001b[?5h" : ""));
+
+        // Normal video draws black text on red; reverse video draws red text on black. An overlay in
+        // "the text color" must be that presented color, never the saved host color.
+        TermColor expected = reverse ? TermColor.FromRgb(0xFF, 0x00, 0x00) : TermColor.FromRgb(0x00, 0x00, 0x00);
+        Assert.Equal(expected, buffer.PresentedDefaultForeground);
+        Assert.Equal(CaptureTheme(buffer).Foreground, buffer.PresentedDefaultForeground);
+        Assert.NotEqual(CaptureTheme(buffer).Background, buffer.PresentedDefaultForeground);
+    }
 }
