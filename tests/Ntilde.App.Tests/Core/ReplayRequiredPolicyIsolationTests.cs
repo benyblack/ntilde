@@ -63,10 +63,13 @@ public sealed class ReplayRequiredPolicyIsolationTests
             }, ReplayJsonContext.Default.ReplayEvent) + "\n" : "";
             await File.WriteAllTextAsync(path, header + "\n" + snapshot + "{\"t\":100,\"type\":\"data\",\"d\":\"Tw==\"}\n", TestContext.Current.CancellationToken);
             await File.WriteAllTextAsync(replacement, header[..^1] + ",\"required_sixel_raster\":1}\n{\"t\":100,\"type\":\"data\",\"d\":\"WA==\"}\n", TestContext.Current.CancellationToken);
+            byte[] originalBytes = await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken);
+            byte[] replacementBytes = await File.ReadAllBytesAsync(replacement, TestContext.Current.CancellationToken);
             window = new ReplayWindow(path);
             var model = (ReplayViewModel)window.DataContext!;
             await model.Initialization;
             bool attempted = false;
+            bool sharingBlocked = false;
             Exception? replacementError = null;
             window.BeforeSeekRestoreForTest = () =>
             {
@@ -74,10 +77,13 @@ public sealed class ReplayRequiredPolicyIsolationTests
                 try
                 {
                     try { File.Move(replacement, path, overwrite: true); }
-                    catch (IOException ex) when (OperatingSystem.IsWindows() && (ex.HResult & 0xffff) == 32)
+                    catch (Exception ex) when (IsWindowsHeldReaderDenial(ex))
                     {
-                        // Windows may enforce the held reader's existing no-delete share policy.
-                        Assert.DoesNotContain("required_sixel_raster", File.ReadAllText(path));
+                        // Windows reports access denied (observed 0x80070005) or a sharing
+                        // violation for replacement while the original no-delete reader is open.
+                        sharingBlocked = true;
+                        Assert.Equal(originalBytes, File.ReadAllBytes(path));
+                        Assert.Equal(replacementBytes, File.ReadAllBytes(replacement));
                     }
                 }
                 catch (Exception ex) { replacementError = ex; throw; }
@@ -94,6 +100,13 @@ public sealed class ReplayRequiredPolicyIsolationTests
             Assert.True(replacementError is null, $"Replacement control failed before restoration: {replacementError?.GetType().Name}, HResult=0x{replacementError?.HResult:X8}: {replacementError}");
             Assert.Equal((20, 8), (buffer.Cols, buffer.Rows));
             Assert.Equal(checkpoint ? "checkpointO" : "O", BufferSnapshot.Capture(buffer).Lines[0]);
+            if (sharingBlocked)
+            {
+                // The exact same operation must succeed once the run releases the reader;
+                // permanent ACL/path failures are not an accepted sharing control.
+                File.Move(replacement, path, overwrite: true);
+                Assert.Equal(replacementBytes, File.ReadAllBytes(path));
+            }
         }
         finally { window?.Close(); File.Delete(path); File.Delete(replacement); }
     }
@@ -163,6 +176,10 @@ public sealed class ReplayRequiredPolicyIsolationTests
 
     private static T Field<T>(ReplayWindow window, string name) =>
         (T)typeof(ReplayWindow).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+
+    private static bool IsWindowsHeldReaderDenial(Exception error) => OperatingSystem.IsWindows() &&
+        ((error is UnauthorizedAccessException && error.HResult == unchecked((int)0x80070005)) ||
+         (error is IOException && error.HResult == unchecked((int)0x80070020)));
 
     private static Task Invoke(ReplayWindow window, string name, params object[] args) =>
         (Task)typeof(ReplayWindow).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, args)!;
