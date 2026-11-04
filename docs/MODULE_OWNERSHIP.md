@@ -304,8 +304,9 @@ invariant changes.
 
 **Invariants**
 - Native port-forward publication and disposal's channel snapshot share the
-  registration gate. A local/dynamic id issued after teardown starts is refused
-  before publication and closed by its caller, including when a SOCKS refusal
+  registration gate, including incoming channel registration. A local/dynamic open
+  returning after teardown starts is refused before publication and closed by
+  its caller, including when a SOCKS refusal
   write is canceled. A published id remains owned by normal removal/disposal;
   no timeout increase or wait for a blocked native open is required.
 - **Generated OpenSSH launch configurations name content snapshots.** `OpenSshConfigCompiler` publishes

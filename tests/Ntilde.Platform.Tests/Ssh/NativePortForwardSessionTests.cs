@@ -107,15 +107,22 @@ public sealed class NativePortForwardSessionTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Disposal_inside_an_inflight_open_closes_the_unpublished_channel_and_socket(bool dynamic)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Disposal_inside_an_inflight_open_closes_the_unpublished_channel_and_socket(bool dynamic, bool failRefusalWrite)
     {
         var interop = new FakeNativeSshInterop();
-        using var session = new NativePortForwardSession(
-            FakeHandle(12),
-            [dynamic ? CreateDynamicForward(0) : CreateForward(0, "svc.internal", 5432)],
-            interop);
+        PortForward[] forwards = [dynamic ? CreateDynamicForward(0) : CreateForward(0, "svc.internal", 5432)];
+        int refusalWrites = 0;
+        using var session = failRefusalWrite
+            ? CreateSessionWithReplyWriter(FakeHandle(12), forwards, interop, (_, reply, _) =>
+            {
+                Assert.Equal(1, reply[1]); // general failure, not a success reply
+                Interlocked.Increment(ref refusalWrites);
+                return Task.FromException(new IOException("Injected SOCKS refusal-write failure."));
+            })
+            : new NativePortForwardSession(FakeHandle(12), forwards, interop);
         // The id exists, but PublishChannel has not run. Dispose must win this exact
         // schedule, without depending on the accept loop losing a timing race.
         interop.OnOpenDirectTcpIp = _ => session.Dispose();
@@ -130,8 +137,36 @@ public sealed class NativePortForwardSessionTests
         await WaitUntilAsync(() => interop.ClosedChannelIds.Count == 1);
         Assert.Equal(Assert.Single(interop.OpenedChannelIds), Assert.Single(interop.ClosedChannelIds));
         Assert.False(session.HasBoundListener());
+        Assert.Equal(failRefusalWrite ? 1 : 0, Volatile.Read(ref refusalWrites));
         Assert.Equal(0, await stream.ReadAsync(new byte[1], TestContext.Current.CancellationToken)
             .AsTask().WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Incoming_registration_cannot_land_after_disposals_snapshot_before_CTS_disposal()
+    {
+        var interop = new FakeNativeSshInterop();
+        using var session = new NativePortForwardSession(
+            FakeHandle(14),
+            [CreateForward(0, "svc.internal", 5432), CreateRemoteForward(19001, "127.0.0.1", 9200)],
+            interop);
+        using TcpClient client = await ConnectLoopbackAsync(BoundPort(session));
+        await client.GetStream().WriteAsync(new byte[] { 42 }, TestContext.Current.CancellationToken);
+        await WaitUntilAsync(() => interop.OpenedChannelIds.Count == 1);
+        int localId = Assert.Single(interop.OpenedChannelIds);
+        await WaitUntilAsync(() => interop.ChannelWrites(localId).Length == 1); // proves publication and pump startup
+        const int incomingId = 999;
+        interop.OnCloseChannel = id =>
+        {
+            if (id != localId) return;
+            // Dispose already took its channel snapshot, but has not disposed its CTS.
+            // Enter the real incoming handler directly to model an event whose outer
+            // HandleEvent disposal check ran before teardown started.
+            typeof(NativePortForwardSession).GetMethod("HandleIncomingForwardChannel", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(session, [NativeSshEvent.ForwardChannelIncoming(incomingId, IncomingPayload(19001))]);
+        };
+        session.Dispose();
+        Assert.Equal(new[] { localId, incomingId }, interop.ClosedChannelIds);
     }
 
     [Fact]
@@ -1394,12 +1429,15 @@ public sealed class NativePortForwardSessionTests
         {
         }
 
+        public Action<int>? OnCloseChannel { get; set; }
+
         public void CloseChannel(NovaSshSafeHandle sessionHandle, int channelId)
         {
             lock (_collectionsLock)
             {
                 _closedChannelIds.Add(channelId);
             }
+            OnCloseChannel?.Invoke(channelId);
         }
 
         public void Close(NovaSshSafeHandle sessionHandle)

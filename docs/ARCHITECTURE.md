@@ -396,7 +396,7 @@ This is **not** the terminal engine. It's a platform-utilities library: input ro
 
 This is also where session-orchestration helpers (such as a future `SessionBufferBinder`) belong.
 
-Native port-forward publication shares a gate with disposal's channel snapshot.
+Native local, dynamic and incoming port-forward publication shares a gate with disposal's channel snapshot.
 A local/dynamic open that returns after disposal cannot publish a channel: its
 caller closes the newly issued SSH id and socket. Disposal still closes ids
 published before its snapshot. A canceled SOCKS refusal write cannot bypass

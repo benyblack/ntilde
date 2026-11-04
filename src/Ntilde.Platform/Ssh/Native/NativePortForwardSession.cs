@@ -652,7 +652,10 @@ public sealed class NativePortForwardSession : IDisposable
         }
 
         var state = new ForwardChannelState(channelId);
-        if (!_channels.TryAdd(channelId, state))
+        bool published;
+        lock (_registrationGate)
+            published = Volatile.Read(ref _disposed) == 0 && _channels.TryAdd(channelId, state);
+        if (!published)
         {
             TryCloseInteropChannel(channelId);
             return;
