@@ -3,8 +3,8 @@
 // installers are `ntilde-Setup-{rid}-{tag}.{exe,pkg}`, portable bundles are
 // `ntilde-{rid}-{tag}.zip`, and Linux ships `ntilde-linux-{arch}-{tag}.AppImage`,
 // `ntilde-linux-{arch}-{tag}.tar.gz`, and `ntilde_{version}-1_{debarch}.deb`
-// from the publish_linux / release_linux lanes. The winget package id is set by the
-// manifests in `packaging/winget/` (see its README).
+// from the publish_linux / release_linux lanes. There is no winget package yet (the
+// manifests wait in `packaging/winget/`); Windows has its installer, so its card shows no command.
 //
 // Ordered Windows, macOS, Linux: the two platforms with an installer come first,
 // because that is the path most people should take.
@@ -16,7 +16,6 @@ const releases = [
     installerNote:
       'Per-user install — no admin prompt. Adds Start Menu and Desktop shortcuts, and updates itself in the background.',
     asset: 'ntilde-win-x64-<tag>.zip',
-    cmd: 'winget install benyblack.ntilde',
   },
   {
     platform: 'macOS',
@@ -160,7 +159,9 @@ const buildSteps = [
             <p class="mt-1 font-mono text-[11px] text-ink-400">
               {rel.asset}
             </p>
-            <pre class="code-block mt-3 text-xs leading-relaxed"><code>{rel.cmd}</code></pre>
+            {rel.cmd && (
+              <pre class="code-block mt-3 text-xs leading-relaxed"><code>{rel.cmd}</code></pre>
+            )}
             {rel.extraNote && (
               <p class="mt-3 text-xs leading-relaxed text-ink-400">
                 {rel.extraNote}
