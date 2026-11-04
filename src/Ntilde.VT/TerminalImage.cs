@@ -41,6 +41,8 @@ namespace Ntilde.VT
         /// <summary>Optional Kitty placement identity, distinct from the retained image id.</summary>
         public uint? KittyPlacementId { get; internal set; }
 
+        internal KittyImageAsset? KittyAsset { get; set; }
+
         public TerminalImage(object imageHandle, int cellX, int cellY, int cellWidth, int cellHeight)
         {
             ImageId = Guid.NewGuid();

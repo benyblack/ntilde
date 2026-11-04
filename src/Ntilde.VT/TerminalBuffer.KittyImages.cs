@@ -41,8 +41,7 @@ public partial class TerminalBuffer
                 || _kittyImageAssets.Where(item => item.IsAltScreen == _isAltScreen).Sum(item => item.PixelCharge) > MaxKittyImagePixelBytes)
             {
                 KittyImageAsset oldest = _kittyImageAssets.FirstOrDefault(item => item.IsAltScreen == _isAltScreen
-                    && !ReferenceEquals(item, asset) && !_images.Any(image => image.IsAltScreenImage == _isAltScreen && image.KittyImageId == item.Id
-                        && ReferenceEquals(image.ImageHandle, item.Handle)))
+                    && !ReferenceEquals(item, asset) && !HasKittyPlacement(item))
                     ?? _kittyImageAssets.First(item => item.IsAltScreen == _isAltScreen && !ReferenceEquals(item, asset));
                 FreeKittyImage(oldest);
             }
@@ -78,6 +77,7 @@ public partial class TerminalBuffer
         {
             image.IsAltScreenImage = _isAltScreen;
             image.KittyImageId = asset.Id;
+            image.KittyAsset = asset;
             image.KittyPlacementId = placementId == 0 ? null : placementId;
             if (placementId != 0)
             {
@@ -131,8 +131,7 @@ public partial class TerminalBuffer
         {
             TerminalImage image = _images[i];
             if (!MatchesKittyDeletion(image, selected, placementId, visibleOnly)) continue;
-            KittyImageAsset? owner = _kittyImageAssets.LastOrDefault(asset => asset.IsAltScreen == _isAltScreen
-                && asset.Id == image.KittyImageId && ReferenceEquals(asset.Handle, image.ImageHandle));
+            KittyImageAsset? owner = image.KittyAsset;
             if (owner is not null) affected.Add(owner);
             RetireImage(image);
             _images.RemoveAt(i);
@@ -149,15 +148,14 @@ public partial class TerminalBuffer
             : selected is not null && image.KittyImageId == selected.Id;
     }
 
-    private bool HasKittyPlacement(KittyImageAsset asset) => _images.Any(image => image.IsAltScreenImage == asset.IsAltScreen
-        && image.KittyImageId == asset.Id && ReferenceEquals(image.ImageHandle, asset.Handle));
+    private bool HasKittyPlacement(KittyImageAsset asset) => _images.Any(image => ReferenceEquals(image.KittyAsset, asset));
 
     private void FreeKittyImage(KittyImageAsset asset)
     {
         for (int i = _images.Count - 1; i >= 0; i--)
         {
             TerminalImage image = _images[i];
-            if (image.IsAltScreenImage != asset.IsAltScreen || image.KittyImageId != asset.Id || !ReferenceEquals(image.ImageHandle, asset.Handle)) continue;
+            if (!ReferenceEquals(image.KittyAsset, asset)) continue;
             RetireImage(image);
             _images.RemoveAt(i);
         }
