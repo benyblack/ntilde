@@ -260,6 +260,8 @@ namespace Ntilde.Controls
             if (_onTermViewResize != null) TermView.OnResize -= _onTermViewResize;
             if (_onTermViewMetricsChanged != null) TermView.MetricsChanged -= _onTermViewMetricsChanged;
             if (_onTermViewMetricsLayout != null) TermView.MetricsChanged -= _onTermViewMetricsLayout;
+            // A wheel notch arriving during teardown must not poison a disposed pane's accumulator.
+            TermView.AlternateScrollKeysSent -= NotifyExternalInputSent;
 
             if (Buffer != null)
             {
