@@ -11,6 +11,10 @@ and remaining acceptance boundaries. Its machine-readable companion preserves
 original grades and case pointers; additional evidence is not a combined compliance
 score. Reproduce it offline with `python3 scripts/terminfo-core-report.py --check`.
 
+The [collector completeness diagnosis](terminfo/collector-completeness.md)
+reproduces the pinned reverse-wrap geometry-declaration error offline and explains
+why the retained stock run remains partial even when supplemental suites finish.
+
 ## Run
 
 Requirements: Node 24+, an npm installation (or a prepared collector cache),
