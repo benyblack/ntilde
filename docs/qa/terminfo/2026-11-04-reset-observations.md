@@ -51,7 +51,7 @@ and the same 255 feature identities.
 | Probe | Fresh retained reply | Qualification |
 | --- | --- | --- |
 | `device.xtwinops-18` | `CSI 8;40;140 t` | Exact text-area query; dimensions agree with observed geometry |
-| `device.tertiary-da` | `DCS !|00000000 ST` | Exact DA3 response; identifier is explicitly unassigned/nonunique |
+| `device.tertiary-da` | `DCS !\|00000000 ST` | Exact DA3 response; identifier is explicitly unassigned/nonunique |
 | `extensions.kitty-graphics.transmit` | Correlated image ID/number and `OK` | Transmit acknowledgement |
 | `extensions.kitty-graphics.display` | Correlated transmit and placement `OK` | Placement acknowledgement; no independent image-pixel comparison |
 

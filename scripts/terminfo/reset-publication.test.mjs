@@ -54,7 +54,13 @@ test('reset archive preserves the fixed captured scope and every original receip
     }
     const suites = Object.values(data.receipt).filter(value => value?.suiteId && value.file);
     // The outer receipt is the ASCII binding; twelve supplemental bindings follow.
-    assert.equal(suites.length, 12);
+    assert.deepEqual(suites.map(value => value.suiteId).sort(), [
+        'ntilde-owned-cell-editing-v1', 'ntilde-owned-cursor-modes-v1', 'ntilde-owned-erasure-v1',
+        'ntilde-owned-history-scrolling-v1', 'ntilde-owned-pane-metadata-v1', 'ntilde-owned-render-pixels-v1',
+        'ntilde-owned-rendition-charsets-v3', 'ntilde-owned-resize-reflow-v1', 'ntilde-owned-rgb-underline-v1',
+        'ntilde-owned-runtime-colors-v1', 'ntilde-owned-saved-alternate-v1', 'ntilde-owned-sgr-indices-v1',
+    ]);
+    assert.equal(new Set(suites.map(value => value.file)).size, 12);
     assert.equal(data.receipt.sha256, data.archive.fileSha256[data.receipt.file]);
     for (const binding of suites) assert.equal(binding.sha256, data.archive.fileSha256[binding.file]);
 });
@@ -80,6 +86,14 @@ test('new reply-based grades and active-window notification limits do not rewrit
     }
     assert.equal(data.stockReplyWitnesses['extensions.kitty-graphics.transmit'].trace.queries.length, 1);
     assert.equal(data.stockReplyWitnesses['extensions.kitty-graphics.display'].trace.queries.length, 2);
+    const transmit = data.stockReplyWitnesses['extensions.kitty-graphics.transmit'];
+    const display = data.stockReplyWitnesses['extensions.kitty-graphics.display'];
+    assert.equal(transmit.observation.outcome, 'supported');
+    assert.equal(transmit.trace.queries[0].match[0], '\x1b_Gi=1,I=322121290;OK\x1b\\');
+    assert.equal(display.observation.outcome, 'supported');
+    assert.deepEqual(display.trace.queries.map(query => query.match[0]), [
+        '\x1b_Gi=2,I=1652542871;OK\x1b\\', '\x1b_Gi=2;OK\x1b\\',
+    ]);
     assert.deepEqual(data.metadataSummary.counts, { passed: 9, inconclusive: 3, failed: 1 });
     const notification = data.metadataSummary.observations.find(item => item.featureId === 'metadata.notification.osc9');
     assert.equal(notification.positiveDeliveryPreconditions, false); assert.equal(notification.result, 'inconclusive');
