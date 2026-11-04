@@ -61,11 +61,11 @@ function kittyStaticCommand(stageId, number, firstId) {
 export function parseStaticKittyReply(raw) {
     if (typeof raw !== 'string' || raw.length > 512 || !raw.startsWith('\x1b_G') || !raw.endsWith('\x1b\\')) throw new Error('Malformed static Kitty reply.');
     const body = raw.slice(3, -2), match = /^([^;]+);([ -~]+)$/.exec(body);
-    if (!match || match[0] !== body) throw new Error('Malformed static Kitty reply.');
+    if (match?.[0] !== body) throw new Error('Malformed static Kitty reply.');
     const fields = {};
     for (const part of match[1].split(',')) {
         const field = /^([iIp])=([1-9]\d{0,9})$/.exec(part);
-        if (!field || field[0] !== part || Object.hasOwn(fields, field[1]) || !uint(Number(field[2]))) throw new Error('Invalid Kitty reply fields.');
+        if (field?.[0] !== part || Object.hasOwn(fields, field[1]) || !uint(Number(field[2]))) throw new Error('Invalid Kitty reply fields.');
         fields[field[1]] = Number(field[2]);
     }
     return { fields, status: match[2] };

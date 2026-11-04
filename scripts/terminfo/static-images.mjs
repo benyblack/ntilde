@@ -49,9 +49,12 @@ export function imageReply(raw, item, stage, state) {
     if (ok && stage.reply === 'allocate') checkImages(fields.i);
     if (ok && ['place', 'place-old'].includes(stage.reply)) checkImages(fields.i === (old ? state.firstId : state.ids.at(-1)));
     const reused = stage.reply === 'allocate' && state.ids.includes(fields.i);
-    const passed = stage.reply === 'missing' ? /^ENOENT(?::|$)/.test(status)
-        : stage.reply !== null && ok && !reused;
+    const passed = imageReplyStatus(stage, status, reused);
     return { passed, id: ok && stage.reply === 'allocate' && !reused ? fields.i : null, status };
+}
+function imageReplyStatus(stage, status, reused) {
+    if (stage.reply === 'missing') return /^ENOENT(?::|$)/.test(status);
+    return stage.reply !== null && status === 'OK' && !reused;
 }
 export function imageAction(entry, state, runId) {
     if (entry.kind === 'bind' || entry.kind === 'restore') return { command: imageSetup(runId), skipReason: null };
