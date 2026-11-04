@@ -213,7 +213,7 @@ internal static class TerminalStateAssert
         $"sgrMouse={modes.MouseModeSGR} ckm={modes.IsApplicationCursorKeys} kap={modes.IsApplicationKeypad} awm={modes.IsAutoWrapMode} " +
         $"sixelDisplay={modes.IsSixelDisplayMode} decom={modes.IsOriginMode} focus={modes.IsFocusEventReporting} bp={modes.IsBracketedPasteMode} " +
         $"cv={modes.IsCursorVisible} cblink={modes.IsCursorBlinkEnabled} cstyle={modes.CursorStyle} cdefault={modes.CursorStyleIsDefault} " +
-        $"irm={modes.IsInsertMode} lnm={modes.IsLineFeedNewLineMode} srm={modes.IsEchoEnabled}";
+        $"irm={modes.IsInsertMode} lnm={modes.IsLineFeedNewLineMode} srm={modes.IsEchoEnabled} altScroll={modes.AlternateScrollOverride?.ToString() ?? "default"}";
 
     private static string Describe(TerminalKittyKeyboardState kitty) =>
         $"main=[{string.Join(',', kitty.MainStack)}] alt=[{string.Join(',', kitty.AltStack)}] " +

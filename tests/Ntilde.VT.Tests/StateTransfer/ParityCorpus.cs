@@ -232,6 +232,10 @@ internal static class ParityCorpus
             "\u001b[?2048h" + "client wants in-band reports" + "\u001b[?2048l" +
             "\u001b[?2048h"));
 
+        yield return ("mode-1007-alternate-scroll", Utf8(
+            "\u001b[?1049h\u001b[?1007l" + "pager on the alt screen" + "\u001b[?1007h" +
+            "\u001b[?1007l" + "\u001b[?1049l" + "\u001bc" + "after RIS" + "\u001b[?1007h"));
+
         yield return ("mixed-modes", Utf8(
             "\u001b[?1h\u001b[?7l\u001b[?6h\u001b[?25l\u001b[?2004h\u001b[?1000h\u001b[?1006h" +
             "\u001b[4h\u001b[20h" +

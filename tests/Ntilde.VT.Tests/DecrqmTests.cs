@@ -42,6 +42,7 @@ public class DecrqmTests
     [InlineData(1003)] // Any-event mouse tracking
     [InlineData(1004)] // Focus in/out reporting
     [InlineData(1006)] // SGR extended mouse mode
+    [InlineData(1007)] // Alternate scroll
     [InlineData(1047)] // Alternate screen
     [InlineData(1049)] // Alternate screen + save cursor
     [InlineData(2004)] // Bracketed paste mode

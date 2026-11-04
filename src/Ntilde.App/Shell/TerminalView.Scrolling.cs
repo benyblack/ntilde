@@ -266,6 +266,16 @@ namespace Ntilde.Shell
 
             if (_generatedInputInProgress) { e.Handled = true; return; }
 
+            // Alternate scroll (?1007, issue #828): the alternate screen has no scrollback, so a
+            // pager or TUI without mouse support (less, man, htop) gets one cursor key per notch
+            // instead. Reporting above wins; the main screen keeps scrolling the scrollback.
+            if (_buffer.IsAltScreenActive && _buffer.Modes.IsAlternateScroll)
+            {
+                SendAlternateScroll(_wheelReportAccumulator.Accumulate(e.Delta.Y, AlternateScrollKeysPerNotch));
+                e.Handled = true;
+                return;
+            }
+
             // Standard scrolling. Accumulate fractional deltas (lines per notch) so
             // sub-notch micro-events are summed line-by-line instead of being truncated
             // to zero each event.
@@ -276,6 +286,32 @@ namespace Ntilde.Shell
                 ScrollByWheelLines(delta);
             }
         }
+
+        /// <summary>
+        /// One cursor key per notch, whatever <see cref="_wheelLinesPerNotch"/> says: that setting
+        /// sizes Ntilde's own scrollback steps, not how far a program moves per key. Sub-notch
+        /// deltas accumulate to whole notches.
+        /// </summary>
+        private const double AlternateScrollKeysPerNotch = 1.0;
+
+        /// <summary>
+        /// Sends <paramref name="notches"/> cursor keys (positive = up) encoded from this pane's own
+        /// modes, so DECCKM picks <c>ESC O A</c> or <c>CSI A</c>. Modifiers are not carried: the
+        /// wheel is not a key chord, and other terminals send the plain key here too.
+        /// </summary>
+        private void SendAlternateScroll(int notches)
+        {
+            if (notches == 0 || _buffer == null || _session == null) return;
+            string key = TerminalInputModeEncoder.EncodeAlternateScrollKey(_buffer.Modes, notches > 0);
+            SendUserInput(string.Concat(Enumerable.Repeat(key, Math.Abs(notches))));
+            AlternateScrollKeysSent?.Invoke();
+        }
+
+        /// <summary>
+        /// Cursor keys reached the session from the wheel (?1007), bypassing the key handling
+        /// that observers such as the markless submission accumulator watch.
+        /// </summary>
+        public event Action? AlternateScrollKeysSent;
 
         /// <summary>
         /// Scroll the terminal's own scrollback by whole lines from a wheel gesture (positive =
