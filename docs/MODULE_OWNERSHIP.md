@@ -127,6 +127,13 @@ invariant changes.
   not alias it; query handling does not mutate terminal state. No kernel/window
   observation or child receipt is inferred. Individually rejected DECRQSS and
   XTGETTCAP settings remain negative query evidence, never a family support score.
+- **Mouse tracking protocol selection belongs to VT; frame encoding belongs to App.**
+  Mode 9 is three-button press-only X10 tracking, separate from the legacy-named
+  normal-1000 flag. Parser mode sets select one of 9/1000/1002/1003; any recognized
+  reset disables tracking. SGR encoding remains independent. Complete snapshots,
+  clones and new legacy replay cuts carry mode 9; old absent fields mean off.
+  App ignores its modifiers and suppresses nonpress inputs. Mux's outer text
+  renderer emits every tracking reset before enabling the selected protocol.
 - **Application-keypad state belongs to VT; key encoding belongs to App.** ESC =/>
   and DECNKM (?66) share a session-wide boolean, copied through clone, complete
   mux/replay snapshots and legacy replay fields (absent means numeric). DECSTR/RIS

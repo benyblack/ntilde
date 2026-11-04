@@ -221,6 +221,7 @@ namespace Ntilde.VT
     /// <summary>Every property of <see cref="ModeState"/> except the kitty stacks.</summary>
     public sealed class TerminalModeState
     {
+        [JsonPropertyName("m_9")] public bool MouseModeX10PressOnly { get; set; }
         [JsonPropertyName("m_x10")] public bool MouseModeX10 { get; set; }
         [JsonPropertyName("m_btn")] public bool MouseModeButtonEvent { get; set; }
         [JsonPropertyName("m_any")] public bool MouseModeAnyEvent { get; set; }

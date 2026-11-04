@@ -11,9 +11,12 @@ namespace Ntilde.Tests.Input;
 [Collection(PtyRealShellCollection.Name)]
 public sealed class LegacyMouseByteInputPtyTests
 {
-    [AvaloniaFact]
+    [AvaloniaTheory]
+    [InlineData(9, 32)]
+    [InlineData(1000, 48)]
+    [InlineData(1002, 48)]
     [Trait("Category", "PtySmoke")]
-    public async Task High_coordinate_mouse_bytes_reach_a_real_raw_child_without_UTF8_expansion()
+    public async Task High_coordinate_mouse_bytes_reach_a_real_raw_child_without_UTF8_expansion(int mode, int buttonCode)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -39,13 +42,13 @@ public sealed class LegacyMouseByteInputPtyTests
         };
         await ready.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         var buffer = new TerminalBuffer(300, 250);
-        buffer.Modes.MouseModeX10 = true; // Existing ?1000 normal tracking, legacy coordinate encoding.
+        new AnsiParser(buffer).Process($"\u001b[?{mode}h");
         var view = new TerminalView(); view.SetBuffer(buffer); view.SetSession(session); view.SetMetricsForTest(8, 16);
-        view.HandleMousePressAt(new Point(95.5 * 8, 222.5 * 16), TerminalMouseButton.Left, KeyModifiers.None);
+        view.HandleMousePressAt(new Point(95.5 * 8, 222.5 * 16), TerminalMouseButton.Left, KeyModifiers.Control);
         await done.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         string received;
         lock (output) received = output.ToString();
         string[] tokens = received.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal(new[] { "NT_BYTE_READY", "1b", "5b", "4d", "20", "80", "ff", "NT_BYTE_DONE" }, tokens);
+        Assert.Equal(new[] { "NT_BYTE_READY", "1b", "5b", "4d", buttonCode.ToString("x2", System.Globalization.CultureInfo.InvariantCulture), "80", "ff", "NT_BYTE_DONE" }, tokens);
     }
 }

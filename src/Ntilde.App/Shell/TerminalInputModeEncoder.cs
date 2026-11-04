@@ -494,12 +494,13 @@ namespace Ntilde.Shell
 
         public static string? EncodeMouseEvent(ModeState modes, TerminalMouseEvent mouseEvent)
         {
-            if (!ShouldReportMouseEvent(modes, mouseEvent))
+            bool pressOnly = modes.MouseModeX10PressOnly;
+            if (!ShouldReportMouseEvent(modes, mouseEvent, pressOnly))
             {
                 return null;
             }
 
-            int buttonCode = GetButtonCode(mouseEvent);
+            int buttonCode = pressOnly ? GetButtonBaseCode(mouseEvent.Button) : GetButtonCode(mouseEvent);
             if (buttonCode < 0)
             {
                 return null;
@@ -532,8 +533,10 @@ namespace Ntilde.Shell
             return $"\x1b[M{buttonChar}{xChar}{yChar}";
         }
 
-        private static bool ShouldReportMouseEvent(ModeState modes, TerminalMouseEvent mouseEvent)
+        private static bool ShouldReportMouseEvent(ModeState modes, TerminalMouseEvent mouseEvent, bool pressOnly)
         {
+            if (pressOnly)
+                return mouseEvent.Kind == TerminalMouseEventKind.Press && IsButtonPress(mouseEvent.Button);
             if (!(modes.MouseModeX10 || modes.MouseModeButtonEvent || modes.MouseModeAnyEvent))
             {
                 return false;

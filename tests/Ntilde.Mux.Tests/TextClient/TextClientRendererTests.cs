@@ -244,6 +244,26 @@ public sealed class TextClientRendererTests
     }
 
     [Fact]
+    public void Tracking_restatements_reset_before_enabling_and_survive_real_outer_parser_transitions()
+    {
+        var inner = new Session(80, 24); var outer = new Session(80, 24);
+        var renderer = new TextClientRenderer(inner.Buffer);
+        foreach (int mode in new[] { 1000, 9, 1002, 9, 1003, 1000 })
+        {
+            inner.Feed($"\u001b[?{mode}h");
+            outer.Feed(renderer.Render(80, 24));
+            Assert.Equal(mode == 9, outer.Buffer.Modes.MouseModeX10PressOnly);
+            Assert.Equal(mode == 1000, outer.Buffer.Modes.MouseModeX10);
+            Assert.Equal(mode == 1002, outer.Buffer.Modes.MouseModeButtonEvent);
+            Assert.Equal(mode == 1003, outer.Buffer.Modes.MouseModeAnyEvent);
+        }
+        inner.Feed("\u001b[?9h"); outer.Feed(renderer.Render(80, 24));
+        outer.Feed(renderer.Render(60, 20)); Assert.False(outer.Buffer.IsMouseReportingActive());
+        renderer.Invalidate(); outer.Feed(renderer.Render(80, 24)); Assert.True(outer.Buffer.Modes.MouseModeX10PressOnly);
+        outer.Feed(TextClientRenderer.LeaveSequence); Assert.False(outer.Buffer.IsMouseReportingActive());
+    }
+
+    [Fact]
     public void The_detach_hint_survives_read_only_and_oversized_at_80_columns()
     {
         var s = new Session(120, 40);
