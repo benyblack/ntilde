@@ -224,6 +224,12 @@ internal static class ParityCorpus
             "\u001b[?1049h\u001b[>7u\u001b[=2;3u\u001b[?u" +
             "\u001b[?1049l\u001b[?u\u001b[>1u\u001b[<u"));
 
+        // xterm modifyOtherKeys (#829): per-screen levels, both empty-Pv reset spellings, an
+        // ignored level 3, the query, and a cut that lands with the alternate screen live.
+        yield return ("modify-other-keys", Utf8(
+            "\u001b[>4;1m\u001b[?4m" + "\u001b[?1049h\u001b[>4;2m\u001b[>4;3m\u001b[?4m" +
+            "\u001b[?1049l\u001b[>4;m\u001b[>4;1m" + "\u001b[?1049hvim\u001b[>4;2m"));
+
         yield return ("synchronized-output", Utf8(
             "\u001b[?2026h" + "batched text one\r\nbatched text two" + "\u001b[?2026l" +
             "\u001b[?2026h" + "left open"));

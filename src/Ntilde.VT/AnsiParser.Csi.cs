@@ -5,7 +5,8 @@ namespace Ntilde.VT
 {
     /// <summary>
     /// Control sequences (CSI): decoding the parameters and executing each final byte, with the cursor, report
-    /// and mode helpers they use, DECRQM, DEC private modes and the kitty keyboard protocol.
+    /// and mode helpers they use, DECRQM, DEC private modes, the kitty keyboard protocol and xterm's
+    /// modifyOtherKeys (XTMODKEYS / XTQMODKEYS).
     /// </summary>
     public partial class AnsiParser
     {
@@ -460,11 +461,17 @@ namespace Ntilde.VT
                     }
                     break;
                 case 'm': // SGR (Select Graphic Rendition)
-                          // Ignore non-standard leader-prefixed "...m" control sequences, e.g.
-                          // CSI > Pp ; Pv m (xterm key-modifier options). They are NOT SGR.
+                          // Leader-prefixed "...m" sequences are NOT SGR: CSI > Pp ; Pv m is
+                          // xterm's XTMODKEYS (set key-modifier options) and CSI ? Pp m its
+                          // XTQMODKEYS query. Only resource 4 (modifyOtherKeys) is implemented;
+                          // every other leader/resource is ignored, never applied as SGR.
                     if (leader == '\0' && intermediates.Length == 0)
                     {
                         HandleSgr(validArgs, validSeparators);
+                    }
+                    else if (intermediates.Length == 0 && (leader == '>' || leader == '?'))
+                    {
+                        HandleXtermModifyKeys(leader, validArgs, validSeparators);
                     }
                     break;
                 case 'h': // Set Mode
@@ -520,10 +527,15 @@ namespace Ntilde.VT
                           //
                           // The other private reports (?15 printer, ?25 UDK, ?26 keyboard,
                           // ?53 locator) are unimplemented and stay silent, and CSI > Ps n
-                          // (xterm's disable-key-modifiers) is not a status request at all.
+                          // (xterm's disable-key-modifiers) is not a status request at all:
+                          // CSI > 4 n turns modifyOtherKeys off, every other Ps is ignored.
                     if (intermediates.Length == 0 && (leader == '\0' || leader == '?'))
                     {
                         ReportDeviceStatus(arg0, isPrivate, argCount);
+                    }
+                    else if (intermediates.Length == 0 && leader == '>' && argCount == 1 && arg0 == XtermModifyOtherKeysResource)
+                    {
+                        _buffer.Modes.ModifyOtherKeys.SetLevel(0);
                     }
                     break;
                 case 'q':
@@ -1043,6 +1055,56 @@ namespace Ntilde.VT
                         break;
                 }
             }
+        }
+
+        /// <summary>xterm key-modifier resource number of modifyOtherKeys.</summary>
+        private const int XtermModifyOtherKeysResource = 4;
+
+        /// <summary>
+        /// xterm XTMODKEYS / XTQMODKEYS, resource 4 (modifyOtherKeys) only:
+        ///   CSI &gt; 4 ; Pv m   set the active screen's level to Pv (0, 1 or 2)
+        ///   CSI &gt; 4 m        reset to the initial value 0; an empty Pv (CSI &gt; 4 ; m, which
+        ///                    Vim's t_TE sends) is the same reset, as in xterm
+        ///   CSI &gt; m          reset every resource, so the active screen's level returns to 0
+        ///   CSI ? 4 m        query, answered CSI &gt; 4 ; Pv m
+        /// Following xterm, only the first two parameters of a set are read. Other resources
+        /// (modifyKeyboard, modifyCursorKeys, modifyFunctionKeys, ...) are not tracked: setting
+        /// them is ignored and querying them stays silent rather than guessing a value, as the
+        /// unimplemented DSR reports do. Level 3 and other unsupported values leave the level
+        /// unchanged (see <see cref="ModifyOtherKeysState"/>). Colon sub-parameters (xterm's
+        /// ignore-modifier mask extension) are not implemented, so such a sequence is ignored
+        /// whole.
+        /// </summary>
+        private void HandleXtermModifyKeys(char leader, ReadOnlySpan<int> args, ReadOnlySpan<char> separators)
+        {
+            foreach (char separator in separators)
+            {
+                if (separator == ':') return;
+            }
+
+            ModifyOtherKeysState state = _buffer.Modes.ModifyOtherKeys;
+            if (leader == '?')
+            {
+                foreach (int resource in args)
+                {
+                    if (resource == XtermModifyOtherKeysResource) OnResponse?.Invoke(state.FormatQueryResponse());
+                }
+                return;
+            }
+
+            // CSI > m resets every resource; for the one tracked here that is the active
+            // screen's level, the same scope as every other set.
+            if (args.Length == 0)
+            {
+                state.SetLevel(0);
+                return;
+            }
+
+            if (args[0] != XtermModifyOtherKeysResource) return;
+
+            // An omitted or empty Pv parses as 0, which is also modifyOtherKeys' initial value,
+            // so "reset to initial" and "set 0" are the same operation here.
+            state.SetLevel(args.Length > 1 ? args[1] : 0);
         }
 
         /// <summary>

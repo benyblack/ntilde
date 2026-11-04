@@ -42,8 +42,15 @@ namespace Ntilde.VT
         public KittyKeyboardState KittyKeyboard { get; set; } = new KittyKeyboardState();
 
         /// <summary>
+        /// xterm modifyOtherKeys level (CSI &gt; 4 ; Pv m), one per screen buffer. The App input
+        /// layer reads <see cref="ModifyOtherKeysState.Level"/> when no kitty flags are active.
+        /// </summary>
+        public ModifyOtherKeysState ModifyOtherKeys { get; set; } = new ModifyOtherKeysState();
+
+        /// <summary>
         /// Clears the input-reporting modes a full-screen application turns on for itself
-        /// (mouse tracking, focus reporting, and the kitty keyboard protocol). Called when the
+        /// (mouse tracking, focus reporting, the kitty keyboard protocol and xterm's
+        /// modifyOtherKeys). Called when the
         /// shell signals a fresh prompt so a TUI that exited uncleanly — Ctrl+C, crash, or
         /// output dropped during PTY teardown — can't leave mouse reporting on and flood the
         /// prompt with ESC[&lt;..M reports on every pointer move. Shell-owned modes (bracketed
@@ -67,6 +74,9 @@ namespace Ntilde.VT
             IsFocusEventReporting = false;
             IsClipboardPasteMode = false;
             KittyKeyboard.Reset();
+            // Same reasoning as the kitty stacks: level 2 would turn the prompt's Ctrl+C into
+            // CSI 27;5;99~ after an editor that enabled it exited without resetting it.
+            ModifyOtherKeys.Reset();
         }
 
         // Tracking is one protocol, independently of coordinate encoding (?1006).
@@ -103,7 +113,8 @@ namespace Ntilde.VT
                 IsInsertMode = this.IsInsertMode,
                 IsLineFeedNewLineMode = this.IsLineFeedNewLineMode,
                 IsEchoEnabled = this.IsEchoEnabled,
-                KittyKeyboard = this.KittyKeyboard.Clone()
+                KittyKeyboard = this.KittyKeyboard.Clone(),
+                ModifyOtherKeys = this.ModifyOtherKeys.Clone()
             };
         }
     }

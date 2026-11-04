@@ -45,6 +45,7 @@ public sealed class VtCapabilityContractTests
             ["mime-clipboard-paste"] = AssertMimeClipboardPaste,
             ["sgr-overline-on"] = AssertOverline,
             ["sgr-overline-off"] = AssertOverline,
+            ["modify-other-keys-query"] = AssertModifyOtherKeysQuery,
         };
 
     private static readonly Dictionary<string, string> ContractSequences =
@@ -63,6 +64,7 @@ public sealed class VtCapabilityContractTests
             ["mime-clipboard-paste"] = "\x1b[?5522h\x1b[?5522$p",
             ["sgr-overline-on"] = "\x1b[53mA",
             ["sgr-overline-off"] = "\x1b[53mA\x1b[55mB",
+            ["modify-other-keys-query"] = "\x1b[>4;2m\x1b[?4mA",
         };
 
     private static void AssertDecrqssMargins()
@@ -85,6 +87,18 @@ public sealed class VtCapabilityContractTests
         var responses = new List<string>();
         new AnsiParser(new TerminalBuffer(86, 30)) { OnResponse = responses.Add }.Process("\x1b[18t");
         Assert.Equal("\x1b[8;30;86t", Assert.Single(responses));
+    }
+
+    private static void AssertModifyOtherKeysQuery()
+    {
+        var responses = new List<string>();
+        var buffer = new TerminalBuffer(40, 6);
+        var parser = new AnsiParser(buffer) { OnResponse = responses.Add };
+        parser.Process("\x1b[?4m");
+        parser.Process("\x1b[>4;2m\x1b[?4m");
+        parser.Process("\x1b[?1049h\x1b[?4m\x1b[?1;2m");
+        Assert.Equal(new[] { "\x1b[>4;0m", "\x1b[>4;2m", "\x1b[>4;0m" }, responses);
+        Assert.False(buffer.IsUnderline);
     }
 
     private static void AssertOverline()

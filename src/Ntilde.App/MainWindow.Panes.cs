@@ -280,29 +280,46 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// Encodes a key for broadcast to sibling panes in the tab.
+        /// Encodes a key for broadcast to one sibling pane, against that receiving pane's own
+        /// modes (<paramref name="buffer"/>): its DECCKM state and its modifyOtherKeys level.
         /// </summary>
         /// <remarks>
-        /// Non-blocking review note (#277): this builds its own legacy-only encoding
-        /// independent of <see cref="TerminalInputModeEncoder.EncodeKittyKey"/> and
-        /// <see cref="TerminalView.HandleKeyDownCore"/>. Broadcast targets therefore always
-        /// receive legacy sequences (e.g. bare "\r" for Enter, never "\x1b[13;2u" for
-        /// Shift+Enter) regardless of whether a broadcast target's own <c>ModeState.KittyKeyboard</c>
-        /// has the disambiguate tier pushed. This is deliberate scoping, not an oversight: the
-        /// broadcast path only ever needs to reach TUIs that also work with plain legacy input,
-        /// and duplicating the kitty-aware ordering here would put the same AltGr/kill-switch
-        /// hazards behind a second, harder-to-audit code path. See the scope note in
-        /// docs/vt_coverage_matrix.md for the matching matrix entry.
+        /// Non-blocking review note (#277): this builds its own encoding independent of
+        /// <see cref="TerminalInputModeEncoder.EncodeKittyKey"/> and
+        /// <see cref="TerminalView.HandleKeyDownCore"/>. Broadcast targets never receive kitty
+        /// sequences (e.g. bare "\r" for Enter, never "\x1b[13;2u" for Shift+Enter) regardless of
+        /// whether a broadcast target's own <c>ModeState.KittyKeyboard</c> has the disambiguate
+        /// tier pushed. This is deliberate scoping, not an oversight: the broadcast path only ever
+        /// needs to reach TUIs that also work with plain legacy input, and duplicating the
+        /// kitty-aware ordering here would put the same AltGr/kill-switch hazards behind a second,
+        /// harder-to-audit code path. See the scope note in docs/vt_coverage_matrix.md for the
+        /// matching matrix entry.
+        ///
+        /// modifyOtherKeys (#829) is applied per receiving pane, because a pane at level 2 (Vim)
+        /// reads Ctrl+letters only in the <c>CSI 27 ; m ; code ~</c> form while its legacy
+        /// siblings need the C0 byte. A pane with kitty flags active keeps the legacy bytes
+        /// above: kitty wins over modifyOtherKeys there, and broadcast does not speak kitty.
+        /// Only chords that never produce TextInput take the modifyOtherKeys form here (Ctrl
+        /// chords and modified Enter/Tab/Backspace/Escape): text-producing keys reach every pane
+        /// through the separate text broadcast, so encoding them here as well would deliver
+        /// them twice. Alt chords stay unbroadcast, as before.
         /// </remarks>
-        private static bool TryMapBroadcastKey(KeyEventArgs e, TerminalBuffer? buffer, out string? sequence)
+        internal static bool TryMapBroadcastKey(Key key, KeyModifiers modifiers, PhysicalKey physical, TerminalBuffer? buffer, out string? sequence)
         {
             sequence = null;
-            bool isAlt = (e.KeyModifiers & KeyModifiers.Alt) != 0;
-            bool isShift = (e.KeyModifiers & KeyModifiers.Shift) != 0;
+            bool isAlt = (modifiers & KeyModifiers.Alt) != 0;
+            bool isShift = (modifiers & KeyModifiers.Shift) != 0;
 
             if (isAlt) return false;
 
-            switch (e.Key)
+            if (buffer?.Modes is { } modes && modes.KittyKeyboard.Flags == 0
+                && ((modifiers & KeyModifiers.Control) != 0 || key is Key.Enter or Key.Tab or Key.Back or Key.Escape))
+            {
+                sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, modes.ModifyOtherKeys.Level, physical);
+                if (sequence != null) return true;
+            }
+
+            switch (key)
             {
                 case Key.Enter: sequence = "\r"; return true;
                 case Key.Back: sequence = "\x7f"; return true;
@@ -314,7 +331,7 @@ namespace Ntilde
             // Ctrl+Left has to word-jump in every broadcast pane, not word-jump in the focused one
             // and move one character in its siblings, which would leave their command lines
             // diverged from that point on.
-            sequence = TerminalInputModeEncoder.EncodeSpecialKey(e.Key, e.KeyModifiers, buffer?.Modes);
+            sequence = TerminalInputModeEncoder.EncodeSpecialKey(key, modifiers, buffer?.Modes);
             if (sequence != null)
             {
                 return true;
@@ -322,7 +339,7 @@ namespace Ntilde
 
             // Same legacy C0 table the focused pane's TerminalView sends (Ctrl+letters plus
             // Ctrl+\, Ctrl+], Ctrl+_ and the digit row), so a broadcast Ctrl+\ reaches every pane.
-            sequence = TerminalInputModeEncoder.EncodeLegacyControlKey(e.Key, e.KeyModifiers);
+            sequence = TerminalInputModeEncoder.EncodeLegacyControlKey(key, modifiers);
             return sequence != null;
         }
 
@@ -332,11 +349,14 @@ namespace Ntilde
             if (!TryGetSelectedTab(out var tabItem)) return;
             if (!_broadcastEnabledTabs.Contains(tabItem)) return;
             if (_currentPane == null) return;
-            if (!TryMapBroadcastKey(e, _currentPane.Buffer, out var sequence) || string.IsNullOrEmpty(sequence)) return;
+            if ((e.KeyModifiers & KeyModifiers.Alt) != 0) return;
 
             foreach (var pane in EnumeratePanes(tabItem.Content as Control))
             {
                 if (pane == _currentPane) continue;
+                // Each receiver gets the bytes its own modes ask for (#829).
+                if (!TryMapBroadcastKey(e.Key, e.KeyModifiers, e.PhysicalKey, pane.Buffer, out var sequence)
+                    || string.IsNullOrEmpty(sequence)) continue;
                 // Broadcast bytes never went through the receiving pane's key handling, so its
                 // markless submission accumulator cannot model them.
                 pane.NotifyExternalInputSent();

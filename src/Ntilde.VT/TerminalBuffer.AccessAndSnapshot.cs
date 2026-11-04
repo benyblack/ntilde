@@ -826,6 +826,8 @@ namespace Ntilde.VT
                 // progressive-enhancement flag stacks, so entering the alt screen swaps
                 // which stack the key encoder consults.
                 Modes.KittyKeyboard.SetActiveScreen(true);
+                // modifyOtherKeys is per screen buffer for the same reason.
+                Modes.ModifyOtherKeys.SetActiveScreen(true);
 
                 if (clearAlt)
                 {
@@ -873,6 +875,7 @@ namespace Ntilde.VT
 
                 // Kitty keyboard protocol: swap back to the main screen's flag stack.
                 Modes.KittyKeyboard.SetActiveScreen(false);
+                Modes.ModifyOtherKeys.SetActiveScreen(false);
 
                 if (_mainScreen.Length != Rows || (_mainScreen.Length > 0 && _mainScreen[0].Cells.Length != Cols))
                 {
@@ -1094,6 +1097,7 @@ namespace Ntilde.VT
                 _cursorCol = Math.Clamp(snapshot.CursorCol, 0, Math.Max(0, Cols - 1));
                 _cursorRow = Math.Clamp(snapshot.CursorRow, 0, Math.Max(0, Rows - 1));
                 _isAltScreen = snapshot.IsAltScreen;
+                Modes.ModifyOtherKeys.SetActiveScreen(_isAltScreen);
                 ScrollTop = Math.Clamp(snapshot.ScrollTop, 0, Math.Max(0, Rows - 1));
                 ScrollBottom = Math.Clamp(snapshot.ScrollBottom, 0, Math.Max(0, Rows - 1));
                 if (ScrollTop > ScrollBottom)
