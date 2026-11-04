@@ -36,9 +36,10 @@ cleared as before, so cached replacement cannot retain old letterbox pixels.
 
 SIXEL, iTerm2 and generic images keep their existing drawing policy. In
 particular iTerm `preserveAspectRatio=0` remains a distinct stretch contract;
-this change does not implement its default-preserve behavior or repair SIXEL
-native-pixel sizing. Other Kitty source crops, offsets, default native-pixel
-sizing and extended layout remain separately unqualified.
+the subsequent [iTerm aspect correction](iterm-aspect-fit.md) covers its default
+preserve behavior independently. SIXEL native-pixel sizing remains unqualified.
+Other Kitty source crops, offsets, default native-pixel sizing and extended layout
+remain separately unqualified.
 
 ## Executable evidence
 
