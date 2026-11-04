@@ -92,11 +92,86 @@ public partial class TerminalBuffer
         Volatile.Write(ref _runtimeColors, next);
         if (!changed) return;
         _runtimeTheme = null;
+        MarkRenderThemeChangedNoLock();
+        Invalidate();
+    }
+
+    /// <summary>
+    /// Every rendered row's colors changed without its cells changing: a new theme epoch for the
+    /// paged-history caches and a touched revision on every live row, so the span diff and the
+    /// row-picture cache repaint the whole frame once. Caller holds the write lock.
+    /// </summary>
+    private void MarkRenderThemeChangedNoLock()
+    {
         _renderThemeEpoch++;
         foreach (var row in _viewport) row.TouchRevision();
         foreach (var row in _mainScreen) row.TouchRevision();
         foreach (var row in _altScreen) row.TouchRevision();
+    }
+
+    /// <summary>
+    /// DECSCNM (<c>CSI ? 5 h/l</c>). A change repaints the whole frame through the same
+    /// invalidation a theme change uses; setting the current value is a no-op.
+    /// </summary>
+    public void SetReverseVideo(bool enabled)
+    {
+        bool lockTaken = EnterWriteLockIfNeeded();
+        try
+        {
+            if (Modes.IsReverseVideo == enabled) return;
+            Modes.IsReverseVideo = enabled;
+            MarkRenderThemeChangedNoLock();
+        }
+        finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();
+    }
+
+    /// <summary>
+    /// The default foreground as the screen presents it: the theme's background while DECSCNM is
+    /// set. For host overlays drawn in "the text color" over the terminal (link hover, bell flash).
+    /// </summary>
+    public TermColor PresentedDefaultForeground => Modes.IsReverseVideo ? Theme.Background : Theme.Foreground;
+
+    /// <summary>One reversed presentation of one effective theme, published as a unit.</summary>
+    private sealed record ReverseVideoThemeCache(TerminalTheme Source, TerminalTheme SourceColors, TerminalTheme Presented);
+
+    private ReverseVideoThemeCache? _reverseVideoTheme;
+
+    /// <summary>
+    /// The theme a render snapshot presents: <see cref="EffectiveRenderTheme"/>, reversed while
+    /// DECSCNM is set. Cached per effective theme and re-derived only when its colors change, so a
+    /// reversed screen costs no per-frame allocation. Runs under the read lock, beside other
+    /// captures; the cache is replaced as one reference.
+    /// </summary>
+    private TerminalTheme PresentedRenderTheme()
+    {
+        var theme = EffectiveRenderTheme();
+        if (!Modes.IsReverseVideo) return theme;
+        var cached = Volatile.Read(ref _reverseVideoTheme);
+        if (cached is not null && ReferenceEquals(cached.Source, theme) && cached.SourceColors.HasSameColors(theme))
+            return cached.Presented;
+        var presented = ReverseVideo(theme);
+        Volatile.Write(ref _reverseVideoTheme, new ReverseVideoThemeCache(theme, theme.Clone(), presented));
+        return presented;
+    }
+
+    /// <summary>
+    /// xterm's reverse video: the default foreground and background trade places, and a cursor
+    /// color that was one of them follows the swap so the cursor keeps its contrast. The ANSI and
+    /// 256-color palette, explicit selection/search colors and accents are unchanged; derived
+    /// selection, search and cursor-text colors are derived again from the swapped pair. Cells in
+    /// SGR 7 swap their resolved colors as usual, so default-colored inverse cells appear normal.
+    /// </summary>
+    private static TerminalTheme ReverseVideo(TerminalTheme theme)
+    {
+        TermColor fg = theme.Foreground, bg = theme.Background;
+        TermColor Follow(TermColor color) => color == fg ? bg : color == bg ? fg : color;
+        var reversed = theme.Clone();
+        reversed.Foreground = bg;
+        reversed.Background = fg;
+        reversed.CursorColor = Follow(theme.CursorColor);
+        if (theme.CursorText is { } cursorText) reversed.CursorText = Follow(cursorText);
+        return reversed;
     }
 
     private TerminalTheme EffectiveRenderTheme()

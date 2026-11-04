@@ -197,7 +197,7 @@ namespace Ntilde.Shell
             if (_hoveredLink != null)
             {
                 int displayStart = Math.Max(0, totalLines - buffer.Rows - ScrollOffset);
-                var brush = new SolidColorBrush(buffer.Theme.Foreground.ToAvaloniaColor(), _windowOpacity);
+                var brush = new SolidColorBrush(buffer.PresentedDefaultForeground.ToAvaloniaColor(), _windowOpacity);
                 foreach (Rect underline in HoveredLinkUnderlines(displayStart, buffer.Rows))
                 {
                     context.FillRectangle(brush, underline);
@@ -207,7 +207,8 @@ namespace Ntilde.Shell
             if (_isBellFlashActive)
             {
                 // The pane theme's foreground at a low alpha: a white flash was invisible on light themes.
-                var flash = buffer.Theme.Foreground.ToAvaloniaColor();
+                // As presented, so it still shows while the program has DECSCNM reverse video set.
+                var flash = buffer.PresentedDefaultForeground.ToAvaloniaColor();
                 context.FillRectangle(
                     new SolidColorBrush(Color.FromArgb(0x26, flash.R, flash.G, flash.B)),
                     new Rect(0, 0, Bounds.Width, Bounds.Height));

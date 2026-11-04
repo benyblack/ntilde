@@ -60,6 +60,19 @@ public class DrawPathAllocationTests
     }
 
     [AvaloniaFact]
+    public void UnchangedReverseVideoFrames_AreServedFromTheRowCache_WithinBudget()
+    {
+        // DECSCNM (#831) presents a cached swapped theme: a reversed screen must cost what a normal one does.
+        double bytes = Measure("unchanged-reverse-video", withRowCache: true, h =>
+        {
+            h.Parser.Process("\x1b[?5h");
+            return () => { };
+        });
+
+        AssertWithin(bytes, 48 * 1024, "an unchanged reversed screen");
+    }
+
+    [AvaloniaFact]
     public void TypingFrames_RedrawOneRow_WithinBudget()
     {
         double bytes = Measure("typing", withRowCache: true, h => () => h.Parser.Process("x"));
