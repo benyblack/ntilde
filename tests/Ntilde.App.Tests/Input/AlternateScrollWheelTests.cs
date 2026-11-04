@@ -127,6 +127,51 @@ namespace Ntilde.Tests.Input
             Assert.Equal("\u001b[B", h.SentText);
         }
 
+        /// <summary>
+        /// Codex review on #836: a remainder measured under mouse reporting (sub-notch deltas count
+        /// WheelLinesPerNotch = 3 units per notch) must not complete an arrow key when reporting
+        /// turns off mid-gesture. 0.25 leaves 0.75 pending there; 0.25 more of alternate scroll is
+        /// a quarter notch and sends nothing.
+        /// </summary>
+        [AvaloniaFact]
+        public void Reporting_to_alternate_scroll_drops_the_reporting_remainder()
+        {
+            var h = Create("\u001b[?1049h\u001b[?1000h\u001b[?1006h");
+            h.Wheel(0.25);
+            Assert.Empty(h.Sent);
+
+            h.Parser.Process("\u001b[?1000l");
+            h.Wheel(0.25);
+            Assert.Empty(h.Sent);
+
+            for (int i = 0; i < 3; i++) h.Wheel(0.25);
+            Assert.Equal(new[] { "\u001b[A" }, h.Sent);
+        }
+
+        [AvaloniaFact]
+        public void Alternate_scroll_to_reporting_drops_the_alternate_scroll_remainder()
+        {
+            var h = Create("\u001b[?1049h");
+            h.Wheel(0.75);
+            Assert.Empty(h.Sent);
+
+            // At 3 units per notch, 0.25 is 0.75 of a report step: nothing yet, not a report
+            // completed by the alternate-scroll 0.75.
+            h.Parser.Process("\u001b[?1000h\u001b[?1006h");
+            h.Wheel(0.25);
+            Assert.Empty(h.Sent);
+            h.Wheel(0.25);
+            Assert.Equal(new[] { "\u001b[<64;1;1M" }, h.Sent);
+
+            // And back again: the report route's 0.5 leftover does not count toward an arrow.
+            h.Sent.Clear();
+            h.Parser.Process("\u001b[?1000l");
+            h.Wheel(0.75);
+            Assert.Empty(h.Sent);
+            h.Wheel(0.25);
+            Assert.Equal(new[] { "\u001b[A" }, h.Sent);
+        }
+
         [AvaloniaFact]
         public void Application_reset_disables_translation_and_the_wheel_stays_inert()
         {

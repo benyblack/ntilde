@@ -13,9 +13,30 @@ namespace Ntilde.Shell
         private int _targetScrollOffset;
         // Carry fractional high-resolution wheel deltas so precision touchpads / hi-res
         // wheels (which emit sub-notch micro-events) produce one step per notch instead
-        // of one per micro-event. Separate accumulators for the two wheel code paths.
+        // of one per micro-event. One accumulator per wheel route, because each measures
+        // notches at its own sensitivity; see EnterWheelRoute.
         private readonly WheelStepAccumulator _wheelScrollAccumulator = new();
         private readonly WheelStepAccumulator _wheelReportAccumulator = new();
+        private readonly WheelStepAccumulator _wheelAlternateScrollAccumulator = new();
+        private WheelRoute _wheelRoute;
+
+        private enum WheelRoute { None, MouseReport, AlternateScroll, Scrollback }
+
+        /// <summary>
+        /// Drops every pending fraction when the wheel starts going somewhere else (mouse reporting
+        /// toggled, alternate screen entered or left, ?1007 changed mid-gesture). A remainder is
+        /// measured at its route's sensitivity, so carrying it across would let a quarter notch
+        /// on the new route complete a step it never received; one left over from an earlier
+        /// stint on the same route is just as stale.
+        /// </summary>
+        private void EnterWheelRoute(WheelRoute route)
+        {
+            if (route == _wheelRoute) return;
+            _wheelRoute = route;
+            _wheelScrollAccumulator.Reset();
+            _wheelReportAccumulator.Reset();
+            _wheelAlternateScrollAccumulator.Reset();
+        }
         private double _wheelLinesPerNotch = 3.0;
 
         private void OnScrollAnimationTick(object? sender, EventArgs e)
@@ -238,6 +259,7 @@ namespace Ntilde.Shell
             // (which otherwise floods a TUI with scroll commands -> runaway scrolling).
             if (_buffer.IsMouseReportingActive())
             {
+                EnterWheelRoute(WheelRoute.MouseReport);
                 // Classic stepped wheel (full notch) forwards 1 event per notch so
                 // list/menu TUIs advance one item; only sub-notch precision devices get
                 // the smoothing multiplier.
@@ -271,7 +293,8 @@ namespace Ntilde.Shell
             // instead. Reporting above wins; the main screen keeps scrolling the scrollback.
             if (_buffer.IsAltScreenActive && _buffer.Modes.IsAlternateScroll)
             {
-                SendAlternateScroll(_wheelReportAccumulator.Accumulate(e.Delta.Y, AlternateScrollKeysPerNotch));
+                EnterWheelRoute(WheelRoute.AlternateScroll);
+                SendAlternateScroll(_wheelAlternateScrollAccumulator.Accumulate(e.Delta.Y, AlternateScrollKeysPerNotch));
                 e.Handled = true;
                 return;
             }
@@ -280,6 +303,7 @@ namespace Ntilde.Shell
             // sub-notch micro-events are summed line-by-line instead of being truncated
             // to zero each event.
             // Scroll up (positive) -> Increase Offset; scroll down (negative) -> Decrease.
+            EnterWheelRoute(WheelRoute.Scrollback);
             int delta = _wheelScrollAccumulator.Accumulate(e.Delta.Y, _wheelLinesPerNotch);
             if (delta != 0)
             {
