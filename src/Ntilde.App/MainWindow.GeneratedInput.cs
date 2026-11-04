@@ -49,11 +49,12 @@ public partial class MainWindow
         cancellationToken.ThrowIfCancellationRequested();
         if (!Matches()) return null;
         _agentGeneratedInputInProgress = true;
-        try { if (!view.RaiseGeneratedInput(args, () => !cancellationToken.IsCancellationRequested && Matches())) return null; }
+        bool inputSubmitted;
+        try { if (!view.RaiseGeneratedInput(args, () => !cancellationToken.IsCancellationRequested && Matches(), out inputSubmitted)) return null; }
         finally { _agentGeneratedInputInProgress = false; }
         if (!Matches() || !TryObserveGeneratedInput(view, registration, input, args.Handled, position, out var result) || result == null) return null;
         var actualModifiers = args switch { KeyEventArgs key => key.KeyModifiers, PointerEventArgs pointerEvent => pointerEvent.KeyModifiers, _ => KeyModifiers.None };
-        return result with { Modifiers = GeneratedModifierBits(actualModifiers) };
+        return result with { Modifiers = GeneratedModifierBits(actualModifiers), InputSubmitted = inputSubmitted };
     }
 
     private static int GeneratedModifierBits(KeyModifiers value)

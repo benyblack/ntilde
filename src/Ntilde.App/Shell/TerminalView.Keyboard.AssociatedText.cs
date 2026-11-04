@@ -9,6 +9,12 @@ public partial class TerminalView
 {
     private enum AssociatedKeyDispatch { NotApplicable, Queued, RefusedGenerated }
 
+    private bool IsAssociatedKeyClaimed(AssociatedKeyDispatch outcome)
+    {
+        if (outcome == AssociatedKeyDispatch.RefusedGenerated) _generatedInputRefused = true;
+        return outcome != AssociatedKeyDispatch.NotApplicable;
+    }
+
     private readonly record struct AssociatedInputContext(ITerminalSession Session, TerminalBuffer Buffer,
         KittyKeyboardState KeyboardState, int KeyboardGeneration, int Epoch);
     private sealed record PendingAssociatedKey(Key Key, KeyModifiers Modifiers, PhysicalKey Physical,

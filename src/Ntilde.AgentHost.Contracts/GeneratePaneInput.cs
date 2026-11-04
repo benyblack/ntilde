@@ -38,6 +38,9 @@ public sealed record GeneratePaneInputResult
 {
     [JsonPropertyName("eventDispatched")]
     public required bool EventDispatched { get; init; }
+    /// <summary>A normal session-input call returned, or byte input was accepted; not child delivery.</summary>
+    [JsonPropertyName("inputSubmitted")]
+    public bool InputSubmitted { get; init; }
     [JsonPropertyName("handled")]
     public required bool Handled { get; init; }
     [JsonPropertyName("boundary")]

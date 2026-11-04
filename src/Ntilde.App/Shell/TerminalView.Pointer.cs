@@ -20,7 +20,9 @@ namespace Ntilde.Shell
             bool leftPressed = point.Properties.IsLeftButtonPressed;
 
             // Check if application has enabled mouse reporting
-            if (_buffer != null && _buffer.IsMouseReportingActive())
+            bool reporting = _buffer != null && _buffer.IsMouseReportingActive();
+            if (!reporting && _generatedInputInProgress) { e.Handled = true; return; }
+            if (reporting)
             {
                 TerminalMouseButton button = GetPressedMouseButton(point.Properties);
                 if (button != TerminalMouseButton.None)
@@ -74,7 +76,9 @@ namespace Ntilde.Shell
             base.OnPointerMoved(e);
 
             // Forward motion events if mouse reporting is active
-            if (_buffer != null && _buffer.IsMouseReportingActive())
+            bool reporting = _buffer != null && _buffer.IsMouseReportingActive();
+            if (!reporting && _generatedInputInProgress) { e.Handled = true; return; }
+            if (reporting)
             {
                 // The motion is the program's now, so the hover never updates: a link hovered before would keep its
                 // underline and its tip (CodeRabbit on #634).
@@ -127,7 +131,9 @@ namespace Ntilde.Shell
             base.OnPointerReleased(e);
 
             // Forward release events if mouse reporting is active
-            if (_buffer != null && _buffer.IsMouseReportingActive())
+            bool reporting = _buffer != null && _buffer.IsMouseReportingActive();
+            if (!reporting && _generatedInputInProgress) { e.Handled = true; return; }
+            if (reporting)
             {
                 var point = e.GetCurrentPoint(this);
                 var (reportColumn, reportRow) = ToMouseReportCell(point.Position);
@@ -306,12 +312,17 @@ namespace Ntilde.Shell
             if (sequence.StartsWith("\u001b[M", StringComparison.Ordinal))
             {
                 if (_session is ITerminalByteInput { SupportsByteInput: true } bytes)
-                    return bytes.TrySendInputBytes(System.Text.Encoding.Latin1.GetBytes(sequence));
+                {
+                    bool submitted = bytes.TrySendInputBytes(System.Text.Encoding.Latin1.GetBytes(sequence));
+                    if (submitted) NoteGeneratedInputSubmitted();
+                    return submitted;
+                }
                 // Text-only/older peers carry ASCII exactly. Do not UTF-8-expand legacy
                 // coordinate bytes above 127 into a different mouse report.
                 if (sequence.AsSpan().ContainsAnyExceptInRange('\0', '\u007f')) return false;
             }
             _session.SendInput(sequence);
+            NoteGeneratedInputSubmitted();
             return true;
         }
 

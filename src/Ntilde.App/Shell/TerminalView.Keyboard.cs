@@ -94,6 +94,7 @@ namespace Ntilde.Shell
             if (sequence == null) return false;
             // A release reports state, without snapping a scrolled viewport to the live line.
             _session.SendInput(sequence);
+            NoteGeneratedInputSubmitted();
             return true;
         }
 
@@ -258,9 +259,7 @@ namespace Ntilde.Shell
             TerminalKeyEventKind eventKind = KittyEventKind(ref key, physicalKey, ref identity);
             ResetCursorBlink();
 
-            var associated = TryQueueKittyAssociatedKey(key, keyModifiers, physicalKey, identity, eventKind, kittyFlags, keySymbol);
-            if (associated == AssociatedKeyDispatch.RefusedGenerated) _generatedInputRefused = true;
-            if (associated != AssociatedKeyDispatch.NotApplicable) return false;
+            if (IsAssociatedKeyClaimed(TryQueueKittyAssociatedKey(key, keyModifiers, physicalKey, identity, eventKind, kittyFlags, keySymbol))) return false;
 
             // Kitty keyboard protocol (disambiguation and negotiated event reporting). Must run before every legacy path
             // below - including Alt-sends-ESC - because the protocol replaces those encodings
@@ -485,7 +484,11 @@ namespace Ntilde.Shell
         private void SendUserInput(string text)
         {
             ScrollToInputLine();
-            _session?.SendInput(text);
+            if (_session is { } session)
+            {
+                session.SendInput(text);
+                NoteGeneratedInputSubmitted();
+            }
         }
     }
 }

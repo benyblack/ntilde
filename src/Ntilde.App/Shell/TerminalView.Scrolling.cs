@@ -264,6 +264,8 @@ namespace Ntilde.Shell
                 return;
             }
 
+            if (_generatedInputInProgress) { e.Handled = true; return; }
+
             // Standard scrolling. Accumulate fractional deltas (lines per notch) so
             // sub-notch micro-events are summed line-by-line instead of being truncated
             // to zero each event.

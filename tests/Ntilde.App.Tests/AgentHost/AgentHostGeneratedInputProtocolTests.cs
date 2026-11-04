@@ -153,4 +153,17 @@ public sealed class AgentHostGeneratedInputProtocolTests
         Assert.Equal(AgentHostProtocol.ErrorCodes.SessionNotFound, missing.Error?.Code);
     }
 
+    [Theory]
+    [InlineData(false, false, AgentAttentionTier.Idle)]
+    [InlineData(true, false, AgentAttentionTier.Idle)]
+    [InlineData(true, true, AgentAttentionTier.Wrote)]
+    public async Task Attention_write_marker_requires_a_returned_session_input_call(bool handled, bool submitted, AgentAttentionTier expected)
+    {
+        var s = Setup(); using var service = s.Service;
+        s.Executor.OnGenerateInput = (_, _, _, _) => Task.FromResult<GeneratePaneInputResult?>(Observed() with { Handled = handled, InputSubmitted = submitted });
+        var response = await service.HandleRequestLineAsync(Request(s.Registration.PaneId), TestContext.Current.CancellationToken);
+        Assert.Null(response.Error);
+        Assert.Equal(expected, s.Registration.AttentionMachine.Snapshot().Tier);
+    }
+
 }

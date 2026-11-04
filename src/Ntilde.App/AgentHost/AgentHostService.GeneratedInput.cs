@@ -48,7 +48,7 @@ public sealed partial class AgentHostService
         }
         if (result == null || !IsCurrent())
             return Failure(AgentHostProtocol.ErrorCodes.GeneratedInputUnavailable, "The pane or its input lease is unavailable.");
-        TryNoteWrote(registration, method);
+        if (result.InputSubmitted) TryNoteWrote(registration, method);
         // The ordinary action journal retains method/target/outcome only, never text or encoded bytes.
         return Journaled(request, method, p.PaneId, "synthetic event", Ok(request.Id,
             JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.GeneratePaneInputResult)));

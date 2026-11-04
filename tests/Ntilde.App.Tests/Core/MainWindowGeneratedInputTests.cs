@@ -61,11 +61,11 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = key });
         Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.True(result.Handled);
         Assert.Equal("avalonia-routed", result.Boundary); Assert.True(result.ApplicationKeypad);
-        Assert.Equal(expected, Assert.Single(session.SentInput)); Assert.Equal(0, history);
+        Assert.Equal(expected, Assert.Single(session.SentInput)); Assert.True(result.InputSubmitted); Assert.Equal(0, history);
     }
 
     [AvaloniaFact]
-    public async Task Separate_text_callback_is_suppressed_once_then_keyup_releases_the_latch_without_history()
+    public async Task Single_events_clear_synthetic_latches_and_text_is_a_separate_standalone_event()
     {
         var (window, pane, session) = Create();
         var parser = new AnsiParser(pane.Buffer!); parser.Process("\u001b=");
@@ -77,9 +77,9 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         var numeric = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "8" });
         Assert.NotNull(numeric); Assert.False(numeric.Handled);
         await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "text", Text = "8" });
-        Assert.Equal(new[] { "\u001bOw", "8" }, session.SentInput); Assert.Equal(0, history);
+        Assert.Equal(new[] { "\u001bOw", "7", "8" }, session.SentInput); Assert.Equal(0, history);
         pane.TermView.RaiseEvent(new Avalonia.Input.TextInputEventArgs { RoutedEvent = Avalonia.Input.InputElement.TextInputEvent, Text = "human" });
-        Assert.Equal(1, history);
+        Assert.Equal(1, history); Assert.Equal("human", session.SentInput[^1]);
     }
 
     [AvaloniaTheory]
@@ -126,6 +126,7 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
                 Modifiers = 7
             });
             Assert.NotNull(result); Assert.Equal(9, result.MouseTracking); Assert.Equal(7, result.Modifiers);
+            Assert.Equal(kind == "mousePress", result.InputSubmitted);
         }
         Assert.Equal("\u001b[<0;3;2M", Assert.Single(session.SentInput));
     }
@@ -210,14 +211,14 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
     }
 
     [AvaloniaFact]
-    public async Task Mouse_tracking_disabled_during_tunnel_cannot_fall_through_to_selection_or_links()
+    public async Task Mouse_tracking_disabled_during_tunnel_cannot_start_selection()
     {
         var (window, pane, session) = Create();
         var parser = new AnsiParser(pane.Buffer!); parser.Process("\u001b[?1000h");
         pane.TermView.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, (_, _) => parser.Process("\u001b[?1000l"),
             Avalonia.Interactivity.RoutingStrategies.Tunnel);
         Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", Column = 1, Row = 1 }));
-        Assert.Empty(session.SentInput);
+        Assert.Empty(session.SentInput); Assert.False(pane.TermView.HasSelection());
     }
 
     [AvaloniaTheory]
@@ -230,7 +231,7 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         var (window, pane, session) = Create();
         new AnsiParser(pane.Buffer!).Process("\u001b=");
         var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7", Modifiers = modifiers });
-        Assert.NotNull(result); Assert.False(result.Handled); Assert.Equal(modifiers, result.Modifiers);
+        Assert.NotNull(result); Assert.False(result.Handled); Assert.False(result.InputSubmitted); Assert.Equal(modifiers, result.Modifiers);
         Assert.Empty(session.SentInput);
     }
     [AvaloniaTheory]
@@ -268,16 +269,17 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
     public void Deferred_queue_creation_refuses_synthetic_work_even_if_a_preflight_guard_accepts_it()
     {
         var (_, pane, session) = Create();
-        pane.Buffer!.Modes.KittyKeyboard.Push(24);
+        pane.TermView.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, (_, _) => pane.Buffer!.Modes.KittyKeyboard.Push(24),
+            Avalonia.Interactivity.RoutingStrategies.Tunnel);
         var args = new Avalonia.Input.KeyEventArgs
         {
             RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent,
             Key = Avalonia.Input.Key.NumPad7,
             PhysicalKey = Avalonia.Input.PhysicalKey.NumPad7
         };
-        Assert.False(pane.TermView.RaiseGeneratedInput(args, () => true));
+        Assert.False(pane.TermView.RaiseGeneratedInput(args, () => true, out _));
         Dispatcher.UIThread.RunJobs(); Assert.Empty(session.SentInput);
-        pane.Buffer.Modes.KittyKeyboard.Pop(1);
+        pane.Buffer!.Modes.KittyKeyboard.Pop(1);
         pane.TermView.RaiseEvent(new Avalonia.Input.TextInputEventArgs { RoutedEvent = Avalonia.Input.InputElement.TextInputEvent, Text = "human" });
         Assert.Equal("human", Assert.Single(session.SentInput));
     }
@@ -299,5 +301,81 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         Assert.Empty(session.SentInput);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal("\u001b[57406u", Assert.Single(session.SentInput));
+    }
+    [AvaloniaFact]
+    public async Task Standalone_synthetic_key_does_not_swallow_a_later_human_text_commit()
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b=");
+        Assert.NotNull(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" }));
+        pane.TermView.RaiseEvent(new Avalonia.Input.TextInputEventArgs { RoutedEvent = Avalonia.Input.InputElement.TextInputEvent, Text = "human" });
+        Assert.Equal(new[] { "\u001bOw", "human" }, session.SentInput);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("keyDown")]
+    [InlineData("keyUp")]
+    [InlineData("text")]
+    public async Task Preexisting_human_keypad_text_correlation_is_preserved_and_refuses_synthetic_keyboard(string kind)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b=");
+        pane.TermView.RaiseEvent(new Avalonia.Input.KeyEventArgs
+        {
+            RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent,
+            Key = Avalonia.Input.Key.NumPad7,
+            PhysicalKey = Avalonia.Input.PhysicalKey.NumPad7
+        });
+        Assert.Null(await Dispatch(window, pane, new()
+        {
+            PaneId = pane.PaneId,
+            Kind = kind,
+            Key = kind == "text" ? null : "8",
+            Text = kind == "text" ? "8" : null
+        }));
+        pane.TermView.RaiseEvent(new Avalonia.Input.TextInputEventArgs { RoutedEvent = Avalonia.Input.InputElement.TextInputEvent, Text = "7" });
+        Assert.Equal("\u001bOw", Assert.Single(session.SentInput));
+        pane.TermView.RaiseEvent(new Avalonia.Input.TextInputEventArgs { RoutedEvent = Avalonia.Input.InputElement.TextInputEvent, Text = "human" });
+        Assert.Equal(new[] { "\u001bOw", "human" }, session.SentInput);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("mousePress")]
+    [InlineData("mouseRelease")]
+    [InlineData("mouseMove")]
+    [InlineData("mouseWheel")]
+    public void Reporting_branch_refuses_synthetic_host_selection_and_scroll_even_if_the_entry_lease_accepts(string kind)
+    {
+        var (window, pane, session) = Create();
+        var view = pane.TermView;
+        var parser = new AnsiParser(pane.Buffer!);
+        for (int i = 0; i < view.Rows + 8; i++) parser.Process("ABCD\r\n");
+        view.ScrollOffset = 0;
+        using var pointer = new Avalonia.Input.Pointer(Avalonia.Input.Pointer.GetNextFreeId(), Avalonia.Input.PointerType.Mouse, true);
+        Point At(int col) => view.TranslatePoint(new Point((col + 0.5) * view.Metrics.CellWidth, 0.5 * view.Metrics.CellHeight), window)!.Value;
+        var held = new Avalonia.Input.PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton, Avalonia.Input.PointerUpdateKind.LeftButtonPressed);
+        var moved = new Avalonia.Input.PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton, Avalonia.Input.PointerUpdateKind.Other);
+        var released = new Avalonia.Input.PointerPointProperties(Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PointerUpdateKind.LeftButtonReleased);
+        Avalonia.Input.PointerEventArgs Move(int col) => new(Avalonia.Input.InputElement.PointerMovedEvent, view, pointer, window, At(col), 0, moved, Avalonia.Input.KeyModifiers.None);
+        view.RaiseEvent(new Avalonia.Input.PointerPressedEventArgs(view, pointer, window, At(0), 0, held, Avalonia.Input.KeyModifiers.None));
+        view.RaiseEvent(Move(1));
+        string? before = view.GetSelectedText(); Assert.True(view.HasSelection());
+        Avalonia.Interactivity.RoutedEventArgs args = kind switch
+        {
+            "mousePress" => new Avalonia.Input.PointerPressedEventArgs(view, pointer, window, At(3), 0, held, Avalonia.Input.KeyModifiers.None),
+            "mouseRelease" => new Avalonia.Input.PointerReleasedEventArgs(view, pointer, window, At(3), 0, released, Avalonia.Input.KeyModifiers.None, Avalonia.Input.MouseButton.Left),
+            "mouseMove" => Move(3),
+            _ => new Avalonia.Input.PointerWheelEventArgs(view, pointer, window, At(3), 0, moved, Avalonia.Input.KeyModifiers.None, new Vector(0, 1)),
+        };
+        Assert.True(view.RaiseGeneratedInput(args, () => true, out bool submitted));
+        Assert.False(submitted); Assert.True(args.Handled);
+        Assert.Equal(before, view.GetSelectedText()); Assert.True(view.HasSelection());
+        for (int i = 0; i < 8; i++) view.AdvanceScrollAnimation();
+        Assert.Equal(0, view.ScrollOffset); Assert.Empty(session.SentInput);
+        if (kind == "mouseRelease")
+        {
+            view.RaiseEvent(Move(3));
+            Assert.NotEqual(before, view.GetSelectedText());
+        }
     }
 }

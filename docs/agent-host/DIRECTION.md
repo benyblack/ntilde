@@ -215,7 +215,7 @@ The BCL contract validates the following bounds before any UI work:
 - `key`: keypad `0`–`9`, `decimal`, `separator`, `add`, `subtract`, `multiply`,
   `divide` or physical keypad `enter`, only for key events.
 - `text`: exactly one character from `0123456789.+-*/,=` or carriage return,
-  only for a separate text event. A key/text callback pair requires two calls.
+  only for a separate standalone text event. Calls do not form a backend key/text callback pair.
 - `modifiers`: bits shift=1, control=2, alt=4, meta=8; text requires zero.
 - Pointer `column`/`row`: one-based viewport cells within 256×128 and the actual
   agreeing view/buffer grid. `button` is `left`, `middle`, `right`; move also
@@ -228,11 +228,14 @@ coordinate space. Mouse events require active reporting immediately before the
 TerminalView handler, so a disabled protocol cannot fall through into selection
 or hyperlink activation. Such unavailable attempts are not no-byte evidence.
 Synthetic keyboard events are unavailable while Kitty associated-text reporting
-is enabled or an associated key is already pending. Admission and the terminal
+is enabled or any human key/text/held-key correlation is already pending. Admission and the terminal
 handler recheck this bound, and the deferred-queue creation boundary independently
 refuses synthetic work. This foundation does not retain authorization across
 separate associated-text callbacks or schedule a generated fallback after return.
-Ordinary keyboard callbacks retain their existing behavior.
+Each call owns only the correlation it creates on a clean UI-thread entry and
+clears that state when it returns. A synthetic keyDown cannot suppress a later
+human text-only commit. A separate text call is standalone, without cross-call
+key/text pairing. Ordinary keyboard callbacks retain their existing behavior.
 
 Window shortcut/broadcast commands, Command Assist interception and user-command history observers are
 excluded during synthetic dispatch; terminal routing, keypad text-suppression,
@@ -249,11 +252,13 @@ in the existing activity journal as method/target/outcome only, without event
 text or encoded bytes. Synthetic input does not feed command-history observers;
 child output retains its existing recording policy.
 
-The result reports `eventDispatched`, framework `handled`, boundary
+The result reports `eventDispatched`, framework `handled`, `inputSubmitted`, boundary
 `avalonia-routed`, actual buffer/view geometry, view-local pointer coordinates,
 framework event modifiers, and post-dispatch parser mode samples (application keypad,
 tracking 0/9/1000/1002/1003, SGR encoding and Kitty flags). Handled does not mean
-bytes were emitted. Mode samples are not an atomic encoder snapshot. Neither
+bytes were emitted. `inputSubmitted` means a normal session-input call returned
+or byte input was accepted; it controls the agent-write attention marker and
+does not acknowledge delivery to the child. Mode samples are not an atomic encoder snapshot. Neither
 result nor pane identity attests native input, fixture ownership or child byte
 delivery. Qualification requires separate disposable-process/PTY proof and
 independent child-byte capture; no stock or published terminfo result is regraded
