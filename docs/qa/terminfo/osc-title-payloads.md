@@ -17,8 +17,10 @@ clearing the previous title request, not a requirement for an empty visible tab.
 VT emits semantic title data and has no UI dependency. App stores that raw
 request in `CurrentOscTitle`; its existing presentation policy uses profile/cwd
 when the request is empty or whitespace-only. User tab renames keep precedence.
-The mux title subscriber also receives the replacement payload; display/listing
-fallback remains a host concern. OSC 1 icon-name state, title stacks, title-query
+The mux title subscriber also receives the replacement payload. Standalone `mux ls`
+and App `ls --all` show the command when that title is blank. The combined-host
+listing tests for blankness after cleaning the title, then cleans/caps its command
+fallback with the same host policy. JSON retains the exact raw title and command. OSC 1 icon-name state, title stacks, title-query
 replies and native window-manager presentation remain separately unqualified.
 
 ## Executable evidence
@@ -27,6 +29,15 @@ replies and native window-manager presentation remain separately unqualified.
 OSC 0/2 with both terminators, every split boundary, following printable text,
 cursor/cell preservation and malformed/other-code controls. Twenty cases fail
 on the old parser; four negative controls already pass.
+
+Mux CLI regressions send title changes through the real daemon parse queue and
+flush that queue before listing. Empty/blank text falls back to the command;
+padded nonblank titles and JSON remain exact. Both cleared-title cases fail on
+the previous listing implementation while the padded-title control passes. Three
+combined-host listing cases fail before the fix; afterward local and remote rows
+show the cleaned command, including a title stripped to empty by sanitization.
+Raw JSON metadata remains unchanged, including control/bidi characters in the
+scripted command; those characters never execute or reach the formatted rows.
 
 Four parser-to-App metadata regressions fail on the old parser. After the fix,
 independent raw-title/display-title/actual-tab-text readback observes the new raw

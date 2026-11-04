@@ -172,7 +172,12 @@ internal static class MuxLsAll
             }
 
             Func<string?, string> fit = h.IsLocal ? RemoteOutputText.Clean : RemoteOutputText.Quote;
-            foreach (SessionSummary s in sessions) stdout.WriteLine($"{Pad(h.Host)}  {MuxCli.ListRow(s, fit(s.Title))}");
+            foreach (SessionSummary s in sessions)
+            {
+                string title = fit(s.Title);
+                if (string.IsNullOrWhiteSpace(title)) title = fit(s.Command);
+                stdout.WriteLine($"{Pad(h.Host)}  {MuxCli.ListRow(s, title)}");
+            }
         }
 
         if (!anyRemote) stdout.WriteLine("No remote hosts keep sessions.");

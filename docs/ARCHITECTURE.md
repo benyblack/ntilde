@@ -175,6 +175,9 @@ this change adds no positive query setting or runtime qualification.
 OSC 0/2 forward exact bounded title payloads, including empty and whitespace
 requests. The host owns title presentation and fallback; an empty request can
 clear a stale application title without forcing an empty tab label.
+Mux text listings apply command fallback when a raw title is blank; App's combined
+listing applies its existing host text cleaning/cap to that fallback. JSON metadata
+keeps the exact raw title and command.
 
 #### `TerminalBuffer`
 
