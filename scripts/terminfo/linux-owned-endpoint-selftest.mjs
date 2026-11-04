@@ -104,8 +104,7 @@ async function withServer(action) {
     return { ...result, server: { pid: child.pid, reaped: true, ...final }, fixtureRemoved: !existsSync(root) };
 }
 
-const scenarios = [];
-scenarios.push(await withServer(async ({ expected, appData, command }) => {
+const scenarios = [await withServer(async ({ expected, appData, command }) => {
     const originalDescriptor = readFileSync(join(appData, 'agent-endpoint.json'));
     await assert.rejects(observeLinuxPrivateAgentEndpoint({ ...expected, python: { ...pythonPin, sha256: '0'.repeat(64) } }, phase()));
     assert.deepEqual(await command({ kind: 'verify', connections: 0 }), { accepted: 0, closed: 0, payloadBytes: 0 });
@@ -117,9 +116,7 @@ scenarios.push(await withServer(async ({ expected, appData, command }) => {
     assert.deepEqual(readFileSync(join(appData, 'agent-endpoint.json')), originalDescriptor);
     const count = await command({ kind: 'verify', connections: 1 }); assert.deepEqual(count, { accepted: 1, closed: 1, payloadBytes: 0 });
     return { scenario: 'probe-only-0644-and-distinct-inodes', observation, count };
-}));
-
-scenarios.push(...await Promise.all(['socket-mode', 'descriptor-symlink', 'close-listener', 'socket-file', 'directory-mode'].map(fault =>
+}), ...await Promise.all(['socket-mode', 'descriptor-symlink', 'close-listener', 'socket-file', 'directory-mode'].map(fault =>
     withServer(async ({ expected, appData, command }) => {
         if (fault === 'directory-mode') chmodSync(appData, 0o755);
         else if (fault === 'socket-mode') fixtureEntryMode(appData, 'agent.sock', 0o666);
@@ -129,9 +126,7 @@ scenarios.push(...await Promise.all(['socket-mode', 'descriptor-symlink', 'close
         if (fault === 'directory-mode') chmodSync(appData, 0o700);
         const count = await command({ kind: 'verify', connections: 0 }); assert.equal(count.payloadBytes, 0);
         return { scenario: fault, refused: true, resources: error.linuxEndpointResources, count };
-    }))));
-
-scenarios.push(await withServer(async a => {
+    }))), await withServer(async a => {
     const other = await withServer(async b => {
         assert.deepEqual(await b.command({ kind: 'claim', pid: a.expected.app.pid }), { changed: 'claim' });
         const error = await observeLinuxPrivateAgentEndpoint({ ...b.expected, runId: a.expected.runId, app: a.expected.app }, phase()).then(() => assert.fail(), error_ => error_);
@@ -143,7 +138,7 @@ scenarios.push(await withServer(async a => {
     });
     assert.deepEqual(await a.command({ kind: 'verify', connections: 0 }), { accepted: 0, closed: 0, payloadBytes: 0 });
     return { scenario: 'other-peer-control', other };
-}));
+})];
 
 writeFileSync(output, JSON.stringify({ schemaVersion: 1, qualification: 'private-endpoint-foundation-only',
     platform: 'linux', terminalAppQualified: false, desktopQualified: false, linuxOwnedCollectionQualified: false,
