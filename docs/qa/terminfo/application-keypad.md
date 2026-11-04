@@ -24,6 +24,7 @@ subsequent TextInput cannot duplicate that event, even if mode/Kitty policy
 changes or input reenters during the send. A release or context reset expires the
 decision; subsequent text-only IME commits follow current policy. Enter keeps
 the existing before/after observer ordering and legacy text-only recovery policy.
+With an exited child, Enter stays unhandled so the pane can reconnect.
 
 The partial scope is intentional: modified keys retain legacy routing; VT52,
 additional keypad keys, host NumLock overrides and broadcast behavior are not

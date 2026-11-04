@@ -276,15 +276,7 @@ namespace Ntilde.Shell
 
             // Alt/Meta-sends-ESC must run BEFORE the unconditional Enter/Back/Tab/Escape cases
             // below, which would otherwise swallow Alt+<those> and send the bare control byte.
-            if ((keyModifiers & KeyModifiers.Alt) != 0)
-            {
-                string? altSequence = TerminalInputModeEncoder.EncodeAltKey(key, keyModifiers);
-                if (altSequence != null)
-                {
-                    SendKeyInput(key, keyModifiers, physicalKey, altSequence, identity);
-                    return true;
-                }
-            }
+            if (TrySendLegacyAltKey(key, keyModifiers, physicalKey, identity)) return true;
 
             if (HandleLegacyKeyDown(key, keyModifiers, physicalKey, identity)) return true;
 
@@ -306,12 +298,25 @@ namespace Ntilde.Shell
             return false;
         }
 
+        private bool TrySendLegacyAltKey(Key key, KeyModifiers modifiers, PhysicalKey physical, KittyKeyIdentity identity)
+        {
+            if ((modifiers & KeyModifiers.Alt) == 0) return false;
+            string? sequence = TerminalInputModeEncoder.EncodeAltKey(key, modifiers);
+            if (sequence == null) return false;
+            SendKeyInput(key, modifiers, physical, sequence, identity);
+            return true;
+        }
+
         private bool TrySendApplicationKeypad(Key key, KeyModifiers modifiers, PhysicalKey physical, int kittyFlags, KittyKeyIdentity identity)
         {
             string? sequence = TerminalInputModeEncoder.EncodeApplicationKeypad(key, modifiers, physical, _buffer?.Modes);
             if (sequence == null) return false;
             // Keep legacy Enter's text-only recovery policy and observer ordering.
-            if (key == Key.Enter) return SendEnterKey(modifiers, physical, sequence, identity);
+            if (key == Key.Enter)
+            {
+                if (_session?.IsProcessRunning != true) return false;
+                return SendEnterKey(modifiers, physical, sequence, identity);
+            }
             // A backend may still emit TextInput after a handled keypad event.
             // Reserve its one-shot decision before sending: writes can reenter input.
             _pendingKittyTextSuppression = true;

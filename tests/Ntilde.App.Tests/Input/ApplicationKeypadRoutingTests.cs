@@ -22,11 +22,11 @@ public sealed class ApplicationKeypadRoutingTests
         public void Text(string text) => RaiseEvent(new TextInputEventArgs { Text = text, RoutedEvent = TextInputEvent });
     }
 
-    private static (KeyView View, TerminalBuffer Buffer, List<string> Sent) Create(int kittyFlags = 0)
+    private static (KeyView View, TerminalBuffer Buffer, List<string> Sent) Create(int kittyFlags = 0, bool running = true)
     {
         var sent = new List<string>();
         var session = new Mock<ITerminalSession>();
-        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        session.SetupGet(x => x.IsProcessRunning).Returns(running);
         session.Setup(x => x.SendInput(It.IsAny<string>())).Callback<string>(sent.Add);
         var buffer = new TerminalBuffer(80, 24);
         new AnsiParser(buffer).Process("\u001b=");
@@ -111,8 +111,14 @@ public sealed class ApplicationKeypadRoutingTests
     [InlineData(KeyModifiers.Control | KeyModifiers.Alt)]
     public void Modified_keypad_is_not_silently_encoded_as_unmodified(KeyModifiers modifiers)
     {
-        var (_, buffer, _) = Create();
+        var (view, buffer, sent) = Create();
         Assert.Null(TerminalInputModeEncoder.EncodeApplicationKeypad(Key.NumPad1, modifiers, PhysicalKey.NumPad1, buffer.Modes));
+        Assert.False(view.Down(Key.NumPad1, modifiers, PhysicalKey.NumPad1));
+        Assert.Empty(sent);
+        // If a backend supplies text, it stays on the legacy TextInput path.
+        // This synthetic callback makes no native layout or modifier-output claim.
+        view.Text("1");
+        Assert.Equal("1", Assert.Single(sent));
     }
 
     [AvaloniaTheory]
@@ -223,6 +229,26 @@ public sealed class ApplicationKeypadRoutingTests
         Assert.True(view.Down(Key.Enter, physical: physical));
         view.Text("new IME commit");
         Assert.Equal(new[] { expected, "new IME commit" }, sent);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(0, PhysicalKey.None)]
+    [InlineData(0, PhysicalKey.NumPadEnter)]
+    [InlineData(1, PhysicalKey.None)]
+    [InlineData(1, PhysicalKey.NumPadEnter)]
+    [InlineData(8, PhysicalKey.None)]
+    [InlineData(8, PhysicalKey.NumPadEnter)]
+    [InlineData(24, PhysicalKey.None)]
+    [InlineData(24, PhysicalKey.NumPadEnter)]
+    public void Enter_on_an_exited_session_stays_unhandled_for_the_panes_reconnect_gesture(int flags, PhysicalKey physical)
+    {
+        var (view, _, sent) = Create(flags, running: false);
+        int before = 0, after = 0;
+        view.EnterObserving += () => before++;
+        view.EnterObserved += () => after++;
+        Assert.False(view.Down(Key.Enter, physical: physical));
+        Assert.Empty(sent);
+        Assert.Equal((0, 0), (before, after));
     }
 
 }
