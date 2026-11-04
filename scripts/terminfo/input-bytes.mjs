@@ -38,7 +38,7 @@ export function rawInputCapture(input, output, timeoutMs = 4500, nextNonces = fr
     const wasRaw = input.isRaw, wasPaused = input.isPaused(), used = new Set();
     let pending, lastAttempt, fatal, disposed = false, captures = 0;
     const fail = error => {
-        fatal ??= error;
+        fatal ??= error instanceof Error ? error : new Error('Generated input capture failed.', { cause: error });
         if (lastAttempt) lastAttempt.error = String(fatal.message ?? fatal).slice(0, 1024);
         pending?.finish(fatal);
     };
@@ -69,7 +69,7 @@ export function rawInputCapture(input, output, timeoutMs = 4500, nextNonces = fr
         get failed() { return Boolean(fatal); },
         get lastAttempt() {
             if (!lastAttempt) return null;
-            return { hex: lastAttempt.bytes.toString('hex'), nonces: lastAttempt.nonces ?? null,
+            return { hex: lastAttempt.bytes.toString('hex'), nonces: lastAttempt.nonces ? [...lastAttempt.nonces] : null,
                 fenceRequested: Boolean(lastAttempt.expected), completed: lastAttempt.completed, error: lastAttempt.error ?? null };
         },
         capture(action) {

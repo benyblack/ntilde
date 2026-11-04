@@ -169,3 +169,27 @@ test('real challenges stay distinct and parser-safe through the finite capture b
     await assert.rejects(capture.capture(async () => { actions++; }), /budget/);
     assert.equal(actions, 128); capture.dispose();
 });
+
+test('non-Error action failures remain immediate original failures, not timeouts or unhandled rejections', async () => {
+    for (const reason of [undefined, null, false, 0, 'failure']) {
+        const input = new Input(), capture = rawInputCapture(input, { write() { assert.fail('Failed action must not write.'); } });
+        await assert.rejects(capture.capture(() => Promise.reject(reason)), error => {
+            assert.equal(error.message, 'Generated input capture failed.'); assert.equal(error.cause, reason); return true;
+        });
+        assert.equal(capture.lastAttempt.error, 'Generated input capture failed.');
+        assert.equal(capture.lastAttempt.completed, false); assert.equal(capture.failed, true);
+        capture.dispose();
+    }
+});
+
+test('observing a pending attempt cannot mutate its retained or returned challenge facts', async () => {
+    const input = new Input(); let capture;
+    capture = rawInputCapture(input, { write(_, callback) {
+        const observation = capture.lastAttempt; observation.nonces[0] = 60000;
+        assert.deepEqual(capture.lastAttempt.nonces, nonces);
+        callback(); input.emit('data', da);
+    } });
+    const result = await capture.capture(async () => {});
+    assert.deepEqual(result.nonces, nonces); result.nonces[0] = 61000;
+    assert.deepEqual(capture.lastAttempt.nonces, nonces); capture.dispose();
+});
