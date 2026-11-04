@@ -192,19 +192,29 @@ public sealed class MainWindowClipboardFixtureTests : IClassFixture<TestAppDataR
     [AvaloniaFact]
     public async Task Cancelled_queued_restore_cannot_later_restore_storage_or_cancel_the_armed_write()
     {
-        var (window, pane, _) = Create();
+        var (window, pane, mode) = Create();
         var begun = await Call(window, pane, "begin"); Assert.NotNull(begun);
         await Call(window, pane, "seed", begun.FixtureId, Nonce);
         await Call(window, pane, "armWrite", begun.FixtureId, Nonce);
+        Assert.Equal("active", mode.For(pane)?.Observe().State);
+        Assert.True(pane.IsCurrentAgentRegistration(pane.AgentRegistrationForTesting!));
+        // Avalonia completes InvokeAsync tasks under InstanceLock. Leave that inline
+        // setup continuation before deliberately occupying UI and waiting for enqueue.
+        await Task.Yield();
+        Assert.True(Dispatcher.UIThread.CheckAccess());
         using var cancelled = new CancellationTokenSource();
         using var enqueued = new ManualResetEventSlim();
         var queued = Task.Run(() =>
         {
-            var pending = Call(window, pane, "restore", begun.FixtureId, token: cancelled.Token);
-            enqueued.Set();
-            return pending;
+            try
+            {
+                var pending = Call(window, pane, "restore", begun.FixtureId, token: cancelled.Token);
+                Assert.False(pending.IsCompleted, "The valid executor operation must remain queued while UI is occupied.");
+                return pending;
+            }
+            finally { enqueued.Set(); }
         });
-        Assert.True(enqueued.Wait(TimeSpan.FromSeconds(5)), "The worker must enqueue before cancellation.");
+        Assert.True(enqueued.Wait(TimeSpan.FromSeconds(5)), "The executor must enqueue before cancellation.");
         cancelled.Cancel();
         Dispatcher.UIThread.RunJobs();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => queued);
