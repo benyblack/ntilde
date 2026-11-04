@@ -25,21 +25,22 @@ public sealed class KittyImageLifecycleRenderTests
         var retired = new List<object>();
         try
         {
-            SKColor background = CapturePixel(buffer, 40, 48);
+            SKColor background = CapturePixel(buffer, 40, 40);
             parser.Process(Command("a=t,f=32,s=1,v=1,I=13", "/wAA/w=="));
             Assert.Equal("\x1b_Gi=1,I=13;OK\x1b\\", Assert.Single(replies));
-            Assert.Equal(background, CapturePixel(buffer, 40, 48)); Assert.Empty(buffer.Images);
+            Assert.Equal(background, CapturePixel(buffer, 40, 40)); Assert.Empty(buffer.Images);
             parser.Process(Command("a=p,I=13,c=2,r=2,C=1"));
             TerminalImage image = Assert.Single(buffer.Images);
             Assert.Equal((4, 2, 2, 2), (image.CellX, image.CellY, image.CellWidth, image.CellHeight));
-            Assert.Equal(SKColors.Red, CapturePixel(buffer, 40, 48));
+            Assert.Equal(SKColors.Red, CapturePixel(buffer, 40, 40));
+            Assert.Equal(background, CapturePixel(buffer, 40, 48)); // Square source fits above the lower cell padding.
             // The production snapshot grid starts four pixels inside the capture.
-            Assert.Equal(background, CapturePixel(buffer, 35, 48)); Assert.Equal(background, CapturePixel(buffer, 52, 48));
-            parser.Process(Command("a=d,d=n,I=13")); Assert.Equal(background, CapturePixel(buffer, 40, 48));
-            parser.Process(Command("a=p,i=1,c=2,r=2,C=1")); Assert.Equal(SKColors.Red, CapturePixel(buffer, 40, 48));
-            parser.Process(Command("a=d,d=I,i=1")); Assert.Equal(background, CapturePixel(buffer, 40, 48));
+            Assert.Equal(background, CapturePixel(buffer, 35, 40)); Assert.Equal(background, CapturePixel(buffer, 52, 40));
+            parser.Process(Command("a=d,d=n,I=13")); Assert.Equal(background, CapturePixel(buffer, 40, 40));
+            parser.Process(Command("a=p,i=1,c=2,r=2,C=1")); Assert.Equal(SKColors.Red, CapturePixel(buffer, 40, 40));
+            parser.Process(Command("a=d,d=I,i=1")); Assert.Equal(background, CapturePixel(buffer, 40, 40));
             parser.Process(Command("a=p,i=1,C=1")); Assert.Contains(";ENOENT:", replies[^1], StringComparison.Ordinal);
-            Assert.Equal(background, CapturePixel(buffer, 40, 48));
+            Assert.Equal(background, CapturePixel(buffer, 40, 40));
         }
         finally
         {
