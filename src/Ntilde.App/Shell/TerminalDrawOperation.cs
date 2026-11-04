@@ -931,7 +931,11 @@ namespace Ntilde.Shell
                 // Cursor (optional policy: hide cursor when scrolled back)
                 if (frame.CursorVisible && _scrollOffset == 0)
                 {
-                    int absCursorRow = (renderSnapshot.TotalLines - bufferRows) + renderSnapshot.CursorRow;
+                    // CursorRow indexes the buffer's own viewport, so it is anchored on the buffer's row count,
+                    // not the view's. The two differ between a layout and the resize that follows it (the
+                    // 60ms throttle, or a session that applies resizes from its stream); anchoring on the
+                    // view's count put the cursor a row above the prompt for each row a pane had just grown.
+                    int absCursorRow = (renderSnapshot.TotalLines - renderSnapshot.BufferRows) + renderSnapshot.CursorRow;
                     int visualRow = absCursorRow - absDisplayStart;
 
                     if (visualRow >= 0 && visualRow < bufferRows)
