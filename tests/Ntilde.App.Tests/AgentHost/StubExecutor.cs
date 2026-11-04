@@ -49,13 +49,15 @@ internal sealed class StubExecutor : IAgentActionExecutor
     public Func<Ntilde.AgentHost.Contracts.GeneratePaneInputParams, AgentSessionRegistration, Func<bool>, CancellationToken,
         Task<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?>>? OnGenerateInput;
     public int GenerateInputCalls;
-    public Task<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?> GeneratePaneInputAsync(
+    public async Task<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?> GeneratePaneInputAsync(
         Ntilde.AgentHost.Contracts.GeneratePaneInputParams input, AgentSessionRegistration registration,
-        Func<bool> isCurrent, CancellationToken token)
+        Func<bool> isCurrent, Action onInputSubmitted, CancellationToken token)
     {
         GenerateInputCalls++;
-        return OnGenerateInput?.Invoke(input, registration, isCurrent, token)
-            ?? Task.FromResult<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?>(null);
+        var result = await (OnGenerateInput?.Invoke(input, registration, isCurrent, token)
+            ?? Task.FromResult<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?>(null));
+        if (result?.InputSubmitted == true) onInputSubmitted();
+        return result;
     }
 
     public Guid? LastLiveCapturePane;

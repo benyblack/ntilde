@@ -28,14 +28,20 @@ public sealed partial class AgentHostService
         if (executor == null) return Failure(AgentHostProtocol.ErrorCodes.ActUnavailable, "The App event executor is unavailable.");
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(TimeSpan.FromSeconds(2));
+        // Session publication is UI-owned. The executor invokes this fact observer synchronously
+        // on that UI thread, making the identity check/marker one UI operation without a new lease.
+        void NoteSubmission()
+        {
+            if (ReferenceEquals(registration.ObservationSession, session)) TryNoteWrote(registration, method);
+        }
         GeneratePaneInputResult? result;
         try
         {
-            result = await executor.GeneratePaneInputAsync(p, registration, IsCurrent, deadline.Token).WaitAsync(deadline.Token).ConfigureAwait(false);
+            result = await executor.GeneratePaneInputAsync(p, registration, IsCurrent, NoteSubmission, deadline.Token).WaitAsync(deadline.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return Failure(AgentHostProtocol.ErrorCodes.GeneratedInputUnavailable, "The generated event deadline expired; no deferred event is authorized.");
+            return Failure(AgentHostProtocol.ErrorCodes.GeneratedInputUnavailable, "The generated event deadline expired; dispatch/submission is indeterminate. Never automatically retry.");
         }
         catch (OperationCanceledException)
         {
@@ -46,11 +52,24 @@ public sealed partial class AgentHostService
         {
             return Failure(AgentHostProtocol.ErrorCodes.Internal, "The App could not observe the generated event result.");
         }
-        if (result == null || !IsCurrent())
+        if (result == null)
             return Failure(AgentHostProtocol.ErrorCodes.GeneratedInputUnavailable, "The pane or its input lease is unavailable.");
-        if (result.InputSubmitted) TryNoteWrote(registration, method);
+        if (!IsCurrent()) result = WithoutGeneratedInputObservation(result);
         // The ordinary action journal retains method/target/outcome only, never text or encoded bytes.
         return Journaled(request, method, p.PaneId, "synthetic event", Ok(request.Id,
             JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.GeneratePaneInputResult)));
     }
+    /// <summary>Keep completed event facts while withholding geometry/modes for a target no longer current.</summary>
+    private static GeneratePaneInputResult WithoutGeneratedInputObservation(GeneratePaneInputResult result) => result with
+    {
+        ObservationAvailable = false,
+        Rows = null,
+        Cols = null,
+        ViewRows = null,
+        ViewCols = null,
+        ApplicationKeypad = null,
+        MouseTracking = null,
+        MouseSgr = null,
+        KittyKeyboardFlags = null,
+    };
 }

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Moq;
 using Ntilde.AgentHost;
 using Ntilde.AgentHost.Contracts;
 using Ntilde.Controls;
@@ -19,26 +20,54 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
 
     private static (MainWindow Window, TerminalPane Pane, FakeTerminalSession Session) Create()
     {
-        var profile = new TerminalProfile { Name = "Generated input local", Type = ConnectionType.Local };
         var session = new FakeTerminalSession();
+        var (window, pane) = CreateWithSession(session);
+        session.SentInput.Clear();
+        return (window, pane, session);
+    }
+
+    private static (MainWindow Window, TerminalPane Pane) CreateWithSession(ITerminalSession session)
+    {
+        var profile = new TerminalProfile { Name = "Generated input local", Type = ConnectionType.Local };
         var settings = new TerminalSettings
         {
             SessionPersistence = SessionPersistenceMode.Off,
             AgentAccessActEnabled = true,
             CommandAssistShellIntegrationEnabled = false,
             Profiles = [profile],
-            DefaultProfileId = profile.Id
+            DefaultProfileId = profile.Id,
         };
         var window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         { Settings = settings, SessionFactory = new RecordingSessionFactory(session), CommandAssist = TestCommandAssistServices.Instance });
         window.Show(); Dispatcher.UIThread.RunJobs();
-        session.SentInput.Clear();
-        return (window, Assert.Single(window.AllPanesForTest()), session);
+        return (window, Assert.Single(window.AllPanesForTest()));
+    }
+
+    private sealed class InputProbe
+    {
+        internal readonly Mock<ITerminalSession> Session = new();
+        internal readonly List<string> Sent = [];
+        internal Action? AfterSend;
+        internal InputProbe()
+        {
+            Session.SetupGet(x => x.IsProcessRunning).Returns(true);
+            Session.SetupGet(x => x.Id).Returns(Guid.NewGuid());
+            Session.SetupGet(x => x.ShellCommand).Returns("fake-shell");
+            Session.Setup(x => x.SendInput(It.IsAny<string>())).Callback<string>(text => { Sent.Add(text); AfterSend?.Invoke(); });
+        }
+    }
+
+    private static void AssertLostObservation(GeneratePaneInputResult? result, bool submitted)
+    {
+        Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.Equal(submitted, result.InputSubmitted);
+        Assert.False(result.ObservationAvailable); Assert.Null(result.Rows); Assert.Null(result.Cols);
+        Assert.Null(result.ViewRows); Assert.Null(result.ViewCols); Assert.Null(result.ApplicationKeypad);
+        Assert.Null(result.MouseTracking); Assert.Null(result.MouseSgr); Assert.Null(result.KittyKeyboardFlags);
     }
 
     private static Task<GeneratePaneInputResult?> Dispatch(MainWindow window, TerminalPane pane, GeneratePaneInputParams input,
         Func<bool>? guard = null, CancellationToken token = default)
-        => ((IAgentActionExecutor)window).GeneratePaneInputAsync(input, pane.AgentRegistrationForTesting!, guard ?? (() => true), token);
+        => ((IAgentActionExecutor)window).GeneratePaneInputAsync(input, pane.AgentRegistrationForTesting!, guard ?? (() => true), () => { }, token);
 
     [AvaloniaTheory]
     [InlineData("0", "\u001bOp")]
@@ -183,13 +212,13 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
     }
 
     [AvaloniaFact]
-    public async Task Identity_changed_during_routed_event_has_no_successful_observation()
+    public async Task Identity_changed_during_routed_event_retains_dispatch_without_a_successful_observation()
     {
         var (window, pane, session) = Create();
         var registration = pane.AgentRegistrationForTesting!;
         pane.TermView.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, (_, _) => registration.SetLifecycle(new FakeTerminalSession()),
             Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" }));
+        AssertLostObservation(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" }), false);
         Assert.Empty(session.SentInput);
     }
     [AvaloniaFact]
@@ -217,7 +246,7 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         var parser = new AnsiParser(pane.Buffer!); parser.Process("\u001b[?1000h");
         pane.TermView.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, (_, _) => parser.Process("\u001b[?1000l"),
             Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", Column = 1, Row = 1 }));
+        AssertLostObservation(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", Column = 1, Row = 1 }), false);
         Assert.Empty(session.SentInput); Assert.False(pane.TermView.HasSelection());
     }
 
@@ -261,7 +290,7 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         var (window, pane, session) = Create();
         pane.TermView.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, (_, _) => pane.Buffer!.Modes.KittyKeyboard.Push(24),
             Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" }));
+        AssertLostObservation(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" }), false);
         Dispatcher.UIThread.RunJobs(); Assert.Empty(session.SentInput);
     }
 
@@ -377,5 +406,104 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
             view.RaiseEvent(Move(3));
             Assert.NotEqual(before, view.GetSelectedText());
         }
+    }
+    [AvaloniaTheory]
+    [InlineData("mode")]
+    [InlineData("session")]
+    [InlineData("buffer")]
+    public async Task A_returned_submission_survives_post_send_mode_or_identity_loss(string change)
+    {
+        var probe = new InputProbe();
+        var (window, pane) = CreateWithSession(probe.Session.Object); probe.Sent.Clear();
+        var parser = new AnsiParser(pane.Buffer!); parser.Process("\u001b[?1000h\u001b[?1006h");
+        probe.AfterSend = () =>
+        {
+            if (change == "mode") parser.Process("\u001b[?1000l");
+            else if (change == "session") pane.AgentRegistrationForTesting!.SetLifecycle(new FakeTerminalSession());
+            else pane.TermView.SetBuffer(new TerminalBuffer(pane.Buffer!.Cols, pane.Buffer.Rows));
+        };
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", Column = 3, Row = 2 });
+        AssertLostObservation(result, true);
+        Assert.Equal("\u001b[<0;3;2M", Assert.Single(probe.Sent));
+        probe.AfterSend = null;
+    }
+
+    [AvaloniaFact]
+    public async Task A_busy_post_send_buffer_preserves_submission_without_stale_geometry_or_a_second_send()
+    {
+        var probe = new InputProbe();
+        var (window, pane) = CreateWithSession(probe.Session.Object); probe.Sent.Clear();
+        var buffer = pane.Buffer!; new AnsiParser(buffer).Process("\u001b=");
+        using var entered = new ManualResetEventSlim(); using var release = new ManualResetEventSlim();
+        Task? writer = null;
+        probe.AfterSend = () =>
+        {
+            writer = Task.Run(() =>
+            {
+                buffer.Lock.EnterWriteLock();
+                try { entered.Set(); Assert.True(release.Wait(TimeSpan.FromSeconds(5))); }
+                finally { buffer.Lock.ExitWriteLock(); }
+            });
+            Assert.True(entered.Wait(TimeSpan.FromSeconds(5)));
+        };
+        try
+        {
+            var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" });
+            AssertLostObservation(result, true);
+            Assert.Equal("\u001bOw", Assert.Single(probe.Sent));
+        }
+        finally
+        {
+            probe.AfterSend = null; release.Set();
+            if (writer != null) await writer.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+    }
+    [AvaloniaFact]
+    public async Task Submission_notification_runs_once_on_UI_only_after_the_production_input_call_returns()
+    {
+        var (window, pane, session) = Create(); new AnsiParser(pane.Buffer!).Process("\u001b=");
+        int notifications = 0;
+        var result = await ((IAgentActionExecutor)window).GeneratePaneInputAsync(
+            new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" }, pane.AgentRegistrationForTesting!, () => true,
+            () => { Assert.True(Dispatcher.UIThread.CheckAccess()); Assert.Single(session.SentInput); notifications++; },
+            TestContext.Current.CancellationToken);
+        Assert.NotNull(result); Assert.True(result.InputSubmitted); Assert.True(result.ObservationAvailable);
+        Assert.Equal(1, notifications); Assert.Single(session.SentInput);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Refused_or_unhandled_events_never_notify_a_submission(bool unhandled)
+    {
+        var (window, pane, session) = Create(); new AnsiParser(pane.Buffer!).Process("\u001b=");
+        int notifications = 0;
+        await ((IAgentActionExecutor)window).GeneratePaneInputAsync(
+            new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7", Modifiers = unhandled ? 1 : 0 },
+            pane.AgentRegistrationForTesting!, () => unhandled, () => notifications++, TestContext.Current.CancellationToken);
+        Assert.Equal(0, notifications); Assert.Empty(session.SentInput);
+    }
+
+    [AvaloniaFact]
+    public async Task A_busy_buffer_before_dispatch_has_no_event_submission_or_notification()
+    {
+        var (window, pane, session) = Create(); var buffer = pane.Buffer!;
+        using var entered = new ManualResetEventSlim(); using var release = new ManualResetEventSlim();
+        var writer = Task.Run(() =>
+        {
+            buffer.Lock.EnterWriteLock();
+            try { entered.Set(); Assert.True(release.Wait(TimeSpan.FromSeconds(5))); }
+            finally { buffer.Lock.ExitWriteLock(); }
+        });
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(5)));
+        int notifications = 0;
+        try
+        {
+            var result = await ((IAgentActionExecutor)window).GeneratePaneInputAsync(
+                new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" }, pane.AgentRegistrationForTesting!, () => true,
+                () => notifications++, TestContext.Current.CancellationToken);
+            Assert.Null(result); Assert.Equal(0, notifications); Assert.Empty(session.SentInput);
+        }
+        finally { release.Set(); await writer.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); }
     }
 }

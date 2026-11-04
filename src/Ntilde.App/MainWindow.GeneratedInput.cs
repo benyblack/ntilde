@@ -14,16 +14,16 @@ public partial class MainWindow
     private bool _agentGeneratedInputInProgress;
     /// <summary>Dispatch one synthetic Avalonia event without focus changes, OS injection or direct byte injection.</summary>
     async Task<GeneratePaneInputResult?> IAgentActionExecutor.GeneratePaneInputAsync(GeneratePaneInputParams input,
-        AgentSessionRegistration registration, Func<bool> isCurrent, CancellationToken cancellationToken)
+        AgentSessionRegistration registration, Func<bool> isCurrent, Action onInputSubmitted, CancellationToken cancellationToken)
     {
         if (!GeneratePaneInputValidation.IsValid(input)) return null;
-        return await Dispatcher.InvokeAsync(() => DispatchGeneratedInput(input, registration, isCurrent, cancellationToken),
+        return await Dispatcher.InvokeAsync(() => DispatchGeneratedInput(input, registration, isCurrent, onInputSubmitted, cancellationToken),
             DispatcherPriority.Normal, cancellationToken);
     }
 
     /// <summary>One synchronous UI-thread operation; queued cancellation is checked before any event is created or applied.</summary>
     private GeneratePaneInputResult? DispatchGeneratedInput(GeneratePaneInputParams input,
-        AgentSessionRegistration registration, Func<bool> isCurrent, CancellationToken cancellationToken)
+        AgentSessionRegistration registration, Func<bool> isCurrent, Action onInputSubmitted, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var pane = _paneOwnerTab.Keys.FirstOrDefault(candidate => candidate.PaneId == input.PaneId);
@@ -50,11 +50,60 @@ public partial class MainWindow
         if (!Matches()) return null;
         _agentGeneratedInputInProgress = true;
         bool inputSubmitted;
-        try { if (!view.RaiseGeneratedInput(args, () => !cancellationToken.IsCancellationRequested && Matches(), out inputSubmitted)) return null; }
+        bool accepted;
+        try { accepted = view.RaiseGeneratedInput(args, () => !cancellationToken.IsCancellationRequested && Matches(), out inputSubmitted); }
         finally { _agentGeneratedInputInProgress = false; }
-        if (!Matches() || !TryObserveGeneratedInput(view, registration, input, args.Handled, position, out var result) || result == null) return null;
-        var actualModifiers = args switch { KeyEventArgs key => key.KeyModifiers, PointerEventArgs pointerEvent => pointerEvent.KeyModifiers, _ => KeyModifiers.None };
-        return result with { Modifiers = GeneratedModifierBits(actualModifiers), InputSubmitted = inputSubmitted };
+        if (!accepted && !inputSubmitted) return null;
+        var facts = GeneratedDispatchFacts(input, args, position, inputSubmitted);
+        if (!TryNotifyGeneratedSubmission(inputSubmitted, onInputSubmitted)) return facts;
+        return ObserveGeneratedInputAfterDispatch(view, registration, input, args, position, facts, Matches);
+    }
+
+    private static bool TryNotifyGeneratedSubmission(bool submitted, Action onInputSubmitted)
+    {
+        try
+        {
+            if (submitted) onInputSubmitted();
+            return true;
+        }
+        catch (Exception)
+        {
+            // A fact observer cannot undo an input call or turn a completed action into a safe retry.
+            return false;
+        }
+    }
+
+    private static GeneratePaneInputResult GeneratedDispatchFacts(GeneratePaneInputParams input, RoutedEventArgs args,
+        Point? position, bool inputSubmitted)
+    {
+        var modifiers = args switch { KeyEventArgs key => key.KeyModifiers, PointerEventArgs pointer => pointer.KeyModifiers, _ => KeyModifiers.None };
+        return new GeneratePaneInputResult
+        {
+            EventDispatched = true,
+            Handled = args.Handled,
+            InputSubmitted = inputSubmitted,
+            Column = input.Column,
+            Row = input.Row,
+            X = position?.X,
+            Y = position?.Y,
+            Modifiers = GeneratedModifierBits(modifiers),
+        };
+    }
+
+    private static GeneratePaneInputResult ObserveGeneratedInputAfterDispatch(TerminalView view, AgentSessionRegistration registration,
+        GeneratePaneInputParams input, RoutedEventArgs args, Point? position, GeneratePaneInputResult facts, Func<bool> isCurrent)
+    {
+        try
+        {
+            if (!isCurrent() || !TryObserveGeneratedInput(view, registration, input, args.Handled, position, out var observed)
+                || observed == null || !isCurrent()) return facts;
+            return observed with { Modifiers = facts.Modifiers, InputSubmitted = facts.InputSubmitted };
+        }
+        catch (Exception)
+        {
+            // An action already ran: unavailable/disposed metadata must not erase its dispatch/submission facts.
+            return facts;
+        }
     }
 
     private static int GeneratedModifierBits(KeyModifiers value)
@@ -157,6 +206,7 @@ public partial class MainWindow
             result = new GeneratePaneInputResult
             {
                 EventDispatched = true,
+                ObservationAvailable = true,
                 Handled = handled,
                 Rows = buffer.Rows,
                 Cols = buffer.Cols,

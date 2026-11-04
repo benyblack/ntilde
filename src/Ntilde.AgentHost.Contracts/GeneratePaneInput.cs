@@ -45,14 +45,17 @@ public sealed record GeneratePaneInputResult
     public required bool Handled { get; init; }
     [JsonPropertyName("boundary")]
     public string Boundary { get; init; } = "avalonia-routed";
+    /// <summary>Post-dispatch geometry/modes were safely observed for the same target; false leaves them null.</summary>
+    [JsonPropertyName("observationAvailable")]
+    public bool ObservationAvailable { get; init; }
     [JsonPropertyName("rows")]
-    public required int Rows { get; init; }
+    public int? Rows { get; init; }
     [JsonPropertyName("cols")]
-    public required int Cols { get; init; }
+    public int? Cols { get; init; }
     [JsonPropertyName("viewRows")]
-    public required int ViewRows { get; init; }
+    public int? ViewRows { get; init; }
     [JsonPropertyName("viewCols")]
-    public required int ViewCols { get; init; }
+    public int? ViewCols { get; init; }
     [JsonPropertyName("column")]
     public int? Column { get; init; }
     [JsonPropertyName("row")]
@@ -67,13 +70,13 @@ public sealed record GeneratePaneInputResult
     public required int Modifiers { get; init; }
     /// <summary>Post-dispatch parser mode samples, not atomic encoder or child-delivery attestations.</summary>
     [JsonPropertyName("applicationKeypad")]
-    public required bool ApplicationKeypad { get; init; }
+    public bool? ApplicationKeypad { get; init; }
     [JsonPropertyName("mouseTracking")]
-    public required int MouseTracking { get; init; }
+    public int? MouseTracking { get; init; }
     [JsonPropertyName("mouseSgr")]
-    public required bool MouseSgr { get; init; }
+    public bool? MouseSgr { get; init; }
     [JsonPropertyName("kittyKeyboardFlags")]
-    public required int KittyKeyboardFlags { get; init; }
+    public int? KittyKeyboardFlags { get; init; }
 }
 
 /// <summary>Shared BCL-only bounds, enforced before dispatch by both endpoint and App executor.</summary>

@@ -26,6 +26,7 @@ public sealed class AgentHostGeneratedInputProtocolTests
     private static GeneratePaneInputResult Observed() => new()
     {
         EventDispatched = true,
+        ObservationAvailable = true,
         Handled = false,
         Rows = 21,
         Cols = 71,
@@ -95,7 +96,7 @@ public sealed class AgentHostGeneratedInputProtocolTests
     [InlineData("session")]
     [InlineData("permission")]
     [InlineData("executor")]
-    public async Task Lease_rejects_identity_or_permission_changes_before_and_after_observation(string change)
+    public async Task Lease_loss_preserves_dispatch_facts_and_withholds_stale_observation(string change)
     {
         var s = Setup(); using var service = s.Service;
         s.Executor.OnGenerateInput = (_, _, guard, _) =>
@@ -109,11 +110,19 @@ public sealed class AgentHostGeneratedInputProtocolTests
                 case "executor": service.SetActionExecutor(new StubExecutor()); break;
             }
             Assert.False(guard());
-            return Task.FromResult<GeneratePaneInputResult?>(Observed());
+            return Task.FromResult<GeneratePaneInputResult?>(Observed() with { InputSubmitted = true });
         };
         var response = await service.HandleRequestLineAsync(Request(s.Registration.PaneId), TestContext.Current.CancellationToken);
-        Assert.Equal(AgentHostProtocol.ErrorCodes.GeneratedInputUnavailable, response.Error?.Code);
-        Assert.Null(response.Result);
+        Assert.Null(response.Error);
+        var result = response.Result!.Value.Deserialize(AgentHostJsonContext.Default.GeneratePaneInputResult)!;
+        Assert.True(result.EventDispatched); Assert.True(result.InputSubmitted); Assert.False(result.ObservationAvailable);
+        Assert.Null(result.Rows); Assert.Null(result.ApplicationKeypad);
+        Assert.Equal(change == "session" ? AgentAttentionTier.Idle : AgentAttentionTier.Wrote, s.Registration.AttentionMachine.Snapshot().Tier);
+        if (change == "registration")
+        {
+            Assert.True(s.Registry.TryGet(s.Registration.PaneId, out var replacement));
+            Assert.Equal(AgentAttentionTier.Idle, replacement.AttentionMachine.Snapshot().Tier);
+        }
     }
 
     [Fact]
@@ -140,6 +149,7 @@ public sealed class AgentHostGeneratedInputProtocolTests
         await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.Equal(AgentHostProtocol.ErrorCodes.GeneratedInputUnavailable, response.Error?.Code);
         Assert.Null(response.Result); Assert.Single(s.Journal.Snapshot());
+        Assert.Contains("indeterminate", response.Error!.Message, StringComparison.Ordinal);
     }
 
     [Fact]

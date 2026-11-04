@@ -252,13 +252,20 @@ in the existing activity journal as method/target/outcome only, without event
 text or encoded bytes. Synthetic input does not feed command-history observers;
 child output retains its existing recording policy.
 
-The result reports `eventDispatched`, framework `handled`, `inputSubmitted`, boundary
+The result reports `eventDispatched`, framework `handled`, `inputSubmitted`, `observationAvailable`, boundary
 `avalonia-routed`, actual buffer/view geometry, view-local pointer coordinates,
 framework event modifiers, and post-dispatch parser mode samples (application keypad,
 tracking 0/9/1000/1002/1003, SGR encoding and Kitty flags). Handled does not mean
 bytes were emitted. `inputSubmitted` means a normal session-input call returned
 or byte input was accepted; it controls the agent-write attention marker and
-does not acknowledge delivery to the child. Mode samples are not an atomic encoder snapshot. Neither
+does not acknowledge delivery to the child.
+Once an event ran, its dispatch/submission facts survive a lost target lease or
+unavailable post-dispatch read lock. `observationAvailable=false` leaves post-event
+geometry and modes null, without inventing stale measurements or presenting a
+completed action as a clean refusal. A write-attention mark belongs only to the
+captured original registration while it still owns the submitted session, never
+a replacement target. Timeouts, disconnects or execution failures can be
+indeterminate: callers must never automatically retry generated actions. Mode samples are not an atomic encoder snapshot. Neither
 result nor pane identity attests native input, fixture ownership or child byte
 delivery. Qualification requires separate disposable-process/PTY proof and
 independent child-byte capture; no stock or published terminfo result is regraded
