@@ -1,0 +1,41 @@
+name: Linux process provider foundation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/terminfo-linux-provider.yml'
+      - 'scripts/terminfo/linux-process-*.mjs'
+      - 'scripts/terminfo/linux-process-provider-python.test.py'
+      - 'scripts/terminfo/fixtures/linux-provider-*'
+      - 'docs/qa/linux-process-provider.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provider:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Synthetic strict-provider regressions
+        run: node --test scripts/terminfo/linux-process-provider.test.mjs scripts/terminfo/linux-process-selftest-output.test.mjs
+      - name: Deterministic signal and reap races
+        run: python3 scripts/terminfo/linux-process-provider-python.test.py
+      - name: Own tagged child and private PTY facts
+        run: node scripts/terminfo/linux-process-selftest.mjs linux-provider-foundation.json
+      - name: Reap the private PTY child after helper interruption
+        run: node scripts/terminfo/linux-process-interruption-selftest.mjs linux-provider-interruption.json
+      - name: Retain explicitly limited provider result
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-provider-foundation-only
+          path: |
+            linux-provider-foundation.json
+            linux-provider-foundation.json.activity.json
+            linux-provider-interruption.json
+          if-no-files-found: error
