@@ -55,6 +55,7 @@ namespace Ntilde.VT
         private List<char> _oscStringBuffer = new List<char>(); // OSC strings can be long (titles, etc) - Keep List for now or limit
         private List<char> _apcStringBuffer = new List<char>();
         private List<char> _dcsStringBuffer = new List<char>();
+        private bool _dcsTruncated;
         private System.Text.StringBuilder _kittyPayloadBuffer = new System.Text.StringBuilder();
 
         // Clear() keeps a buffer's capacity, so one inline image used to pin its megabytes of
@@ -475,6 +476,7 @@ namespace Ntilde.VT
         {
             _state = State.Dcs;
             _dcsStringBuffer.Clear();
+            _dcsTruncated = false;
         }
 
         private void BeginApc()
@@ -722,12 +724,15 @@ namespace Ntilde.VT
                                 else if (c == '\a' || c == '\u009C')
                                 {
                                     HandleDcs(TakeSequence(ref _dcsStringBuffer));
+                                    _dcsTruncated = false;
                                     _state = State.Normal;
                                 }
                                 else
                                 {
                                     if (_dcsStringBuffer.Count < MaxStringSequenceChars)
                                         _dcsStringBuffer.Add(c);
+                                    else
+                                        _dcsTruncated = true;
                                 }
                                 break;
 
@@ -735,10 +740,12 @@ namespace Ntilde.VT
                                 if (c == '\\')
                                 {
                                     HandleDcs(TakeSequence(ref _dcsStringBuffer));
+                                    _dcsTruncated = false;
                                     _state = State.Normal;
                                 }
                                 else
                                 {
+                                    _dcsTruncated = false;
                                     _state = State.Esc;
                                     reprocessCurrent = true;
                                 }

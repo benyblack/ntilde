@@ -106,3 +106,16 @@ catalog and MCP explainer agree on default/zero versus ignored other parameters.
 The mux test checks the canonical reply at its scripted child writer. This is not
 a fresh owned/native child measurement, and historical no-response observations
 remain unchanged.
+
+## DCS framing prerequisite
+
+DCS accumulation now records discarded input independently of the retained prefix.
+The marker survives chunks, complete parser-state JSON and import clipping; an
+active legacy snapshot without this marker is conservatively incomplete. Exact
+cap-length input remains complete until a character is actually discarded.
+Termination, malformed-escape abandonment and a new DCS clear the marker.
+`DcsTruncationStateTests` pins these contracts, including the production default
+cap. `StringSequenceCapTests` preserves existing truncated SIXEL decoding after
+state transfer. This prerequisite adds no positive DECRQSS/XTGETTCAP setting:
+current bounded failures remain negative evidence. A future positive handler must
+check completeness before accepting a retained query prefix.

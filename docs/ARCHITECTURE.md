@@ -164,6 +164,14 @@ State machine for ESC, CSI, OSC, DEC-private modes. Emits **semantic operations*
 
 **Key invariant:** Same byte stream → same sequence of semantic operations.
 
+DCS accumulation retains a lost-input latch independently of its bounded prefix.
+Chunking, complete parser snapshots and import clipping preserve that latch; an
+active legacy snapshot without the optional marker is conservatively incomplete.
+Terminating or abandoning the DCS, or starting a new one, clears it. This is a
+query-framing prerequisite: a retained prefix cannot prove the complete request.
+Existing capped SIXEL decoding and negative DECRQSS/XTGETTCAP replies are preserved;
+this change adds no positive query setting or runtime qualification.
+
 #### `TerminalBuffer`
 
 Applies semantic operations to terminal state. Maintains cursor, modes, tab stops, margins. Owns main + alternate screen buffers and scrollback.
