@@ -192,6 +192,8 @@ namespace Ntilde.VT
         public int CellWidth;
         public int CellHeight;
         public object ImageHandle;
+        /// <summary>Protocol-owned undistorted fit inside the placement cell envelope (Kitty).</summary>
+        public bool PreserveAspectRatio { get; init; }
         internal SixelSource? Source;
         public bool IsSticky;
         public int ClipTopRows { get; init; }

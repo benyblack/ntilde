@@ -306,6 +306,16 @@ namespace Ntilde.Shell
                 strikeOffsetPx: (int)Math.Round(cellHeight * 0.52, MidpointRounding.AwayFromZero));
         }
 
+        // Fit within the original full cell envelope before viewport/row clipping. Keep its
+        // top-left anchor; the protocol does not require a shared centering convention.
+        private static SKRect FitImageWithin(SKRect envelope, int pixelWidth, int pixelHeight)
+        {
+            if (pixelWidth <= 0 || pixelHeight <= 0) return envelope;
+            float scale = Math.Min(envelope.Width / pixelWidth, envelope.Height / pixelHeight);
+            return new SKRect(envelope.Left, envelope.Top,
+                envelope.Left + pixelWidth * scale, envelope.Top + pixelHeight * scale);
+        }
+
         private SnapshotSelectionRange? CaptureSyntheticSelection(TerminalRenderSnapshot snapshot)
         {
             if (!_selectionRelativeToViewport || snapshot.SelectionRows.Length == 0) return null;
@@ -832,7 +842,8 @@ namespace Ntilde.Shell
                             }
                             if (bitmap is { } bmp)
                             {
-                                canvas.DrawBitmap(bmp, rect, imagePaint);
+                                SKRect destination = img.PreserveAspectRatio ? FitImageWithin(rect, bmp.Width, bmp.Height) : rect;
+                                canvas.DrawBitmap(bmp, destination, imagePaint);
                                 IncrementOtherDrawCall();
                             }
                             canvas.Restore();
