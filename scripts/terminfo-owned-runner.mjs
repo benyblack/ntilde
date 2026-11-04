@@ -584,7 +584,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     nonce: 'NTILDE_IN_' + runId, expectedPaneId: cellObserver.paneId,
                     performInput: (event, actionBudget) => generateOwnedInput({ app, appData, executable, image, profileName, runId,
                         paneId: inputState.observer.paneId, uid: process.getuid(),
-                        workerPid: inputState.workerPid, tty: inputState.tty }, event, actionBudget) });
+                        workerPid: inputState.workerPid, workerIdentity, tty: inputState.tty }, event, actionBudget) });
                 proofs[0].input.actions = inputState.observer.actions;
             }
             const state = inputState;

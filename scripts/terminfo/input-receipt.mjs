@@ -25,7 +25,7 @@ export function includesInputEvidence(output, evidence, context, proof) {
     const sourceDir = join(output, 'sources');
     if (!present(sourceDir)) return false;
     return readdirSync(sourceDir).some(file => file.startsWith('input-') || (file.endsWith('.mjs')
-        && /(?:\bfrom\s*|\bimport\s*\()\s*['"]\.\/(?:terminfo\/)?input-[a-z-]+\.mjs['"]/.test(bytes(output, join('sources', file), 2 * 1024 * 1024).toString())));
+        && /(?:\bfrom|\bimport\s*\()\s*['"]\.\/(?:terminfo\/)?input-[a-z-]+\.mjs['"]/.test(bytes(output, join('sources', file), 2 * 1024 * 1024).toString())));
 }
 export function checkInputEvidence(output, binding, runId, context, proof) {
     const marker = proof.proofs?.[0]?.input;
@@ -52,6 +52,10 @@ export function checkInputEvidence(output, binding, runId, context, proof) {
     checkInput(sameInputFact(report, derived) && marker.paneId === frames[0].paneId
         && sameInputFact(marker.geometry, { rows: frames[0].screen.rows, cols: frames[0].screen.cols })
         && sameInputFact(binding.counts, { passed: 39 }));
+    const original = proof.proofs[0];
+    const sameProcess = (actual, expected) => ['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => actual[key] === expected?.[key]);
+    checkInput(actions.every(action => ['before', 'after'].every(side => sameProcess(action.observed[side].app, original.app)
+        && sameProcess(action.observed[side].worker, original.worker))));
     const cell = json(output, 'cell-observations.json');
     checkInput(cell.snapshots?.[0]?.paneId === marker.paneId && cell.snapshots[0].screen.rows === marker.geometry.rows
         && cell.snapshots[0].screen.cols === marker.geometry.cols);

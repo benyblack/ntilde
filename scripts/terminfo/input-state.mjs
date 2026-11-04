@@ -38,8 +38,16 @@ export function validateInputAction(action, item, paneId, runId, geometry, profi
             && (profileName === undefined || fact.pane.profileName === profileName)
             && fact.pane.rows === geometry.rows && fact.pane.cols === geometry.cols
             && fact.terminalOutput?.tool === '/bin/stty' && fact.terminalOutput.outputProcessing === false);
+        checkInput(Number.isSafeInteger(fact.app?.pid) && fact.app.pid > 1 && Number.isSafeInteger(fact.app.uid) && fact.app.uid >= 0
+            && typeof fact.app.executable === 'string' && fact.app.executable.startsWith('/')
+            && Number.isSafeInteger(fact.worker?.pid) && fact.worker.pid > 1 && fact.worker.ppid === fact.app.pid
+            && fact.worker.uid === fact.app.uid && /^tty[a-zA-Z0-9._-]+$/.test(fact.worker.tty ?? '')
+            && typeof fact.worker.executable === 'string' && fact.worker.executable.startsWith('/')
+            && typeof fact.appCommand === 'string' && fact.appCommand.split(/\s+/).includes(`--ntilde-terminfo-owner=${runId}`)
+            && typeof fact.workerCommand === 'string' && fact.workerCommand.split(/\s+/).includes(`--ntilde-terminfo-worker=${runId}`));
         validateOutputGeometry(fact.terminalOutput.description, geometry.rows, geometry.cols);
     }
+    checkInput(sameInputFact(action.before.app, action.after.app) && sameInputFact(action.before.worker, action.after.worker));
     const app = action.app;
     checkInput(app?.eventDispatched === true && app.observationAvailable === true && app.boundary === 'avalonia-routed'
         && typeof app.inputSubmitted === 'boolean' && typeof app.handled === 'boolean'

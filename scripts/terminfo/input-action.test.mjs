@@ -7,12 +7,13 @@ function fixture() {
         executable: '/owned/app', image: { ino: 1, size: 20, mtimeMs: 10 }, workerPid: 43, uid: 1000,
         tty: '/dev/ttys100', paneId, profileName: 'fixture', runId };
     const worker = { pid: 43, ppid: 42, uid: 1000, tty: 'ttys100', executable: '/node' };
+    config.workerIdentity = structuredClone(worker);
     let sessions = [{ paneId, kind: 'local', windowless: false, rows: 12, cols: 120, profileName: 'fixture' }];
     const partial = { eventDispatched: true, inputSubmitted: true, observationAvailable: false, handled: true };
     const dependencies = {
         image: () => config.image, canonical: value => value,
         record: pid => { steps.push('process'); return pid === 42 ? { pid: 42, uid: 1000, executable: '/owned/app' } : worker; },
-        command: () => { steps.push('marker'); return `/owned/app --ntilde-terminfo-owner=${runId}`; },
+        command: pid => { steps.push('marker'); return pid === 42 ? `/owned/app --ntilde-terminfo-owner=${runId}` : `/node --ntilde-terminfo-worker=${runId}`; },
         endpoint: () => 'private',
         read: async (_, method) => { steps.push(method); return { sessions }; },
         outputMode: () => { steps.push('kernel'); return { tool: '/bin/stty', outputProcessing: false, description: '12 rows; 120 columns; -opost' }; },
@@ -23,13 +24,15 @@ function fixture() {
 const event = { kind: 'keyDown', key: '7', modifiers: 0 };
 test('exact process marker,worker,UID,PTY,pane and output are proved around one action; partial facts are retained', async () => {
     const f = fixture(), result = await generateOwnedInput(f.config, event, () => 1000, f.dependencies);
-    assert.deepEqual(f.steps, ['process', 'process', 'marker', 'listSessions', 'kernel', 'event', 'process', 'process', 'marker', 'listSessions', 'kernel']);
+    assert.deepEqual(f.steps, ['process', 'process', 'marker', 'marker', 'listSessions', 'kernel', 'event', 'process', 'process', 'marker', 'marker', 'listSessions', 'kernel']);
     assert.deepEqual(result.app, f.partial); assert.equal(result.postVerified, true); assert.equal(result.rpcStarted, true);
     assert.equal(result.request.paneId, paneId); assert.equal(result.app.observationAvailable, false);
 });
 for (const [name, mutate] of [
     ['another worker parent', f => f.worker.ppid++], ['another UID', f => f.worker.uid++],
     ['another PTY', f => f.worker.tty = 'ttys101'],
+    ['another worker executable', f => f.worker.executable = '/another/node'],
+    ['missing worker run marker', f => { const command = f.dependencies.command; f.dependencies.command = pid => pid === 42 ? command(pid) : '/node'; }],
     ['another image', f => f.dependencies.image = () => ({ ...f.config.image, size: 21 })],
     ['exited App', f => f.config.app.exitCode = 0],
     ['multiple panes', f => f.setSessions([{}, {}])], ['remote pane', f => f.setSessions([{ paneId, kind: 'remote' }])],

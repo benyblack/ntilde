@@ -53,6 +53,7 @@ test('complete positive input report is re-derived from paired state, action fac
     writeFileSync(join(f.output, 'input-snapshots.jsonl'), frames.map(x => JSON.stringify(x)).join('\n'));
     writeFileSync(join(f.output, 'input-actions.jsonl'), actions.map(x => JSON.stringify(x)).join('\n'));
     f.proof.proofs[0].input = { policy: ownedInputPolicy, paneId: frames[0].paneId, geometry: { rows: 12, cols: 120 }, actions, seal };
+    f.proof.proofs[0].app = actions[0].observed.before.app; f.proof.proofs[0].worker = actions[0].observed.before.worker;
     f.write('cell-observations.json', { snapshots: [{ paneId: frames[0].paneId, screen: { rows: 12, cols: 120 } }] });
     const binding = { runId: inputRunId, suiteId: inputSuiteId, file: 'input-observations.json', sha256: snapshotHash(report), counts: { passed: 39 } };
     assert.doesNotThrow(() => checkInputEvidence(f.output, binding, inputRunId, f.context, f.proof));
@@ -86,7 +87,11 @@ test('full v9 finalizer checks a synthetic positive input suffix after all13 fro
         const initial = JSON.parse(readFileSync(join(output, 'metadata-observations.json'))).snapshots.at(-1).before.screen;
         const paneId = proof.proofs[0].metadata.paneId, { frames, actions, seal } = syntheticInputJournal(context.runId, { paneId, initial });
         const profileName = JSON.parse(readFileSync(join(output, 'initial-settings.json'))).Profiles[0].Name;
-        for (const action of actions) { action.observed.before.pane.profileName = profileName; action.observed.after.pane.profileName = profileName; }
+        for (const action of actions) for (const side of ['before', 'after']) {
+            action.observed[side].pane.profileName = profileName;
+            action.observed[side].app = structuredClone(proof.proofs[0].app);
+            action.observed[side].worker = structuredClone(proof.proofs[0].worker);
+        }
         const report = buildInputReport(frames, actions, seal, context.runId);
         proof.proofs[0].input = { policy: ownedInputPolicy, paneId, geometry: { rows: initial.rows, cols: initial.cols }, actions, seal };
         write('input-observations.json', report); write('context.json', context); write('ownership-proof.json', proof);

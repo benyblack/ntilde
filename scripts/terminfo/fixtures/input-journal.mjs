@@ -11,7 +11,10 @@ export function inputCapture(hex, index) {
 }
 export function inputActionProof(event, modes, runId = inputRunId, paneId = inputPaneId, rows = 12, cols = 120) {
     const pane = { paneId, rows, cols, kind: 'local', profileName: 'fixture', windowless: false };
-    const side = { pane, terminalOutput: { tool: '/bin/stty', outputProcessing: false, description: `${rows} rows; ${cols} columns;\n-opost` } };
+    const side = { pane, app: { pid: 42, ppid: 41, uid: 1000, tty: '??', executable: '/owned/app' },
+        worker: { pid: 43, ppid: 42, uid: 1000, tty: 'ttys100', executable: '/node' },
+        appCommand: `/owned/app --ntilde-terminfo-owner=${runId}`, workerCommand: `/node --ntilde-terminfo-worker=${runId}`,
+        terminalOutput: { tool: '/bin/stty', outputProcessing: false, description: `${rows} rows; ${cols} columns;\n-opost` } };
     const pointer = event.kind.startsWith('mouse');
     return { paneId, runId, request: { paneId, ...event }, rpcStarted: true, postVerified: true,
         observedAt: '2026-11-04T12:00:00.000Z', before: structuredClone(side), after: structuredClone(side),

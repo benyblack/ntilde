@@ -81,7 +81,7 @@ export function assertRetainedSourceClosure(directory, inventory) {
     for (const file of paths) {
         if (!file.endsWith('.mjs')) continue;
         const source = readFileSync(join(directory, file), 'utf8');
-        const imports = source.matchAll(/(?:\bfrom\s*|\bimport\s*\()\s*['"]([^'"]+)['"]/g);
+        const imports = source.matchAll(/(?:\bfrom|\bimport\s*\()\s*['"]([^'"]+)['"]/g);
         for (const [, target] of imports) {
             if (target.startsWith('node:')) continue;
             if (!/^\.\/(?:terminfo\/)?[a-z][a-z0-9-]*\.mjs$/.test(target)
