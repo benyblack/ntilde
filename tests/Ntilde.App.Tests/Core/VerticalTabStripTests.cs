@@ -157,6 +157,167 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
         Assert.NotEqual("PREVIEW_SENTINEL", GetTabHeaderTextOf(window, tab));
     }
 
+    // A powerline prompt as the preview line receives it: separator, branch glyph, and a
+    // Nerd Font icon from the wider private-use block.
+    private const string PowerlinePrompt = "dev@demo \uE0B0 ~/ntilde-demo \uE0B0 \uE0A0 main \uF418";
+
+    /// <summary>
+    /// Shapes <paramref name="text"/> in <paramref name="block"/> and returns each glyph run's
+    /// text, the typeface family it landed in, and whether any glyph is notdef. Shaping, not
+    /// the FontFamily string, is what decides between a glyph and tofu.
+    /// </summary>
+    private static List<(string Text, string Family, bool HasNotdef)> ShapeRuns(TextBlock block, string text, double width = 2000)
+    {
+        block.Text = text;
+        block.InvalidateMeasure();
+        block.Measure(new Size(width, 100));
+        return block.TextLayout.TextLines
+            .SelectMany(line => line.TextRuns.OfType<Avalonia.Media.TextFormatting.ShapedTextRun>())
+            .Select(run => (run.Text.ToString(), run.GlyphRun.GlyphTypeface.FamilyName,
+                run.GlyphRun.GlyphInfos.Any(g => g.GlyphIndex == 0)))
+            .ToList();
+    }
+
+    private static void AssertDrawsPowerlineGlyphsInUiFace(TextBlock block)
+    {
+        // The face ordinary chrome text gets: the Fluent theme's control font, which every
+        // other TextBlock in the window inherits. Same weight and style as the block under
+        // test, since a selected tab's title is SemiBold.
+        var reference = new TextBlock
+        {
+            FontFamily = (Avalonia.Media.FontFamily)Application.Current!.FindResource("ContentControlThemeFontFamily")!,
+            FontWeight = block.FontWeight,
+            FontStyle = block.FontStyle
+        };
+        string uiFace = ShapeRuns(reference, "dev").Single().Family;
+
+        var runs = ShapeRuns(block, PowerlinePrompt);
+
+        foreach (char pua in new[] { '\uE0B0', '\uE0A0', '\uF418' })
+        {
+            var iconRuns = runs.Where(r => r.Text.Contains(pua, StringComparison.Ordinal)).ToList();
+            Assert.NotEmpty(iconRuns);
+            Assert.All(iconRuns, r => Assert.Equal(BundledFontCatalog.SymbolsFontFamily, r.Family));
+            Assert.All(iconRuns, r => Assert.False(r.HasNotdef, $"U+{(int)pua:X4} shaped to notdef"));
+        }
+
+        // The UI face is unchanged: everything that is not an icon still shapes in it.
+        Assert.All(runs.Where(r => r.Text.All(c => c < '\uE000')), r => Assert.Equal(uiFace, r.Family));
+    }
+
+    [AvaloniaFact]
+    public void VerticalHeader_PreviewAndTitle_DrawPowerlineGlyphsFromTheBundledSymbolsFont()
+    {
+        // Regression: the preview line used the bare UI face, which has no Nerd Font glyphs and
+        // maps U+E0B0 to an unrelated glyph of its own, so a powerline prompt read as tofu.
+        var window = CreateShownWindow();
+        GetSettings(window).TabStripOrientation = "Vertical";
+        window.ApplyTabLayout();
+        Dispatcher.UIThread.RunJobs();
+
+        var tab = window.FindControl<TabControl>("Tabs")!.Items.Cast<TabItem>().First();
+        var preview = Ntilde.MainWindow.FindTabHeaderDescendant<TextBlock>(tab.Header, "TabPreviewLine");
+        Assert.NotNull(preview);
+        AssertDrawsPowerlineGlyphsInUiFace(preview!);
+        AssertDrawsPowerlineGlyphsInUiFace(FindFirstTextBlock(tab.Header)!);
+    }
+
+    [AvaloniaFact]
+    public void VerticalHeader_PreviewAndTitle_TrimWithARealEllipsis()
+    {
+        // Regression: Avalonia shapes the trimming ellipsis in the FIRST face of the family list,
+        // with no fallback. Once the symbols font led the list, every trimmed preview or title
+        // ended in tofu, private-use characters or not.
+        var window = CreateShownWindow();
+        GetSettings(window).TabStripOrientation = "Vertical";
+        window.ApplyTabLayout();
+        Dispatcher.UIThread.RunJobs();
+
+        var tab = window.FindControl<TabControl>("Tabs")!.Items.Cast<TabItem>().First();
+        var preview = Ntilde.MainWindow.FindTabHeaderDescendant<TextBlock>(tab.Header, "TabPreviewLine")!;
+        foreach (var block in new[] { preview, FindFirstTextBlock(tab.Header)! })
+        {
+            foreach (string text in new[] { "F1Help F2Setup F3Search F5Tree F10Quit", PowerlinePrompt })
+            {
+                var runs = ShapeRuns(block, text, width: 60);
+                var ellipsis = runs.Where(r => r.Text.Contains('\u2026', StringComparison.Ordinal)).ToList();
+                Assert.NotEmpty(ellipsis);
+                Assert.All(ellipsis, r => Assert.False(r.HasNotdef, $"ellipsis drew as notdef in {r.Family}"));
+            }
+
+            // Trimming must not undo the icons: untrimmed, they still come from the symbols font.
+            AssertDrawsPowerlineGlyphsInUiFace(block);
+        }
+    }
+
+    [AvaloniaFact]
+    public void HorizontalHeader_Title_DrawsPowerlineGlyphsFromTheBundledSymbolsFont()
+    {
+        var window = CreateShownWindow();
+        GetSettings(window).TabStripOrientation = "Horizontal";
+        window.ApplyTabLayout();
+        Dispatcher.UIThread.RunJobs();
+
+        var tab = window.FindControl<TabControl>("Tabs")!.Items.Cast<TabItem>().First();
+        var title = FindFirstTextBlock(tab.Header)!;
+        AssertDrawsPowerlineGlyphsInUiFace(title);
+        AssertEllipsisIsAGlyph(title);
+    }
+
+    [AvaloniaFact]
+    public void TabListMenuItem_DrawsPowerlineGlyphsAndARealEllipsis()
+    {
+        var window = CreateShownWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+
+        // The overflow-pill path: the menu lands in a flyout this test can reach, built by the
+        // same item code as the title-bar paths.
+        typeof(Ntilde.MainWindow)
+            .GetMethod("PopulateTabListMenu", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(window, new object?[] { true, tabs });
+        Dispatcher.UIThread.RunJobs();
+        var flyout = (Avalonia.Controls.MenuFlyout)typeof(Ntilde.MainWindow)
+            .GetField("_tabOverflowPillFlyout", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(window)!;
+
+        try
+        {
+            var item = flyout.Items.OfType<MenuItem>().First();
+            string header = (string)item.Header!;
+            var label = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(item)
+                .OfType<TextBlock>()
+                .First(tb => tb.Text == header);
+            AssertDrawsPowerlineGlyphsInUiFace(label);
+            AssertEllipsisIsAGlyph(label);
+        }
+        finally
+        {
+            flyout.Hide();
+        }
+    }
+
+    /// <summary>
+    /// Horizontal titles and tab list labels are cut in the string (TruncateTabLabel appends
+    /// U+2026) rather than by TextTrimming; either way the "…" must be a real glyph.
+    /// </summary>
+    private static void AssertEllipsisIsAGlyph(TextBlock block)
+    {
+        string truncated = Ntilde.MainWindow.TruncateTabLabel(PowerlinePrompt + " and then some more", 24);
+        foreach (double width in new[] { 2000.0, 60.0 })
+        {
+            var ellipsis = ShapeRuns(block, truncated, width)
+                .Where(r => r.Text.Contains('\u2026', StringComparison.Ordinal))
+                .ToList();
+            Assert.NotEmpty(ellipsis);
+            Assert.All(ellipsis, r => Assert.False(r.HasNotdef, $"ellipsis drew as notdef in {r.Family}"));
+        }
+    }
+
+    private static TextBlock? FindFirstTextBlock(object? header)
+        => (TextBlock?)typeof(Ntilde.MainWindow)
+            .GetMethod("FindTabHeaderTextBlock", BindingFlags.Static | BindingFlags.NonPublic)!
+            .Invoke(null, new[] { header });
+
     private static string GetTabHeaderTextOf(Ntilde.MainWindow window, TabItem tab)
         => (string)typeof(Ntilde.MainWindow)
             .GetMethod("GetTabHeaderText", BindingFlags.Instance | BindingFlags.NonPublic)!
