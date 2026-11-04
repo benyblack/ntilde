@@ -82,7 +82,7 @@ export function syntheticImageJournal(output, { runId = inputRunId, paneId = inp
     add({ kind: 'start' }, initial);
     for (const entry of imagePlan) {
         if (entry.kind === 'read' && !states.has(entry.caseId)) states.set(entry.caseId, { number: 1000 + states.size, firstId: null, ids: [] });
-        const state = states.get(entry.caseId) ?? {}, expected = imageAction(entry, state, runId);
+        const state = states.get(entry.caseId) ?? {}, expected = imageAction(entry, state, runId, initial.cursorVisible);
         const action = { index: actions.length, kind: 'images-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
             commandHex: Buffer.from(expected.command).toString('hex'), commandSha256: pngHash(Buffer.from(expected.command)),
             skipReason: expected.skipReason, number: state.number ?? null, firstId: state.firstId ?? null, ownership: structuredClone(ownership) };

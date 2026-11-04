@@ -67,11 +67,16 @@ observed against the independent blank control.
 
 Each case records its deletion/clear outcome before independent RIS cleanup,
 then proves return to the bound blank state and original PNG. Final RIS must
-restore the original main-screen cells/modes and PNG before the raw reader is
+be followed by explicit restoration of the original observed DECTCEM visibility,
+selected by the parent and rederived from frame0. Either initial visibility bool
+is retained; no visibility field or pixel is ignored or normalized. The original
+main-screen state, full render context and PNG must all match before the raw reader is
 sealed. Existing owner teardown must verify worker/App exit and fixture/source
 removal before the full15-suite receipt can be written. Only an initial typed
 screen-detail or geometry/pixel-budget refusal, before any image fixture/files,
 can produce an explicit unavailable binding. A started failure cannot downgrade.
+This fixture restoration does not qualify RIS default visibility; that core
+protocol contract is tested separately.
 
 ## Primary protocol contracts
 
@@ -163,15 +168,19 @@ reply. An ACK never makes a pixel assertion pass.
 
 ## Integration and evidence boundary
 
-Only new uniquely named image modules/tests and this document are added here.
-Do not import them from the current worker or modify the existing inventory,
-receipt, CI or generated capability report until the QA owner coordinates the
-next captured source-policy version. Preserve the immutable 51/52-source v8 and
-60-source v9 graphs and their archived import closure. Runtime integration must
-bind every executed image module and input, original capture PNG, complete
-paired state reads, exact request/reply, per-case restoration and final cleanup.
-Never finalize a measurement before verified worker/App exit, endpoint shutdown,
-fixture removal and archive/hash checks.
+The worker now imports the image collector, and the parent admits its writes and
+captures through the existing private ownership controller. The current inventory,
+bootstrap, receipt chain and portable CI list include the integrated image phase.
+Its seven runtime modules belong to the fixed67-source v3 scope; a completed
+collection requires all15 suite bindings in schema10. The immutable51/52-source
+v8 and60-source v9 graphs and archived import closures remain separate.
+
+Every executed image module and input, original capture PNG, complete paired
+state read, exact request/reply, per-case restoration and final cleanup is bound
+into the retained evidence. Finalization requires verified worker/App exit,
+endpoint shutdown, fixture/source removal and archive/hash checks. Future query,
+clipboard or platform integration must introduce a separately coordinated fixed
+source-policy/receipt version instead of extending this captured67-file scope.
 
 The deterministic tests reject stretched aspect geometry even when all color
 samples match, incorrect native size/anchor, substituted source/colors, lost

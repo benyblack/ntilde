@@ -1,7 +1,6 @@
 import { readFileSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { snapshotHash, screenSnapshot } from './agent-observer.mjs';
-import { pristineEditing } from './editing-capture.mjs';
 import { validateInputBytes, inputModeReplyHex, defaultInputModes, inputModeQueries as routedInputModeQueries } from './input-state.mjs';
 import { staticImageCases, staticImageCommand, staticImageAnchor, staticImageCellEnvelope, staticImageSuiteId, parseStaticKittyReply } from './static-images-cases.mjs';
 import { staticImageInput, staticSixel, staticSixelSha256 } from './static-images-inputs.mjs';
@@ -21,7 +20,19 @@ export const imagePlan = Object.freeze([
 ].map(Object.freeze));
 export const imagePosition = runId => '\x1b[0m\x1b[48;2;16;16;16m\x1b[HNTILDE_IMG_' + runId + '\x1b[5;4H\x1b[?25l';
 export const imageSetup = runId => '\x1bc\x1b]11;#101010\x1b\\\x1b[?1049h\x1b[48;2;16;16;16m\x1b[2J' + imagePosition(runId);
-export const imageRestore = '\x1bc';
+export function imageRestore(cursorVisible) {
+    checkImages(typeof cursorVisible === 'boolean');
+    return '\x1bc\x1b[?25' + (cursorVisible ? 'h' : 'l');
+}
+/** Image isolation preserves the observed visibility bool; every other blank/default fact is fixed. */
+export function pristineImageBaseline(screen) {
+    const state = screen.bufferState;
+    return typeof screen.cursorVisible === 'boolean' && screen.lines.every(line => line === '') && screen.cursorRow === 0 && screen.cursorCol === 0
+        && screen.cursorMode.style === 2 && screen.cursorMode.blink && screen.cursorMode.isDefault
+        && screen.cellDetails.every(run => run.flags === 768 && run.fg === -1 && run.bg === -1 && !run.overline && run.underlineStyle === 0)
+        && state.scrollTop === 0 && state.scrollBottom === screen.rows - 1 && !state.originMode && state.autoWrap
+        && !state.insertMode && !state.pendingWrap && !state.alternateScreen && state.scrollbackLines === 0 && screen.history.lines.length === 0;
+}
 export function imageBoundScreen(initial, runId) {
     const screen = structuredClone(initial);
     screen.lines[0] = 'NTILDE_IMG_' + runId; screen.cursorRow = 4; screen.cursorCol = 3; screen.cursorVisible = false;
@@ -63,9 +74,9 @@ function imageWitnessStages(item, stage) {
     if (item.id === 'kitty.number-reuse' && stage.id === 'place-newest') return ['blank', 'store-first', 'store-second'];
     return [...new Set(['blank', item.stages[index - 1].id])];
 }
-export function imageAction(entry, state, runId) {
+export function imageAction(entry, state, runId, initialCursorVisible) {
     if (entry.kind === 'bind' || entry.kind === 'restore') return { command: imageSetup(runId), skipReason: null };
-    if (entry.kind === 'finish') return { command: imageRestore, skipReason: null };
+    if (entry.kind === 'finish') return { command: imageRestore(initialCursorVisible), skipReason: null };
     const reason = imagePrerequisite(entry, state);
     if (reason) return { command: imagePosition(runId), skipReason: reason };
     return { command: imagePosition(runId) + staticImageCommand(entry.caseId, entry.stageId, state) + imagePosition(runId), skipReason: null };
@@ -134,7 +145,7 @@ class StaticImageReport {
     constructor(frames, actions, runId, output, priorChallenges) {
         this.frames = frames; this.actions = actions; this.runId = runId; this.output = output;
         this.initial = frames[0].screen; this.paneId = frames[0].paneId; this.bound = imageBoundScreen(this.initial, runId);
-        checkImages(pristineEditing(this.initial) && this.initial.rows >= 8 && this.initial.cols >= 60);
+        checkImages(pristineImageBaseline(this.initial) && this.initial.rows >= 8 && this.initial.cols >= 60);
         this.used = new Set(priorChallenges); this.states = new Map(); this.observations = []; this.backgrounds = []; this.total = 0; this.lastTime = -Infinity;
     }
     validateFrame(frame, index, entry) {
@@ -170,7 +181,7 @@ class StaticImageReport {
                 && ![...this.states.values()].some(value => value.number === action.number));
             this.states.set(entry.caseId, { number: action.number, firstId: null, ids: [] });
         }
-        const state = this.states.get(entry.caseId) ?? {}, expected = imageAction(entry, state, this.runId);
+        const state = this.states.get(entry.caseId) ?? {}, expected = imageAction(entry, state, this.runId, this.initial.cursorVisible);
         checkImages(action.commandHex === Buffer.from(expected.command).toString('hex') && action.commandSha256 === pngHash(Buffer.from(expected.command))
             && action.skipReason === expected.skipReason && action.number === (state.number ?? null) && action.firstId === (state.firstId ?? null));
         return { action, state, expected };

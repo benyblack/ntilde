@@ -15,9 +15,11 @@ class Input extends EventEmitter {
     isPaused() { return this.paused; } setRawMode(value) { this.isRaw = value; }
     pause() { this.paused = true; } resume() { this.paused = false; }
 }
-async function fixture(action, { late = false, changedPair = false, changedWorker = false, badModes = false, badReply = false } = {}) {
+async function fixture(action, { late = false, changedPair = false, changedWorker = false, badModes = false, badReply = false,
+    initialCursorVisible = true, risShowsCursor = false, omitCursorRestore = false } = {}) {
     const directory = mkdtempSync(join(tmpdir(), 'nt-image-capture-')), input = new Input(), calls = [], writes = [];
     let screen = initialInputScreen(10, 60), allocated = 99, reads = 0;
+    screen.cursorVisible = initialCursorVisible;
     const baseline = structuredClone(screen), bound = imageBoundScreen(baseline, inputRunId), ownership = imageOwnership();
     const observer = new OwnedStaticImageObserver({ output: directory, nonce: 'NTILDE_IMG_' + inputRunId,
         profileName: 'fixture', expectedPaneId: inputPaneId, priorChallenges: ['32768,32769'], endpoint: () => 'private',
@@ -42,7 +44,12 @@ async function fixture(action, { late = false, changedPair = false, changedWorke
             let reply = stage && !observer.actions.at(-1).skipReason ? syntheticImageReply(spec, stage, state, allocated) : '';
             if (stage?.reply === 'allocate') allocated++;
             if (badReply && reply) reply = 'unframed';
-            screen = structuredClone(entry.kind === 'finish' ? baseline : bound);
+            if (entry.kind === 'finish') {
+                let visible = risShowsCursor ? true : screen.cursorVisible;
+                if (!omitCursorRestore && text.includes('\x1b[?25h')) visible = true;
+                if (!omitCursorRestore && text.includes('\x1b[?25l')) visible = false;
+                screen = structuredClone(baseline); screen.cursorVisible = visible;
+            } else screen = structuredClone(bound);
             const background = imageBackgroundReply(entry.kind === 'finish' ? 0xff000000 : 0xff101010);
             queueMicrotask(() => input.emit('data', Buffer.concat([Buffer.from(reply + background), Buffer.from(badModes ? '' : imageModeReplyHex, 'hex')])));
         }
@@ -68,6 +75,22 @@ test('real collector/observer orchestration uses30 admitted bounded emits,31 pai
     assert.equal(f.writes.filter(value => value.endsWith(inputModeQueries)).length, 30);
     assert.ok(f.observer.report.snapshots.slice(1).every(frame => frame.capture.nonces.join(',') !== '32768,32769'));
 }));
+for (const initialCursorVisible of [true, false]) for (const risShowsCursor of [false, true])
+    test(`finish restores observed visibility=${initialCursorVisible} with RIS-shows=${risShowsCursor}`, async () => fixture(async f => {
+        await collectStaticImages(f);
+        assert.equal(f.observer.frames[0].screen.cursorVisible, initialCursorVisible);
+        assert.equal(f.observer.frames.at(-1).screen.cursorVisible, initialCursorVisible);
+        assert.deepEqual(f.observer.frames.at(-1).screen, f.observer.frames[0].screen);
+        assert.deepEqual(f.observer.frames.at(-1).pixels[0].renderDetails, f.observer.frames[0].pixels[0].renderDetails);
+        const bytes = Buffer.from(f.observer.actions.at(-1).commandHex, 'hex').toString();
+        assert.equal(bytes, '\x1bc\x1b[?25' + (initialCursorVisible ? 'h' : 'l'));
+    }, { initialCursorVisible, risShowsCursor }));
+for (const [initialCursorVisible, risShowsCursor] of [[true, false], [false, true]])
+    test(`missing explicit visibility restoration cannot complete original=${initialCursorVisible}`, async () => fixture(async f => {
+        await assert.rejects(collectStaticImages(f)); assert.equal(f.observer.restored, false);
+        assert.equal(f.observer.frames.length, 30); assert.equal(f.observer.lastAttempt.kind, 'images-finish');
+        assert.equal(f.observer.lastAttempt.pair.screen.cursorVisible, !initialCursorVisible);
+    }, { initialCursorVisible, risShowsCursor, omitCursorRestore: true }));
 for (const [name, options] of [['changing paired render context', { changedPair: true }], ['changed worker', { changedWorker: true }],
     ['missing mode controls', { badModes: true }], ['malformed reply', { badReply: true }], ['late raw bytes', { late: true }]])
     test(name + ' retains partial facts and cannot complete or retry', async () => fixture(async f => {

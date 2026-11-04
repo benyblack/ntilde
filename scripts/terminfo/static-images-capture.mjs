@@ -3,10 +3,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OwnedCellObserver, snapshotHash, observerEndpoint, captureRequest } from './agent-observer.mjs';
 import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
-import { pristineEditing } from './editing-capture.mjs';
 import { staticImageCases } from './static-images-cases.mjs';
 import { checkImages, imagePlan, imageAction, imageReply, imageBoundScreen, imageInputs, buildStaticImageReport, validateImageOwnership,
-    imageRawReplies, validateImageCapture, stableImageContext } from './static-images.mjs';
+    imageRawReplies, validateImageCapture, stableImageContext, pristineImageBaseline } from './static-images.mjs';
 
 /** No new action surface: worker emits bytes only after each parent ownership admission. */
 export class OwnedStaticImageObserver {
@@ -27,7 +26,7 @@ export class OwnedStaticImageObserver {
             do { number = randomInt(1, 0x100000000); } while ([...this.states.values()].some(value => value.number === number));
             this.states.set(entry.caseId, { number, firstId: null, ids: [] });
         }
-        const state = this.states.get(entry.caseId) ?? {}, expected = imageAction(entry, state, this.runId);
+        const state = this.states.get(entry.caseId) ?? {}, expected = imageAction(entry, state, this.runId, this.baseline.cursorVisible);
         return { index: this.actions.length, kind: 'images-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
             number: state.number ?? null, firstId: state.firstId ?? null, commandHex: Buffer.from(expected.command).toString('hex'),
             commandSha256: pngHash(Buffer.from(expected.command)), skipReason: expected.skipReason };
@@ -96,7 +95,7 @@ export class OwnedStaticImageObserver {
             if (entry.kind === 'finish') checkImages(snapshotHash(pair.pixels[0].renderDetails) === snapshotHash(this.initialDetails));
             return;
         }
-        checkImages(pristineEditing(pair.screen) && pair.screen.rows >= 8 && pair.screen.cols >= 60);
+        checkImages(pristineImageBaseline(pair.screen) && pair.screen.rows >= 8 && pair.screen.cols >= 60);
         checkImages(pair.pixels[0].width * pair.pixels[0].height * 62 <= totalPixelLimit);
         this.baseline = pair.screen; this.bound = imageBoundScreen(pair.screen, this.runId);
         this.initialBackground = pair.pixels[0].renderDetails.theme.backgroundArgb;

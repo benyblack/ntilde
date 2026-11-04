@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildStaticImageReport, imagePlan, imageReply } from './static-images.mjs';
+import { buildStaticImageReport, imagePlan, imageReply, imageRestore } from './static-images.mjs';
 import { staticImageCases } from './static-images-cases.mjs';
 import { syntheticImageJournal } from './fixtures/static-images-journal.mjs';
+import { initialInputScreen } from './fixtures/input-journal.mjs';
 import { snapshotHash } from './agent-observer.mjs';
+import { pngHash } from './pixels-capture.mjs';
 const fixture = action => { const output = mkdtempSync(join(tmpdir(), 'nt-image-model-')); try { action(output, syntheticImageJournal(output)); } finally { rmSync(output, { recursive: true, force: true }); } };
 const derive = (output, f, prior = []) => buildStaticImageReport(f.frames, f.actions, f.seal, f.runId, output, prior);
 test('synthetic31 paired frames and30 admissions rederive23 separate reply/pixel observations', () => fixture((output, f) => {
@@ -16,6 +18,20 @@ test('synthetic31 paired frames and30 admissions rederive23 separate reply/pixel
     assert.equal(report.caseResults.length, 5); assert.ok(report.caseResults.every(item => item.result === 'passed'));
     assert.match(report.scope, /No animation, placeholders/);
 }));
+test('finish command is rederived from frame0 hidden visibility, not a later claimed restore value', () => {
+    const output = mkdtempSync(join(tmpdir(), 'nt-image-hidden-'));
+    try {
+        const initial = initialInputScreen(10, 60); initial.cursorVisible = false;
+        const f = syntheticImageJournal(output, { initial });
+        assert.equal(derive(output, f).snapshots.at(-1).screen.cursorVisible, false);
+        f.actions.at(-1).commandHex = Buffer.from('\x1bc\x1b[?25h').toString('hex');
+        f.actions.at(-1).commandSha256 = pngHash(Buffer.from(f.actions.at(-1).commandHex, 'hex'));
+        assert.throws(() => derive(output, f));
+    } finally { rmSync(output, { recursive: true, force: true }); }
+});
+test('visibility restoration never coerces an unobserved or non-boolean value', () => {
+    for (const value of [undefined, null, 0, 1, 'false']) assert.throws(() => imageRestore(value));
+});
 for (const [name, mutate] of [
     ['missing paired capture', f => f.frames[5].pixels.pop()],
     ['state mutation', f => { f.frames[5].screen.cursorCol++; f.frames[5].sha256 = snapshotHash(f.frames[5].screen); }],

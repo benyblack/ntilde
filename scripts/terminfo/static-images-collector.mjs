@@ -22,7 +22,7 @@ export async function collectStaticImages({ config, owner, fence, detachFence = 
         if (['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)) return { status: 'unavailable', reason: error.code };
         throw error;
     }
-    checkImages(Array.isArray(initial.priorChallenges) && initial.priorChallenges.length <= 80);
+    checkImages(Array.isArray(initial.priorChallenges) && initial.priorChallenges.length <= 80 && typeof initial.screen?.cursorVisible === 'boolean');
     if (detachFence) fence.detachInput();
     const prior = new Set(initial.priorChallenges);
     const capture = rawInputCapture(input, output, 4500, used => {
@@ -53,7 +53,7 @@ export async function collectStaticImages({ config, owner, fence, detachFence = 
     } catch (error) {
         writeFileSync(join(config.output, 'image-raw-failure.json'), JSON.stringify({ attempts, failed: capture.failed,
             lastAttempt: capture.lastAttempt, error: String(error.message ?? error) }) + '\n', { flag: 'wx', mode: 0o600 });
-        try { await write(output, imageRestore); }
+        try { await write(output, imageRestore(initial.screen.cursorVisible)); }
         catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Image collection and cleanup failed.'); }
         throw error;
     } finally { capture.dispose(); }
