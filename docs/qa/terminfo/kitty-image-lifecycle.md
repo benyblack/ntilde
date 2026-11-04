@@ -33,7 +33,11 @@ Removed SIXEL source text retires independently of shared decoded handles, so
 source-budget eviction still favors retired text. Unstored-handle rejection checks
 ownership and queues retirement together under the buffer write lock. Rejected
 SIXEL admission releases newly retained source text without throwing, moving the
-cursor or arming post-image newline suppression.
+cursor or arming post-image newline suppression. Decoding borrows a provisional
+source backed by the bounded parser payload; only admitted placements commit it
+to the persistent budget. Rejected frames cannot evict live text, even when the
+character or source-count allowance is full. Successful admission publishes the
+new handle owner before commit may evict/prune an older placement.
 Basic uppercase `I`/`N` deletion releases data once no relevant placement
 references it. `a`/`A` deletion affects visible placements; offscreen references
 keep their data. A delete command aborts an incomplete upload. Full clear/reset

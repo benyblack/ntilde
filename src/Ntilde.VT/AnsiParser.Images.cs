@@ -116,7 +116,7 @@ namespace Ntilde.VT
         private void HandleSixel(string dcs)
         {
             var (pixelWidth, pixelHeight) = SixelGeometry.Measure(dcs);
-            SixelSource? source = RetainSixelSources && pixelWidth > 0 && pixelHeight > 0 ? _buffer.SixelSources.Retain(dcs) : null;
+            SixelSource? source = RetainSixelSources && pixelWidth > 0 && pixelHeight > 0 ? _buffer.SixelSources.CreateProvisional(dcs) : null;
             object? handle = null;
             try
             {

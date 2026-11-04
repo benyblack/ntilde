@@ -28,15 +28,7 @@ public partial class TerminalBuffer
                 ClipRightColumns = Math.Max(0, col + widthCells - Cols),
                 IsAltScreenImage = _isAltScreen,
             };
-            if (image is not null)
-            {
-                if (!TryAdmitImageHandle(image.ImageHandle))
-                {
-                    source?.Dispose();
-                    return false;
-                }
-                _images.Add(image);
-            }
+            if (!TryAddSixelPlacement(image)) return false;
             if (display)
             {
                 if (image is not null) image.ClipBottomRows = Math.Max(0, heightCells - Rows);
@@ -46,6 +38,25 @@ public partial class TerminalBuffer
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();
+        return true;
+    }
+
+    private bool TryAddSixelPlacement(TerminalImage? image)
+    {
+        if (image is null) return true;
+        if (!TryAdmitImageHandle(image.ImageHandle))
+        {
+            image.SixelSource?.Dispose();
+            return false;
+        }
+        // Publish ownership before budget eviction can prune another placement
+        // sharing the same opaque decoded handle.
+        _images.Add(image);
+        if (image.SixelSource is { } source)
+        {
+            SixelSources.Commit(source);
+            PruneExpiredSixelSources();
+        }
         return true;
     }
 

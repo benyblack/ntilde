@@ -536,11 +536,15 @@ public sealed class KittyImageLifecycleTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void Rejected_Sixel_admission_releases_source_without_cursor_or_newline_side_effects(bool retainSources)
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    public void Rejected_Sixel_admission_releases_source_without_cursor_or_newline_side_effects(bool retainSources, bool fullSourceCount, bool fullCharBudget)
     {
-        var buffer = new TerminalBuffer(80, 24) { SixelSources = new SixelSourceBudget(100, 2) };
+        var buffer = new TerminalBuffer(80, 24) { SixelSources = new SixelSourceBudget(fullCharBudget ? 4 : 100, fullSourceCount ? 1 : 2) };
         var decoder = new SharedHandleDecoder();
         var parser = new AnsiParser(buffer) { ImageDecoder = decoder, CellWidth = 8, CellHeight = 16 };
         parser.Process("\x1b]1337;File=inline=1:/wAA/w==\x07");
