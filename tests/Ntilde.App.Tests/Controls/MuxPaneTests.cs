@@ -204,6 +204,30 @@ public sealed class MuxPaneTests : IDisposable
     }
 
     [AvaloniaFact]
+    [Trait("Category", "Regression")]
+    public void Reattach_carries_the_title_stack_so_the_pane_and_daemon_restore_the_same_raw_title()
+    {
+        // #830: Vim saves the title in one attach and restores it after a reattach.
+        MuxClientSession first = StartHostedPane();
+        _mux.Fake(first.Id).Emit("\u001b]2;  shell title  \a\u001b[22;0t\u001b[?1049h\u001b]2;file.txt - VIM\a");
+        SettleAndAssertEqual(first.Id, "the save reached both parsers");
+        Assert.Equal("file.txt - VIM", _pane!.CurrentOscTitle);
+        _host.CurrentClient!.Dispose();
+        PumpUntil(() => BufferText(_pane.Buffer!).Contains("[Multiplexer disconnected]"), "the disconnect banner appeared");
+        PressEnter();
+        var again = Assert.IsType<MuxClientSession>(_pane.Session);
+        Assert.Equal(first.Id, again.Id);
+        PumpUntil(() => again.IsAttached && !BufferText(_pane.Buffer!).Contains("[Multiplexer disconnected]"), "the reattach snapshot replaced the pane");
+        SettleAndAssertEqual(first.Id, "the snapshot carried the saved title");
+
+        _mux.Fake(first.Id).Emit("\u001b[?1049l\u001b[23;0t");
+        SettleAndAssertEqual(first.Id, "the restore reached both parsers");
+        PumpUntil(() => _pane.CurrentOscTitle == "  shell title  ", "the pane restored the raw title");
+        Assert.Equal("  shell title  ", _pane.GetBaseTabTitle());
+        Assert.Equal("  shell title  ", _mux.Mux(first.Id).Title);
+    }
+
+    [AvaloniaFact]
     public void Spawn_attach_and_output_leave_the_pane_buffer_equal_to_the_mux()
     {
         MuxClientSession s = StartPane();

@@ -195,6 +195,11 @@ namespace Ntilde.VT
         public Action<string>? OnResponse { get; set; }
         public Action? OnBell { get; set; }
         public Action<string>? OnWorkingDirectoryChanged { get; set; }
+        /// <summary>
+        /// Raised with the exact raw window title for OSC 0/2, and for an XTWINOPS
+        /// <c>CSI 23 ; 0|2 t</c> pop that restores a saved title (see AnsiParser.Titles.cs).
+        /// Empty means "clear the application title"; the host picks its fallback label.
+        /// </summary>
         public Action<string>? OnTitleChanged { get; set; }
 
         /// <summary>
@@ -627,6 +632,7 @@ namespace Ntilde.VT
                                     // stdin, and DECRQM must not report the mode as set.
                                     _inBandResizeReportsEnabled = false;
                                     _colorSchemeReportsEnabled = false;
+                                    ResetTitleStack();
                                     RefreshColorScheme(notify: false);
                                     _state = State.Normal;
                                 }

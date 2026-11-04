@@ -213,6 +213,31 @@ public sealed class MuxCliTests : IDisposable
         Assert.EndsWith($"  {expectedDisplay}{Environment.NewLine}", output, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("  shell: ~/dir  ", "  shell: ~/dir  ")]
+    [InlineData("", ScriptedCommand)]
+    [Trait("Category", "Regression")]
+    public async Task Ls_shows_the_raw_title_a_program_restored_from_the_title_stack(string saved, string expectedDisplay)
+    {
+        // #830: Vim saves the title (CSI 22;0 t), retitles, and restores it on exit (CSI 23;0 t).
+        Guid id = await StartDaemonWithOneSessionAsync();
+        Assert.True(_server!.TryGetSession(id, out var owner));
+        var child = Assert.IsType<ScriptedTerminalSession>(owner!.Inner);
+        child.Emit($"\x1b]2;{saved}\a\x1b[22;0t\x1b]2;file.txt - VIM\a");
+        await owner.FlushAsync().WaitAsync(TimeSpan.FromSeconds(30), Ct);
+        Assert.Equal("file.txt - VIM", owner.Title);
+        child.Emit("\x1b[23;0t");
+        await owner.FlushAsync().WaitAsync(TimeSpan.FromSeconds(30), Ct);
+
+        var (jsonCode, json, jsonError) = Run("ls", "--json");
+        Assert.Equal(0, jsonCode); Assert.Empty(jsonError);
+        var raw = JsonSerializer.Deserialize(json, MuxJsonContext.Default.ListSessionsResult)!;
+        Assert.Equal(saved, Assert.Single(raw.Sessions).Title);
+        var (code, output, error) = Run("ls");
+        Assert.Equal(0, code); Assert.Empty(error);
+        Assert.EndsWith($"  {expectedDisplay}{Environment.NewLine}", output, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Ls_json_is_a_ListSessionsResult()
     {
