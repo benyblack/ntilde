@@ -574,6 +574,7 @@ namespace Ntilde.AgentHost
                 }
                 using var downscaled = TerminalSnapshotRenderer.DownscaleToWidth(bitmap, maxWidth);
                 var final = downscaled ?? bitmap;
+                var details = AgentCaptureDetails.FromCapture(captureFrame.Context);
                 info = new AgentCaptureInfo(
                     TerminalSnapshotRenderer.EncodePng(final),
                     final.Width,
@@ -582,8 +583,8 @@ namespace Ntilde.AgentHost
                     rows,
                     Downscaled: downscaled != null,
                     Scale: effectiveScale,
-                    RenderDetails: captureFrame.Context == null ? null : AgentCaptureDetails.From(captureFrame.Context),
-                    ImageDetails: captureFrame.Context == null ? null : AgentCaptureDetails.ImagesFrom(captureFrame.Context));
+                    RenderDetails: details.Render,
+                    ImageDetails: details.Images);
                 return true;
             }
             catch (Exception ex)

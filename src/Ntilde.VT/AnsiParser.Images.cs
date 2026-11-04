@@ -142,10 +142,9 @@ namespace Ntilde.VT
             float cellHeight = size?.HeightPx ?? CellHeight;
             float cw = float.IsFinite(cellWidth) && cellWidth > 0 ? Math.Max(1, cellWidth) : 10;
             float ch = float.IsFinite(cellHeight) && cellHeight > 0 ? Math.Max(1, cellHeight) : 20;
-            var metricOrigin = size is not null ? SixelReservationMetricOrigin.SixelOverride : SixelReservationMetricOrigin.ParserMetric;
             var provenance = new SixelPlacementProvenance(pixelWidth, pixelHeight, dimensionOrigin, cw, ch,
-                float.IsFinite(cellWidth) && cellWidth > 0 ? metricOrigin : SixelReservationMetricOrigin.DefaultFallback,
-                float.IsFinite(cellHeight) && cellHeight > 0 ? metricOrigin : SixelReservationMetricOrigin.DefaultFallback);
+                SixelPlacementProvenance.MetricOrigin(cellWidth, size is not null),
+                SixelPlacementProvenance.MetricOrigin(cellHeight, size is not null));
             if (_buffer.PlaceSixelImage(handle ?? source, (int)Math.Ceiling(pixelWidth / cw), (int)Math.Ceiling(pixelHeight / ch), source, provenance))
                 _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
         }

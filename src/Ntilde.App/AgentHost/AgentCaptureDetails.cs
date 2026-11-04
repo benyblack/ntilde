@@ -9,6 +9,9 @@ namespace Ntilde.AgentHost;
 
 internal static class AgentCaptureDetails
 {
+    internal static (CaptureRenderDetails? Render, CaptureImageDetails? Images) FromCapture(SnapshotRenderContext? context)
+        => context is null ? (null, null) : (From(context), ImagesFrom(context));
+
     internal static CaptureRenderDetails From(SnapshotRenderContext context)
     {
         var frame = context.Frame;

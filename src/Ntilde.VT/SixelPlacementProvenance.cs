@@ -17,4 +17,11 @@ public readonly record struct SixelPlacementProvenance(
     float CellWidthPx,
     float CellHeightPx,
     SixelReservationMetricOrigin CellWidthOrigin,
-    SixelReservationMetricOrigin CellHeightOrigin);
+    SixelReservationMetricOrigin CellHeightOrigin)
+{
+    internal static SixelReservationMetricOrigin MetricOrigin(float selected, bool hasOverride)
+    {
+        if (!float.IsFinite(selected) || selected <= 0) return SixelReservationMetricOrigin.DefaultFallback;
+        return hasOverride ? SixelReservationMetricOrigin.SixelOverride : SixelReservationMetricOrigin.ParserMetric;
+    }
+}
