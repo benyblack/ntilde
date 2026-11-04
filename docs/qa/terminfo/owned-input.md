@@ -57,5 +57,7 @@ mode controls, parent/action failures, strict restoration/seal, version selectio
 historical compatibility and downgrade refusal. A private PTY test checks listener
 handoff, exact controlled termios restoration and original raw/paused/output
 behavior; macOS PENDIN is a kernel canonical-input reprocessing flag rather than
-an application mode. These tests are not fresh owned-App runtime evidence. No
-runtime results or support grades are published by this implementation.
+an application mode. These tests are not fresh owned-App runtime evidence. The separately retained [first completed runtime collection](2026-11-04-input-observations.md)
+records 39 passing cases and the complete schema9 receipt, together with the earlier
+failed attempt. It qualifies this generated-event local-child path only; stock
+grades and historical files remain separate.
