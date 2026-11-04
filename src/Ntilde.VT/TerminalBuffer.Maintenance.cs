@@ -431,7 +431,8 @@ namespace Ntilde.VT
                 // formerly active alternate screen left main text visible; using the old
                 // pen also left explicit colors on otherwise blank cells.
                 Clear(true);
-                foreach (var row in _mainScreen) row.IsWrapped = false;
+                // Main is active now; a width resize can leave _mainScreen stale.
+                foreach (var row in _viewport) row.IsWrapped = false;
                 ResetAlternateScreenRowsNoLock();
                 if (_textSizingBlocks != null) PruneTextSizingStorage();
 

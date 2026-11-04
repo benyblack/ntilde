@@ -60,6 +60,24 @@ public sealed class FullResetScreenTests
         Assert.Equal(Json(fresh.Sgr), Json(buffer.ExportState(0).Sgr));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RIS_clears_live_wrap_rows_after_main_or_alternate_width_and_height_resize(bool alternate)
+    {
+        var buffer = new TerminalBuffer(12, 4); var parser = new AnsiParser(buffer);
+        parser.Process("MAIN" + Esc + "[?47hALT");
+        if (!alternate) parser.Process(Esc + "[?47l");
+        buffer.Resize(6, 3);
+        parser.Process(Esc + "[1;1H1234567");
+        var before = buffer.ExportState(0);
+        Assert.Contains(true, (alternate ? before.Alt : before.Main).RowWraps!);
+        parser.Process(Esc + "c");
+        var fresh = new TerminalBuffer(6, 3).ExportState(0); var after = buffer.ExportState(0);
+        Assert.Equal(Json(fresh.Main), Json(after.Main)); Assert.Equal(Json(fresh.Alt), Json(after.Alt));
+        Assert.All(after.Main.RowWraps!, Assert.False); Assert.All(after.Alt.RowWraps!, Assert.False);
+    }
+
     [Fact]
     public void RIS_clears_sized_text_from_both_screen_banks()
     {

@@ -38,7 +38,9 @@ entry and inherited autowrap on/off. Each fails on the old implementation.
 The corrected buffer returns to main, defaults its current and saved pens and
 runtime colors, then performs the existing full clear. Both retained screen
 banks become blank with theme-following default cells. Row wrap/authored extents
-and side tables are cleared in place, preserving row identities; sized-text
+and side tables are cleared in place, preserving row identities. Resized main
+screens use the authoritative live viewport rather than a stale detached array;
+both resize contexts have focused regressions. Sized-text
 storage is pruned after both banks are clear. Saved cursor banks, pending wrap,
 charset witnesses and the wrap-on host policy are checked independently.
 
