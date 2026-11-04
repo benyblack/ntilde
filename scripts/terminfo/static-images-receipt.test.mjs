@@ -4,6 +4,8 @@ import { writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { staticImageReceiptFixture as fixture } from './fixtures/static-images-receipt.mjs';
 import { includesStaticImageEvidence } from './static-images-receipt.mjs';
+import { syntheticImageCapture } from './fixtures/static-images-journal.mjs';
+import { staticImageCases } from './static-images-cases.mjs';
 import { buildStaticImageReport } from './static-images.mjs';
 import { pngHash } from './pixels-capture.mjs';
 test('full15-suite synthetic finalizer requires fixed67-source schema10 and preserves all14 archived prefix bindings', () => fixture(f => {
@@ -104,5 +106,32 @@ test('missing native creation provenance completes honestly as inconclusive and 
     show.result = 'passed'; show.inconclusiveReason = null; show.assertions[0].passed = true;
     f.write('image-observations.json', derived);
     f.evidence.staticImageEvidence.sha256 = pngHash(readFileSync(join(f.output, 'image-observations.json')));
+    assert.throws(f.finish, /Invalid or incomplete owned static-image evidence/);
+}));
+
+test('unqualified native geometry plus independent non-target failure finalizes as negative, never inconclusive', () => fixture(f => {
+    const frame = f.report.snapshots.find(value => value.caseId === 'sixel.native-raster' && value.stageId === 'show');
+    const spec = staticImageCases.find(value => value.id === frame.caseId), stage = spec.stages.find(value => value.id === 'show');
+    const capture = syntheticImageCapture(frame.screen, spec, stage, { bleed: true });
+    capture.imageDetails.placements[0].sixelPlacement = null;
+    const bytes = Buffer.from(capture.pngBase64, 'base64');
+    for (const pixel of frame.pixels) {
+        writeFileSync(join(f.output, pixel.file), bytes);
+        Object.assign(pixel, { sha256: pngHash(bytes), byteCount: bytes.length, imageDetails: structuredClone(capture.imageDetails) });
+    }
+    const derived = buildStaticImageReport(f.report.snapshots, f.report.actions, f.report.seal, f.context.runId, f.output, f.report.priorChallenges);
+    const show = derived.observations.find(value => value.featureId === 'sixel.native-raster.show');
+    assert.equal(show.assertions[0].passed, null); assert.equal(show.assertions.at(-1).passed, false);
+    assert.equal(show.result, 'failed'); assert.match(show.pixelQualification, /provenance/);
+    f.write('image-observations.json', derived);
+    writeFileSync(join(f.output, 'image-snapshots.jsonl'), derived.snapshots.map(value => JSON.stringify(value)).join('\n') + '\n');
+    Object.assign(f.evidence.staticImageEvidence, { sha256: pngHash(readFileSync(join(f.output, 'image-observations.json'))),
+        counts: { passed: 21, failed: 1, inconclusive: 1 } });
+    assert.deepEqual(f.finish().staticImageEvidence.counts, { passed: 21, failed: 1, inconclusive: 1 });
+    rmSync(join(f.output, 'cell-receipt.json'));
+    show.result = 'inconclusive'; show.inconclusiveReason = 'missing SIXEL creation provenance';
+    f.write('image-observations.json', derived);
+    Object.assign(f.evidence.staticImageEvidence, { sha256: pngHash(readFileSync(join(f.output, 'image-observations.json'))),
+        counts: { passed: 21, inconclusive: 2 } });
     assert.throws(f.finish, /Invalid or incomplete owned static-image evidence/);
 }));

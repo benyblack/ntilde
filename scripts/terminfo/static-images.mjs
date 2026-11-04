@@ -214,20 +214,23 @@ class StaticImageReport {
             sourceId: stage.appearance === 'reversed' ? 'reversed' : item.sourceId, visible: stage.appearance !== 'absent', imageDetails: pixels[0].imageDetails });
         checkImages(pixel.controls[0].passed);
         const assertions = [...pixel.assertions, pixel.controls[1]];
-        const grade = this.gradeStage(item, stage, expected, reply, assertions, pixel.qualification);
+        const grade = this.gradeStage(item, stage, expected, reply, assertions, pixel);
         this.observations.push({ featureId: item.id + '.' + stage.id, ...grade,
-        snapshot: index, actionIndex: action.index, reply, assertions, measurement: pixel.measurement, skipReason: expected.skipReason });
+        snapshot: index, actionIndex: action.index, reply, assertions, pixelQualification: pixel.qualification, measurement: pixel.measurement, skipReason: expected.skipReason });
     }
-    gradeStage(item, stage, expected, reply, assertions, qualification) {
+    gradeStage(item, stage, expected, reply, assertions, pixel) {
         const causality = imageWitnessStages(item, stage).map(id => {
             const featureId = item.id + '.' + id, witness = this.observations.find(value => value.featureId === featureId);
             checkImages(witness);
             return { featureId, snapshot: witness.snapshot, result: witness.result, passed: witness.result === 'passed' };
         });
         const missing = causality.filter(value => !value.passed);
-        let inconclusiveReason = expected.skipReason ?? qualification;
+        let inconclusiveReason = expected.skipReason;
         if (!inconclusiveReason && missing.length) inconclusiveReason = 'requires passed prior witness: '
             + missing.map(value => value.featureId + ' (' + value.result + ')').join(', ');
+        // Native uncertainty cannot erase independently tested reply/non-target negatives.
+        const independentNegative = reply.passed === false || pixel.controls[1].passed === false;
+        if (!inconclusiveReason && !independentNegative) inconclusiveReason = pixel.qualification;
         let result = 'inconclusive';
         if (!inconclusiveReason) result = reply.passed && assertions.every(value => value.passed) ? 'passed' : 'failed';
         return { result, causality, inconclusiveReason };

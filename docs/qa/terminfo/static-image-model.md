@@ -225,6 +225,9 @@ extent is16·Gx/Cw by18·Gy/Ch, while its painted region is16·Gx/Cw by16·Gy/Ch
 The current whole-cell renderer projection is recorded only as a compatibility
 diagnostic. Its success cannot make the native assertion pass. A calibrated
 stretch negative remains failed and its dependent clear remains inconclusive.
+Native uncertainty cannot erase an independently failed reply or non-target-pixel
+assertion once the prior causal controls passed; its separate qualification
+reason remains retained. Missing-witness dependent stages stay inconclusive.
 
 The raster comparison projects fixed source color/outer edges analytically and
 allows only a fixed one-output-pixel uncertainty band around them. Every other

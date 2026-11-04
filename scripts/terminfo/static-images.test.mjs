@@ -153,3 +153,17 @@ test('a later successful allocation cannot stand in for a refused first allocati
         }
     } finally { rmSync(output, { recursive: true, force: true }); }
 });
+
+test('unqualified native geometry cannot hide an independent non-target semantic negative', () => {
+    const output = mkdtempSync(join(tmpdir(), 'nt-image-independent-negative-'));
+    try {
+        const f = syntheticImageJournal(output, { pixelOptions: entry => entry.caseId === 'sixel.native-raster' && entry.stageId === 'show' ? { bleed: true } : undefined });
+        const frame = f.frames.find(value => value.caseId === 'sixel.native-raster' && value.stageId === 'show');
+        for (const pixel of frame.pixels) pixel.imageDetails.placements[0].sixelPlacement = null;
+        const report = derive(output, f), show = report.observations.find(value => value.featureId === 'sixel.native-raster.show');
+        assert.equal(show.assertions[0].passed, null); assert.equal(show.assertions.at(-1).passed, false);
+        assert.equal(show.result, 'failed'); assert.match(show.pixelQualification, /provenance/);
+        assert.equal(report.observations.find(value => value.featureId === 'sixel.native-raster.clear').result, 'inconclusive');
+        assert.equal(report.caseResults[0].result, 'failed');
+    } finally { rmSync(output, { recursive: true, force: true }); }
+});
