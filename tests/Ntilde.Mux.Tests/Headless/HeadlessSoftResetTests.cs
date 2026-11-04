@@ -41,4 +41,26 @@ public sealed class HeadlessSoftResetTests
         Assert.False(again.Buffer.Modes.IsOriginMode);
         Assert.True(again.Buffer.Modes.IsAutoWrapMode);
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task RIS_output_and_reattach_keep_both_cleared_screen_banks(int version)
+    {
+        using var host = new MuxTestHost();
+        using var client = await host.ConnectClientAsync(new MuxClientOptions { MinProtocolVersion = version, MaxProtocolVersion = version });
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        host.Fake(id).Emit("\u001b[31;1mMAIN\u001b7\u001b[?47h\u001b[32;1mALT\u001b7\u001b[?7l");
+        await host.Mux(id).FlushAsync();
+        var pane = await MuxTestHost.AttachPaneAsync(client, id);
+        host.Fake(id).Emit("\u001bc"); await host.SettleAsync(id, client);
+        host.AssertPaneMatchesMux(id, pane, "RIS output clears the restored main and retained alternate banks");
+        Assert.All(Ntilde.Replay.BufferSnapshot.Capture(pane.Buffer).Lines, line => Assert.Equal(string.Empty, line));
+        pane.Session.Detach(userDetached: false); await client.PingAsync(TestContext.Current.CancellationToken);
+        var again = await MuxTestHost.AttachPaneAsync(client, id);
+        host.Fake(id).Emit("\u001b[?47h\u001b8q"); await host.SettleAsync(id, client);
+        host.AssertPaneMatchesMux(id, again, "reattach retains a clean alternate screen and default bank");
+        Assert.StartsWith("q", Ntilde.Replay.BufferSnapshot.Capture(again.Buffer).Lines[0]);
+        Assert.False(again.Buffer.IsBold); Assert.True(again.Buffer.IsDefaultForeground);
+    }
 }

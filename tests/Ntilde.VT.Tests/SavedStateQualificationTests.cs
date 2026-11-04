@@ -108,6 +108,6 @@ public sealed class SavedStateQualificationTests
         parser.Process("\u001b8"); Assert.Equal(Json(defaults.Sgr), Json(buffer.ExportState(0).Sgr));
         parser.Process("\u001b[?47h\u001b8"); Assert.Equal(Json(defaults.Sgr), Json(buffer.ExportState(0).Sgr));
         Assert.Equal((0, 0), (buffer.CursorRow, buffer.CursorCol));
-        // Cell clearing is a separate observed RIS limitation tracked by #773, not inferred from bank reset.
+        // Cell clearing is independently covered by FullResetScreenTests; the historical owned RIS negative remains frozen.
     }
 }

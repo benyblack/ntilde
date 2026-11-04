@@ -47,6 +47,13 @@ invariant changes.
   for full state or claims direct inactive-bank inspection. Explicit fixture
   clearing is independent of RIS under test; v7 binds every preceding suite and
   retains a coherent reset negative rather than grading a method call as support.
+- **RIS clearing belongs to VT.** Screen selection and default-pen/runtime-color
+  reset precede the existing full clear under one write cut. Main and retained
+  alternate rows lose text, wrap/authored extents and side-table metadata in place;
+  sized-text retention is pruned after both banks are clear. The full-clear path
+  remains the sole image-retirement owner, with snapshot pins honored. Replay and
+  mux snapshots carry the cleared banks. These owning regressions do not regrade
+  historical reset failures or the unverified `TERM_FEATURES` environment hint.
 - Deterministic parsing — same byte stream produces the same semantic ops
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops ordinary text content. OSC 66 rectangles are
