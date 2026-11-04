@@ -87,19 +87,24 @@ export function inspectStaticImagePixels({ baseline, observed, grid, anchor, cel
     const controls = [check('reference target is independently blank with the known background', backgroundOnly(baseline, envelope)),
         check('all non-target capture pixels remain unchanged', outsideUnchanged(baseline, observed, envelope))];
     const native = geometry === 'native' && visible ? inspectNative(observed, envelope, grid, validateStaticImageDetails(imageDetails)) : null;
-    const assertions = native ? native.assertions : visible
-        ? [check('source-backed native/stretch/aspect geometry', correctGeometry(bounds, envelope, geometry)), ...interiorSamples(observed, bounds, sourceId)]
-        : [check('no displayed image pixels in target envelope', bounds === null)];
+    const assertions = imageAssertions(native, visible, observed, bounds, envelope, geometry, sourceId);
     return { scope: 'bounded static-image pixel/geometry comparison only; no ownership, live execution, freshness or stock grade',
         controls, assertions, qualification: native?.qualification ?? null,
-        measurement: { envelope, contentBounds: bounds, sourceWidth: 16, sourceHeight: 16, geometry, ...(native?.measurement ?? {}) } };
+        measurement: { envelope, contentBounds: bounds, sourceWidth: 16, sourceHeight: 16, geometry, ...native?.measurement } };
+}
+
+function imageAssertions(native, visible, observed, bounds, envelope, geometry, sourceId) {
+    if (native) return native.assertions;
+    if (!visible) return [check('no displayed image pixels in target envelope', bounds === null)];
+    return [check('source-backed native/stretch/aspect geometry', correctGeometry(bounds, envelope, geometry)),
+        ...interiorSamples(observed, bounds, sourceId)];
 }
 
 const placementKeys = ['index', 'placementId', 'col', 'viewportRow', 'widthCells', 'heightCells', 'clipTopRows', 'clipBottomRows',
     'clipRightColumns', 'preserveAspectRatio', 'bitmapWidthPx', 'bitmapHeightPx', 'sixelPlacement'];
 const provenanceKeys = ['reservationWidthPx', 'reservationHeightPx', 'dimensionOrigin', 'cellWidthPx', 'cellHeightPx',
     'cellWidthOrigin', 'cellHeightOrigin', 'arithmetic'];
-const origins = ['sixel-override', 'parser-metric', 'default-fallback'];
+const origins = new Set(['sixel-override', 'parser-metric', 'default-fallback']);
 function requireFact(value) { if (!value) throw invalid(); }
 function dataObject(value, keys) {
     requireFact(value && [Object.prototype, null].includes(Object.getPrototypeOf(value)));
@@ -123,7 +128,7 @@ function copyProvenance(value) {
         && ['sixel-geometry', 'image-decoder'].includes(p.dimensionOrigin) && p.arithmetic === 'float32-ceiling-v1');
     for (const axis of ['Width', 'Height']) {
         const v = p['cell' + axis + 'Px'];
-        requireFact(Number.isFinite(v) && v >= 1 && Math.fround(v) === v && origins.includes(p['cell' + axis + 'Origin']));
+        requireFact(Number.isFinite(v) && v >= 1 && Math.fround(v) === v && origins.has(p['cell' + axis + 'Origin']));
     }
     return p;
 }
@@ -144,7 +149,7 @@ export function validateStaticImageDetails(value) {
     const d = dataObject(value, ['schemaVersion', 'complete', 'totalPlacements', 'placements']);
     const array = dataArray(d.placements);
     requireFact(d.schemaVersion === 1 && d.complete === true && integer(d.totalPlacements, 0, 512) && array.length === d.totalPlacements);
-    const placements = array.map(copyPlacement);
+    const placements = array.map((value, index) => copyPlacement(value, index));
     requireFact(new Set(placements.map(p => p.placementId)).size === placements.length);
     return { ...d, placements };
 }
@@ -166,19 +171,21 @@ function inEdgeBand(rect, x, y) {
     return (dx <= 1 && y >= rect.y - 1 && y <= rect.y + rect.height + 1)
         || (dy <= 1 && x >= rect.x - 1 && x <= rect.x + rect.width + 1);
 }
-function analyticRaster(image, envelope, projection) {
-    const regions = nativeRegions(projection), interiors = [0, 0, 0, 0];
-    let outside = 0, uncertain = 0, mismatches = 0;
-    for (let y = envelope.y; y < envelope.y + envelope.height; y++) for (let x = envelope.x; x < envelope.x + envelope.width; x++) {
+function inspectRasterRow(image, envelope, regions, y, counts) {
+    for (let x = envelope.x; x < envelope.x + envelope.width; x++) {
         const cx = x + 0.5, cy = y + 0.5;
-        if (regions.some(rect => inEdgeBand(rect, cx, cy))) { uncertain++; continue; }
+        if (regions.some(rect => inEdgeBand(rect, cx, cy))) { counts.uncertain++; continue; }
         const index = regions.findIndex(rect => inside(rect, cx, cy));
-        if (index < 0) outside++; else interiors[index]++;
-        if (!same(pixelAt(image, x, y), index < 0 ? staticImageBackground : regions[index].color)) mismatches++;
+        if (index < 0) counts.outside++; else counts.interiors[index]++;
+        if (!same(pixelAt(image, x, y), index < 0 ? staticImageBackground : regions[index].color)) counts.mismatches++;
     }
-    const discriminating = interiors.every(n => n > 0) && outside > 0;
-    return { passed: discriminating ? mismatches === 0 : null, mismatches, safeColorPixels: interiors, safeBackgroundPixels: outside,
-        uncertaintyPixels: uncertain, edgeTolerancePx: 1, discriminating };
+}
+function analyticRaster(image, envelope, projection) {
+    const regions = nativeRegions(projection), counts = { interiors: [0, 0, 0, 0], outside: 0, uncertain: 0, mismatches: 0 };
+    for (let y = envelope.y; y < envelope.y + envelope.height; y++) inspectRasterRow(image, envelope, regions, y, counts);
+    const discriminating = counts.interiors.every(n => n > 0) && counts.outside > 0;
+    return { passed: discriminating ? counts.mismatches === 0 : null, mismatches: counts.mismatches, safeColorPixels: counts.interiors,
+        safeBackgroundPixels: counts.outside, uncertaintyPixels: counts.uncertain, edgeTolerancePx: 1, discriminating };
 }
 function nativePlacementAssertions(p, source, grid, envelope) {
     const provenance = p.sixelPlacement;

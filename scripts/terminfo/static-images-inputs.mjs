@@ -59,7 +59,7 @@ export function staticSixelCanvas() {
 function walkFixedSixel(data) {
     const pixels = new Map(); let x = 0, y = 0, width = 0, height = 0, color = 0;
     for (let at = 0; at < data.length; at++) {
-        const code = data.charCodeAt(at);
+        const code = data.codePointAt(at);
         if (code === 35) { color = Number(data[++at]); continue; }
         if (code === 36) { x = 0; continue; }
         if (code === 45) { x = 0; y += 6; continue; }
