@@ -304,7 +304,7 @@ public sealed class VtTools
         // generic ESC handling so the 'P' isn't misread as a simple ESC sequence.
         int dcsPrefixLength = GetDcsPrefixLength(upper);
         if (dcsPrefixLength > 0)
-            return ExplainDcs(s[dcsPrefixLength..], sequence.TrimStart());
+            return ExplainDcs(sequence.TrimStart());
 
         // APC: literal "APC" or the 7-bit introducer ESC _ ("ESC_" / "ESC _").
         if (upper.StartsWith("APC", System.StringComparison.Ordinal)
@@ -335,7 +335,7 @@ public sealed class VtTools
         return sequence.StartsWith('\u0090') ? 1 : 0;
     }
 
-    private static string ExplainDcs(string body, string original)
+    private static string ExplainDcs(string original)
     {
         bool literal = original.StartsWith('\x1b') || original.StartsWith('\u0090');
         bool escaped = original.StartsWith("\\x1b", StringComparison.OrdinalIgnoreCase)
@@ -355,6 +355,9 @@ public sealed class VtTools
             return "DCS: " + (exact ? ContractSequenceTable["DCS:$qr"] : SequenceTable["DCS"]);
         }
 
+        // Preserve notation tokens too: global normalization would turn a mixed
+        // escaped terminator into a textual ST token.
+        string body = original[GetDcsPrefixLength(original.ToUpperInvariant())..];
         return ExplainDcsNotation(body, original.StartsWith("DCS", StringComparison.OrdinalIgnoreCase));
     }
 
