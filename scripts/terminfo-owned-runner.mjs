@@ -56,6 +56,10 @@ function ownerFailure(error) {
         ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable', 'inputGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
 }
 
+function requireInputCompletion(state) {
+    if (!state?.observer?.restored && !state?.unavailable) throw new Error('Input suite is not sealed or initially unavailable.');
+}
+
 function retainFailedMetadataAttempt(output, request, error, observer) {
     if (observer.lastAttempt && !initialMetadataRefusal(request, error, observer))
         writeJson(join(output, 'metadata-failed-observation.json'), { ...observer.lastAttempt, error: observer.failure(error) });
@@ -688,7 +692,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     } else if (request.kind === 'raw-output') {
                         attestOutputMode(request, queryTimeout);
                     } else if (request.kind === 'done') {
-                        if (!inputState?.observer?.restored && !inputState?.unavailable) throw new Error('Input suite is not sealed or initially unavailable.');
+                        requireInputCompletion(inputState);
                         completed = true;
                         resolveDone();
                     } else if (request.kind === 'failed') {

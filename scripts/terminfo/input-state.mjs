@@ -13,13 +13,18 @@ export function boundInputScreen(initial, runId) {
     bound.lines[0] = 'NTILDE_IN_' + runId; bound.cursorCol = bound.lines[0].length; bound.bufferState.alternateScreen = true;
     return bound;
 }
+function inputModeSet(number, modes) {
+    if (number === 66) return modes.applicationKeypad;
+    if (number === 1006) return modes.mouseSgr;
+    return modes.mouseTracking === number;
+}
 export function inputModeReplyHex(modes) {
-    return Buffer.from(inputModeNumbers.map(n => `\x1b[?${n};${(n === 66 ? modes.applicationKeypad : n === 1006 ? modes.mouseSgr : modes.mouseTracking === n) ? 1 : 2}$y`).join('')
+    return Buffer.from(inputModeNumbers.map(n => `\x1b[?${n};${inputModeSet(n, modes) ? 1 : 2}$y`).join('')
         + `\x1b[?${modes.kittyKeyboardFlags}u`).toString('hex');
 }
 /** Raw hex is a copied child observation; challenge bytes are never event bytes. */
 export function validateInputBytes(value, expectedHex, used) {
-    checkInput(value && Object.keys(value).sort().join(',') === 'barrier,byteLength,hex,nonces'
+    checkInput(value && Object.keys(value).length === 4 && ['barrier', 'byteLength', 'hex', 'nonces'].every(key => Object.hasOwn(value, key))
         && typeof value.hex === 'string' && /^[a-f\d]*$/.test(value.hex) && value.hex.length % 2 === 0
         && value.byteLength === value.hex.length / 2 && value.byteLength <= 512 && value.hex === expectedHex
         && Array.isArray(value.nonces) && value.nonces.length === 2

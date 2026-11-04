@@ -57,6 +57,10 @@ function checkSnapshot(output, context, proof) {
         && Number.isFinite(Date.parse(proof.sourceSnapshot.removedAt))
         && Date.parse(proof.sourceSnapshot.removedAt) >= Date.parse(proof.cleanedUpAt));
 }
+function retainedInventory(output, context) {
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v2') return capturedV9SourceFiles;
+    return snapshotMode(output, context) ? capturedV8SourceFiles : legacyV8SourceFiles;
+}
 function checkSources(output, context, marker) {
     check(context.metadataSuiteId === metadataSuiteId && context.ownedMetadataPolicy === ownedMetadataPolicy && marker?.policy === ownedMetadataPolicy
         && Object.keys(marker).every(key => ['policy', 'paneId', 'geometry'].includes(key)));
@@ -65,8 +69,7 @@ function checkSources(output, context, marker) {
         && hash(bytes(output, 'collector-adapter.mjs')) === context.adapterBundleSha256
         && hash(bytes(output, 'package-lock.json')) === context.collectorLockSha256);
     const dir = lstatSync(join(output, 'sources')); check(dir.isDirectory() && !dir.isSymbolicLink());
-    const inventory = context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v2' ? capturedV9SourceFiles
-        : snapshotMode(output, context) ? capturedV8SourceFiles : legacyV8SourceFiles;
+    const inventory = retainedInventory(output, context);
     check(Object.keys(context).filter(key => key.endsWith('SourceSha256')).every(key => Object.hasOwn(inventory, key)));
     const retained = readdirSync(join(output, 'sources')), expected = Object.values(inventory);
     check(retained.length === expected.length && retained.every(file => expected.includes(file)));

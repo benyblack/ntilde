@@ -7,7 +7,13 @@ import { capturedV9SourceFiles } from './owned-sources.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export const inputSources = Object.freeze(Object.fromEntries(Object.entries(capturedV9SourceFiles).filter(([key]) => key.startsWith('input'))));
 const files = ['input-snapshots.jsonl', 'input-actions.jsonl', 'input-observations.json', 'input-unavailable.json', 'input-failed-observation.json', 'input-raw-failure.json'];
-function present(path) { try { lstatSync(path); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; } }
+function present(path) {
+    try { lstatSync(path); return true; }
+    catch (error) {
+        if (error.code === 'ENOENT') return false;
+        throw error;
+    }
+}
 function bytes(output, file, limit = 16 * 1024 * 1024) {
     const path = join(output, file), stat = lstatSync(path); checkInput(stat.isFile() && !stat.isSymbolicLink() && stat.size <= limit);
     const value = readFileSync(path); checkInput(value.length <= limit); return value;

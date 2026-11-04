@@ -30,13 +30,13 @@ export async function collectInput({ config, fence, owner, input = process.stdin
     const tell = (kind, sample, extra = {}) => owner(kind, null, { ...extra, capture: sample });
     try {
         await tell('input-bind', await take(() => write(output, '\x1b[?1049h\x1b[!p\x1b[?6l\x1b[r\x1b[4l\x1b[0m\x1b[HNTILDE_IN_' + config.runId)));
-        for (const item of cases) {
+        await cases.reduce((previous, item) => previous.then(async () => {
             const control = await take(() => write(output, item.setup + inputModeQueries));
             if (control.hex !== inputModeReplyHex(item.modes)) throw new Error('Independent input-mode control failed before dispatch.');
             await tell('input-control', control, { caseId: item.id });
             const sample = await take(() => owner('input-apply', null, { caseId: item.id }));
             await tell('input-read', sample, { caseId: item.id });
-        }
+        }), Promise.resolve());
         const restored = await take(() => write(output, inputReset + inputFinalRestore + inputModeQueries));
         if (restored.hex !== inputModeReplyHex(defaultInputModes)) throw new Error('Input modes were not restored.');
         await tell('input-finish', restored);
@@ -46,7 +46,7 @@ export async function collectInput({ config, fence, owner, input = process.stdin
         writeFileSync(join(config.output, 'input-raw-failure.json'), JSON.stringify({ attempts, failed: capture.failed, lastAttempt: capture.lastAttempt,
             error: error instanceof Error ? error.message : String(error) }) + '\n', { flag: 'wx', mode: 0o600 });
         try { await write(output, inputReset + inputFinalRestore); }
-        catch (cleanup) { throw new AggregateError([error, cleanup], 'Input collection and output cleanup failed.'); }
+        catch (error_) { throw new AggregateError([error, error_], 'Input collection and output cleanup failed.'); }
         throw error;
     } finally { capture.dispose(); }
 }

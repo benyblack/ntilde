@@ -13,7 +13,10 @@ export function historicalArchive(name) {
             const method = archive.readUInt16LE(offset + 8), size = archive.readUInt32LE(offset + 18);
             const start = offset + 30, length = archive.readUInt16LE(offset + 26), extra = archive.readUInt16LE(offset + 28);
             const path = archive.subarray(start, start + length).toString(), data = archive.subarray(start + length + extra, start + length + extra + size);
-            const bytes = method === 8 ? inflateRawSync(data) : method === 0 ? data : null;
+            let bytes;
+            if (method === 8) bytes = inflateRawSync(data);
+            else if (method === 0) bytes = data;
+            else throw new Error('Unsupported frozen archive method.');
             if (!bytes || createHash('sha256').update(bytes).digest('hex') !== publication.archive.fileSha256[path]) throw new Error('Frozen source member changed.');
             values.set(path, bytes); offset = start + length + extra + size;
         }
