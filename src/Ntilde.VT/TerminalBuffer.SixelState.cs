@@ -98,7 +98,11 @@ public partial class TerminalBuffer
                 if (image.SixelSource is not { } source) continue;
                 try
                 {
-                    if (decoder.DecodeSixel(source, out _, out _) is { } handle) image.ImageHandle = handle;
+                    if (decoder.DecodeSixel(source, out _, out _) is { } handle)
+                    {
+                        RequireImageHandleAdmission(handle);
+                        image.ImageHandle = handle;
+                    }
                 }
                 catch (Exception ex) { TerminalLogger.Debug($"[SIXEL] Snapshot decode failed: {ex.Message}"); }
             }

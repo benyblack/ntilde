@@ -5,11 +5,20 @@ namespace Ntilde.Rendering.Tests;
 
 public sealed class KittyImageLifecyclePixelTests
 {
+    private static readonly bool SkiaAvailable = CheckSkiaAvailable();
+
+    private static bool CheckSkiaAvailable()
+    {
+        try { using var surface = SKSurface.Create(new SKImageInfo(1, 1, SKColorType.Rgba8888)); return surface is not null; }
+        catch { return false; }
+    }
+
     private static string Command(string controls, string payload = "") => $"\x1b_G{controls};{payload}\x1b\\";
 
     [Fact]
     public void Numbered_transmit_place_soft_delete_and_snapshot_safe_hard_delete_preserve_real_pixels()
     {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
         var buffer = new TerminalBuffer(80, 24);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = new SkiaImageDecoder() };
         var replies = new List<string>(); parser.OnResponse = replies.Add;
@@ -48,6 +57,7 @@ public sealed class KittyImageLifecyclePixelTests
     [Fact]
     public void Invalid_raw_payload_has_a_negative_ack_and_does_not_consume_an_allocated_id()
     {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
         var buffer = new TerminalBuffer(80, 24);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = new SkiaImageDecoder() };
         var replies = new List<string>(); parser.OnResponse = replies.Add;

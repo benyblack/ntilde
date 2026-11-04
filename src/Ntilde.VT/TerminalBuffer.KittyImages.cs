@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace Ntilde.VT;
 
@@ -26,25 +25,13 @@ public partial class TerminalBuffer
     private readonly List<KittyImageAsset> _kittyImageAssets = new();
     private uint _nextKittyImageId;
 
-    // Weak keys do not retain disposed decoder wrappers. The short handle gate
-    // coordinates admission with drain without making a frame drain wait on the
-    // parser's buffer lock. No I/O or actual Dispose runs under this gate.
-    private sealed class KittyHandleLifetime
-    {
-        internal long RetirementToken;
-        internal bool Pending;
-        internal bool HandedOff;
-    }
-    private readonly ConditionalWeakTable<object, KittyHandleLifetime> _kittyHandleLifetimes = new();
-    private readonly object _kittyHandleGate = new();
-
     internal KittyImageAsset? StoreKittyImage(object handle, int pixelWidth, int pixelHeight, uint id, uint number)
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         int placementsBefore = _images.Count;
         try
         {
-            if (!TryAdmitKittyHandle(handle)) return null;
+            if (!TryAdmitImageHandle(handle)) return null;
             KittyImageAsset? old = id == 0 ? null : FindKittyImage(id, 0);
             if (id == 0 && number != 0) id = AllocateKittyImageId();
             var asset = new KittyImageAsset(id, number, _isAltScreen, handle, pixelWidth, pixelHeight);
@@ -95,6 +82,7 @@ public partial class TerminalBuffer
         bool lockTaken = EnterWriteLockIfNeeded();
         try
         {
+            RequireImageHandleAdmission(image.ImageHandle);
             image.IsAltScreenImage = _isAltScreen;
             image.KittyImageId = asset.Id;
             image.KittyAsset = asset;
@@ -185,43 +173,10 @@ public partial class TerminalBuffer
 
     private bool IsRetainedKittyHandle(object handle) => _kittyImageAssets.Any(asset => ReferenceEquals(asset.Handle, handle));
 
-    private bool TryAdmitKittyHandle(object handle)
-    {
-        lock (_kittyHandleGate)
-        {
-            KittyHandleLifetime lifetime = _kittyHandleLifetimes.GetValue(handle, static _ => new KittyHandleLifetime());
-            if (lifetime.HandedOff) return false;
-            lifetime.Pending = false; // cancels an older queued retirement generation
-            return true;
-        }
-    }
-
     internal void RetireUnstoredKittyHandle(object handle)
     {
-        if (IsRetainedKittyHandle(handle)) return;
-        lock (_kittyHandleGate)
-        {
-            KittyHandleLifetime lifetime = _kittyHandleLifetimes.GetValue(handle, static _ => new KittyHandleLifetime());
-            if (lifetime.HandedOff || lifetime.Pending) return;
-            lifetime.Pending = true;
-            lifetime.RetirementToken = unchecked(lifetime.RetirementToken + 1);
-            if (lifetime.RetirementToken == 0) lifetime.RetirementToken++;
-            _retiredImageHandles.Enqueue((handle, Environment.TickCount64, true, lifetime.RetirementToken));
-        }
-    }
-
-    private bool IsCurrentKittyRetirement(object handle, long token) =>
-        _kittyHandleLifetimes.TryGetValue(handle, out KittyHandleLifetime? lifetime)
-        && lifetime.Pending && !lifetime.HandedOff && lifetime.RetirementToken == token;
-
-    private bool TryCompleteKittyRetirement(object handle, long token)
-    {
-        if (token == 0) return true; // existing non-Kitty retirement
-        if (!IsCurrentKittyRetirement(handle, token)) return false;
-        KittyHandleLifetime lifetime = _kittyHandleLifetimes.GetValue(handle, static _ => new KittyHandleLifetime());
-        lifetime.Pending = false;
-        lifetime.HandedOff = true;
-        return true;
+        if (IsRetainedKittyHandle(handle) || _images.Any(image => ReferenceEquals(image.ImageHandle, handle))) return;
+        QueueImageHandleRetirement(handle, disposeImmediately: true);
     }
 
     private void ClearRetainedKittyImages()

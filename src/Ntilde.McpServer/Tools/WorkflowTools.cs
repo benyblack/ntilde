@@ -123,6 +123,7 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/AnsiParser.ShellIntegration.cs",
             "src/Ntilde.VT/AnsiParser.Images.cs",
             "src/Ntilde.VT/AnsiParser.KittyGraphics.cs",
+            "src/Ntilde.VT/AnsiParser.KittyLifecycle.cs",
             "src/Ntilde.VT/AnsiParser.StateTransfer.cs",
             "tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs",
             "tests/Ntilde.VT.Tests/CsiParamClampTests.cs" }),

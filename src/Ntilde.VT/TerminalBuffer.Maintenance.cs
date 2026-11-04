@@ -15,7 +15,7 @@ namespace Ntilde.VT
         // owning view may dispose at its very next frame boundary with no additional grace —
         // video-frame replacements, where a grace would retain a two-second backlog of full
         // bitmaps at 30 fps.
-        private readonly ConcurrentQueue<(object Handle, long Tick, bool DisposeImmediately, long KittyToken)> _retiredImageHandles = new();
+        private readonly ConcurrentQueue<(object Handle, long Tick, bool DisposeImmediately, long RetirementToken)> _retiredImageHandles = new();
 
         // Sessions keyed by id, valued by start tick. A retire entry may only be disposed
         // once every session that started at or before its retire tick has ended: those are
@@ -28,6 +28,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
+                RequireImageHandleAdmission(image.ImageHandle);
                 // Tag ownership: alt-screen images use viewport-relative CellY, main-screen
                 // images absolute rows. Lets erase/rebase paths tell the two apart even
                 // though both live in the same list.
@@ -58,9 +59,12 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
+                RequireImageHandleAdmission(image.ImageHandle);
                 image.IsAltScreenImage = _isAltScreen;
-                // Walk backwards: the live frame is the most recent image with this number.
-                for (int i = _images.Count - 1; i >= 0; i--)
+                // Publish the replacement before releasing older placements, including
+                // when a host decoder reuses the same opaque handle.
+                _images.Add(image);
+                for (int i = _images.Count - 2; i >= 0; i--)
                 {
                     if (_images[i].KittyImageId == kittyId && _images[i].IsAltScreenImage == _isAltScreen)
                     {
@@ -71,7 +75,6 @@ namespace Ntilde.VT
                         _images.RemoveAt(i);
                     }
                 }
-                _images.Add(image);
             }
             finally
             {
@@ -87,16 +90,11 @@ namespace Ntilde.VT
         /// </summary>
         private void RetireImage(TerminalImage image, bool disposeImmediately = false)
         {
-            if (image.KittyImageId.HasValue && IsRetainedKittyHandle(image.ImageHandle)) return;
-            if (_kittyHandleLifetimes.TryGetValue(image.ImageHandle, out _))
-            {
-                RetireUnstoredKittyHandle(image.ImageHandle);
-                return;
-            }
+            if (IsRetainedKittyHandle(image.ImageHandle) || HasOtherImageReference(image)) return;
             // A headless source handle has no renderer resources or in-flight bitmap users.
             if (image.ImageHandle is SixelSource source) { source.Dispose(); return; }
             (image.SixelSource ?? (image.ImageHandle as IDeferredSixelImage)?.Source)?.Retire();
-            _retiredImageHandles.Enqueue((image.ImageHandle, Environment.TickCount64, disposeImmediately, 0));
+            QueueImageHandleRetirement(image.ImageHandle, disposeImmediately);
         }
 
         /// <summary>
@@ -146,7 +144,7 @@ namespace Ntilde.VT
         public bool DrainRetiredImageHandles(List<object> into, long retiredBeforeTick)
         {
             if (_retiredImageHandles.IsEmpty) return false;
-            lock (_kittyHandleGate)
+            lock (_imageHandleGate)
             {
                 long minActiveSessionStart = MinActiveSessionStartTick();
                 bool drained = false;
@@ -154,14 +152,14 @@ namespace Ntilde.VT
                 {
                     // Canceled generations may be discarded even while an old snapshot
                     // delays the current generation. Never reuse their earlier retirement tick.
-                    if (entry.KittyToken != 0 && !IsCurrentKittyRetirement(entry.Handle, entry.KittyToken))
+                    if (!IsCurrentImageRetirement(entry.Handle, entry.RetirementToken))
                     {
                         _retiredImageHandles.TryDequeue(out _);
                         continue;
                     }
                     if ((!entry.DisposeImmediately && entry.Tick > retiredBeforeTick) || entry.Tick >= minActiveSessionStart) break;
                     if (!_retiredImageHandles.TryDequeue(out entry)) continue;
-                    if (!TryCompleteKittyRetirement(entry.Handle, entry.KittyToken)) continue;
+                    if (!TryCompleteImageRetirement(entry.Handle, entry.RetirementToken)) continue;
                     into.Add(entry.Handle);
                     drained = true;
                 }
@@ -174,11 +172,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
-                foreach (var img in _images)
-                {
-                    RetireImage(img);
-                }
-                _images.Clear();
+                ClearImagePlacements();
                 ClearRetainedKittyImages();
             }
             finally
@@ -201,11 +195,7 @@ namespace Ntilde.VT
             try
             {
                 _scrollback.Clear();
-                foreach (var img in _images)
-                {
-                    RetireImage(img);
-                }
-                _images.Clear(); // full clear: scrollback-anchored images lose their anchor too
+                ClearImagePlacements(); // full clear: scrollback-anchored images lose their anchor too
                 ClearRetainedKittyImages();
                 ClearScreenInternal(resetCursor);
 

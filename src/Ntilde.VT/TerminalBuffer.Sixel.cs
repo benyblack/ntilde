@@ -28,7 +28,11 @@ public partial class TerminalBuffer
                 ClipRightColumns = Math.Max(0, col + widthCells - Cols),
                 IsAltScreenImage = _isAltScreen,
             };
-            if (image is not null) _images.Add(image);
+            if (image is not null)
+            {
+                RequireImageHandleAdmission(image.ImageHandle);
+                _images.Add(image);
+            }
             if (display)
             {
                 if (image is not null) image.ClipBottomRows = Math.Max(0, heightCells - Rows);

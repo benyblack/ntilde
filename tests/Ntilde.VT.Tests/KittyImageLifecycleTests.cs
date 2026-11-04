@@ -426,6 +426,69 @@ public sealed class KittyImageLifecycleTests
         buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
     }
 
+    [Theory]
+    [InlineData("iterm")]
+    [InlineData("sixel")]
+    public void Prior_non_Kitty_retirement_is_cancelled_when_its_handle_is_admitted_to_Kitty(string protocol)
+    {
+        var (buffer, parser, _) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
+        parser.Process(protocol == "iterm" ? "\x1b]1337;File=inline=1:/wAA/w==\x07" : "\x1bPq~\x1b\\");
+        object handle = Assert.Single(buffer.Images).ImageHandle;
+        buffer.ClearImages(); Assert.Empty(buffer.Images);
+        parser.Process(Command("a=T,f=32,s=1,v=1,I=13,C=1", Pixel));
+        Assert.Same(handle, Assert.Single(buffer.Images).ImageHandle);
+        var retired = new List<object>(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Empty(retired);
+        parser.Process(Command("a=d,d=N,I=13")); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Same(handle, Assert.Single(retired));
+    }
+
+    [Fact]
+    public void A_handle_handed_off_by_non_Kitty_retirement_cannot_be_admitted_to_Kitty()
+    {
+        var (buffer, parser, replies) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
+        parser.Process("\x1b]1337;File=inline=1:/wAA/w==\x07");
+        buffer.ClearImages(); var retired = new List<object>();
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+        parser.Process(Command("a=T,f=32,s=1,v=1,I=13,C=1", Pixel));
+        Assert.Empty(buffer.Images); Assert.Contains(";EINVAL:", replies[^1], StringComparison.Ordinal);
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+    }
+
+    [Fact]
+    public void Releasing_Kitty_storage_does_not_dispose_a_handle_still_used_by_a_non_Kitty_placement()
+    {
+        var (buffer, parser, _) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
+        parser.Process("\x1b]1337;File=inline=1:/wAA/w==\x07");
+        object handle = Assert.Single(buffer.Images).ImageHandle;
+        parser.Process(Command("a=T,f=32,s=1,v=1,I=13,C=1", Pixel));
+        parser.Process(Command("a=d,d=N,I=13")); Assert.Same(handle, Assert.Single(buffer.Images).ImageHandle);
+        var retired = new List<object>(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Empty(retired);
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Same(handle, Assert.Single(retired));
+    }
+
+    [Fact]
+    public void Non_Kitty_admission_cancels_pending_retirement_without_changing_its_normal_grace()
+    {
+        var buffer = new TerminalBuffer(80, 24); object handle = new();
+        buffer.AddImage(new TerminalImage(handle, 0, 0, 1, 1)); buffer.ClearImages();
+        buffer.AddImage(new TerminalImage(handle, 1, 1, 1, 1));
+        var retired = new List<object>(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Empty(retired);
+        buffer.ClearImages();
+        buffer.DrainRetiredImageHandles(retired, Environment.TickCount64 - 60_000); Assert.Empty(retired);
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Same(handle, Assert.Single(retired));
+    }
+
+    [Fact]
+    public void Legacy_frame_replacement_with_the_same_handle_does_not_retire_its_live_replacement()
+    {
+        var buffer = new TerminalBuffer(80, 24); object handle = new();
+        buffer.AddKittyFrame(new TerminalImage(handle, 0, 0, 1, 1), 1);
+        buffer.AddKittyFrame(new TerminalImage(handle, 1, 1, 1, 1), 1);
+        var retired = new List<object>(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Empty(retired);
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Same(handle, Assert.Single(retired));
+    }
+
     private sealed class SharedHandleDecoder : IImageDecoder
     {
         private readonly object _handle = new();

@@ -25,7 +25,11 @@ placements disappear. Weak per-handle records distinguish pending retirement
 from disposer ownership: re-admission cancels the old generation, and an already
 handed-off handle is refused. An obsolete entry never supplies the timestamp for
 a newer retirement. A short private gate coordinates drain and admission without
-waiting on the parser lock or running Dispose. Basic uppercase `I`/`N` deletion releases data once no relevant placement
+waiting on the parser lock or running Dispose. The same lifetime state tracks
+opaque iTerm2/SIXEL/legacy handles, so earlier non-Kitty retirement cannot bypass
+Kitty admission. Generic grace is preserved; fresh handles avoid history scans,
+and bulk cleanup unlinks each placement before considering remaining aliases.
+Basic uppercase `I`/`N` deletion releases data once no relevant placement
 references it. `a`/`A` deletion affects visible placements; offscreen references
 keep their data. A delete command aborts an incomplete upload. Full clear/reset
 and complete-state import release hidden assets too. Import does not restore
