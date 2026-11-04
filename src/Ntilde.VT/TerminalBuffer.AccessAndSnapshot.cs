@@ -1024,6 +1024,8 @@ namespace Ntilde.VT
                 {
                     list.Add(new RenderImageSnapshot
                     {
+                        PlacementId = img.ImageId,
+                        SixelPlacement = img.SixelPlacement,
                         CellX = img.CellX,
                         CellY = img.CellY,
                         CellWidth = img.CellWidth,

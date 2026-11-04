@@ -24,6 +24,7 @@ namespace Ntilde.AgentHost.Contracts;
 [JsonSerializable(typeof(CaptureScreenParams))]
 [JsonSerializable(typeof(CaptureScreenResult))]
 [JsonSerializable(typeof(CaptureRenderDetails))]
+[JsonSerializable(typeof(CaptureImageDetails))]
 [JsonSerializable(typeof(ReadScrollbackParams))]
 [JsonSerializable(typeof(ReadScrollbackResult))]
 [JsonSerializable(typeof(GetSessionStatusParams))]

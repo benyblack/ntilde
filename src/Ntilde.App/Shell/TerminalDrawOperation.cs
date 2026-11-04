@@ -49,6 +49,8 @@ namespace Ntilde.Shell
         private readonly bool _preferredCursorBlink;
         private readonly bool _fillBackground;
         private readonly bool _collectRenderDetails;
+        private readonly bool _collectImageDetails;
+        private readonly Action? _afterSnapshotForTest;
         internal RenderedFrameInfo? RenderedFrame { get; private set; }
         private readonly Action<bool>? _reportTextBlinkCells;
         private readonly CursorStyle? _preferredCursorStyle;
@@ -245,7 +247,9 @@ namespace Ntilde.Shell
             bool preferredCursorBlink = true,
             bool fillBackground = false,
             bool collectRenderDetails = false,
-            bool selectionRelativeToViewport = false)
+            bool selectionRelativeToViewport = false,
+            bool collectImageDetails = false,
+            Action? afterSnapshotForTest = null)
         {
             _bounds = bounds;
             _preferredCursorStyle = preferredCursorStyle;
@@ -275,6 +279,8 @@ namespace Ntilde.Shell
             _preferredCursorBlink = preferredCursorBlink;
             _fillBackground = fillBackground;
             _collectRenderDetails = collectRenderDetails;
+            _collectImageDetails = collectImageDetails;
+            _afterSnapshotForTest = afterSnapshotForTest;
             _reportTextBlinkCells = reportTextBlinkCells;
             _renderScaling = renderScaling;
             _bufferRows = snapshotRows;
@@ -502,6 +508,10 @@ namespace Ntilde.Shell
                 {
                     frame.Images = new List<RenderImageSnapshot>();
                 }
+
+                // Per-call test path only. CaptureRenderSnapshot has released the buffer lock;
+                // the existing snapshot-session lease still protects the copied image handles.
+                _afterSnapshotForTest?.Invoke();
 
                 // IMPORTANT: Always add exactly one RowRenderItem per visual row
                 // so render loop can safely use r for Y positioning.
@@ -803,12 +813,15 @@ namespace Ntilde.Shell
                 // Bound first-frame work for live panes; exports still materialize every image.
                 int remainingImageDecodes = _requestImageFrame is null || _isolatedSnapshot ? int.MaxValue : 1;
                 bool pendingImageDecode = false;
+                // Metadata borrows the exact leased placements and bitmap used below, never a later buffer read.
+                var imageFacts = _collectImageDetails ? RenderedImageFrame.From(frame.Images, absDisplayStart) : null;
                 // Pass 2: Images
                 using (var imagePaint = new SKPaint { Color = new SKColor(255, 255, 255, alpha) })
                 using (var imageBgPaint = new SKPaint { Color = frame.ThemeBg, Style = SKPaintStyle.Fill, IsAntialias = false })
                 {
-                    foreach (var img in frame.Images)
+                    for (int imageIndex = 0; imageIndex < frame.Images.Count; imageIndex++)
                     {
+                        var img = frame.Images[imageIndex];
                         int visualY = img.CellY - absDisplayStart;
                         if (visualY + img.CellHeight > 0 && visualY < bufferRows)
                         {
@@ -844,6 +857,9 @@ namespace Ntilde.Shell
                             {
                                 SKRect destination = img.PreserveAspectRatio ? FitImageWithin(rect, bmp.Width, bmp.Height) : rect;
                                 canvas.DrawBitmap(bmp, destination, imagePaint);
+                                if (imageFacts is { Complete: true })
+                                    imageFacts.Placements[imageIndex] = imageFacts.Placements[imageIndex] with
+                                    { BitmapWidthPx = bmp.Width, BitmapHeightPx = bmp.Height };
                                 IncrementOtherDrawCall();
                             }
                             canvas.Restore();
@@ -851,6 +867,8 @@ namespace Ntilde.Shell
                     }
                 }
 
+                if (imageFacts is not null && RenderedFrame is { } rendered)
+                    RenderedFrame = rendered with { Images = imageFacts };
                 if (pendingImageDecode) _requestImageFrame?.Invoke();
 
                 // Redraws the text of [colStart, colEndExclusive) on visual row r over an overlay

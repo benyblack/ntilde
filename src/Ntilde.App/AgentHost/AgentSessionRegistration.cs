@@ -6,11 +6,12 @@ using Ntilde.VT;
 namespace Ntilde.AgentHost
 {
     /// <summary>Additive controls for an offscreen capture, independent of the live clock.</summary>
-    public readonly record struct AgentCaptureOptions(long? PresentationTimeMs = null, bool IncludeRenderDetails = false, CaptureSelection? SyntheticSelection = null)
+    public readonly record struct AgentCaptureOptions(long? PresentationTimeMs = null, bool IncludeRenderDetails = false, CaptureSelection? SyntheticSelection = null, bool IncludeImageDetails = false)
     {
         // Per-call seam for deterministic concurrent-resize regressions; never set by the wire handler.
         internal Action? BeforeRenderForTest { get; init; }
         internal Action? BeforeDrawForTest { get; init; }
+        internal Action? AfterSnapshotForTest { get; init; }
     }
 
     /// <summary>A rendered pane screenshot (A5), as returned by <see cref="AgentSessionRegistration.TryCapturePng"/>.</summary>
@@ -22,7 +23,8 @@ namespace Ntilde.AgentHost
         int Rows,
         bool Downscaled,
         double Scale,
-        CaptureRenderDetails? RenderDetails = null);
+        CaptureRenderDetails? RenderDetails = null,
+        CaptureImageDetails? ImageDetails = null);
 
     /// <summary>Why a capture could not be produced; mapped to a protocol error code by the endpoint.</summary>
     public enum AgentCaptureError
@@ -451,7 +453,7 @@ namespace Ntilde.AgentHost
             info = default;
             error = AgentCaptureError.Unavailable;
 
-            if (!parameters.IsUsable)
+            if (!parameters.IsUsable || (captureOptions.IncludeImageDetails && !captureOptions.IncludeRenderDetails))
             {
                 return false;
             }
@@ -520,6 +522,8 @@ namespace Ntilde.AgentHost
                 PreferredCursorBlink = parameters.PreferredCursorBlink,
                 PresentationTimeMs = captureOptions.PresentationTimeMs,
                 BeforeDrawForTest = captureOptions.BeforeDrawForTest,
+                AfterSnapshotForTest = captureOptions.AfterSnapshotForTest,
+                IncludeImageDetails = captureOptions.IncludeImageDetails,
                 SelectionRelativeToViewport = captureOptions.SyntheticSelection is not null,
                 Selection = captureOptions.SyntheticSelection is { } selected ? new SelectionState
                 {
@@ -578,7 +582,8 @@ namespace Ntilde.AgentHost
                     rows,
                     Downscaled: downscaled != null,
                     Scale: effectiveScale,
-                    RenderDetails: captureFrame.Context == null ? null : AgentCaptureDetails.From(captureFrame.Context));
+                    RenderDetails: captureFrame.Context == null ? null : AgentCaptureDetails.From(captureFrame.Context),
+                    ImageDetails: captureFrame.Context == null ? null : AgentCaptureDetails.ImagesFrom(captureFrame.Context));
                 return true;
             }
             catch (Exception ex)

@@ -194,6 +194,8 @@ namespace Ntilde.VT
 
     public struct RenderImageSnapshot
     {
+        public Guid PlacementId { get; init; }
+        public SixelPlacementProvenance? SixelPlacement { get; init; }
         public int CellX;
         public int CellY;
         public int CellWidth;

@@ -12,6 +12,8 @@ namespace Ntilde.VT
         public int ZIndex { get; set; }
 
         public bool IsSixelImage { get; internal set; }
+        /// <summary>Creation-time reservation facts; null for generic/legacy/transferred placements.</summary>
+        public SixelPlacementProvenance? SixelPlacement { get; internal init; }
         /// <summary>Placement-requested aspect fit; false for legacy constructors and restored SIXEL.</summary>
         public bool PreserveAspectRatio { get; internal set; }
         /// <summary>Rows irreversibly clipped from the bitmap at scrolling/page boundaries.</summary>
