@@ -122,6 +122,14 @@ internal static class ParityCorpus
             "\u001b]7;file:///tmp/somewhere\u0007" +
             "text"));
 
+        yield return ("xtwinops-title-stack", Utf8(
+            // #830: every cut lands inside or between saves/restores, so a snapshot taken mid-stack
+            // must carry the raw title, icon and saved entries for the tail's pops to agree.
+            "\u001b]1;icon\u0007\u001b]2;  shell  \u0007\u001b[22;0t" +
+            "\u001b]0;vim\u0007\u001b[22;2t\u001b]2;help\u0007\u001b[22;1t" +
+            "\u001b[?1049hinside\u001b[23;1t\u001b[23;2t\u001b[?1049l" +
+            "\u001b[23;0tafter\u001b[23;0t"));
+
         yield return ("osc8-hyperlinks", Utf8(
             "\u001b]8;id=alpha;https://example.com/a\u0007first\u001b]8;;\u0007 plain " +
             "\u001b]8;;https://example.com/b\u0007anonymous\u001b]8;;\u0007 " +

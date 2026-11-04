@@ -65,11 +65,15 @@ namespace Ntilde.VT
 
             switch (code)
             {
-                // OSC 0/2: Window title
+                // OSC 0/2: window title (OSC 0 also sets the icon name). See AnsiParser.Titles.cs.
                 case "0":
                 case "2":
-                    // Empty requests clear the old title; presentation fallback belongs to the host.
-                    OnTitleChanged?.Invoke(data);
+                    SetWindowTitle(data, alsoIconName: code == "0");
+                    break;
+
+                // OSC 1: icon name - state for the XTWINOPS title stack only.
+                case "1":
+                    SetIconName(data);
                     break;
 
                 // OSC 7: current working directory URI

@@ -35,6 +35,9 @@ namespace Ntilde.VT
                 LastGraphicChar = _lastGraphicChar?.ToString(),
                 InBandResizeReportsEnabled = _inBandResizeReportsEnabled,
                 ColorSchemeReportsEnabled = _colorSchemeReportsEnabled,
+                WindowTitle = _windowTitle,
+                IconName = _iconName,
+                TitleStack = ExportTitleStack(),
                 PendingTextLength = _textBuffer.Length,
             };
 
@@ -113,6 +116,7 @@ namespace Ntilde.VT
             _inBandResizeReportsEnabled = state.InBandResizeReportsEnabled;
             _colorSchemeReportsEnabled = state.ColorSchemeReportsEnabled;
             RefreshColorScheme(notify: false);
+            ImportTitleState(state);
 
             // Deliberately not restored: the text-batching buffer (always empty between Process()
             // calls - AnsiParserStateTests asserts it) and the per-batch cursor-visibility flags
@@ -205,6 +209,13 @@ namespace Ntilde.VT
             }
 
             StateTransferValidation.RequirePresent(state.Charsets, "parser charset designations");
+            if (state.TitleStack is { } titleStack)
+            {
+                // Depth and length are clamped on import, like the accumulators; a null entry is
+                // a shape no stream could produce.
+                foreach (SavedTitleEntry entry in titleStack)
+                    StateTransferValidation.RequirePresent(entry, "parser title-stack entry");
+            }
 
             // Enum.IsDefined rather than a hand-written upper bound: a bound spelled as a constant
             // goes stale the moment a state is appended to the enum, and the failure mode is a

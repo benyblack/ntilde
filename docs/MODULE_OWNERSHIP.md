@@ -22,7 +22,12 @@ invariant changes.
 - VT/ANSI state machine and parser
 - Exact bounded OSC 0/2 title payload callbacks, including empty and whitespace
   requests. App owns raw-title storage and profile/cwd/user-label presentation;
-  VT does not choose a UI fallback or model a separate OSC 1 icon name.
+  VT does not choose a UI fallback.
+- XTWINOPS title stack (`CSI 22/23 ; Ps t`, #830): VT retains the current raw title and
+  OSC 1 icon name plus a 10-entry stack (oldest discarded, empty pop silent), carried by
+  `AnsiParserState`. A pop raises the ordinary title callback with the saved raw text;
+  icon state has no host presentation. Session-wide across screens; DECSTR keeps it, RIS
+  clears it without retitling. Retained strings are capped at 8 Ki chars.
   Mux preserves raw session titles; its text listings choose command fallback. App's
   combined-host listing retains text cleaning/caps, and JSON keeps raw metadata.
 - OSC 5522 framing/strict base64 and the host-enabled DEC 5522 mode. Clipboard payloads, permission grants, transfer budgets and OS I/O belong to App; headless VT does not advertise a desktop service.

@@ -20,8 +20,44 @@ when the request is empty or whitespace-only. User tab renames keep precedence.
 The mux title subscriber also receives the replacement payload. Standalone `mux ls`
 and App `ls --all` show the command when that title is blank. The combined-host
 listing tests for blankness after cleaning the title, then cleans/caps its command
-fallback with the same host policy. JSON retains the exact raw title and command. OSC 1 icon-name state, title stacks, title-query
-replies and native window-manager presentation remain separately unqualified.
+fallback with the same host policy. JSON retains the exact raw title and command. Title-query replies, host icon presentation
+and native window-manager presentation remain separately unqualified.
+
+## XTWINOPS title stack (#830)
+
+Vim sends `CSI 22 ; 0 t` on startup (`t_ST`) and `CSI 23 ; 0 t` on exit (`t_RT`).
+VT now retains the current raw title (OSC 0/2) and icon name (OSC 0/1) and a
+title stack that follows xterm's `xtermPushTitle`/`xtermPopTitle` in `misc.c`:
+
+- `Ps` 0 or omitted saves/restores both, 1 the icon name, 2 the window title.
+  A one-sided push copies the other half from the entry below (xterm's pop-time
+  "try higher levels" lookup); with nothing below that half is absent and
+  restoring it changes nothing.
+- Depth 10 (`MAX_SAVED_TITLES`). A push onto a full stack discards the oldest
+  entry; pops beyond the retained ten are silent, as xterm's cleared ring slots are.
+  A pop on an empty stack is a no-op.
+- A title restore raises the existing title callback with the exact saved raw
+  text, so App storage, tab fallback and mux listings are unchanged. An empty
+  saved title (including a save before any OSC 0/2) clears to the host fallback.
+  Icon restores change VT state only; there is no host icon presentation.
+- Only the bare spelling with at most three parameters is accepted. Other
+  selectors, colon sub-parameters, prefixed forms and a nonzero third parameter
+  (xterm's direct slot access) are ignored and leave the stack unchanged.
+- Lifecycle: session-wide, so alternate-screen switches do not touch it. DECSTR
+  keeps it, as xterm does. RIS clears it; xterm keeps it, but #830 specifies a
+  clear, matching the OSC 30001 color stack. RIS does not retitle. Complete
+  parser snapshots (`AnsiParserState`: `title`, `icon`, `title_stack`) carry
+  it, so a mux attach or replay checkpoint restores what the tail later pops.
+  Legacy snapshots import an empty title and stack.
+- Titles longer than 8 Ki chars still reach the host in full but are not
+  retained, so restoring them changes nothing. xterm itself ignores title
+  requests over 1000 bytes. Imports clamp depth and length the same way.
+
+Tests: `XtWinOpsTitleStackTests` (VT), the `xtwinops-title-stack` parity-corpus
+stream, `HeadlessTitleStackTests` and `MuxCliTests` (mux attach snapshot and exact
+raw listing), and `MainWindowAgentMetadataTests`/`MuxPaneTests` (tab label after
+a local restore and after a reattach). No manual Vim session was recorded, and no
+historical terminfo grade changed.
 
 ## Executable evidence
 
