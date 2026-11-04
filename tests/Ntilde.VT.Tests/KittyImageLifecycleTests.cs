@@ -304,10 +304,115 @@ public sealed class KittyImageLifecycleTests
         buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
     }
 
+    [Fact]
+    public void Transmit_only_replacement_notifies_the_live_view_that_old_placements_disappeared()
+    {
+        var (buffer, parser, _) = Create();
+        parser.Process(Command("a=T,f=32,s=1,v=1,i=7,C=1", Pixel));
+        int notifications = 0; buffer.OnInvalidate += () => notifications++;
+        parser.Process(Command("a=t,f=32,s=1,v=1,i=7", Pixel));
+        Assert.Empty(buffer.Images); Assert.Equal(1, notifications);
+    }
+
+    [Fact]
+    public void Transmit_only_quota_eviction_notifies_the_live_view_that_old_placements_disappeared()
+    {
+        var (buffer, parser, _) = Create(); parser.ImageDecoder = new FixedSizeImageDecoder(2000, 2000);
+        for (int i = 1; i <= 4; i++) parser.Process(Command($"a=T,f=100,i={i},C=1", "AQIDBA=="));
+        int notifications = 0; buffer.OnInvalidate += () => notifications++;
+        parser.Process(Command("a=t,f=100,i=5", "AQIDBA=="));
+        Assert.Equal(3, buffer.Images.Count); Assert.Equal(1, notifications);
+    }
+
+    [Fact]
+    public void Readmission_cancels_pending_retirement_until_the_shared_handle_is_finally_deleted()
+    {
+        var (buffer, parser, _) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
+        parser.Process(Command("a=T,f=32,s=1,v=1,i=1,C=1", Pixel));
+        object handle = Assert.Single(buffer.Images).ImageHandle;
+        parser.Process(Command("a=d,d=I,i=1"));
+        parser.Process(Command("a=T,f=32,s=1,v=1,i=2,C=1", Pixel));
+        var retired = new List<object>(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Empty(retired); Assert.Same(handle, Assert.Single(buffer.Images).ImageHandle);
+        parser.Process(Command("a=d,d=I,i=2")); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Same(handle, Assert.Single(retired));
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+    }
+
+    [Fact]
+    public void An_obsolete_retirement_cannot_bypass_a_new_snapshot_after_readmission()
+    {
+        var (buffer, parser, _) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
+        parser.Process(Command("a=T,f=32,s=1,v=1,i=1,C=1", Pixel));
+        object handle = Assert.Single(buffer.Images).ImageHandle;
+        parser.Process(Command("a=d,d=I,i=1"));
+        // Short on purpose: force the first retirement tick strictly before the later
+        // snapshot. Reusing that obsolete tick would then incorrectly permit disposal.
+        System.Threading.Thread.Sleep(2);
+        parser.Process(Command("a=T,f=32,s=1,v=1,i=2,C=1", Pixel));
+        int snapshot = buffer.BeginSnapshotSession();
+        var retired = new List<object>();
+        try
+        {
+            parser.Process(Command("a=d,d=I,i=2"));
+            buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Empty(retired);
+        }
+        finally { buffer.EndSnapshotSession(snapshot); }
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Same(handle, Assert.Single(retired));
+    }
+
+    [Fact]
+    public void A_handle_handed_to_the_disposer_cannot_be_readmitted_or_retired_twice()
+    {
+        var (buffer, parser, replies) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
+        parser.Process(Command("a=T,f=32,s=1,v=1,i=1,C=1", Pixel));
+        parser.Process(Command("a=d,d=I,i=1"));
+        var retired = new List<object>(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+        parser.Process(Command("a=T,f=32,s=1,v=1,i=2,C=1", Pixel));
+        Assert.Empty(buffer.Images); Assert.Contains(";EINVAL:", replies[^1], StringComparison.Ordinal);
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task Disposal_handoff_does_not_wait_for_a_blocked_parser_and_late_readmission_is_refused()
+    {
+        var (buffer, parser, replies) = Create(); var decoder = new SharedHandleDecoder(); parser.ImageDecoder = decoder;
+        parser.Process(Command("a=T,f=32,s=1,v=1,i=1,C=1", Pixel));
+        object handle = Assert.Single(buffer.Images).ImageHandle;
+        parser.Process(Command("a=d,d=I,i=1"));
+        using var entered = new System.Threading.ManualResetEventSlim();
+        using var release = new System.Threading.ManualResetEventSlim();
+        decoder.BeforeDecode = () =>
+        {
+            entered.Set();
+            Assert.True(release.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
+        };
+        System.Threading.Tasks.Task writing = System.Threading.Tasks.Task.Run(
+            () => parser.Process(Command("a=T,f=32,s=1,v=1,i=2,C=1", Pixel)), TestContext.Current.CancellationToken);
+        var retired = new List<object>();
+        System.Threading.Tasks.Task<bool>? draining = null;
+        try
+        {
+            Assert.True(entered.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
+            draining = System.Threading.Tasks.Task.Run(() => buffer.DrainRetiredImageHandles(retired, long.MaxValue), TestContext.Current.CancellationToken);
+            Assert.True(await draining.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
+            Assert.Same(handle, Assert.Single(retired));
+        }
+        finally
+        {
+            release.Set();
+            await writing.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            if (draining is not null) await draining.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        }
+        Assert.Empty(buffer.Images); Assert.Contains(";EINVAL:", replies[^1], StringComparison.Ordinal);
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+    }
+
     private sealed class SharedHandleDecoder : IImageDecoder
     {
         private readonly object _handle = new();
-        private object Decode(out int width, out int height) { width = height = 1; return _handle; }
+        public Action? BeforeDecode { get; set; }
+        private object Decode(out int width, out int height) { BeforeDecode?.Invoke(); width = height = 1; return _handle; }
         public object? DecodeImageBytes(byte[] data, out int width, out int height) => Decode(out width, out height);
         public object? DecodeSixel(string data, out int width, out int height) => Decode(out width, out height);
         public object? DecodeRawImage(byte[] data, int bpp, int w, int h, out int width, out int height) => Decode(out width, out height);

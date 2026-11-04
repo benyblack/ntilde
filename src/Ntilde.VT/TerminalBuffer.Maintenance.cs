@@ -15,7 +15,7 @@ namespace Ntilde.VT
         // owning view may dispose at its very next frame boundary with no additional grace —
         // video-frame replacements, where a grace would retain a two-second backlog of full
         // bitmaps at 30 fps.
-        private readonly ConcurrentQueue<(object Handle, long Tick, bool DisposeImmediately)> _retiredImageHandles = new();
+        private readonly ConcurrentQueue<(object Handle, long Tick, bool DisposeImmediately, long KittyToken)> _retiredImageHandles = new();
 
         // Sessions keyed by id, valued by start tick. A retire entry may only be disposed
         // once every session that started at or before its retire tick has ended: those are
@@ -88,10 +88,15 @@ namespace Ntilde.VT
         private void RetireImage(TerminalImage image, bool disposeImmediately = false)
         {
             if (image.KittyImageId.HasValue && IsRetainedKittyHandle(image.ImageHandle)) return;
+            if (_kittyHandleLifetimes.TryGetValue(image.ImageHandle, out _))
+            {
+                RetireUnstoredKittyHandle(image.ImageHandle);
+                return;
+            }
             // A headless source handle has no renderer resources or in-flight bitmap users.
             if (image.ImageHandle is SixelSource source) { source.Dispose(); return; }
             (image.SixelSource ?? (image.ImageHandle as IDeferredSixelImage)?.Source)?.Retire();
-            _retiredImageHandles.Enqueue((image.ImageHandle, Environment.TickCount64, disposeImmediately));
+            _retiredImageHandles.Enqueue((image.ImageHandle, Environment.TickCount64, disposeImmediately, 0));
         }
 
         /// <summary>
@@ -140,27 +145,28 @@ namespace Ntilde.VT
         /// </summary>
         public bool DrainRetiredImageHandles(List<object> into, long retiredBeforeTick)
         {
-            if (_retiredImageHandles.IsEmpty)
+            if (_retiredImageHandles.IsEmpty) return false;
+            lock (_kittyHandleGate)
             {
-                return false;
-            }
-
-            long minActiveSessionStart = MinActiveSessionStartTick();
-
-            bool drained = false;
-            while (_retiredImageHandles.TryPeek(out var entry)
-                && (entry.DisposeImmediately || entry.Tick <= retiredBeforeTick)
-                && entry.Tick < minActiveSessionStart)
-            {
-                if (!_retiredImageHandles.TryDequeue(out entry))
+                long minActiveSessionStart = MinActiveSessionStartTick();
+                bool drained = false;
+                while (_retiredImageHandles.TryPeek(out var entry))
                 {
-                    break;
+                    // Canceled generations may be discarded even while an old snapshot
+                    // delays the current generation. Never reuse their earlier retirement tick.
+                    if (entry.KittyToken != 0 && !IsCurrentKittyRetirement(entry.Handle, entry.KittyToken))
+                    {
+                        _retiredImageHandles.TryDequeue(out _);
+                        continue;
+                    }
+                    if ((!entry.DisposeImmediately && entry.Tick > retiredBeforeTick) || entry.Tick >= minActiveSessionStart) break;
+                    if (!_retiredImageHandles.TryDequeue(out entry)) continue;
+                    if (!TryCompleteKittyRetirement(entry.Handle, entry.KittyToken)) continue;
+                    into.Add(entry.Handle);
+                    drained = true;
                 }
-                into.Add(entry.Handle);
-                drained = true;
+                return drained;
             }
-
-            return drained;
         }
 
         public void ClearImages()

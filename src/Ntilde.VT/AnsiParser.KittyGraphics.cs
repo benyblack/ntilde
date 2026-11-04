@@ -106,6 +106,10 @@ namespace Ntilde.VT
                     // dictionary to 52 keys and 64 chars per value, including unknown keys.
                     _kittyPayloadOverflow = true;
                     ResetKittyPayloadBuffer();
+                    // Preserve the existing bounded query echo without retaining the huge
+                    // value. Non-query commands remain rejected by the overflow latch.
+                    if (key == "i" && side.Length == 2)
+                        _kittyPendingParams[key] = SanitizeEchoParameter(value, "0123456789", KittyMaxEchoedIdChars, "31");
                     continue;
                 }
                 _kittyPendingParams[key] = value;
@@ -144,9 +148,7 @@ namespace Ntilde.VT
             string action = _kittyPendingParams.TryGetValue("a", out var aVal) ? aVal : "t";
             if (action == "q")
             {
-                if (_kittyPendingParams.ContainsKey("i") && _kittyPendingParams.ContainsKey("I"))
-                    TryReadKittyIdentity(out _);
-                else AnswerKittyQuery(isTunneled);
+                ExecuteKittyQuery(isTunneled);
                 return;
             }
             if (!TryReadKittyIdentity(out KittyCommandIdentity identity)) return;
@@ -174,6 +176,13 @@ namespace Ntilde.VT
             }
             // Successful deletion has no acknowledgement. Errors still obey quiet policy.
             if (action != "d" || status != "OK") ReplyKittyCommand(identity with { Id = id }, status);
+        }
+
+        private void ExecuteKittyQuery(bool isTunneled)
+        {
+            if (_kittyPendingParams.ContainsKey("i") && _kittyPendingParams.ContainsKey("I"))
+                TryReadKittyIdentity(out _);
+            else AnswerKittyQuery(isTunneled);
         }
 
         /// <summary>
@@ -227,10 +236,8 @@ namespace Ntilde.VT
         private string TransmitKittyImage(KittyCommandIdentity identity, bool display, out uint id)
         {
             id = identity.Id;
-            if (_kittyPendingParams.TryGetValue("f", out string? requestedFormat)
-                && requestedFormat is not ("24" or "32" or "100")) return "ENOTSUP:Image format not supported";
-            if (_kittyPendingParams.TryGetValue("o", out string? compression) && compression != "z")
-                return "ENOTSUP:Compression not supported";
+            string? encodingError = ValidateKittyPayloadEncoding();
+            if (encodingError is not null) return encodingError;
             byte[]? data = ReadKittyPayload();
             if (data == null) return "EINVAL:Image payload unavailable";
 
@@ -245,10 +252,7 @@ namespace Ntilde.VT
                 _ = int.TryParse(fVal, out format); // a malformed f= reads as 0, the container-decoder default
             }
 
-            bool isRaw = format == 24 || format == 32;
-            int rawWidth = 0;
-            int rawHeight = 0;
-            if (isRaw && !TryReadKittyRawSize(out rawWidth, out rawHeight)) return "EINVAL:Invalid raw image dimensions";
+            if (!TryReadKittyDimensions(format, out int rawWidth, out int rawHeight)) return "EINVAL:Invalid raw image dimensions";
 
             data = InflateKittyPayload(data, format, rawWidth, rawHeight);
             if (data == null) return "EINVAL:Invalid compressed image payload";
@@ -275,25 +279,46 @@ namespace Ntilde.VT
                 return "EINVAL:Decoded image dimensions exceed bounds";
             }
 
-            KittyImageAsset asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number);
+            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number);
+            if (asset is null) return "EINVAL:Decoder returned a retired image handle";
             id = asset.Id;
             if (display) PlaceKittyImage(asset, identity.HasIdentity ? identity.Placement : 0);
             return "OK";
         }
 
+        private string? ValidateKittyPayloadEncoding()
+        {
+            if (_kittyPendingParams.TryGetValue("f", out string? format) && format is not ("24" or "32" or "100"))
+                return "ENOTSUP:Image format not supported";
+            if (_kittyPendingParams.TryGetValue("o", out string? compression) && compression != "z")
+                return "ENOTSUP:Compression not supported";
+            return null;
+        }
+
+        private bool TryReadKittyDimensions(int format, out int width, out int height)
+        {
+            width = height = 0;
+            return format is not (24 or 32) || TryReadKittyRawSize(out width, out height);
+        }
+
         private byte[]? InflateKittyPayload(byte[] data, int format, int rawWidth, int rawHeight)
         {
             if (!_kittyPendingParams.ContainsKey("o")) return data;
+            int bytesPerPixel = format == 24 ? 3 : 4;
             long expected = format is 24 or 32
-                ? (long)rawWidth * rawHeight * (format == 24 ? 3 : 4)
+                ? (long)rawWidth * rawHeight * bytesPerPixel
                 : KittyMaxInflatedContainerBytes;
             return InflateZlib(data, (int)Math.Min(expected, int.MaxValue));
         }
 
         private static object? DecodeKittyImage(IImageDecoder decoder, byte[] data, int format, int width, int height,
-            out int pixelWidth, out int pixelHeight) => format is 24 or 32
-                ? decoder.DecodeRawImage(data, format == 24 ? 3 : 4, width, height, out pixelWidth, out pixelHeight)
+            out int pixelWidth, out int pixelHeight)
+        {
+            int bytesPerPixel = format == 24 ? 3 : 4;
+            return format is 24 or 32
+                ? decoder.DecodeRawImage(data, bytesPerPixel, width, height, out pixelWidth, out pixelHeight)
                 : decoder.DecodeImageBytes(data, out pixelWidth, out pixelHeight);
+        }
 
         /// <summary>
         /// The image bytes a command carries: its base64 payload decoded, or for <c>t=f</c> the contents

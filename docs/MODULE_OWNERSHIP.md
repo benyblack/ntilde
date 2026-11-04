@@ -188,7 +188,11 @@ invariant changes.
   charge; quota pressure evicts unused assets first. Soft deletion/ordinary erase
   removes placements without retiring stored data. Hard deletion, replacement,
   eviction, reset/full clear and snapshot import release the final asset ownership
-  through the snapshot-session gate, exactly once per handle. Complete mux/replay
+  through the snapshot-session gate, exactly once per handle. Re-admission cancels
+  pending retirement generations; handed-off handles cannot become live again.
+  Weak lifetime records and a short private admission/drain gate preserve ordering
+  without retaining disposed wrappers or blocking frame drain on the parser lock.
+  Transmit-only removal invalidates the view. Complete mux/replay
   state does not serialize Kitty assets; imported state clears old resources.
   Basic lifecycle evidence does not qualify animation, Unicode placeholders or
   extended crop/layout/delete actions.
