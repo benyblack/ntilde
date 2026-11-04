@@ -302,10 +302,9 @@ public sealed class VtTools
 
         // DCS: literal "DCS" or the 7-bit introducer ESC P ("ESCP" / "ESC P"). Check before the
         // generic ESC handling so the 'P' isn't misread as a simple ESC sequence.
-        if (upper.StartsWith("DCS", System.StringComparison.Ordinal)
-            || upper.StartsWith("ESCP", System.StringComparison.Ordinal)
-            || upper.StartsWith("ESC P", System.StringComparison.Ordinal))
-            return "DCS: " + SequenceTable["DCS"];
+        int dcsPrefixLength = GetDcsPrefixLength(upper);
+        if (dcsPrefixLength > 0)
+            return ExplainDcs(s[dcsPrefixLength..], sequence.TrimStart());
 
         // APC: literal "APC" or the 7-bit introducer ESC _ ("ESC_" / "ESC _").
         if (upper.StartsWith("APC", System.StringComparison.Ordinal)
@@ -326,6 +325,28 @@ public sealed class VtTools
         }
 
         return $"Unrecognized sequence '{sequence}'. Use forms like 'ESC[2J', 'CSI ?25h', 'OSC 7', 'ESC c', 'DCS', or 'APC'.";
+    }
+
+    private static int GetDcsPrefixLength(string sequence)
+    {
+        if (sequence.StartsWith("DCS", StringComparison.Ordinal)) return 3;
+        if (sequence.StartsWith("ESCP", StringComparison.Ordinal)) return 4;
+        if (sequence.StartsWith("ESC P", StringComparison.Ordinal)) return 5;
+        return sequence.StartsWith('\u0090') ? 1 : 0;
+    }
+
+    private static string ExplainDcs(string body, string original)
+    {
+        bool literal = original.StartsWith('\x1b') || original.StartsWith('\u0090')
+            || original.StartsWith("\\x1b", StringComparison.OrdinalIgnoreCase)
+            || original.StartsWith("\\e", StringComparison.OrdinalIgnoreCase);
+        if (!literal) body = body.TrimStart(' '); // notation separator, never a literal DCS byte
+        bool standardTerminator = body.EndsWith("ESC\\", StringComparison.Ordinal) || body.EndsWith('\u009c');
+        if (body.EndsWith("ESC\\", StringComparison.Ordinal)) body = body[..^4];
+        else if (body.EndsWith('\u009c')) body = body[..^1];
+        return body == "$qr" && (!literal || standardTerminator)
+            ? "DCS: " + ContractSequenceTable["DCS:$qr"]
+            : "DCS: " + SequenceTable["DCS"];
     }
 
     private static string ExplainTertiaryDeviceAttributes(string prefix)

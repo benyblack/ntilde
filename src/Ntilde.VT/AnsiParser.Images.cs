@@ -6,7 +6,7 @@ namespace Ntilde.VT
     /// </summary>
     public partial class AnsiParser
     {
-        private void HandleDcs(string dcs)
+        private void HandleDcs(string dcs, bool standardTerminator = true)
         {
             // DCS routing (#169). Previously ANY DCS containing 'q' was fed to the Sixel
             // decoder, which swallowed DECRQSS (DCS $ q …, vim emits it to query SGR /
@@ -14,10 +14,7 @@ namespace Ntilde.VT
             // on their reply timeout.
             if (dcs.StartsWith("$q", StringComparison.Ordinal))
             {
-                // DECRQSS: setting reports aren't implemented; answer "invalid request"
-                // (DCS 0 $ r ST) so the client gets an immediate, well-formed reply
-                // instead of a timeout.
-                OnResponse?.Invoke("\x1bP0$r\x1b\\");
+                HandleDecrqss(dcs, standardTerminator);
             }
             else if (dcs.StartsWith("+q", StringComparison.Ordinal))
             {

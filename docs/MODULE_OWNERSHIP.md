@@ -64,8 +64,8 @@ invariant changes.
   from the capped prefix, preserves it across chunks and complete snapshot JSON,
   and marks import clipping or an active legacy prefix without the marker incomplete.
   Completion, malformed-escape abandonment and a new DCS clear the latch. Capped
-  SIXEL decoding remains compatible; DECRQSS/XTGETTCAP remain negative. The prefix
-  alone must not establish a complete request for future positive query handling.
+  SIXEL decoding remains compatible. The prefix alone cannot establish a complete
+  request for positive query handling.
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops ordinary text content. OSC 66 rectangles are
   fixed physical layout barriers; a rectangle clipped by a narrower grid or taller than the
@@ -133,6 +133,12 @@ invariant changes.
   Contracts remain a leaf. Windowless viewport imports report unknown history count
   explicitly; importing zero rows cannot prove an empty daemon history. The projection
   does not alter parser state or enable acting methods.
+- **DECRQSS margin reports use exact complete requests.** VT answers only `$qr`
+  with standard ST, validated absolute one-based current margins and xterm's
+  1-success/0-failure status. The existing batch write lock protects the read;
+  origin mode does not relativize values. Truncated/unknown legacy input, BEL
+  recovery and invalid margins remain negative without altering state. Other
+  settings/names stay negative; source/scripted delivery is not a runtime grade.
 - **DA3 returns an unassigned compatibility identifier.** VT accepts the `=`
   leader with default/single numeric-zero Ps and no intermediates, and returns
   DECRPTUI with eight zero hex digits. It is nonunique, not a host or hardware

@@ -251,6 +251,33 @@ public class ExplainEscapeSequenceTests
         Assert.Contains("parser ignores", result, System.StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("DCS $qr")]
+    [InlineData("ESC P$qrESC\\")]
+    [InlineData("\x1bP$qr\x1b\\")]
+    [InlineData("\u0090$qr\u009c")]
+    public void Exact_margin_query_explains_only_its_bounded_xterm_compatible_contract(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Contains("DECRQSS top/bottom margins", result, StringComparison.Ordinal);
+        Assert.Contains("standard ST", result, StringComparison.Ordinal);
+        Assert.Contains("other settings are unavailable", result, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("DCS $qm")]
+    [InlineData("DCS $qr;")]
+    [InlineData("\x1bP$qr\a")]
+    [InlineData("\x1bP $qr\x1b\\")]
+    [InlineData("\x1bP$qr \x1b\\")]
+    [InlineData("\x1bP$qr")]
+    [InlineData("\\x1bP$qr")]
+    [InlineData("\\eP$qr")]
+    public void Other_DCS_payloads_or_incomplete_literal_frames_do_not_claim_a_margin_report(string sequence)
+    {
+        Assert.DoesNotContain("DECRQSS top/bottom margins", VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void CatalogCapabilities_AgreeWithExplainerSupportClaims()
     {
