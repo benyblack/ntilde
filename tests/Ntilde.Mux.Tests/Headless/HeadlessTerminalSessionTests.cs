@@ -152,6 +152,22 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task Character_geometry_query_reaches_the_child_writer_after_the_ordered_resize()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            mux.PostResize(140, 40, presentation: null);
+            await mux.InvokeAsync(() => 0); // the authoritative VT resize completed
+            fake.Emit("\x1b[18t");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count == 1, "the character-geometry reply reached the child writer");
+            Assert.Equal("\x1b[8;40;140t", Assert.Single(fake.SentInput));
+            Assert.False(mux.Parser.InBandResizeReportsEnabled);
+        }
+    }
+
+    [Fact]
     public async Task A_resize_is_recorded_at_the_current_offset_and_reaches_the_child_after_the_buffer()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();

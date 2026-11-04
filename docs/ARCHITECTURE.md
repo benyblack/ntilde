@@ -198,6 +198,16 @@ Settings update host defaults while preserving an explicit application cursor ov
 New replay snapshots embed the existing complete terminal/parser model without scrollback,
 with legacy viewport fields retained for older readers.
 
+Exact query dispatch keeps availability and successful behavior distinct. `CSI 18 t`
+reports the current VT buffer's rows and columns as `CSI 8 ; rows ; cols t`,
+independently of host pixel metrics or in-band resize subscription. Different
+leaders, intermediates and extra parameters cannot alias this request. The reply
+is VT state, not a kernel/window-size observation or child-delivery acknowledgement.
+Unimplemented DECRQSS/XTGETTCAP settings retain bounded negative replies; a rejected
+setting never becomes evidence for the whole family. The eighteen frozen Q07
+spellings have individual dispositions and no-state-mutation contracts in
+`docs/qa/terminfo/exact-query-audit.md`.
+
 Application-keypad mode is session-wide VT state (ESC =/>, DECNKM ?66), separate
 from application cursor keys. Clones and complete mux/replay state carry it;
 absent legacy fields mean numeric mode. Soft/full reset clear it without making
