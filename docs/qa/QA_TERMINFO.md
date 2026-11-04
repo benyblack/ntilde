@@ -5,6 +5,12 @@ observations. Use it to find compatibility gaps and small reproductions. This is
 a manual QA tool, outside the CI lanes. Ntilde's capability contract, parser
 tests, replay tests and rendering tests remain the release evidence.
 
+The [80-row Core TUI evidence map](terminfo/2026-11-04-core-baseline.md)
+reconciles the frozen stock results, retained owned variants, source/test references
+and remaining acceptance boundaries. Its machine-readable companion preserves
+original grades and case pointers; additional evidence is not a combined compliance
+score. Reproduce it offline with `python3 scripts/terminfo-core-report.py --check`.
+
 ## Run
 
 Requirements: Node 24+, an npm installation (or a prepared collector cache),

@@ -173,6 +173,14 @@ jobs:
           "$py" scripts/tests/terminfo_triage_tests.py
           "$py" scripts/terminfo-triage.py --check
 
+      - name: Self-test the pinned Core baseline evidence map
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/terminfo_core_report_tests.py
+          "$py" scripts/terminfo-core-report.py --check
+
       - name: Select Node for terminfo adapter self-tests
         uses: actions/setup-node@v4
         with:
