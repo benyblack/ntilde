@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Xunit;
+using Ntilde.Replay;
 
 namespace Ntilde.VT.Tests;
 
@@ -569,6 +570,41 @@ public sealed class KittyImageLifecycleTests
         parser.Process("\nX");
         Assert.Equal(3, buffer.CursorRow);
         buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+    }
+
+    [Fact]
+    public void RIS_clears_both_banks_and_shared_Kitty_generic_handles_only_after_snapshot_exit()
+    {
+        var (buffer, parser, replies) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
+        parser.Process("main" + Command("a=T,f=32,s=1,v=1,i=7,C=1", Pixel));
+        object handle = Assert.Single(buffer.Images).ImageHandle;
+        parser.Process("\x1b[?47halt");
+        buffer.AddImage(new TerminalImage(handle, 0, 0, 1, 1));
+        Assert.Equal(2, buffer.Images.Count);
+        Assert.All(buffer.Images, image => Assert.Same(handle, image.ImageHandle));
+        Assert.Single(buffer.Images, image => image.IsAltScreenImage);
+        Assert.Single(buffer.Images, image => !image.IsAltScreenImage);
+        int snapshot = buffer.BeginSnapshotSession();
+        var retired = new List<object>();
+        try
+        {
+            parser.Process("\x1b" + "c");
+            Assert.False(buffer.IsAltScreenActive);
+            Assert.Empty(buffer.Images);
+            Assert.All(BufferSnapshot.Capture(buffer).Lines, line => Assert.All(line, value => Assert.Equal(' ', value)));
+            parser.Process(Command("a=p,i=7"));
+            Assert.Contains(";ENOENT:", replies[^1], StringComparison.Ordinal);
+            parser.Process("\x1b[?47h"); Assert.Empty(buffer.Images);
+            Assert.All(BufferSnapshot.Capture(buffer).Lines, line => Assert.All(line, value => Assert.Equal(' ', value)));
+            parser.Process("\x1b[?47l");
+            buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+            Assert.Empty(retired);
+        }
+        finally { buffer.EndSnapshotSession(snapshot); }
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Same(handle, Assert.Single(retired));
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Single(retired);
     }
 
     private sealed class SharedHandleDecoder : IImageDecoder

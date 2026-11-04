@@ -46,7 +46,10 @@ charset witnesses and the wrap-on host policy are checked independently.
 
 Full clear still owns image retirement. A separate regression proves both
 screens' image handles retire exactly once and remain protected by an active
-snapshot pin. Complete recorder/replay cuts and mux v1/v2 output/reattach tests
+snapshot pin. The integrated Kitty/generic regression shares one opaque handle
+between a retained main-screen Kitty asset and an alternate-screen generic
+placement. RIS clears both banks and the asset lookup; retirement yields that
+handle once, only after the active snapshot exits. Complete recorder/replay cuts and mux v1/v2 output/reattach tests
 check that cleared banks are retained across transport boundaries.
 
 These are deterministic domain/transport observations. They do not by themselves

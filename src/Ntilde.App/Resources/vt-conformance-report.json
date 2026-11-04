@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "70062dd012b8463703c3204a0373a013c591039d555657e1b9886b6bcec7a9a2",
+  "matrixSha256": "96603a79ed27e9ee5474233b6e449b4a027c697b2174445eb1c57099c93fac28",
   "summary": {
     "totalRows": 86,
     "supportedCount": 43,
@@ -792,7 +792,7 @@
       "feature": "RIS screen reset",
       "status": "\u26A0 Partial",
       "specOrNotes": "Return to main; clear both retained screen banks, history and row metadata with default pens/colors; reset saved banks and pending wrap",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyImageLifecycleTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
       "evidenceKinds": [
         "replay",
         "unit"
@@ -804,6 +804,10 @@
         },
         {
           "path": "tests/Ntilde.VT.Tests/FullResetScreenTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/KittyImageLifecycleTests.cs",
           "exists": true
         },
         {
