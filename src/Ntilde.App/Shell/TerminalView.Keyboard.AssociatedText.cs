@@ -7,6 +7,8 @@ namespace Ntilde.Shell;
 
 public partial class TerminalView
 {
+    private enum AssociatedKeyDispatch { NotApplicable, Queued, RefusedGenerated }
+
     private readonly record struct AssociatedInputContext(ITerminalSession Session, TerminalBuffer Buffer,
         KittyKeyboardState KeyboardState, int KeyboardGeneration, int Epoch);
     private sealed record PendingAssociatedKey(Key Key, KeyModifiers Modifiers, PhysicalKey Physical,
@@ -23,14 +25,17 @@ public partial class TerminalView
     /// Leaves a text-producing keydown unhandled so all Avalonia backends can produce text.
     /// At most one input is pending and one dispatcher fallback is queued per view.
     /// </summary>
-    private bool TryQueueKittyAssociatedKey(Key key, KeyModifiers modifiers, PhysicalKey physical,
+    private AssociatedKeyDispatch TryQueueKittyAssociatedKey(Key key, KeyModifiers modifiers, PhysicalKey physical,
         KittyKeyIdentity identity, TerminalKeyEventKind kind, int flags, string? symbol)
     {
         if (!TerminalInputModeEncoder.ReportsKittyAssociatedText(flags)
             || !TerminalInputModeEncoder.CanProduceKittyAssociatedText(key, modifiers, symbol)
-            || _session == null || _buffer == null) return false;
+            || _session == null || _buffer == null) return AssociatedKeyDispatch.NotApplicable;
         string? frame = TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, flags, kind, identity);
-        if (frame == null || !frame.EndsWith('u')) return false;
+        if (frame == null || !frame.EndsWith('u')) return AssociatedKeyDispatch.NotApplicable;
+        // Guard the queue boundary itself: a parser mode change must not create deferred
+        // synthetic work after the API's synchronous lease has ended.
+        if (_generatedInputInProgress) return AssociatedKeyDispatch.RefusedGenerated;
         var state = _buffer.Modes.KittyKeyboard;
         var context = new AssociatedInputContext(_session, _buffer, state, state.Generation, _kittyTextContextEpoch);
         _pendingAssociatedKey = new(key, modifiers, physical, identity, frame, context);
@@ -43,7 +48,7 @@ public partial class TerminalView
                 FlushPendingKittyAssociatedKey();
             }, DispatcherPriority.Input);
         }
-        return true;
+        return AssociatedKeyDispatch.Queued;
     }
 
     /// <summary>Expires stale fragments and drains fallback sends before reserving another text slot.</summary>

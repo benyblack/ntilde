@@ -25,8 +25,17 @@ public sealed class AgentHostGeneratedInputProtocolTests
 
     private static GeneratePaneInputResult Observed() => new()
     {
-        EventDispatched = true, Handled = false, Rows = 21, Cols = 71, ViewRows = 21, ViewCols = 71,
-        Modifiers = 0, ApplicationKeypad = true, MouseTracking = 0, MouseSgr = false, KittyKeyboardFlags = 0,
+        EventDispatched = true,
+        Handled = false,
+        Rows = 21,
+        Cols = 71,
+        ViewRows = 21,
+        ViewCols = 71,
+        Modifiers = 0,
+        ApplicationKeypad = true,
+        MouseTracking = 0,
+        MouseSgr = false,
+        KittyKeyboardFlags = 0,
     };
 
     [Fact]

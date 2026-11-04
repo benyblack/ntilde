@@ -227,6 +227,13 @@ Mouse positions are measured cell centers translated into the window's event
 coordinate space. Mouse events require active reporting immediately before the
 TerminalView handler, so a disabled protocol cannot fall through into selection
 or hyperlink activation. Such unavailable attempts are not no-byte evidence.
+Synthetic keyboard events are unavailable while Kitty associated-text reporting
+is enabled or an associated key is already pending. Admission and the terminal
+handler recheck this bound, and the deferred-queue creation boundary independently
+refuses synthetic work. This foundation does not retain authorization across
+separate associated-text callbacks or schedule a generated fallback after return.
+Ordinary keyboard callbacks retain their existing behavior.
+
 Window shortcut/broadcast commands, Command Assist interception and user-command history observers are
 excluded during synthetic dispatch; terminal routing, keypad text-suppression,
 mouse coordinate conversion/coalescing, wheel accumulation, encoding and normal

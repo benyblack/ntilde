@@ -79,11 +79,23 @@ public static class GeneratePaneInputValidation
     public static bool IsValid(GeneratePaneInputParams p)
     {
         if (p.PaneId == Guid.Empty || p.Modifiers < 0 || p.Modifiers > 15) return false;
-        bool noPointer = p.Column == null && p.Row == null && p.Button == null && p.WheelDelta == null;
-        if (p.Kind is "keyDown" or "keyUp")
-            return noPointer && p.Text == null && IsKey(p.Key);
-        if (p.Kind == "text")
-            return noPointer && p.Key == null && p.Modifiers == 0 && p.Text is { Length: 1 } && "0123456789.+-*/,=\r".Contains(p.Text, StringComparison.Ordinal);
+        return p.Kind switch
+        {
+            "keyDown" or "keyUp" => HasNoPointerFields(p) && p.Text == null && IsKey(p.Key),
+            "text" => IsTextInput(p),
+            _ => IsMouseInput(p),
+        };
+    }
+
+    private static bool HasNoPointerFields(GeneratePaneInputParams p)
+        => p.Column == null && p.Row == null && p.Button == null && p.WheelDelta == null;
+
+    private static bool IsTextInput(GeneratePaneInputParams p)
+        => HasNoPointerFields(p) && p.Key == null && p.Modifiers == 0 && p.Text is { Length: 1 }
+            && "0123456789.+-*/,=\r".Contains(p.Text, StringComparison.Ordinal);
+
+    private static bool IsMouseInput(GeneratePaneInputParams p)
+    {
         if (p.Key != null || p.Text != null || p.Column is not (>= 1 and <= 256) || p.Row is not (>= 1 and <= 128)) return false;
         return p.Kind switch
         {

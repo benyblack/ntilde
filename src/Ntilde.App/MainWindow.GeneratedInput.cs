@@ -32,15 +32,15 @@ public partial class MainWindow
             && pane.IsCurrentAgentRegistration(registration) && ReferenceEquals(pane.Buffer, registration.Buffer) && ReferenceEquals(pane.Session, session)
             && ReferenceEquals(registration.ObservationSession, session)
             && pane.TermView.MatchesGeneratedInputContext(registration.Buffer, session)
+            && pane.TermView.CanGenerateInputSynchronously(input.Column == null)
             && (input.Column == null || registration.Buffer.IsMouseReportingActive());
-        if (_agentGeneratedInputInProgress || _agentPaneResizeInProgress || !Matches()) return null;
-        var view = pane!.TermView;
-        if (!TryObserveGeneratedInput(view, registration, input, false, null, out var before)) return null;
+        if (_agentGeneratedInputInProgress || _agentPaneResizeInProgress || pane == null || !Matches()) return null;
+        var view = pane.TermView;
+        if (!TryObserveGeneratedInput(view, registration, input, false, null, out _)) return null;
         bool pointer = input.Column != null;
         // Without reporting a press can activate a hyperlink. This bounded QA API does not authorize host actions.
-        if (pointer && before!.MouseTracking == 0) return null;
-        Point? position = pointer ? new Point((input.Column!.Value - 0.5) * view.Metrics.CellWidth,
-            (input.Row!.Value - 0.5) * view.Metrics.CellHeight) : null;
+        Point? position = pointer ? new Point((input.Column.GetValueOrDefault() - 0.5) * view.Metrics.CellWidth,
+            (input.Row.GetValueOrDefault() - 0.5) * view.Metrics.CellHeight) : null;
         var modifiers = GeneratedModifiers(input.Modifiers);
         var args = CreateGeneratedInputEvent(view, input, modifiers, position);
         if (args == null) return null;
@@ -49,11 +49,11 @@ public partial class MainWindow
         cancellationToken.ThrowIfCancellationRequested();
         if (!Matches()) return null;
         _agentGeneratedInputInProgress = true;
-        try { view.RaiseGeneratedInput(args, () => !cancellationToken.IsCancellationRequested && Matches()); }
+        try { if (!view.RaiseGeneratedInput(args, () => !cancellationToken.IsCancellationRequested && Matches())) return null; }
         finally { _agentGeneratedInputInProgress = false; }
-        if (!Matches() || !TryObserveGeneratedInput(view, registration, input, args.Handled, position, out var result)) return null;
+        if (!Matches() || !TryObserveGeneratedInput(view, registration, input, args.Handled, position, out var result) || result == null) return null;
         var actualModifiers = args switch { KeyEventArgs key => key.KeyModifiers, PointerEventArgs pointerEvent => pointerEvent.KeyModifiers, _ => KeyModifiers.None };
-        return result! with { Modifiers = GeneratedModifierBits(actualModifiers) };
+        return result with { Modifiers = GeneratedModifierBits(actualModifiers) };
     }
 
     private static int GeneratedModifierBits(KeyModifiers value)
@@ -69,11 +69,19 @@ public partial class MainWindow
         if (input.Kind == "text") return new TextInputEventArgs { RoutedEvent = InputElement.TextInputEvent, Text = input.Text, Source = view };
         if (input.Kind is "keyDown" or "keyUp")
         {
-            var (key, physical) = GeneratedKey(input.Key!);
-            return new KeyEventArgs { RoutedEvent = input.Kind == "keyDown" ? InputElement.KeyDownEvent : InputElement.KeyUpEvent,
-                Key = key, PhysicalKey = physical, KeyModifiers = modifiers, Source = view };
+            if (input.Key is not { } keyName) return null;
+            var (key, physical) = GeneratedKey(keyName);
+            return new KeyEventArgs
+            {
+                RoutedEvent = input.Kind == "keyDown" ? InputElement.KeyDownEvent : InputElement.KeyUpEvent,
+                Key = key,
+                PhysicalKey = physical,
+                KeyModifiers = modifiers,
+                Source = view
+            };
         }
-        var rootPosition = view.TranslatePoint(position!.Value, this);
+        if (position is not { } point) return null;
+        var rootPosition = view.TranslatePoint(point, this);
         if (rootPosition == null) return null;
         // A fresh framework pointer describes this single event; it is not an OS device or persistent button state.
         var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
@@ -84,7 +92,7 @@ public partial class MainWindow
             "mousePress" => new PointerPressedEventArgs(view, pointer, this, rootPosition.Value, 0, properties, modifiers),
             "mouseRelease" => new PointerReleasedEventArgs(view, pointer, this, rootPosition.Value, 0, properties, modifiers, button),
             "mouseMove" => new PointerEventArgs(InputElement.PointerMovedEvent, view, pointer, this, rootPosition.Value, 0, properties, modifiers),
-            "mouseWheel" => new PointerWheelEventArgs(view, pointer, this, rootPosition.Value, 0, properties, modifiers, new Vector(0, input.WheelDelta!.Value)),
+            "mouseWheel" => new PointerWheelEventArgs(view, pointer, this, rootPosition.Value, 0, properties, modifiers, new Vector(0, input.WheelDelta.GetValueOrDefault())),
             _ => null,
         };
     }
@@ -105,15 +113,33 @@ public partial class MainWindow
 
     private static (Key, PhysicalKey) GeneratedKey(string key) => key switch
     {
-        "0" => (Key.NumPad0, PhysicalKey.NumPad0), "1" => (Key.NumPad1, PhysicalKey.NumPad1),
-        "2" => (Key.NumPad2, PhysicalKey.NumPad2), "3" => (Key.NumPad3, PhysicalKey.NumPad3),
-        "4" => (Key.NumPad4, PhysicalKey.NumPad4), "5" => (Key.NumPad5, PhysicalKey.NumPad5),
-        "6" => (Key.NumPad6, PhysicalKey.NumPad6), "7" => (Key.NumPad7, PhysicalKey.NumPad7),
-        "8" => (Key.NumPad8, PhysicalKey.NumPad8), "9" => (Key.NumPad9, PhysicalKey.NumPad9),
-        "decimal" => (Key.Decimal, PhysicalKey.NumPadDecimal), "separator" => (Key.Separator, PhysicalKey.NumPadComma),
-        "add" => (Key.Add, PhysicalKey.NumPadAdd), "subtract" => (Key.Subtract, PhysicalKey.NumPadSubtract),
-        "multiply" => (Key.Multiply, PhysicalKey.NumPadMultiply), "divide" => (Key.Divide, PhysicalKey.NumPadDivide),
-        "enter" => (Key.Enter, PhysicalKey.NumPadEnter), _ => throw new ArgumentException("Not a bounded keypad key.", nameof(key)),
+        "0" => (Key.NumPad0, PhysicalKey.NumPad0),
+        "1" => (Key.NumPad1, PhysicalKey.NumPad1),
+        "2" => (Key.NumPad2, PhysicalKey.NumPad2),
+        "3" => (Key.NumPad3, PhysicalKey.NumPad3),
+        "4" => (Key.NumPad4, PhysicalKey.NumPad4),
+        "5" => (Key.NumPad5, PhysicalKey.NumPad5),
+        "6" => (Key.NumPad6, PhysicalKey.NumPad6),
+        "7" => (Key.NumPad7, PhysicalKey.NumPad7),
+        "8" => (Key.NumPad8, PhysicalKey.NumPad8),
+        "9" => (Key.NumPad9, PhysicalKey.NumPad9),
+        "decimal" => (Key.Decimal, PhysicalKey.NumPadDecimal),
+        "separator" => (Key.Separator, PhysicalKey.NumPadComma),
+        "add" => (Key.Add, PhysicalKey.NumPadAdd),
+        "subtract" => (Key.Subtract, PhysicalKey.NumPadSubtract),
+        "multiply" => (Key.Multiply, PhysicalKey.NumPadMultiply),
+        "divide" => (Key.Divide, PhysicalKey.NumPadDivide),
+        "enter" => (Key.Enter, PhysicalKey.NumPadEnter),
+        _ => throw new ArgumentException("Not a bounded keypad key.", nameof(key)),
+    };
+
+    private static int ObservedMouseTracking(Ntilde.VT.ModeState modes) => modes switch
+    {
+        { MouseModeAnyEvent: true } => 1003,
+        { MouseModeButtonEvent: true } => 1002,
+        { MouseModeX10: true } => 1000,
+        { MouseModeX10PressOnly: true } => 9,
+        _ => 0,
     };
 
     private static bool TryObserveGeneratedInput(TerminalView view, AgentSessionRegistration registration,
@@ -129,11 +155,20 @@ public partial class MainWindow
             var modes = buffer.Modes;
             result = new GeneratePaneInputResult
             {
-                EventDispatched = true, Handled = handled,
-                Rows = buffer.Rows, Cols = buffer.Cols, ViewRows = view.Rows, ViewCols = view.Cols,
-                Column = input.Column, Row = input.Row, X = position?.X, Y = position?.Y, Modifiers = input.Modifiers,
-                ApplicationKeypad = modes.IsApplicationKeypad, MouseSgr = modes.MouseModeSGR,
-                MouseTracking = modes.MouseModeAnyEvent ? 1003 : modes.MouseModeButtonEvent ? 1002 : modes.MouseModeX10 ? 1000 : modes.MouseModeX10PressOnly ? 9 : 0,
+                EventDispatched = true,
+                Handled = handled,
+                Rows = buffer.Rows,
+                Cols = buffer.Cols,
+                ViewRows = view.Rows,
+                ViewCols = view.Cols,
+                Column = input.Column,
+                Row = input.Row,
+                X = position?.X,
+                Y = position?.Y,
+                Modifiers = input.Modifiers,
+                ApplicationKeypad = modes.IsApplicationKeypad,
+                MouseSgr = modes.MouseModeSGR,
+                MouseTracking = ObservedMouseTracking(modes),
                 KittyKeyboardFlags = modes.KittyKeyboard.Flags,
             };
             return true;

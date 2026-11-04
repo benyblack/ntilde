@@ -21,8 +21,14 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
     {
         var profile = new TerminalProfile { Name = "Generated input local", Type = ConnectionType.Local };
         var session = new FakeTerminalSession();
-        var settings = new TerminalSettings { SessionPersistence = SessionPersistenceMode.Off, AgentAccessActEnabled = true,
-            CommandAssistShellIntegrationEnabled = false, Profiles = [profile], DefaultProfileId = profile.Id };
+        var settings = new TerminalSettings
+        {
+            SessionPersistence = SessionPersistenceMode.Off,
+            AgentAccessActEnabled = true,
+            CommandAssistShellIntegrationEnabled = false,
+            Profiles = [profile],
+            DefaultProfileId = profile.Id
+        };
         var window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         { Settings = settings, SessionFactory = new RecordingSessionFactory(session), CommandAssist = TestCommandAssistServices.Instance });
         window.Show(); Dispatcher.UIThread.RunJobs();
@@ -86,8 +92,15 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
     {
         var (window, pane, session) = Create();
         new AnsiParser(pane.Buffer!).Process("\u001b[?1003h\u001b[?1006h");
-        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = kind, Button = button,
-            Column = 3, Row = 2, WheelDelta = delta == 0 ? null : delta });
+        var result = await Dispatch(window, pane, new()
+        {
+            PaneId = pane.PaneId,
+            Kind = kind,
+            Button = button,
+            Column = 3,
+            Row = 2,
+            WheelDelta = delta == 0 ? null : delta
+        });
         Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.True(result.Handled);
         Assert.Equal((3, 2, 1003, true), (result.Column, result.Row, result.MouseTracking, result.MouseSgr));
         Assert.Equal(2.5 * pane.TermView.Metrics.CellWidth, result.X);
@@ -102,8 +115,16 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         new AnsiParser(pane.Buffer!).Process("\u001b[?9h\u001b[?1006h");
         foreach (var kind in new[] { "mousePress", "mouseRelease", "mouseMove", "mouseWheel" })
         {
-            var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = kind, Column = 3, Row = 2,
-                Button = kind == "mouseWheel" ? null : "left", WheelDelta = kind == "mouseWheel" ? 1 : null, Modifiers = 7 });
+            var result = await Dispatch(window, pane, new()
+            {
+                PaneId = pane.PaneId,
+                Kind = kind,
+                Column = 3,
+                Row = 2,
+                Button = kind == "mouseWheel" ? null : "left",
+                WheelDelta = kind == "mouseWheel" ? 1 : null,
+                Modifiers = 7
+            });
             Assert.NotNull(result); Assert.Equal(9, result.MouseTracking); Assert.Equal(7, result.Modifiers);
         }
         Assert.Equal("\u001b[<0;3;2M", Assert.Single(session.SentInput));
@@ -211,5 +232,72 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7", Modifiers = modifiers });
         Assert.NotNull(result); Assert.False(result.Handled); Assert.Equal(modifiers, result.Modifiers);
         Assert.Empty(session.SentInput);
+    }
+    [AvaloniaTheory]
+    [InlineData("keyDown")]
+    [InlineData("keyUp")]
+    [InlineData("text")]
+    public async Task Associated_text_keyboard_scope_is_unavailable_and_never_posts_a_send(string kind)
+    {
+        var (window, pane, session) = Create();
+        pane.Buffer!.Modes.KittyKeyboard.Push(24);
+        int host = 0; pane.TermView.TextInputObserved += _ => host++; pane.TermView.EnterObserved += () => host++;
+        using var cancelled = new CancellationTokenSource();
+        var result = await Dispatch(window, pane, new()
+        {
+            PaneId = pane.PaneId,
+            Kind = kind,
+            Key = kind == "text" ? null : "7",
+            Text = kind == "text" ? "7" : null
+        }, token: cancelled.Token);
+        Assert.Null(result); cancelled.Cancel();
+        Dispatcher.UIThread.RunJobs(); Assert.Empty(session.SentInput); Assert.Equal(0, host);
+    }
+
+    [AvaloniaFact]
+    public async Task Associated_mode_enabled_during_tunnel_is_rechecked_before_terminal_handler()
+    {
+        var (window, pane, session) = Create();
+        pane.TermView.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, (_, _) => pane.Buffer!.Modes.KittyKeyboard.Push(24),
+            Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" }));
+        Dispatcher.UIThread.RunJobs(); Assert.Empty(session.SentInput);
+    }
+
+    [AvaloniaFact]
+    public void Deferred_queue_creation_refuses_synthetic_work_even_if_a_preflight_guard_accepts_it()
+    {
+        var (_, pane, session) = Create();
+        pane.Buffer!.Modes.KittyKeyboard.Push(24);
+        var args = new Avalonia.Input.KeyEventArgs
+        {
+            RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent,
+            Key = Avalonia.Input.Key.NumPad7,
+            PhysicalKey = Avalonia.Input.PhysicalKey.NumPad7
+        };
+        Assert.False(pane.TermView.RaiseGeneratedInput(args, () => true));
+        Dispatcher.UIThread.RunJobs(); Assert.Empty(session.SentInput);
+        pane.Buffer.Modes.KittyKeyboard.Pop(1);
+        pane.TermView.RaiseEvent(new Avalonia.Input.TextInputEventArgs { RoutedEvent = Avalonia.Input.InputElement.TextInputEvent, Text = "human" });
+        Assert.Equal("human", Assert.Single(session.SentInput));
+    }
+
+    [AvaloniaFact]
+    public async Task Existing_user_associated_key_is_not_drained_or_replaced_by_a_generated_key()
+    {
+        var (window, pane, session) = Create();
+        pane.Buffer!.Modes.KittyKeyboard.Push(24);
+        pane.TermView.RaiseEvent(new Avalonia.Input.KeyEventArgs
+        {
+            RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent,
+            Key = Avalonia.Input.Key.NumPad7,
+            PhysicalKey = Avalonia.Input.PhysicalKey.NumPad7
+        });
+        pane.Buffer.Modes.KittyKeyboard.Pop(1);
+        Assert.Empty(session.SentInput);
+        Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "8" }));
+        Assert.Empty(session.SentInput);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("\u001b[57406u", Assert.Single(session.SentInput));
     }
 }

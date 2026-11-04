@@ -258,7 +258,9 @@ namespace Ntilde.Shell
             TerminalKeyEventKind eventKind = KittyEventKind(ref key, physicalKey, ref identity);
             ResetCursorBlink();
 
-            if (TryQueueKittyAssociatedKey(key, keyModifiers, physicalKey, identity, eventKind, kittyFlags, keySymbol)) return false;
+            var associated = TryQueueKittyAssociatedKey(key, keyModifiers, physicalKey, identity, eventKind, kittyFlags, keySymbol);
+            if (associated == AssociatedKeyDispatch.RefusedGenerated) _generatedInputRefused = true;
+            if (associated != AssociatedKeyDispatch.NotApplicable) return false;
 
             // Kitty keyboard protocol (disambiguation and negotiated event reporting). Must run before every legacy path
             // below - including Alt-sends-ESC - because the protocol replaces those encodings
