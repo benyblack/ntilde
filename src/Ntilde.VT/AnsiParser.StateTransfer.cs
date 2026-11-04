@@ -23,6 +23,7 @@ namespace Ntilde.VT
                 OscBuffer = new string(_oscStringBuffer.ToArray()),
                 ApcBuffer = new string(_apcStringBuffer.ToArray()),
                 DcsBuffer = new string(_dcsStringBuffer.ToArray()),
+                DcsTruncated = _dcsTruncated,
                 KittyPayload = _kittyPayloadBuffer.ToString(),
                 KittyPayloadOverflow = _kittyPayloadOverflow,
                 KittyPendingParams = new Dictionary<string, string>(_kittyPendingParams),
@@ -78,6 +79,10 @@ namespace Ntilde.VT
             ImportStringAccumulator(_oscStringBuffer, state.OscBuffer, stringCap);
             ImportStringAccumulator(_apcStringBuffer, state.ApcBuffer, stringCap);
             ImportStringAccumulator(_dcsStringBuffer, state.DcsBuffer, stringCap);
+            // An old snapshot cannot prove an in-flight DCS prefix complete. Keep image
+            // decoding compatible, but retain lost/unknown input for future query dispatch.
+            _dcsTruncated = (state.DcsTruncated ?? (_state is State.Dcs or State.DcsEsc))
+                || state.DcsBuffer.Length > stringCap;
 
             // The kitty accumulator overflows differently, and is mirrored differently: the live
             // path does not truncate on the chunk that would exceed the cap, it latches

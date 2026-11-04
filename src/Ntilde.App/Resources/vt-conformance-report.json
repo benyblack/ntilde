@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "96603a79ed27e9ee5474233b6e449b4a027c697b2174445eb1c57099c93fac28",
+  "matrixSha256": "34188b9389422c86119b0a91b35536aaf22e1ffbd473404be17db55970aec525",
   "summary": {
     "totalRows": 86,
     "supportedCount": 43,
@@ -204,7 +204,7 @@
       "feature": "Error recovery on malformed sequences",
       "status": "\u26A0 Partial",
       "specOrNotes": "Robustness",
-      "evidenceText": "Fuzz/Unit: \u0060tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs\u0060, \u0060tests/Ntilde.App.Tests/AnsiCorpusReplayTests.cs\u0060",
+      "evidenceText": "Fuzz/Unit: \u0060tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs\u0060, \u0060tests/Ntilde.App.Tests/AnsiCorpusReplayTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/DcsTruncationStateTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/StringSequenceCapTests.cs\u0060",
       "evidenceKinds": [
         "fuzz",
         "replay",
@@ -218,12 +218,20 @@
         {
           "path": "tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs",
           "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/DcsTruncationStateTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/StringSequenceCapTests.cs",
+          "exists": true
         }
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "\u0060src/Ntilde.VT/AnsiParser.cs\u0060",
-      "knownDeviations": "Malformed OSC/CSI/DCS/APC recover across chunk boundaries and nested ESC, but this is a best-effort parser policy rather than full conformance coverage",
+      "knownDeviations": "Malformed OSC/CSI/DCS/APC recover across chunk boundaries and nested ESC, but this is a best-effort parser policy rather than full conformance coverage; DCS lost-input state survives chunks/snapshot JSON and import clipping without changing capped SIXEL decoding",
       "sourceLine": 65
     },
     {

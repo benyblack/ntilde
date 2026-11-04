@@ -52,8 +52,21 @@ public class StringSequenceCapTests
 
         // DCS Sixel payload (begins with 'q') exceeding the cap.
         int overCap = TestCap + 100;
-        parser.Process("\x1bPq" + new string('~', overCap) + "\x07");
+        parser.Process("\x1bPq" + new string('~', overCap));
+        AnsiParserState state = parser.ExportState();
+        Assert.Equal(true, state.DcsTruncated);
+        var transferredDecoder = new RecordingImageDecoder();
+        var transferred = new AnsiParser(new TerminalBuffer(10, 1))
+        {
+            MaxStringSequenceChars = TestCap,
+            ImageDecoder = transferredDecoder,
+        };
+        transferred.ImportState(state);
+        parser.Process("\x07");
+        transferred.Process("\x1b\\");
 
+        Assert.Equal(decoder.LastSixelPayload, transferredDecoder.LastSixelPayload);
+        Assert.Equal(false, transferred.ExportState().DcsTruncated);
         Assert.NotNull(decoder.LastSixelPayload);
         Assert.True(decoder.LastSixelPayload!.Length < overCap, "sixel payload should be truncated");
         Assert.True(decoder.LastSixelPayload.Length <= TestCap, "sixel payload must not exceed the cap");

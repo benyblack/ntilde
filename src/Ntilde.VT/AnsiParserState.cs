@@ -48,6 +48,10 @@ namespace Ntilde.VT
         [JsonPropertyName("apc")] public string ApcBuffer { get; set; } = string.Empty;
         [JsonPropertyName("dcs")] public string DcsBuffer { get; set; } = string.Empty;
 
+        /// <summary>Input was discarded from this DCS; absent legacy state cannot prove completeness.</summary>
+        [JsonPropertyName("dcs_trunc"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? DcsTruncated { get; set; }
+
         /// <summary>Accumulated payload of a chunked (<c>m=1</c>) kitty graphics transmission.</summary>
         [JsonPropertyName("kitty_payload")] public string KittyPayload { get; set; } = string.Empty;
 
@@ -97,7 +101,7 @@ namespace Ntilde.VT
             sb.Append(" csi=").Append(CsiParams).Append(" trunc=").Append(CsiTruncated);
             sb.Append(" osc=").Append(OscBuffer);
             sb.Append(" apc=").Append(ApcBuffer);
-            sb.Append(" dcs=").Append(DcsBuffer);
+            sb.Append(" dcs=").Append(DcsBuffer).Append(" trunc=").Append(DcsTruncated);
             sb.Append(" kitty=").Append(KittyPayload).Append(" ovf=").Append(KittyPayloadOverflow);
             sb.Append(" kparams=");
 

@@ -55,6 +55,12 @@ invariant changes.
   mux snapshots carry the cleared banks. These owning regressions do not regrade
   historical reset failures or the unverified `TERM_FEATURES` environment hint.
 - Deterministic parsing — same byte stream produces the same semantic ops
+- **DCS loss is transferable stream state.** VT latches discarded input separately
+  from the capped prefix, preserves it across chunks and complete snapshot JSON,
+  and marks import clipping or an active legacy prefix without the marker incomplete.
+  Completion, malformed-escape abandonment and a new DCS clear the latch. Capped
+  SIXEL decoding remains compatible; DECRQSS/XTGETTCAP remain negative. The prefix
+  alone must not establish a complete request for future positive query handling.
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops ordinary text content. OSC 66 rectangles are
   fixed physical layout barriers; a rectangle clipped by a narrower grid or taller than the
