@@ -20,6 +20,8 @@ public sealed class LegacyMouseByteInputPtyTests
             Assert.Skip("This is a POSIX raw-PTY fixture; ConPTY byte behavior needs separate runtime qualification.");
             return;
         }
+        Assert.SkipUnless(File.Exists("/bin/sh") && File.Exists("/bin/stty") && File.Exists("/bin/dd") && File.Exists("/usr/bin/od"),
+            "Requires /bin/sh, /bin/stty, /bin/dd and /usr/bin/od for the POSIX raw-child fixture.");
         const string command = "/bin/stty raw -echo; printf 'NT_BYTE_READY\\n'; /bin/dd bs=1 count=6 2>/dev/null | /usr/bin/od -An -tx1; printf 'NT_BYTE_DONE\\n'";
         using var session = new RustPtySession("/bin/sh", 300, 250, args: "-c \"" + command + "\"", skipPowerShellPostLaunchInit: true);
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

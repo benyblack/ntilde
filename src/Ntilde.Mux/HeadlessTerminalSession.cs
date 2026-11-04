@@ -323,7 +323,14 @@ public sealed class HeadlessTerminalSession : IDisposable
         {
             // Old/test child providers can still carry valid UTF-8 through their text API.
             // Invalid bytes must never become replacement characters or another input frame.
-            try { return EnqueueInput(StrictInputUtf8.GetString(input)); }
+            try
+            {
+                // Charge retained UTF-16, not wire bytes: e.g. a 3-byte euro sign
+                // still fits a 2-byte string budget. Count without materializing it.
+                long decodedBytes = (long)StrictInputUtf8.GetCharCount(input) * sizeof(char);
+                if (decodedBytes > MaxQueuedInputBytes - Interlocked.Read(ref _queuedInputBytes)) return false;
+                return EnqueueInput(StrictInputUtf8.GetString(input));
+            }
             catch (System.Text.DecoderFallbackException) { return false; }
         }
         if (input.Length > MaxQueuedInputBytes) return false;

@@ -103,6 +103,25 @@ public sealed class ByteInputTransportTests
     }
 
     [Fact]
+    public async Task Rejected_text_only_input_does_not_allocate_the_over_budget_decoded_string()
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        HeadlessTerminalSession session = host.Mux(id);
+        session.MaxQueuedInputBytesForTest = 2;
+        byte[] input = new byte[1024 * 1024]; Array.Fill(input, (byte)'x');
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        Assert.False(session.TrySendInputBytes(input));
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        // The old decode-first route allocates a 2 MiB string only to reject it.
+        // Allow ample fixed overhead while forbidding that payload-sized allocation.
+        Assert.True(allocated < 64 * 1024, $"Rejected input allocated {allocated} bytes.");
+        Assert.Equal(0, session.QueuedInputBytes);
+        Assert.Empty(host.Fake(id).SentInput);
+    }
+
+    [Fact]
     public async Task A_stalled_link_returns_false_for_the_binary_frame_that_exceeds_its_overflow_cap()
     {
         using var daemon = FakeMuxServerEnd.Create(FullSendQueue.PipeCapacityBytes);
