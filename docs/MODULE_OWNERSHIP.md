@@ -115,6 +115,16 @@ invariant changes.
   Contracts remain a leaf. Windowless viewport imports report unknown history count
   explicitly; importing zero rows cannot prove an empty daemon history. The projection
   does not alter parser state or enable acting methods.
+- **Application-keypad state belongs to VT; key encoding belongs to App.** ESC =/>
+  and DECNKM (?66) share a session-wide boolean, copied through clone, complete
+  mux/replay snapshots and legacy replay fields (absent means numeric). DECSTR/RIS
+  clear it; cursor banks, screen changes and prompt input-reporting reset do not.
+  App maps available unmodified auxiliary keys after Kitty negotiation, before
+  legacy Enter/text paths. A captured one-shot text decision prevents duplicate
+  digits, including reentrant callbacks and later mode changes; matching releases
+  or input-context changes expire it. Logical PC navigation/modified keys keep
+  existing routing. No native NumLock state or child-delivery acknowledgement is
+  inferred from framework events or a fire-and-forget SendInput call.
 - **Cursor save state is shared by DECSC/DECRC and modes 1048/1049.** The per-screen banks
   retain position, rendition, pending wrap, origin mode and G0-G3/GL. Saved character sets
   are copied into mux and replay snapshots, never shared as mutable arrays. DECSTR preserves

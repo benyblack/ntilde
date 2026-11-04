@@ -89,6 +89,7 @@ namespace Ntilde.VT
 
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; }
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
+        [JsonPropertyName("kap")] public bool IsApplicationKeypad { get; set; }
         [JsonPropertyName("decom")] public bool IsOriginMode { get; set; }
         [JsonPropertyName("sixel_display")] public bool IsSixelDisplayMode { get; set; }
         [JsonPropertyName("sixel_cw"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public float? SixelCellWidthPx { get; set; }

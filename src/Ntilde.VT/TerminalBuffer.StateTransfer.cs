@@ -785,6 +785,7 @@ namespace Ntilde.VT
             MouseModeAnyEvent = modes.MouseModeAnyEvent,
             MouseModeSGR = modes.MouseModeSGR,
             IsApplicationCursorKeys = modes.IsApplicationCursorKeys,
+            IsApplicationKeypad = modes.IsApplicationKeypad,
             IsAutoWrapMode = modes.IsAutoWrapMode,
             IsOriginMode = modes.IsOriginMode,
             IsSixelDisplayMode = modes.IsSixelDisplayMode,
@@ -807,6 +808,7 @@ namespace Ntilde.VT
             target.MouseModeAnyEvent = source.MouseModeAnyEvent;
             target.MouseModeSGR = source.MouseModeSGR;
             target.IsApplicationCursorKeys = source.IsApplicationCursorKeys;
+            target.IsApplicationKeypad = source.IsApplicationKeypad;
             target.IsAutoWrapMode = source.IsAutoWrapMode;
             target.IsOriginMode = source.IsOriginMode;
             target.IsSixelDisplayMode = source.IsSixelDisplayMode;

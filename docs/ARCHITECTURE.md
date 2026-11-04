@@ -198,6 +198,16 @@ Settings update host defaults while preserving an explicit application cursor ov
 New replay snapshots embed the existing complete terminal/parser model without scrollback,
 with legacy viewport fields retained for older readers.
 
+Application-keypad mode is session-wide VT state (ESC =/>, DECNKM ?66), separate
+from application cursor keys. Clones and complete mux/replay state carry it;
+absent legacy fields mean numeric mode. Soft/full reset clear it without making
+it a saved-cursor or per-screen setting. App encodes available unmodified
+auxiliary keys as SS3 frames after Kitty routing, reserving the corresponding
+one-shot TextInput suppression before sending so reentrant callbacks cannot
+send duplicate text. PC navigation, modified keys and native NumLock policy are
+separate scopes. Deterministic routed-event tests prove encoder/transport calls,
+not delivery to a real child; owned end-to-end input evidence follows in #769.
+
 **Key invariants**
 - Alternate screen is fully isolated from main screen
 - Scrollback is immutable once flushed

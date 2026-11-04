@@ -375,6 +375,7 @@ namespace Ntilde.VT
                 Modes.IsOriginMode = false;
                 Modes.IsAutoWrapMode = true;
                 Modes.IsApplicationCursorKeys = false;
+                Modes.IsApplicationKeypad = false;
                 Modes.IsInsertMode = false;
                 Modes.IsCursorVisible = true;
                 ResetCursorPresentationNoLock();
@@ -396,6 +397,7 @@ namespace Ntilde.VT
                 Modes.IsSixelDisplayMode = false;
                 Modes.IsAutoWrapMode = true;
                 Modes.IsApplicationCursorKeys = false;
+                Modes.IsApplicationKeypad = false;
                 Modes.IsClipboardPasteMode = false;
                 ResetCursorPresentationNoLock();
 
