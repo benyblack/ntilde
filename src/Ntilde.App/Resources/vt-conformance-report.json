@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "701a0c5650ce676723549a4d172fd585d4625ca36aaf926afb6b1115ce897c7e",
+  "matrixSha256": "46463b5caf5d229e0d1ba70ebf14284d16c4510e24f8134e5d67219a53ddc9c1",
   "summary": {
     "totalRows": 94,
     "supportedCount": 49,
@@ -833,8 +833,8 @@
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
       "feature": "RIS screen reset",
       "status": "\u26A0 Partial",
-      "specOrNotes": "Return to main; clear both retained screen banks, history and row metadata with default pens/colors; reset saved banks and pending wrap",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyImageLifecycleTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060; Live: \u0060docs/qa/terminfo/2026-11-04-reset-observations.md\u0060",
+      "specOrNotes": "Return to main; clear both retained screen banks, history and row metadata with default pens/colors; reset saved banks, pending wrap and DECTCEM cursor visibility",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/RisCursorVisibilityTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyImageLifecycleTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/CursorResetRenderTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060; Live: \u0060docs/qa/terminfo/2026-11-04-reset-observations.md\u0060",
       "evidenceKinds": [
         "replay",
         "unit"
@@ -842,6 +842,10 @@
       "evidenceLinks": [
         {
           "path": "docs/qa/terminfo/2026-11-04-reset-observations.md",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/CursorResetRenderTests.cs",
           "exists": true
         },
         {
@@ -857,6 +861,10 @@
           "exists": true
         },
         {
+          "path": "tests/Ntilde.VT.Tests/RisCursorVisibilityTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs",
           "exists": true
         }
@@ -864,7 +872,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BReplay",
-      "knownDeviations": "Four initial-state controls reproduce the old main/alternate clearing defect. Inherited autowrap on/off converges to the existing wrap-on policy. Both-screen image retirement remains snapshot-pinned. Owning state/transport coverage and the fresh 40x140 disposable-App case verify both banks/default witnesses with completed source/cleanup evidence; broad power-on state and legacy device hints remain unqualified. Published RIS negatives stay frozen. See \u0060docs/qa/terminfo/reset-observations.md\u0060.",
+      "knownDeviations": "Four initial-state controls reproduce the old main/alternate clearing defect. Inherited autowrap on/off converges to the existing wrap-on policy. Main/alternate and chunked RIS restore the visible cursor, including DECRQM25, immutable render cuts, replay and mux attach. Both-screen image retirement remains snapshot-pinned. Owning state/transport coverage and the fresh 40x140 disposable-App case verify both banks/default witnesses with completed source/cleanup evidence; broad power-on state and legacy device hints remain unqualified. Published RIS negatives stay frozen. See \u0060docs/qa/terminfo/ris-cursor-visibility.md\u0060 for the source-backed visibility correction. See \u0060docs/qa/terminfo/reset-observations.md\u0060.",
       "sourceLine": 119
     },
     {

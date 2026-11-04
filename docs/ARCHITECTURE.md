@@ -216,6 +216,10 @@ and mux reattach tests qualify this boundary; fresh owned runtime receipts remai
 separate, and historical reset negatives are not rewritten. See
 `docs/qa/terminfo/reset-observations.md` for the legacy Q13 audit.
 
+RIS restores visible DECTCEM cursor presentation on both main and alternate
+screens in the same reset write cut. DECRQM and detached render snapshots observe
+that mode state.
+
 DECSC/DECRC and private modes 1048/1049 share per-screen saved cursor banks, including
 rendition, pending wrap, origin mode and character-set context. Mux state transfer
 and new replay snapshots copy those banks. DECSTR resets the active bank and soft
