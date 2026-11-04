@@ -614,3 +614,10 @@ order failure and the corrected complete collection are archived separately.
 Its25 passing text-pixel comparisons are a new observation; historical negative
 files and the original stock78/0/177 baseline remain frozen. Hardware/native
 keyboard or pointer input, remote/mux and Windows/Linux runtime are not qualified.
+
+The [calibrated v10 static-image measurement](terminfo/2026-11-04-image-observations.md)
+retains 23 image stages (21 passing, one calibrated native-raster negative and one
+causal inconclusive), 31 paired frames and 62 original image PNGs. Its 255-file archive
+binds all 15 suites and 67 sources; both older failed/uncalibrated preparation archives
+remain separate. Current raw stock 84/0/171 stays incomplete, and historical grades
+are unchanged. This publishes evidence, not a renderer fix or full #770 completion.
