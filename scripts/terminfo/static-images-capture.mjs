@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { OwnedCellObserver, snapshotHash, observerEndpoint, captureRequest } from './agent-observer.mjs';
+import { OwnedCellObserver, snapshotHash, observerEndpoint, imageCaptureRequest } from './agent-observer.mjs';
 import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
 import { staticImageCases } from './static-images-cases.mjs';
 import { checkImages, imagePlan, imageAction, imageReply, imageBoundScreen, imageInputs, buildStaticImageReport, validateImageOwnership,
@@ -9,7 +9,7 @@ import { checkImages, imagePlan, imageAction, imageReply, imageBoundScreen, imag
 
 /** No new action surface: worker emits bytes only after each parent ownership admission. */
 export class OwnedStaticImageObserver {
-    constructor({ output, priorChallenges = [], captureRpc = captureRequest, ...options }) {
+    constructor({ output, priorChallenges = [], captureRpc = imageCaptureRequest, ...options }) {
         checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= 80);
         this.output = output; this.runId = options.nonce.slice(11); this.priorChallenges = [...priorChallenges];
         this.used = new Set(priorChallenges); this.captureRpc = captureRpc; this.frames = []; this.actions = []; this.states = new Map();
@@ -39,13 +39,14 @@ export class OwnedStaticImageObserver {
         const second = await this.capturePixel(screen, endpoint, 1, budget);
         const pixels = [first, second], afterScreen = await this.after.capture(budget);
         checkImages(snapshotHash(screen) === snapshotHash(afterScreen) && first.sha256 === second.sha256
-            && snapshotHash(first.renderDetails) === snapshotHash(second.renderDetails));
+            && snapshotHash(first.renderDetails) === snapshotHash(second.renderDetails)
+            && snapshotHash(first.imageDetails) === snapshotHash(second.imageDetails));
         return { screen, afterScreen, sha256: snapshotHash(screen), afterSha256: snapshotHash(afterScreen), pixels };
     }
     async capturePixel(screen, endpoint, side, budget) {
             const capture = await this.captureRpc(endpoint, this.paneId, 0, budget());
             const kind = this.phase === 'start' ? 'images-start' : 'images-' + imagePlan[this.next].kind;
-            const { bytes, image, details } = validateImageCapture(capture, screen, kind);
+            const { bytes, image, details, imageDetails } = validateImageCapture(capture, screen, kind);
             if (this.phase === 'start' && image.width * image.height * 62 > totalPixelLimit)
                 throw Object.assign(new Error('Image paired-capture budget unavailable.'), { code: 'imageGeometryUnavailable' });
             this.totalPixels += image.width * image.height; checkImages(this.totalPixels <= totalPixelLimit);
@@ -53,7 +54,7 @@ export class OwnedStaticImageObserver {
             const file = `image-pixels/frame-${String(this.frames.length).padStart(3, '0')}-${side}.png`;
             const pixel = { file, sha256: pngHash(bytes), byteCount: bytes.length, width: capture.width, height: capture.height,
                 rows: capture.rows, cols: capture.cols, mode: capture.mode, scale: capture.scale, downscaled: false,
-                inlineOmitted: false, presentationTimeMs: 0, renderDetails: details };
+                inlineOmitted: false, presentationTimeMs: 0, renderDetails: details, imageDetails };
             if (!this.frames.length && side === 0) mkdirSync(join(this.output, 'image-pixels'), { mode: 0o700 });
             writeFileSync(join(this.output, file), bytes, { flag: 'wx', mode: 0o600 }); return pixel;
     }
@@ -90,6 +91,7 @@ export class OwnedStaticImageObserver {
         }
     }
     acceptPair(pair, entry) {
+        if (entry.kind !== 'read') checkImages(pair.pixels.every(value => value.imageDetails.totalPlacements === 0));
         if (this.phase !== 'start') {
             checkImages(snapshotHash(pair.screen) === snapshotHash(entry.kind === 'finish' ? this.baseline : this.bound));
             if (entry.kind === 'finish') checkImages(snapshotHash(pair.pixels[0].renderDetails) === snapshotHash(this.initialDetails));

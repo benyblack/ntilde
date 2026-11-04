@@ -16,7 +16,7 @@ class Input extends EventEmitter {
     pause() { this.paused = true; } resume() { this.paused = false; }
 }
 async function fixture(action, { late = false, changedPair = false, changedWorker = false, badModes = false, badReply = false,
-    initialCursorVisible = true, risShowsCursor = false, omitCursorRestore = false } = {}) {
+    initialCursorVisible = true, risShowsCursor = false, omitCursorRestore = false, mutateCapture } = {}) {
     const directory = mkdtempSync(join(tmpdir(), 'nt-image-capture-')), input = new Input(), calls = [], writes = [];
     let screen = initialInputScreen(10, 60), allocated = 99, reads = 0;
     screen.cursorVisible = initialCursorVisible;
@@ -31,7 +31,9 @@ async function fixture(action, { late = false, changedPair = false, changedWorke
             const entry = imagePlan[observer.next], spec = staticImageCases.find(value => value.id === entry?.caseId);
             const stage = observer.phase === 'capture' ? spec?.stages.find(value => value.id === entry?.stageId) : null;
             const value = syntheticImageCapture(screen, spec, stage);
-            if (changedPair && ++reads === 4) value.renderDetails.font.primarySha256 = 'b'.repeat(64);
+            reads++;
+            if (changedPair && reads === 4) value.renderDetails.font.primarySha256 = 'b'.repeat(64);
+            mutateCapture?.(value, reads);
             return value;
         } });
     const output = { write(value, callback) {
@@ -112,3 +114,22 @@ test('only typed initial refusal can skip without installing a raw reader or emi
     assert.deepEqual(result, { status: 'unavailable', reason: 'screenDetailsUnavailable' });
     assert.equal(input.listenerCount('data'), 0); assert.equal(writes, 0);
 });
+
+test('changing paired image metadata refuses completion independently of identical PNGs/renderDetails', async () => fixture(async f => {
+    await assert.rejects(collectStaticImages(f)); assert.equal(f.observer.restored, false);
+    assert.ok(existsSync(join(f.directory, 'image-raw-failure.json')));
+}, { mutateCapture(value, read) { if (read === 8) value.imageDetails.placements[0].col++; } }));
+for (const [name, mutate] of [['missing requested envelope', value => delete value.imageDetails],
+    ['incomplete envelope', value => value.imageDetails.complete = false],
+    ['unknown envelope version', value => value.imageDetails.schemaVersion = 99]])
+    test(name + ' cannot start or downgrade the image suite', async () => fixture(async f => {
+        await assert.rejects(collectStaticImages(f)); assert.equal(f.observer.actions.length, 0);
+        assert.equal(f.observer.restored, false); assert.equal(existsSync(join(f.directory, 'image-inputs')), false);
+    }, { mutateCapture: mutate }));
+test('valid null native provenance retains a complete collection with explicit show/clear inconclusive', async () => fixture(async f => {
+    await collectStaticImages(f); assert.equal(f.observer.restored, true);
+    for (const stage of ['show', 'clear']) {
+        const item = f.observer.report.observations.find(o => o.featureId === 'sixel.native-raster.' + stage);
+        assert.equal(item.result, 'inconclusive'); assert.ok(item.inconclusiveReason);
+    }
+}, { mutateCapture(value) { for (const p of value.imageDetails.placements) p.sixelPlacement = null; } }));

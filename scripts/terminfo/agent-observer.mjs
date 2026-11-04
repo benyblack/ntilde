@@ -52,6 +52,10 @@ export function captureRequest(endpoint, paneId, presentationTimeMs, timeoutMs) 
     return renderRequest(endpoint, paneId, presentationTimeMs, timeoutMs);
 }
 
+export function imageCaptureRequest(endpoint, paneId, presentationTimeMs, timeoutMs) {
+    return renderRequest(endpoint, paneId, presentationTimeMs, timeoutMs, null, true);
+}
+
 export function colorCaptureRequest(endpoint, paneId, syntheticSelection, timeoutMs) {
     if (syntheticSelection !== null) {
         const keys = ['startRow', 'startCol', 'endRow', 'endCol'];
@@ -66,13 +70,13 @@ export function colorCaptureRequest(endpoint, paneId, syntheticSelection, timeou
     return renderRequest(endpoint, paneId, 0, timeoutMs, syntheticSelection);
 }
 
-function renderRequest(endpoint, paneId, presentationTimeMs, timeoutMs, syntheticSelection = null) {
+function renderRequest(endpoint, paneId, presentationTimeMs, timeoutMs, syntheticSelection = null, includeImageDetails = false) {
     if (!/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(paneId ?? '')
         || !Number.isSafeInteger(presentationTimeMs) || presentationTimeMs < 0 || presentationTimeMs > 60000) {
         throw new Error('Invalid owned capture request.');
     }
     return privateRequest(endpoint, 'captureScreen', { paneId, mode: 'render', inline: true, maxWidth: 0, scale: 1,
-        includeRenderDetails: true, presentationTimeMs, ...(syntheticSelection ? { syntheticSelection } : {}) }, timeoutMs, 5 * 1024 * 1024);
+        includeRenderDetails: true, presentationTimeMs, ...(syntheticSelection ? { syntheticSelection } : {}), ...(includeImageDetails ? { includeImageDetails: true } : {}) }, timeoutMs, 5 * 1024 * 1024);
 }
 
 function privateRequest(endpoint, method, params, timeoutMs, byteLimit) {

@@ -106,8 +106,8 @@ protocol contract is tested separately.
 The primary sources were inspected before generating fixtures. No placement
 alignment shared by all protocols is invented: aspect cases qualify contained
 square size/aspect inside the explicit cell envelope, without claiming that
-unspecified letterbox padding is centered. Native Sixel requires the original
-16×16 content rectangle at the controlled anchor; iTerm explicit stretch
+unspecified letterbox padding is centered. Native Sixel requires the independently calibrated projection of the16×16
+painted source region at the controlled anchor; iTerm explicit stretch
 requires the complete requested envelope.
 
 ## Immutable inputs and planned cases
@@ -191,3 +191,53 @@ qualified by these tests; a fresh announced owned collection is still required.
 Animation, Unicode placeholders, live desktop cadence and Windows/Linux owned
 qualification remain separate work. Historical grades and evidence are untouched;
 #770 stays open.
+
+## Calibrated SIXEL geometry (image experiment policy v2)
+
+Image captures alone opt into separate `imageDetails` schema1. Existing capture
+requests and `renderDetails` v1 remain unchanged. Every original PNG retains the
+complete bounded exact-draw placement envelope, including the immutable parse-time
+reservation inputs, exact widened float32 denominators and their origins, and
+actual bitmap dimensions. Complete paired metadata must agree exactly. Missing or
+malformed requested envelopes, unknown fields/versions/origins/arithmetic,
+incomplete lists or changing paired facts prevent collection completion.
+
+The fixed raw source is independently walked and checked against all256 opaque
+RGBA pixels: its declaration is16×16, its painted extent is16×16, and Ntilde's
+pinned three-band decoder canvas is16×18 with two transparent tail rows. Returned
+bitmap dimensions, reservation cells and observed colored bounds cannot redefine
+those source facts. Expected reservation uses ceiling after float32 division,
+not float64 division. Denominator numbers must be exact widened float32 values;
+a shortened decimal such as1.4 is not substituted for1.399999976158142.
+
+Native qualification requires the known direct-local App `sixel-override` origin
+on both axes. Recognized parser/fallback origins and legacy/null provenance stay
+explicitly inconclusive. They do not infer physical units from later capture
+metrics. The calibration describes the source-backed creation-cell to controlled
+offscreen-grid transform; it adds no monitor measurement or binary attestation.
+This stable-metric assertion does not qualify font/DPI changes or a future
+presenter-native sizing policy.
+
+Three results remain separate: independent source/bitmap canvas agreement,
+float32 reservation/anchor/clip agreement, and native fractional raster fidelity.
+For capture cell pixels Gx/Gy and creation denominators Cw/Ch, the native canvas
+extent is16·Gx/Cw by18·Gy/Ch, while its painted region is16·Gx/Cw by16·Gy/Ch.
+The current whole-cell renderer projection is recorded only as a compatibility
+diagnostic. Its success cannot make the native assertion pass. A calibrated
+stretch negative remains failed and its dependent clear remains inconclusive.
+
+The raster comparison projects fixed source color/outer edges analytically and
+allows only a fixed one-output-pixel uncertainty band around them. Every other
+pixel must match its independent color or known background exactly; all four
+safe color interiors and exterior background must be independently testable.
+Observed bounds never select the scale, expected extent, sample positions or
+tolerance. If different native/stretch mappings both fit solely within the band,
+qualification is inconclusive for insufficient discrimination. An undersized
+blank target or insufficient resolution is also inconclusive. This bounds raster
+edge uncertainty without claiming exact interpolation or exhaustive fidelity.
+
+The v2 image experiment still uses the same67 source paths, graph-v3/schema10 and
+all15-suite receipt. Frozen non-image v8/v9 archives retain their own source maps
+and default capture payloads. The earlier incomplete and completed preflight
+artifacts remain unchanged diagnostics of the uncalibrated v1 model; they are not
+silently regraded or published as calibrated terminal geometry evidence.

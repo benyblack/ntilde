@@ -4,13 +4,13 @@ import { snapshotHash, screenSnapshot } from './agent-observer.mjs';
 import { validateInputBytes, inputModeReplyHex, defaultInputModes, inputModeQueries as routedInputModeQueries } from './input-state.mjs';
 import { staticImageCases, staticImageCommand, staticImageAnchor, staticImageCellEnvelope, staticImageSuiteId, parseStaticKittyReply } from './static-images-cases.mjs';
 import { staticImageInput, staticSixel, staticSixelSha256 } from './static-images-inputs.mjs';
-import { inspectStaticImagePixels } from './static-images-oracle.mjs';
+import { inspectStaticImagePixels, validateStaticImageDetails } from './static-images-oracle.mjs';
 import { pngHash, stablePixelContext, totalPixelLimit } from './pixels-capture.mjs';
 import { validateOutputGeometry } from './terminal-output.mjs';
 import { parseColorReply } from './color-query.mjs';
 import { validateColorCapture, pristineColorTheme } from './color-capture.mjs';
 
-export const ownedStaticImagePolicy = 'owned-static-images-paired-raw-render-v1';
+export const ownedStaticImagePolicy = 'owned-static-images-paired-raw-render-v2';
 export const imageModeQueries = '\x1b]11;?\x1b\\\x1b[?5$p' + routedInputModeQueries;
 export const imageModeReplyHex = Buffer.from('\x1b[?5;2$y').toString('hex') + inputModeReplyHex(defaultInputModes);
 export const checkImages = value => { if (!value) throw new Error('Invalid or incomplete owned static-image evidence.'); };
@@ -92,7 +92,7 @@ export function validateImageCapture(result, screen, kind) {
     checkImages(pristineColorTheme({ ...theme, backgroundOverride: false }) && theme.backgroundOverride === !original
         && (original || theme.backgroundArgb === 0xff101010)
         && result.syntheticSelection == null && value.details.syntheticSelection == null);
-    return value;
+    return { ...value, imageDetails: validateStaticImageDetails(result.imageDetails) };
 }
 export function stableImageContext(details) {
     const { backgroundArgb, backgroundOverride, cursorTextArgb, effectiveSelectionBackgroundArgb, effectiveSelectionForegroundArgb, ...theme } = details.theme;
@@ -166,7 +166,8 @@ class StaticImageReport {
             return value;
         });
         checkImages(this.total <= totalPixelLimit && frame.pixels[0].sha256 === frame.pixels[1].sha256
-            && snapshotHash(frame.pixels[0].renderDetails) === snapshotHash(frame.pixels[1].renderDetails));
+            && snapshotHash(frame.pixels[0].renderDetails) === snapshotHash(frame.pixels[1].renderDetails)
+            && snapshotHash(frame.pixels[0].imageDetails) === snapshotHash(frame.pixels[1].imageDetails));
         return pixels;
     }
     validateAction(frame, index, entry) {
@@ -193,7 +194,7 @@ class StaticImageReport {
         return replyBytes;
     }
     checkControl(entry, frame, pixels, replyBytes) {
-        checkImages(replyBytes.length === 0);
+        checkImages(replyBytes.length === 0 && pixels.every(value => value.imageDetails.totalPlacements === 0));
         if (entry.kind === 'bind') this.boundPixel = pixels[0];
         if (entry.kind === 'restore') checkImages(frame.pixels[0].sha256 === pngHash(this.boundPixel.bytes));
         if (entry.kind === 'finish') checkImages(frame.pixels[0].sha256 === this.initialPixel
@@ -210,21 +211,21 @@ class StaticImageReport {
         }
         const pixel = inspectStaticImagePixels({ baseline: this.boundPixel.image, observed: pixels[0].image, grid: pixels[0].details.grid,
             anchor: staticImageAnchor, cells: staticImageCellEnvelope, geometry: item.geometry,
-            sourceId: stage.appearance === 'reversed' ? 'reversed' : item.sourceId, visible: stage.appearance !== 'absent' });
+            sourceId: stage.appearance === 'reversed' ? 'reversed' : item.sourceId, visible: stage.appearance !== 'absent', imageDetails: pixels[0].imageDetails });
         checkImages(pixel.controls[0].passed);
         const assertions = [...pixel.assertions, pixel.controls[1]];
-        const grade = this.gradeStage(item, stage, expected, reply, assertions);
+        const grade = this.gradeStage(item, stage, expected, reply, assertions, pixel.qualification);
         this.observations.push({ featureId: item.id + '.' + stage.id, ...grade,
         snapshot: index, actionIndex: action.index, reply, assertions, measurement: pixel.measurement, skipReason: expected.skipReason });
     }
-    gradeStage(item, stage, expected, reply, assertions) {
+    gradeStage(item, stage, expected, reply, assertions, qualification) {
         const causality = imageWitnessStages(item, stage).map(id => {
             const featureId = item.id + '.' + id, witness = this.observations.find(value => value.featureId === featureId);
             checkImages(witness);
             return { featureId, snapshot: witness.snapshot, result: witness.result, passed: witness.result === 'passed' };
         });
         const missing = causality.filter(value => !value.passed);
-        let inconclusiveReason = expected.skipReason;
+        let inconclusiveReason = expected.skipReason ?? qualification;
         if (!inconclusiveReason && missing.length) inconclusiveReason = 'requires passed prior witness: '
             + missing.map(value => value.featureId + ' (' + value.result + ')').join(', ');
         let result = 'inconclusive';
@@ -247,6 +248,7 @@ class StaticImageReport {
         if (!index) {
             checkImages(frame.capture === null && frame.actionIndex === null); this.initialPixel = frame.pixels[0].sha256;
             this.initialBackground = pixels[0].details.theme.backgroundArgb;
+            checkImages(pixels[0].imageDetails.totalPlacements === 0);
             this.lastTime = Date.parse(frame.ownership.at); return;
         }
         const facts = this.validateAction(frame, index, entry), replyBytes = this.readReply(frame);

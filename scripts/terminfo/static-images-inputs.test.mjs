@@ -54,3 +54,8 @@ test('fixed Sixel input has a 1:1 16x16 raster and independently reconstructs ev
     }
     for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) assert.deepEqual(pixels[y * 16 + x], expectedStaticSourcePixel('opaque', x, y));
 });
+
+test('fixed SIXEL independently separates declared raster, painted pixels and six-band canvas', async () => {
+    const { staticSixelCanvas } = await import('./static-images-inputs.mjs');
+    assert.deepEqual(staticSixelCanvas(), { declaredWidth: 16, declaredHeight: 16, width: 16, height: 18, paintedWidth: 16, paintedHeight: 16 });
+});

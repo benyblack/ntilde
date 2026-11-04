@@ -40,6 +40,15 @@ export function syntheticImageCapture(screen, spec = null, stage = null, { blank
         effectiveSelectionForegroundArgb: null, paletteOverrideIndices: [] });
     Object.assign(capture.renderDetails.grid, { renderWidthPx: width, renderHeightPx: height, cellWidthDip: 8, cellHeightDip: 18,
         cellWidthPx: 8, cellHeightPx: 18, baselineDip: 14, baselineOffsetPx: 14, underlineOffsetPx: 16, strikeOffsetPx: 9 });
+    const visible = stage && stage.appearance !== 'absent';
+    const native = spec?.geometry === 'native';
+    capture.imageDetails = { schemaVersion: 1, complete: true, totalPlacements: visible ? 1 : 0,
+        placements: visible ? [{ index: 0, placementId: '11111111-2222-3333-4444-555555555555', col: 3, viewportRow: 4,
+            widthCells: native ? 2 : 4, heightCells: native ? 1 : 2, clipTopRows: 0, clipBottomRows: 0, clipRightColumns: 0,
+            preserveAspectRatio: spec.geometry === 'aspect', bitmapWidthPx: 16, bitmapHeightPx: native ? 18 : 16,
+            sixelPlacement: native ? { reservationWidthPx: 16, reservationHeightPx: 18, dimensionOrigin: 'sixel-geometry',
+                cellWidthPx: 8, cellHeightPx: 18, cellWidthOrigin: 'sixel-override', cellHeightOrigin: 'sixel-override',
+                arithmetic: 'float32-ceiling-v1' } : null }] : [] };
     return capture;
 }
 export function imageOwnership(rows = 10, cols = 60, runId = inputRunId) {

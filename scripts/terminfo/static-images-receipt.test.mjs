@@ -69,3 +69,40 @@ test('coherent source-policy/field stripping cannot downgrade retained image evi
     assert.match(readFileSync(join(f.output, 'sources', 'worker.mjs'), 'utf8'), /static-images-collector/);
     assert.equal(includesStaticImageEvidence(f.output, f.evidence, f.context, f.proof), true); assert.throws(f.finish);
 }));
+
+test('calibrated stretch negative can complete schema10 even when whole-cell compatibility passes', () => fixture(f => {
+    const frame = f.report.snapshots.find(value => value.caseId === 'sixel.native-raster' && value.stageId === 'show');
+    for (const pixel of frame.pixels) Object.assign(pixel.imageDetails.placements[0].sixelPlacement, { cellWidthPx: 10, cellHeightPx: 20 });
+    const derived = buildStaticImageReport(f.report.snapshots, f.report.actions, f.report.seal, f.context.runId, f.output, f.report.priorChallenges);
+    const show = derived.observations.find(value => value.featureId === 'sixel.native-raster.show');
+    assert.equal(show.measurement.compatibility.passed, true); assert.equal(show.assertions[0].passed, false);
+    assert.equal(show.result, 'failed');
+    assert.equal(derived.observations.find(value => value.featureId === 'sixel.native-raster.clear').result, 'inconclusive');
+    f.write('image-observations.json', derived);
+    writeFileSync(join(f.output, 'image-snapshots.jsonl'), derived.snapshots.map(value => JSON.stringify(value)).join('\n') + '\n');
+    Object.assign(f.evidence.staticImageEvidence, { sha256: pngHash(readFileSync(join(f.output, 'image-observations.json'))),
+        counts: { passed: 21, failed: 1, inconclusive: 1 } });
+    assert.deepEqual(f.finish().staticImageEvidence.counts, { passed: 21, failed: 1, inconclusive: 1 });
+    rmSync(join(f.output, 'cell-receipt.json'));
+    show.result = 'passed'; show.assertions.forEach(value => value.passed = true);
+    f.write('image-observations.json', derived);
+    f.evidence.staticImageEvidence.sha256 = pngHash(readFileSync(join(f.output, 'image-observations.json')));
+    assert.throws(f.finish, /Invalid or incomplete owned static-image evidence/);
+}));
+test('missing native creation provenance completes honestly as inconclusive and cannot be promoted', () => fixture(f => {
+    const frame = f.report.snapshots.find(value => value.caseId === 'sixel.native-raster' && value.stageId === 'show');
+    for (const pixel of frame.pixels) pixel.imageDetails.placements[0].sixelPlacement = null;
+    const derived = buildStaticImageReport(f.report.snapshots, f.report.actions, f.report.seal, f.context.runId, f.output, f.report.priorChallenges);
+    const show = derived.observations.find(value => value.featureId === 'sixel.native-raster.show');
+    assert.equal(show.result, 'inconclusive'); assert.equal(show.assertions[0].passed, null);
+    f.write('image-observations.json', derived);
+    writeFileSync(join(f.output, 'image-snapshots.jsonl'), derived.snapshots.map(value => JSON.stringify(value)).join('\n') + '\n');
+    Object.assign(f.evidence.staticImageEvidence, { sha256: pngHash(readFileSync(join(f.output, 'image-observations.json'))),
+        counts: { passed: 21, inconclusive: 2 } });
+    assert.deepEqual(f.finish().staticImageEvidence.counts, { passed: 21, inconclusive: 2 });
+    rmSync(join(f.output, 'cell-receipt.json'));
+    show.result = 'passed'; show.inconclusiveReason = null; show.assertions[0].passed = true;
+    f.write('image-observations.json', derived);
+    f.evidence.staticImageEvidence.sha256 = pngHash(readFileSync(join(f.output, 'image-observations.json')));
+    assert.throws(f.finish, /Invalid or incomplete owned static-image evidence/);
+}));

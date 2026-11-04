@@ -46,3 +46,34 @@ export function expectedStaticSourcePixel(sourceId, x, y) {
     if (sourceId === 'reversed') index = 3 - index;
     return [...palette[index]];
 }
+
+/** Independent fixed-packet walk, not the terminal decoder or observed bitmap dimensions. */
+export function staticSixelCanvas() {
+    const header = '\x1bP0;1q"1;1;16;16#0;2;100;0;0#1;2;0;100;0#2;2;0;0;100#3;2;100;100;0';
+    if (hash(Buffer.from(staticSixel)) !== staticSixelSha256 || !staticSixel.startsWith(header)) throw new Error('Sixel source pin mismatch.');
+    const { pixels, width, height } = walkFixedSixel(staticSixel.slice(header.length, -2));
+    if (width !== 16 || height !== 18 || pixels.size !== 256) throw new Error('Unexpected fixed Sixel canvas.');
+    verifyFixedSixelPaint(pixels);
+    return { declaredWidth: 16, declaredHeight: 16, width, height, paintedWidth: 16, paintedHeight: 16 };
+}
+function walkFixedSixel(data) {
+    const pixels = new Map(); let x = 0, y = 0, width = 0, height = 0, color = 0;
+    for (let at = 0; at < data.length; at++) {
+        const code = data.charCodeAt(at);
+        if (code === 35) { color = Number(data[++at]); continue; }
+        if (code === 36) { x = 0; continue; }
+        if (code === 45) { x = 0; y += 6; continue; }
+        if (code < 63 || code > 126 || !Number.isInteger(color) || color < 0 || color > 3) throw new Error('Unknown fixed Sixel data.');
+        width = Math.max(width, x + 1); height = Math.max(height, y + 6);
+        paintFixedSixel(pixels, code - 63, x++, y, color);
+    }
+    return { pixels, width, height };
+}
+function paintFixedSixel(pixels, bits, x, y, color) {
+    for (let bit = 0; bit < 6; bit++) if (bits & (1 << bit)) pixels.set(x + ',' + (y + bit), palette[color]);
+}
+function verifyFixedSixelPaint(pixels) {
+    for (let row = 0; row < 16; row++) for (let col = 0; col < 16; col++)
+        if (!pixels.get(col + ',' + row)?.every((v, i) => v === expectedStaticSourcePixel('opaque', col, row)[i]))
+            throw new Error('Sixel painted source mismatch.');
+}
