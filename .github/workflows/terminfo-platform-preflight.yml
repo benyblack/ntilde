@@ -1,0 +1,78 @@
+name: Terminfo Platform Preflight
+
+on:
+  pull_request:
+    paths:
+      - "scripts/terminfo-platform-preflight.py"
+      - "scripts/tests/terminfo_platform_preflight_tests.py"
+      - "docs/qa/terminfo/platform-qualification.md"
+      - ".github/workflows/terminfo-platform-preflight.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/terminfo-platform-preflight.py"
+      - "scripts/tests/terminfo_platform_preflight_tests.py"
+      - "docs/qa/terminfo/platform-qualification.md"
+      - ".github/workflows/terminfo-platform-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: terminfo-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cli:
+    name: Terminfo preflight CLI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python_platform: linux
+          - os: windows-latest
+            python_platform: win32
+          - os: macos-latest
+            python_platform: darwin
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        # Immutable commit resolved from the official setup-python v6 tag.
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Test nonqualifying inventory policy
+        run: python scripts/tests/terminfo_platform_preflight_tests.py
+      - name: Run read-only inventory (not owned collection)
+        run: python scripts/terminfo-platform-preflight.py > preflight-inventory.json
+      - name: Validate native CLI result remains unqualified
+        shell: python
+        env:
+          EXPECTED_PYTHON_PLATFORM: ${{ matrix.python_platform }}
+        run: |
+          import json
+          import os
+          from pathlib import Path
+          report = json.loads(Path("preflight-inventory.json").read_text(encoding="utf-8-sig"))
+          if (report.get("schemaVersion") != 1
+              or report.get("hostPlatform") != os.environ["EXPECTED_PYTHON_PLATFORM"]
+              or report.get("purpose") != "environment-inventory-only"
+              or report.get("qualification") != "unqualified"
+              or report.get("liveOwnershipVerified") is not False
+              or not report.get("unverifiedLiveGates")):
+              raise SystemExit("Inventory is not a native, explicitly unqualified CLI result.")
+          print("Native CLI portability checked; owned desktop qualification remains unverified.")
+      - name: Retain nonqualifying environment inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: terminfo-preflight-inventory-${{ matrix.os }}
+          path: preflight-inventory.json
+          if-no-files-found: error
+          retention-days: 5

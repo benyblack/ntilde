@@ -45,8 +45,13 @@ The actual macOS invocation reported all five tool names present, stdin/stdout
 not TTYs, no X11/Wayland variables, and all live gates unverified. Missing those
 variables on macOS is not proof that a desktop is unavailable. Tests inject
 Windows/Linux facts only to guard report privacy and the nonqualifying policy;
-those fixtures are not Windows/Linux execution evidence. The new Python tests
-are runnable directly; this slice does not modify shared CI wiring.
+those fixtures are not Windows/Linux execution evidence. The Python tests are runnable directly and also run in the dedicated
+[preflight CLI workflow](../../../.github/workflows/terminfo-platform-preflight.yml)
+on Windows, Ubuntu and macOS with Python 3.12. That read-only job runs this CLI,
+checks the native platform and fixed unqualified result, and retains only the
+safe inventory JSON. It has read-only repository permissions and a five-minute
+timeout. These CI runs verify CLI portability, not a desktop/PTY/ownership or
+collector qualification. The shared CI workflow remains unchanged.
 
 ## Source-backed portability seams
 
