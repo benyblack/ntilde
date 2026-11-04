@@ -362,7 +362,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             _session.SendInput(text);
             return;
         }
-        if (_session is not ITerminalByteInput bytes || !bytes.TrySendInputBytes(input.Bytes!))
+        if (_session is not ITerminalByteInput bytes || !bytes.TrySendInputBytes(input.Bytes))
             throw new InvalidOperationException("Child session declined byte input.");
     }
 

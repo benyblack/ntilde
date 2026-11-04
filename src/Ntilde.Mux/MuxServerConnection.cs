@@ -426,15 +426,18 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     break;
                 }
 
-                if (_server.TryGetSession(id, out HeadlessTerminalSession? session))
-                {
-                    if (_byteInput) session.TrySendInputBytes(utf8);
-                    else session.SendInput(Encoding.UTF8.GetString(utf8));
-                }
+                ForwardInput(id, utf8);
                 break;
             default:
                 throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"A client may not send {frame.Kind} frames.");
         }
+    }
+
+    private void ForwardInput(Guid id, ReadOnlySpan<byte> input)
+    {
+        if (!_server.TryGetSession(id, out HeadlessTerminalSession? session)) return;
+        if (_byteInput) session.TrySendInputBytes(input);
+        else session.SendInput(Encoding.UTF8.GetString(input));
     }
 
     private void HandleHello(MuxRequest request)

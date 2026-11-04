@@ -306,7 +306,7 @@ namespace Ntilde.Shell
                     return bytes.TrySendInputBytes(System.Text.Encoding.Latin1.GetBytes(sequence));
                 // Text-only/older peers carry ASCII exactly. Do not UTF-8-expand legacy
                 // coordinate bytes above 127 into a different mouse report.
-                foreach (char value in sequence) if (value > 127) return false;
+                if (sequence.AsSpan().ContainsAnyExceptInRange('\0', '\u007f')) return false;
             }
             _session.SendInput(sequence);
             return true;
