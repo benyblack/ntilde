@@ -97,7 +97,9 @@ async function syncSelected(label, sourceDir, destDir, fileNames) {
 // list in sync with those references — it deliberately does not mirror the
 // whole docs/assets/shots/ directory (masters, README variants, clips, and
 // unreferenced WebP siblings would otherwise ship to the static site unused).
-// A WebP sibling is listed only where docs/assets/shots/ has one.
+// The five featured shots ship as PNG plus WebP for <picture>; the gallery
+// below them ships WebP only, since every browser the site supports shows it
+// and each extra variant costs its full size in git history.
 const SHOTS_FILES = [
   'hero-split-site.png',
   'hero-split-site.webp',
@@ -106,6 +108,19 @@ const SHOTS_FILES = [
   'tui-vim-site.png',
   'tui-vim-site.webp',
   'themes-grid-site.png',
+  'tabs-vertical-site.webp',
+  'focus-mode-site.webp',
+  'search-overlay-site.webp',
+  'command-assist-site.webp',
+  'connection-manager-window-site.webp',
+  'remote-files-site.webp',
+  'remote-files-transfers-site.webp',
+  'agent-session-site.webp',
+  'agent-session-journal-site.webp',
+  'settings-agent-access-tab-site.webp',
+  'iterm2-inline-image-site.webp',
+  'tui-monitor-site.webp',
+  'settings-appearance-tab-site.webp',
   'og-card.png',
 ];
 

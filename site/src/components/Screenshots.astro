@@ -6,15 +6,57 @@
 const basePrefix = (import.meta.env.BASE_URL ?? '/').endsWith('/')
   ? import.meta.env.BASE_URL
   : `${import.meta.env.BASE_URL}/`;
-// Every variant has a WebP sibling; one ships when it is named here and in SHOTS_FILES in
-// sync-screenshots.mjs, which mirrors docs/assets/shots/ into site/public/shots/. Keep the two
-// lists in step.
-const images = [
-  { src: `${basePrefix}shots/hero-split-site.png`, webp: `${basePrefix}shots/hero-split-site.webp`, alt: 'Ntilde on macOS with three panes: a test run and Rust source on the left, a git graph top-right and a process table bottom-right' },
-  { src: `${basePrefix}shots/command-palette-site.png`, alt: 'The command palette open over a populated terminal, a query typed, and matching commands listed with their keyboard shortcuts' },
-  { src: `${basePrefix}shots/sixel-graphics-site.png`, alt: 'A sixel chart rendered inline in the terminal between two shell prompts' },
-  { src: `${basePrefix}shots/tui-vim-site.png`, webp: `${basePrefix}shots/tui-vim-site.webp`, alt: 'Vim running full-screen inside Ntilde, editing Rust source with syntax colouring and a status line' },
-  { src: `${basePrefix}shots/themes-grid-site.png`, alt: 'A grid of five built-in Ntilde themes rendering the same terminal transcript' },
+const shot = (file: string) => `${basePrefix}shots/${file}`;
+
+// Every file named here must also be in SHOTS_FILES in sync-screenshots.mjs, which mirrors
+// docs/assets/shots/ into site/public/shots/; the screenshot harness publishes only files one of
+// the two names. Keep the lists in step.
+
+// The featured block ships PNG with a WebP sibling where one is listed.
+const featured = [
+  { src: shot('hero-split-site.png'), webp: shot('hero-split-site.webp'), alt: 'Ntilde on macOS with three panes: a test run and Rust source on the left, a git graph top-right and a process table bottom-right' },
+  { src: shot('command-palette-site.png'), alt: 'The command palette open over a populated terminal, a query typed, and matching commands listed with their keyboard shortcuts' },
+  { src: shot('sixel-graphics-site.png'), alt: 'A sixel chart rendered inline in the terminal between two shell prompts' },
+  { src: shot('tui-vim-site.png'), webp: shot('tui-vim-site.webp'), alt: 'Vim running full-screen inside Ntilde, editing Rust source with syntax colouring and a status line' },
+  { src: shot('themes-grid-site.png'), alt: 'A grid of five built-in Ntilde themes rendering the same terminal transcript' },
+];
+
+// The gallery ships WebP only (see SHOTS_FILES). Each image keeps its own aspect ratio inside the
+// card, so dialogs and settings windows are not cropped to the terminal's shape.
+const groups = [
+  {
+    title: 'Everyday flow',
+    items: [
+      { file: 'focus-mode-site.webp', title: 'Focus mode', caption: 'Tabs and title bar give way to a slim strip naming the tab, leaving the whole window to your splits.', alt: 'Ntilde in focus mode: only a slim strip at the top, and one tab split between vim editing Rust source and a shell with a test run and a git graph' },
+      { file: 'tabs-vertical-site.webp', title: 'Vertical tabs', caption: 'Each tab previews its last line, so a build, an editor or an agent is easy to spot at a glance.', alt: 'Ntilde with the vertical tab sidebar: five tabs, each with a preview of its last line, and the selected build tab showing a banner and a passing test run' },
+      { file: 'search-overlay-site.webp', title: 'Find in scrollback', caption: 'Incremental search with a match count and case and regex toggles, highlighted in place.', alt: 'The find bar open over a git log, with every match of "decoder" highlighted and a 1 of 7 match count' },
+      { file: 'command-assist-site.webp', title: 'Command assist', caption: 'Suggestions from your own history as you type, narrowed to recent, this folder, or commands that worked.', alt: 'The command assist popup listing three git commands from history under a partly typed git command' },
+    ],
+  },
+  {
+    title: 'Remote machines',
+    items: [
+      { file: 'connection-manager-window-site.webp', title: 'Connection manager', caption: 'Saved SSH hosts with groups, favourites and notes, and a preview of how each one launches.', alt: 'The connection manager window listing two SSH hosts, with the selected host’s connection details and launch preview' },
+      { file: 'remote-files-site.webp', title: 'Remote files', caption: 'Browse the remote machine beside a native SSH session, over the same connection.', alt: 'A native SSH tab to edge-01 with the remote files sidebar listing the remote home directory' },
+      { file: 'remote-files-transfers-site.webp', title: 'SFTP transfers', caption: 'Uploads and downloads with live progress, running alongside your shell.', alt: 'The transfer centre over an SSH tab, with an upload and a download part way through and a finished download below' },
+    ],
+  },
+  {
+    title: 'AI agents, on your terms',
+    items: [
+      { file: 'agent-session-site.webp', title: 'Agents in a live session', caption: 'With access on, an agent works in a terminal you can watch, and the status bar says when it typed.', alt: 'A terminal session an AI agent has typed into, with the agent activity marker in the status bar' },
+      { file: 'settings-agent-access-tab-site.webp', title: 'Layered, opt-in access', caption: 'Observe, replay export and act are separate switches, each off until you turn it on.', alt: 'The Agent Access settings page with switches for observe, replay export and act, and a tab indicator option' },
+      { file: 'agent-session-journal-site.webp', title: 'Activity journal', caption: 'Every agent action and windowless read, including denied attempts, newest first.', alt: 'The agent activity journal listing timestamped sendInput actions, one of them denied' },
+    ],
+  },
+  {
+    title: 'Graphics and looks',
+    items: [
+      { file: 'iterm2-inline-image-site.webp', title: 'Inline images', caption: 'The iTerm2 image protocol renders in place, alongside sixel.', alt: 'The Ntilde logo drawn inline in the terminal with the iTerm2 image protocol, between shell prompts' },
+      { file: 'tui-monitor-site.webp', title: 'Full-screen TUIs', caption: 'Monitors, editors and other full-screen apps get the colours and layout they expect.', alt: 'A full-screen process monitor with CPU and memory gauges and a process table' },
+      { file: 'settings-appearance-tab-site.webp', title: 'Make it yours', caption: 'Themes, minimum contrast, opacity, interface scale and blur, applied live.', alt: 'The Appearance settings page with a theme picker and preview, minimum contrast, window opacity and interface scale' },
+    ],
+  },
 ];
 ---
 
@@ -43,7 +85,7 @@ const images = [
       role="list"
     >
       {
-        images.map((img, idx) => (
+        featured.map((img, idx) => (
           <figure
             class={
               'group relative overflow-hidden rounded-xl border border-ink-800 bg-ink-900/50 shadow-xl shadow-black/30 ' +
@@ -53,16 +95,24 @@ const images = [
             }
             role="listitem"
           >
-            <picture>
-              {img.webp && <source srcset={img.webp} type="image/webp" />}
-              <img
-                src={img.src}
-                alt={img.alt}
-                loading="lazy"
-                decoding="async"
-                class="aspect-video w-full object-cover object-top transition duration-500 group-hover:scale-[1.02]"
-              />
-            </picture>
+            <button
+              type="button"
+              class="block w-full cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-ntilde-400"
+              data-shot={img.webp ?? img.src}
+              data-shot-alt={img.alt}
+              aria-label={`Enlarge: ${img.alt}`}
+            >
+              <picture>
+                {img.webp && <source srcset={img.webp} type="image/webp" />}
+                <img
+                  src={img.src}
+                  alt={img.alt}
+                  loading="lazy"
+                  decoding="async"
+                  class="aspect-video w-full object-cover object-top transition duration-500 group-hover:scale-[1.02]"
+                />
+              </picture>
+            </button>
             <figcaption
               class="pointer-events-none absolute inset-x-0 bottom-0
                 bg-gradient-to-t from-ink-950/95 via-ink-950/40 to-transparent
@@ -75,5 +125,120 @@ const images = [
         ))
       }
     </div>
+
+    {
+      groups.map((group) => (
+        <div class="mt-16">
+          <h3 class="text-lg font-semibold tracking-tight text-white">
+            {group.title}
+          </h3>
+          <ul
+            class={
+              'mt-5 grid gap-5 sm:grid-cols-2 ' +
+              // Four shots read as a 2x2 grid rather than three and an orphan.
+              (group.items.length === 4 ? 'lg:grid-cols-2' : 'lg:grid-cols-3')
+            }
+          >
+            {group.items.map((item) => (
+              <li>
+                <figure class="group flex h-full flex-col overflow-hidden rounded-xl border border-ink-800 bg-ink-900/50 shadow-lg shadow-black/20">
+                  <button
+                    type="button"
+                    class="block cursor-zoom-in bg-ink-950/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ntilde-400"
+                    data-shot={shot(item.file)}
+                    data-shot-alt={item.alt}
+                    data-shot-title={item.title}
+                    aria-label={`Enlarge: ${item.title}`}
+                  >
+                    <img
+                      src={shot(item.file)}
+                      alt={item.alt}
+                      loading="lazy"
+                      decoding="async"
+                      class="aspect-[16/10] w-full object-contain p-2 transition duration-500 group-hover:scale-[1.02]"
+                    />
+                  </button>
+                  <figcaption class="border-t border-ink-800 px-4 py-3">
+                    <p class="text-sm font-medium text-white">{item.title}</p>
+                    <p class="mt-1 text-sm leading-relaxed text-ink-400">
+                      {item.caption}
+                    </p>
+                  </figcaption>
+                </figure>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))
+    }
   </div>
+
+  <dialog
+    id="shot-lightbox"
+    class="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-ink-950/90 backdrop:backdrop-blur-sm"
+    aria-label="Screenshot"
+  >
+    <div
+      data-lightbox-backdrop
+      class="flex h-[100dvh] w-[100vw] flex-col items-center justify-center gap-3 p-4 sm:p-8"
+    >
+      <img
+        data-lightbox-img
+        alt=""
+        class="max-h-[85dvh] max-w-full object-contain"
+      />
+      <p data-lightbox-caption class="max-w-3xl text-center text-sm text-ink-300"></p>
+      <div class="flex items-center gap-2">
+        <button type="button" data-lightbox-prev class="btn-secondary" aria-label="Previous screenshot">←</button>
+        <button type="button" data-lightbox-close class="btn-secondary">Close</button>
+        <button type="button" data-lightbox-next class="btn-secondary" aria-label="Next screenshot">→</button>
+      </div>
+    </div>
+  </dialog>
 </section>
+
+<script>
+  // Click any screenshot to see it full size; arrows step through all of them, Esc closes.
+  const dialog = document.getElementById('shot-lightbox') as HTMLDialogElement | null;
+  const triggers = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-shot]'));
+
+  if (dialog && triggers.length > 0) {
+    const image = dialog.querySelector<HTMLImageElement>('[data-lightbox-img]')!;
+    const caption = dialog.querySelector<HTMLParagraphElement>('[data-lightbox-caption]')!;
+    let current = 0;
+
+    const show = (index: number) => {
+      current = (index + triggers.length) % triggers.length;
+      const trigger = triggers[current];
+      image.src = trigger.dataset.shot ?? '';
+      image.alt = trigger.dataset.shotAlt ?? '';
+      caption.textContent = trigger.dataset.shotTitle
+        ? `${trigger.dataset.shotTitle} — ${trigger.dataset.shotAlt}`
+        : (trigger.dataset.shotAlt ?? '');
+    };
+
+    triggers.forEach((trigger, index) =>
+      trigger.addEventListener('click', () => {
+        show(index);
+        dialog.showModal();
+      }),
+    );
+
+    dialog.querySelector('[data-lightbox-prev]')?.addEventListener('click', () => show(current - 1));
+    dialog.querySelector('[data-lightbox-next]')?.addEventListener('click', () => show(current + 1));
+    dialog.querySelector('[data-lightbox-close]')?.addEventListener('click', () => dialog.close());
+
+    dialog.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') show(current - 1);
+      if (event.key === 'ArrowRight') show(current + 1);
+    });
+
+    // A click on the dimmed area around the image closes it; clicks on the image or buttons do not.
+    dialog.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      if (target === dialog || target.hasAttribute('data-lightbox-backdrop')) {
+        dialog.close();
+      }
+    });
+  }
+</script>
