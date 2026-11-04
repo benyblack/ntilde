@@ -8,9 +8,8 @@ namespace Ntilde.Rendering.Tests;
 
 public class SkiaImageDecoderTests
 {
-    // Decoding renders through the SkiaSharp native library. Same convention as
-    // SixelDecoderTests: present on Windows CI / dev machines, absent on the Linux
-    // gating runner — skip there rather than fail.
+    // Native-dependent tests retain portability skips; LinuxNativeAssetTests separately
+    // fails missing assets on the supported Linux release architectures.
     private static readonly bool SkiaAvailable = CheckSkiaAvailable();
 
     private static bool CheckSkiaAvailable()
