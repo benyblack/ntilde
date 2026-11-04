@@ -510,6 +510,12 @@ Shell composition glue (startup orchestration, app paths/logging/services, sessi
 - The Agent Output panel (`AgentOutput/`): tracks the current command's output region and renders it as markdown into an Avalonia control tree. Parsing is Markdig; the control-tree rendering is this assembly's own `MarkdownRenderer`
 - Agent Output scheduling: the first invalidation fixes a read deadline; later chunks cannot postpone it. Background reads are serialized, with one dirty follow-up. Completion retains its bounded synchronous read before the prompt repaints; generations reject stale UI deliveries. A BCL `TimeProvider` supplies deterministic timer tests.
 - Pane resizing (pixel → row/col calculation)
+- Permissioned raw AgentHost `generatePaneInput`: App owns bounded synthetic
+  Avalonia key/text/pointer routing, current visible local pane identity checks,
+  queued-work cancellation and measured dispatch facts. Contract DTOs/validation
+  remain a zero-reference BCL leaf. It does not inject OS input, bypass the encoder,
+  expose an MCP tool or attest fixture ownership/child delivery. See
+  `docs/agent-host/DIRECTION.md` for bounds and observer exclusions.
 - Permissioned raw AgentHost `resizePane`: App owns measured window sizing, the
   responsive-UI two-second observation timeout and refusal of inactive/split/remote/deferred panes.
   It uses the existing resize path and samples actual buffer geometry without

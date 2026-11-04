@@ -10,6 +10,7 @@ namespace Ntilde.Shell
     {
         protected override void OnTextInput(TextInputEventArgs e)
         {
+            if (!CanApplyGeneratedInput) { e.Handled = true; return; }
             base.OnTextInput(e);
             if (!e.Handled && _session != null && !string.IsNullOrEmpty(e.Text))
             {
@@ -29,13 +30,14 @@ namespace Ntilde.Shell
                 }
                 ResetCursorBlink();
                 SendUserInput(e.Text);
-                TextInputObserved?.Invoke(e.Text);
+                if (!_generatedInputInProgress) TextInputObserved?.Invoke(e.Text);
                 e.Handled = true;
             }
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
+            if (!CanApplyGeneratedInput) { e.Handled = true; return; }
             base.OnKeyDown(e);
             if (e.Handled) return;
 
@@ -47,6 +49,7 @@ namespace Ntilde.Shell
 
         protected override void OnKeyUp(KeyEventArgs e)
         {
+            if (!CanApplyGeneratedInput) { e.Handled = true; return; }
             ExpirePendingKittyTextInput(e.Key, e.PhysicalKey);
             base.OnKeyUp(e);
             if (e.Handled)
@@ -91,6 +94,7 @@ namespace Ntilde.Shell
             if (sequence == null) return false;
             // A release reports state, without snapping a scrolled viewport to the live line.
             _session.SendInput(sequence);
+            NoteGeneratedInputSubmitted();
             return true;
         }
 
@@ -225,7 +229,7 @@ namespace Ntilde.Shell
         /// <summary>Routes a key using the flag snapshot captured for its corresponding text callback.</summary>
         private bool HandleKeyDownCoreImpl(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey, string? keySymbol, int kittyFlags)
         {
-            if (KeyDownInterceptor?.Invoke(key, keyModifiers) == true)
+            if (!_generatedInputInProgress && KeyDownInterceptor?.Invoke(key, keyModifiers) == true)
             {
                 return true;
             }
@@ -255,7 +259,7 @@ namespace Ntilde.Shell
             TerminalKeyEventKind eventKind = KittyEventKind(ref key, physicalKey, ref identity);
             ResetCursorBlink();
 
-            if (TryQueueKittyAssociatedKey(key, keyModifiers, physicalKey, identity, eventKind, kittyFlags, keySymbol)) return false;
+            if (IsAssociatedKeyClaimed(TryQueueKittyAssociatedKey(key, keyModifiers, physicalKey, identity, eventKind, kittyFlags, keySymbol))) return false;
 
             // Kitty keyboard protocol (disambiguation and negotiated event reporting). Must run before every legacy path
             // below - including Alt-sends-ESC - because the protocol replaces those encodings
@@ -388,14 +392,14 @@ namespace Ntilde.Shell
             // reaches the shell either way, and the exception still propagates behind it.
             try
             {
-                EnterObserving?.Invoke();
+                if (!_generatedInputInProgress) EnterObserving?.Invoke();
             }
             finally
             {
                 SendKeyInput(Key.Enter, keyModifiers, physicalKey, sequence, identity);
             }
 
-            EnterObserved?.Invoke();
+            if (!_generatedInputInProgress) EnterObserved?.Invoke();
             return true;
         }
 
@@ -480,7 +484,11 @@ namespace Ntilde.Shell
         private void SendUserInput(string text)
         {
             ScrollToInputLine();
-            _session?.SendInput(text);
+            if (_session is { } session)
+            {
+                session.SendInput(text);
+                NoteGeneratedInputSubmitted();
+            }
         }
     }
 }

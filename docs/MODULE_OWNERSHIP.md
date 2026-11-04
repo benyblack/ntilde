@@ -429,7 +429,7 @@ invariant changes.
 
 **Namespace:** `Ntilde.AgentHost.Contracts`
 **Depends on:** *(leaf — only BCL)*
-**Public surface:** `AgentHostProtocol`, `AgentHostDiscovery`, `AgentHostJsonContext`, `Frames.*`, and the contract DTO groups (`ActContracts`, `SessionContracts`, `StatusContracts`, `ReplayContracts`, `ResizePane`, `PaneMetadataContracts`)
+**Public surface:** `AgentHostProtocol`, `AgentHostDiscovery`, `AgentHostJsonContext`, `Frames.*`, and the contract DTO groups (`ActContracts`, `SessionContracts`, `StatusContracts`, `ReplayContracts`, `ResizePane`, `GeneratePaneInput`, `PaneMetadataContracts`)
 
 **Owns**
 - The wire protocol between the app's agent host and any external client (today: the MCP server)
@@ -998,6 +998,14 @@ requires public test classes.
 - Windows launch support (`Shell/`): `LauncherRelease.cs` (sets the `ntilde.com` release event on the GUI path; discards it in the mux branch) and `UserPathRegistration.cs` (the install folder on the user `PATH`, from Velopack's install, update and uninstall hooks only); `AppVersionInfo.cs` (the app's version, for the About window, the editor and the release download); `VelopackHookLog.cs` (where a Velopack hook's lines go: Velopack's own log, since a hook exits before `AppLogger` starts)
 - `Shell/SshAskPassVaultPolicy.cs` (Phase 5 Task 2): whether the OpenSSH askpass helper may fill the vault password on a user's attempt through a jump host (not with ssh before 8.4, a hop named like the target, or a proxy in the extra arguments)
 - Updates and the multiplexer (`Update/`): `MuxUpdateCompatibility.cs` (R10: the protocol marker in the staged release notes, whether an apply keeps the daemon, and the startup auto-apply gate) and `UpdateSourceOverride.cs` (`NTILDE_UPDATE_SOURCE_DIR`, a local feed honoured only for the `NtildeSurvival` verification package id)
+- **Generated terminal input belongs to App.** Raw `generatePaneInput` validates
+  one bounded keypad/text/mouse event using BCL-only contracts, then dispatches
+  Avalonia routed events in the same visible single direct local pane boundary as
+  resize. App rechecks permission, registration, buffer and session identities at
+  dispatch and observation, cancels queued work at its deadline, excludes window
+  commands and user-history observers, and reports dispatch/geometry/mode facts
+  only. Fixture ownership and child-byte capture remain independent caller proof.
+  Neither VT nor the wire contracts gain UI or I/O dependencies.
 - **Permissioned visible-pane resize belongs to App.** Raw AgentHost `resizePane`
   requires the separate default-off act permission and journals attempts reaching
   its method handler; frame-level rejections happen before that journal.

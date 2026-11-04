@@ -134,6 +134,9 @@ public static class AgentHostProtocol
         /// <summary>A3: closes a live pane by id.</summary>
         public const string CloseSession = "closeSession";
 
+        /// <summary>Permissioned raw input: one bounded keypad, text or mouse event for the current visible direct local pane.</summary>
+        public const string GeneratePaneInput = "generatePaneInput";
+
         /// <summary>Permissioned App-window resize for a single visible direct local pane.</summary>
         public const string ResizePane = "resizePane";
 
@@ -265,6 +268,9 @@ public static class AgentHostProtocol
         /// this instant — safe to retry.
         /// </summary>
         public const string ActUnavailable = "actUnavailable";
+
+        /// <summary>The bounded generated event cannot safely dispatch or its current-pane lease/deadline is unavailable.</summary>
+        public const string GeneratedInputUnavailable = "generatedInputUnavailable";
 
         /// <summary>The pane cannot safely use the visible local-window resize operation.</summary>
         public const string ResizeUnavailable = "resizeUnavailable";

@@ -82,6 +82,14 @@ namespace Ntilde.AgentHost
         Task<AgentPaneResizeResult?> ResizePaneAsync(Guid paneId, int cols, int rows, CancellationToken cancellationToken)
             => Task.FromResult<AgentPaneResizeResult?>(null);
 
+        /// <summary>One bounded routed event. The current-permission/registration lease must hold immediately before dispatch.
+        /// Notify a returned transport call synchronously on the UI thread, without extending permissions or dispatching more input.
+        /// Preserve dispatch facts even if post-dispatch metadata/identity becomes unavailable.</summary>
+        Task<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?> GeneratePaneInputAsync(
+            Ntilde.AgentHost.Contracts.GeneratePaneInputParams input, AgentSessionRegistration registration,
+            Func<bool> isCurrent, Action onInputSubmitted, CancellationToken cancellationToken)
+            => Task.FromResult<Ntilde.AgentHost.Contracts.GeneratePaneInputResult?>(null);
+
         /// <summary>
         /// Photographs the pane's live control (A5 <c>live</c> mode), scaled by
         /// <paramref name="scale"/> device pixels per DIP and resampled down to

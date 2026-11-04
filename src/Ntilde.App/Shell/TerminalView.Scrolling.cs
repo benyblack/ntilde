@@ -228,6 +228,7 @@ namespace Ntilde.Shell
         // Mouse event handlers
         protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
         {
+            if (!CanApplyGeneratedInput) { e.Handled = true; return; }
             base.OnPointerWheelChanged(e);
             if (_buffer == null) return;
 
@@ -262,6 +263,8 @@ namespace Ntilde.Shell
                 e.Handled = true;
                 return;
             }
+
+            if (_generatedInputInProgress) { e.Handled = true; return; }
 
             // Standard scrolling. Accumulate fractional deltas (lines per notch) so
             // sub-notch micro-events are summed line-by-line instead of being truncated
