@@ -53,6 +53,9 @@ namespace Ntilde.Shell
         CursorStyle? PreferredCursorStyle = null,
         bool PreferredCursorBlink = true)
     {
+        /// <summary>Published with the measured font/grid, never derived from requested capture scaling.</summary>
+        internal NativeRasterPresenterContext? NativeRasterPresenter { get; init; }
+
         /// <summary>
         /// False before the control has measured its font (a pane that was just
         /// created, or was never laid out): there is no geometry to render into.
@@ -81,6 +84,7 @@ namespace Ntilde.Shell
         internal Action? BeforeDrawForTest { get; init; }
         internal Action? AfterSnapshotForTest { get; init; }
         internal bool IncludeImageDetails { get; init; }
+        internal NativeRasterPresenterContext? NativeRasterPresenter { get; init; }
         public bool PreferredCursorBlink { get; init; } = true;
         public CursorStyle? PreferredCursorStyle { get; init; }
         public bool EnableLigatures { get; init; }

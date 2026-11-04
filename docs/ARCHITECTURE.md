@@ -242,6 +242,13 @@ state read; invalid margins, lost/unknown input and BEL recovery stay negative.
 This query changes no terminal state. Other DECRQSS settings and XTGETTCAP remain
 negative; no family-wide or fresh runtime support is inferred.
 
+DECRQSS `m` and `SP q` (#844) use the same exact-request, standard-ST and
+completeness rules. `m` reports the active pen xterm style, starting with `0` so
+replaying the report reproduces the pen; underline styles use `4:n` and extended
+colors use semicolon forms. `SP q` reports `0` while the host's configured cursor
+is shown and xterm's 1-6 code for an application override. DECSCUSR 0 restores the
+host's configured cursor, so a saved report restores exactly what was shown.
+
 Tertiary DA accepts only a default or single numeric-zero parameter with the `=`
 leader and no intermediates. Its DECRPTUI reply contains the fixed eight zero hex
 digits used by xterm for unassigned site/serial fields. This is nonunique and
@@ -484,6 +491,25 @@ metadata on overflow, never silently truncated qualification. Existing `renderDe
 default wire/PNG behavior and renderer geometry remain unchanged. This observes reservation
 and projection; it does not promise native-pixel fidelity. The source-to-pixel oracle must
 independently derive its input canvas and recompute reservation before checking pixels.
+
+The #851 native-raster foundation is deliberately inactive. VT's immutable versioned
+canvas/crop values are separate from the ephemeral reservation provenance above.
+Optional native state is omitted when null; the enabled policy ceiling remains zero
+and import refuses any native placement before resize, decode or mutation. Replay's
+optional required-policy marker is omitted at zero and rejects unsupported/malformed
+requirements before header callbacks or data.
+GUI indexing uses that same parser and retains its reader through index consumption.
+Every seek/playback validates its selected stream before a cancellation-aware host callback
+restores a cached checkpoint or the initial state, then consumes that same open stream.
+Path replacement cannot switch the validated input between restoration and replay;
+live append is preserved without promising immutable bytes against arbitrary in-place writes.
+Existing v1/v2 recordings and ordinary
+v2 writers retain their formats; no v3 writer or mux capability is enabled.
+App carries an immutable presenter density P with the UI-published font/grid values,
+clearing it on detach. Offscreen requested scale S stays separate. This plumbing
+changes neither geometry nor the raw v1 capture schemas. The
+[staged native-raster contract](sixel-native-raster-foundation.md) records the remaining
+transform, clipping, ownership and compatibility gates before activation.
 
 Skia-only helpers: glyph atlas (`GlyphAtlas`), glyph cache (`GlyphCache`), pixel grid math (`PixelGrid`), font wrappers (`SharedSKFont`, `SharedSKTypeface`), image registry, sixel decoder, render performance metrics.
 

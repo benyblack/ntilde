@@ -52,14 +52,16 @@ and fresh runtime evidence.
 `DcsAndCsiRoutingTests` already established one DECRQSS rejection and one XTGETTCAP
 rejection. `QueryVariantAuditTests` enumerates the unavailable settings below and
 checks their complete rejection at every split in the input. The narrow positive
-`r` contract is covered separately by `DecrqssMarginQueryTests`. It also caps retained
+`r` contract is covered separately by `DecrqssMarginQueryTests`, and the `m` and
+`SP q` reports by `DecrqssSettingReportTests`. It also caps retained
 query text in a tiny fixture and verifies a constant-length rejection and parser
 recovery after overlong payloads. No request payload is reflected into a reply.
 
 | Family | Requested setting/name | Disposition and exact reply |
 |---|---|---|
-| DECRQSS | `m` (SGR), `s` (left/right margins), `SP q` (cursor style), `"p` (conformance), `"q` (protection), `t`, `$|`, `*|`, `*x` | Each unavailable setting receives `DCS 0 $ r ST`. A response rejecting SGR is not a successful SGR-state report. |
+| DECRQSS | `s` (left/right margins), `"p` (conformance), `"q` (protection), `t`, `$|`, `*|`, `*x` | Each unavailable setting receives `DCS 0 $ r ST`. |
 | DECRQSS | Exact `r` (top/bottom margins), complete DCS and standard ST only | Current absolute one-based margins as `DCS 1 $ r top ; bottom r ST`, using xterm status polarity. Truncation, unknown legacy completeness, BEL recovery and invalid VT margins retain bounded failure. Source/scripted-transport evidence only; no fresh owned measurement or historical regrade. |
+| DECRQSS | Exact `m` (SGR) and `SP q` (cursor style), complete DCS and standard ST only | `DCS 1 $ r 0;… m ST` for the active pen and `DCS 1 $ r Ps SP q ST` for DECSCUSR (#844); see below. Same failure rules as `r`. Source/scripted-transport evidence only; no fresh owned measurement or historical regrade. |
 | DECRQSS | Unknown and empty setting | Same bounded `DCS 0 $ r ST` rejection. |
 | XTGETTCAP | `TN`, `Co`, `colors`, `RGB`, `kcuu1`, and the `TN;Co` list (each name hex-encoded) | Each receives `DCS 0 + r ST`. A valid failure is preserved as negative query evidence, not a successful terminal-name/color/key claim. |
 | XTGETTCAP | Unknown name, odd-length or invalid hex, empty list | Same bounded `DCS 0 + r ST` rejection. |
@@ -145,4 +147,27 @@ change cells, cursor, pen, margins, saved state, modes or active screen. Resize,
 reset and screen changes are observed from the resulting VT state. A single-row
 terminal reports its actual `1;1` region. No host geometry or terminal database is
 consulted. Scripted mux delivery does not substitute for a fresh owned child
-measurement, and SGR (`m`), other Q12 settings and all frozen grades stay unchanged.
+measurement, and other Q12 settings and all frozen grades stay unchanged.
+
+## DECRQSS SGR and cursor-style reports
+
+Added for #844 under the same exact-request, standard-ST and completeness rules as
+`r`, and the same xterm status polarity.
+
+- **`m`** follows xterm's report: a leading `0`, then the set attributes (`1 2 3 4
+  5 7 8 9 53`) and colors. Underline styles other than straight use the `4:n`
+  subparameter, the only form they have. Extended colors use the semicolon
+  `38/48/58;5;n` and `;2;r;g;b` forms, which every SGR parser accepts. Palette
+  indexes 0-15 report as the short ANSI codes, and theme-snapped truecolor reports
+  the index the pen actually stores. Replaying a report on a terminal with a
+  different pen reproduces the original state byte for byte (tested).
+- **`SP q`** reports `0` while the host's configured cursor is shown and xterm's
+  1-6 shape-and-blink code for an application override. VT does not know the
+  host's configured shape, so it does not translate the default into 1-6. To make
+  the saved value restore exactly, DECSCUSR 0 now returns to the host's configured
+  cursor (kitty, foot, WezTerm, Ghostty, Alacritty and Windows Terminal do the
+  same); before, it forced a blinking block.
+
+Neither query changes terminal state. The daemon parser answers them for
+persistent sessions. This is source and scripted-transport evidence only; frozen
+observations and grades are unchanged until a fresh owned run.

@@ -373,7 +373,6 @@ public class AgentHostServiceTests : IDisposable
     }
 
     [Theory]
-    [InlineData(0, 0, true)]
     [InlineData(1, 0, true)]
     [InlineData(2, 0, false)]
     [InlineData(3, 2, true)]

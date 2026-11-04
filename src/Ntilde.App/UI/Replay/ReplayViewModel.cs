@@ -59,22 +59,26 @@ namespace Ntilde.UI.Replay
         public ReplayViewModel(string filePath)
         {
             _filePath = filePath;
-            InitializeAsync();
+            Initialization = InitializeAsync();
         }
 
-        private async void InitializeAsync()
+        internal Task Initialization { get; }
+
+        private async Task InitializeAsync()
         {
             // Scan file for duration and snapshots
             try
             {
                 using var reader = new StreamReader(_filePath);
-                string? line = await reader.ReadLineAsync();
+                long lineNumber = 0;
+                string? line;
+                do { line = await reader.ReadLineAsync(); lineNumber++; }
+                while (line is not null && string.IsNullOrWhiteSpace(line));
                 if (line == null) return;
 
-                _header = System.Text.Json.JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader);
+                _header = ReplayRunner.ReadHeader(line);
 
                 long lastTime = 0;
-                long lineNumber = 1;
                 var snapshots = new List<SnapshotIndexEntry>();
                 while ((line = await reader.ReadLineAsync()) != null)
                 {

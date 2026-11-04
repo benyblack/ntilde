@@ -274,6 +274,7 @@ namespace Ntilde.Shell
             }
 
             MetricsChanged?.Invoke(_metrics.CellWidth, _metrics.CellHeight);
+            PresenterContextChanged?.Invoke();
             _glyphTypeface = _typeface.GlyphTypeface;
         }
     }

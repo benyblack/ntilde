@@ -31,7 +31,7 @@ public class DcsAndCsiRoutingTests
     }
 
     [Fact]
-    public void Decrqss_GetsInvalidRequestResponse_NotSixel()
+    public void Decrqss_IsAnswered_NotSixel()
     {
         var (_, parser, responses) = CreateTerminal();
 
@@ -40,7 +40,7 @@ public class DcsAndCsiRoutingTests
         parser.Process("\x1bP$qm\x1b\\");
 
         Assert.Single(responses);
-        Assert.Equal("\x1bP0$r\x1b\\", responses[0]);
+        Assert.Equal("\x1bP1$r0m\x1b\\", responses[0]); // default pen (#844)
     }
 
     [Fact]

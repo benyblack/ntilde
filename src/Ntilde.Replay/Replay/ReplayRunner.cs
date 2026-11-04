@@ -30,6 +30,12 @@ namespace Ntilde.Replay
         /// This does not apply terminal state, advance the clock, or count replayed events.
         /// </summary>
         public Action<byte[]>? OnSkippedData { get; init; }
+        /// <summary>
+        /// Runs after required-policy/metric validation, before other callbacks or seeks.
+        /// The same selected reader remains open through preparation and data delivery.
+        /// False declines the run without delivering events.
+        /// </summary>
+        public Func<CancellationToken, Task<bool>>? OnValidatedStart { get; init; }
     }
 
     public sealed class ReplayRunResult
@@ -130,21 +136,29 @@ namespace Ntilde.Replay
             bool isV2 = header is not null;
             if (header is not null)
             {
+                if (header.RequiredSixelRasterPolicy != SixelRasterPolicy.EnabledVersion)
+                    throw new InvalidDataException("The recording requires an unsupported SIXEL raster policy.");
                 _ = RecordingCellMetrics.FromOptional(header.SixelCellWidthPx, header.SixelCellHeightPx);
-                try
+            }
+            else if (startAfterLine > 0)
+            {
+                ValidateLegacyRecordingStart(line);
+            }
+
+            try
+            {
+                if (options?.OnValidatedStart is { } prepare && !await prepare(ct)) return result;
+                if (ct.IsCancellationRequested) return result;
+                if (header is not null)
                 {
                     if ((options?.ApplyHeaderResize ?? true) && onResizeCallback is not null) await onResizeCallback(header.Cols, header.Rows);
                     if (ct.IsCancellationRequested) return result;
                     if (onHeaderCallback is not null) await onHeaderCallback(header);
                 }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested)
-                {
-                    return result;
-                }
             }
-            else if (startAfterLine > 0)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
-                ValidateLegacyRecordingStart(line);
+                return result;
             }
 
             long lastOffset = -1;
@@ -258,12 +272,52 @@ namespace Ntilde.Replay
                 throw new JsonException("Unrecognized replay header or malformed legacy first record.");
         }
 
-        private static ReplayHeader? ReadHeader(string line)
+        /// <summary>
+        /// Parses a supported header, or returns null for the legacy fallback. Required raster
+        /// policies and ambiguous recognized type keys are rejected even before that fallback.
+        /// </summary>
+        public static ReplayHeader? ReadHeader(string line)
         {
             ReplayHeader? header;
-            try { header = JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader); }
+            try
+            {
+                using var document = JsonDocument.Parse(line);
+                ValidateRequiredSixelPolicy(document.RootElement);
+                header = JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader);
+            }
             catch (JsonException) { return null; }
             return header is not null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2 ? header : null;
+        }
+
+        private static void ValidateRequiredSixelPolicy(JsonElement root)
+        {
+            if (!IsRecognizedRecordingHeader(root)) return;
+            bool seen = false;
+            foreach (var property in root.EnumerateObject())
+            {
+                if (!property.NameEquals("required_sixel_raster")) continue;
+                if (seen || property.Value.ValueKind != JsonValueKind.Number || !property.Value.TryGetInt32(out int policy) ||
+                    policy != SixelRasterPolicy.EnabledVersion)
+                    throw new InvalidDataException("The recording requires an unsupported or malformed SIXEL raster policy.");
+                seen = true;
+            }
+        }
+
+        private static bool IsRecognizedRecordingHeader(JsonElement root)
+        {
+            if (root.ValueKind != JsonValueKind.Object) return false;
+            int typeCount = 0;
+            bool recognized = false;
+            foreach (var property in root.EnumerateObject())
+            {
+                if (!property.NameEquals("type")) continue;
+                typeCount++;
+                if (property.Value.ValueKind == JsonValueKind.String && ReplayHeader.IsKnownType(property.Value.GetString()))
+                    recognized = true;
+            }
+            if (recognized && typeCount != 1)
+                throw new InvalidDataException("The recording header contains duplicate type keys.");
+            return recognized;
         }
 
         // The reads honour the token, but a cancelled run still ends the way it always has: quietly, with the result so

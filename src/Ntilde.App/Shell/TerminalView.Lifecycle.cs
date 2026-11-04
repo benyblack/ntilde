@@ -64,6 +64,7 @@ namespace Ntilde.Shell
                 _cachedTopLevel = null;
             }
             ResourcesChanged -= OnScaleResourcesChanged;
+            PresenterContextChanged?.Invoke();
         }
 
         /// <summary>
@@ -96,6 +97,13 @@ namespace Ntilde.Shell
         /// resize report) must multiply by this, not by the monitor scale alone.
         /// </summary>
         internal double EffectiveRenderScaling => _cachedRenderScaling;
+
+        internal event Action? PresenterContextChanged;
+
+        // A detached view's cached scale is useful for old text paths but is not a live presenter.
+        internal NativeRasterPresenterContext? NativeRasterPresenter =>
+            _cachedTopLevel is not null && _isAttachedToVisualTree
+                ? new NativeRasterPresenterContext(_cachedRenderScaling) : null;
 
         private void OnTopLevelScalingChanged(object? sender, EventArgs e)
         {

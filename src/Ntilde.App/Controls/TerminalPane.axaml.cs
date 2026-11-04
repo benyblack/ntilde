@@ -994,10 +994,6 @@ namespace Ntilde.Controls
                 // The daemon's parser answers size reports, so it needs the new cell pixels too.
                 if (Session is MuxClientSession { IsAttached: true } mux) mux.UpdatePresentation(BuildMuxPresentation());
 
-                // Cell geometry just changed, so the agent-host's copy of this
-                // pane's render inputs is stale (A5 captureScreen).
-                UpdateAgentRenderParameters();
-
                 // Kitty in-band resize (mode 2048): a font or monitor-scaling change can alter
                 // the pane's pixel geometry WITHOUT changing the integer grid, so OnResize
                 // never fires and this is the only path that notices. A mode-2048 client keeps
@@ -1011,6 +1007,8 @@ namespace Ntilde.Controls
             };
             TermView.MetricsChanged -= _onTermViewMetricsChanged;
             TermView.MetricsChanged += _onTermViewMetricsChanged;
+            TermView.PresenterContextChanged -= UpdateAgentRenderParameters;
+            TermView.PresenterContextChanged += UpdateAgentRenderParameters;
 
             // The view may already have measured its font before this subscription
             // existed, in which case the MetricsChanged that would have published

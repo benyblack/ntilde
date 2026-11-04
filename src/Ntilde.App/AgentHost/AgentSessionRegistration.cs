@@ -12,6 +12,7 @@ namespace Ntilde.AgentHost
         internal Action? BeforeRenderForTest { get; init; }
         internal Action? BeforeDrawForTest { get; init; }
         internal Action? AfterSnapshotForTest { get; init; }
+        internal Action<SnapshotRenderContext?>? AfterRenderForTest { get; init; }
     }
 
     /// <summary>A rendered pane screenshot (A5), as returned by <see cref="AgentSessionRegistration.TryCapturePng"/>.</summary>
@@ -541,6 +542,7 @@ namespace Ntilde.AgentHost
                 // the canvas is now scaled and the bitmap sized in device pixels,
                 // so a box-drawing stroke picked in whole device pixels survives.
                 RenderScaling = effectiveScale,
+                NativeRasterPresenter = parameters.NativeRasterPresenter,
             };
 
             try
@@ -565,6 +567,7 @@ namespace Ntilde.AgentHost
                 captureOptions.BeforeRenderForTest?.Invoke();
                 using var bitmap = TerminalSnapshotRenderer.CaptureWithContext(buffer, parameters.Metrics, width, height,
                     options, captureOptions.IncludeRenderDetails, out var captureFrame);
+                captureOptions.AfterRenderForTest?.Invoke(captureFrame.Context);
                 if (captureFrame.Cols != cols || captureFrame.Rows != rows ||
                     captureFrame.BufferCols != cols || captureFrame.BufferRows != rows)
                 {
