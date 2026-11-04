@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildInputReport, inputModeQueries, inputModeReplyHex, defaultInputModes } from './input-state.mjs';
+import { buildInputReport, inputModeQueries, inputModeReplyHex, defaultInputModes, validateInputAction } from './input-state.mjs';
+import { makeInputCases } from './input-cases.mjs';
 import { syntheticInputJournal, inputRunId } from './fixtures/input-journal.mjs';
 test('fixed39 synthetic raw-byte observations require81 complete paired frames and80 fresh challenges', () => {
     const f = syntheticInputJournal(), report = buildInputReport(f.frames, f.actions, f.seal, inputRunId);
@@ -41,4 +42,34 @@ test('handled/submitted remain App facts and never substitute for independently 
     assert.equal(buildInputReport(f.frames, f.actions, f.seal, inputRunId).observations.length, 39);
     f.frames[5].capture.hex = '';
     assert.throws(() => buildInputReport(f.frames, f.actions, f.seal, inputRunId));
+});
+
+// Retained failed run de23505351409f092affa047887367e1 had this request order
+// and omitted nullable keyboard pointer fields. Pane/process values stay synthetic.
+function retainedKeyboardAction() {
+    const f = syntheticInputJournal(), action = f.actions[0].observed;
+    action.request = { modifiers: 0, kind: 'keyDown', key: '7', paneId: action.paneId };
+    action.app.handled = false; action.app.inputSubmitted = false;
+    for (const key of ['column', 'row', 'x', 'y']) delete action.app[key];
+    return { action, item: makeInputCases(12, 120)[0] };
+}
+test('retained production request key order validates without changing its fields or archival hashes', () => {
+    const { action, item } = retainedKeyboardAction();
+    assert.deepEqual(Object.keys(action.request), ['modifiers', 'kind', 'key', 'paneId']);
+    assert.doesNotThrow(() => validateInputAction(action, item, action.paneId, inputRunId, { rows: 12, cols: 120 }, 'fixture'));
+});
+for (const [name, mutate] of [
+    ['extra field', request => { request.extra = 0; }],
+    ['extra undefined field', request => { request.extra = undefined; }],
+    ['missing key', request => { delete request.key; }],
+    ['missing pane', request => { delete request.paneId; }],
+    ['changed key', request => { request.key = '8'; }],
+    ['changed kind', request => { request.kind = 'keyUp'; }],
+    ['changed modifiers', request => { request.modifiers = 1; }],
+    ['changed pane', request => { request.paneId = '22222222-2222-2222-2222-222222222222'; }],
+]) test('structural request validation rejects ' + name, () => {
+    const { action, item } = retainedKeyboardAction();
+    // Use the former expected order to ensure extra/missing-field checks are independent of ordering.
+    action.request = { paneId: action.paneId, ...item.event }; mutate(action.request);
+    assert.throws(() => validateInputAction(action, item, action.paneId, inputRunId, { rows: 12, cols: 120 }, 'fixture'));
 });
