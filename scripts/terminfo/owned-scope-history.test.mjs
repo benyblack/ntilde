@@ -27,11 +27,11 @@ for (const [name, grow, policy] of [
         if (policy) {
             const path = join(scripts, 'owned-sources.mjs');
             writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v3';"));
+                "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v4';"));
         }
         const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
-        assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 61 : 60);
-        assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v3' : 'readonly-owned-source-graph-v2');
+        assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 68 : 67);
+        assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v4' : 'readonly-owned-source-graph-v3');
         const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-04-metadata-snapshot.json', import.meta.url)));
         const paths = Object.keys(published.archive.fileSha256).filter(name => name.startsWith('sources/')).map(name => name.slice(8));
         assert.equal(paths.length, 52);
@@ -65,8 +65,8 @@ test('an expanded graph cannot silently acquire a v8 receipt under the historica
     assert.throws(f.finish, /Invalid or incomplete v8/);
 }));
 
-for (const name of ['2026-11-03-metadata', '2026-11-04-metadata-snapshot', '2026-11-04-reset-observations'])
-    test('current finalizer reproduces every frozen v8 binding: ' + name, () => {
+for (const name of ['2026-11-03-metadata', '2026-11-04-metadata-snapshot', '2026-11-04-reset-observations', '2026-11-04-input-observations'])
+    test('current finalizer reproduces every frozen v8/v9 binding: ' + name, () => {
         const output = mkdtempSync(join(tmpdir(), 'nt-v8-reproduce-'));
         try {
             for (const [file, bytes] of historicalArchive(name)) {
@@ -80,4 +80,33 @@ for (const name of ['2026-11-03-metadata', '2026-11-04-metadata-snapshot', '2026
             current.completedAt = original.completedAt;
             assert.deepEqual(current, original);
         } finally { rmSync(output, { recursive: true, force: true }); }
+    });
+
+for (const [name, grow, policy] of [['inventory', true, false], ['policy', false, true], ['inventory and policy', true, true]])
+    test('future ' + name + ' preserves actual complete60-source v9 archive and full14-suite finalization', async () => {
+        const root = mkdtempSync(join(tmpdir(), 'nt-v9-future-'));
+        try {
+            const scripts = join(root, 'modules'); cpSync(new URL('./', import.meta.url), scripts, { recursive: true });
+            if (grow) {
+                const path = join(scripts, 'owned-source-inventory.json'), inventory = JSON.parse(readFileSync(path));
+                inventory.futureSourceSha256 = 'future.mjs'; writeFileSync(path, JSON.stringify(inventory));
+            }
+            if (policy) {
+                const path = join(scripts, 'owned-sources.mjs');
+                writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
+                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v4';"));
+            }
+            const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
+            assert.equal(Object.keys(sources.capturedV9SourceFiles).length, 60);
+            assert.equal(sources.capturedV9SourcePolicy, 'readonly-owned-source-graph-v2');
+            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 68 : 67);
+            const next = await import(pathToFileURL(join(scripts, 'receipt.mjs')).href), output = join(root, 'evidence'); mkdirSync(output);
+            const archived = historicalArchive('2026-11-04-input-observations');
+            for (const [file, bytes] of archived) { const target = join(output, file); mkdirSync(join(target, '..'), { recursive: true }); writeFileSync(target, bytes); }
+            const original = JSON.parse(archived.get('cell-receipt.json'));
+            const { schemaVersion, ownershipProofSha256, contextSha256, rawSha256, fixtureRemoved, completedAt, ...evidence } = original;
+            unlinkSync(join(output, 'cell-receipt.json'));
+            const current = next.completeOwnedReceipt(output, join(output, 'removed-fixture'), evidence);
+            current.completedAt = original.completedAt; assert.deepEqual(current, original); assert.equal(current.schemaVersion, 9);
+        } finally { rmSync(root, { recursive: true, force: true }); }
     });

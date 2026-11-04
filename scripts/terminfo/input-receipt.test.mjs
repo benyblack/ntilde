@@ -76,7 +76,7 @@ test('full v9 finalizer checks a synthetic positive input suffix after all13 fro
         const { schemaVersion, ownershipProofSha256, contextSha256, rawSha256, fixtureRemoved, completedAt, ...evidence } = old;
         unlinkSync(join(output, 'cell-receipt.json'));
         for (const [key, file] of Object.entries(capturedV9SourceFiles)) {
-            const bytes = readFileSync(new URL(file === 'terminfo-owned-runner.mjs' ? '../' + file : './' + file, import.meta.url));
+            const bytes = historicalArchive('2026-11-04-input-observations').get('sources/' + file);
             writeFileSync(join(output, 'sources', file), bytes); context[key] = hash(bytes);
         }
         const policy = 'readonly-owned-source-graph-v2', manifest = { schemaVersion: 1, policy,

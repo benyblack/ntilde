@@ -1,5 +1,12 @@
 # Optional terminfo.dev desktop baseline
 
+The current owned driver adds a fifteenth, bounded static-image suite under
+schema10/fixed67-source policyv3. Its controller, exact pixel/reply model and
+remaining runtime boundary are documented in
+[the static-image model](terminfo/static-image-model.md). Published schema9
+input and schema8 observations retain their original source scopes and bytes.
+
+
 [terminfo.dev](https://github.com/beorn/terminfo.dev) collects external terminal
 observations. Use it to find compatibility gaps and small reproductions. This is
 a manual QA tool, outside the CI lanes. Ntilde's capability contract, parser

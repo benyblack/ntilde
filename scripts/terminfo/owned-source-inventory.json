@@ -58,5 +58,12 @@
   "inputStateSourceSha256": "input-state.mjs",
   "inputCaptureSourceSha256": "input-capture.mjs",
   "inputCollectorSourceSha256": "input-collector.mjs",
-  "inputReceiptSourceSha256": "input-receipt.mjs"
+  "inputReceiptSourceSha256": "input-receipt.mjs",
+  "staticImageInputsSourceSha256": "static-images-inputs.mjs",
+  "staticImageCasesSourceSha256": "static-images-cases.mjs",
+  "staticImageOracleSourceSha256": "static-images-oracle.mjs",
+  "staticImageSuiteSourceSha256": "static-images.mjs",
+  "staticImageCaptureSourceSha256": "static-images-capture.mjs",
+  "staticImageCollectorSourceSha256": "static-images-collector.mjs",
+  "staticImageReceiptSourceSha256": "static-images-receipt.mjs"
 }

@@ -1,10 +1,51 @@
-# Static image model and oracle (#770; not yet wired)
+# Owned static image model, driver and oracle (#770)
 
-These new modules are a deterministic preparation layer for the next owned
-image phase. They do not launch an App, send bytes, request captures, write
-measurements, change a receipt or qualify a feature. Synthetic tests are not
-runtime evidence. Runtime wiring must wait for the separately captured v9 input
-run and its versioned source-policy integration.
+The three pure input/case/oracle modules are integrated as the fifteenth owned
+suite, after the independently captured v9 routed-input phase. Portable tests
+use synthetic state, byte streams and PNGs; they are not runtime qualification.
+No static-image owned measurement has been published by this change.
+
+The live source graph is the fixed67-file `readonly-owned-source-graph-v3`
+scope, producing schema10 receipts. The original51/52-file v8 and60-file v9
+maps and builders remain independent of future live inventory growth. The
+published v9 archive is reproduced through the full current finalizer, including
+tests with a future active source policy and inventory. Historical data and
+stock78/0/177 grades remain unchanged.
+
+## Owned controller and retained evidence
+
+The existing private owner controller admits each of30 bounded writes after
+checking the same executable, direct App/worker/PTY lineage and disabled output
+processing. It captures31 complete before/after cell, history, cursor and buffer
+states with two original full-grid offscreen PNGs apiece. Each read-only reader
+uses31 of its64 allowed reads; the62 images together must fit the existing
+64-million decoded-pixel cap. No new App action surface is used.
+
+The worker creates one exclusive undecoded raw reader after input has been
+sealed. Every admitted write includes independent source-selected default-mode
+queries (including reverse-video mode5 reset), then a fresh unpredictable paired DECRPM fence selected after the
+write. Image pairs cannot reuse any of input's80 pairs. Raw payloads remain
+bounded to512 bytes, with a4.5-second capture deadline and no retry. Requests,
+replies, fences, admission/observation lineage facts, PNGs and seven immutable
+PNG/RGBA/SIXEL source inputs are retained and hash-bound. Source images are
+validated against fixed SHA-256 pins before use and during finalization.
+
+The23 logical image stages retain ACK results separately from pixel assertions.
+A well-framed correlated error or missing expected reply is negative evidence;
+neither an ACK nor a consumed stream proves displayed pixels. If the first
+allocation provides no usable image ID, dependent old-ID stages are explicitly
+inconclusive and emit no guessed ID. Malformed/unmatched replies, changed
+ownership/state/context, failed raw seals or restoration prevent completion.
+Once independent fixture controls pass, outside-envelope image bleed is a
+semantic failure. Completed collection does not mean every stage passed.
+
+Each case records its deletion/clear outcome before independent RIS cleanup,
+then proves return to the bound blank state and original PNG. Final RIS must
+restore the original main-screen cells/modes and PNG before the raw reader is
+sealed. Existing owner teardown must verify worker/App exit and fixture/source
+removal before the full15-suite receipt can be written. Only an initial typed
+screen-detail or geometry/pixel-budget refusal, before any image fixture/files,
+can produce an explicit unavailable binding. A started failure cannot downgrade.
 
 ## Primary protocol contracts
 
@@ -110,10 +151,8 @@ The deterministic tests reject stretched aspect geometry even when all color
 samples match, incorrect native size/anchor, substituted source/colors, lost
 alpha, residual pixels, changed non-target regions, malformed context, wrong
 correlation and reused allocation ids. They exercise a model with synthetic
-pixels only. The current App draw path appears to scale bitmap data to its whole
-cell rectangle; that source observation is a hypothesis for a focused old-fails
-Rendering test or actual paired measurement, not a claimed runtime failure here.
-Root owns the separate leading-G payload correction and its VT/real-Skia tests.
+pixels only. The separate runtime leading-G and aspect-fit corrections are not
+qualified by these tests; a fresh announced owned collection is still required.
 Animation, Unicode placeholders, live desktop cadence and Windows/Linux owned
 qualification remain separate work. Historical grades and evidence are untouched;
 #770 stays open.

@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const pathFor = (root, file) => join(root, 'scripts', file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file);
-const policy = 'readonly-owned-source-graph-v2';
+const policy = 'readonly-owned-source-graph-v3';
 function setDirectoryModes(root, mode) {
     for (const entry of readdirSync(root, { withFileTypes: true })) if (entry.isDirectory()) setDirectoryModes(join(root, entry.name), mode);
     chmodSync(root, mode);

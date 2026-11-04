@@ -13,6 +13,7 @@ import { collectRendition } from './rendition.mjs';
 import { collectCursor } from './cursor.mjs';
 import { collectErase, collectEditing } from './editing-cases.mjs';
 import { collectInput } from './input-collector.mjs';
+import { collectStaticImages } from './static-images-collector.mjs';
 import { collectMetadata } from './metadata-cases.mjs';
 import { collectSaved } from './saved-cases.mjs';
 import { collectResize } from './resize-cases.mjs';
@@ -45,7 +46,8 @@ try {
         await collectResize({ config, fence, owner });
         await collectSaved({ config, fence, owner });
         await collectMetadata({ config, fence, owner });
-        await collectInput({ config, fence, owner });
+        const inputResult = await collectInput({ config, fence, owner });
+        await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
     } finally {
         try { restoreOutput?.(); }
         finally { fence.dispose(); }

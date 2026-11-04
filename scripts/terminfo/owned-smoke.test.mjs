@@ -195,6 +195,10 @@ function assertRetainedCollector(output) {
         ['inputRequestSourceSha256', 'terminfo/input-request.mjs'], ['inputActionSourceSha256', 'terminfo/input-action.mjs'],
         ['inputStateSourceSha256', 'terminfo/input-state.mjs'], ['inputCaptureSourceSha256', 'terminfo/input-capture.mjs'],
         ['inputCollectorSourceSha256', 'terminfo/input-collector.mjs'], ['inputReceiptSourceSha256', 'terminfo/input-receipt.mjs'],
+        ['staticImageInputsSourceSha256', 'terminfo/static-images-inputs.mjs'], ['staticImageCasesSourceSha256', 'terminfo/static-images-cases.mjs'],
+        ['staticImageOracleSourceSha256', 'terminfo/static-images-oracle.mjs'], ['staticImageSuiteSourceSha256', 'terminfo/static-images.mjs'],
+        ['staticImageCaptureSourceSha256', 'terminfo/static-images-capture.mjs'], ['staticImageCollectorSourceSha256', 'terminfo/static-images-collector.mjs'],
+        ['staticImageReceiptSourceSha256', 'terminfo/static-images-receipt.mjs'],
         ['receiptSourceSha256', 'terminfo/receipt.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
@@ -421,7 +425,21 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 9);
+        assert.equal(receipt.schemaVersion, 10);
+        assert.equal(receipt.staticImageEvidence.sha256, digest('image-observations.json'));
+        const images = JSON.parse(readFileSync(join(output, 'image-observations.json')));
+        assert.equal(images.snapshots.length, 31); assert.equal(images.actions.length, 30); assert.equal(images.inputs.length, 7);
+        assert.equal(images.observations.length, 23);
+        assert.ok(images.observations.every(item => ['passed', 'failed', 'inconclusive'].includes(item.result)));
+        assert.deepEqual(images.snapshots, readFileSync(join(output, 'image-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+        assert.deepEqual(images.actions, readFileSync(join(output, 'image-actions.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+        assert.deepEqual(images.actions, proof.proofs[0].staticImages.actions);
+        assert.deepEqual(images.seal, proof.proofs[0].staticImages.seal);
+        assert.equal(images.seal.disposed, true); assert.equal(images.seal.failed, false); assert.equal(images.seal.attempts, 30);
+        assert.deepEqual(images.snapshots[0].screen, images.snapshots.at(-1).screen);
+        assert.equal(images.snapshots[0].paneId, report.snapshots[0].paneId);
+        const imageCounts = images.observations.reduce((counts, item) => ({ ...counts, [item.result]: (counts[item.result] ?? 0) + 1 }), {});
+        assert.deepEqual(receipt.staticImageEvidence.counts, imageCounts);
         assert.equal(receipt.inputEvidence.sha256, digest('input-observations.json'));
         assert.deepEqual(receipt.inputEvidence.counts, { passed: 39 });
         const input = JSON.parse(readFileSync(join(output, 'input-observations.json')));

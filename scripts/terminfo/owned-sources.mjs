@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v2';
+export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v3';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -73,6 +74,13 @@ export const capturedV9SourceFiles = Object.freeze({
     inputStateSourceSha256: 'input-state.mjs', inputCaptureSourceSha256: 'input-capture.mjs',
     inputCollectorSourceSha256: 'input-collector.mjs', inputReceiptSourceSha256: 'input-receipt.mjs',
 });
+export const capturedV10SourceFiles = Object.freeze({
+    ...capturedV9SourceFiles,
+    staticImageInputsSourceSha256: 'static-images-inputs.mjs', staticImageCasesSourceSha256: 'static-images-cases.mjs',
+    staticImageOracleSourceSha256: 'static-images-oracle.mjs', staticImageSuiteSourceSha256: 'static-images.mjs',
+    staticImageCaptureSourceSha256: 'static-images-capture.mjs', staticImageCollectorSourceSha256: 'static-images-collector.mjs',
+    staticImageReceiptSourceSha256: 'static-images-receipt.mjs',
+});
 export const ownedSourcePath = (root, file) => join(root, 'scripts', file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Literal relative imports must close over the retained fixed scope; never fall back to live sources. */
@@ -97,7 +105,7 @@ export function assertOwnedSourcesUnchanged(root, context) {
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV9SourceFiles)) throw new Error('Invalid current v9 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV10SourceFiles)) throw new Error('Invalid current v10 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

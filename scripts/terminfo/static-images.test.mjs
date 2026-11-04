@@ -1,0 +1,73 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { buildStaticImageReport, imagePlan, imageReply } from './static-images.mjs';
+import { staticImageCases } from './static-images-cases.mjs';
+import { syntheticImageJournal } from './fixtures/static-images-journal.mjs';
+import { snapshotHash } from './agent-observer.mjs';
+const fixture = action => { const output = mkdtempSync(join(tmpdir(), 'nt-image-model-')); try { action(output, syntheticImageJournal(output)); } finally { rmSync(output, { recursive: true, force: true }); } };
+const derive = (output, f, prior = []) => buildStaticImageReport(f.frames, f.actions, f.seal, f.runId, output, prior);
+test('synthetic31 paired frames and30 admissions rederive23 separate reply/pixel observations', () => fixture((output, f) => {
+    const report = derive(output, f);
+    assert.equal(imagePlan.length, 30); assert.equal(report.snapshots.length, 31); assert.equal(report.observations.length, 23);
+    assert.equal(report.inputs.length, 7); assert.ok(report.observations.every(item => item.result === 'passed'));
+    assert.match(report.scope, /No animation, placeholders/);
+}));
+for (const [name, mutate] of [
+    ['missing paired capture', f => f.frames[5].pixels.pop()],
+    ['state mutation', f => { f.frames[5].screen.cursorCol++; f.frames[5].sha256 = snapshotHash(f.frames[5].screen); }],
+    ['image request mutation', f => { f.actions[2].commandHex += '00'; }],
+    ['changed worker', f => { f.actions[4].ownership.worker.pid++; }],
+    ['changed geometry', f => { f.frames[4].ownership.terminalOutput.description = '11 rows; 60 columns; -opost'; }],
+    ['missing restoration', f => f.frames.splice(5, 1)],
+    ['unsealed raw reader', f => { f.seal.disposed = false; }],
+    ['late bytes', f => { f.seal.lastAttempt.hex += 'ff'; }],
+    ['reused raw fence', f => { f.frames[4].capture = structuredClone(f.frames[3].capture); }],
+    ['wrong fence spelling', f => { f.frames[4].capture.barrier += 'x'; }],
+]) test(`report rejects ${name}`, () => fixture((output, f) => { mutate(f); assert.throws(() => derive(output, f)); }));
+test('input and image fences cannot reuse a challenge pair across suite boundaries', () => fixture((output, f) => {
+    assert.throws(() => derive(output, f, [f.frames[1].capture.nonces.join(',')]));
+}));
+test('retained PNG/source-image changes fail; no archived byte is trusted from a reported digest alone', () => fixture((output, f) => {
+    const path = join(output, f.frames[3].pixels[0].file), bytes = readFileSync(path); bytes[bytes.length - 1] ^= 1; writeFileSync(path, bytes);
+    assert.throws(() => derive(output, f));
+}));
+test('a successful ACK with absent pixels completes as semantic failure, not support', () => {
+    const output = mkdtempSync(join(tmpdir(), 'nt-image-no-pixels-'));
+    try {
+        const f = syntheticImageJournal(output, { pixelOptions: entry => ({ blank: entry.kind === 'read' }) });
+        const report = derive(output, f), place = report.observations.find(item => item.featureId.endsWith('.place'));
+        assert.equal(place.reply.passed, true); assert.equal(place.result, 'failed');
+        assert.equal(report.observations.length, 23);
+    } finally { rmSync(output, { recursive: true, force: true }); }
+});
+test('image bleed is a semantic failure after the independently blank fixture is established', () => {
+    const output = mkdtempSync(join(tmpdir(), 'nt-image-bleed-'));
+    try {
+        const f = syntheticImageJournal(output, { pixelOptions: entry => ({ bleed: entry.stageId === 'show' }) });
+        const report = derive(output, f); assert.equal(report.observations.find(item => item.featureId === 'sixel.native-raster.show').result, 'failed');
+    } finally { rmSync(output, { recursive: true, force: true }); }
+});
+test('correlated allocation error is negative; old-id stages are explicitly inconclusive without guessed IDs', () => {
+    const output = mkdtempSync(join(tmpdir(), 'nt-image-negative-'));
+    try {
+        const f = syntheticImageJournal(output, { mutateReply: (entry, raw) => {
+            if (!entry.caseId?.startsWith('kitty.') || !raw) return raw;
+            return raw.replace(/i=\d+,/, '').replace(';OK', ';ENOTSUP:Graphics disabled');
+        }, pixelOptions: () => ({ blank: true }) });
+        const report = derive(output, f);
+        assert.equal(report.observations.find(item => item.featureId === 'kitty.number-reuse.store-first').result, 'failed');
+        for (const stage of ['place-old-id', 'delete-old-id']) {
+            const item = report.observations.find(value => value.featureId === 'kitty.number-reuse.' + stage);
+            assert.equal(item.result, 'inconclusive'); assert.match(item.skipReason, /did not return a usable image id/);
+            assert.equal(f.actions[item.actionIndex].firstId, null);
+        }
+    } finally { rmSync(output, { recursive: true, force: true }); }
+});
+test('unframed, uncorrelated, duplicate or arbitrary replies cannot become semantic observations', () => {
+    const item = staticImageCases[3], stage = item.stages[1], state = { number: 17, firstId: null, ids: [] };
+    for (const raw of ['OK', '\x1b_GI=18;ENOTSUP:disabled\x1b\\', '\x1b_GI=17,I=17;ENOTSUP\x1b\\', '\x1b_GI=17;x\x1b\\']) assert.throws(() => imageReply(raw, item, stage, state));
+    assert.deepEqual(imageReply('', item, stage, state), { passed: false, id: null, status: null });
+});

@@ -23,6 +23,9 @@ import { resizeOwnedPane } from './terminfo/resize-action.mjs';
 import { OwnedInputObserver } from './terminfo/input-capture.mjs';
 import { inputSuiteId, ownedInputPolicy } from './terminfo/input-cases.mjs';
 import { generateOwnedInput } from './terminfo/input-action.mjs';
+import { OwnedStaticImageObserver } from './terminfo/static-images-capture.mjs';
+import { staticImageSuiteId } from './terminfo/static-images-cases.mjs';
+import { ownedStaticImagePolicy } from './terminfo/static-images.mjs';
 import { OwnedCellObserver } from './terminfo/agent-observer.mjs';
 import { buildCellReport } from './terminfo/cells.mjs';
 import { buildSgrReport } from './terminfo/sgr.mjs';
@@ -53,7 +56,7 @@ const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 /** Preserve only source-known initial App/geometry-budget refusal codes. */
 function ownerFailure(error) {
     return { ok: false, error: error.message,
-        ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable', 'inputGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
+        ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable', 'inputGeometryUnavailable', 'imageGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
 }
 
 function requireInputCompletion(state) {
@@ -235,6 +238,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let savedEvidence;
     let metadataEvidence;
     let inputEvidence;
+    let staticImageEvidence;
     let sourceContext;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
@@ -300,6 +304,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let savedState;
         let metadataState;
         let inputState;
+        let staticImageState;
         let completed = false, outputModeVerified = false;
         const proofs = [];
         const image = statSync(executable);
@@ -313,7 +318,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             nodeVersion: process.version, dependencyInstall: 'isolated npm ci --ignore-scripts', startedAt: new Date().toISOString(), runId,
             ...retainCollectorEvidence(output, bundle, adapterBundleSha256, ownerModule, workerScript),
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
-            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
+            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, staticImageSuiteId, ownedStaticImagePolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             cells: 'private AgentHost readScreen; nonce-bound pane; separate ASCII cell-state suite',
             attributes: 'separate ASCII SGR flags and palette-index suite',
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
@@ -322,10 +327,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         sourceContext = context;
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
-        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input'])
+        for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'input-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'image-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         /** Complete each prior suite before capturing this one; only initial typed refusal is optional. */
         const observeDetails = async (prefix, request, budget) => {
             const spec = detailSpecs[prefix];
@@ -615,6 +621,45 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 state.recordedActions = state.observer.actions.length;
             }
         };
+        const observeImages = async (request, budget, ownership) => {
+            requireInputCompletion(inputState);
+            if (!staticImageState) {
+                const priorChallenges = inputState.observer?.frames.filter(frame => frame.capture).map(frame => frame.capture.nonces.join(',')) ?? [];
+                staticImageState = { workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
+                    observer: new OwnedStaticImageObserver({ appData, ownerPid: app.pid, profileName, output,
+                        nonce: 'NTILDE_IMG_' + runId, expectedPaneId: cellObserver.paneId, priorChallenges }) };
+                proofs[0].staticImages.actions = staticImageState.observer.actions;
+            }
+            const state = staticImageState;
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('Image fixture ownership changed.');
+            try {
+                const result = await state.observer.handle(request, budget, ownership);
+                if (request.kind === 'images-start') {
+                    if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error('Image fixture geometry changed.');
+                    proofs[0].staticImages.paneId = state.observer.paneId;
+                    proofs[0].staticImages.geometry = { rows: result.screen.rows, cols: result.screen.cols };
+                }
+                if (request.kind === 'images-seal') proofs[0].staticImages.seal = state.observer.seal;
+                return result;
+            } catch (error) {
+                const initial = request.kind === 'images-start' && ['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)
+                    && !state.observer.baseline && !state.observer.frames.length && !state.observer.actions.length
+                    && !existsSync(join(output, 'image-pixels')) && !existsSync(join(output, 'image-inputs'));
+                if (initial) {
+                    const file = 'image-unavailable.json';
+                    writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: staticImageSuiteId, status: 'unavailable',
+                        reason: error.code, fixtureStarted: false, plannedExperiments: 5, plannedStages: 23 });
+                    state.unavailable = { runId, suiteId: staticImageSuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                        status: 'unavailable', reason: error.code, counts: {} };
+                } else if (state.observer.lastAttempt) writeJson(join(output, 'image-failed-observation.json'), state.observer.lastAttempt);
+                throw error;
+            } finally {
+                for (const frame of state.observer.frames.slice(state.recordedFrames)) appendFileSync(join(output, 'image-snapshots.jsonl'), JSON.stringify(frame) + '\n');
+                state.recordedFrames = state.observer.frames.length;
+                for (const action of state.observer.actions.slice(state.recordedActions)) appendFileSync(join(output, 'image-actions.jsonl'), JSON.stringify(action) + '\n');
+                state.recordedActions = state.observer.actions.length;
+            }
+        };
         const observeCells = async (request, budget) => {
             const prefix = request.kind.split('-')[0];
             if (prefix === 'input') return observeInput(request, budget);
@@ -643,7 +688,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         /** Retain the first measured lineage and PTY without storing the run capability. */
         const retainFirstProof = (owner, worker, tty) => {
             if (proofs.length !== 0) return;
-            proofs.push({ app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] } });
+            proofs.push({ app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] }, staticImages: { policy: ownedStaticImagePolicy, actions: [] } });
         };
         /** Bind one kernel-observed output-mode proof to the already verified worker. */
         const attestOutputMode = (request, budget) => {
@@ -679,6 +724,14 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
+                    if (/^images-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
+                        if (!outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
+                        const ownership = { app: owner, worker, tty: request.tty, at: new Date().toISOString(),
+                            terminalOutput: readOwnedOutputMode(request.tty, queryTimeout()) };
+                        const result = await observeImages(request, queryTimeout, ownership);
+                        socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
+                        return;
+                    }
                     if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
                         || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                         || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
@@ -693,6 +746,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         attestOutputMode(request, queryTimeout);
                     } else if (request.kind === 'done') {
                         requireInputCompletion(inputState);
+                        if (!staticImageState?.observer?.restored && !staticImageState?.unavailable) throw new Error('Static images must be restored and sealed.');
                         completed = true;
                         resolveDone();
                     } else if (request.kind === 'failed') {
@@ -746,6 +800,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             metadataEvidence = metadataState?.unavailable ?? retainCellReport(output, metadataState?.observer, runId, buildMetadataReport, 'metadata-observations.json');
             inputEvidence = inputState?.unavailable ?? retainCellReport(output, inputState?.observer, runId,
                 () => inputState.observer.report, 'input-observations.json');
+            staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
+                () => staticImageState.observer.report, 'image-observations.json');
+            summary.staticImageEvidence = staticImageEvidence;
             summary.inputEvidence = inputEvidence;
             summary.metadataEvidence = metadataEvidence;
             summary.savedEvidence = savedEvidence;
@@ -794,7 +851,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
