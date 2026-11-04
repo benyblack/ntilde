@@ -1029,7 +1029,7 @@ namespace Ntilde.VT
                         CellWidth = img.CellWidth,
                         CellHeight = img.CellHeight,
                         ImageHandle = img.ImageHandle,
-                        PreserveAspectRatio = img.KittyImageId.HasValue,
+                        PreserveAspectRatio = img.KittyImageId.HasValue || img.PreserveAspectRatio,
                         Source = img.SixelSource ?? (img.ImageHandle as IDeferredSixelImage)?.Source,
                         ClipRightColumns = img.ClipRightColumns,
                         ClipTopRows = img.ClipTopRows,

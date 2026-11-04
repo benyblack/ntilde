@@ -438,9 +438,12 @@ A short private gate serializes admission and drain without waiting on the parse
 lock. Generic retirement keeps its existing grace, and fresh handles avoid history
 scans; bulk cleanup unlinks placements before releasing shared handles. Transmit-only removals request a redraw. Limits are 128 assets, 512 placements
 and 64 MiB of live decoded pixel charge per screen; unused assets are evicted first.
-Kitty render snapshots copy the protocol aspect-preservation flag, including anonymous ids.
-App fits the decoded bitmap inside its original cell envelope before existing clipping;
-source size and cell reservation remain separate, and non-Kitty rendering is unchanged.
+Render snapshots copy protocol aspect-preservation intent by value: Kitty includes
+anonymous ids; iTerm2 placements preserve by default and explicit one, while explicit
+zero stretches. App fits the decoded bitmap inside its original cell envelope before
+existing clipping. Source size, cell reservation, legacy constructors and SIXEL policy
+remain separate. Opaque iTerm2 images remain outside complete state transfer; pending
+OSC arguments resume through the existing parser state without a new wire field.
 Kitty assets remain outside complete mux/replay snapshots, as before; import clears
 old resources. Animation, Unicode placeholders, extended crop/layout/delete actions
 and live owned image qualification remain separate from this basic lifecycle.
