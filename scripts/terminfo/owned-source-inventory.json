@@ -65,5 +65,11 @@
   "staticImageSuiteSourceSha256": "static-images.mjs",
   "staticImageCaptureSourceSha256": "static-images-capture.mjs",
   "staticImageCollectorSourceSha256": "static-images-collector.mjs",
-  "staticImageReceiptSourceSha256": "static-images-receipt.mjs"
+  "staticImageReceiptSourceSha256": "static-images-receipt.mjs",
+  "querySuiteSourceSha256": "queries.mjs",
+  "queryCaptureSourceSha256": "query-capture.mjs",
+  "queryCollectorSourceSha256": "query-collector.mjs",
+  "queryReceiptSourceSha256": "query-receipt.mjs",
+  "queryWitnessCasesSourceSha256": "query-witness-cases.mjs",
+  "queryWitnessFrameSourceSha256": "query-witness-frame.mjs"
 }

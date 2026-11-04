@@ -1,5 +1,6 @@
 import { includesMetadataEvidence, checkMetadataEvidence } from './metadata-receipt.mjs';
 import { includesInputEvidence, checkInputEvidence } from './input-receipt.mjs';
+import { includesQueryEvidence, checkQueryEvidence } from './query-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
@@ -143,7 +144,8 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     const historyMarkers = ['historySuiteId', 'terminalOutput', 'historyCasesSourceSha256', 'historyCaptureSourceSha256', 'historySuiteSourceSha256', 'terminalOutputSourceSha256'];
     const includesHistory = evidence.historyEvidence !== undefined || historyMarkers.some(key => context[key] !== undefined)
         || proof.proofs?.some(entry => entry.terminalOutput !== undefined) === true;
-    const includesImages = includesStaticImageEvidence(output, evidence, context, proof);
+    const includesQueries = includesQueryEvidence(output, evidence, context, proof);
+    const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
     const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
     const includesMetadata = includesMetadataEvidence(output, evidence, context, proof) || includesInput;
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
@@ -155,9 +157,11 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (includesMetadata) checkMetadataEvidence(output, evidence.metadataEvidence, runId, context, proof);
     if (includesInput) checkInputEvidence(output, evidence.inputEvidence, runId, context, proof);
     if (includesImages) checkStaticImageEvidence(output, evidence.staticImageEvidence, runId, context, proof);
+    if (includesQueries) checkQueryEvidence(output, evidence.queryEvidence, runId, context, proof, evidence);
     let schemaVersion = ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata);
     if (includesInput) schemaVersion = 9;
     if (includesImages) schemaVersion = 10;
+    if (includesQueries) schemaVersion = 11;
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

@@ -1,10 +1,10 @@
 # Optional terminfo.dev desktop baseline
 
-The current owned driver adds a fifteenth, bounded static-image suite under
-schema10/fixed67-source policyv3. Its controller, exact pixel/reply model and
-remaining runtime boundary are documented in
-[the static-image model](terminfo/static-image-model.md). Published schema9
-input and schema8 observations retain their original source scopes and bytes.
+The current owned driver adds a sixteenth, bounded exact-query suite under
+schema 11/fixed 73-source policy v4. Its packet/state/ownership contract is
+[the owned query model](terminfo/owned-query-model.md). The preceding calibrated
+static-image suite and frozen v10 publication retain their original 67-source
+scope; published v9 input and v8 observations likewise keep their original bytes.
 
 
 [terminfo.dev](https://github.com/beorn/terminfo.dev) collects external terminal

@@ -45,11 +45,19 @@ test('original edits before measured parent imports cannot replace the captured 
 test('an unlisted original module has no fallback into the measured snapshot', () => fixture(f => {
     writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), "import './terminfo/unlisted.mjs';");
     writeFileSync(join(f.root, 'scripts/terminfo/unlisted.mjs'), "console.log('UNLISTED EXECUTED');");
-    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /Cannot find module/);
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
     assert.ok(!result.stdout.includes('UNLISTED EXECUTED'));
 }));
 test('path traversal in the inventory is rejected before source loading', () => fixture(f => {
     f.inventory.fixtureSourceSha256 = '../../outside.mjs';
     writeFileSync(join(f.root, 'scripts/terminfo/owned-source-inventory.json'), JSON.stringify(f.inventory));
     const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /Invalid source inventory entry/);
+}));
+
+test('a side-effect import outside the graph is rejected before any measured module executes', () => fixture(f => {
+    const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+    writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED');");
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), 'import ' + JSON.stringify(pathToFileURL(outside).href) + ';');
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
+    assert.equal(existsSync(marker), false);
 }));

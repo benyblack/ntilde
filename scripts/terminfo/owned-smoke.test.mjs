@@ -199,6 +199,9 @@ function assertRetainedCollector(output) {
         ['staticImageOracleSourceSha256', 'terminfo/static-images-oracle.mjs'], ['staticImageSuiteSourceSha256', 'terminfo/static-images.mjs'],
         ['staticImageCaptureSourceSha256', 'terminfo/static-images-capture.mjs'], ['staticImageCollectorSourceSha256', 'terminfo/static-images-collector.mjs'],
         ['staticImageReceiptSourceSha256', 'terminfo/static-images-receipt.mjs'],
+        ['querySuiteSourceSha256', 'terminfo/queries.mjs'], ['queryCaptureSourceSha256', 'terminfo/query-capture.mjs'],
+        ['queryCollectorSourceSha256', 'terminfo/query-collector.mjs'], ['queryReceiptSourceSha256', 'terminfo/query-receipt.mjs'],
+        ['queryWitnessCasesSourceSha256', 'terminfo/query-witness-cases.mjs'], ['queryWitnessFrameSourceSha256', 'terminfo/query-witness-frame.mjs'],
         ['receiptSourceSha256', 'terminfo/receipt.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
@@ -425,7 +428,16 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 10);
+        assert.equal(receipt.schemaVersion, 11);
+        assert.equal(receipt.queryEvidence.sha256, digest('query-observations.json'));
+        const queries = JSON.parse(readFileSync(join(output, 'query-observations.json')));
+        assert.equal(queries.observations.length, 40); assert.equal(queries.actions.length, 44); assert.equal(queries.frames.length, 44);
+        assert.deepEqual(queries.readerCounts, [48, 42]); assert.equal(queries.priorChallenges.length, 110);
+        assert.deepEqual(queries.unobservedState, ['reverseVideo']);
+        const queryCounts = {};
+        for (const item of queries.observations) { const key = item.contractMatched ? 'matched' : 'mismatched'; queryCounts[key] = (queryCounts[key] ?? 0) + 1; }
+        assert.deepEqual(receipt.queryEvidence.counts, queryCounts);
+        assert.deepEqual(queries.frames.at(-1).after.screen, queries.initial.before.screen);
         assert.equal(receipt.staticImageEvidence.sha256, digest('image-observations.json'));
         const images = JSON.parse(readFileSync(join(output, 'image-observations.json')));
         assert.equal(images.snapshots.length, 31); assert.equal(images.actions.length, 30); assert.equal(images.inputs.length, 7);
