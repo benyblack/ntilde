@@ -171,7 +171,7 @@ def build(root=ROOT, inputs=None, archive_bytes=None):
     blob = (root / ARCHIVE_PATH).read_bytes() if archive_bytes is None else archive_bytes
     raw, reports, suites = read_archive(blob)
     stock = indexed(raw["observations"], "featureId")
-    stock_counts = Counter({state: 0 for state in ("supported", "unsupported", "inconclusive")})
+    stock_counts = Counter(dict.fromkeys(("supported", "unsupported", "inconclusive"), 0))
     stock_counts.update(item["outcome"] for _, item in stock.values())
     if len(stock) != 255 or stock_counts != {"supported": 82, "unsupported": 0, "inconclusive": 173}:
         raise ValueError("Frozen stock outcomes differ")
