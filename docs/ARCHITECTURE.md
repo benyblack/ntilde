@@ -526,6 +526,13 @@ rather than becoming clean unavailable markers. Paired reads may retry disagreem
 at most twice within the original deadline/capture/byte budgets, preserving every
 mismatched pair; stable wrong effects remain negative.
 
+Historical v8 source scopes stay fixed independently of the active measured input
+graph: 51 inputs for the original execution scope, or 52 inputs under captured
+source policy v1. The validator and published-data guard use those immutable
+maps/policy; live capture still uses the current inventory. Any expanded graph
+requires a new explicit policy/receipt path rather than redefining v8. See
+`docs/qa/terminfo/source-scope-versions.md`.
+
 ### Persistent-session scrollback policy
 
 The GUI forwards `MaxHistory` at spawn and in presentation updates. The daemon owns the chosen

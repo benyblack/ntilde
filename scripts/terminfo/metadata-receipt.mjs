@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { ownedSourceFiles, legacyV8SourceFiles, sourceSnapshotPolicy } from './owned-sources.mjs';
+import { capturedV8SourceFiles, legacyV8SourceFiles, capturedV8SourcePolicy } from './owned-sources.mjs';
 import { buildMetadataReport } from './metadata.mjs';
 import { metadataSuiteId, ownedMetadataPolicy } from './metadata-cases.mjs';
 import { validateOutputGeometry } from './terminal-output.mjs';
@@ -46,12 +46,12 @@ function snapshotMode(output, context) {
         || present(join(output, 'sources', 'terminfo-owned-runner.mjs'));
 }
 function checkSnapshot(output, context, proof) {
-    check(context.sourceSnapshotPolicy === sourceSnapshotPolicy && /^[a-f\d]{64}$/.test(context.sourceSnapshotManifestSha256 ?? ''));
+    check(context.sourceSnapshotPolicy === capturedV8SourcePolicy && /^[a-f\d]{64}$/.test(context.sourceSnapshotManifestSha256 ?? ''));
     const data = bytes(output, 'source-snapshot.json', 65536), manifest = JSON.parse(data);
-    check(hash(data) === context.sourceSnapshotManifestSha256 && manifest.schemaVersion === 1 && manifest.policy === sourceSnapshotPolicy
-        && Object.keys(manifest.hashes ?? {}).length === Object.keys(ownedSourceFiles).length
-        && Object.keys(ownedSourceFiles).every(key => manifest.hashes[key] === context[key]));
-    check(proof.sourceSnapshot?.policy === sourceSnapshotPolicy && typeof context.sourceSnapshotRoot === 'string'
+    check(hash(data) === context.sourceSnapshotManifestSha256 && manifest.schemaVersion === 1 && manifest.policy === capturedV8SourcePolicy
+        && Object.keys(manifest.hashes ?? {}).length === Object.keys(capturedV8SourceFiles).length
+        && Object.keys(capturedV8SourceFiles).every(key => manifest.hashes[key] === context[key]));
+    check(proof.sourceSnapshot?.policy === capturedV8SourcePolicy && typeof context.sourceSnapshotRoot === 'string'
         && proof.sourceSnapshot.root === context.sourceSnapshotRoot && !present(context.sourceSnapshotRoot)
         && Number.isFinite(Date.parse(proof.sourceSnapshot.removedAt))
         && Date.parse(proof.sourceSnapshot.removedAt) >= Date.parse(proof.cleanedUpAt));
@@ -64,7 +64,7 @@ function checkSources(output, context, marker) {
         && hash(bytes(output, 'collector-adapter.mjs')) === context.adapterBundleSha256
         && hash(bytes(output, 'package-lock.json')) === context.collectorLockSha256);
     const dir = lstatSync(join(output, 'sources')); check(dir.isDirectory() && !dir.isSymbolicLink());
-    const inventory = snapshotMode(output, context) ? ownedSourceFiles : legacyV8SourceFiles;
+    const inventory = snapshotMode(output, context) ? capturedV8SourceFiles : legacyV8SourceFiles;
     check(Object.keys(context).filter(key => key.endsWith('SourceSha256')).every(key => Object.hasOwn(inventory, key)));
     const retained = readdirSync(join(output, 'sources')), expected = Object.values(inventory);
     check(retained.length === expected.length && retained.every(file => expected.includes(file)));

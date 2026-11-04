@@ -2,7 +2,8 @@ import { chmodSync, lstatSync, readFileSync, readdirSync, realpathSync, rmSync }
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v1';
+export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
+export const sourceSnapshotPolicy = capturedV8SourcePolicy;
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -57,6 +58,12 @@ export const legacyV8SourceFiles = Object.freeze({
     "collectorManifestSha256": "collector-package.json",
     "collectorLockSha256": "collector-package-lock.json",
     "sourceRegistrySourceSha256": "owned-sources.mjs"
+});
+// Historical 1f4403f2 captured graph: keep its paths/policy independent of future inputs.
+export const capturedV8SourceFiles = Object.freeze({
+    ...legacyV8SourceFiles,
+    runnerSourceSha256: 'terminfo-owned-runner.mjs',
+    sourceInventorySha256: 'owned-source-inventory.json',
 });
 export const ownedSourcePath = (root, file) => join(root, 'scripts', file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');

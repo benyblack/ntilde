@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { buildMetadataReport } from './metadata.mjs';
-import { ownedSourceFiles, sourceSnapshotPolicy } from './owned-sources.mjs';
+import { capturedV8SourceFiles, capturedV8SourcePolicy } from './owned-sources.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 test('published captured-source metadata preserves exact observations, all source pins and cleanup', () => {
     const data = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-04-metadata-snapshot.json', import.meta.url)));
@@ -15,14 +15,14 @@ test('published captured-source metadata preserves exact observations, all sourc
     assert.equal(data.metadataReport.observations.at(-1).result, 'passed');
     assert.ok(data.metadataReport.observations.every(item => item.control.passed));
     assert.equal(data.metadataReport.snapshots[39].before.metadata.oscTitle, 'MD-base-4fd48c78');
-    assert.equal(data.sourceSnapshot.policy, sourceSnapshotPolicy);
+    assert.equal(data.sourceSnapshot.policy, capturedV8SourcePolicy);
     assert.equal(Object.keys(data.sourceSnapshot.hashes).length, 52);
-    for (const [key, file] of Object.entries(ownedSourceFiles)) {
+    for (const [key, file] of Object.entries(capturedV8SourceFiles)) {
         assert.equal(data.sourceSnapshot.hashes[key], data.context[key]);
         assert.equal(data.archive.fileSha256['sources/' + file], data.context[key]);
     }
     assert.equal(data.archive.fileSha256['source-snapshot.json'], data.context.sourceSnapshotManifestSha256);
-    assert.equal(data.sourceSnapshotCleanup.policy, sourceSnapshotPolicy);
+    assert.equal(data.sourceSnapshotCleanup.policy, capturedV8SourcePolicy);
     assert.equal(data.sourceSnapshotCleanup.root, data.context.sourceSnapshotRoot);
     assert.ok(Date.parse(data.sourceSnapshotCleanup.removedAt) <= Date.parse(data.receipt.completedAt));
     assert.equal(data.receipt.schemaVersion, 8); assert.equal(data.receipt.fixtureRemoved, true);
