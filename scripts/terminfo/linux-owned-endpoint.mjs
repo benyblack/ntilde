@@ -1,9 +1,9 @@
 // Unwired Linux endpoint foundation; no App/GUI launch or collection admission.
 import { readLinuxProcessFacts } from './linux-process-provider.mjs';
-import { createEndpointDeadline, observeEndpointWithIo } from './linux-owned-endpoint-core.mjs';
+import { observeEndpointWithIo } from './linux-owned-endpoint-core.mjs';
 import { endpointResources, runEndpointProbe } from './linux-owned-endpoint-platform.mjs';
 
-export const createLinuxEndpointDeadline = createEndpointDeadline;
+export { createEndpointDeadline as createLinuxEndpointDeadline } from './linux-owned-endpoint-core.mjs';
 
 /** Probe-only credentials do not authenticate another connection or any application transaction. */
 export function observeLinuxPrivateAgentEndpoint(expected, options) {

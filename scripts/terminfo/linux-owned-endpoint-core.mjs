@@ -1,6 +1,7 @@
 // Internal deterministic seam. Production has a fixed Linux provider, helper and socket names.
 import { isDeepStrictEqual } from 'node:util';
-import { linuxOutputBudget, linuxOutputDeadline } from './linux-owned-output-core.mjs';
+import { linuxOutputBudget } from './linux-owned-output-core.mjs';
+export { linuxOutputDeadline as createEndpointDeadline } from './linux-owned-output-core.mjs';
 
 export const linuxEndpointLimits = Object.freeze({ bytes: 4096, helperBytes: 65536, interpreterBytes: 16 * 1024 * 1024,
     pathBytes: 103, closeReserveMs: 250 });
@@ -128,7 +129,6 @@ export function copyEndpointProbe(value, expected) {
     return Object.freeze(result);
 }
 
-export const createEndpointDeadline = linuxOutputDeadline;
 export async function observeEndpointWithIo(io, input, options) {
     const expected = copyEndpointExpected(input, io.currentUid()), budget = linuxOutputBudget(options, io.now);
     const held = [], errors = []; let probe, helperClosed = false, appObserved = false;
@@ -139,9 +139,10 @@ export async function observeEndpointWithIo(io, input, options) {
         io.check(held, expected, budget); verifyApp();
         const response = await io.probe(held, expected, budget);
         helperClosed = true;
-        budget.check(); io.check(held, expected, budget); verifyApp();
         probe = copyEndpointProbe(response, expected);
-        if (!probe.ok) fail('Private endpoint probe refused.');
+        if (!probe.ok) errors.push(new Error('Private endpoint probe refused.'));
+        // Preserve a valid helper refusal/close record even if a later independent check also fails.
+        budget.check(); io.check(held, expected, budget); verifyApp();
     } catch (error) {
         if (error.helperCloseConfirmed === true) helperClosed = true;
         errors.push(error);

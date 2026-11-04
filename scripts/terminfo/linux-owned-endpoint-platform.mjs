@@ -31,19 +31,23 @@ export function createEndpointResources(fs = nodeFs) {
             || (kind === 'python' && !magic.equals(Buffer.from([0x7f, 69, 76, 70])))) throw new Error('Endpoint executable/helper digest or ELF mismatch.');
         return sha256;
     }
+    function resourceLocation(kind, expected, budget) {
+        const directory = kind === 'directory';
+        for (const flag of directory ? ['O_DIRECTORY', 'O_NOFOLLOW'] : ['O_NOFOLLOW']) {
+            if (!Number.isInteger(constants[flag]) || constants[flag] === 0) throw new Error('Required endpoint open flag unavailable.');
+        }
+        let path = directory ? expected.appDataDirectory.path : sourcePath;
+        if (kind === 'python') {
+            path = budget.query(() => fs.realpathSync(expected.python.path));
+            if (!/^\/usr\/bin\/python3(?:\.\d{1,2})?$/.test(path)) throw new Error('Unexpected canonical system Python path.');
+        }
+        if (directory && budget.query(() => fs.realpathSync(path)) !== path) throw new Error('Endpoint directory contains a symlink.');
+        return { directory, path };
+    }
     function open(kind, expected, budget) {
         let fd, observation = { kind };
         try {
-            const directory = kind === 'directory';
-            for (const flag of directory ? ['O_DIRECTORY', 'O_NOFOLLOW'] : ['O_NOFOLLOW']) {
-                if (!Number.isInteger(constants[flag]) || constants[flag] === 0) throw new Error('Required endpoint open flag unavailable.');
-            }
-            let path = directory ? expected.appDataDirectory.path : sourcePath;
-            if (kind === 'python') {
-                path = budget.query(() => fs.realpathSync(expected.python.path));
-                if (!/^\/usr\/bin\/python3(?:\.\d{1,2})?$/.test(path)) throw new Error('Unexpected canonical system Python path.');
-            }
-            if (directory && budget.query(() => fs.realpathSync(path)) !== path) throw new Error('Endpoint directory contains a symlink.');
+            const { directory, path } = resourceLocation(kind, expected, budget);
             observation = { kind, path };
             budget.query(() => { fd = fs.openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | (directory ? constants.O_DIRECTORY : 0)); });
             const before = budget.query(() => fs.fstatSync(fd, { bigint: true }));

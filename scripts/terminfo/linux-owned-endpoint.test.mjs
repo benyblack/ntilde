@@ -120,6 +120,28 @@ test('post-probe identity drift retains closure facts but refuses an endpoint ob
     assert.equal(s.events.filter(x => x === 'probe').length, 1);
 });
 
+test('helper credential refusal survives simultaneous post-probe identity drift', async () => {
+    const s = synthetic(); s.reply.ok = false; s.reply.failures = [{ code: 'credentials', errno: null }]; s.reply.socket.peer.pid = 41;
+    s.hook = name => { if (name === 'probe') s.fact.startTimeTicks = '99'; };
+    const error = await s.observe().catch(value => value);
+    assert.match(error.errors[0].message, /probe refused/); assert.match(error.errors[1].message, /identity changed/);
+    assert.equal(error.linuxEndpointResources.probe.failures[0].code, 'credentials');
+    assert.equal(error.linuxEndpointResources.probe.socket.peer.pid, 41);
+    assert.deepEqual(error.linuxEndpointResources.closed, ['helper', 'python', 'directory']);
+});
+
+test('helper resource-close failure survives simultaneous post-probe expiry', async () => {
+    const s = synthetic(); s.reply.ok = false; s.reply.failures = [{ code: 'close', errno: 5 }];
+    s.reply.socket.closed = false; s.reply.inheritedClosed = false;
+    s.hook = name => { if (name === 'probe') s.time = 4000000000n; };
+    const error = await s.observe().catch(value => value);
+    assert.match(error.errors[0].message, /probe refused/); assert.match(error.errors[1].message, /budget exhausted/);
+    assert.equal(error.linuxEndpointResources.helperClosed, true);
+    assert.equal(error.linuxEndpointResources.probe.socket.closed, false);
+    assert.equal(error.linuxEndpointResources.probe.inheritedClosed, false);
+    assert.deepEqual(error.linuxEndpointResources.probe.failures, [{ code: 'close', errno: 5 }]);
+});
+
 test('public entry cannot accept platform/proc/reader overrides', async () => {
     if (process.platform === 'linux') {
         const expected = input(); expected.uid = process.getuid(); expected.appDataDirectory.device.uid = String(expected.uid);

@@ -16,6 +16,15 @@ const python = realpathSync('/usr/bin/python3'), script = fileURLToPath(new URL(
 const pythonPin = { path: '/usr/bin/python3', sha256: createHash('sha256').update(readFileSync(python)).digest('hex') };
 const phase = () => ({ deadlineNs: createLinuxEndpointDeadline(4000) });
 
+function fixtureEntryMode(appData, name, mode) {
+    assert.ok(['agent-endpoint.json', 'agent.sock'].includes(name));
+    const directory = lstatSync(appData), entry = lstatSync(join(appData, name));
+    assert.equal(directory.uid, process.getuid()); assert.equal(directory.mode & 0o7777, 0o700); assert.equal(directory.isDirectory(), true);
+    assert.equal(entry.uid, process.getuid()); assert.equal(entry.isSymbolicLink(), false);
+    assert.equal(name === 'agent.sock' ? entry.isSocket() : entry.isFile(), true);
+    chmodSync(join(appData, name), mode); // Only entries in this coordinator's new private fixture; never a caller path.
+}
+
 async function withServer(action) {
     const root = mkdtempSync(join(tmpdir(), 'ntiq-ep-')); chmodSync(root, 0o700);
     const appData = join(root, 'appdata'); mkdirSync(appData, { mode: 0o700 });
@@ -42,7 +51,9 @@ async function withServer(action) {
     child.stdout.on('data', onStdout); child.stderr.on('data', onStderr); child.stdin.on('error', () => {});
     child.once('error', fail); child.once('exit', () => { exited = true; });
     const closure = new Promise(resolve => child.once('close', (code, signal) => {
-        closed = true; if (pending) fail(new Error('Private server closed during a control read.')); resolve({ code, signal });
+        closed = true;
+        if (pending) fail(new Error('Private server closed during a control read.'));
+        resolve({ code, signal });
     }));
     async function next() {
         if (failure) throw failure;
@@ -57,6 +68,7 @@ async function withServer(action) {
     let primary, result, final;
     try {
         assert.deepEqual(await next(), { ready: true, pid: child.pid });
+        fixtureEntryMode(appData, 'agent-endpoint.json', 0o644);
         const facts = readLinuxProcessFacts(child.pid); assert.deepEqual(facts.argv, argv); assert.equal(facts.ppid, process.pid);
         const stat = lstatSync(appData, { bigint: true });
         const expected = { runId, uid: process.getuid(), appDataDirectory: { path: appData,
@@ -107,22 +119,22 @@ scenarios.push(await withServer(async ({ expected, appData, command }) => {
     return { scenario: 'probe-only-0644-and-distinct-inodes', observation, count };
 }));
 
-for (const fault of ['socket-mode', 'descriptor-symlink', 'close-listener', 'socket-file', 'directory-mode']) {
-    scenarios.push(await withServer(async ({ expected, appData, command }) => {
+scenarios.push(...await Promise.all(['socket-mode', 'descriptor-symlink', 'close-listener', 'socket-file', 'directory-mode'].map(fault =>
+    withServer(async ({ expected, appData, command }) => {
         if (fault === 'directory-mode') chmodSync(appData, 0o755);
+        else if (fault === 'socket-mode') fixtureEntryMode(appData, 'agent.sock', 0o666);
         else assert.deepEqual(await command({ kind: fault }), { changed: fault });
-        const error = await observeLinuxPrivateAgentEndpoint(expected, phase()).then(() => assert.fail('Fault must refuse.'), value => value);
+        const error = await observeLinuxPrivateAgentEndpoint(expected, phase()).then(() => assert.fail('Fault must refuse.'), error_ => error_);
         assert.ok(error instanceof AggregateError);
         if (fault === 'directory-mode') chmodSync(appData, 0o700);
         const count = await command({ kind: 'verify', connections: 0 }); assert.equal(count.payloadBytes, 0);
         return { scenario: fault, refused: true, resources: error.linuxEndpointResources, count };
-    }));
-}
+    }))));
 
 scenarios.push(await withServer(async a => {
     const other = await withServer(async b => {
         assert.deepEqual(await b.command({ kind: 'claim', pid: a.expected.app.pid }), { changed: 'claim' });
-        const error = await observeLinuxPrivateAgentEndpoint({ ...b.expected, runId: a.expected.runId, app: a.expected.app }, phase()).then(() => assert.fail(), value => value);
+        const error = await observeLinuxPrivateAgentEndpoint({ ...b.expected, runId: a.expected.runId, app: a.expected.app }, phase()).then(() => assert.fail(), error_ => error_);
         assert.ok(error instanceof AggregateError);
         assert.equal(error.linuxEndpointResources.probe.socket.peer.pid, b.expected.app.pid);
         assert.equal(error.linuxEndpointResources.probe.failures[0].code, 'credentials');

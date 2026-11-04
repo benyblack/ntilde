@@ -26,16 +26,14 @@ class PrivateServer:
         self.created_socket = self.created_descriptor = False
 
     def write_descriptor(self, pid):
-        mode = "w" if self.created_descriptor else "x"
-        with open(self.descriptor, mode, encoding="utf-8") as stream:
+        flags = os.O_WRONLY | os.O_TRUNC if self.created_descriptor else os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        descriptor_fd = os.open(self.descriptor, flags | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(descriptor_fd, "w", encoding="utf-8") as stream:
             self.created_descriptor = True
             json.dump({"version": 1, "pid": pid, "endpoint": self.endpoint}, stream)
-        os.chmod(self.descriptor, 0o644)
 
     def mutate(self, kind):
-        if kind == "socket-mode":
-            os.chmod(self.endpoint, 0o666)
-        elif kind == "descriptor-symlink":
+        if kind == "descriptor-symlink":
             os.unlink(self.descriptor)
             os.symlink("synthetic-missing-descriptor", self.descriptor)
         elif kind == "close-listener":
