@@ -1,0 +1,25 @@
+name: Private clipboard controller foundation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/terminfo-private-clipboard.yml'
+      - 'scripts/terminfo/private-clipboard-*.mjs'
+      - 'scripts/terminfo/fixtures/private-clipboard-callback.mjs'
+      - 'docs/qa/private-clipboard-node-prototype.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Synthetic transactions, fixed source and private socket controls
+        run: node --test scripts/terminfo/private-clipboard-request.test.mjs scripts/terminfo/private-clipboard-source.test.mjs scripts/terminfo/private-clipboard-controller.test.mjs

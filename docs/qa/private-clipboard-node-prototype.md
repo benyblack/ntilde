@@ -1,8 +1,9 @@
-# Private clipboard Node prototype (#774)
+# Private clipboard Node foundation (#774)
 
 This is an unintegrated, new-file prototype over the App foundation merged in
 #820. None of the existing worker, adapter, runtime, source inventory, receipt,
-CI or published measurement files imports it. The original issue remains open.
+shared CI or published measurement files imports it. A dedicated Ubuntu workflow
+runs the synthetic controls independently. The original issue remains open.
 It qualifies no real terminal, native clipboard, permission, child delivery or
 process/PTY ownership. Its tests use synthetic memory and temporary local sockets;
 no App, GUI, OS clipboard, native peer or Node clipboard package is launched.
@@ -88,7 +89,7 @@ selection, arbitrary Unicode/large payload support or consent evidence.
 ## Central integration still required
 
 The existing shared Node owner must review and wire these modules into its next
-actual schema/version after the current image integration. No version is guessed
+actual schema/version after the frozen image publication and query integration. No version is guessed
 here. Requirements:
 
 1. Retain original/derived collector source, exact helper/test/fixture sources,
