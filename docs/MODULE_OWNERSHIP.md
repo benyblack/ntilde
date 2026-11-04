@@ -115,6 +115,12 @@ invariant changes.
   Contracts remain a leaf. Windowless viewport imports report unknown history count
   explicitly; importing zero rows cannot prove an empty daemon history. The projection
   does not alter parser state or enable acting methods.
+- **Text-area queries report VT geometry.** Exact bare `CSI 18 t` returns
+  `CSI 8 ; rows ; cols t` from the current buffer, without host pixel metrics or
+  a mode-2048 subscription. Other leaders/intermediates and extra parameters do
+  not alias it; query handling does not mutate terminal state. No kernel/window
+  observation or child receipt is inferred. Individually rejected DECRQSS and
+  XTGETTCAP settings remain negative query evidence, never a family support score.
 - **Application-keypad state belongs to VT; key encoding belongs to App.** ESC =/>
   and DECNKM (?66) share a session-wide boolean, copied through clone, complete
   mux/replay snapshots and legacy replay fields (absent means numeric). DECSTR/RIS

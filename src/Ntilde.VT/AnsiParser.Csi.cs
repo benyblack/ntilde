@@ -540,8 +540,8 @@ namespace Ntilde.VT
                         OnResponse?.Invoke(XtVersionReply);
                     }
                     break;
-                case 't': // Window operations (xterm). Two pixel-geometry reports are
-                          // implemented, both consumed by clients like terminal-browser:
+                case 't': // Window operations (xterm). CSI 18 t reports VT text-area characters.
+                          // Two pixel-geometry reports are consumed by terminal-browser:
                           //   CSI 14 t -> CSI 4 ; paneHeightPx ; paneWidthPx t
                           //   CSI 16 t -> CSI 6 ; cellHeightPx ; cellWidthPx t
                           // CSI 16 t is the important one: without it the client assumes a
@@ -549,7 +549,13 @@ namespace Ntilde.VT
                           // AND aspect, and every frame arrives squashed. The remaining
                           // window ops (stack, iconify, resize-by-cells) are ignored, and
                           // leader-prefixed variants stay unhandled.
-                    if (leader == '\0' && intermediates.Length == 0 && (arg0 == 14 || arg0 == 16))
+                    if (bare && arg0 == 18 && argCount == 1)
+                    {
+                        // XTWINOPS character geometry is VT-owned, independent of host pixel
+                        // metrics and mode 2048 subscription. Extra parameters are not this query.
+                        OnResponse?.Invoke($"\x1b[8;{_buffer.Rows};{_buffer.Cols}t");
+                    }
+                    else if (leader == '\0' && intermediates.Length == 0 && (arg0 == 14 || arg0 == 16))
                     {
                         ReportWindowGeometry(arg0);
                     }

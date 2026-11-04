@@ -90,6 +90,15 @@
       "matrixFeature": "Overline off",
       "evidencePath": "tests/Ntilde.VT.Tests/OverlineTests.cs",
       "contractCase": "sgr-overline-off"
+    },
+    {
+      "key": "CSI:18t",
+      "mnemonic": "XTWINOPS character size",
+      "support": "supported",
+      "description": "Report the current VT text-area size in characters as CSI 8 ; rows ; cols t.",
+      "matrixFeature": "Text-area size query",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "text-area-size-query"
     }
   ]
 }
