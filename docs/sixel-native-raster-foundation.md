@@ -34,7 +34,9 @@ This does not qualify arbitrary Pan/Pad, P2 transparency, animation or placehold
   without using it for sizing or extending `renderDetails`/`imageDetails` v1.
 - Replay's `required_sixel_raster` header field is omitted at zero. Readers reject
   every nonzero, malformed or duplicate requirement on recognized headers before
-  header/resize callbacks, replay bytes or resume seeks. Ordinary v2 writers and
+  header/resize callbacks, replay bytes or resume seeks. A recognized recording
+  type cannot be hidden by another `type` key: all occurrences are inspected and
+  ambiguous recognized headers are rejected before legacy fallback. Ordinary v2 writers and
   legacy placement/header bytes stay unchanged. No v3 writer is added.
 
 ## Gates before enabling version 1

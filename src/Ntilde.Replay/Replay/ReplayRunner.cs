@@ -275,8 +275,7 @@ namespace Ntilde.Replay
 
         private static void ValidateRequiredSixelPolicy(JsonElement root)
         {
-            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("type", out var type) ||
-                type.ValueKind != JsonValueKind.String || !ReplayHeader.IsKnownType(type.GetString())) return;
+            if (!IsRecognizedRecordingHeader(root)) return;
             bool seen = false;
             foreach (var property in root.EnumerateObject())
             {
@@ -286,6 +285,23 @@ namespace Ntilde.Replay
                     throw new InvalidDataException("The recording requires an unsupported or malformed SIXEL raster policy.");
                 seen = true;
             }
+        }
+
+        private static bool IsRecognizedRecordingHeader(JsonElement root)
+        {
+            if (root.ValueKind != JsonValueKind.Object) return false;
+            int typeCount = 0;
+            bool recognized = false;
+            foreach (var property in root.EnumerateObject())
+            {
+                if (!property.NameEquals("type")) continue;
+                typeCount++;
+                if (property.Value.ValueKind == JsonValueKind.String && ReplayHeader.IsKnownType(property.Value.GetString()))
+                    recognized = true;
+            }
+            if (recognized && typeCount != 1)
+                throw new InvalidDataException("The recording header contains duplicate type keys.");
+            return recognized;
         }
 
         // The reads honour the token, but a cancelled run still ends the way it always has: quietly, with the result so

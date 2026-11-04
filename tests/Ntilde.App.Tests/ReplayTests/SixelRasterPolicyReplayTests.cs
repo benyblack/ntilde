@@ -8,6 +8,40 @@ namespace Ntilde.Tests.ReplayTests;
 public sealed class SixelRasterPolicyReplayTests
 {
     [Theory]
+    [InlineData("\"ntilderec\"", "\"unknown\"", false)]
+    [InlineData("\"ntilderec\"", "\"unknown\"", true)]
+    [InlineData("\"novarec\"", "\"unknown\"", false)]
+    [InlineData("\"novarec\"", "\"unknown\"", true)]
+    [InlineData("\"ntilderec\"", "null", false)]
+    [InlineData("\"ntilderec\"", "null", true)]
+    [InlineData("\"novarec\"", "null", false)]
+    [InlineData("\"novarec\"", "null", true)]
+    [InlineData("\"ntilderec\"", "7", false)]
+    [InlineData("\"ntilderec\"", "7", true)]
+    [InlineData("\"novarec\"", "7", false)]
+    [InlineData("\"novarec\"", "7", true)]
+    [InlineData("\"unknown\"", "\"ntilderec\"", false)]
+    [InlineData("\"unknown\"", "\"novarec\"", true)]
+    [InlineData("\"ntilderec\"", "\"ntilderec\"", false)]
+    public async Task Duplicate_header_type_cannot_hide_a_required_policy_or_bypass_the_data_boundary(string firstType, string lastType, bool byteResume)
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            string header = $"{{\"type\":{firstType},\"type\":{lastType},\"v\":2,\"required_sixel_raster\":1,\"t\":0,\"d\":\"WA==\"}}";
+            await File.WriteAllTextAsync(path, header + "\n{\"t\":0,\"type\":\"data\",\"d\":\"WA==\"}\n", TestContext.Current.CancellationToken);
+            int calls = 0;
+            Task Observed() { calls++; return Task.CompletedTask; }
+            await Assert.ThrowsAsync<InvalidDataException>(() => new ReplayRunner(path).RunAsync(
+                onDataCallback: _ => Observed(), onHeaderCallback: _ => Observed(), onResizeCallback: (_, _) => Observed(),
+                startOffsetBytes: byteResume ? System.Text.Encoding.UTF8.GetByteCount(header) + 1 : 0,
+                ct: TestContext.Current.CancellationToken));
+            Assert.Equal(0, calls);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
     [InlineData("\"1\"")]
     [InlineData("2147483648")]
     [InlineData("0.5")]
