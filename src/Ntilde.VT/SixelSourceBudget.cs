@@ -30,18 +30,30 @@ public sealed class SixelSourceBudget
 
     public SixelSource Retain(string data)
     {
+        var source = CreateProvisional(data);
+        Commit(source);
+        return source;
+    }
+
+    // Borrow the parser's already bounded payload for decoding without evicting
+    // live snapshot data. Only an accepted placement commits persistent retention.
+    internal SixelSource CreateProvisional(string data)
+    {
         ArgumentNullException.ThrowIfNull(data);
+        return new SixelSource(this) { Data = data.Length <= _maxChars ? data : null };
+    }
+
+    internal void Commit(SixelSource source)
+    {
         lock (_gate)
         {
-            var source = new SixelSource(this);
-            if (data.Length > _maxChars) return source;
+            ValidateSnapshotOwner(source);
+            if (source.Node is not null || source.Data is not { } data) return;
             while ((_sources.Count + _retiredSources.Count >= _maxSources || _retainedChars > _maxChars - data.Length)
                 && (_retiredSources.First ?? _sources.First) is { } oldest)
                 Release(oldest.Value);
-            source.Data = data;
             source.Node = _sources.AddLast(source);
             _retainedChars += data.Length;
-            return source;
         }
     }
 
@@ -125,7 +137,7 @@ public sealed class SixelSourceBudget
     {
         lock (_gate)
         {
-            if (source.Node is not { } node) return;
+            if (source.Node is not { } node) { source.Data = null; return; }
             _retainedChars -= source.Data?.Length ?? 0;
             source.Data = null;
             node.List?.Remove(node);

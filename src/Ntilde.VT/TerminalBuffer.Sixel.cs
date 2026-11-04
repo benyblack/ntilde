@@ -7,7 +7,7 @@ public partial class TerminalBuffer
     public SixelSourceBudget SixelSources { get; init; } = new();
 
     /// <summary>Applies SIXEL geometry even on headless hosts. Never writes placeholder text or wraps an image horizontally.</summary>
-    internal void PlaceSixelImage(object? handle, int widthCells, int heightCells, SixelSource? source = null)
+    internal bool PlaceSixelImage(object? handle, int widthCells, int heightCells, SixelSource? source = null)
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         try
@@ -28,7 +28,7 @@ public partial class TerminalBuffer
                 ClipRightColumns = Math.Max(0, col + widthCells - Cols),
                 IsAltScreenImage = _isAltScreen,
             };
-            if (image is not null) _images.Add(image);
+            if (!TryAddSixelPlacement(image)) return false;
             if (display)
             {
                 if (image is not null) image.ClipBottomRows = Math.Max(0, heightCells - Rows);
@@ -38,6 +38,26 @@ public partial class TerminalBuffer
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();
+        return true;
+    }
+
+    private bool TryAddSixelPlacement(TerminalImage? image)
+    {
+        if (image is null) return true;
+        if (!TryAdmitImageHandle(image.ImageHandle))
+        {
+            image.SixelSource?.Dispose();
+            return false;
+        }
+        // Publish ownership before budget eviction can prune another placement
+        // sharing the same opaque decoded handle.
+        _images.Add(image);
+        if (image.SixelSource is { } source)
+        {
+            SixelSources.Commit(source);
+            PruneExpiredSixelSources();
+        }
+        return true;
     }
 
     private static bool CanDiscardSixelHandle(object? handle) =>

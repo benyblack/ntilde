@@ -195,6 +195,8 @@ namespace Ntilde.VT
                 // HandleKitty's ParseDimension/TryParse calls rather than failing here.
                 StateTransferValidation.RequirePresent(
                     entry.Value, $"parser kitty parameter '{entry.Key}'");
+                if (!IsBoundedKittyControl(entry.Key, entry.Value))
+                    throw StateTransferValidation.Reject("parser kitty parameters", "keys and values exceed protocol bounds");
             }
 
             StateTransferValidation.RequirePresent(state.Charsets, "parser charset designations");

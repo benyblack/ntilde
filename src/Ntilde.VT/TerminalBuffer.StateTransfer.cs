@@ -213,12 +213,8 @@ namespace Ntilde.VT
 
                 // Replace old decoder handles through the snapshot-session retirement gate.
                 // Retained SIXEL sources are restored at their transferred positions below.
-                foreach (TerminalImage image in _images)
-                {
-                    RetireImage(image);
-                }
-
-                _images.Clear();
+                ClearImagePlacements();
+                ClearRetainedKittyImages();
                 ImportSixelState(snapshot);
 
                 // Derived, never carried: the packed style cache is rebuilt from the SGR fields

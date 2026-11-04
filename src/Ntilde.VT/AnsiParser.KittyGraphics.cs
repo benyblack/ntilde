@@ -10,6 +10,10 @@ namespace Ntilde.VT
         /// covers every legal value.
         /// </summary>
         private const int KittyMaxEchoedIdChars = 10;
+        private const int KittyMaxControlValueChars = 64;
+
+        private static bool IsBoundedKittyControl(string key, string value) =>
+            key.Length == 1 && char.IsAsciiLetter(key[0]) && value.Length <= KittyMaxControlValueChars;
 
         /// <summary>
         /// Inflation ceiling for <c>o=z</c> container payloads (f absent or encoded): the
@@ -49,6 +53,9 @@ namespace Ntilde.VT
             string paramsPart = parts[0];
             string payload = parts.Length > 1 ? parts[1] : "";
 
+            // A deletion interrupts any incomplete image upload rather than inheriting
+            // its identity, payload or m=1 state.
+            if (paramsPart.Split(',').Contains("a=d")) ClearKittyState();
             ReadKittyParams(paramsPart);
             AppendKittyPayload(payload);
 
@@ -90,15 +97,22 @@ namespace Ntilde.VT
             foreach (var kv in kvParams)
             {
                 var side = kv.Split('=');
-                if (side.Length == 2)
+                string key = side[0];
+                string value = side.Length == 2 ? side[1] : "1";
+                if (kv.Length == 0) continue;
+                if (side.Length > 2 || !IsBoundedKittyControl(key, value))
                 {
-                    _kittyPendingParams[side[0]] = side[1];
+                    // All protocol keys are one ASCII letter. This bounds the cross-chunk
+                    // dictionary to 52 keys and 64 chars per value, including unknown keys.
+                    _kittyPayloadOverflow = true;
+                    ResetKittyPayloadBuffer();
+                    // Preserve the existing bounded query echo without retaining the huge
+                    // value. Non-query commands remain rejected by the overflow latch.
+                    if (key == "i" && side.Length == 2)
+                        _kittyPendingParams[key] = SanitizeEchoParameter(value, "0123456789", KittyMaxEchoedIdChars, "31");
+                    continue;
                 }
-                else if (kv.Length > 0)
-                {
-                    // Some flags might not have '='
-                    _kittyPendingParams[kv] = "1";
-                }
+                _kittyPendingParams[key] = value;
             }
         }
 
@@ -131,36 +145,44 @@ namespace Ntilde.VT
         /// </summary>
         private void ExecuteKittyCommand(bool isTunneled)
         {
-            if (_kittyPayloadOverflow)
-            {
-                // The payload blew past the cap mid-stream; discard it rather than
-                // decoding a truncated buffer.
-                TerminalLogger.Debug("[ANSI_PARSER] Kitty image discarded: payload exceeded size cap.");
-                return;
-            }
-
             string action = _kittyPendingParams.TryGetValue("a", out var aVal) ? aVal : "t";
-            TerminalLogger.Debug($"[ANSI_PARSER] Kitty finalizing image. Action={action}, TotalPayload={_kittyPayloadBuffer.Length}");
-
             if (action == "q")
             {
-                AnswerKittyQuery(isTunneled);
+                ExecuteKittyQuery(isTunneled);
                 return;
             }
-
-            if (IsNativeKittyBlocked(isTunneled))
+            if (!TryReadKittyIdentity(out KittyCommandIdentity identity)) return;
+            string status;
+            uint id = identity.Id;
+            if (_kittyPayloadOverflow) status = "E2BIG:Graphics payload or controls exceeded bounds";
+            else if (!AllowNonSixelImages || IsNativeKittyBlocked(isTunneled)) status = "ENOTSUP:Graphics disabled by host";
+            else
             {
-                TerminalLogger.Debug("[ANSI_PARSER] Kitty non-tunneled image skipped due to likely ConPTY filtering.");
-                return;
+                try
+                {
+                    status = action switch
+                    {
+                        "t" or "T" => TransmitKittyImage(identity, action == "T", out id),
+                        "p" => DisplayStoredKittyImage(identity, out id),
+                        "d" => DeleteStoredKittyImages(identity),
+                        _ => "ENOTSUP:Graphics action not supported"
+                    };
+                }
+                catch (Exception ex)
+                {
+                    TerminalLogger.Debug($"[ANSI_PARSER] Kitty command failed: {ex.Message}");
+                    status = "EINVAL:Invalid image data";
+                }
             }
+            // Successful deletion has no acknowledgement. Errors still obey quiet policy.
+            if (action != "d" || status != "OK") ReplyKittyCommand(identity with { Id = id }, status);
+        }
 
-            if (action != "t" && action != "T")
-            {
-                TerminalLogger.Debug($"[ANSI_PARSER] Kitty: skipping unsupported action '{action}'");
-                return;
-            }
-
-            TransmitKittyImage();
+        private void ExecuteKittyQuery(bool isTunneled)
+        {
+            if (_kittyPendingParams.ContainsKey("i") && _kittyPendingParams.ContainsKey("I"))
+                TryReadKittyIdentity(out _);
+            else AnswerKittyQuery(isTunneled);
         }
 
         /// <summary>
@@ -209,13 +231,15 @@ namespace Ntilde.VT
         }
 
         /// <summary>
-        /// <c>a=t</c> / <c>a=T</c>: decodes the transmitted image and places it at the cursor.
+        /// <c>a=t</c> retains decoded data; <c>a=T</c> also creates its initial placement.
         /// </summary>
-        private void TransmitKittyImage()
+        private string TransmitKittyImage(KittyCommandIdentity identity, bool display, out uint id)
         {
-            if (!AllowNonSixelImages) return;
+            id = identity.Id;
+            string? encodingError = ValidateKittyPayloadEncoding();
+            if (encodingError is not null) return encodingError;
             byte[]? data = ReadKittyPayload();
-            if (data == null) return;
+            if (data == null) return "EINVAL:Image payload unavailable";
 
             // Format (kitty key `f`) is parsed BEFORE decompression: 24/32 are raw RGB/RGBA
             // pixel data sized by s=/v=, and the declared dimensions give the inflate step
@@ -228,66 +252,72 @@ namespace Ntilde.VT
                 _ = int.TryParse(fVal, out format); // a malformed f= reads as 0, the container-decoder default
             }
 
-            bool isRaw = format == 24 || format == 32;
-            int rawWidth = 0;
-            int rawHeight = 0;
-            if (isRaw && !TryReadKittyRawSize(out rawWidth, out rawHeight)) return;
+            if (!TryReadKittyDimensions(format, out int rawWidth, out int rawHeight)) return "EINVAL:Invalid raw image dimensions";
 
-            // Compression (kitty key `o`): z = zlib-wrapped deflate over the pixel/encoded
-            // data. Bounded: raw payloads may inflate to exactly their declared size, and
-            // container payloads to a ceiling far above any legitimate encoded image - a
-            // small compression bomb must not allocate gigabytes before the size guardrails
-            // ever run.
-            if (_kittyPendingParams.TryGetValue("o", out var oVal) && oVal == "z")
-            {
-                long expected = isRaw
-                    ? (long)rawWidth * rawHeight * (format == 24 ? 3 : 4)
-                    : KittyMaxInflatedContainerBytes;
-                int limit = (int)Math.Min(expected, int.MaxValue);
-                byte[]? inflated = InflateZlib(data, limit);
-                if (inflated == null) return;
-
-                data = inflated;
-            }
-
-            if (data.Length >= 8)
-            {
-                TerminalLogger.Debug($"[ANSI_PARSER] Kitty data magic: {BitConverter.ToString(data, 0, Math.Min(data.Length, 8))}, Decode");
-            }
+            data = InflateKittyPayload(data, format, rawWidth, rawHeight);
+            if (data == null) return "EINVAL:Invalid compressed image payload";
 
             if (ImageDecoder == null)
             {
                 TerminalLogger.Debug("[ANSI_PARSER] IImageDecoder is null, cannot decode Kitty image.");
-                return;
+                return "ENOTSUP:Image decoder unavailable";
             }
 
-            object? imageHandle;
-            int pixelWidth;
-            int pixelHeight;
-            if (isRaw)
-            {
-                imageHandle = ImageDecoder.DecodeRawImage(data, format == 24 ? 3 : 4, rawWidth, rawHeight, out pixelWidth, out pixelHeight);
-            }
-            else
-            {
-                imageHandle = ImageDecoder.DecodeImageBytes(data, out pixelWidth, out pixelHeight);
-            }
+            object? imageHandle = DecodeKittyImage(ImageDecoder, data, format, rawWidth, rawHeight, out int pixelWidth, out int pixelHeight);
             if (imageHandle == null)
             {
                 TerminalLogger.Debug("[ANSI_PARSER] IImageDecoder failed to decode Kitty image data.");
-                return;
+                return "EINVAL:Image decode failed";
             }
 
             TerminalLogger.Debug($"[ANSI_PARSER] Kitty image decoded successfully: {pixelWidth}x{pixelHeight}");
 
             // Guardrail: Limit pixel dimensions
-            if (pixelWidth > 2000 || pixelHeight > 2000)
+            if (pixelWidth <= 0 || pixelHeight <= 0 || pixelWidth > 2000 || pixelHeight > 2000)
             {
-                TerminalLogger.Debug($"[ANSI_PARSER] Kitty image pixel dimensions too large ({pixelWidth}x{pixelHeight}), skipping.");
-                return;
+                _buffer.RetireUnstoredKittyHandle(imageHandle);
+                return "EINVAL:Decoded image dimensions exceed bounds";
             }
 
-            PlaceKittyImage(imageHandle, pixelWidth, pixelHeight);
+            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number);
+            if (asset is null) return "EINVAL:Decoder returned a retired image handle";
+            id = asset.Id;
+            if (display) PlaceKittyImage(asset, identity.HasIdentity ? identity.Placement : 0);
+            return "OK";
+        }
+
+        private string? ValidateKittyPayloadEncoding()
+        {
+            if (_kittyPendingParams.TryGetValue("f", out string? format) && format is not ("24" or "32" or "100"))
+                return "ENOTSUP:Image format not supported";
+            if (_kittyPendingParams.TryGetValue("o", out string? compression) && compression != "z")
+                return "ENOTSUP:Compression not supported";
+            return null;
+        }
+
+        private bool TryReadKittyDimensions(int format, out int width, out int height)
+        {
+            width = height = 0;
+            return format is not (24 or 32) || TryReadKittyRawSize(out width, out height);
+        }
+
+        private byte[]? InflateKittyPayload(byte[] data, int format, int rawWidth, int rawHeight)
+        {
+            if (!_kittyPendingParams.ContainsKey("o")) return data;
+            int bytesPerPixel = format == 24 ? 3 : 4;
+            long expected = format is 24 or 32
+                ? (long)rawWidth * rawHeight * bytesPerPixel
+                : KittyMaxInflatedContainerBytes;
+            return InflateZlib(data, (int)Math.Min(expected, int.MaxValue));
+        }
+
+        private static object? DecodeKittyImage(IImageDecoder decoder, byte[] data, int format, int width, int height,
+            out int pixelWidth, out int pixelHeight)
+        {
+            int bytesPerPixel = format == 24 ? 3 : 4;
+            return format is 24 or 32
+                ? decoder.DecodeRawImage(data, bytesPerPixel, width, height, out pixelWidth, out pixelHeight)
+                : decoder.DecodeImageBytes(data, out pixelWidth, out pixelHeight);
         }
 
         /// <summary>
@@ -352,7 +382,8 @@ namespace Ntilde.VT
             rawHeight = 0;
             if (!_kittyPendingParams.TryGetValue("s", out var sVal) ||
                 !_kittyPendingParams.TryGetValue("v", out var vVal) ||
-                !int.TryParse(sVal, out rawWidth) || !int.TryParse(vVal, out rawHeight) ||
+                !int.TryParse(sVal, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out rawWidth)
+                || !int.TryParse(vVal, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out rawHeight) ||
                 rawWidth <= 0 || rawHeight <= 0)
             {
                 TerminalLogger.Debug("[ANSI_PARSER] Kitty raw payload missing valid s=/v= dimensions, skipping.");
@@ -371,45 +402,14 @@ namespace Ntilde.VT
             return true;
         }
 
-        /// <summary>
-        /// Places a decoded image at the cursor, sized by <see cref="KittyImageCells"/>, as a new image or
-        /// as the next frame of the image <c>i=</c> names; then, unless <c>C=1</c>, moves the cursor past it.
-        /// </summary>
-        private void PlaceKittyImage(object imageHandle, int pixelWidth, int pixelHeight)
+        /// <summary>Creates a placement borrowing a retained asset; the asset owns its handle.</summary>
+        private void PlaceKittyImage(KittyImageAsset asset, uint placementId)
         {
-            (int width, int height) = KittyImageCells(pixelWidth, pixelHeight);
-            int absRow = ImageAnchorRow();
-
-            TerminalLogger.Debug($"[ANSI_PARSER] Kitty image placement: CursorCol={_buffer.CursorCol}, CursorRow={_buffer.CursorRow}, absRow={absRow}, widthCells={width}, heightCells={height}");
-            var img = new TerminalImage(imageHandle, _buffer.CursorCol, absRow, width, height);
-
-            // `i=` numbers the image; a later frame reusing the number replaces this one
-            // (kitty animation semantics - the shape terminal-browser's 30 fps stream uses).
-            // Ids are unsigned 32-bit: parsing as int would silently drop the upper half of
-            // the range onto the no-replacement path, where frames stack instead.
-            uint? kittyImageId = _kittyPendingParams.TryGetValue("i", out var iVal)
-                && uint.TryParse(iVal, out uint parsedId) && parsedId > 0
-                    ? parsedId : null;
-
-            // `C=1` (with cursor placement): do not move the cursor after displaying. The
-            // default advance reserves the image's cells so following text flows below it,
-            // but a frame stream re-emits at the same spot every frame — advancing would
-            // scroll each frame off the top before it can be seen.
+            (int width, int height) = KittyImageCells(asset.PixelWidth, asset.PixelHeight);
+            var image = new TerminalImage(asset.Handle, _buffer.CursorCol, ImageAnchorRow(), width, height);
+            _buffer.PlaceKittyImage(asset, image, placementId);
             bool keepCursor = _kittyPendingParams.TryGetValue("C", out var cFlag) && cFlag == "1";
-
-            if (kittyImageId.HasValue)
-            {
-                _buffer.AddKittyFrame(img, kittyImageId.Value);
-            }
-            else
-            {
-                _buffer.AddImage(img);
-            }
-
-            if (!keepCursor)
-            {
-                ReserveImageCells(img, width, height);
-            }
+            if (!keepCursor) ReserveImageCells(image, width, height);
         }
 
         /// <summary>

@@ -5,6 +5,51 @@ namespace Ntilde.VT.Tests;
 public sealed class SixelSourceStateTests
 {
     [Fact]
+    public void Provisional_source_release_preserves_a_full_live_budget()
+    {
+        var budget = new SixelSourceBudget(3, 1);
+        var live = budget.Retain("q~~");
+        var provisional = budget.CreateProvisional("q~");
+        Assert.Equal("q~", provisional.Data);
+        Assert.Equal("q~~", live.Data);
+        Assert.Equal(3, budget.RetainedChars); Assert.Equal(1, budget.Count);
+        provisional.Dispose(); provisional.Dispose(); budget.Commit(provisional);
+        Assert.Null(provisional.Data); Assert.Equal("q~~", live.Data);
+        Assert.Equal(3, budget.RetainedChars); Assert.Equal(1, budget.Count);
+        Assert.Null(budget.CreateProvisional("oversized").Data);
+    }
+
+    [Fact]
+    public void Provisional_commit_retains_the_same_source_and_evicts_retired_text_first()
+    {
+        var budget = new SixelSourceBudget(6, 2);
+        var live = budget.Retain("q~");
+        var retired = budget.Retain("q~~"); retired.Retire();
+        var provisional = budget.CreateProvisional("q~~~");
+        Assert.Equal("q~~", retired.Data); Assert.Equal(5, budget.RetainedChars);
+        budget.Commit(provisional); budget.Commit(provisional);
+        Assert.Equal("q~", live.Data); Assert.Null(retired.Data);
+        Assert.Equal("q~~~", provisional.Data); Assert.Equal(2, budget.Count);
+        Assert.Equal(6, budget.RetainedChars);
+        Assert.True(budget.TryPinSnapshot([provisional], out var lease));
+        budget.Retain("q~~~~");
+        Assert.Null(provisional.Data); Assert.Equal("q~~~", provisional.DecodeData);
+        lease!.Dispose(); Assert.Null(provisional.DecodeData);
+    }
+
+    [Fact]
+    public void Provisional_commit_rejects_another_budgets_source_without_eviction()
+    {
+        var owner = new SixelSourceBudget(3, 1);
+        var other = new SixelSourceBudget(3, 1);
+        using var provisional = owner.CreateProvisional("q~");
+        var live = other.Retain("q~~");
+        Assert.Throws<ArgumentException>(() => other.Commit(provisional));
+        Assert.Equal("q~~", live.Data); Assert.Equal(3, other.RetainedChars);
+        Assert.Equal(0, owner.RetainedChars);
+    }
+
+    [Fact]
     public void An_import_rejected_by_a_smaller_destination_source_budget_creates_no_placement()
     {
         var snapshot = new TerminalBuffer(10, 3).ExportState(0);
