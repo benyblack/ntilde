@@ -164,7 +164,7 @@ export class PrivateClipboardController {
         const invoke = action => {
             if (!lease.active || lease.pending) {
                 this.#fatal = true;
-                return Promise.reject(new Error('Private clipboard callback is inactive or busy.'));
+                return clipboardControlPromise(Promise.reject(new Error('Private clipboard callback is inactive or busy.')), () => {});
             }
             const control = { consumed: false, promise: null };
             lease.pending = control;

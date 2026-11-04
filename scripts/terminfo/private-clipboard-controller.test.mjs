@@ -220,6 +220,37 @@ test('retained callback handle cannot act outside its transaction or in the foll
     assert.equal(api.calls.length, calls); assert.equal(api.controller.evidence().fatal, true);
 });
 
+test('ignored stale control rejection stays handled and produces only fatal evidence', async () => {
+    const api = fixture(); let old;
+    await api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[0], async f => {
+        old = f; await f.beforeOsc52Write(nonce); api.output(nonce); await f.readText(); await f.writeText(nonce);
+    });
+    const calls = api.calls.length;
+    old.readText();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(api.calls.length, calls);
+    assert.equal(api.controller.evidence().fatal, true);
+    await assert.rejects(api.controller.finish(), /cannot resume/);
+});
+
+test('ignored overlapping control rejection stays handled while restoration completes', async () => {
+    const api = fixture(); let release, entered;
+    const arrived = new Promise(resolve => { entered = resolve; });
+    const held = new Promise(resolve => { release = resolve; });
+    api.hook = async request => { if (request.operation === 'armWrite') { entered(); await held; } };
+    await assert.rejects(api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[0], async f => {
+        const first = Promise.resolve(f.beforeOsc52Write(nonce));
+        const drained = first.catch(() => {});
+        await arrived;
+        f.readText();
+        release(); await drained;
+        await new Promise(resolve => setImmediate(resolve));
+    }));
+    assert.equal(api.controller.evidence().fatal, true);
+    assert.deepEqual(api.calls.slice(-2).map(x => x.operation), ['restore', 'read']);
+    await assert.rejects(api.controller.finish(), /cannot resume/);
+});
+
 test('fire-and-forget arm cannot outlive transaction restoration or authorize another call', async () => {
     const api = fixture(); let release, entered;
     const enteredPromise = new Promise(resolve => { entered = resolve; });
