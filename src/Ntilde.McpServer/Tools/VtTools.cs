@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.ComponentModel;
 using System.Text;
 using ModelContextProtocol.Server;
@@ -368,12 +369,11 @@ public sealed class VtTools
     {
         // Each representation validates its complete grammar independently. A rejected
         // form cannot fall through to a globally normalized positive alias.
-        foreach (string payload in DecrqssReportPayloads)
-        {
-            if (IsExactDcs(original, representation, payload))
-                return "DCS: " + ContractSequenceTable["DCS:" + payload];
-        }
-        return "DCS: " + SequenceTable["DCS"];
+        string? payload = DecrqssReportPayloads.FirstOrDefault(
+            candidate => IsExactDcs(original, representation, candidate));
+        return payload is null
+            ? "DCS: " + SequenceTable["DCS"]
+            : "DCS: " + ContractSequenceTable["DCS:" + payload];
     }
 
     private static bool IsExactDcs(string original, DcsInputRepresentation representation, string payload)
