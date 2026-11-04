@@ -64,6 +64,9 @@ public static class AgentHostProtocol
     /// </summary>
     public const long MaxCapturePixels = 16_000_000;
 
+    /// <summary>Maximum detached image entries in one opt-in capture. Overflow is explicit/incomplete.</summary>
+    public const int MaxCaptureImagePlacements = 512;
+
     /// <summary>
     /// Ceiling on a PNG returned inline (base64 in the result frame) by
     /// <c>captureScreen</c>. Past this the file is still written and its path

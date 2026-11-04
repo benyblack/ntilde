@@ -47,6 +47,15 @@
       "contractCase": "color-scheme-notifications"
     },
     {
+      "key": "DEC:1007",
+      "mnemonic": "Alternate scroll",
+      "support": "supported",
+      "description": "Wheel sends cursor-up/down keys on the alternate screen while mouse reporting is off; DECSET/DECRST override the host default and DECRQM reports the effective value.",
+      "matrixFeature": "Alternate scroll",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "alternate-scroll"
+    },
+    {
       "key": "OSC:30001",
       "mnemonic": "Color stack push",
       "support": "supported",
@@ -126,6 +135,23 @@
       "matrixFeature": "Tertiary device attributes",
       "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
       "contractCase": "tertiary-device-attributes"
+    },
+    {
+      "key": "CSI:>4m",
+      "mnemonic": "XTMODKEYS modifyOtherKeys",
+      "support": "partial",
+      "description": "Set xterm modifyOtherKeys level 0, 1 or 2 for the active screen (CSI > 4 ; Pv m); CSI > 4 m, an empty Pv, CSI > m and CSI > 4 n reset it to 0. Level 3 and other resources are ignored.",
+      "matrixFeature": "xterm modifyOtherKeys",
+      "evidencePath": "tests/Ntilde.VT.Tests/ModifyOtherKeysProtocolTests.cs"
+    },
+    {
+      "key": "CSI:?4m",
+      "mnemonic": "XTQMODKEYS modifyOtherKeys",
+      "support": "supported",
+      "description": "Report the active screen's modifyOtherKeys level as CSI > 4 ; Pv m. Queries for untracked key-modifier resources stay silent.",
+      "matrixFeature": "xterm modifyOtherKeys query",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "modify-other-keys-query"
     },
     {
       "key": "DCS:$qr",

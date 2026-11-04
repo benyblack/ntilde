@@ -180,6 +180,8 @@ namespace Ntilde.Controls
             // same reasoning as the DefaultForeground wiring above.
             Parser.KittyKeyboardEnabled = _settings?.EnableKittyKeyboardProtocol ?? true;
             Buffer?.Modes.KittyKeyboard.SetSupportedFlags(muxBacked ? KittyKeyboardState.FlagDisambiguateEscapeCodes : KittyKeyboardState.SupportedFlags);
+            // The GUI encodes modifyOtherKeys; a mux daemon may lower this before its snapshot (#829).
+            Buffer?.Modes.ModifyOtherKeys.SetSupported(true);
 
             // Native kitty graphics on Windows (ConPTY pass-through opt-in): a freshly-created
             // parser must match what ApplySettings will set, same reasoning as above.

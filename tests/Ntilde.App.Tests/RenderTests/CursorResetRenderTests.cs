@@ -16,22 +16,25 @@ namespace Ntilde.Tests.RenderTests;
 [Collection("GoldenPng")]
 public sealed class CursorResetRenderTests
 {
-    [AvaloniaFact]
-    public void DECSTR_releases_the_application_cursor_override_and_uses_the_host_preference()
+    [AvaloniaTheory]
+    [InlineData("\u001b[!p")]
+    [InlineData("\u001bc")]
+    public void Reset_shows_the_hidden_cursor_and_uses_the_host_preference(string resetSequence)
     {
         var buffer = new TerminalBuffer(3, 2)
         {
             Theme = new TerminalTheme { Background = TermColor.Black, Foreground = TermColor.White, CursorColor = TermColor.FromRgb(255, 0, 0) }
         };
         var parser = new AnsiParser(buffer);
-        parser.Process("\u001b[6 q"); // application requests a steady beam, host prefers block
+        parser.Process("\u001b[6 q\u001b[?25l"); // application hides a steady beam, host prefers block
         using (var overridden = Draw(buffer, CursorStyle.Block))
             Assert.Equal(SKColors.Black, overridden.GetPixel(9, 10)); // outside the beam
-        parser.Process("\u001b[!p");
+        parser.Process(resetSequence);
         using var reset = Draw(buffer, CursorStyle.Block);
         Assert.Equal(SKColors.Red, reset.GetPixel(9, 10)); // the configured block covers the cell centre
         Assert.True(buffer.Modes.CursorStyleIsDefault);
         Assert.True(buffer.Modes.IsCursorBlinkEnabled);
+        Assert.True(buffer.Modes.IsCursorVisible);
     }
 
     [AvaloniaTheory]

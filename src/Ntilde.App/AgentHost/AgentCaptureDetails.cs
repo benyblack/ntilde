@@ -9,6 +9,9 @@ namespace Ntilde.AgentHost;
 
 internal static class AgentCaptureDetails
 {
+    internal static (CaptureRenderDetails? Render, CaptureImageDetails? Images) FromCapture(SnapshotRenderContext? context)
+        => context is null ? (null, null) : (From(context), ImagesFrom(context));
+
     internal static CaptureRenderDetails From(SnapshotRenderContext context)
     {
         var frame = context.Frame;
@@ -90,6 +93,54 @@ internal static class AgentCaptureDetails
             MinimumContrast = context.MinimumContrast,
         };
     }
+
+    internal static CaptureImageDetails? ImagesFrom(SnapshotRenderContext context)
+    {
+        if (context.Frame.Images is not { } images) return null;
+        return new CaptureImageDetails
+        {
+            Complete = images.Complete,
+            TotalPlacements = images.TotalPlacements,
+            Placements = images.Placements.Select((image, index) => new CaptureImagePlacementDetails
+            {
+                Index = index,
+                PlacementId = image.PlacementId,
+                Col = image.Col,
+                ViewportRow = image.ViewportRow,
+                WidthCells = image.WidthCells,
+                HeightCells = image.HeightCells,
+                ClipTopRows = image.ClipTopRows,
+                ClipBottomRows = image.ClipBottomRows,
+                ClipRightColumns = image.ClipRightColumns,
+                PreserveAspectRatio = image.PreserveAspectRatio,
+                BitmapWidthPx = image.BitmapWidthPx,
+                BitmapHeightPx = image.BitmapHeightPx,
+                SixelPlacement = image.SixelPlacement is { } sixel ? new CaptureSixelPlacementDetails
+                {
+                    ReservationWidthPx = sixel.ReservationWidthPx,
+                    ReservationHeightPx = sixel.ReservationHeightPx,
+                    DimensionOrigin = sixel.DimensionOrigin switch
+                    {
+                        SixelReservationDimensionOrigin.SixelGeometry => "sixel-geometry",
+                        SixelReservationDimensionOrigin.ImageDecoderReported => "image-decoder",
+                        _ => throw new InvalidOperationException("Unknown SIXEL reservation origin."),
+                    },
+                    CellWidthPx = sixel.CellWidthPx,
+                    CellHeightPx = sixel.CellHeightPx,
+                    CellWidthOrigin = MetricOrigin(sixel.CellWidthOrigin),
+                    CellHeightOrigin = MetricOrigin(sixel.CellHeightOrigin),
+                } : null,
+            }).ToArray(),
+        };
+    }
+
+    private static string MetricOrigin(SixelReservationMetricOrigin origin) => origin switch
+    {
+        SixelReservationMetricOrigin.SixelOverride => "sixel-override",
+        SixelReservationMetricOrigin.ParserMetric => "parser-metric",
+        SixelReservationMetricOrigin.DefaultFallback => "default-fallback",
+        _ => throw new InvalidOperationException("Unknown SIXEL metric origin."),
+    };
 
     private static string PlatformName()
     {

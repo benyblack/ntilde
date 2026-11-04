@@ -18,12 +18,22 @@ and remaining acceptance boundaries. Its machine-readable companion preserves
 original grades and case pointers; additional evidence is not a combined compliance
 score. Reproduce it offline with `python3 scripts/terminfo-core-report.py --check`.
 
+The [collector completeness diagnosis](terminfo/collector-completeness.md)
+reproduces the pinned reverse-wrap geometry-declaration error offline and explains
+why the retained stock run remains partial even when supplemental suites finish.
+
 ## Run
 
 Requirements: Node 24+, an npm installation (or a prepared collector cache),
 and a direct local Ntilde tab. Avoid tmux, Screen,
 SSH and the agent's own terminal: those measure a different path. Use a separate
 tab, wait for shell startup prompts to finish, and do not type during collection.
+
+"Direct" also means **not a persistent (mux-backed) session**. Persistent panes
+answer some probes differently by design: they refuse non-Sixel images, so the
+Kitty graphics query replies `ERR` (#838), and they report OSC 5522 MIME
+clipboard mode as unrecognized. Turn persistence off for the measured tab, or
+record that the tab was persistent.
 
 Find the **running app's** version in About or its build metadata. A sidecar can
 be older than the checkout; do not substitute the current Git revision or an
@@ -60,7 +70,8 @@ cp scripts/terminfo/collector-package-lock.json artifacts/terminfo/tool/package-
 npm ci --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --include=prod --include=dev --include=optional
 ```
 
-On Windows, prepare that cache first in PowerShell:
+On native Windows the runner does not prepare the cache itself. It can be
+prepared in PowerShell from the Ntilde repository root:
 
 ```powershell
 New-Item -ItemType Directory -Force artifacts/terminfo/tool | Out-Null
@@ -68,6 +79,44 @@ Copy-Item scripts/terminfo/collector-package.json artifacts/terminfo/tool/packag
 Copy-Item scripts/terminfo/collector-package-lock.json artifacts/terminfo/tool/package-lock.json
 npm ci --prefix artifacts/terminfo/tool --ignore-scripts --no-audit --no-fund --include=prod --include=dev --include=optional
 ```
+
+**A prepared cache does not make native Windows collection work.** The pinned
+`terminfo.dev@4.0.0` (the latest published version as of 2026-11-04) refuses to
+write results on `win32`. Its `openControllingTTY` throws "JSON/file collection
+requires a proved Windows controlling TTY" whenever `--output` or `--json` is
+used, and the runner always passes `--output raw.json`. The run then fails with
+`Collector exited 1` after creating its run directory.
+
+### Windows: collect through WSL
+
+To measure the Windows build of Ntilde, run the inline baseline from WSL inside
+an Ntilde tab. The bytes still pass through Ntilde's ConPTY path; inside WSL,
+Node runs as Linux and finds a normal controlling TTY.
+
+1. In a direct (non-persistent) PowerShell tab in Ntilde, pass Ntilde's own
+   identity hints into WSL. WSL drops Windows environment variables that are
+   not listed in `WSLENV`, and the runner refuses to start without
+   `TERM_PROGRAM=Ntilde`:
+
+   ```powershell
+   $env:WSLENV = "TERM_PROGRAM/u:COLORTERM/u"; wsl
+   ```
+
+2. In WSL, use a checkout on the Linux filesystem (for example `~/ntilde`),
+   not `/mnt/c` or `/mnt/d`; the runner writes private files with Unix modes.
+   Install Node 24+ inside WSL (for example with nvm, so npm sits beside
+   `node`), then check that `echo $TERM_PROGRAM` prints `Ntilde`.
+3. Run the usual command. On Linux the runner prepares its own cache:
+
+   ```sh
+   node scripts/terminfo-baseline.mjs --app-version 0.13.0
+   ```
+
+The raw run records `os: linux` and the WSL kernel as `osVersion`, because that
+is what Node reports. Do not edit it. Record the Windows build, the WSL
+distribution, whether the tab was persistent, and the Ntilde build separately.
+The [2026-11-04 Windows and Linux runs](terminfo/2026-11-04-windows-linux-inline.md)
+used this path.
 
 Both runners check the package version and the full pinned suite receipt
 (schema, probe hash, collector revision, manifest and bundle digests) before

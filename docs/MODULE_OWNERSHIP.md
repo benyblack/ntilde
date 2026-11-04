@@ -59,7 +59,9 @@ invariant changes.
   retains a coherent reset negative rather than grading a method call as support.
 - **RIS clearing belongs to VT.** Screen selection and default-pen/runtime-color
   reset precede the existing full clear under one write cut. Main and retained
-  alternate rows lose text, wrap/authored extents and side-table metadata in place;
+  alternate screens return to visible DECTCEM cursor presentation in that cut;
+  DECRQM and detached render snapshots observe the same mode state.
+  Rows lose text, wrap/authored extents and side-table metadata in place;
   sized-text retention is pruned after both banks are clear. The full-clear path
   remains the sole image-retirement owner, with snapshot pins honored. Replay and
   mux snapshots carry the cleared banks. These owning regressions do not regrade
@@ -128,7 +130,10 @@ invariant changes.
   attention/export and echoes the actual draw's selected range in metadata. Nullable theme
   selection values and stream override flags come from the same VT snapshot; App separately
   reports derived selection paint colors, which do not imply a concrete OSC query default.
-  See `docs/qa/terminfo/controlled-capture.md`.
+  Separate opt-in `imageDetails` v1 copies exact leased placement identities/cells/clips and
+  actual draw bitmap dimensions, capped at 512 with explicit incomplete overflow. Defaults and
+  `renderDetails` v1 stay unchanged; App observes existing behavior, never claims native-pixel
+  fidelity from metadata. See `docs/qa/terminfo/controlled-capture.md`.
 - **Owned QA controls its proved transport outside VT.** The adapter verifies the
   disposable worker's exact PTY before disabling output translation, obtains an
   independent parent-observed mode proof before cell observations, and restores
@@ -245,7 +250,11 @@ invariant changes.
   or widening. An immutable cell-size override is authoritative for shared sessions and travels
   in parser snapshots; bitmap handles remain host-owned and are not serialized. Page-origin frames
   retire fully covered prior SIXELs through the snapshot-session gate, without scanning history on
-  the ordinary scrolling path.
+  the ordinary scrolling path. New placements retain immutable BCL creation facts: final
+  reservation dimensions/origins and exact sanitized float32 denominators/origins, using the
+  same division-before-ceiling locals. Render snapshots copy those facts by value. Decoder
+  reports need not mean materialized pixels; generic/imported/legacy placements keep null
+  provenance. State/replay/mux formats do not grow or reconstruct historical metrics.
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
   Exception: `RuntimeForeground` and `RuntimeBackground` each read one immutable,
   volatile-published color frame without the buffer lock, so UI preference queries
@@ -638,7 +647,11 @@ invariant changes.
   follow the authoritative geometry without changing it. Legacy peers receive no new notification.
 - **The text client never relays raw output.** It renders every frame from its own
   `CaptureRenderSnapshot`, so a device query (DA, CPR, XTGETTCAP) the shell emits is answered by
-  the model's parser and never reaches the terminal the client draws on
+  the model's parser and never reaches the terminal the client draws on. Keyboard protocols are
+  not mirrored to the outer terminal either: the text client presents kitty and modifyOtherKeys as
+  unsupported, so while it is attached the daemon answers `CSI ? u` with flags 0 and `CSI ? 4 m`
+  with level 0, and the ordered `keyboardCapabilities` frame lowers every GUI client's kitty mask
+  and modifyOtherKeys ceiling too, so the child is never sent keys in a form it was told is off
 - **Console modes are restored on every exit path.** Detach, session exit, kill, disconnect,
   attach failure, a console write that throws, and a signal all reach `IConsoleSurface.RestoreMode()`
 - **`Daemon/` and `Cli/` know nothing of the App or Platform** (`LayeringTests.Mux_daemon_and_cli_namespaces_have_no_app_or_platform_dependency`).

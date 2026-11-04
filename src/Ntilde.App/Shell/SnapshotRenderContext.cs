@@ -22,7 +22,31 @@ internal readonly record struct RenderedFrameInfo(
     CursorStyle CursorStyle,
     bool CursorVisible,
     bool CursorBlinkEnabled,
-    SnapshotSelectionRange? SyntheticSelection = null);
+    SnapshotSelectionRange? SyntheticSelection = null,
+    RenderedImageFrame? Images = null);
+
+/// <summary>Detached observations; contains neither image handles nor source bytes.</summary>
+internal readonly record struct RenderedImageInfo(Guid PlacementId, int Col, int ViewportRow,
+    int WidthCells, int HeightCells, int ClipTopRows, int ClipBottomRows, int ClipRightColumns,
+    bool PreserveAspectRatio, int? BitmapWidthPx, int? BitmapHeightPx, SixelPlacementProvenance? SixelPlacement);
+
+internal sealed record RenderedImageFrame(bool Complete, int TotalPlacements, RenderedImageInfo[] Placements)
+{
+    internal static RenderedImageFrame From(System.Collections.Generic.List<RenderImageSnapshot> images, int displayStart)
+    {
+        if (images.Count > Ntilde.AgentHost.Contracts.AgentHostProtocol.MaxCaptureImagePlacements)
+            return new(false, images.Count, []);
+        var placements = new RenderedImageInfo[images.Count];
+        for (int i = 0; i < images.Count; i++)
+        {
+            var image = images[i];
+            placements[i] = new(image.PlacementId, image.CellX, image.CellY - displayStart,
+                image.CellWidth, image.CellHeight, image.ClipTopRows, image.ClipBottomRows, image.ClipRightColumns,
+                image.PreserveAspectRatio, null, null, image.SixelPlacement);
+        }
+        return new(true, images.Count, placements);
+    }
+}
 
 /// <summary>Cheap draw-grid facts are always returned; native font/provenance work remains opt-in.</summary>
 internal readonly record struct SnapshotCaptureInfo(int Rows, int Cols, int BufferRows, int BufferCols, SnapshotRenderContext? Context);

@@ -216,6 +216,10 @@ and mux reattach tests qualify this boundary; fresh owned runtime receipts remai
 separate, and historical reset negatives are not rewritten. See
 `docs/qa/terminfo/reset-observations.md` for the legacy Q13 audit.
 
+RIS restores visible DECTCEM cursor presentation on both main and alternate
+screens in the same reset write cut. DECRQM and detached render snapshots observe
+that mode state.
+
 DECSC/DECRC and private modes 1048/1049 share per-screen saved cursor banks, including
 rendition, pending wrap, origin mode and character-set context. Mux state transfer
 and new replay snapshots copy those banks. DECSTR resets the active bank and soft
@@ -468,6 +472,18 @@ other image protocols remain disabled for persistent sessions. Page-origin frame
 fully covered SIXELs through the existing snapshot-session disposal gate. Recording headers, ordered cell-size events and replay snapshots preserve SIXEL metrics; raw PTY writers receive only primitive values from the parser host. Flight exports retain the metric pair at the start of their bounded window. Parser snapshots preserve
 that override; legacy raw-only
 recordings still rely on the replay host's configured cell metrics.
+
+New SIXEL placements retain immutable BCL reservation provenance from the exact parser locals:
+final canvas dimensions and their measurement/decoder-report origin, plus sanitized float32
+cell denominators and per-axis origin. Division remains float32 before ceiling. These facts
+and the current placement identity are copied into the leased render snapshot; imported,
+legacy and generic placements keep null provenance, with no state/replay/mux format growth.
+App's separate opt-in `imageDetails` v1 combines those detached facts with actual draw bitmap
+dimensions and placement clipping. It returns at most 512 entries and explicit incomplete
+metadata on overflow, never silently truncated qualification. Existing `renderDetails` v1,
+default wire/PNG behavior and renderer geometry remain unchanged. This observes reservation
+and projection; it does not promise native-pixel fidelity. The source-to-pixel oracle must
+independently derive its input canvas and recompute reservation before checking pixels.
 
 Skia-only helpers: glyph atlas (`GlyphAtlas`), glyph cache (`GlyphCache`), pixel grid math (`PixelGrid`), font wrappers (`SharedSKFont`, `SharedSKTypeface`), image registry, sixel decoder, render performance metrics.
 

@@ -223,6 +223,12 @@ public sealed class VtTools
                 return ExplainTertiaryDeviceAttributes(prefix);
             }
 
+            // xterm key-modifier options share 'm' with SGR but are never SGR (#829).
+            if (finalByte == 'm' && qualifiers is ">" or "?")
+            {
+                return ExplainXtermModifyKeys(qualifiers[0], prefix[1..]);
+            }
+
             // Parameter count can select a different function too, and the leader/intermediate
             // gate below cannot see it: CSI 1;2;3;4;5 T has no qualifier bytes at all, so it
             // reads as a plain parameter list and used to be described as SD - a sequence the
@@ -390,6 +396,30 @@ public sealed class VtTools
             ? "CSI sequence, final byte 'c': " + ContractSequenceTable["CSI:=c"]
             : "CSI tertiary device attributes: DA3 accepts only an omitted or zero single parameter; "
                 + "Ntilde's parser ignores this form.";
+    }
+
+    /// <summary>
+    /// XTMODKEYS (CSI &gt; Pp ; Pv m) and XTQMODKEYS (CSI ? Pp m), mirroring
+    /// AnsiParser.HandleXtermModifyKeys: only resource 4 (modifyOtherKeys) is implemented, a set
+    /// reads Pp ; Pv only, a parameterless set resets, colon sub-parameters are ignored whole, and
+    /// queries for other resources stay silent.
+    /// </summary>
+    private static string ExplainXtermModifyKeys(char leader, string parameters)
+    {
+        string[] fields = parameters.Length == 0 ? [] : parameters.Split(';');
+        if (parameters.Contains(':', StringComparison.Ordinal))
+            return $"CSI {leader} ... m with ':' sub-parameters: xterm's key-modifier ignore-mask extension is not implemented; Ntilde's parser ignores the whole sequence (never SGR).";
+
+        if (leader == '?')
+        {
+            return Array.IndexOf(fields, "4") >= 0
+                ? "CSI sequence, final byte 'm': " + ContractSequenceTable["CSI:?4m"]
+                : "CSI ? Pp m (XTQMODKEYS) for a key-modifier resource other than 4: not tracked by Ntilde; the parser ignores it with no reply (never SGR).";
+        }
+
+        if (fields.Length == 0 || fields[0] == "4")
+            return "CSI sequence, final byte 'm': " + ContractSequenceTable["CSI:>4m"];
+        return $"CSI > {fields[0]} ; Pv m (XTMODKEYS) for key-modifier resource {fields[0]}: only resource 4 (modifyOtherKeys) is implemented; Ntilde's parser ignores it (never SGR).";
     }
 
     private static string FormatCapabilityDescription(VtCapability capability)

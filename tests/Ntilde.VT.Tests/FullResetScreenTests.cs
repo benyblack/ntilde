@@ -119,7 +119,9 @@ public sealed class FullResetScreenTests
     public async Task Cleared_main_and_alternate_screen_cuts_survive_actual_complete_recording_and_restore()
     {
         var (live, parser) = Seed(alternate: true, inheritedWrap: false);
+        parser.Process(Esc + "[?25l");
         parser.Process(Esc + "c");
+        Assert.True(live.Modes.IsCursorVisible);
         string path = Path.GetTempFileName();
         try
         {
@@ -132,6 +134,7 @@ public sealed class FullResetScreenTests
                 return Task.CompletedTask;
             }, ct: TestContext.Current.CancellationToken);
             Assert.True(applied);
+            Assert.True(restored.Modes.IsCursorVisible);
             var fresh = new TerminalBuffer(12, 4).ExportState(0); var after = restored.ExportState(0);
             Assert.Equal(Json(fresh.Main), Json(after.Main)); Assert.Equal(Json(fresh.Alt), Json(after.Alt));
             Assert.Equal(Json(fresh.SavedCursorMain), Json(after.SavedCursorMain));

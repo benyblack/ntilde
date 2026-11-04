@@ -44,9 +44,11 @@ public sealed class VtCapabilityContractTests
             ["color-stack-pop"] = AssertRuntimeColorStack,
             ["color-scheme-query"] = AssertColorSchemeQuery,
             ["color-scheme-notifications"] = AssertColorSchemeNotifications,
+            ["alternate-scroll"] = AssertAlternateScroll,
             ["mime-clipboard-paste"] = AssertMimeClipboardPaste,
             ["sgr-overline-on"] = AssertOverline,
             ["sgr-overline-off"] = AssertOverline,
+            ["modify-other-keys-query"] = AssertModifyOtherKeysQuery,
         };
 
     private static readonly Dictionary<string, string> ContractSequences =
@@ -64,9 +66,11 @@ public sealed class VtCapabilityContractTests
             ["color-stack-pop"] = "\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a",
             ["color-scheme-query"] = "\x1b[?996n",
             ["color-scheme-notifications"] = "\x1b[?2031h\x1b[?2031$p",
+            ["alternate-scroll"] = "\x1b[?1007l\x1b[?1007$p",
             ["mime-clipboard-paste"] = "\x1b[?5522h\x1b[?5522$p",
             ["sgr-overline-on"] = "\x1b[53mA",
             ["sgr-overline-off"] = "\x1b[53mA\x1b[55mB",
+            ["modify-other-keys-query"] = "\x1b[>4;2m\x1b[?4mA",
         };
 
     private static void AssertDecrqssMargins()
@@ -89,6 +93,18 @@ public sealed class VtCapabilityContractTests
         var responses = new List<string>();
         new AnsiParser(new TerminalBuffer(86, 30)) { OnResponse = responses.Add }.Process("\x1b[18t");
         Assert.Equal("\x1b[8;30;86t", Assert.Single(responses));
+    }
+
+    private static void AssertModifyOtherKeysQuery()
+    {
+        var responses = new List<string>();
+        var buffer = new TerminalBuffer(40, 6);
+        var parser = new AnsiParser(buffer) { OnResponse = responses.Add };
+        parser.Process("\x1b[?4m");
+        parser.Process("\x1b[>4;2m\x1b[?4m");
+        parser.Process("\x1b[?1049h\x1b[?4m\x1b[?1;2m");
+        Assert.Equal(new[] { "\x1b[>4;0m", "\x1b[>4;2m", "\x1b[>4;0m" }, responses);
+        Assert.False(buffer.IsUnderline);
     }
 
     private static void AssertTitleStack()
@@ -226,6 +242,19 @@ public sealed class VtCapabilityContractTests
         parser.Process("\u001b[?2031l");
         parser.DefaultBackground = TermColor.Black;
         Assert.Equal(2, replies.Count);
+    }
+
+    private static void AssertAlternateScroll()
+    {
+        var buffer = new TerminalBuffer(12, 8);
+        var parser = new AnsiParser(buffer);
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        // Untouched, the mode reports the host default (on unless the host turns it off).
+        parser.Process("\x1b[?1007$p\x1b[?1007l\x1b[?1007$p");
+        buffer.Modes.AlternateScrollDefault = false;
+        parser.Process("\x1b[?1007h\x1b[?1007$p\u001bc\x1b[?1007$p");
+        Assert.Equal(new[] { "\x1b[?1007;1$y", "\x1b[?1007;2$y", "\x1b[?1007;1$y", "\x1b[?1007;2$y" }, replies);
     }
 
     private static void AssertPosition(string sequence, int expectedRow, int expectedCol)

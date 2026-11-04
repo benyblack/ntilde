@@ -113,6 +113,7 @@ namespace Ntilde.VT
         private void HandleSixel(string dcs)
         {
             var (pixelWidth, pixelHeight) = SixelGeometry.Measure(dcs);
+            var dimensionOrigin = SixelReservationDimensionOrigin.SixelGeometry;
             SixelSource? source = RetainSixelSources && pixelWidth > 0 && pixelHeight > 0 ? _buffer.SixelSources.CreateProvisional(dcs) : null;
             object? handle = null;
             try
@@ -127,6 +128,7 @@ namespace Ntilde.VT
                     {
                         pixelWidth = Math.Clamp(decodedWidth, 0, SixelGeometry.DefaultMaxPixelDimension);
                         pixelHeight = Math.Clamp(decodedHeight, 0, SixelGeometry.DefaultMaxPixelDimension);
+                        dimensionOrigin = SixelReservationDimensionOrigin.ImageDecoderReported;
                     }
                 }
             }
@@ -140,7 +142,10 @@ namespace Ntilde.VT
             float cellHeight = size?.HeightPx ?? CellHeight;
             float cw = float.IsFinite(cellWidth) && cellWidth > 0 ? Math.Max(1, cellWidth) : 10;
             float ch = float.IsFinite(cellHeight) && cellHeight > 0 ? Math.Max(1, cellHeight) : 20;
-            if (_buffer.PlaceSixelImage(handle ?? source, (int)Math.Ceiling(pixelWidth / cw), (int)Math.Ceiling(pixelHeight / ch), source))
+            var provenance = new SixelPlacementProvenance(pixelWidth, pixelHeight, dimensionOrigin, cw, ch,
+                SixelPlacementProvenance.MetricOrigin(cellWidth, size is not null),
+                SixelPlacementProvenance.MetricOrigin(cellHeight, size is not null));
+            if (_buffer.PlaceSixelImage(handle ?? source, (int)Math.Ceiling(pixelWidth / cw), (int)Math.Ceiling(pixelHeight / ch), source, provenance))
                 _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
         }
 

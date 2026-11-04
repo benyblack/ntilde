@@ -79,6 +79,8 @@ namespace Ntilde.Shell
         /// <summary>Synthetic time since a visible phase, never the live control's animation clock.</summary>
         public long? PresentationTimeMs { get; init; }
         internal Action? BeforeDrawForTest { get; init; }
+        internal Action? AfterSnapshotForTest { get; init; }
+        internal bool IncludeImageDetails { get; init; }
         public bool PreferredCursorBlink { get; init; } = true;
         public CursorStyle? PreferredCursorStyle { get; init; }
         public bool EnableLigatures { get; init; }
@@ -298,7 +300,9 @@ namespace Ntilde.Shell
                 preferredCursorBlink: options.PreferredCursorBlink,
                 fillBackground: options.FillBackground,
                 collectRenderDetails: includeRenderDetails,
-                selectionRelativeToViewport: options.SelectionRelativeToViewport);
+                selectionRelativeToViewport: options.SelectionRelativeToViewport,
+                collectImageDetails: options.IncludeImageDetails,
+                afterSnapshotForTest: options.AfterSnapshotForTest);
 
             try
             {

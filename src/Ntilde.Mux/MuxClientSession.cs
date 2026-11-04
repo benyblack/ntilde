@@ -62,6 +62,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private SharingState _sharing = SharingState.Unknown; // replaced whole, so a reader never sees a mix of two updates
     private int _killedElsewhere;
     private int _kittyKeyboardSupportedFlags = 1;
+    private int _modifyOtherKeysSupported = 1;
 
     /// <summary>Delivery thread, before subsequent output: the daemon changed its SIXEL layout metrics.</summary>
     public event Action<float, float>? SixelCellSizeChanged;
@@ -85,6 +86,13 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     }
 
     public int KittyKeyboardSupportedFlags => Volatile.Read(ref _kittyKeyboardSupportedFlags);
+
+    /// <summary>
+    /// The daemon's modifyOtherKeys ceiling for this session (#829): false while an interactive
+    /// client that cannot encode it is attached. True until a daemon says otherwise, since an older
+    /// daemon never gates it.
+    /// </summary>
+    public bool ModifyOtherKeysSupported => Volatile.Read(ref _modifyOtherKeysSupported) != 0;
 
     internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared)
     {
@@ -674,10 +682,11 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         RaiseSessionChanged();
     }
 
-    internal void DeliverKeyboardCapabilities(int flags)
+    internal void DeliverKeyboardCapabilities(int flags, bool? modifyOtherKeys = null)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
         Volatile.Write(ref _kittyKeyboardSupportedFlags, Math.Max(0, flags) & Ntilde.VT.KittyKeyboardState.SupportedFlags);
+        if (modifyOtherKeys is bool supported) Volatile.Write(ref _modifyOtherKeysSupported, supported ? 1 : 0);
         RaiseSessionChanged();
     }
 

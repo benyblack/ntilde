@@ -276,6 +276,11 @@ namespace Ntilde.Shell
                 return true;
             }
 
+            // xterm modifyOtherKeys (CSI > 4 ; Pv m). Kitty flags win when both are negotiated: the
+            // level is consulted only when the kitty path above is inactive. Before Alt-sends-ESC
+            // and the legacy control bytes, which it replaces for the chords it claims.
+            if (kittyFlags == 0 && TrySendModifyOtherKey(key, keyModifiers, physicalKey, keySymbol, identity)) return true;
+
             if (TrySendApplicationKeypad(key, keyModifiers, physicalKey, kittyFlags, identity)) return true;
 
             // Alt/Meta-sends-ESC must run BEFORE the unconditional Enter/Back/Tab/Escape cases
@@ -300,6 +305,33 @@ namespace Ntilde.Shell
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Sends a chord the active screen's modifyOtherKeys level claims, with the same two
+        /// Ntilde-local carve-outs the kitty path keeps (Enter on an exited session, Ctrl+C
+        /// copying a selection off macOS).
+        /// </summary>
+        private bool TrySendModifyOtherKey(Key key, KeyModifiers modifiers, PhysicalKey physical, string? keySymbol, KittyKeyIdentity identity)
+        {
+            int level = _buffer?.Modes.ModifyOtherKeys.Level ?? 0;
+            if (level == 0) return false;
+            if (key == Key.Enter && _session?.IsProcessRunning != true) return false;
+            if (key == Key.C && (modifiers & KeyModifiers.Control) != 0 && HasSelection() && !UseMacOSClipboardChords) return false;
+            string? sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical);
+            if (sequence == null) return false;
+            if (TerminalInputModeEncoder.MayProduceTextInput(key, keySymbol))
+            {
+                // Shift+Space and Alt chords can still produce text on some backends after a
+                // handled keydown. Reserve the one-shot text decision before sending, as the
+                // application-keypad path does, so the key is not delivered twice.
+                _pendingKittyTextSuppression = true;
+                _pendingKittyTextKey = KeyIdentity(key, physical);
+                _pendingKittyTextFlags = 0;
+                _kittyTextInputGeneration++;
+            }
+            SendKeyInput(key, modifiers, physical, sequence, identity, trackKittyEvents: false);
+            return true;
         }
 
         private bool TrySendLegacyAltKey(Key key, KeyModifiers modifiers, PhysicalKey physical, KittyKeyIdentity identity)
@@ -462,6 +494,13 @@ namespace Ntilde.Shell
         // TerminalView created outside the settings pipeline (as several tests do) still gets
         // the protocol, matching pre-kill-switch behavior.
         private bool _enableKittyKeyboardProtocol = true;
+
+        /// <summary>
+        /// The kitty flags this view's key path actually honors: zero while the kill switch is off,
+        /// whatever stack the child pushed. Tab broadcast uses it so a receiver is encoded exactly
+        /// as its own view would encode the key (#829).
+        /// </summary>
+        internal int EffectiveKittyKeyboardFlags => _enableKittyKeyboardProtocol ? _buffer?.Modes.KittyKeyboard.Flags ?? 0 : 0;
         public event Action<string>? TextInputObserved;
         public event Action? BackspaceObserved;
         /// <summary>

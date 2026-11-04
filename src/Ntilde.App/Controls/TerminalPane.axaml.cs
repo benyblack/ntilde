@@ -717,6 +717,9 @@ namespace Ntilde.Controls
             TermView.EnterObserving += OnCommandAssistEnterObserving;
             TermView.EnterObserved += OnCommandAssistEnterObserved;
             TermView.PasteObserved += NotifyPasteObserved;
+            // Wheel-generated cursor keys (?1007) edit nothing the accumulator can model: a shell
+            // under tmux on the alternate screen would recall history with them.
+            TermView.AlternateScrollKeysSent += NotifyExternalInputSent;
 
             if (Buffer != null)
             {
@@ -1099,6 +1102,7 @@ namespace Ntilde.Controls
                 BellAudioEnabled = settings.BellAudioEnabled,
                 BellVisualEnabled = settings.BellVisualEnabled,
                 SmoothScrolling = settings.SmoothScrolling,
+                AlternateScroll = settings.AlternateScroll,
                 EnableLinkDetection = settings.EnableLinkDetection,
                 EnableKittyKeyboardProtocol = settings.EnableKittyKeyboardProtocol,
                 AllowNativeKittyGraphics = settings.AllowNativeKittyGraphics,
@@ -1120,6 +1124,10 @@ namespace Ntilde.Controls
 
             // Merge global settings with profile overrides
             var effectiveSettings = BuildEffectiveSettings(settings);
+
+            // ?1007's host default lives on the buffer's modes so the wheel handler and DECRQM read
+            // one effective value. A mux-backed pane applies its own: the default is not carried.
+            if (Buffer is { } buffer) buffer.Modes.AlternateScrollDefault = effectiveSettings.AlternateScroll;
 
             TermView.ApplySettings(effectiveSettings);
             UpdatePaneThemeScope(settings, effectiveSettings);

@@ -231,6 +231,41 @@ public sealed class MuxPaneSharingTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void ModifyOtherKeys_bytes_follow_the_daemons_shared_ceiling()
+    {
+        MuxClientSession session = StartHostedPane();
+        var child = _mux.Fake(session.Id);
+        PumpUntil(() => session.KittyKeyboardSupportedFlags == 31, "the GUI advertised its keyboard ceiling");
+        child.Emit("\x1b[>4;2m");
+        PumpUntil(() => _pane!.Buffer!.Modes.ModifyOtherKeys.Level == 2, "the requested level reached the GUI");
+
+        void PressAndCheck(string expected)
+        {
+            int before = child.SentInput.Count;
+            Assert.True(_pane!.TermView.HandleKeyDownCore(Key.A, KeyModifiers.Control, PhysicalKey.A, "a"));
+            PumpUntil(() => child.SentInput.Count > before, "the encoded input reached the mux child");
+            Assert.Equal(expected, child.SentInput.ToArray()[before]);
+        }
+
+        PressAndCheck("\x1b[27;5;97~");
+
+        // An older GUI (or the text client) cannot encode it: the daemon reports level 0 and this
+        // GUI must stop sending CSI 27 too, while the requested level survives.
+        ClientPaneModel legacy = AttachOther(session.Id);
+        PumpUntil(() => !_pane!.Buffer!.Modes.ModifyOtherKeys.IsSupported, "the old peer lowered the modifyOtherKeys ceiling");
+        Assert.Equal(2, _pane!.Buffer!.Modes.ModifyOtherKeys.RequestedLevel);
+        PressAndCheck("\x01");
+        int replies = child.SentInput.Count;
+        child.Emit("\x1b[?4m");
+        PumpUntil(() => child.SentInput.Count > replies, "the daemon answered XTQMODKEYS");
+        Assert.Equal("\x1b[>4;0m", child.SentInput.ToArray()[replies]);
+
+        legacy.Session.Dispose();
+        PumpUntil(() => _pane.Buffer.Modes.ModifyOtherKeys.IsSupported, "the ceiling recovered after the old peer left");
+        PressAndCheck("\x1b[27;5;97~");
+    }
+
+    [AvaloniaFact]
     public void All_key_input_reaches_the_child_and_returns_to_text_with_an_old_peer()
     {
         MuxClientSession session = StartHostedPane();
