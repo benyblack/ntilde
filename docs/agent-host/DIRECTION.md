@@ -259,6 +259,9 @@ tracking 0/9/1000/1002/1003, SGR encoding and Kitty flags). Handled does not mea
 bytes were emitted. `inputSubmitted` means a normal session-input call returned
 or byte input was accepted; it controls the agent-write attention marker and
 does not acknowledge delivery to the child.
+The same-call UI notification invalidates the original pane's keyboard-only
+command reconstruction using the existing external-input hook, without firing
+human typing or Enter observers or adding synthetic text to command history.
 Once an event ran, its dispatch/submission facts survive a lost target lease or
 unavailable post-dispatch read lock. `observationAvailable=false` leaves post-event
 geometry and modes null, without inventing stale measurements or presenting a

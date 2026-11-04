@@ -13,7 +13,7 @@ public sealed partial class AgentHostService
         catch (JsonException) { p = null; }
         AgentHostResponse Failure(string code, string message) => Journaled(request, method, p?.PaneId, "synthetic event", Error(request.Id, code, message));
         if (p == null || !GeneratePaneInputValidation.IsValid(p))
-            return Failure(AgentHostProtocol.ErrorCodes.MalformedRequest, "generatePaneInput requires one bounded keypad or mouse event.");
+            return Failure(AgentHostProtocol.ErrorCodes.MalformedRequest, "generatePaneInput requires one bounded keypad, text, or mouse event.");
         if (!_actEnabled) return Failure(AgentHostProtocol.ErrorCodes.ActDisabled, "Acting is disabled. Enable Agent access (act), then retry.");
         if (!_registry.TryGet(p.PaneId, out var registration))
             return Failure(AgentHostProtocol.ErrorCodes.SessionNotFound, "No visible pane has the requested paneId.");
@@ -56,9 +56,21 @@ public sealed partial class AgentHostService
         return Journaled(request, method, p.PaneId, "synthetic event", Ok(request.Id,
             JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.GeneratePaneInputResult)));
     }
-    private static void NoteGeneratedSubmissionForSession(AgentSessionRegistration registration, Ntilde.Pty.ITerminalSession? session, string method)
+    private void NoteGeneratedSubmissionForSession(AgentSessionRegistration registration, Ntilde.Pty.ITerminalSession? session, string method)
     {
-        if (ReferenceEquals(registration.ObservationSession, session)) TryNoteWrote(registration, method);
+        if (!ReferenceEquals(registration.ObservationSession, session)) return;
+        try
+        {
+            // Invalidate before attention callbacks can reenter human submission. Never
+            // poison a replacement registration/session's command reconstruction.
+            if (_registry.TryGet(registration.PaneId, out var current) && ReferenceEquals(current, registration)
+                && ReferenceEquals(registration.ObservationSession, session)) registration.InputInjected?.Invoke();
+        }
+        finally
+        {
+            // A failed invalidation observer cannot erase an actual returned input call.
+            if (ReferenceEquals(registration.ObservationSession, session)) TryNoteWrote(registration, method);
+        }
     }
 
     /// <summary>Keep completed event facts while withholding geometry/modes for a target no longer current.</summary>

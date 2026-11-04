@@ -506,4 +506,50 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         }
         finally { release.Set(); await writer.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); }
     }
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Submitted_synthetic_text_poisons_markless_capture_without_firing_human_input_observers(bool throwingObserver)
+    {
+        var registry = new AgentSessionRegistry();
+        using var registryScope = AgentSessionRegistry.OverrideInstanceForTesting(registry);
+        using var service = new AgentHostService(registry);
+        using var serviceScope = AgentHostService.OverrideInstanceForTesting(service);
+        var (window, pane, session) = Create();
+        service.ActEnabled = true; service.SetActionExecutor(window);
+        const string typed = "echo human";
+        pane.NotifyTypedTextObserved(typed); new AnsiParser(pane.Buffer!).Process("$ " + typed);
+        var read = typeof(TerminalPane).GetMethod("ReadEchoedMarklessSubmission", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            ?? throw new InvalidOperationException("The markless capture read boundary is unavailable.");
+        Assert.Equal(typed, read.Invoke(pane, null));
+        int humanObservations = 0; pane.TermView.TextInputObserved += _ => humanObservations++;
+        int injections = 0;
+        var registration = pane.AgentRegistrationForTesting!; var original = registration.InputInjected;
+        registration.InputInjected = () =>
+        {
+            injections++; original?.Invoke();
+            if (throwingObserver) throw new InvalidOperationException("private input observer diagnostic");
+        };
+        string request = "{\"v\":1,\"id\":1,\"method\":\"generatePaneInput\",\"params\":{\"paneId\":\"" + pane.PaneId + "\",\"kind\":\"text\",\"text\":\"7\"}}";
+        var response = await service.HandleRequestLineAsync(request, TestContext.Current.CancellationToken);
+        Assert.Null(response.Error);
+        Assert.True(response.Result!.Value.GetProperty("inputSubmitted").GetBoolean());
+        Assert.Equal("7", Assert.Single(session.SentInput)); Assert.Equal(0, humanObservations); Assert.Equal(1, injections);
+        Assert.Equal(AgentAttentionTier.Wrote, registration.AttentionMachine.Snapshot().Tier);
+        Assert.Equal(!throwingObserver, response.Result.Value.GetProperty("observationAvailable").GetBoolean());
+        // No echo of the synthetic character arrived: the still-readable stale human prefix must not be capturable.
+        Assert.Null(read.Invoke(pane, null));
+    }
+    [AvaloniaFact]
+    public async Task Standalone_Kitty_event_type_keyup_cannot_inherit_the_prior_generated_press()
+    {
+        var (window, pane, session) = Create();
+        pane.Buffer!.Modes.KittyKeyboard.Push(10);
+        Assert.False(pane.Buffer.Modes.IsApplicationKeypad);
+        var down = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7" });
+        Assert.NotNull(down); Assert.True(down.EventDispatched); Assert.Single(session.SentInput);
+        var up = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyUp", Key = "7" });
+        Assert.NotNull(up); Assert.True(up.EventDispatched); Assert.False(up.InputSubmitted);
+        Assert.Single(session.SentInput);
+    }
 }

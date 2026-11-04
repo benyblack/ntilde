@@ -99,12 +99,18 @@ public sealed class AgentHostGeneratedInputProtocolTests
     public async Task Lease_loss_preserves_dispatch_facts_and_withholds_stale_observation(string change)
     {
         var s = Setup(); using var service = s.Service;
+        int injected = 0, replacementInjected = 0; s.Registration.InputInjected = () => injected++;
         s.Executor.OnGenerateInput = (_, _, guard, _) =>
         {
             Assert.True(guard());
             switch (change)
             {
-                case "registration": s.Registry.Unregister(s.Registration.PaneId); s.Registry.Register(new AgentSessionRegistration(s.Registration.PaneId, s.Registration.Buffer, "other", "Profile", "local", true)); break;
+                case "registration":
+                    s.Registry.Unregister(s.Registration.PaneId);
+                    var replacementEntry = new AgentSessionRegistration(s.Registration.PaneId, s.Registration.Buffer, "other", "Profile", "local", true)
+                    { InputInjected = () => replacementInjected++ };
+                    replacementEntry.SetLifecycle(new InputStubSession()); s.Registry.Register(replacementEntry);
+                    break;
                 case "session": s.Registration.SetLifecycle(new InputStubSession()); break;
                 case "permission": service.ActEnabled = false; break;
                 case "executor": service.SetActionExecutor(new StubExecutor()); break;
@@ -118,6 +124,8 @@ public sealed class AgentHostGeneratedInputProtocolTests
         Assert.True(result.EventDispatched); Assert.True(result.InputSubmitted); Assert.False(result.ObservationAvailable);
         Assert.Null(result.Rows); Assert.Null(result.ApplicationKeypad);
         Assert.Equal(change == "session" ? AgentAttentionTier.Idle : AgentAttentionTier.Wrote, s.Registration.AttentionMachine.Snapshot().Tier);
+        Assert.Equal(change is "permission" or "executor" ? 1 : 0, injected);
+        Assert.Equal(0, replacementInjected);
         if (change == "registration")
         {
             Assert.True(s.Registry.TryGet(s.Registration.PaneId, out var replacement));
@@ -170,10 +178,12 @@ public sealed class AgentHostGeneratedInputProtocolTests
     public async Task Attention_write_marker_requires_a_returned_session_input_call(bool handled, bool submitted, AgentAttentionTier expected)
     {
         var s = Setup(); using var service = s.Service;
+        int injected = 0; s.Registration.InputInjected = () => injected++;
         s.Executor.OnGenerateInput = (_, _, _, _) => Task.FromResult<GeneratePaneInputResult?>(Observed() with { Handled = handled, InputSubmitted = submitted });
         var response = await service.HandleRequestLineAsync(Request(s.Registration.PaneId), TestContext.Current.CancellationToken);
         Assert.Null(response.Error);
         Assert.Equal(expected, s.Registration.AttentionMachine.Snapshot().Tier);
+        Assert.Equal(submitted ? 1 : 0, injected);
     }
 
 }
