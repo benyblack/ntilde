@@ -50,14 +50,23 @@ export function parseLinuxArgv(bytes) {
     return argv;
 }
 
-export function linuxFileIdentity(stat, kind) {
+function copyIdentity(stat, kind, fields) {
     if (!stat || typeof stat[kind] !== 'function' || !stat[kind]()) throw new Error('Linux file type mismatch.');
     const result = {};
-    for (const key of ['dev', 'ino', 'rdev', 'uid', 'mode', 'size', 'mtimeNs', 'ctimeNs']) {
+    for (const key of fields) {
         if (typeof stat[key] !== 'bigint' || stat[key] < 0n) throw new Error('Missing lossless Linux file identity.');
         result[key] = stat[key].toString();
     }
     return result;
+}
+
+export function linuxFileIdentity(stat, kind) {
+    return copyIdentity(stat, kind, ['dev', 'ino', 'rdev', 'uid', 'mode', 'size', 'mtimeNs', 'ctimeNs']);
+}
+
+/** PTY traffic updates timestamps; keep device identity/owner/mode while executable checks retain timestamps. */
+export function linuxDeviceIdentity(stat) {
+    return copyIdentity(stat, 'isCharacterDevice', ['dev', 'ino', 'rdev', 'uid', 'mode']);
 }
 
 /** Kernel new_encode_dev format differs from userspace dev_t; do not compare raw integers. */
@@ -98,8 +107,8 @@ function ptySnapshot(reader, handle, process, uid, query) {
     const descriptors = [0, 1].map(fd => {
         const path = query(() => reader.link(handle, 'fd/' + fd));
         if (typeof path !== 'string' || !/^\/dev\/pts\/(?:0|[1-9]\d{0,6})$/.test(path) || Number(path.slice(9)) > 1048575) throw new Error('Linux descriptor is not a private PTY path.');
-        const descriptor = linuxFileIdentity(query(() => reader.linkStat(handle, 'fd/' + fd)), 'isCharacterDevice');
-        const named = linuxFileIdentity(query(() => reader.pathStat(path)), 'isCharacterDevice');
+        const descriptor = linuxDeviceIdentity(query(() => reader.linkStat(handle, 'fd/' + fd)));
+        const named = linuxDeviceIdentity(query(() => reader.pathStat(path)));
         if (descriptor.uid !== String(uid) || !same(descriptor, named)
             || linuxControllingDevice(BigInt(descriptor.rdev)) !== process.controllingDevice || process.controllingDevice === '0') {
             throw new Error('Linux PTY descriptor/path/controlling-device mismatch.');

@@ -50,14 +50,36 @@ def main():
         while b"\n" not in ready and time.monotonic() < deadline:
             remaining = deadline - time.monotonic()
             if select.select([master], [], [], max(0, remaining))[0]:
-                ready += os.read(master, 1024)
-            if len(ready) > 1024:
-                raise RuntimeError("Oversized owned-child readiness")
+                chunk = os.read(master, 1024)
+                if len(chunk) > 1024 - len(ready):
+                    raise RuntimeError("Oversized owned-child readiness")
+                ready += chunk
         if ready.strip() != ("READY " + run_id).encode("ascii"):
             raise RuntimeError("Owned child did not become ready")
         print(json.dumps({"parentPid": os.getpid(), "childPid": child, "tty": name}), flush=True)
-        if not select.select([sys.stdin], [], [], 10)[0] or sys.stdin.readline(16) != "exit\n":
-            raise RuntimeError("Missing bounded fixture shutdown")
+        if not select.select([sys.stdin], [], [], 10)[0]:
+            raise RuntimeError("Missing bounded fixture control")
+        command = sys.stdin.readline(16)
+        if command == "activity\n":
+            os.write(master, b"activity\n")
+            activity = b""
+            deadline = time.monotonic() + 3
+            expected = ("ACTIVITY " + run_id).encode("ascii")
+            while expected not in activity and time.monotonic() < deadline:
+                remaining = deadline - time.monotonic()
+                if select.select([master], [], [], max(0, remaining))[0]:
+                    chunk = os.read(master, 1024)
+                    if len(chunk) > 1024 - len(activity):
+                        raise RuntimeError("Oversized owned-child activity")
+                    activity += chunk
+            if expected not in activity:
+                raise RuntimeError("Owned child did not acknowledge private PTY activity")
+            print(json.dumps({"activityComplete": True}), flush=True)
+            if not select.select([sys.stdin], [], [], 5)[0]:
+                raise RuntimeError("Missing bounded fixture shutdown")
+            command = sys.stdin.readline(16)
+        if command != "exit\n":
+            raise RuntimeError("Invalid fixture shutdown")
         os.write(master, b"exit\n")
         status = wait_owned(child, 3)
         if status is None:

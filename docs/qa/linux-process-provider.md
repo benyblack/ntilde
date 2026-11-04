@@ -76,8 +76,10 @@ Only descriptor 0 and 1 facts are inspected. Each must resolve directly to a
 bounded `/dev/pts/N` path, be a character device owned by the expected process UID,
 and match the non-symlink named device's lossless device/inode/rdev/mode facts.
 Both descriptors must match each other and the process's controlling-terminal
-number. Pipes, ordinary files, alias paths, mismatched descriptors and missing
-controlling terminals refuse qualification.
+number. PTY identity contains only device/inode/rdev/UID/mode, excluding mutable
+size and timestamps. Executable identity keeps its size and timestamps. Pipes,
+ordinary files, alias paths, mismatched descriptors and missing controlling
+terminals refuse qualification.
 
 Linux stat's signed `tty_nr` representation and userspace `dev_t` packing are not
 compared as raw integers. The conversion preserves signed 32-bit stat bits and
@@ -98,7 +100,7 @@ The provider supplies no permission grant, lifecycle cleanup or child-byte recei
 Run the deterministic suite with:
 
 ```sh
-rtk proxy node --test scripts/terminfo/linux-process-provider.test.mjs
+rtk proxy node --test scripts/terminfo/linux-process-provider.test.mjs scripts/terminfo/linux-process-selftest-output.test.mjs
 ```
 
 It covers adversarial comm syntax, start-time precision, signed devices, malformed
@@ -112,7 +114,23 @@ its own tagged Node child, launched by a checked-in Python private-PTY helper.
 It checks caller-recorded spawn values, direct parent, exact argv, UID, executable,
 start identity and stdin/stdout/controlling-device equality. It sends only the
 fixture's shutdown command and signals only its own spawned children on failure.
-It retains a provider-only report after verified child exit.
+It retains a provider-only report after verified child exit. Stdout and stderr
+are each capped before append at 4096 bytes; overflow latches failure and later
+chunks are discarded without retention. The private child performs one bounded
+activity exchange before shutdown. The control crosses the kernel's actual
+eight-second tty timestamp bucket (at most 8.1 seconds idle within existing
+fixture ceilings), proving that ordinary traffic changes mtime while stable
+device identity and executable identity stay equal. The timestamp update policy
+is defined in [Linux tty_io.c](https://github.com/torvalds/linux/blob/master/drivers/tty/tty_io.c).
+
+On 2026-11-04 this control ran independently on the explicitly authorized Linux
+host in an isolated worktree: Ubuntu 26.04.1/kernel 7.0.0-31, Node 24.22.2 and
+Python 3.14.4. The original core/provider SHA-256 values matched the reported
+snapshot and passed 36 tests plus the idle self-test. The old timestamp-inclusive
+PTY projection failed the real activity comparison with an unchanged device and
+changed mtime. The corrected projection passed the same real activity control and
+40 deterministic tests with zero skips. This is provider evidence only; no App,
+desktop/GUI collection, clipboard or personal process enumeration was performed.
 
 The report explicitly marks App, desktop and Linux full owned collection as
 unqualified. This check is not an App/terminal smoke test, a collector receipt,

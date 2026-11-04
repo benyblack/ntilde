@@ -22,12 +22,14 @@ jobs:
         with:
           node-version: '22'
       - name: Synthetic strict-provider regressions
-        run: node --test scripts/terminfo/linux-process-provider.test.mjs
+        run: node --test scripts/terminfo/linux-process-provider.test.mjs scripts/terminfo/linux-process-selftest-output.test.mjs
       - name: Own tagged child and private PTY facts
         run: node scripts/terminfo/linux-process-selftest.mjs linux-provider-foundation.json
       - name: Retain explicitly limited provider result
         uses: actions/upload-artifact@v4
         with:
           name: linux-provider-foundation-only
-          path: linux-provider-foundation.json
+          path: |
+            linux-provider-foundation.json
+            linux-provider-foundation.json.activity.json
           if-no-files-found: error

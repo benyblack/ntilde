@@ -199,3 +199,32 @@ test('aggregate operation budget bounds a reader returning pathological tiny chu
     };
     assert.throws(() => records(reader), /budget/); assert.equal(reader.closed.length, 1);
 });
+
+
+test('legitimate PTY timestamps may change while stable device identity remains the same', () => {
+    const reader = synthetic(), linkStat = reader.linkStat, pathStat = reader.pathStat;
+    reader.linkStat = (handle, entry) => {
+        const value = linkStat(handle, entry);
+        return entry.startsWith('fd/') && reader.statReads >= 2 ? { ...value, mtimeNs: 999n, ctimeNs: 1000n } : value;
+    };
+    reader.pathStat = path => {
+        const value = pathStat(path);
+        return path.startsWith('/dev/pts/') && reader.statReads >= 2 ? { ...value, mtimeNs: 999n, ctimeNs: 1000n } : value;
+    };
+    const [result] = records(reader);
+    assert.deepEqual(Object.keys(result.pty.descriptors[0].device), ['dev', 'ino', 'rdev', 'uid', 'mode']);
+    assert.equal(result.executableFile.mtimeNs, '123');
+});
+
+test('regular executable timestamp changes still invalidate its source identity', () => {
+    const reader = synthetic(), linkStat = reader.linkStat, pathStat = reader.pathStat;
+    reader.linkStat = (handle, entry) => {
+        const value = linkStat(handle, entry);
+        return entry === 'exe' && reader.statReads >= 2 ? { ...value, mtimeNs: 999n } : value;
+    };
+    reader.pathStat = path => {
+        const value = pathStat(path);
+        return path === '/opt/worker' && reader.statReads >= 2 ? { ...value, mtimeNs: 999n } : value;
+    };
+    assert.throws(() => records(reader), /identity changed/);
+});
