@@ -808,6 +808,7 @@ namespace Ntilde.VT
             IsEchoEnabled = modes.IsEchoEnabled,
             ModifyOtherKeysMain = modes.ModifyOtherKeys.MainLevel,
             ModifyOtherKeysAlt = modes.ModifyOtherKeys.AltLevel,
+            AlternateScrollOverride = modes.AlternateScrollOverride,
         };
 
         private static void ImportModes(ModeState target, TerminalModeState source)
@@ -833,6 +834,8 @@ namespace Ntilde.VT
             target.IsInsertMode = source.IsInsertMode;
             target.IsLineFeedNewLineMode = source.IsLineFeedNewLineMode;
             target.IsEchoEnabled = source.IsEchoEnabled;
+            // The app's choice only; the importing host keeps its own default.
+            target.AlternateScrollOverride = source.AlternateScrollOverride;
         }
 
         // ── validation ───────────────────────────────────────────────────────────

@@ -159,6 +159,7 @@ These keys are read from `settings.json`. Some have palette commands.
 | `BellVisualEnabled` | `true` | Flash on bell. Palette: *Bell: Toggle Visual Flash*. |
 | `SmoothScrolling` | `true` | Animated wheel scrolling. Palette: *Scroll: Toggle Smooth*. |
 | `WheelLinesPerNotch` | `3` | Lines per wheel notch, up to 100. |
+| `AlternateScroll` | `true` | In full-screen programs without mouse support (`less`, `man`, `git log`), the wheel sends one Up or Down key per notch. A program can turn this on or off for itself (`CSI ? 1007 h/l`). Turn it off to keep the wheel inert there. |
 | `EnableLinkDetection` | `true` | Underline and open URLs found in the text ([Links](shortcuts.md#mouse)). |
 | `EnableKittyKeyboardProtocol` | `true` | Lets programs ask for the kitty keyboard protocol. Turn it off if a program's keys come out wrong. |
 | `AllowNativeKittyGraphics` | `true` | Kitty graphics protocol images ([Inline images](terminal.md#inline-images)). |

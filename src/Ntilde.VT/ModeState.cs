@@ -42,6 +42,29 @@ namespace Ntilde.VT
         public bool IsEchoEnabled { get; set; } = true;   // 12 - SRM (Send/Receive Mode)
 
         /// <summary>
+        /// ?1007 alternate scroll as the application last set it: <c>true</c> after DECSET,
+        /// <c>false</c> after DECRST, <c>null</c> while it has not touched the mode since RIS (or
+        /// ever). Null defers to <see cref="AlternateScrollDefault"/>. This half is stream state:
+        /// RIS clears it and state transfer carries it.
+        /// </summary>
+        public bool? AlternateScrollOverride { get; set; }
+
+        /// <summary>
+        /// The presenting host's initial ?1007 value (the App's <c>TerminalSettings.AlternateScroll</c>),
+        /// on by default as in iTerm2, kitty, WezTerm, Ghostty, Windows Terminal and VTE (xterm's
+        /// own <c>alternateScroll</c> resource defaults off). Host configuration, not stream state: RIS keeps it and
+        /// state transfer does not carry it, so each pane that mirrors a session applies its own.
+        /// </summary>
+        public bool AlternateScrollDefault { get; set; } = true;
+
+        /// <summary>
+        /// Effective ?1007: on the alternate screen with mouse reporting off, the wheel sends
+        /// cursor-up/down keys instead of scrolling the (absent) scrollback. The VT layer only
+        /// tracks and reports it; the App's wheel handler acts on it.
+        /// </summary>
+        public bool IsAlternateScroll => AlternateScrollOverride ?? AlternateScrollDefault;
+
+        /// <summary>
         /// Kitty keyboard protocol progressive-enhancement flags (CSI ? u / CSI &gt; u /
         /// CSI &lt; u / CSI = u). Per-screen-buffer flag stacks; the App input layer reads
         /// <see cref="KittyKeyboardState.DisambiguateEscapeCodes"/> when encoding key events.
@@ -121,6 +144,8 @@ namespace Ntilde.VT
                 IsInsertMode = this.IsInsertMode,
                 IsLineFeedNewLineMode = this.IsLineFeedNewLineMode,
                 IsEchoEnabled = this.IsEchoEnabled,
+                AlternateScrollOverride = this.AlternateScrollOverride,
+                AlternateScrollDefault = this.AlternateScrollDefault,
                 KittyKeyboard = this.KittyKeyboard.Clone(),
                 ModifyOtherKeys = this.ModifyOtherKeys.Clone()
             };

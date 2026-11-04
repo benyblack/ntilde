@@ -176,7 +176,8 @@ schemes are not opened.
 
 **Scrolling.** The wheel scrolls the scrollback, three lines per notch by default
 (`WheelLinesPerNotch`), animated when smooth scrolling is on. Under mouse reporting each notch goes to the
-program.
+program. In a full-screen program without mouse reporting (`less`, `man`, the `git log` pager), each notch
+sends one Up or Down key instead (`AlternateScroll`).
 
 **Right-click.**
 
