@@ -21,8 +21,18 @@ test('schema10 can complete a valid controlled semantic pixel failure while pres
     assert.equal(observation.reply.passed, true); assert.equal(observation.result, 'failed');
     f.write('image-observations.json', derived);
     writeFileSync(join(f.output, 'image-snapshots.jsonl'), derived.snapshots.map(value => JSON.stringify(value)).join('\n') + '\n');
+    Object.assign(f.evidence.staticImageEvidence, { sha256: pngHash(readFileSync(join(f.output, 'image-observations.json'))), counts: { passed: 18, failed: 1, inconclusive: 4 } });
+    const receipt = f.finish(); assert.equal(receipt.schemaVersion, 10);
+    assert.deepEqual(receipt.staticImageEvidence.counts, { passed: 18, failed: 1, inconclusive: 4 });
+    assert.equal(derived.caseResults.find(value => value.caseId === 'kitty.numbered-lifecycle').result, 'failed');
+    // A recomputed report/binding digest cannot promote invalid dependent stages.
+    rmSync(join(f.output, 'cell-receipt.json'));
+    for (const item of derived.observations.filter(value => value.result === 'inconclusive')) {
+        item.result = 'passed'; item.inconclusiveReason = null; item.causality = [];
+    }
+    f.write('image-observations.json', derived);
     Object.assign(f.evidence.staticImageEvidence, { sha256: pngHash(readFileSync(join(f.output, 'image-observations.json'))), counts: { passed: 22, failed: 1 } });
-    const receipt = f.finish(); assert.equal(receipt.schemaVersion, 10); assert.deepEqual(receipt.staticImageEvidence.counts, { passed: 22, failed: 1 });
+    assert.throws(f.finish, /Invalid or incomplete owned static-image evidence/);
 }));
 test('only a pre-fixture typed refusal can complete an explicitly unavailable image binding', () => fixture(f => {
     for (const file of ['image-inputs', 'image-pixels', 'image-observations.json']) rmSync(join(f.output, file), { recursive: true });

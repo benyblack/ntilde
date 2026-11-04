@@ -52,6 +52,15 @@ ownership/state/context, failed raw seals or restoration prevent completion.
 Once independent fixture controls pass, outside-envelope image bleed is a
 semantic failure. Completed collection does not mean every stage passed.
 
+Stage qualification also retains causal witness references. A clear/delete needs
+the preceding visible-image witness; redisplay and missing-image stages need the
+corresponding prior removal witness. A failed prerequisite makes dependent
+qualification inconclusive with its exact reason, while preserving the actual
+request, reply, PNGs and cleanup attempts. The first failure remains failed and
+the separate five-case summary remains negative; later blank pixels cannot turn
+an unestablished lifecycle into support. Storage attempts remain separately
+observed against the independent blank control.
+
 Each case records its deletion/clear outcome before independent RIS cleanup,
 then proves return to the bound blank state and original PNG. Final RIS must
 restore the original main-screen cells/modes and PNG before the raw reader is

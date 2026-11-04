@@ -13,6 +13,7 @@ test('synthetic31 paired frames and30 admissions rederive23 separate reply/pixel
     const report = derive(output, f);
     assert.equal(imagePlan.length, 30); assert.equal(report.snapshots.length, 31); assert.equal(report.observations.length, 23);
     assert.equal(report.inputs.length, 7); assert.ok(report.observations.every(item => item.result === 'passed'));
+    assert.equal(report.caseResults.length, 5); assert.ok(report.caseResults.every(item => item.result === 'passed'));
     assert.match(report.scope, /No animation, placeholders/);
 }));
 for (const [name, mutate] of [
@@ -48,6 +49,21 @@ test('a successful ACK with absent pixels completes as semantic failure, not sup
         assert.equal(report.observations.length, 23);
     } finally { rmSync(output, { recursive: true, force: true }); }
 });
+for (const [caseId, absentStage, dependentStage] of [['sixel.native-raster', 'show', 'clear'], ['kitty.numbered-lifecycle', 'place', 'soft-delete']])
+    test(`disappearance qualification requires the actual prior visible witness: ${caseId}`, () => {
+        const output = mkdtempSync(join(tmpdir(), 'nt-image-causal-'));
+        try {
+            const f = syntheticImageJournal(output, { pixelOptions: entry => ({ blank: entry.caseId === caseId && entry.stageId === absentStage }) });
+            const report = derive(output, f);
+            assert.equal(report.observations.find(value => value.featureId === caseId + '.' + absentStage).result, 'failed');
+            const dependent = report.observations.find(value => value.featureId === caseId + '.' + dependentStage);
+            assert.equal(dependent.result, 'inconclusive'); assert.equal(dependent.skipReason, null);
+            assert.match(dependent.inconclusiveReason, /requires passed prior witness/);
+            assert.ok(dependent.causality.some(value => value.featureId === caseId + '.' + absentStage && value.result === 'failed'));
+            assert.equal(report.caseResults.find(value => value.caseId === caseId).result, 'failed');
+            assert.equal(f.actions[dependent.actionIndex].commandHex.includes(Buffer.from('a=d').toString('hex')), caseId.startsWith('kitty.'));
+        } finally { rmSync(output, { recursive: true, force: true }); }
+    });
 test('image bleed is a semantic failure after the independently blank fixture is established', () => {
     const output = mkdtempSync(join(tmpdir(), 'nt-image-bleed-'));
     try {

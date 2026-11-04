@@ -56,6 +56,13 @@ function imageReplyStatus(stage, status, reused) {
     if (stage.reply === 'missing') return /^ENOENT(?::|$)/.test(status);
     return stage.reply !== null && status === 'OK' && !reused;
 }
+function imageWitnessStages(item, stage) {
+    const index = item.stages.findIndex(value => value.id === stage.id);
+    if (index === 0) return [];
+    if (stage.id.startsWith('store')) return ['blank'];
+    if (item.id === 'kitty.number-reuse' && stage.id === 'place-newest') return ['blank', 'store-first', 'store-second'];
+    return [...new Set(['blank', item.stages[index - 1].id])];
+}
 export function imageAction(entry, state, runId) {
     if (entry.kind === 'bind' || entry.kind === 'restore') return { command: imageSetup(runId), skipReason: null };
     if (entry.kind === 'finish') return { command: imageRestore, skipReason: null };
@@ -120,7 +127,8 @@ export function buildStaticImageReport(frames, actions, seal, runId, output, pri
         scope: 'Five bounded static image cases; independently captured raw replies, paired original offscreen PNGs and complete cells/modes. No animation, placeholders, live desktop timing, native input, other-platform runtime or stock-grade claim.',
         inputs: imageInputs().map(({ bytes, ...value }) => ({ ...value, byteCount: bytes.length })), priorChallenges,
         queriedPrivateModes: [5, 66, 9, 1000, 1002, 1003, 1006], kittyKeyboardFlags: 0, backgroundControls: builder.backgrounds,
-        initialSnapshot: 0, restoredSnapshot: 30, snapshots: frames, actions, seal, observations: builder.observations };
+        initialSnapshot: 0, restoredSnapshot: 30, snapshots: frames, actions, seal,
+        caseResults: builder.caseResults(), observations: builder.observations };
 }
 class StaticImageReport {
     constructor(frames, actions, runId, output, priorChallenges) {
@@ -194,10 +202,33 @@ class StaticImageReport {
             sourceId: stage.appearance === 'reversed' ? 'reversed' : item.sourceId, visible: stage.appearance !== 'absent' });
         checkImages(pixel.controls[0].passed);
         const assertions = [...pixel.assertions, pixel.controls[1]];
-        let result = reply.passed && assertions.every(value => value.passed) ? 'passed' : 'failed';
-        if (expected.skipReason) result = 'inconclusive';
-        this.observations.push({ featureId: item.id + '.' + stage.id, result,
+        const grade = this.gradeStage(item, stage, expected, reply, assertions);
+        this.observations.push({ featureId: item.id + '.' + stage.id, ...grade,
         snapshot: index, actionIndex: action.index, reply, assertions, measurement: pixel.measurement, skipReason: expected.skipReason });
+    }
+    gradeStage(item, stage, expected, reply, assertions) {
+        const causality = imageWitnessStages(item, stage).map(id => {
+            const featureId = item.id + '.' + id, witness = this.observations.find(value => value.featureId === featureId);
+            checkImages(witness);
+            return { featureId, snapshot: witness.snapshot, result: witness.result, passed: witness.result === 'passed' };
+        });
+        const missing = causality.filter(value => !value.passed);
+        let inconclusiveReason = expected.skipReason;
+        if (!inconclusiveReason && missing.length) inconclusiveReason = 'requires passed prior witness: '
+            + missing.map(value => value.featureId + ' (' + value.result + ')').join(', ');
+        let result = 'inconclusive';
+        if (!inconclusiveReason) result = reply.passed && assertions.every(value => value.passed) ? 'passed' : 'failed';
+        return { result, causality, inconclusiveReason };
+    }
+    caseResults() {
+        return staticImageCases.map(item => {
+            const stages = this.observations.filter(value => value.featureId.startsWith(item.id + '.'));
+            checkImages(stages.length === item.stages.length);
+            let result = 'passed';
+            if (stages.some(value => value.result === 'inconclusive')) result = 'inconclusive';
+            if (stages.some(value => value.result === 'failed')) result = 'failed';
+            return { caseId: item.id, result, stages: stages.map(value => value.featureId) };
+        });
     }
     processFrame(frame, index) {
         const entry = index ? imagePlan[index - 1] : { kind: 'start' };
