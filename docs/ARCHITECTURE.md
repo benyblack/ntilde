@@ -383,6 +383,20 @@ at its requested start while reconstructing earlier prefix events.
 
 ## 5. Renderer Primitives — `Ntilde.Rendering`
 
+Basic Kitty graphics data and placement identity belong to VT. A bounded per-screen
+asset registry owns opaque decoded handles; individual placements borrow them.
+Transmit-only (`a=t`) retains data without changing cursor/placements, `a=T`
+also places, and `a=p` reuses retained data. Uppercase `I` allocates fresh nonzero
+ids and newest-number lookup; lowercase `i` replaces that screen's matching asset.
+Quiet and correlated replies describe actual admission/lookup/decode results.
+Erasing a placement cannot retire a stored handle. Hard deletion, replacement,
+quota eviction, full clear/reset and state import retire each final owned handle
+through the existing snapshot-session gate. Limits are 128 assets, 512 placements
+and 64 MiB of live decoded pixel charge per screen; unused assets are evicted first.
+Kitty assets remain outside complete mux/replay snapshots, as before; import clears
+old resources. Animation, Unicode placeholders, extended crop/layout/delete actions
+and live owned image qualification remain separate from this basic lifecycle.
+
 SIXEL cursor advancement and clipping belong to VT and run without a bitmap decoder. `SixelGeometry`
 measures bounded raster extents for headless parsing; `TerminalBuffer` owns placement, scroll-region
 clipping and image retirement. The renderer applies the snapshot's clipping metadata without deciding

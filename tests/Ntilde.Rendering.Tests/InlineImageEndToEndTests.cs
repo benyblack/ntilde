@@ -80,7 +80,7 @@ public class InlineImageEndToEndTests
         string firstChunk = base64.Substring(0, base64.Length / 2);
         string secondChunk = base64.Substring(base64.Length / 2);
 
-        parser.Process("\x1b_Gf=100,m=1;" + firstChunk + "\x1b\\");
+        parser.Process("\x1b_Ga=T,f=100,m=1;" + firstChunk + "\x1b\\");
         Assert.Empty(buffer.Images); // m=1: accumulating, nothing finalized yet
 
         parser.Process("\x1b_Gm=0;" + secondChunk + "\x1b\\");
@@ -112,7 +112,7 @@ public class InlineImageEndToEndTests
         var parser = new AnsiParser(buffer, forceConPtyFiltering: true) { ImageDecoder = new SkiaImageDecoder() };
 
         string base64 = Convert.ToBase64String(EncodePng3x5());
-        parser.Process("\x1b]1339;Kitty:Gf=100,a=t,m=0;" + base64 + "\x07");
+        parser.Process("\x1b]1339;Kitty:Gf=100,a=T,m=0;" + base64 + "\x07");
 
         buffer.Lock.EnterReadLock();
         try

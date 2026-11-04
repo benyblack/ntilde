@@ -87,6 +87,7 @@ namespace Ntilde.VT
         /// </summary>
         private void RetireImage(TerminalImage image, bool disposeImmediately = false)
         {
+            if (image.KittyImageId.HasValue && IsRetainedKittyHandle(image.ImageHandle)) return;
             // A headless source handle has no renderer resources or in-flight bitmap users.
             if (image.ImageHandle is SixelSource source) { source.Dispose(); return; }
             (image.SixelSource ?? (image.ImageHandle as IDeferredSixelImage)?.Source)?.Retire();
@@ -172,6 +173,7 @@ namespace Ntilde.VT
                     RetireImage(img);
                 }
                 _images.Clear();
+                ClearRetainedKittyImages();
             }
             finally
             {
@@ -198,6 +200,7 @@ namespace Ntilde.VT
                     RetireImage(img);
                 }
                 _images.Clear(); // full clear: scrollback-anchored images lose their anchor too
+                ClearRetainedKittyImages();
                 ClearScreenInternal(resetCursor);
 
                 // Attribute reset belongs to the full-clear path only (RIS / explicit UI

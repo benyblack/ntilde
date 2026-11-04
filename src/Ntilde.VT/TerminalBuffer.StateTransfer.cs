@@ -219,6 +219,7 @@ namespace Ntilde.VT
                 }
 
                 _images.Clear();
+                ClearRetainedKittyImages();
                 ImportSixelState(snapshot);
 
                 // Derived, never carried: the packed style cache is rebuilt from the SGR fields

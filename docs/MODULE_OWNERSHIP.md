@@ -181,6 +181,17 @@ invariant changes.
   backpressure. App never writes overrides
   to theme files. Mux spawn
   and presentation metadata supply host defaults; only the authoritative parser replies.
+- **Kitty image assets own handles; placements borrow them.** VT separates transmit,
+  transmit/display and retained placement, including uint ids, terminal-allocated
+  image numbers, newest-number lookup and exact quiet/correlated responses. Each
+  screen retains at most 128 assets, 512 placements and 64 MiB of decoded pixel
+  charge; quota pressure evicts unused assets first. Soft deletion/ordinary erase
+  removes placements without retiring stored data. Hard deletion, replacement,
+  eviction, reset/full clear and snapshot import release the final asset ownership
+  through the snapshot-session gate, exactly once per handle. Complete mux/replay
+  state does not serialize Kitty assets; imported state clears old resources.
+  Basic lifecycle evidence does not qualify animation, Unicode placeholders or
+  extended crop/layout/delete actions.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
   decoder (mux, text clients and replay), advances the cursor without writing placeholder cells,
   and owns DECSDM state, page/scroll-region clipping and retirement. Clip metadata is copied into
