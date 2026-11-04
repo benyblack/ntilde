@@ -208,6 +208,23 @@ send duplicate text. PC navigation, modified keys and native NumLock policy are
 separate scopes. Deterministic routed-event tests prove encoder/transport calls,
 not delivery to a real child; owned end-to-end input evidence follows in #769.
 
+Legacy mouse reports contain octets outside UTF-8, even though their encoder uses
+six character values as an intermediate representation. App converts that legacy
+frame with Latin-1 and requires the optional `ITerminalByteInput` transport for
+high bytes; text-only peers can carry its ASCII subset. SGR reports keep their
+ASCII text route. The encoded prefix selects transport independently of later
+mode changes. Native SSH reports ordinary-queue admission only on native OK;
+closure/disposal refuses, while unexpected errors remain visible.
+PTY and SSH preserve byte input, copying retained caller memory
+and sharing ordinary input ordering/backpressure rather than the best-effort
+device-reply budget. Mux negotiates byte semantics in Hello/Welcome, preserves
+binary Input payloads and serializes them with text and parser replies in its
+existing bounded per-session writer. Admission means transport acceptance, not
+child acknowledgement; read-only checks remain authoritative on the daemon.
+A raw POSIX child independently verifies the high-coordinate legacy frame.
+This transport qualification does not establish native pointer delivery, Windows
+runtime behavior or genuine DECSET 9 X10 tracking; those remain in #769/#775.
+
 **Key invariants**
 - Alternate screen is fully isolated from main screen
 - Scrollback is immutable once flushed

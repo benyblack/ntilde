@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Ntilde.Pty
 {
-    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink
+    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink, ITerminalByteInput
     {
         public Guid Id { get; } = Guid.NewGuid();
         private readonly PtySafeHandle _handle;
@@ -1315,16 +1315,27 @@ namespace Ntilde.Pty
         public void SendInput(string input)
         {
             if (_handle.IsClosed || _handle.IsInvalid) return;
+            EnqueueInput(Encoding.UTF8.GetBytes(input));
+        }
 
-            byte[] data = Encoding.UTF8.GetBytes(input);
+        public bool SupportsByteInput => true;
+
+        public bool TrySendInputBytes(ReadOnlyMemory<byte> input)
+        {
+            if (_handle.IsClosed || _handle.IsInvalid || input.IsEmpty) return false;
+            return EnqueueInput(input.ToArray());
+        }
+
+        private bool EnqueueInput(byte[] data)
+        {
             try
             {
-                // Queue for the dedicated writer thread — never write on the caller
-                // thread; see _inputQueue. Ordering is preserved (single consumer).
+                // Both forms share the dedicated writer and its existing user-input backpressure.
                 _inputQueue.Add(data, _cts.Token);
+                return true;
             }
-            catch (OperationCanceledException) { /* session disposing — drop the write */ }
-            catch (InvalidOperationException) { /* adding completed — session closing */ }
+            catch (OperationCanceledException) { return false; }
+            catch (InvalidOperationException) { return false; }
         }
 
         public bool TrySendDeviceReply(string response)

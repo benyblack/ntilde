@@ -105,6 +105,7 @@ public sealed class MuxClient : IDisposable
     /// <summary>Null for an older daemon which does not accept a client retention policy.</summary>
     public MuxHistoryLimits? HistoryLimits { get; private set; }
     public bool SupportsPresentationOnly { get; private set; }
+    public bool SupportsByteInput { get; private set; }
 
     public bool IsConnected => Volatile.Read(ref _disconnected) == 0;
     public string? DisconnectReason => Volatile.Read(ref _disconnectReason);
@@ -137,7 +138,7 @@ public sealed class MuxClient : IDisposable
         {
             WelcomeResult welcome = await client.RequestAsync(
                 MuxMethods.Hello,
-                new HelloParams { MinVersion = options.MinProtocolVersion, MaxVersion = options.MaxProtocolVersion, ClientKind = options.ClientKind, ClientInstanceId = options.ClientInstanceId },
+                new HelloParams { MinVersion = options.MinProtocolVersion, MaxVersion = options.MaxProtocolVersion, ClientKind = options.ClientKind, ClientInstanceId = options.ClientInstanceId, ByteInput = true },
                 MuxJsonContext.Default.HelloParams,
                 MuxJsonContext.Default.WelcomeResult,
                 cancellationToken).ConfigureAwait(false);
@@ -153,6 +154,7 @@ public sealed class MuxClient : IDisposable
                 throw new MuxProtocolException(MuxErrorCodes.ProtocolError, "Invalid history limits in Welcome.");
             client.HistoryLimits = welcome.HistoryLimits;
             client.SupportsPresentationOnly = welcome.SupportsPresentationOnly;
+            client.SupportsByteInput = welcome.SupportsByteInput;
             client.ServerVersion = welcome.ServerVersion;
             return client;
         }
@@ -353,6 +355,12 @@ public sealed class MuxClient : IDisposable
         Post(MuxFrames.Request(new MuxRequest { Id = 0, Method = method, Params = MuxFrames.ToElement(parameters, typeInfo) }));
 
     internal void SendInput(Guid sessionId, string text) => Post(MuxFrames.Input(sessionId, Encoding.UTF8.GetBytes(text)));
+
+    internal bool TrySendInputBytes(Guid sessionId, ReadOnlyMemory<byte> input)
+    {
+        if (!SupportsByteInput || input.IsEmpty) return false;
+        return Send(MuxFrames.Input(sessionId, input.Span));
+    }
 
     /// <summary>
     /// Input for a session this client has not opened or attached (Phase 5: the agent host's windowless sessions): the
