@@ -190,11 +190,51 @@ public sealed class MainWindowClipboardFixtureTests : IClassFixture<TestAppDataR
     }
 
     [AvaloniaFact]
+    public async Task Cancelled_queued_restore_cannot_later_restore_storage_or_cancel_the_armed_write()
+    {
+        var (window, pane, _) = Create();
+        var begun = await Call(window, pane, "begin"); Assert.NotNull(begun);
+        await Call(window, pane, "seed", begun.FixtureId, Nonce);
+        await Call(window, pane, "armWrite", begun.FixtureId, Nonce);
+        using var cancelled = new CancellationTokenSource();
+        using var enqueued = new ManualResetEventSlim();
+        var queued = Task.Run(() =>
+        {
+            var pending = Call(window, pane, "restore", begun.FixtureId, token: cancelled.Token);
+            enqueued.Set();
+            return pending;
+        });
+        Assert.True(enqueued.Wait(TimeSpan.FromSeconds(5)), "The worker must enqueue before cancellation.");
+        cancelled.Cancel();
+        Dispatcher.UIThread.RunJobs();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => queued);
+        Dispatcher.UIThread.RunJobs();
+        // A delayed restore would cancel this arm and turn this exact write into an abort.
+        pane.Parser!.Process("\u001b]52;c;" + Convert.ToBase64String(Encoding.ASCII.GetBytes(Nonce)) + "\a");
+        var observed = await Call(window, pane, "read", begun.FixtureId);
+        Assert.Equal(Nonce, observed?.Value);
+        Assert.Equal(1, observed?.AcceptedWrites);
+        Assert.False(observed?.Restored);
+        Assert.Equal(0, pane.ClipboardWriteAttemptsForTest);
+    }
+
+    [AvaloniaFact]
     public async Task Cancelled_queued_begin_never_binds_later()
     {
         var (window, pane, mode) = Create();
-        using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Call(window, pane, "begin", token: cancelled.Token));
+        using var cancelled = new CancellationTokenSource();
+        using var enqueued = new ManualResetEventSlim();
+        var queued = Task.Run(() =>
+        {
+            var pending = Call(window, pane, "begin", token: cancelled.Token);
+            enqueued.Set();
+            return pending;
+        });
+        Assert.True(enqueued.Wait(TimeSpan.FromSeconds(5)), "The worker must enqueue before cancellation.");
+        Assert.Null(mode.For(pane));
+        cancelled.Cancel();
+        Dispatcher.UIThread.RunJobs();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => queued);
         Dispatcher.UIThread.RunJobs();
         Assert.Null(mode.For(pane));
     }
