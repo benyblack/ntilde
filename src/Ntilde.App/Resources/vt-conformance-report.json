@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "ecb2844b19f72ce43de391917636550007d107a4fca29c37bef3f324e4301fe3",
+  "matrixSha256": "9b86d1d906eee3e2bec325d9ae698333e0ce1aa6d7ac0e3903db023e6e078a9e",
   "summary": {
     "totalRows": 86,
     "supportedCount": 43,
@@ -800,12 +800,16 @@
       "feature": "RIS screen reset",
       "status": "\u26A0 Partial",
       "specOrNotes": "Return to main; clear both retained screen banks, history and row metadata with default pens/colors; reset saved banks and pending wrap",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyImageLifecycleTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyImageLifecycleTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/FullResetScreenTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs\u0060; Live: \u0060docs/qa/terminfo/2026-11-04-reset-observations.md\u0060",
       "evidenceKinds": [
         "replay",
         "unit"
       ],
       "evidenceLinks": [
+        {
+          "path": "docs/qa/terminfo/2026-11-04-reset-observations.md",
+          "exists": true
+        },
         {
           "path": "tests/Ntilde.Mux.Tests/Headless/HeadlessSoftResetTests.cs",
           "exists": true
@@ -826,7 +830,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BReplay",
-      "knownDeviations": "Four initial-state controls reproduce the old main/alternate clearing defect. Inherited autowrap on/off converges to the existing wrap-on policy. Both-screen image retirement remains snapshot-pinned. This is owning state/transport coverage; a fresh disposable-App reset receipt and broad legacy device hints remain unqualified. Published RIS negatives stay frozen. See \u0060docs/qa/terminfo/reset-observations.md\u0060.",
+      "knownDeviations": "Four initial-state controls reproduce the old main/alternate clearing defect. Inherited autowrap on/off converges to the existing wrap-on policy. Both-screen image retirement remains snapshot-pinned. Owning state/transport coverage and the fresh 40x140 disposable-App case verify both banks/default witnesses with completed source/cleanup evidence; broad power-on state and legacy device hints remain unqualified. Published RIS negatives stay frozen. See \u0060docs/qa/terminfo/reset-observations.md\u0060.",
       "sourceLine": 118
     },
     {
