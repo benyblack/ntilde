@@ -18,8 +18,12 @@ client accepts exactly one complete, correlated EOF-terminated frame, at most
 4096 bytes, within a caller-supplied 1–4000 ms deadline. This catches a duplicate
 frame arriving in a later chunk, invalid UTF-8, truncation and missing EOF.
 Timeout/disconnect remains indeterminate and must never trigger a replay. This
-transport has synthetic Unix-socket coverage locally; actual App transport and
-Windows named-pipe half-close behavior remain integration work.
+transport has synthetic Unix-socket coverage locally. Windows CI demonstrated
+that the half-close/EOF exchange cannot be reused for its named pipes: the peer
+received no complete request. Windows now refuses before creating any connection.
+Its CI lane runs the controller/source controls and explicit transport refusal,
+while the 13 Unix socket cases are explicitly skipped there. Actual App transport
+and a separately designed Windows exchange remain integration work.
 
 `PrivateClipboardController` requires an injected `rpc(request, timeout)` and
 `verifyBinding(timeout)` plus remaining-budget function. Verification must prove
@@ -35,7 +39,7 @@ The three exact IDs are accepted once in their pinned tail order:
 do not consume the one process fixture. It restores and independently reads the
 fixed seed, then supplies a callback-lifetime fixture with `beforeOsc52Write`,
 `readText`, and `writeText`. Each call must be awaited; overlapping, stale or
-fire-and-forget fixture calls fail closed. Each control returns a thenable that
+fire-and-forget fixture calls fail closed. Each control returns a Promise subclass that
 records consumption by promise assimilation separately from its settlement.
 This detects ignored controls even when unrelated asynchronous work lets them
 settle first; it does not attest JavaScript syntax. The pinned collector source

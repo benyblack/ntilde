@@ -6,6 +6,21 @@ export const PRIVATE_CLIPBOARD_PROBES = Object.freeze([
 ]);
 const hash = value => createHash('sha256').update(value, 'utf8').digest('hex');
 
+class ClipboardControlPromise extends Promise {
+    #consume;
+    constructor(promise, consume) {
+        super((resolve, reject) => promise.then(resolve, reject));
+        this.#consume = consume;
+        // Handling an ignored rejection internally is not caller consumption.
+        Promise.prototype.then.call(this, undefined, () => {});
+    }
+    static get [Symbol.species]() { return Promise; }
+    then(onFulfilled, onRejected) {
+        this.#consume();
+        return super.then(onFulfilled, onRejected);
+    }
+}
+
 /** Prototype only: caller-supplied binding verification must independently prove process/PTY/source identity.
  * Its stable digest is an equality witness, never proof supplied by this helper or by App results.
  */
@@ -161,10 +176,7 @@ export class PrivateClipboardController {
             // Track consumption independently of settlement; ignored controls can settle
             // while the callback awaits unrelated work. Keep their errors handled here.
             control.promise.catch(() => {});
-            return Object.freeze({ then(onFulfilled, onRejected) {
-                control.consumed = true;
-                return control.promise.then(onFulfilled, onRejected);
-            } });
+            return new ClipboardControlPromise(control.promise, () => { control.consumed = true; });
         };
         const fixture = Object.freeze({ beforeOsc52Write: value => invoke(() => this.#beforeWrite(value)),
             readText: () => invoke(() => this.#readText()), writeText: value => invoke(() => this.#writeText(value)) });

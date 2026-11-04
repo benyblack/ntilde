@@ -42,6 +42,7 @@ export function validatePrivateClipboardResult(value, request) {
 /** One request, one EOF-terminated response. Timeout/disconnect is indeterminate; never retry. */
 export function privateClipboardRequest(endpoint, request, timeoutMs) {
     validatePrivateClipboardRequest(request);
+    if (process.platform === 'win32') throw new Error('Private clipboard EOF transport requires Unix sockets; Windows integration is unavailable.');
     if (typeof endpoint !== 'string' || endpoint.length < 1 || endpoint.length > 1024
         || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 4000) throw new Error('Invalid private clipboard transport.');
     const params = structuredClone(request);

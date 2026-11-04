@@ -12,10 +12,19 @@ const result = { fixtureId: '22222222-2222-2222-2222-222222222222', state: 'acti
     acceptedWrites: 0, restored: false, complete: false };
 const frame = JSON.stringify({ v: 1, id: 1, result }) + '\n';
 const windowsEndpoint = suffix => String.raw`\\.\pipe\nt-clip-${suffix}`;
+const unixTransport = { skip: process.platform === 'win32' ? 'Unix EOF transport; Windows refuses before connecting.' : false };
 
 test('synthetic Windows endpoint has the exact named-pipe prefix and no controls', () => {
     assert.equal(windowsEndpoint('test'), '\\\\.\\pipe\\nt-clip-test');
     assert.ok(!/[\x00-\x1f]/.test(windowsEndpoint('test')));
+});
+
+test('Windows transport refuses before creating a connection', () => {
+    if (process.platform === 'win32') {
+        assert.throws(() => privateClipboardRequest(windowsEndpoint('unsupported'), request, 1000), /requires Unix sockets/);
+    } else {
+        assert.throws(() => privateClipboardRequest('', request, 1000), /Invalid private clipboard transport/);
+    }
 });
 
 async function fixture(respond, work) {
@@ -34,7 +43,7 @@ async function fixture(respond, work) {
     return calls;
 }
 
-test('one bounded request half-closes and accepts only a correlated complete frame', async () => {
+test('one bounded request half-closes and accepts only a correlated complete frame', unixTransport, async () => {
     const calls = await fixture((socket, message) => {
         assert.deepEqual(message, { v: 1, id: 1, method: 'clipboardFixture', params: request });
         socket.end(frame);
@@ -49,18 +58,18 @@ for (const [name, bytes] of [
     ['truncated', frame.slice(0, -1)], ['oversized', 'x'.repeat(4097)], ['malformed', '{\n'],
     ['unknown data', JSON.stringify({ v: 1, id: 1, result: { ...result, value: 'personal text must not escape' } }) + '\n'],
     ['invalid UTF8', Buffer.from([0xff, 10])], ['disconnect', ''],
-]) test(name + ' cannot produce a result or retry', async () => {
+]) test(name + ' cannot produce a result or retry', unixTransport, async () => {
     assert.equal(await fixture(socket => socket.end(bytes), async endpoint => {
         await assert.rejects(privateClipboardRequest(endpoint, request, 1000));
     }), 1);
 });
 
-test('a response is not accepted until EOF, catching duplicate frames in a later chunk', async () => {
+test('a response is not accepted until EOF, catching duplicate frames in a later chunk', unixTransport, async () => {
     assert.equal(await fixture(socket => { socket.write(frame); setImmediate(() => socket.end(frame)); },
         endpoint => assert.rejects(privateClipboardRequest(endpoint, request, 1000))), 1);
 });
 
-test('no EOF times out once, without retry or late result', async () => {
+test('no EOF times out once, without retry or late result', unixTransport, async () => {
     assert.equal(await fixture(socket => socket.write(frame),
         endpoint => assert.rejects(privateClipboardRequest(endpoint, request, 25), /timed out/)), 1);
 });
