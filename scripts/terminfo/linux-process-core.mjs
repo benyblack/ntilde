@@ -127,6 +127,33 @@ function ptySnapshot(reader, handle, process, uid, query) {
     return { selectedFd: 1, descriptors };
 }
 
+/** Internal syscall seam used by the fixed-root reader; retain entry read/deadline and close failures. */
+export function readLinuxEntry(io, path, limit, query) {
+    let fd, result, primaryFailure, closeFailure;
+    try {
+        query(() => { fd = io.open(path); });
+        const buffer = Buffer.alloc(limit + 1);
+        let used = 0;
+        while (used < buffer.length) {
+            const count = query(() => io.read(fd, buffer, used, buffer.length - used, null));
+            if (count === 0) break;
+            used += count;
+        }
+        if (used > limit) throw new Error('Oversized Linux proc entry.');
+        result = buffer.subarray(0, used);
+    } catch (error) {
+        primaryFailure = { error };
+    } finally {
+        if (fd !== undefined) {
+            try { io.close(fd); } catch (error) { closeFailure = { error }; }
+        }
+    }
+    const failures = [...(primaryFailure ? [primaryFailure.error] : []), ...(closeFailure ? [closeFailure.error] : [])];
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1) throw new AggregateError(failures, 'Linux proc entry read or cleanup failed.');
+    return result;
+}
+
 function closeLinuxHandles(reader, opened) {
     const failures = [];
     for (const value of opened.toReversed()) {

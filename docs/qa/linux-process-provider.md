@@ -32,7 +32,8 @@ stat/status/cmdline sizes and at most two explicit processes. Every read/open is
 checked before and after, including bounded read loops. All opened proc/file
 handles close in `finally`, even after deadline, reuse or later-open failure.
 Primary query/identity refusals and every cleanup failure are retained together
-in AggregateError; a close failure cannot erase the reason for refusal.
+in AggregateError, including the nested proc-entry read/deadline and file-close
+path; a close failure cannot erase the reason for refusal.
 Synchronous syscalls cannot be interrupted by this deadline: the provider detects
 an overrun after the kernel returns. This is bounded query accounting, not a hard
 preemptive timeout or protection against a malicious kernel/filesystem.
@@ -143,7 +144,7 @@ Python 3.14.4. The original core/provider SHA-256 values matched the reported
 snapshot and passed 36 tests plus the idle self-test. The old timestamp-inclusive
 PTY projection failed the real activity comparison with an unchanged device and
 changed mtime. The corrected projection passed the same real activity control and
-47 Node tests plus four deterministic Python signal-race tests with zero skips
+49 Node tests plus four deterministic Python signal-race tests with zero skips
 after review fixes. A separate real
 interruption control sends SIGTERM only to its spawned helper while the tagged
 PTY child deliberately resists SIGTERM. The helper converts termination into

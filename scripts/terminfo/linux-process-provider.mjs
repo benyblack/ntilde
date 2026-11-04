@@ -1,5 +1,5 @@
 import { constants, openSync, closeSync, readSync, fstatSync, readlinkSync, statSync, lstatSync, realpathSync, statfsSync } from 'node:fs';
-import { readLinuxRecords, assertLinuxOwnedChild } from './linux-process-core.mjs';
+import { readLinuxRecords, assertLinuxOwnedChild, readLinuxEntry } from './linux-process-core.mjs';
 
 /** Fixed procfs only. No environment variable, CLI flag or public alternate-root/test-reader option. */
 function reader() {
@@ -22,19 +22,8 @@ function reader() {
         pathStat: path => lstatSync(path, { bigint: true }),
         canonical: path => realpathSync(path),
         read(handle, name, limit, query) {
-            let fd;
-            try {
-                query(() => { fd = openSync(entry(handle, name), constants.O_RDONLY); });
-                const buffer = Buffer.alloc(limit + 1);
-                let used = 0;
-                while (used < buffer.length) {
-                    const count = query(() => readSync(fd, buffer, used, buffer.length - used, null));
-                    if (count === 0) break;
-                    used += count;
-                }
-                if (used > limit) throw new Error('Oversized Linux proc entry.');
-                return buffer.subarray(0, used);
-            } finally { if (fd !== undefined) closeSync(fd); }
+            return readLinuxEntry({ open: path => openSync(path, constants.O_RDONLY), read: readSync, close: closeSync },
+                entry(handle, name), limit, query);
         },
     };
 }

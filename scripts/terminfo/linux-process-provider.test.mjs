@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLinuxStat, parseLinuxStatus, parseLinuxArgv, linuxControllingDevice,
-    readLinuxRecords, assertLinuxOwnedChild, linuxFileIdentity } from './linux-process-core.mjs';
+    readLinuxRecords, assertLinuxOwnedChild, linuxFileIdentity, readLinuxEntry } from './linux-process-core.mjs';
 import { readLinuxProcessFacts } from './linux-process-provider.mjs';
 
 const start = '9007199254740993';
@@ -287,3 +287,24 @@ test('primary query refusal and every close failure are retained together after 
     });
     assert.equal(reader.closed.length, 2);
 });
+
+
+for (const kind of ['read failure', 'deadline failure']) {
+    test('nested proc-entry ' + kind + ' and close failure survive outer directory cleanup', () => {
+        const reader = synthetic(), primary = new Error('entry read failed'), close = new Error('entry close failed');
+        const closedEntries = [];
+        const io = {
+            open: () => { if (kind === 'deadline failure') reader.time = 1000000000n; return 99; },
+            read: () => { throw primary; },
+            close: fd => { closedEntries.push(fd); throw close; },
+        };
+        reader.read = (_handle, name, limit, query) => readLinuxEntry(io, 'fixed-entry:' + name, limit, query);
+        assert.throws(() => records(reader), error => {
+            assert.ok(error instanceof AggregateError); assert.equal(error.errors[1], close);
+            if (kind === 'read failure') assert.equal(error.errors[0], primary);
+            else assert.match(error.errors[0].message, /deadline/);
+            return true;
+        });
+        assert.deepEqual(closedEntries, [99]); assert.equal(reader.closed.length, 1);
+    });
+}
