@@ -388,8 +388,7 @@ namespace Ntilde.VT
 
         public void Reset()
         {
-            // Full Reset (RIS)
-            Clear(true);
+            // Full Reset (RIS): screen selection, pen reset and clearing are one write cut.
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
@@ -428,6 +427,15 @@ namespace Ntilde.VT
 
                 ImportRuntimeColors(null);
 
+                // Clear after returning to main and resetting the pen. Clearing only the
+                // formerly active alternate screen left main text visible; using the old
+                // pen also left explicit colors on otherwise blank cells.
+                Clear(true);
+                // Main is active now; a width resize can leave _mainScreen stale.
+                foreach (var row in _viewport) row.IsWrapped = false;
+                ResetAlternateScreenRowsNoLock();
+                if (_textSizingBlocks != null) PruneTextSizingStorage();
+
                 // Kitty keyboard protocol: RIS clears both per-screen flag stacks so the
                 // terminal comes back up in legacy key encoding.
                 Modes.KittyKeyboard.Reset();
@@ -439,6 +447,25 @@ namespace Ntilde.VT
                 ExitWriteLockIfNeeded(Lock, lockTaken);
             }
             Invalidate();
+        }
+
+        private void ResetAlternateScreenRowsNoLock()
+        {
+            _textSizingPruneRequired = true;
+            var blank = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
+            // The inactive array may still have its pre-resize shape. Clear every retained
+            // row in place; normal re-entry remains responsible for shape normalization.
+            foreach (var row in _altScreen)
+            {
+                row.IsWrapped = false;
+                row.WrittenColumns = 0;
+                Array.Fill(row.Cells, blank);
+                row.ClearExtendedText();
+                row.ClearHyperlinks();
+                row.ClearUnderlines();
+                row.ClearTextSizing();
+                row.TouchRevision();
+            }
         }
 
         public void UpdateThemeColors(TerminalTheme oldTheme)

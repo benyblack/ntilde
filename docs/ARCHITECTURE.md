@@ -184,6 +184,16 @@ bind all preceding suites, retained source/report hashes, parsed journal frames
 and verified cleanup;
 coherent reset negatives remain explicit for later fixes.
 
+RIS screen clearing is sequenced after the buffer has returned to main and reset
+its current/saved pens and runtime colors. The existing full-clear path owns
+history and image retirement; both retained screen banks then have blank default
+cells and no wrap/authored/side-table metadata. Alternate rows are reset in place,
+including detached arrays that still have an older shape. Sized-text retention is
+pruned only after both screens are clear. Owning state, image-pin, complete replay
+and mux reattach tests qualify this boundary; fresh owned runtime receipts remain
+separate, and historical reset negatives are not rewritten. See
+`docs/qa/terminfo/reset-observations.md` for the legacy Q13 audit.
+
 DECSC/DECRC and private modes 1048/1049 share per-screen saved cursor banks, including
 rendition, pending wrap, origin mode and character-set context. Mux state transfer
 and new replay snapshots copy those banks. DECSTR resets the active bank and soft
