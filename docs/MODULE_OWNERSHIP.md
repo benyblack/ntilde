@@ -303,6 +303,11 @@ invariant changes.
 - Future home of `SessionBufferBinder` and other session-orchestration helpers
 
 **Invariants**
+- Native port-forward publication and disposal's channel snapshot share the
+  registration gate. A local/dynamic id issued after teardown starts is refused
+  before publication and closed by its caller, including when a SOCKS refusal
+  write is canceled. A published id remains owned by normal removal/disposal;
+  no timeout increase or wait for a blocked native open is required.
 - **Generated OpenSSH launch configurations name content snapshots.** `OpenSshConfigCompiler` publishes
   UTF-8 bytes atomically to `ssh_config.generated.<SHA256>` and validates the actual bytes on reuse.
   Different snapshots never share a path across compiler instances/processes, so a returned launch

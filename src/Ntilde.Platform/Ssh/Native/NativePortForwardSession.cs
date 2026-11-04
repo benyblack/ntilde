@@ -327,6 +327,9 @@ public sealed class NativePortForwardSession : IDisposable
         bool added;
         lock (_registrationGate)
         {
+            // Dispose snapshots under this gate: an id is either published before
+            // that snapshot or refused here and closed by the opening caller.
+            if (Volatile.Read(ref _disposed) != 0) return false;
             PendingChannelEvents pending = _pendingByChannel.GetOrAdd(
                 channelId,
                 static _ => new PendingChannelEvents());
@@ -489,7 +492,9 @@ public sealed class NativePortForwardSession : IDisposable
             }
         }
 
-        foreach (int channelId in _channels.Keys.ToArray())
+        int[] channelIds;
+        lock (_registrationGate) channelIds = _channels.Keys.ToArray();
+        foreach (int channelId in channelIds)
         {
             RemoveChannel(channelId, closeInteropChannel: true);
         }
@@ -889,15 +894,15 @@ public sealed class NativePortForwardSession : IDisposable
 
             if (!published)
             {
-                // The reply first: CloseChannel can throw, and the client should hear the refusal either way.
-                await SendSocksReplyAsync(stream, SocksReplyGeneralFailure, cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    _interop.CloseChannel(_sessionHandle, channelId);
+                    // Try the refusal first, but cancellation/failure cannot orphan the issued id.
+                    await SendSocksReplyAsync(stream, SocksReplyGeneralFailure, cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
-                    await CloseAfterRefusalAsync(client, cancellationToken).ConfigureAwait(false);
+                    try { _interop.CloseChannel(_sessionHandle, channelId); }
+                    finally { await CloseAfterRefusalAsync(client, cancellationToken).ConfigureAwait(false); }
                 }
 
                 return;

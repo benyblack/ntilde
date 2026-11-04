@@ -106,6 +106,34 @@ public sealed class NativePortForwardSessionTests
         Assert.False(session.HasBoundListener(), $"The listener on 127.0.0.1:{listenPort} still holds its port after Dispose.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Disposal_inside_an_inflight_open_closes_the_unpublished_channel_and_socket(bool dynamic)
+    {
+        var interop = new FakeNativeSshInterop();
+        using var session = new NativePortForwardSession(
+            FakeHandle(12),
+            [dynamic ? CreateDynamicForward(0) : CreateForward(0, "svc.internal", 5432)],
+            interop);
+        // The id exists, but PublishChannel has not run. Dispose must win this exact
+        // schedule, without depending on the accept loop losing a timing race.
+        interop.OnOpenDirectTcpIp = _ => session.Dispose();
+        using TcpClient client = await ConnectLoopbackAsync(BoundPort(session));
+        NetworkStream stream = client.GetStream();
+        if (dynamic)
+        {
+            await SendSocksGreetingAsync(stream);
+            Assert.Equal(new byte[] { 5, 0 }, await ReadExactlyAsync(stream, 2, TimeSpan.FromSeconds(30)));
+            await SendSocksConnectRequestAsync(stream, "svc.internal", 5432);
+        }
+        await WaitUntilAsync(() => interop.ClosedChannelIds.Count == 1);
+        Assert.Equal(Assert.Single(interop.OpenedChannelIds), Assert.Single(interop.ClosedChannelIds));
+        Assert.False(session.HasBoundListener());
+        Assert.Equal(0, await stream.ReadAsync(new byte[1], TestContext.Current.CancellationToken)
+            .AsTask().WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task Constructor_WhenAnyBindFails_ThrowsDeterministicallyAndCleansUpEarlierListeners()
     {
