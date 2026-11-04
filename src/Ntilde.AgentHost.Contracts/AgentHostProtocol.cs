@@ -140,6 +140,9 @@ public static class AgentHostProtocol
         /// <summary>Permissioned App-window resize for a single visible direct local pane.</summary>
         public const string ResizePane = "resizePane";
 
+        /// <summary>Act-only private QA storage in an explicitly activated disposable process; never the native clipboard.</summary>
+        public const string ClipboardFixture = "clipboardFixture";
+
         /// <summary>
         /// A5: captures a pane as a PNG and returns its path (plus, on request, the
         /// image inline). Additive in protocol version 1. Observe tier, gated by the

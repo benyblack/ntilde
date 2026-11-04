@@ -22,6 +22,13 @@ namespace Ntilde.VT
         public bool IsApplicationCursorKeys { get; set; } // ?1 - DECCKM (Application Cursor Keys)
         public bool IsAutoWrapMode { get; set; } = true;  // ?7 - DECAWM (Auto Wrap Mode)
         public bool IsOriginMode { get; set; }            // ?6 - DECOM (Origin Mode)
+
+        /// <summary>
+        /// DECSCNM (?5): screen-wide reverse video. While set, the render snapshot presents the
+        /// theme's default foreground and background swapped (xterm semantics). Set it through
+        /// <see cref="TerminalBuffer.SetReverseVideo"/>, which also invalidates every rendered row.
+        /// </summary>
+        public bool IsReverseVideo { get; internal set; }
         public bool IsFocusEventReporting { get; set; }   // ?1004 - FocusIn/FocusOut reporting
         public bool IsClipboardPasteMode { get; set; }    // ?5522 - MIME paste notifications
         public bool IsBracketedPasteMode { get; set; }    // ?2004 - Bracketed Paste Mode
@@ -92,6 +99,7 @@ namespace Ntilde.VT
                 IsApplicationKeypad = this.IsApplicationKeypad,
                 IsAutoWrapMode = this.IsAutoWrapMode,
                 IsOriginMode = this.IsOriginMode,
+                IsReverseVideo = this.IsReverseVideo,
                 IsSixelDisplayMode = this.IsSixelDisplayMode,
                 IsFocusEventReporting = this.IsFocusEventReporting,
                 IsBracketedPasteMode = this.IsBracketedPasteMode,

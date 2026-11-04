@@ -211,6 +211,7 @@ namespace Ntilde.Controls
             // time so a live ApplySettings toggle takes effect immediately without needing
             // to re-wire the parser. Read (query) is handled entirely inside the parser via
             // an OnResponse denial reply and never reaches this handler.
+            var clipboardParser = Parser;
             Parser.OnClipboardWrite += (target, data) =>
             {
                 // Resolved through BuildEffectiveSettings rather than off raw _settings, matching
@@ -222,6 +223,7 @@ namespace Ntilde.Controls
                 // A null _settings means "not configured yet" and defaults to allow, consistent
                 // with TerminalSettings.AllowOsc52ClipboardWrite's own default.
                 bool allowed = _settings == null || BuildEffectiveSettings(_settings).AllowOsc52ClipboardWrite;
+                if (TryHandlePrivateClipboardWrite(clipboardParser, target, data, allowed)) return;
                 if (!allowed) return;
 
                 // Lossy by design: invalid UTF-8 in the payload becomes U+FFFD rather than being

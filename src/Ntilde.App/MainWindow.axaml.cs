@@ -669,7 +669,8 @@ namespace Ntilde
             try
             {
                 var topLevel = TopLevel.GetTopLevel(this);
-                if (topLevel?.Clipboard == null || _currentPane?.Session == null)
+                var clipboard = Ntilde.Shell.Clipboard.HostClipboardAccess.Get(topLevel);
+                if (clipboard == null || _currentPane?.Session == null)
                 {
                     return;
                 }
@@ -677,7 +678,6 @@ namespace Ntilde
                 var pastePane = _currentPane;
                 var pasteSession = pastePane.Session;
                 if (await pastePane.TryNotifyClipboardPasteAsync()) return;
-                var clipboard = topLevel.Clipboard;
                 var text = await clipboard.TryGetTextAsync();
                 if (!ReferenceEquals(pastePane.Session, pasteSession)) return;
                 if (!string.IsNullOrEmpty(text))

@@ -391,10 +391,11 @@ namespace Ntilde
         private async Task CopyTabTitleAsync(TabItem tab)
         {
             var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel?.Clipboard == null) return;
+            var clipboard = Ntilde.Shell.Clipboard.HostClipboardAccess.Get(topLevel);
+            if (clipboard == null) return;
 
             string title = GetTabPrimaryTitle(tab);
-            await topLevel.Clipboard.SetTextAsync(title);
+            await clipboard.SetTextAsync(title);
         }
 
         private async Task RenameSelectedTabAsync()

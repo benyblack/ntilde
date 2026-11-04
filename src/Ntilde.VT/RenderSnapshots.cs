@@ -61,6 +61,13 @@ namespace Ntilde.VT
         public PaletteOverrideMask PaletteOverrides { get; init; }
 
         /// <summary>
+        /// DECSCNM (?5) was set at capture. Informational: <see cref="Foreground"/>,
+        /// <see cref="Background"/>, <see cref="CursorColor"/> and <see cref="Source"/> are already the
+        /// presented (swapped) colors, so a renderer draws them as given and needs no mode logic.
+        /// </summary>
+        public bool IsReverseVideo { get; init; }
+
+        /// <summary>
         /// The theme these colors came from, for the colors the renderer derives from a whole theme
         /// (selection, search, cursor text). Null only in snapshots built by hand.
         /// </summary>

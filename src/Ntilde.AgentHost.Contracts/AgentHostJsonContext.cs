@@ -39,6 +39,8 @@ namespace Ntilde.AgentHost.Contracts;
 [JsonSerializable(typeof(SpawnSessionResult))]
 [JsonSerializable(typeof(CloseSessionParams))]
 [JsonSerializable(typeof(CloseSessionResult))]
+[JsonSerializable(typeof(ClipboardFixtureParams))]
+[JsonSerializable(typeof(ClipboardFixtureResult))]
 [JsonSerializable(typeof(GeneratePaneInputParams))]
 [JsonSerializable(typeof(GeneratePaneInputResult))]
 [JsonSerializable(typeof(ResizePaneParams))]
