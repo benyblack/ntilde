@@ -16,11 +16,15 @@ Built with:
 
 Supported platforms: **Windows · Linux · macOS**
 
-<img width="250" alt="3" src="https://github.com/user-attachments/assets/f871a580-9857-4546-98d0-0356b3176dc4" />
-<img width="250" alt="2" src="https://github.com/user-attachments/assets/82d9d37f-5370-446f-9a94-1e58a3665986" />
-<img width="250" alt="1" src="https://github.com/user-attachments/assets/a0c52576-73e5-4bce-a6df-69877b53032f" />
-<img width="250" alt="5" src="https://github.com/user-attachments/assets/ea279510-57af-4af5-9f84-ebff05a34364" />
-<img width="250" alt="4" src="https://github.com/user-attachments/assets/9354d0fb-54ff-4080-a81c-5b49fded6d53" />
+<p align="center">
+  <picture><source srcset="docs/assets/shots/hero-split-readme.webp" type="image/webp" /><img width="100%" alt="Ntilde on macOS with three panes: a test run, the NTILDE banner and Rust source on the left, a git graph top-right and a process table bottom-right, each under a powerline prompt" src="docs/assets/shots/hero-split-readme.png" /></picture>
+</p>
+<p align="center">
+  <img width="49%" alt="The command palette filtering pane commands, each with its keyboard shortcut" src="docs/assets/shots/command-palette-readme.png" />
+  <picture><source srcset="docs/assets/shots/tui-vim-readme.webp" type="image/webp" /><img width="49%" alt="Vim full-screen inside Ntilde, editing Rust with syntax colouring" src="docs/assets/shots/tui-vim-readme.png" /></picture>
+  <img width="49%" alt="A sixel chart rendered inline between two shell prompts" src="docs/assets/shots/sixel-graphics-readme.png" />
+  <picture><source srcset="docs/assets/shots/themes-grid-readme.webp" type="image/webp" /><img width="49%" alt="Five built-in themes rendering the same transcript" src="docs/assets/shots/themes-grid-readme.png" /></picture>
+</p>
 
 ---
 
@@ -42,6 +46,8 @@ Most terminal emulators optimize for speed or features. Ntilde focuses on someth
     An opt-in MCP server lets Claude Code and other agents observe your live terminal sessions --- and, behind a separate opt-in, drive them.
 -   🔁 **Persistent sessions**\
     Shells keep running when you close the window, reattach when you reopen, and SSH tabs survive network drops.
+
+<p align="center"><img width="80%" alt="An MCP agent typing into a live pane: the status bar lights 'agent typed' and the activity journal grows with each command" src="docs/assets/shots/clip-agent.gif" /></p>
 
 > **Terminal correctness is enforced by automated tests, not guesswork.**
 
@@ -236,6 +242,13 @@ For build steps, jump to [Build & test](#build--test) below.
 - Interface scale (Settings → Appearance → Window, 80%–200%): one zoom for the whole window,
   separate from the terminal font size, with terminal text rasterized sharp at the scale
 
+<p align="center">
+  <picture><source srcset="docs/assets/shots/tabs-vertical-readme.webp" type="image/webp" /><img width="80%" alt="The vertical tab sidebar: five named tabs, each with a live preview of its last line - powerline prompts, vim's status line, a process monitor - one carrying an agent-activity marker, and the selected build tab showing the banner and a test run" src="docs/assets/shots/tabs-vertical-readme.png" /></picture>
+</p>
+<p align="center">
+  <picture><source srcset="docs/assets/shots/settings-appearance-tab-readme.webp" type="image/webp" /><img width="80%" alt="The Settings window on its Appearance page: a sidebar of pages, the theme picker and a live preview in the selected theme" src="docs/assets/shots/settings-appearance-tab-readme.png" /></picture>
+</p>
+
 ### Command Assist
 
 Suggestions anchored to what the shell actually reports, rather than to a guess
@@ -285,6 +298,14 @@ the flip.
 - Disconnect state surfaced in the terminal pane
 - Runtime password memory (opt-in, session-scoped)
 - Native SFTP transfers and a pane-local remote-files sidebar
+
+<p align="center">
+  <picture><source srcset="docs/assets/shots/connection-manager-window-readme.webp" type="image/webp" /><img width="80%" alt="The Connection Manager: SSH profiles grouped and searchable, with the selected host's connection details and launch preview" src="docs/assets/shots/connection-manager-window-readme.png" /></picture>
+</p>
+<p align="center">
+  <picture><source srcset="docs/assets/shots/remote-files-readme.webp" type="image/webp" /><img width="49%" alt="A native SSH tab to dev@edge-01 with the remote files sidebar listing the remote home directory" src="docs/assets/shots/remote-files-readme.png" /></picture>
+  <picture><source srcset="docs/assets/shots/remote-files-transfers-readme.webp" type="image/webp" /><img width="49%" alt="The transfer centre over the SSH tab: a 1.8 GB download and a 1.4 GB upload part way through, beside a finished download" src="docs/assets/shots/remote-files-transfers-readme.png" /></picture>
+</p>
 
 ### Persistent sessions
 

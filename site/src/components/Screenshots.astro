@@ -6,12 +6,15 @@
 const basePrefix = (import.meta.env.BASE_URL ?? '/').endsWith('/')
   ? import.meta.env.BASE_URL
   : `${import.meta.env.BASE_URL}/`;
+// Every variant has a WebP sibling; one ships when it is named here and in SHOTS_FILES in
+// sync-screenshots.mjs, which mirrors docs/assets/shots/ into site/public/shots/. Keep the two
+// lists in step.
 const images = [
-  { src: `${basePrefix}screenshots/screen-1.png`, alt: 'Ntilde showing a multi-pane session with a code editor and a build pane' },
-  { src: `${basePrefix}screenshots/screen-2.png`, alt: 'Ntilde with the command palette open and a profile switcher' },
-  { src: `${basePrefix}screenshots/screen-3.png`, alt: 'A fullscreen TUI application running inside Ntilde' },
-  { src: `${basePrefix}screenshots/screen-4.png`, alt: 'Ntilde with the search overlay and tabs panel visible' },
-  { src: `${basePrefix}screenshots/screen-5.png`, alt: 'Ntilde showing inline graphics rendered in the terminal grid' },
+  { src: `${basePrefix}shots/hero-split-site.png`, webp: `${basePrefix}shots/hero-split-site.webp`, alt: 'Ntilde on macOS with three panes: a test run and Rust source on the left, a git graph top-right and a process table bottom-right' },
+  { src: `${basePrefix}shots/command-palette-site.png`, alt: 'The command palette open over a populated terminal, a query typed, and matching commands listed with their keyboard shortcuts' },
+  { src: `${basePrefix}shots/sixel-graphics-site.png`, alt: 'A sixel chart rendered inline in the terminal between two shell prompts' },
+  { src: `${basePrefix}shots/tui-vim-site.png`, webp: `${basePrefix}shots/tui-vim-site.webp`, alt: 'Vim running full-screen inside Ntilde, editing Rust source with syntax colouring and a status line' },
+  { src: `${basePrefix}shots/themes-grid-site.png`, alt: 'A grid of five built-in Ntilde themes rendering the same terminal transcript' },
 ];
 ---
 
@@ -50,13 +53,16 @@ const images = [
             }
             role="listitem"
           >
-            <img
-              src={img.src}
-              alt={img.alt}
-              loading="lazy"
-              decoding="async"
-              class="aspect-video w-full object-cover object-top transition duration-500 group-hover:scale-[1.02]"
-            />
+            <picture>
+              {img.webp && <source srcset={img.webp} type="image/webp" />}
+              <img
+                src={img.src}
+                alt={img.alt}
+                loading="lazy"
+                decoding="async"
+                class="aspect-video w-full object-cover object-top transition duration-500 group-hover:scale-[1.02]"
+              />
+            </picture>
             <figcaption
               class="pointer-events-none absolute inset-x-0 bottom-0
                 bg-gradient-to-t from-ink-950/95 via-ink-950/40 to-transparent

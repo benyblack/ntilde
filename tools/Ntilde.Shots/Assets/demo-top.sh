@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# A fabricated `top`-style snapshot, not the real thing. `ps aux` (what this replaced) prints
+# every byte from the real OS process table - the capture machine's real uid/gid, its real TTY
+# names, real PIDs, and this very harness's own bash/grep/head processes - which DemoWorld's PS1
+# and environment overrides cannot touch, because none of that text passes through them. This
+# script is plain printf: nothing it prints came from the real machine, so there is nothing here
+# for the demo environment to fail to mask.
+#
+# Row count (19 lines: 2 header + 17 process rows) is fixed so the command line, the table and the
+# next prompt all fit hero-split's 22-row bottom-right pane without scrolling. The 20-row table it
+# had before was tuned on Windows' font; with the bundled JetBrains Mono the pane is 22 rows and
+# that table scrolled it by two.
+printf '\033[90mtop - demo world uptime 4 days, 20 processes, load 0.42 0.38 0.31\033[0m\n'
+printf '\033[7m%-6s %-10s %5s %5s %-9s %-8s %s\033[0m\n' "PID" "USER" "%CPU" "%MEM" "STATE" "TIME" "COMMAND"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1042" "dev" "12.4" " 3.1" "running" "00:02:11" "ntilde-app"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1058" "dev" " 6.7" " 1.8" "running" "00:01:47" "vt-parser"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1061" "dev" " 4.2" " 2.4" "sleeping" "00:00:52" "skia-render"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1073" "dev" " 3.9" " 1.2" "sleeping" "00:00:38" "pty-bridge"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1176" "dev" " 3.5" " 2.0" "running" "00:00:34" "render-cache"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1183" "dev" " 3.1" " 1.7" "sleeping" "00:00:30" "journal-writer"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1088" "dev" " 2.1" " 0.9" "sleeping" "00:00:21" "agent-host"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1194" "dev" " 1.9" " 1.1" "sleeping" "00:00:19" "metrics-agg"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1096" "dev" " 1.6" " 0.8" "sleeping" "00:00:15" "sixel-decode"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1202" "dev" " 1.4" " 0.9" "sleeping" "00:00:13" "palette-cache"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1211" "dev" " 1.2" " 0.7" "running" "00:00:11" "pty-writer"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1219" "dev" " 1.0" " 0.6" "sleeping" "00:00:09" "session-sync"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1226" "dev" " 0.9" " 0.5" "sleeping" "00:00:08" "font-shaper"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1233" "dev" " 0.8" " 0.5" "sleeping" "00:00:07" "theme-loader"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1254" "dev" " 0.4" " 0.3" "sleeping" "00:00:04" "net-bridge"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1119" "dev" " 0.3" " 0.4" "sleeping" "00:00:04" "watchdog"
+printf '%-6s %-10s %5s %5s %-9s %-8s %s\n' "1140" "dev" " 0.1" " 0.2" "sleeping" "00:00:01" "bash"
