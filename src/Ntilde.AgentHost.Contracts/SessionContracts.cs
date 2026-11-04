@@ -270,6 +270,11 @@ public sealed record CaptureScreenParams
     [JsonPropertyName("includeRenderDetails")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool IncludeRenderDetails { get; init; }
+
+    /// <summary>Exact draw image/creation facts. Render mode only, with includeRenderDetails.
+    /// Default off; missing legacy provenance cannot qualify native SIXEL geometry.</summary>
+    [JsonPropertyName("includeImageDetails"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IncludeImageDetails { get; init; }
 }
 
 /// <summary>Result payload for <c>captureScreen</c> (A5).</summary>
@@ -341,6 +346,9 @@ public sealed record CaptureScreenResult
 
     [JsonPropertyName("renderDetails")]
     public CaptureRenderDetails? RenderDetails { get; init; }
+
+    [JsonPropertyName("imageDetails"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public CaptureImageDetails? ImageDetails { get; init; }
 }
 
 /// <summary>Params for <c>readScrollback</c> (ranged read, oldest line = 0).</summary>

@@ -130,7 +130,10 @@ invariant changes.
   attention/export and echoes the actual draw's selected range in metadata. Nullable theme
   selection values and stream override flags come from the same VT snapshot; App separately
   reports derived selection paint colors, which do not imply a concrete OSC query default.
-  See `docs/qa/terminfo/controlled-capture.md`.
+  Separate opt-in `imageDetails` v1 copies exact leased placement identities/cells/clips and
+  actual draw bitmap dimensions, capped at 512 with explicit incomplete overflow. Defaults and
+  `renderDetails` v1 stay unchanged; App observes existing behavior, never claims native-pixel
+  fidelity from metadata. See `docs/qa/terminfo/controlled-capture.md`.
 - **Owned QA controls its proved transport outside VT.** The adapter verifies the
   disposable worker's exact PTY before disabling output translation, obtains an
   independent parent-observed mode proof before cell observations, and restores
@@ -247,7 +250,11 @@ invariant changes.
   or widening. An immutable cell-size override is authoritative for shared sessions and travels
   in parser snapshots; bitmap handles remain host-owned and are not serialized. Page-origin frames
   retire fully covered prior SIXELs through the snapshot-session gate, without scanning history on
-  the ordinary scrolling path.
+  the ordinary scrolling path. New placements retain immutable BCL creation facts: final
+  reservation dimensions/origins and exact sanitized float32 denominators/origins, using the
+  same division-before-ceiling locals. Render snapshots copy those facts by value. Decoder
+  reports need not mean materialized pixels; generic/imported/legacy placements keep null
+  provenance. State/replay/mux formats do not grow or reconstruct historical metrics.
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
   Exception: `RuntimeForeground` and `RuntimeBackground` each read one immutable,
   volatile-published color frame without the buffer lock, so UI preference queries

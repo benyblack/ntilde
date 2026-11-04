@@ -8,6 +8,7 @@ synthetic selection is currently an AgentHost-only qualification input.
 | --- | --- |
 | `presentationTimeMs` | Integer synthetic time from 0 through 60,000 ms, starting with a visible blink phase. Omit it to keep the existing fixed-visible capture behavior. |
 | `includeRenderDetails` | Include the actual resolved primary font, pixel grid, palette, color overrides and presentation facts from the draw. Defaults to false. |
+| `includeImageDetails` | AgentHost only: include detached image placement, canvas and optional SIXEL creation facts from this draw. Requires `includeRenderDetails=true`; defaults to false. |
 | `syntheticSelection` | Optional `{startRow,startCol,endRow,endCol}` inclusive zero-based viewport span to paint in the offscreen image. It never changes the live selection. AgentHost only. |
 
 These controls require `mode: "render"`. A request combining any with `mode: "live"` is malformed; the endpoint does not silently replace a desktop photograph with a controlled render. Invalid inputs are refused before marking the pane as observed or writing a PNG. Valid captures retain the normal observe permission and indicator behavior. If the draw grid differs from the grid used to size the bitmap, captures return retryable `captureUnavailable`, including default captures without metadata. The lightweight grid facts do not require font fingerprinting or provenance allocation.
@@ -74,3 +75,74 @@ These additive color facts and synthetic-selection controls are used by the
 sources and selected/unselected PNGs; API metadata alone is not a measurement.
 
 The [owned pixel suite](owned-pixels.md) invokes this API in the disposable runner and retains its PNGs, complete state brackets and metadata. It does not change the frozen stock collector grades (78 supported, 0 unsupported, 177 inconclusive), historical reports or `suiteComplete: false`.
+
+## Opt-in image projection metadata
+
+Raw `captureScreen` can additionally request `includeImageDetails: true` with
+`mode: "render"` and `includeRenderDetails: true`. Missing render details or live
+mode is malformed before attention/export. The separate result `imageDetails`
+has schema version 1; existing `renderDetails` stays version 1 with its existing
+shape. Default requests/results omit the new flag/result and produce the same
+PNG. This adds no MCP tool, setting, acting permission or native input.
+
+`imageDetails` contains `complete`, `totalPlacements` and `placements` in the
+exact draw snapshot's order. At most 512 entries are returned. Overflow returns
+`complete: false`, the actual count and an empty array. A complete empty array
+means this draw had no active-viewport placement candidates; it says nothing
+about retained hidden assets, inactive screens or a remote session's images
+omitted from its imported viewport. Qualification callers must reject missing,
+incomplete or unknown-version metadata and resampled (`downscaled`) images.
+
+Each placement contains `index`, its current in-process `placementId`, `col`,
+`viewportRow`, `widthCells`, `heightCells`, `clipTopRows`, `clipBottomRows`,
+`clipRightColumns`, `preserveAspectRatio`, nullable `bitmapWidthPx`/
+`bitmapHeightPx`, and nullable `sixelPlacement`. The ID is copied from the same
+leased placement, not a process/ownership attestation, and may change on import.
+The bitmap dimensions describe the canvas actually submitted during this draw,
+not its colored/opaque bounds. Both are null if no bitmap was submitted. Metadata
+performs no extra decode, pixel scan or visible-bounds fitting. Cells, clipping,
+identity and creation facts come from the same immutable render snapshot; no
+later buffer lookup substitutes another placement. All coordinates use the
+original draw grid, before optional `maxWidth` resampling.
+
+For a newly parsed SIXEL placement, `sixelPlacement` contains:
+
+- `reservationWidthPx`/`reservationHeightPx`: final positive canvas dimensions
+  actually used for cell reservation, after the existing decoder-report clamp.
+  They are distinct from the source's declared raster or painted extent.
+- `dimensionOrigin`: `sixel-geometry` when supplied by the initial geometry
+  measurement, or `image-decoder` when a non-null decoder handle supplied its
+  reported dimensions. Deferred decoders may report measured dimensions before
+  materializing pixels; this field does not claim decoding already occurred.
+- `cellWidthPx`/`cellHeightPx`: exact sanitized float32 denominators selected at
+  creation, widened to double before JSON serialization to preserve their values.
+- `cellWidthOrigin`/`cellHeightOrigin`, independently: `sixel-override`,
+  `parser-metric`, or `default-fallback`. Values include the existing minimum-one
+  clamp and default 10/20 fallback; later DPI/parser changes do not replace them.
+- `arithmetic: "float32-ceiling-v1"`: reserve cells with ceiling after float32
+  division. In JavaScript, independently calculate
+  `Math.ceil(Math.fround(canvasDimension / recordedDenominator))`; using only
+  float64 division can choose a different cell at an integer boundary.
+
+Creation provenance is immutable BCL-only VT value data, copied into the leased
+render snapshot. Generic, directly constructed and imported/legacy placements
+have explicit null provenance. Existing state, replay and mux formats do not
+grow and cannot invent historical metrics on restore. Such native SIXEL geometry
+remains unknown/unqualified even when the image renders successfully.
+
+An independent oracle must first derive its expected canvas from its fixed raw
+source and pinned decoder policy, compare that with reservation and actual bitmap
+dimensions, recompute the reservation from creation-time denominators, and compare
+the resulting cells with the observed placement. It can then project its known
+source pixels through those cells using the recorded capture grid and clipping.
+For example, three six-pixel bands can produce an 18-row canvas despite only 16
+painted rows and a declared raster height of 16. A whole-cell render of that canvas
+need not paint 16 capture pixels. Current CSI 16 t or monitor scaling cannot
+substitute for these creation facts.
+
+These facts expose existing reservation/projection behavior; they do **not**
+promise native-pixel fidelity or change whole-cell stretching. A calibrated
+source-to-grid check may still find a real geometry defect. No renderer fix or
+runtime qualification is implied by this metadata API, and a completed owned
+experiment still requires independent process/PTY proof, fenced pixels and
+verified restoration/cleanup.

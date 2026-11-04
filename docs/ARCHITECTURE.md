@@ -473,6 +473,18 @@ fully covered SIXELs through the existing snapshot-session disposal gate. Record
 that override; legacy raw-only
 recordings still rely on the replay host's configured cell metrics.
 
+New SIXEL placements retain immutable BCL reservation provenance from the exact parser locals:
+final canvas dimensions and their measurement/decoder-report origin, plus sanitized float32
+cell denominators and per-axis origin. Division remains float32 before ceiling. These facts
+and the current placement identity are copied into the leased render snapshot; imported,
+legacy and generic placements keep null provenance, with no state/replay/mux format growth.
+App's separate opt-in `imageDetails` v1 combines those detached facts with actual draw bitmap
+dimensions and placement clipping. It returns at most 512 entries and explicit incomplete
+metadata on overflow, never silently truncated qualification. Existing `renderDetails` v1,
+default wire/PNG behavior and renderer geometry remain unchanged. This observes reservation
+and projection; it does not promise native-pixel fidelity. The source-to-pixel oracle must
+independently derive its input canvas and recompute reservation before checking pixels.
+
 Skia-only helpers: glyph atlas (`GlyphAtlas`), glyph cache (`GlyphCache`), pixel grid math (`PixelGrid`), font wrappers (`SharedSKFont`, `SharedSKTypeface`), image registry, sixel decoder, render performance metrics.
 
 This module is intentionally **Avalonia-agnostic**. The actual Avalonia `DrawOperation` and viewport (`TerminalDrawOperation`, `TerminalView`) live in `src/Ntilde.App/Shell/` today — see Known Tech Debt below for the planned extraction.

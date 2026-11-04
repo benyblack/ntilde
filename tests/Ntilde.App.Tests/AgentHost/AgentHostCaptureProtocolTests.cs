@@ -30,7 +30,7 @@ namespace Ntilde.AppTests.AgentHost;
 /// </summary>
 [Collection("GoldenPng")]
 [Trait("Lane", "PlatformBoot")]
-public class AgentHostCaptureProtocolTests : IDisposable
+public partial class AgentHostCaptureProtocolTests : IDisposable
 {
     private readonly string _tempDir;
     private readonly string _exportDir;
@@ -107,7 +107,8 @@ public class AgentHostCaptureProtocolTests : IDisposable
         double scale = 0,
         string? mode = null,
         long? time = null,
-        bool details = false)
+        bool details = false,
+        bool imageDetails = false)
     {
         var paramsJson = JsonSerializer.Serialize(
             new CaptureScreenParams
@@ -118,7 +119,8 @@ public class AgentHostCaptureProtocolTests : IDisposable
                 Scale = scale,
                 Mode = mode,
                 PresentationTimeMs = time,
-                IncludeRenderDetails = details
+                IncludeRenderDetails = details,
+                IncludeImageDetails = imageDetails
             },
             AgentHostJsonContext.Default.CaptureScreenParams);
         return $"{{\"v\":{AgentHostProtocol.Version},\"id\":{id},\"method\":\"{AgentHostProtocol.Methods.CaptureScreen}\",\"params\":{paramsJson}}}";
@@ -164,14 +166,17 @@ public class AgentHostCaptureProtocolTests : IDisposable
         var line = CaptureRequestLine(registration.PaneId);
         Assert.DoesNotContain("presentationTimeMs", line, StringComparison.Ordinal);
         Assert.DoesNotContain("includeRenderDetails", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("includeImageDetails", line, StringComparison.Ordinal);
         Assert.DoesNotContain("syntheticSelection", line, StringComparison.Ordinal);
         var response = Handle(service, line);
         var result = Result(response);
         Assert.Null(result.PresentationTimeMs);
         Assert.Null(result.RenderDetails);
+        Assert.Null(result.ImageDetails);
         Assert.False(response.Result!.Value.TryGetProperty("presentationTimeMs", out _));
         Assert.False(response.Result.Value.TryGetProperty("renderDetails", out _));
         Assert.False(response.Result.Value.TryGetProperty("syntheticSelection", out _));
+        Assert.False(response.Result.Value.TryGetProperty("imageDetails", out _));
     }
 
     [Fact]
