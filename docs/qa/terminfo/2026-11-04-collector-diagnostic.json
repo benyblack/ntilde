@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "scope": "Offline pinned-source reproduction; no terminal, App, subprocess, or GUI",
+  "bundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "probeId": "cursor.reverse-wrap",
+  "termNeedsGeometryPresent": false,
+  "extractedSha256": {
+    "probeDefinition": "e337ddbb1f81a40c2c6f997912e6f53aa9a86fa4d0cfde2705dbdb0b6b9899bb",
+    "callback": "9de9727d9e4da32a0bfa940909350aa61e2c7833c0692409dbd7c98b10202785",
+    "contextDefinition": "a944bf040e2943fd098ca0df98342944f17115abbd651957ee989605fd3c2020"
+  },
+  "cases": [
+    {
+      "label": "original probe, supplied geometry",
+      "writes": [],
+      "error": {
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    {
+      "label": "declared control, missing geometry",
+      "writes": [],
+      "error": {
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      }
+    },
+    {
+      "label": "declared control, insufficient geometry",
+      "writes": [],
+      "returned": {
+        "pass": false,
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "none",
+          "note": "reverse-wrap fixture needs two measured rows and at least two columns"
+        }
+      }
+    }
+  ],
+  "declaredGeometryGetterControl": {
+    "rows": 24,
+    "cols": 80
+  },
+  "limitation": "The declared control is a synthetic copy, not a modified upstream suite, owned collection, reverse-wrap support result, or completeness repair."
+}
