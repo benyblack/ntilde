@@ -35,6 +35,24 @@ public sealed class NativeSshSessionTests
     }
 
     [Fact]
+    public void Byte_input_preserves_non_UTF8_protocol_octets_and_uses_the_user_input_path()
+    {
+        var interop = new FakeNativeSshInterop();
+        var session = new NativeSshSession(CreateProfile(), interop: interop);
+        byte[] frame = [27, 91, 77, 32, 128, 255];
+        try
+        {
+            Assert.True(session.SupportsByteInput);
+            Assert.True(session.TrySendInputBytes(frame));
+            Assert.Equal(frame, Assert.Single(interop.Writes));
+            Assert.Empty(interop.DeviceReplies);
+        }
+        finally { session.Dispose(); }
+        Assert.False(session.TrySendInputBytes(frame));
+        Assert.Single(interop.Writes);
+    }
+
+    [Fact]
     public void Device_replies_use_bounded_admission_and_never_fall_back_to_unbounded_input()
     {
         var interop = new FakeNativeSshInterop();
@@ -70,6 +88,9 @@ public sealed class NativeSshSessionTests
             session.StartRecording(path);
             session.SendInput(secret);
             Assert.Equal(Encoding.UTF8.GetBytes(secret), Assert.Single(interop.Writes));
+            byte[] binaryInput = [27, 91, 77, 32, 128, 255];
+            Assert.True(session.TrySendInputBytes(binaryInput));
+            Assert.Equal(binaryInput, interop.Writes.Last());
 
             // The fake sends no echo of the secret, as at a password prompt.
             interop.Enqueue(NativeSshEvent.Data(output));
@@ -79,6 +100,7 @@ public sealed class NativeSshSessionTests
             string recording = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
             Assert.DoesNotContain(secret.TrimEnd('\r'), recording, StringComparison.Ordinal);
             Assert.DoesNotContain(Convert.ToBase64String(Encoding.UTF8.GetBytes(secret)), recording, StringComparison.Ordinal);
+            Assert.DoesNotContain(Convert.ToBase64String(binaryInput), recording, StringComparison.Ordinal);
             foreach (string line in File.ReadLines(path))
             {
                 using JsonDocument document = JsonDocument.Parse(line);

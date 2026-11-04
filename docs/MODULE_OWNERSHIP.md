@@ -456,7 +456,18 @@ invariant changes.
 - A slow client is disconnected, never waited for (stream frames against the send budget, snapshots against their own separate bound)
 - Attach limits are rejection ceilings, never clamps (#473)
 - **Endpoints are current-user only and never TCP:** a `CurrentUserOnly` pipe on Windows (the client checks it too); a `0600` socket in a `0700` directory elsewhere, and the listener refuses a directory with any other mode or a live socket at the path. The protocol has no authentication by design
-- Per-session input writer: `SendInput` and parser replies share one byte-capped (16 MiB) queue per session, so a child that stops reading stdin cannot stall the shared connection
+- Per-session input writer: text, negotiated byte input and parser replies share one
+  byte-capped (16 MiB) queue per session, so a child that stops reading stdin cannot
+  stall the shared connection. Retained text is charged by UTF-16 storage and raw
+  input by owned array length, including in-flight writes. Hello/Welcome opt in to
+  binary Input payloads without changing old clients' UTF-8 text contract. Old
+  child providers receive only strict valid UTF-8; invalid byte frames are refused.
+  Server attach/read-only checks precede either route. `ITerminalByteInput` belongs
+  to Pty; PTY/SSH implementations copy retained memory and use ordinary input
+  ordering/backpressure, independently of nonblocking best-effort device replies.
+  App converts legacy mouse character values to exact Latin-1 bytes and refuses
+  high bytes on text-only peers. Capability/acceptance is not a child-delivery ack;
+  regression tests independently read a synthetic raw frame from a real POSIX child.
 - **No `MuxClient` send blocks its caller** (Phase 5 spec R6): a frame that finds the send queue full waits in a per-client overflow that one pump drains in call order; more than `MuxClientOptions.MaxOverflowBytes` (8 MiB) behind a stalled link ends the connection (`send overflow`)
 - **`readScreen` replies are charged to the snapshot account**, never the stream budget, so reads never make a connection look like a slow client; an unsupported `readScreen` is null at the client, never an exception
 - Exited, unattached sessions are reaped after `ReapGrace` (60 s); the daemon exits after `IdleExitAfter` (10 min) with no running session and no connection

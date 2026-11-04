@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Input;
+using Ntilde.Pty;
 using Ntilde.VT;
 
 namespace Ntilde.Shell
@@ -291,13 +292,17 @@ namespace Ntilde.Shell
             if (_session == null || _buffer == null) return false;
 
             string? sequence = TerminalInputModeEncoder.EncodeMouseEvent(_buffer.Modes, mouseEvent);
-            if (sequence != null)
+            if (sequence == null) return false;
+            if (!_buffer.Modes.MouseModeSGR)
             {
-                _session.SendInput(sequence);
-                return true;
+                if (_session is ITerminalByteInput { SupportsByteInput: true } bytes)
+                    return bytes.TrySendInputBytes(System.Text.Encoding.Latin1.GetBytes(sequence));
+                // Text-only/older peers carry ASCII exactly. Do not UTF-8-expand legacy
+                // coordinate bytes above 127 into a different mouse report.
+                foreach (char value in sequence) if (value > 127) return false;
             }
-
-            return false;
+            _session.SendInput(sequence);
+            return true;
         }
 
         private static TerminalMouseButton GetPressedMouseButton(PointerPointProperties properties)

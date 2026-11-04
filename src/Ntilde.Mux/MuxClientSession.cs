@@ -25,7 +25,7 @@ namespace Ntilde.Mux;
 /// A handler that touches UI state or the pane's buffer must marshal for <see cref="Disconnected"/>
 /// even if it relies on the reader thread's ordering for everything else. It is raised at most once.
 /// </remarks>
-public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabilities
+public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabilities, ITerminalByteInput
 {
     /// <summary>Daemon retention/attach limits; absent on legacy peers.</summary>
     public MuxHistoryLimits? HistoryLimits => _client.HistoryLimits;
@@ -238,6 +238,14 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
         // v2 reports who can type (InteractiveClients is omitted when 0); v1 cannot tell observers apart.
         return SupportsSessionEvents ? me.InteractiveClients : me.AttachedClients;
+    }
+
+    public bool SupportsByteInput => _client.SupportsByteInput;
+
+    public bool TrySendInputBytes(ReadOnlyMemory<byte> input)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return false;
+        return _client.TrySendInputBytes(Id, input);
     }
 
     public void SendInput(string input)

@@ -10,7 +10,7 @@ namespace Ntilde.Mux.Tests.Support;
 /// it, synchronously on the caller's thread, and records SendInput / Resize. Flight recording is a
 /// real FlightRecordingBuffer so exports replay through the real ReplayRunner.
 /// </summary>
-internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary
+internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalByteInput
 {
     private readonly object _gate = new();
     private readonly RawOutputTap _rawTap = new();
@@ -32,6 +32,9 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     public int Cols { get; private set; }
     public int Rows { get; private set; }
     public ConcurrentQueue<string> SentInput { get; } = new();
+    public ConcurrentQueue<byte[]> SentInputBytes { get; } = new();
+    public ConcurrentQueue<byte[]> WireInput { get; } = new();
+    public bool SupportsByteInput { get; set; }
     public ConcurrentQueue<(int Cols, int Rows)> Resizes { get; } = new();
     public bool ThrowOnSendInput { get; set; }
 
@@ -103,6 +106,19 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
         if (ThrowOnSendInput) throw new InvalidOperationException("scripted SendInput failure");
         SendInputGate?.Wait();
         SentInput.Enqueue(input);
+        WireInput.Enqueue(Encoding.UTF8.GetBytes(input));
+    }
+
+    public bool TrySendInputBytes(ReadOnlyMemory<byte> input)
+    {
+        if (!SupportsByteInput) return false;
+        byte[] owned = input.ToArray();
+        SendInputEntered.Set();
+        if (ThrowOnSendInput) throw new InvalidOperationException("scripted byte input failure");
+        SendInputGate?.Wait();
+        SentInputBytes.Enqueue(owned);
+        WireInput.Enqueue(owned);
+        return true;
     }
 
     public void Resize(int cols, int rows)

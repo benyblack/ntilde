@@ -102,7 +102,12 @@ public sealed class HeadlessTerminalSession : IDisposable
     // reading stdin would otherwise stall every session sharing that connection. One thread per
     // session keeps per-session order; the byte cap keeps a wedged child from growing the queue
     // without bound. Never the thread pool (a blocked write would pin a pool thread).
-    private readonly BlockingCollection<string> _input = new();
+    private readonly record struct QueuedInput(string? Text, byte[]? Bytes)
+    {
+        public long Charge => ((long)(Text?.Length ?? 0) * sizeof(char)) + (Bytes?.LongLength ?? 0);
+    }
+    private static readonly System.Text.UTF8Encoding StrictInputUtf8 = new(false, true);
+    private readonly BlockingCollection<QueuedInput> _input = new();
     private readonly Thread _inputThread;
     private readonly long _maxQueuedInputBytes;
     private long _queuedInputBytes;
@@ -167,7 +172,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             options.SelectionFg, options.SelectionBg, options.AnsiPalette);
         (_session as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
         (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(cellWidth, cellHeight);
-        _parser.OnResponse = EnqueueInput; // through the writer too: the parse thread must never block on stdin
+        _parser.OnResponse = text => { EnqueueInput(text); }; // through the writer too: the parse thread must never block on stdin
         _sessionChangedIntervalMs = (long)Math.Max(0, options.SessionChangedInterval.TotalMilliseconds);
         _parser.OnTitleChanged = title =>
         {
@@ -310,33 +315,55 @@ public sealed class HeadlessTerminalSession : IDisposable
         EnqueueInput(text);
     }
 
-    private void EnqueueInput(string text)
+    /// <summary>Queues an owned byte copy. Acceptance is not acknowledgement from the child.</summary>
+    internal bool TrySendInputBytes(ReadOnlySpan<byte> input)
     {
-        if (string.IsNullOrEmpty(text)) return;
-        long bytes = (long)text.Length * sizeof(char);
+        if (IsExited || Volatile.Read(ref _disposed) != 0 || input.IsEmpty) return false;
+        if (_session is not ITerminalByteInput { SupportsByteInput: true })
+        {
+            // Old/test child providers can still carry valid UTF-8 through their text API.
+            // Invalid bytes must never become replacement characters or another input frame.
+            try { return EnqueueInput(StrictInputUtf8.GetString(input)); }
+            catch (System.Text.DecoderFallbackException) { return false; }
+        }
+        if (input.Length > MaxQueuedInputBytes) return false;
+        return EnqueueInput(new QueuedInput(null, input.ToArray()));
+    }
+
+    private bool EnqueueInput(string text) => !string.IsNullOrEmpty(text) && EnqueueInput(new QueuedInput(text, null));
+
+    private bool EnqueueInput(QueuedInput input)
+    {
+        long bytes = input.Charge;
         if (Interlocked.Add(ref _queuedInputBytes, bytes) > MaxQueuedInputBytes)
         {
             Interlocked.Add(ref _queuedInputBytes, -bytes);
-            // Once per stall, not per keystroke: a client typing into a wedged child would flood the log.
             if (Interlocked.Exchange(ref _inputDropLogged, 1) == 0)
-            {
-                Log($"[Mux] session {Id}: dropping input ({text.Length} chars, and any more until the queue drains); the child is not reading stdin.");
-            }
-
-            return;
+                Log($"[Mux] session {Id}: dropping input; the child is not reading stdin.");
+            return false;
         }
-
         try
         {
-            // Unbounded, so Add never blocks and there is nothing to cancel; teardown is signalled by
-            // CompleteAdding/Dispose, caught below.
-            _input.Add(text, CancellationToken.None);
+            // Unbounded collection, byte-bounded admission: never block the connection reader.
+            _input.Add(input, CancellationToken.None);
+            return true;
         }
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
         {
-            // CompleteAdding (disposing) or already disposed: the session is going away.
             Interlocked.Add(ref _queuedInputBytes, -bytes);
+            return false;
         }
+    }
+
+    private void WriteQueuedInput(QueuedInput input)
+    {
+        if (input.Text is { } text)
+        {
+            _session.SendInput(text);
+            return;
+        }
+        if (_session is not ITerminalByteInput bytes || !bytes.TrySendInputBytes(input.Bytes!))
+            throw new InvalidOperationException("Child session declined byte input.");
     }
 
     /// <summary>
@@ -347,11 +374,11 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         try
         {
-            foreach (string text in _input.GetConsumingEnumerable(_cts.Token))
+            foreach (QueuedInput input in _input.GetConsumingEnumerable(_cts.Token))
             {
                 try
                 {
-                    _session.SendInput(text);
+                    WriteQueuedInput(input);
                     Volatile.Write(ref _inputDropLogged, 0);
                 }
                 catch (Exception ex)
@@ -363,7 +390,7 @@ public sealed class HeadlessTerminalSession : IDisposable
                     // Charged until the write returns (PR #489 follow-up): a write blocked on a child
                     // that stopped reading is still input the child has not taken, and must count
                     // against the cap - un-charging it on take let one more cap's worth queue behind it.
-                    Interlocked.Add(ref _queuedInputBytes, -(long)text.Length * sizeof(char));
+                    Interlocked.Add(ref _queuedInputBytes, -input.Charge);
                 }
             }
         }

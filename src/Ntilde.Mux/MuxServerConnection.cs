@@ -51,6 +51,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     private bool _closed;            // stream closed or closing now; nothing more is accepted
     private bool _closeAfterFlush;   // the queue ends with a final frame; the sender closes after it
     private int _version;
+    private bool _byteInput; // reader-thread-only, negotiated before any Input frame
     private string? _closeReason;
     private string _clientKind = string.Empty;
 
@@ -425,8 +426,11 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     break;
                 }
 
-                // One Input frame is one whole SendInput string, so decoding it alone is lossless.
-                if (_server.TryGetSession(id, out HeadlessTerminalSession? session)) session.SendInput(Encoding.UTF8.GetString(utf8));
+                if (_server.TryGetSession(id, out HeadlessTerminalSession? session))
+                {
+                    if (_byteInput) session.TrySendInputBytes(utf8);
+                    else session.SendInput(Encoding.UTF8.GetString(utf8));
+                }
                 break;
             default:
                 throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"A client may not send {frame.Kind} frames.");
@@ -461,6 +465,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             }
         }
 
+        _byteInput = p.ByteInput;
         Volatile.Write(ref _version, chosen);
         Reply(request, new WelcomeResult
         {
@@ -468,6 +473,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             ForceConPtyFiltering = o.ForceConPtyFiltering,
             ServerVersion = string.IsNullOrEmpty(o.AppVersion) ? null : o.AppVersion,
             SupportsPresentationOnly = true,
+            SupportsByteInput = _byteInput,
             HistoryLimits = new MuxHistoryLimits { MaxRows = o.MaxSessionHistoryRows, MaxBytes = o.MaxSessionScrollbackBytes, MaxAttachRows = o.MaxAttachScrollbackRows },
         }, MuxJsonContext.Default.WelcomeResult);
     }

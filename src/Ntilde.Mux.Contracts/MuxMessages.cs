@@ -39,6 +39,10 @@ public sealed record HelloParams
     public int MaxVersion { get; init; }
     public string ClientKind { get; init; } = string.Empty;
 
+    /// <summary>Request byte-exact Input payloads; older daemons ignore this optional extension.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ByteInput { get; init; }
+
     /// <summary>
     /// Phase 4 (spec §2.5, additive; an older daemon ignores it): a stable id of the GUI instance.
     /// A hello carrying the same id as a live connection closes that connection first - after an SSH
@@ -67,6 +71,10 @@ public sealed record WelcomeResult
     /// <summary>Resize requests may update presentation without changing stream-owned geometry.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool SupportsPresentationOnly { get; init; }
+
+    /// <summary>True only when this connection requested byte-exact Input. Absent means UTF-8 text.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool SupportsByteInput { get; init; }
 }
 
 /// <summary>What the client looks like: applied to the mux parser so its replies describe it.</summary>

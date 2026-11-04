@@ -11,6 +11,17 @@ namespace Ntilde.Pty
         event Action<string>? OnOutputReceived;
     }
 
+    /// <summary>
+    /// Optional byte-exact user/protocol input, using the session's ordinary input ordering
+    /// and backpressure. Implementations copy caller-owned memory before retaining it.
+    /// True means accepted by the transport, never acknowledgement from the child.
+    /// </summary>
+    public interface ITerminalByteInput
+    {
+        bool SupportsByteInput { get; }
+        bool TrySendInputBytes(ReadOnlyMemory<byte> input);
+    }
+
     /// <summary>Optional nonblocking, best-effort terminal device replies; never apply user-input backpressure.</summary>
     public interface ITerminalDeviceReplySink
     {
