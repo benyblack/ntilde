@@ -541,6 +541,7 @@ namespace Ntilde.AgentHost
                 // the canvas is now scaled and the bitmap sized in device pixels,
                 // so a box-drawing stroke picked in whole device pixels survives.
                 RenderScaling = effectiveScale,
+                NativeRasterPresenter = parameters.NativeRasterPresenter,
             };
 
             try

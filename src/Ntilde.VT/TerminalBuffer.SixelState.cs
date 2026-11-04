@@ -31,6 +31,11 @@ public partial class TerminalBuffer
     private static void ValidateSixelState(TerminalStateSnapshot snapshot)
     {
         if (snapshot.Sixels is not { } states) return;
+        // Reject required semantics even on entries a source-budget truncation would discard.
+        // Never silently reinterpret native state as a legacy whole-cell placement.
+        foreach (var state in states)
+            if (state?.NativeRaster is not null)
+                throw StateTransferValidation.Reject("SIXEL native raster", "policy is not enabled in this build");
         for (int i = Math.Max(0, states.Count - SixelSourceBudget.DefaultMaxSources); i < states.Count; i++)
         {
             var state = StateTransferValidation.RequirePresent(states[i], "SIXEL image");

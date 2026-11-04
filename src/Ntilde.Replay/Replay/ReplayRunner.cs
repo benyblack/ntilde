@@ -130,6 +130,8 @@ namespace Ntilde.Replay
             bool isV2 = header is not null;
             if (header is not null)
             {
+                if (header.RequiredSixelRasterPolicy != SixelRasterPolicy.EnabledVersion)
+                    throw new InvalidDataException("The recording requires an unsupported SIXEL raster policy.");
                 _ = RecordingCellMetrics.FromOptional(header.SixelCellWidthPx, header.SixelCellHeightPx);
                 try
                 {
@@ -261,9 +263,29 @@ namespace Ntilde.Replay
         private static ReplayHeader? ReadHeader(string line)
         {
             ReplayHeader? header;
-            try { header = JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader); }
+            try
+            {
+                using var document = JsonDocument.Parse(line);
+                ValidateRequiredSixelPolicy(document.RootElement);
+                header = JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader);
+            }
             catch (JsonException) { return null; }
             return header is not null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2 ? header : null;
+        }
+
+        private static void ValidateRequiredSixelPolicy(JsonElement root)
+        {
+            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("type", out var type) ||
+                type.ValueKind != JsonValueKind.String || !ReplayHeader.IsKnownType(type.GetString())) return;
+            bool seen = false;
+            foreach (var property in root.EnumerateObject())
+            {
+                if (!property.NameEquals("required_sixel_raster")) continue;
+                if (seen || property.Value.ValueKind != JsonValueKind.Number || !property.Value.TryGetInt32(out int policy) ||
+                    policy != SixelRasterPolicy.EnabledVersion)
+                    throw new InvalidDataException("The recording requires an unsupported or malformed SIXEL raster policy.");
+                seen = true;
+            }
         }
 
         // The reads honour the token, but a cancelled run still ends the way it always has: quietly, with the result so

@@ -255,6 +255,17 @@ invariant changes.
   same division-before-ceiling locals. Render snapshots copy those facts by value. Decoder
   reports need not mean materialized pixels; generic/imported/legacy placements keep null
   provenance. State/replay/mux formats do not grow or reconstruct historical metrics.
+- **Native SIXEL foundation is inactive (#851).** VT owns immutable, bounded canvas/crop
+  values and the omitted-by-default `native_raster` state field. Its enabled policy ceiling
+  is zero: every non-null native placement is rejected before state mutation, even if
+  source-budget truncation would discard it. No parser path creates native intent.
+  Replay rejects nonzero/malformed required-policy markers before callbacks or bytes;
+  ordinary headers retain exact v2 bytes. App owns the detached presenter density P,
+  published with font/grid inputs and withdrawn on detach; requested capture scale S
+  remains independent. Neither changes draw sizing or `renderDetails`/`imageDetails` v1.
+  Activation additionally requires native transforms/culling/crop, bounded decoder and
+  lifetime admission, and explicit mux/replay compatibility; see
+  [the staged contract](sixel-native-raster-foundation.md).
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
   Exception: `RuntimeForeground` and `RuntimeBackground` each read one immutable,
   volatile-published color frame without the buffer lock, so UI preference queries
