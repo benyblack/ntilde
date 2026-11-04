@@ -16,8 +16,8 @@ public partial class TerminalPane
     private bool TryHandlePrivateClipboardWrite(Ntilde.VT.AnsiParser source, string target, byte[] data, bool allowed)
     {
         if (!PrivateClipboardQa.IsEnabled) return false;
-        if (!ReferenceEquals(Parser, source)) PrivateClipboardQa.Interrupt(this);
-        else if (allowed) PrivateClipboardQa.For(this)?.AcceptOsc52(target, data);
+        if (!ReferenceEquals(Parser, source) || !allowed) PrivateClipboardQa.Interrupt(this);
+        else PrivateClipboardQa.For(this)?.AcceptOsc52(target, data);
         return true;
     }
 

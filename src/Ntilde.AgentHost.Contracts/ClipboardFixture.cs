@@ -27,6 +27,9 @@ public sealed record ClipboardFixtureResult
     public string State { get; init; } = "";
     [JsonPropertyName("value")]
     public string? Value { get; init; }
+    /// <summary>SHA-256 of current source-known private storage, never host clipboard contents.</summary>
+    [JsonPropertyName("valueSha256")]
+    public string ValueSha256 { get; init; } = "";
     [JsonPropertyName("acceptedWrites")]
     public int AcceptedWrites { get; init; }
     [JsonPropertyName("restored")]
@@ -52,7 +55,7 @@ public static class ClipboardFixtureValidation
         {
             "begin" => input.FixtureId == null && input.Value == null,
             "armWrite" or "seed" => input.FixtureId is { } id && id != Guid.Empty && IsNonce(input.Value),
-            "read" or "close" => input.FixtureId is { } id && id != Guid.Empty && input.Value == null,
+            "read" or "restore" or "close" => input.FixtureId is { } id && id != Guid.Empty && input.Value == null,
             _ => false,
         };
     }

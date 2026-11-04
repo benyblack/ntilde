@@ -1,6 +1,7 @@
 using Ntilde.AgentHost.Contracts;
 using Ntilde.Shell.Clipboard;
 using System.Text;
+using System.Security.Cryptography;
 
 namespace Ntilde.AppTests.Shell;
 
@@ -109,6 +110,71 @@ public sealed class DisposableClipboardFixtureTests
         Assert.Equal("aborted", closed?.State);
         Assert.True(closed?.Restored);
         Assert.False(closed?.Complete);
+    }
+
+    [Fact]
+    public void Per_probe_restore_cancels_armed_write_and_reports_seed_hash_without_completing_fixture()
+    {
+        var fixture = new DisposableClipboardFixture(Run, () => true);
+        fixture.Apply(Op(fixture, "seed", Nonce));
+        fixture.Apply(Op(fixture, "armWrite", Nonce));
+        var restored = fixture.Apply(Op(fixture, "restore"));
+        Assert.NotNull(restored);
+        Assert.Equal("active", restored.State);
+        Assert.True(restored.Restored);
+        Assert.False(restored.Complete);
+        Assert.Null(restored.Value);
+        string seed = "terminfo-private-seed-" + Run;
+        Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(seed))), restored.ValueSha256);
+        Assert.Equal(seed, fixture.Apply(Op(fixture, "read"))?.Value);
+        Assert.Equal(restored, fixture.Apply(Op(fixture, "restore")));
+        // Pending arm was cancelled, so final close can complete without an outstanding write.
+        Assert.True(fixture.Apply(Op(fixture, "close"))?.Complete);
+        Assert.Null(fixture.Apply(Op(fixture, "restore")));
+    }
+
+    [Fact]
+    public void Restored_storage_can_be_reused_but_later_seed_and_write_clear_restore_fact()
+    {
+        var fixture = new DisposableClipboardFixture(Run, () => true);
+        Assert.True(fixture.Apply(Op(fixture, "restore"))?.Restored);
+        Assert.False(fixture.Apply(Op(fixture, "seed", Nonce))?.Restored);
+        fixture.Apply(Op(fixture, "restore"));
+        fixture.Apply(Op(fixture, "armWrite", Nonce));
+        Assert.True(fixture.AcceptOsc52("c", Encoding.ASCII.GetBytes(Nonce)));
+        Assert.False(fixture.Observe().Restored);
+        Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Nonce))), fixture.Observe().ValueSha256);
+        Assert.True(fixture.Apply(Op(fixture, "restore"))?.Restored);
+        Assert.True(fixture.Apply(Op(fixture, "close"))?.Complete);
+    }
+
+    [Fact]
+    public void Restore_refuses_wrong_identity_and_cannot_revive_an_aborted_fixture()
+    {
+        bool current = true;
+        var fixture = new DisposableClipboardFixture(Run, () => current);
+        fixture.Apply(Op(fixture, "armWrite", Nonce));
+        current = false;
+        Assert.Null(fixture.Apply(Op(fixture, "restore")));
+        current = true;
+        Assert.Null(fixture.Apply(Op(fixture, "restore")));
+        Assert.False(fixture.Apply(Op(fixture, "close"))?.Complete);
+        int checks = 0;
+        var racing = new DisposableClipboardFixture(Run, () => ++checks == 1);
+        Assert.Null(racing.Apply(Op(racing, "restore")));
+        Assert.Equal("aborted", racing.Observe().State);
+        Assert.False(racing.Observe().Complete);
+    }
+
+    [Fact]
+    public void A_write_arriving_after_restore_cannot_use_the_cancelled_arm()
+    {
+        var fixture = new DisposableClipboardFixture(Run, () => true);
+        fixture.Apply(Op(fixture, "armWrite", Nonce));
+        fixture.Apply(Op(fixture, "restore"));
+        Assert.False(fixture.AcceptOsc52("c", Encoding.ASCII.GetBytes(Nonce)));
+        Assert.Equal("aborted", fixture.Observe().State);
+        Assert.Equal(0, fixture.Observe().AcceptedWrites);
     }
 
     [Theory]

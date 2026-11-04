@@ -116,6 +116,27 @@ public sealed class MainWindowClipboardFixtureTests : IClassFixture<TestAppDataR
     }
 
     [AvaloniaFact]
+    public async Task Per_probe_restore_returns_fixed_seed_hash_and_keeps_one_fixture_for_later_probe()
+    {
+        var (window, pane, _) = Create();
+        var begun = await Call(window, pane, "begin"); Assert.NotNull(begun);
+        await Call(window, pane, "seed", begun.FixtureId, Nonce);
+        await Call(window, pane, "armWrite", begun.FixtureId, Nonce);
+        var restored = await Call(window, pane, "restore", begun.FixtureId);
+        Assert.NotNull(restored); Assert.True(restored.Restored); Assert.False(restored.Complete);
+        var storage = await Call(window, pane, "read", begun.FixtureId);
+        Assert.Equal("terminfo-private-seed-" + Run, storage?.Value);
+        Assert.Equal(storage?.ValueSha256, restored.ValueSha256);
+        await Call(window, pane, "armWrite", begun.FixtureId, Nonce);
+        pane.Parser!.Process("\u001b]52;c;" + Convert.ToBase64String(Encoding.ASCII.GetBytes(Nonce)) + "\a");
+        Assert.Equal(Nonce, (await Call(window, pane, "read", begun.FixtureId))?.Value);
+        Assert.True((await Call(window, pane, "restore", begun.FixtureId))?.Restored);
+        Assert.True((await Call(window, pane, "close", begun.FixtureId))?.Complete);
+        Assert.Null(await Call(window, pane, "restore", begun.FixtureId));
+        Assert.Equal(0, pane.ClipboardWriteAttemptsForTest);
+    }
+
+    [AvaloniaFact]
     public async Task Parser_retired_before_begin_cannot_write_into_a_later_fixture()
     {
         var (window, pane, mode) = Create();
@@ -130,15 +151,20 @@ public sealed class MainWindowClipboardFixtureTests : IClassFixture<TestAppDataR
         Assert.False((await Call(window, pane, "close", begun.FixtureId))?.Complete);
     }
 
-    [AvaloniaFact]
-    public async Task Settings_off_refuses_private_write_instead_of_bypassing_normal_policy()
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Settings_off_aborts_armed_and_unarmed_writes_without_bypassing_normal_policy(bool armed)
     {
-        var (window, pane, _) = Create();
+        var (window, pane, mode) = Create();
         var begun = await Call(window, pane, "begin"); Assert.NotNull(begun);
-        await Call(window, pane, "armWrite", begun.FixtureId, Nonce);
+        await Call(window, pane, "seed", begun.FixtureId, Nonce);
+        if (armed) await Call(window, pane, "armWrite", begun.FixtureId, Nonce);
         pane.ApplySettings(new TerminalSettings { AllowOsc52ClipboardWrite = false });
         pane.Parser!.Process("\u001b]52;c;" + Convert.ToBase64String(Encoding.ASCII.GetBytes(Nonce)) + "\a");
-        Assert.Equal(0, (await Call(window, pane, "read", begun.FixtureId))?.AcceptedWrites);
+        Assert.Equal("aborted", mode.For(pane)?.Observe().State);
+        Assert.Equal(0, mode.For(pane)?.Observe().AcceptedWrites);
+        Assert.Null(await Call(window, pane, "read", begun.FixtureId));
         Assert.False((await Call(window, pane, "close", begun.FixtureId))?.Complete);
         Assert.Equal(0, pane.ClipboardWriteAttemptsForTest);
     }

@@ -75,6 +75,26 @@ public sealed class AgentHostClipboardFixtureProtocolTests
         Assert.Equal(1, s.Executor.ClipboardFixtureCalls);
     }
 
+    [Fact]
+    public async Task Restore_uses_the_same_act_lease_and_serializes_actual_private_storage_hash()
+    {
+        var s = Setup(); using var service = s.Service;
+        string hash = new('a', 64);
+        s.Executor.OnClipboardFixture = (input, _, current, _) =>
+        {
+            Assert.Equal("restore", input.Operation); Assert.Null(input.Value); Assert.True(current());
+            return Task.FromResult<ClipboardFixtureResult?>(new()
+            { FixtureId = input.FixtureId!.Value, State = "active", Restored = true, Complete = false, ValueSha256 = hash });
+        };
+        var response = await service.HandleRequestLineAsync(Request(s.Registration.PaneId,
+            "\"operation\":\"restore\",\"fixtureId\":\"" + Guid.NewGuid() + "\""), TestContext.Current.CancellationToken);
+        Assert.Null(response.Error);
+        var restored = response.Result!.Value.Deserialize(AgentHostJsonContext.Default.ClipboardFixtureResult);
+        Assert.True(restored?.Restored); Assert.False(restored?.Complete);
+        Assert.Equal(hash, restored?.ValueSha256);
+        Assert.DoesNotContain(hash, JsonSerializer.Serialize(s.Journal.Snapshot()));
+    }
+
     [Theory]
     [InlineData("registration")]
     [InlineData("session")]

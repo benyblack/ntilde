@@ -45,6 +45,7 @@ optional `value`. Unknown fields and mixed operations are rejected.
 | `armWrite` | fixtureId, value | Authorizes exactly one OSC 52 c write of that exact canonical nonce |
 | `seed` | fixtureId, value | Independently stores a canonical test nonce, without terminal input |
 | `read` | fixtureId | Returns only the private fixed seed or an admitted synthetic nonce |
+| `restore` | fixtureId | Cancels any armed write and restores the fixed private seed, keeping the fixture active |
 | `close` | fixtureId | Restores fixed `terminfo-private-seed-<runId>` storage and closes |
 
 The current visible single direct local pane must satisfy the same layout gates
@@ -57,8 +58,13 @@ pending write at close, RIS, reconnect, process exit, disposal or explicit
 interruption aborts the fixture and restores its private seed. Aborted state
 cannot become complete on a later close. Successful close is idempotent too.
 
+Each pinned per-probe callback must `restore` and verify the returned seed hash
+before returning. Restore never marks the fixture complete. Later admitted writes
+or independent seeds clear the restored fact. Only final `close` may complete the
+whole fixture. Restore refuses aborted/closed fixtures and cannot reactivate one.
+
 Results report fixture ID, state, admitted write count, restore/completion facts,
-and `value` only for `read`. No native-delivery or ownership claim is made. The
+SHA-256 of the actual source-known private value, and `value` only for `read`. No native-delivery or ownership claim is made. The
 ordinary action journal records only method, pane and generic outcome/target;
 it never records nonce values, encoded bytes or run identifiers. Transport
 failure or timeout makes the caller's operation result unknown; do not invent
