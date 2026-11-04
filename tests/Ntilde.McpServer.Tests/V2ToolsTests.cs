@@ -227,6 +227,33 @@ public class ExplainEscapeSequenceTests
     }
 
     [Theory]
+    [InlineData("CSI >4m", "XTMODKEYS modifyOtherKeys")]
+    [InlineData("CSI >4;2m", "XTMODKEYS modifyOtherKeys")]
+    [InlineData("ESC[>4;m", "XTMODKEYS modifyOtherKeys")]
+    [InlineData("CSI >m", "XTMODKEYS modifyOtherKeys")]
+    [InlineData("\x1b[?4m", "XTQMODKEYS modifyOtherKeys")]
+    [InlineData("CSI ?1;4m", "XTQMODKEYS modifyOtherKeys")]
+    public void XtermModifyOtherKeysForms_Resolve_AndAreNotSgr(string sequence, string mnemonic)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Contains(mnemonic, result, System.StringComparison.Ordinal);
+        Assert.DoesNotContain("SGR", result, System.StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("CSI >1;2m")]
+    [InlineData("CSI ?1m")]
+    [InlineData("CSI >4:2m")]
+    [InlineData("CSI ?4:1m")]
+    public void OtherKeyModifierForms_DoNotClaimModifyOtherKeysOrSgr(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.DoesNotContain("modifyOtherKeys —", result, System.StringComparison.Ordinal);
+        Assert.DoesNotContain("SGR —", result, System.StringComparison.Ordinal);
+        Assert.Contains("ignore", result, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
     [InlineData("CSI =c")]
     [InlineData("CSI =0c")]
     [InlineData("ESC[=000c")]
