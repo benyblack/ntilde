@@ -130,7 +130,9 @@ public partial class TerminalBuffer
         {
             KittyImageAsset? selected = visibleOnly ? null : FindKittyImage(id, number);
             HashSet<KittyImageAsset> affected = DeleteKittyPlacements(selected, placementId, visibleOnly);
-            if (!visibleOnly && selected is not null) affected.Add(selected);
+            // A placement-scoped deletion only frees an asset when that placement existed.
+            // An unscoped hard delete must also release transmit-only data with no placement.
+            if (!visibleOnly && selected is not null && placementId == 0) affected.Add(selected);
             if (freeData)
             {
                 // Visible-only deletion must keep data referenced by offscreen placements.

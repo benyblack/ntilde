@@ -304,6 +304,22 @@ public sealed class KittyImageLifecycleTests
         buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Deleting_a_nonexistent_scoped_placement_preserves_retained_data(bool useNumber)
+    {
+        var (buffer, parser, replies) = Create();
+        string identity = useNumber ? "I=13" : "i=7";
+        string delete = useNumber ? "d=N,I=13" : "d=I,i=7";
+        parser.Process(Command($"a=t,f=32,s=1,v=1,{identity}", Pixel)); Assert.Empty(buffer.Images);
+        parser.Process(Command($"a=d,{delete},p=99")); Assert.Empty(buffer.Images);
+        parser.Process(Command($"a=p,{identity},p=1,C=1"));
+        Assert.Single(buffer.Images); Assert.EndsWith(";OK\x1b\\", replies[^1], StringComparison.Ordinal);
+        parser.Process(Command($"a=d,{delete},p=1")); Assert.Empty(buffer.Images);
+        parser.Process(Command($"a=p,{identity},C=1")); Assert.Contains(";ENOENT:", replies[^1], StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Transmit_only_replacement_notifies_the_live_view_that_old_placements_disappeared()
     {
@@ -346,9 +362,11 @@ public sealed class KittyImageLifecycleTests
         parser.Process(Command("a=T,f=32,s=1,v=1,i=1,C=1", Pixel));
         object handle = Assert.Single(buffer.Images).ImageHandle;
         parser.Process(Command("a=d,d=I,i=1"));
-        // Short on purpose: force the first retirement tick strictly before the later
-        // snapshot. Reusing that obsolete tick would then incorrectly permit disposal.
-        System.Threading.Thread.Sleep(2);
+        // Force the first retirement tick strictly before the later snapshot. Wait for
+        // that clock condition rather than relying on a fixed delay or test speed.
+        long firstRetirementObservedAt = Environment.TickCount64;
+        Assert.True(System.Threading.SpinWait.SpinUntil(() => Environment.TickCount64 > firstRetirementObservedAt,
+            TimeSpan.FromSeconds(30)));
         parser.Process(Command("a=T,f=32,s=1,v=1,i=2,C=1", Pixel));
         int snapshot = buffer.BeginSnapshotSession();
         var retired = new List<object>();
