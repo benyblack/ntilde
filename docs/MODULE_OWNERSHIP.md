@@ -59,7 +59,9 @@ invariant changes.
   retains a coherent reset negative rather than grading a method call as support.
 - **RIS clearing belongs to VT.** Screen selection and default-pen/runtime-color
   reset precede the existing full clear under one write cut. Main and retained
-  alternate rows lose text, wrap/authored extents and side-table metadata in place;
+  alternate screens return to visible DECTCEM cursor presentation in that cut;
+  DECRQM and detached render snapshots observe the same mode state.
+  Rows lose text, wrap/authored extents and side-table metadata in place;
   sized-text retention is pruned after both banks are clear. The full-clear path
   remains the sole image-retirement owner, with snapshot pins honored. Replay and
   mux snapshots carry the cleared banks. These owning regressions do not regrade
