@@ -96,7 +96,7 @@ Snapshot fields:
 
 - Geometry: `cols`, `rows`, cursor `cx`/`cy`, alt-screen `alt`
 - Scroll region: `st`, `sb`
-- Mode flags: `awm`, `ckm`, `decom`, `bp`, `cv`
+- Mode flags: `awm`, `ckm`, `decom`, `bp`, `cv`; `decscnm` (DECSCNM reverse video) reads as off when absent
 - Current style state: `fg`, `bg`, `fgi`, `bgi`, defaults and style booleans
 - Complete cut: optional `state` contains the existing `TerminalStateSnapshot`
   model (both screens, mode state, saved cursor banks, pending 1049 restoration,

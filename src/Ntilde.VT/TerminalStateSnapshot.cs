@@ -230,6 +230,8 @@ namespace Ntilde.VT
         [JsonPropertyName("kap")] public bool IsApplicationKeypad { get; set; }
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; } = true;
         [JsonPropertyName("decom")] public bool IsOriginMode { get; set; }
+        /// <summary>DECSCNM (?5). Absent in older payloads, which reads as normal video.</summary>
+        [JsonPropertyName("decscnm")] public bool IsReverseVideo { get; set; }
         [JsonPropertyName("sixel_display")] public bool IsSixelDisplayMode { get; set; }
         [JsonPropertyName("focus")] public bool IsFocusEventReporting { get; set; }
         [JsonPropertyName("bp")] public bool IsBracketedPasteMode { get; set; }
