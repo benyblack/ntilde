@@ -1,0 +1,135 @@
+# Remaining protocol variants: current dispositions (#772)
+
+This is a source audit at main `40c462c0af9bb54340ead3fbc9c7fb7f9c68fdec`
+(2026-11-04), after the query, input, reset, graphics and exact-title fixes.
+It accounts for **all 52 original Q10 feature IDs**, once each, in frozen
+inventory order. Membership and original spellings come from the unchanged
+[machine-readable triage](2026-11-02-inconclusive-triage.json)
+(`observations[*].action == "Q10"`) and its
+[original source-review rationale](2026-11-02-inconclusive-triage.md).
+An ID below identifies the original exact variant; another spelling in the same
+protocol family never substitutes for its contract.
+
+“Unsupported” is an explicit current-release disposition: retain present
+ignore/failure behavior and do not advertise the effect. It is not a new runtime
+measurement, a security denial or a promise to implement every extension.
+“Partial” and “unqualified” retain the narrower behavior and its limits. Each row
+links the complete current dispatcher/state/encoder that routes, omits or limits
+that variant, plus focused implementation/tests where available. Unsupported
+rows are source-backed policy decisions, not claims of per-variant executable
+support tests. Consuming bytes or receiving a sentinel CPR proves no effect.
+
+This document promotes no capability, matrix grade or generated report. A future
+supported contract must add focused executable evidence and update its owned
+catalogue/matrix/report together. VT remains a leaf; pointer, window,
+notification, audio, font and viewport presentation policy belongs in App.
+
+## Original 52-entry inventory
+
+| Original feature ID | Current disposition | Source / focused evidence | Decision and next acceptance boundary |
+|---|---|---|---|
+| `extensions.kitty-graphics.animation` | Unsupported | [graphics actions](../../../src/Ntilde.VT/AnsiParser.KittyGraphics.cs), [limits](kitty-image-lifecycle.md) | Keep frame/animation actions rejected. #770 owns bounded frames, timing, disposal and actual timed pixel evidence before support. |
+| `extensions.kitty-graphics.unicode-placeholders` | Unqualified legacy fallback | [graphics placement](../../../src/Ntilde.VT/AnsiParser.KittyGraphics.cs), [limits](kitty-image-lifecycle.md) | Accepted U data and cursor placement do not implement placeholder-cell/diacritic virtual placement. Defer that contract to #770; do not score acceptance as support. |
+| `extensions.osc0-icon-title` | Partial | [title contract/tests](osc-title-payloads.md), [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Retain exact raw OSC 0 title replacement from #817. Independent icon-name state and host icon presentation remain unsupported; no combined icon/title promotion. |
+| `extensions.osc-633-vscode` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs), [distinct OSC 133 path](../../../src/Ntilde.VT/AnsiParser.ShellIntegration.cs) | Keep this exact OSC 633 variant ignored; there is no 633 route. Defer the independent VS Code metadata/lifecycle contract with payload and host-state tests. OSC 133 events do not substitute for this spelling. |
+| `extensions.osc633-a` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs), [distinct OSC 133 path](../../../src/Ntilde.VT/AnsiParser.ShellIntegration.cs) | Keep this exact OSC 633 variant ignored; there is no 633 route. Defer the independent VS Code metadata/lifecycle contract with payload and host-state tests. OSC 133 events do not substitute for this spelling. |
+| `extensions.osc633-b` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs), [distinct OSC 133 path](../../../src/Ntilde.VT/AnsiParser.ShellIntegration.cs) | Keep this exact OSC 633 variant ignored; there is no 633 route. Defer the independent VS Code metadata/lifecycle contract with payload and host-state tests. OSC 133 events do not substitute for this spelling. |
+| `extensions.osc633-c` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs), [distinct OSC 133 path](../../../src/Ntilde.VT/AnsiParser.ShellIntegration.cs) | Keep this exact OSC 633 variant ignored; there is no 633 route. Defer the independent VS Code metadata/lifecycle contract with payload and host-state tests. OSC 133 events do not substitute for this spelling. |
+| `extensions.osc633-d` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs), [distinct OSC 133 path](../../../src/Ntilde.VT/AnsiParser.ShellIntegration.cs) | Keep this exact OSC 633 variant ignored; there is no 633 route. Defer the independent VS Code metadata/lifecycle contract with payload and host-state tests. OSC 133 events do not substitute for this spelling. |
+| `extensions.osc633-e` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs), [distinct OSC 133 path](../../../src/Ntilde.VT/AnsiParser.ShellIntegration.cs) | Keep this exact OSC 633 variant ignored; there is no 633 route. Defer the independent VS Code metadata/lifecycle contract with payload and host-state tests. OSC 133 events do not substitute for this spelling. |
+| `extensions.osc633-p` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs), [distinct OSC 133 path](../../../src/Ntilde.VT/AnsiParser.ShellIntegration.cs) | Keep this exact OSC 633 variant ignored; there is no 633 route. Defer the independent VS Code metadata/lifecycle contract with payload and host-state tests. OSC 133 events do not substitute for this spelling. |
+| `extensions.osc1-icon` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Ignore OSC 1; defer independent icon-name state/event and host presentation contract. |
+| `extensions.osc22-pointer` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `extensions.osc777-notify` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `extensions.osc666-termprop` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `extensions.osc3008-context` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `extensions.osc113-reset-pointer-fg` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs), [color dispatcher](../../../src/Ntilde.VT/AnsiParser.Colors.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `extensions.osc114-reset-pointer-bg` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs), [color dispatcher](../../../src/Ntilde.VT/AnsiParser.Colors.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `extensions.osc176-app-id` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `extensions.osc555-flash` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `extensions.osc440-audio` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `extensions.osc710-font-normal` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `extensions.osc720-scroll-up` | Unsupported | [OSC dispatcher](../../../src/Ntilde.VT/AnsiParser.Osc.cs) | Leave this exact OSC code ignored in the current release; no matching handler. Any later implementation needs explicit App-owned effect/policy and readback/restoration tests. A sentinel reply or another OSC spelling is not evidence. |
+| `erase.selective` | Partial alias; protection unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | DECSED/DECSEL alias ED/EL because DECSCA and protected cells are absent. Do not claim protected-cell preservation. Defer protection storage, protection-aware erase and replay as one contract. |
+| `editing.decfra` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `editing.decera` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `editing.decsera` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `editing.deccra` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `editing.deccara` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `editing.decrara` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `editing.decsace` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `editing.sl` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `editing.sr` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `editing.decic` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `editing.decdc` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Keep this rectangle/extent/horizontal-scroll/column-edit variant unimplemented. Qualified leaders/intermediates must not alias bare editing commands. Defer focused cells, attributes, margins, cursor, history and replay contracts. |
+| `modes.reverse-video` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [mode state](../../../src/Ntilde.VT/ModeState.cs) | Keep this private mode untracked and unrecognized by DECRPM. Defer actual behavior plus reset/export/import and host effects where needed; recognizing a mode alone is insufficient. |
+| `modes.left-right-margin` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [mode state](../../../src/Ntilde.VT/ModeState.cs) | Keep this private mode untracked and unrecognized by DECRPM. Defer actual behavior plus reset/export/import and host effects where needed; recognizing a mode alone is insufficient. |
+| `modes.alt-scroll-1007` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [mode state](../../../src/Ntilde.VT/ModeState.cs) | Keep this private mode untracked and unrecognized by DECRPM. Defer actual behavior plus reset/export/import and host effects where needed; recognizing a mode alone is insufficient. |
+| `modes.utf8-mouse-1005` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [mode state](../../../src/Ntilde.VT/ModeState.cs) | Keep this private mode untracked and unrecognized by DECRPM. Defer actual behavior plus reset/export/import and host effects where needed; recognizing a mode alone is insufficient. |
+| `modes.deccolm` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [mode state](../../../src/Ntilde.VT/ModeState.cs) | Keep this private mode untracked and unrecognized by DECRPM. Defer actual behavior plus reset/export/import and host effects where needed; recognizing a mode alone is insufficient. |
+| `modes.decsclm` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [mode state](../../../src/Ntilde.VT/ModeState.cs) | Keep this private mode untracked and unrecognized by DECRPM. Defer actual behavior plus reset/export/import and host effects where needed; recognizing a mode alone is insufficient. |
+| `modes.xtpushsgr` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Defer this distinct xterm stack/state contract with bounded depth, underflow, reset, serialization and restoration tests. Ordinary cursor save/restore, OSC title replacement and Kitty OSC 30001/30101 do not establish this spelling. |
+| `modes.xtpopsgr` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Defer this distinct xterm stack/state contract with bounded depth, underflow, reset, serialization and restoration tests. Ordinary cursor save/restore, OSC title replacement and Kitty OSC 30001/30101 do not establish this spelling. |
+| `modes.xtsave` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Defer this distinct xterm stack/state contract with bounded depth, underflow, reset, serialization and restoration tests. Ordinary cursor save/restore, OSC title replacement and Kitty OSC 30001/30101 do not establish this spelling. |
+| `modes.xtrestore` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Defer this distinct xterm stack/state contract with bounded depth, underflow, reset, serialization and restoration tests. Ordinary cursor save/restore, OSC title replacement and Kitty OSC 30001/30101 do not establish this spelling. |
+| `modes.xtpushcolors` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [distinct Kitty color OSCs](../../../src/Ntilde.VT/AnsiParser.Colors.cs) | Defer this distinct xterm stack/state contract with bounded depth, underflow, reset, serialization and restoration tests. Ordinary cursor save/restore, OSC title replacement and Kitty OSC 30001/30101 do not establish this spelling. |
+| `modes.xtpopcolors` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [distinct Kitty color OSCs](../../../src/Ntilde.VT/AnsiParser.Colors.cs) | Defer this distinct xterm stack/state contract with bounded depth, underflow, reset, serialization and restoration tests. Ordinary cursor save/restore, OSC title replacement and Kitty OSC 30001/30101 do not establish this spelling. |
+| `device.xtwinops-22` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Defer this distinct xterm stack/state contract with bounded depth, underflow, reset, serialization and restoration tests. Ordinary cursor save/restore, OSC title replacement and Kitty OSC 30001/30101 do not establish this spelling. |
+| `device.xtwinops-23` | Unsupported | [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) | Defer this distinct xterm stack/state contract with bounded depth, underflow, reset, serialization and restoration tests. Ordinary cursor save/restore, OSC title replacement and Kitty OSC 30001/30101 do not establish this spelling. |
+| `input.modify-other-keys` | Unsupported | [input encoder](../../../src/Ntilde.App/Shell/TerminalInputModeEncoder.cs), [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [mode state](../../../src/Ntilde.VT/ModeState.cs) | No matching negotiation/state/encoder. Defer exact emitted-byte and transition tests. Kitty keyboard, cell-coordinate SGR mouse and X10 bytes do not establish this encoding. |
+| `input.pixel-mouse` | Unsupported | [input encoder](../../../src/Ntilde.App/Shell/TerminalInputModeEncoder.cs), [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [mode state](../../../src/Ntilde.VT/ModeState.cs) | No matching negotiation/state/encoder. Defer exact emitted-byte and transition tests. Kitty keyboard, cell-coordinate SGR mouse and X10 bytes do not establish this encoding. |
+| `input.urxvt-mouse` | Unsupported | [input encoder](../../../src/Ntilde.App/Shell/TerminalInputModeEncoder.cs), [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [mode state](../../../src/Ntilde.VT/ModeState.cs) | No matching negotiation/state/encoder. Defer exact emitted-byte and transition tests. Kitty keyboard, cell-coordinate SGR mouse and X10 bytes do not establish this encoding. |
+| `input.modify-other-keys-3` | Unsupported | [input encoder](../../../src/Ntilde.App/Shell/TerminalInputModeEncoder.cs), [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs), [mode state](../../../src/Ntilde.VT/ModeState.cs) | No matching negotiation/state/encoder. Defer exact emitted-byte and transition tests. Kitty keyboard, cell-coordinate SGR mouse and X10 bytes do not establish this encoding. |
+
+## Additional preserved observations
+
+These follow-ups are outside the original 52-entry Q10 membership and do not
+replace its rows.
+
+| Exact observation | Current disposition and evidence | Remaining acceptance boundary |
+|---|---|---|
+| ECH `CSI 0 X` | **Already fixed.** [CSI dispatcher](../../../src/Ntilde.VT/AnsiParser.Csi.cs) uses `GetCsiParamOrDefaultOne`; [EditingDefaultParameterTests](../../../tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs) covers omitted/0/1, cells, cursor, margins, history and RGB erase background. | Preserve the historical failure and [35-case before/after qualification](2026-11-03-editing.md); no duplicate parser fix. Direct buffer API zero remains a no-op. |
+| IL `CSI 0 L` | **Already fixed.** Same parser helper and [focused tests](../../../tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs), including bounded scrolling region and unaffected history. | Preserve before/after failure/pass records; direct buffer zero semantics remain separate. |
+| DL `CSI 0 M` | **Already fixed.** Same helper and [focused tests](../../../tests/Ntilde.VT.Tests/EditingDefaultParameterTests.cs), including shifted rows, inserted blanks and unaffected outside rows. | Preserve before/after failure/pass records; do not reclassify the old run. |
+| Explicit-RGB glyph appearance under SGR 1 | **Rendering evidence remains negative**, not a demonstrated RGB parser defect. [Pixel report](2026-11-03-pixels.md) records unchanged glyph pixels under the tested JetBrains Mono NL 14 configuration; stored bold flags are separate evidence. | Investigate actual font-face/glyph rendering and expected appearance before an isolated Rendering fix or new owned measurement. Unchanged glyph pixels do not establish lost RGB parsing. |
+| OSC 133 `P;Cwd=/tmp` | **Unsupported P payload; historical result inconclusive.** [Shell dispatcher](../../../src/Ntilde.VT/AnsiParser.ShellIntegration.cs) routes A/B/C/D only. [Metadata evidence](2026-11-04-metadata-snapshot.md) preserves the stock probe. | Keep ignored, with no cwd claim. OSC 7 is the existing cwd protocol; any later P contract needs primary semantics and independent readback, rather than treating an arbitrary attribute as OSC 7. |
+| OSC 133 `P;k=r` | **Unsupported prompt-part marker; historical result inconclusive.** Same dispatcher has no P branch or prompt-part boundary state. | Defer prompt-part semantics plus explicit boundary readback/restoration; A/B/C/D readiness and command anchors do not prove it. |
+| Empty OSC 2 title | **Raw replacement fixed by #817; display fallback remains intentional.** [Exact title contract](osc-title-payloads.md), [VT tests](../../../tests/Ntilde.VT.Tests/OscTitleTests.cs), App metadata and mux listing regressions retain exact raw data and nonblank host fallback. | Historical [literal-empty visible-label negative](2026-11-04-metadata-snapshot.md) stays frozen. A new owned case must distinguish raw clearing from profile/cwd fallback. Icon and title stacks remain unsupported above. |
+
+### Zero-count primary semantics and rerun
+
+The [primary xterm sequence reference](https://invisible-island.net/xterm/ctlseqs/ctlseqs.txt)
+lists ECH, IL and DL with default one. The pinned primary implementation uses
+`one_if_default(0)` for [all three actions](https://github.com/ThomasDickey/xterm-snapshots/blob/5c75ead9a75d4b2e666ca06fa94503b5766ed93f/charproc.c#L4005);
+[its helper](https://github.com/ThomasDickey/xterm-snapshots/blob/5c75ead9a75d4b2e666ca06fa94503b5766ed93f/charproc.c#L2226)
+substitutes the default when the value is at most zero. Current Ntilde parser
+behavior matches this. `EditingDefaultParameterTests` was rerun through the
+repository wrapper on this audited main: **9 passed, zero skipped**. The retained
+before/after measurements and original failing regressions already document
+that fix. No new failure was reproduced on current main, so this slice makes no
+production correction and no new desktop/runtime claim.
+
+## Reviewable follow-up boundaries
+
+1. **Rectangle/protection foundation:** decide DECSCA storage, erase semantics,
+   snapshots/replay and extent before selective/attribute rectangles; then
+   fill/copy/erase as separately bounded contracts.
+2. **Horizontal margins/columns:** mode 69 and margin-aware movement, scrolling,
+   editing, reset and replay before column edits or SL/SR.
+3. **Distinct xterm state stacks:** separate SGR, private-mode, color and title
+   stacks with caps, underflow and lifecycle for each exact spelling.
+4. **Input variants:** one encoding at a time with negotiation, transitions and
+   independently checked bytes, extending the generated-input owner.
+5. **Host OSC decisions:** retain unsupported behavior until App selects an
+   actual user need and explicit effect/policy. OSC 633 needs its own shell
+   metadata lifecycle and cannot alias 133.
+6. **Graphics and rendering:** #770 owns animation/placeholders and fresh decoded
+   pixels/placement evidence. RGB-bold appearance is a separate Rendering inquiry.
+   See [current graphics limits](kitty-image-lifecycle.md).
+
+This is a disposition ledger, not blanket implementation completion. #772 can
+remain open while selected contracts and fresh measurements are worked through.
+All historical JSON, PNGs, archives and source-integrity scopes remain unchanged,
+including the original **78 supported / 0 unsupported / 177 inconclusive**,
+`suiteComplete=false`, RGB-bold, RIS and title negatives. No GUI, collector,
+receipt, measured-source inventory or frozen-data change is part of this slice.
