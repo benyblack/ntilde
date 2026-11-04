@@ -484,16 +484,19 @@ namespace Ntilde.VT
                     }
                     break;
                 case 'c': // DA - Device Attributes
-                          // CSI c is DA1 and CSI > c is DA2. CSI = c is DA3, which expects a
-                          // DECRPTUI unit-id report rather than a DA1 one; it is unimplemented
-                          // and stays silent instead of answering a different question than
-                          // the one that was asked. The !isPrivate test used to let both
-                          // CSI = c and CSI < c through to the DA1 reply.
+                          // DA1, DA2 and DA3 have distinct reply families. DA3 reports an
+                          // unassigned zero unit-id, following xterm, never a host/hardware id.
+                          // Undefined CSI < c must not reach the bare DA1 reply.
                     if (intermediates.Length == 0 && leader == '>')
                     {
                         // Secondary Device Attributes
                         // CSI > 1 ; 1 0 ; 0 c (standard for VT220-ish)
                         OnResponse?.Invoke("\x1b[>1;10;0c");
+                    }
+                    else if (leader == '=' && intermediates.Length == 0 && argCount <= 1 && arg0 == 0)
+                    {
+                        // DECRPTUI: four hex byte pairs, site/serial both unassigned and nonunique.
+                        OnResponse?.Invoke("\x1bP!|00000000\x1b\\");
                     }
                     else if (bare)
                     {

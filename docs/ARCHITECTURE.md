@@ -198,6 +198,13 @@ Settings update host defaults while preserving an explicit application cursor ov
 New replay snapshots embed the existing complete terminal/parser model without scrollback,
 with legacy viewport fields retained for older readers.
 
+Tertiary DA accepts only a default or single numeric-zero parameter with the `=`
+leader and no intermediates. Its DECRPTUI reply contains the fixed eight zero hex
+digits used by xterm for unassigned site/serial fields. This is nonunique and
+carries no host/hardware identity; VT reads no OS identity or environment. Other
+parameter forms remain silent and cannot alias DA1 or DA2. The shared capability
+catalog and read-only MCP explainer retain this same parameter boundary.
+
 Exact query dispatch keeps availability and successful behavior distinct. `CSI 18 t`
 reports the current VT buffer's rows and columns as `CSI 8 ; rows ; cols t`,
 independently of host pixel metrics or in-band resize subscription. Different

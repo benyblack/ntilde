@@ -17,7 +17,6 @@ public sealed class QueryVariantAuditTests
         { "extensions.osc776-cell-size", "\u001b]776\u0007" },
         { "extensions.sixel-geometry-report", "\u001b[?2;1;0S" },
         { "editing.decrqcra", "\u001b[1;1;1;1;1;1*y" },
-        { "device.tertiary-da", "\u001b[=c" },
         { "device.xtwinops-20", "\u001b[20t" },
         { "device.xtwinops-21", "\u001b[21t" },
         { "device.xtreportcolors", "\u001b[#R" },

@@ -152,6 +152,19 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task Tertiary_device_attributes_reach_the_child_writer_with_an_unassigned_identifier()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            fake.Emit("\x1b[=0c");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count == 1, "the tertiary DA reply reached the child writer");
+            Assert.Equal("\x1bP!|00000000\x1b\\", Assert.Single(fake.SentInput));
+        }
+    }
+
+    [Fact]
     public async Task Character_geometry_query_reaches_the_child_writer_after_the_ordered_resize()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();

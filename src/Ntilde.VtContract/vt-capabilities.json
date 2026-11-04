@@ -99,6 +99,15 @@
       "matrixFeature": "Text-area size query",
       "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
       "contractCase": "text-area-size-query"
+    },
+    {
+      "key": "CSI:=c",
+      "mnemonic": "DA3",
+      "support": "supported",
+      "description": "Report an unassigned, nonunique all-zero terminal unit identifier for default/zero tertiary DA.",
+      "matrixFeature": "Tertiary device attributes",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "tertiary-device-attributes"
     }
   ]
 }
