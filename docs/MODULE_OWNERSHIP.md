@@ -155,6 +155,10 @@ invariant changes.
   origin mode does not relativize values. Truncated/unknown legacy input, BEL
   recovery and invalid margins remain negative without altering state. Other
   settings/names stay negative; source/scripted delivery is not a runtime grade.
+- **DECRQSS `m` and `SP q` report owned VT state only.** The SGR report reads the
+  active pen and starts with `0`; the cursor report says `0` for the host default
+  (VT never guesses the host's configured shape) and 1-6 for an override. Same
+  exact-request, standard-ST and completeness rules as `r`.
 - **DA3 returns an unassigned compatibility identifier.** VT accepts the `=`
   leader with default/single numeric-zero Ps and no intermediates, and returns
   DECRPTUI with eight zero hex digits. It is nonunique, not a host or hardware

@@ -812,12 +812,23 @@ namespace Ntilde.VT
         private void ApplyCursorStyle(int value)
         {
             if (value is < 0 or > 6) return;
+            // DECSCUSR 0 returns to the host's configured cursor, as kitty, foot, WezTerm,
+            // Ghostty, Alacritty and Windows Terminal read it; xterm's own default is the
+            // blinking block. It is also the value DECRQSS SP q reports for that state, so
+            // a saved report restores exactly what was showing.
+            if (value == 0)
+            {
+                _buffer.Modes.CursorStyle = CursorStyle.Underline;
+                _buffer.Modes.IsCursorBlinkEnabled = true;
+                _buffer.Modes.CursorStyleIsDefault = true;
+                _buffer.Invalidate();
+                return;
+            }
             _buffer.Modes.CursorStyleIsDefault = false;
             // DECSCUSR:
-            // 0/1 blinking block, 2 steady block, 3 blinking underline, 4 steady underline, 5 blinking bar, 6 steady bar
+            // 1 blinking block, 2 steady block, 3 blinking underline, 4 steady underline, 5 blinking bar, 6 steady bar
             switch (value)
             {
-                case 0:
                 case 1:
                     _buffer.Modes.CursorStyle = CursorStyle.Block;
                     _buffer.Modes.IsCursorBlinkEnabled = true;

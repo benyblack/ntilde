@@ -18,7 +18,8 @@ public sealed class CursorStyleInvalidationTests
         buffer.OnInvalidate += () => invalidations++;
         parser.Process($"\u001b[{style} q");
         Assert.Equal(1, invalidations);
-        Assert.False(buffer.Modes.CursorStyleIsDefault);
+        // DECSCUSR 0 returns to the host's configured cursor; 1-6 are application overrides.
+        Assert.Equal(style == 0, buffer.Modes.CursorStyleIsDefault);
     }
 
     [Fact]

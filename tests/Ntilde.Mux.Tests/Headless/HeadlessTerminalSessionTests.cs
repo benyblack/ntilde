@@ -180,6 +180,25 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task Sgr_and_cursor_style_reports_come_from_the_authoritative_daemon_parser()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            mux.PostResize(140, 40, presentation: null);
+            fake.Emit("\x1b[1;4:3;38;2;1;2;3;58;5;9m\x1b[5 q\x1bP$qm\x1b\\\x1bP$q q\x1b\\\x1b[0 q\x1bP$q q\x1b\\");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count == 3, "the setting reports reached the child writer");
+            Assert.Equal(new[]
+            {
+                "\x1bP1$r0;1;4:3;38;2;1;2;3;58;5;9m\x1b\\",
+                "\x1bP1$r5 q\x1b\\",
+                "\x1bP1$r0 q\x1b\\",
+            }, fake.SentInput.ToArray());
+        }
+    }
+
+    [Fact]
     public async Task Character_geometry_query_reaches_the_child_writer_after_the_ordered_resize()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
