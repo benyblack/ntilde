@@ -28,6 +28,46 @@ public sealed class ExactWindowQueryTests
         Assert.False(parser.InBandResizeReportsEnabled);
     }
 
+    [Fact]
+    public async Task Concurrent_resize_waits_for_the_existing_parser_batch_write_lock()
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        using var releaseReply = new ManualResetEventSlim();
+        var enteredReply = new TaskCompletionSource<(string Reply, bool WriteLockHeld)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var parser = new AnsiParser(buffer)
+        {
+            OnResponse = reply =>
+            {
+                enteredReply.TrySetResult((reply, buffer.Lock.IsWriteLockHeld));
+                releaseReply.Wait(TestContext.Current.CancellationToken);
+            }
+        };
+        Task parsing = Task.Factory.StartNew(() => parser.Process("\x1b[18t"),
+            TestContext.Current.CancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        Task? resizing = null;
+        try
+        {
+            (string reply, bool writeLockHeld) = await enteredReply.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            Assert.True(writeLockHeld);
+            Assert.Equal("\x1b[8;24;80t", reply);
+            resizing = Task.Factory.StartNew(() => buffer.Resize(120, 31),
+                TestContext.Current.CancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            Assert.True(SpinWait.SpinUntil(() => buffer.Lock.WaitingWriteCount == 1, TimeSpan.FromSeconds(30)),
+                "Resize must wait on the parser's existing batch write lock.");
+            Assert.False(resizing.IsCompleted);
+        }
+        finally
+        {
+            releaseReply.Set();
+            await parsing.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            if (resizing is not null) await resizing.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        }
+        var responses = new List<string>();
+        parser.OnResponse = responses.Add;
+        parser.Process("\x1b[18t");
+        Assert.Equal("\x1b[8;31;120t", Assert.Single(responses));
+    }
+
     [Theory]
     [InlineData("\x1b[?18t")]
     [InlineData("\x1b[>18t")]

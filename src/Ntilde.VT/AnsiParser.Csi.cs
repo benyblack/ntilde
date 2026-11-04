@@ -551,6 +551,7 @@ namespace Ntilde.VT
                           // leader-prefixed variants stay unhandled.
                     if (bare && arg0 == 18 && argCount == 1)
                     {
+                        // Process holds the batch write lock across both dimensions and this reply.
                         // XTWINOPS character geometry is VT-owned, independent of host pixel
                         // metrics and mode 2048 subscription. Extra parameters are not this query.
                         OnResponse?.Invoke($"\x1b[8;{_buffer.Rows};{_buffer.Cols}t");

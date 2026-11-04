@@ -68,7 +68,10 @@ No terminal database or key string is synthesized from a guessed `$TERM`.
 defines `CSI 18 t` and its `CSI 8 ; height ; width t` reply in characters.
 `ExactWindowQueryTests` verifies rows-before-columns, current resize state,
 absence of a subscription requirement, independence from unusable pixel metrics,
-all split points and byte-for-byte complete-buffer-state preservation. Leader or
+all split points and byte-for-byte complete-buffer-state preservation. A
+deterministic concurrent-resize regression verifies that `Process` already holds
+the buffer batch write lock through the paired geometry read and reply; resize
+waits on that same lock, then the next query reports the new dimensions. Leader or
 intermediate changes, extra/colon parameters and malformed forms stay silent.
 `HeadlessTerminalSessionTests` independently checks the authoritative mux parser
 replies through its dedicated child writer after an ordered resize, without
