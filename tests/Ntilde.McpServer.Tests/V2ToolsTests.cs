@@ -293,6 +293,33 @@ public class ExplainEscapeSequenceTests
         Assert.DoesNotContain("DECRQSS top/bottom margins", VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
     }
 
+    public static System.Collections.Generic.IEnumerable<object[]> MarginQueryRepresentationCases()
+    {
+        (string Prefix, string Kind)[] prefixes =
+        [
+            ("\x1bP", "raw"), ("\u0090", "raw"),
+            ("\\x1bP", "escaped"), ("\\eP", "escaped"),
+            ("ESC P", "textual"), ("ESCP", "textual"), ("DCS ", "abstract")
+        ];
+        (string Suffix, string Kind)[] suffixes =
+        [
+            ("\x1b\\", "raw"), ("\u009c", "raw"),
+            ("\\x1b\\", "escaped"), ("\\e\\", "escaped"),
+            ("ESC\\", "textual"), ("", "abstract"), ("\a", "recovery")
+        ];
+        foreach (var prefix in prefixes)
+            foreach (var suffix in suffixes)
+                yield return [prefix.Prefix + "$qr" + suffix.Suffix, prefix.Kind == suffix.Kind];
+    }
+
+    [Theory]
+    [MemberData(nameof(MarginQueryRepresentationCases))]
+    public void Margin_query_prefix_and_terminator_representations_must_agree(string sequence, bool supported)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Equal(supported, result.Contains("DECRQSS top/bottom margins", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void CatalogCapabilities_AgreeWithExplainerSupportClaims()
     {
