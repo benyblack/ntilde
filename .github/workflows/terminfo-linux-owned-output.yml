@@ -1,0 +1,36 @@
+name: Linux owned output foundation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/terminfo-linux-owned-output.yml'
+      - 'scripts/terminfo/linux-owned-output*.mjs'
+      - 'scripts/terminfo/fixtures/linux-output-*'
+      - 'scripts/terminfo/linux-process-provider.mjs'
+      - 'scripts/terminfo/linux-process-core.mjs'
+      - 'scripts/terminfo/fixtures/linux-provider-*'
+      - 'docs/qa/linux-owned-output.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  output:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Strict ownership, restoration and bounded utility regressions
+        run: node --test scripts/terminfo/linux-owned-output-core.test.mjs scripts/terminfo/linux-owned-output-utility.test.mjs scripts/terminfo/linux-owned-output-resources.test.mjs
+      - name: Own private PTY termios and byte controls
+        run: node scripts/terminfo/linux-owned-output-selftest.mjs linux-owned-output-foundation.json
+      - name: Retain explicitly limited output result
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-owned-output-foundation-only
+          path: linux-owned-output-foundation.json
+          if-no-files-found: error
