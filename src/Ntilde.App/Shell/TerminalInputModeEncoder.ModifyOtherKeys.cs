@@ -68,8 +68,10 @@ internal static partial class TerminalInputModeEncoder
         bool ctrl = (modifiers & KeyModifiers.Control) != 0;
         if (ctrl && alt) return null;
         if (!shift && !alt && !ctrl) return null;
-        // A keypad Enter is a keypad key in xterm, not an "other" key.
-        if (physical == PhysicalKey.NumPadEnter) return null;
+        // Keypad keys are not "other" keys in xterm. Avalonia can report a physical keypad key
+        // under an ordinary logical key (keypad Enter as Enter, keypad comma as OemComma, keypad
+        // equals as OemPlus), so the physical position decides, not the logical key.
+        if (IsPhysicalKeypadKey(physical)) return null;
 
         int m = 1 + (shift ? 1 : 0) + (alt ? 2 : 0) + (ctrl ? 4 : 0);
         bool levelTwo = level == 2;
@@ -105,6 +107,13 @@ internal static partial class TerminalInputModeEncoder
 
         return FormatModifyOtherKey(code, m);
     }
+
+    private static bool IsPhysicalKeypadKey(PhysicalKey physical)
+        => physical is >= PhysicalKey.NumPad0 and <= PhysicalKey.NumPad9
+            or PhysicalKey.NumPadAdd or PhysicalKey.NumPadClear or PhysicalKey.NumPadComma
+            or PhysicalKey.NumPadDecimal or PhysicalKey.NumPadDivide or PhysicalKey.NumPadEnter
+            or PhysicalKey.NumPadEqual or PhysicalKey.NumPadMultiply or PhysicalKey.NumPadParenLeft
+            or PhysicalKey.NumPadParenRight or PhysicalKey.NumPadSubtract;
 
     /// <summary>
     /// Xlib's XLookupString Control translation: true when Ctrl+<paramref name="code"/>

@@ -366,6 +366,13 @@ public sealed record KeyboardCapabilitiesNotification
 {
     public Guid SessionId { get; init; }
     public int SupportedFlags { get; init; }
+
+    /// <summary>
+    /// Whether every interactive client can encode xterm modifyOtherKeys (#829). Absent (an older
+    /// daemon, which does not gate it) leaves the receiving client's own support unchanged.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? ModifyOtherKeysSupported { get; init; }
 }
 
 /// <summary>Params of <see cref="MuxMethods.SessionChanged"/>: the session's facts after the change.</summary>

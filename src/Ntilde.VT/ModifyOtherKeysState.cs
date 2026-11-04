@@ -32,9 +32,28 @@ namespace Ntilde.VT
         // Cached active level, read lock-free by the UI thread on every keystroke while the PTY
         // reader thread mutates the per-screen values (mirrors KittyKeyboardState._currentFlags).
         private volatile int _currentLevel;
+        private volatile bool _isSupported = true;
 
-        /// <summary>The level in effect for the active screen buffer: 0, 1 or 2.</summary>
-        public int Level => _currentLevel;
+        /// <summary>
+        /// The level in effect for the active screen buffer: 0, 1 or 2, or 0 while the input host
+        /// cannot encode it (<see cref="IsSupported"/>). The App encoder and the query read this.
+        /// </summary>
+        public int Level => _isSupported ? _currentLevel : 0;
+
+        /// <summary>The level the child requested for the active screen, regardless of the ceiling.</summary>
+        public int RequestedLevel => _currentLevel;
+
+        /// <summary>
+        /// The input host's capability ceiling, like <see cref="KittyKeyboardState.SupportedFlagMask"/>:
+        /// while false the effective <see cref="Level"/> is 0, so neither the query nor the encoder
+        /// claims modifyOtherKeys, but requested levels keep being tracked and return when it is
+        /// restored. A shared session's daemon clears it while an interactive client that cannot
+        /// encode it (the text client, an older GUI) is attached, and sends it to its GUI clients.
+        /// </summary>
+        public bool IsSupported => _isSupported;
+
+        /// <summary>Sets the capability ceiling; see <see cref="IsSupported"/>.</summary>
+        public void SetSupported(bool supported) => _isSupported = supported;
 
         /// <summary>The main screen's level (state transfer, diagnostics and tests).</summary>
         public int MainLevel
@@ -102,7 +121,7 @@ namespace Ntilde.VT
             }
         }
 
-        /// <summary>XTQMODKEYS reply for resource 4: <c>CSI &gt; 4 ; Pv m</c>.</summary>
+        /// <summary>XTQMODKEYS reply for resource 4: <c>CSI &gt; 4 ; Pv m</c>, with the effective level.</summary>
         public string FormatQueryResponse()
             => string.Concat("\x1b[>4;", Level.ToString(CultureInfo.InvariantCulture), "m");
 
@@ -115,6 +134,7 @@ namespace Ntilde.VT
                 clone._altLevel = _altLevel;
                 clone._altActive = _altActive;
                 clone._currentLevel = _currentLevel;
+                clone._isSupported = _isSupported;
             }
 
             return clone;

@@ -469,7 +469,12 @@ namespace Ntilde.Controls
             {
                 // Delivery thread: apply the capability ceiling before subsequent output,
                 // not after a UI dispatch. Older daemons stay at disambiguation-only.
-                if (IsCurrentMux(mux) && mux.IsConnected) Buffer?.Modes.KittyKeyboard.SetSupportedFlags(mux.KittyKeyboardSupportedFlags);
+                if (IsCurrentMux(mux) && mux.IsConnected && Buffer is { } current)
+                {
+                    current.Modes.KittyKeyboard.SetSupportedFlags(mux.KittyKeyboardSupportedFlags);
+                    // Same ordered ceiling for modifyOtherKeys (#829): requested levels are kept.
+                    current.Modes.ModifyOtherKeys.SetSupported(mux.ModifyOtherKeysSupported);
+                }
                 this.Dispatcher.Post(() =>
                 {
                     if (IsCurrentMux(mux) && !_muxConnectionLost && !_muxReconnecting && mux.IsConnected) ApplyMuxSharing(mux.InteractiveOthers);
@@ -501,6 +506,7 @@ namespace Ntilde.Controls
             try
             {
                 buffer.Modes.KittyKeyboard.SetSupportedFlags(source.KittyKeyboardSupportedFlags);
+                buffer.Modes.ModifyOtherKeys.SetSupported(source.ModifyOtherKeysSupported);
                 TerminalStateTransfer.Restore(buffer, parser, snapshot);
             }
             catch (Exception ex)

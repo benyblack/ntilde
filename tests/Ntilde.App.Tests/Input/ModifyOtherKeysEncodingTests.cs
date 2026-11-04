@@ -159,6 +159,16 @@ public sealed class ModifyOtherKeysEncodingTests
 
         // Keypad, cursor, editing and function keys are not xterm "other keys".
         Assert.Null(TerminalInputModeEncoder.EncodeModifyOtherKeys(Key.Enter, Shift, level, PhysicalKey.NumPadEnter));
+        // Avalonia reports some keypad keys under ordinary logical keys; the physical key decides.
+        Assert.Null(TerminalInputModeEncoder.EncodeModifyOtherKeys(Key.OemComma, Ctrl, level, PhysicalKey.NumPadComma));
+        Assert.Null(TerminalInputModeEncoder.EncodeModifyOtherKeys(Key.OemPlus, Ctrl, level, PhysicalKey.NumPadEqual));
+        Assert.Null(TerminalInputModeEncoder.EncodeModifyOtherKeys(Key.OemPeriod, Ctrl, level, PhysicalKey.NumPadDecimal));
+        Assert.Null(TerminalInputModeEncoder.EncodeModifyOtherKeys(Key.D1, Ctrl, level, PhysicalKey.NumPad1));
+        Assert.Null(TerminalInputModeEncoder.EncodeModifyOtherKeys(Key.OemMinus, Ctrl, level, PhysicalKey.NumPadSubtract));
+        // The same logical keys on the main block still encode.
+        Assert.Equal("\x1b[27;5;44~", TerminalInputModeEncoder.EncodeModifyOtherKeys(Key.OemComma, Ctrl, level, PhysicalKey.Comma));
+        Assert.Equal("\x1b[27;5;61~", TerminalInputModeEncoder.EncodeModifyOtherKeys(Key.OemPlus, Ctrl, level, PhysicalKey.Equal));
+        Assert.Equal("\x1b[27;2;13~", TerminalInputModeEncoder.EncodeModifyOtherKeys(Key.Enter, Shift, level, PhysicalKey.Enter));
         foreach (Key key in new[] { Key.Up, Key.Home, Key.Delete, Key.PageUp, Key.F1, Key.F5, Key.NumPad1, Key.Add })
             Assert.Null(TerminalInputModeEncoder.EncodeModifyOtherKeys(key, Ctrl, level));
     }

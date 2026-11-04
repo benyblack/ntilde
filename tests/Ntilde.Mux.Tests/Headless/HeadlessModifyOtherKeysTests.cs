@@ -11,7 +11,12 @@ namespace Ntilde.Mux.Tests.Headless;
 /// </summary>
 public sealed class HeadlessModifyOtherKeysTests
 {
-    private static readonly MuxPresentation Gui = MuxTestHost.DefaultPresentation with { ModifyOtherKeysEnabled = true };
+    // A current GUI: encodes modifyOtherKeys and opts in to ordered keyboard-capability frames.
+    private static readonly MuxPresentation Gui = MuxTestHost.DefaultPresentation with
+    {
+        ModifyOtherKeysEnabled = true,
+        KittyKeyboardSupportedFlags = 31,
+    };
 
     // What `ntilde mux attach`'s text client presents: it forwards legacy key bytes only.
     private static readonly MuxPresentation TextClient = MuxTestHost.DefaultPresentation with
@@ -98,10 +103,17 @@ public sealed class HeadlessModifyOtherKeysTests
         await mux.FlushAsync();
         await TestWait.UntilAsync(() => !fake.SentInput.IsEmpty, "the gated XTQMODKEYS reply reached the child");
         Assert.Equal("\u001b[>4;0m", Assert.Single(fake.SentInput));
-        Assert.Equal(2, await mux.InvokeAsync(() => mux.Buffer.Modes.ModifyOtherKeys.Level)); // still negotiated
+        Assert.Equal(2, await mux.InvokeAsync(() => mux.Buffer.Modes.ModifyOtherKeys.RequestedLevel)); // still negotiated
+        Assert.Equal(0, await mux.InvokeAsync(() => mux.Buffer.Modes.ModifyOtherKeys.Level));
+        // The GUI is told on the ordered capability stream, so it stops encoding too.
+        await TestWait.UntilAsync(() => gui.KeyboardCapabilities.Count > 0 && gui.KeyboardCapabilities[^1].ModifyOtherKeysSupported == false,
+            "the GUI received the lowered modifyOtherKeys ceiling");
 
         mux.PostDetach(text);
         Assert.True(await mux.ModifyOtherKeysEnabled);
+        await TestWait.UntilAsync(() => gui.KeyboardCapabilities[^1].ModifyOtherKeysSupported == true,
+            "the GUI received the restored ceiling");
+        Assert.Equal(2, await mux.InvokeAsync(() => mux.Buffer.Modes.ModifyOtherKeys.Level));
 
         // A presentation without the field (an older GUI) cannot encode it either; a read-only
         // observer takes no part.
@@ -109,5 +121,27 @@ public sealed class HeadlessModifyOtherKeysTests
         Assert.True(await mux.ModifyOtherKeysEnabled);
         mux.PostResize(gui, 80, 24, MuxTestHost.DefaultPresentation);
         Assert.False(await mux.ModifyOtherKeysEnabled);
+    }
+
+    [Fact]
+    public async Task The_attach_capability_frame_carries_the_prospective_ceiling()
+    {
+        var fake = new ScriptedTerminalSession(new TerminalSessionRequest("scripted", string.Empty, string.Empty, 80, 24, null, false, null));
+        using var mux = new HeadlessTerminalSession(Guid.NewGuid(), fake, new HeadlessSessionOptions
+        {
+            Command = "scripted",
+            Title = "t",
+            ForceConPtyFiltering = false,
+        });
+        var gui = new RecordingFrameSink();
+        mux.PostAttach(gui, 1, 0, Gui, MuxProtocol.MaxFrameBytes);
+        await mux.FlushAsync();
+        Assert.True(gui.KeyboardCapabilities[0].ModifyOtherKeysSupported);
+
+        var older = new RecordingFrameSink();
+        mux.PostAttach(older, 2, 0, MuxTestHost.DefaultPresentation with { KittyKeyboardSupportedFlags = 1 }, MuxProtocol.MaxFrameBytes);
+        await mux.FlushAsync();
+        Assert.False(older.KeyboardCapabilities[0].ModifyOtherKeysSupported);
+        await TestWait.UntilAsync(() => gui.KeyboardCapabilities[^1].ModifyOtherKeysSupported == false, "the existing GUI followed");
     }
 }

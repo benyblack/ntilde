@@ -1070,8 +1070,9 @@ namespace Ntilde.VT
         ///   CSI &gt; 4 m        reset to the initial value 0; an empty Pv (CSI &gt; 4 ; m, which
         ///                    Vim's t_TE sends) is the same reset, as in xterm
         ///   CSI &gt; m          reset every resource, so the active screen's level returns to 0
-        ///   CSI ? 4 m        query, answered CSI &gt; 4 ; Pv m (level 0 while
-        ///                    <see cref="ModifyOtherKeysEnabled"/> is false)
+        ///   CSI ? 4 m        query, answered CSI &gt; 4 ; Pv m with the effective level (0 while
+        ///                    the input host's ceiling, <see cref="ModifyOtherKeysState.IsSupported"/>,
+        ///                    is off)
         /// Following xterm, only the first two parameters of a set are read. Other resources
         /// (modifyKeyboard, modifyCursorKeys, modifyFunctionKeys, ...) are not tracked: setting
         /// them is ignored and querying them stays silent rather than guessing a value, as the
@@ -1092,8 +1093,7 @@ namespace Ntilde.VT
             {
                 foreach (int resource in args)
                 {
-                    if (resource == XtermModifyOtherKeysResource)
-                        OnResponse?.Invoke(ModifyOtherKeysEnabled ? state.FormatQueryResponse() : "\x1b[>4;0m");
+                    if (resource == XtermModifyOtherKeysResource) OnResponse?.Invoke(state.FormatQueryResponse());
                 }
                 return;
             }

@@ -177,17 +177,6 @@ namespace Ntilde.VT
         public bool KittyKeyboardEnabled { get; set; } = true;
 
         /// <summary>
-        /// Whether the input host can encode xterm modifyOtherKeys (#829), gated exactly like
-        /// <see cref="KittyKeyboardEnabled"/>: <c>CSI &gt; 4 ; Pv m</c> is still parsed and
-        /// updates <see cref="ModeState.ModifyOtherKeys"/>, but while false the
-        /// <c>CSI ? 4 m</c> query reports level 0, so a child that probes is not told keys will
-        /// arrive in a form the attached input host never sends. A shared session's daemon sets it
-        /// to the AND over its interactive clients (the <c>ntilde mux attach</c> text client
-        /// forwards legacy input and presents false). Defaults to true: the GUI encodes it.
-        /// </summary>
-        public bool ModifyOtherKeysEnabled { get; set; } = true;
-
-        /// <summary>
         /// Terminal-to-host replies (DA, DSR, DECRPM, OSC color answers, ...).
         ///
         /// SECURITY: whatever is passed here is written verbatim to the child process's stdin -

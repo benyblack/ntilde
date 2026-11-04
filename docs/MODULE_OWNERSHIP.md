@@ -635,7 +635,8 @@ invariant changes.
   the model's parser and never reaches the terminal the client draws on. Keyboard protocols are
   not mirrored to the outer terminal either: the text client presents kitty and modifyOtherKeys as
   unsupported, so while it is attached the daemon answers `CSI ? u` with flags 0 and `CSI ? 4 m`
-  with level 0, and its legacy input stays truthful
+  with level 0, and the ordered `keyboardCapabilities` frame lowers every GUI client's kitty mask
+  and modifyOtherKeys ceiling too, so the child is never sent keys in a form it was told is off
 - **Console modes are restored on every exit path.** Detach, session exit, kill, disconnect,
   attach failure, a console write that throws, and a signal all reach `IConsoleSurface.RestoreMode()`
 - **`Daemon/` and `Cli/` know nothing of the App or Platform** (`LayeringTests.Mux_daemon_and_cli_namespaces_have_no_app_or_platform_dependency`).

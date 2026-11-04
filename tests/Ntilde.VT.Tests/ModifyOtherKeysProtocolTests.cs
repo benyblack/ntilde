@@ -269,18 +269,29 @@ public class ModifyOtherKeysProtocolTests
     }
 
     [Fact]
-    public void HostWithoutModifyOtherKeys_StillTracksTheLevel_ButQueryReportsZero()
+    public void HostCeiling_KeepsTheRequestedLevels_ButTheEffectiveLevelAndQueryAreZero()
     {
-        // Same gate as KittyKeyboardEnabled: the mux daemon clears it while a text client that
-        // forwards legacy bytes is attached.
+        // The kitty SupportedFlagMask analogue: a mux daemon lowers it while a client that forwards
+        // legacy bytes is attached, and sends it to its GUI clients.
         var (buffer, parser, responses) = CreateTerminal();
-        parser.ModifyOtherKeysEnabled = false;
+        buffer.Modes.ModifyOtherKeys.SetSupported(false);
 
         parser.Process("\x1b[>4;2m");
 
-        Assert.Equal(2, buffer.Modes.ModifyOtherKeys.Level);
+        Assert.Equal(0, buffer.Modes.ModifyOtherKeys.Level);
+        Assert.Equal(2, buffer.Modes.ModifyOtherKeys.RequestedLevel);
         Assert.Equal("\x1b[>4;0m", Query(parser, responses));
-        parser.ModifyOtherKeysEnabled = true;
-        Assert.Equal("\x1b[>4;2m", Query(parser, responses));
+        Assert.False(buffer.Modes.Clone().ModifyOtherKeys.IsSupported);
+
+        // RIS, state import and screen switches leave the ceiling alone.
+        parser.Process("\x1b[?1049h\x1b[>4;1m");
+        var target = new TerminalBuffer(cols: 40, rows: 8);
+        target.Modes.ModifyOtherKeys.SetSupported(false);
+        target.ImportState(buffer.ExportState(maxScrollbackRows: 100));
+        Assert.Equal((2, 1), (target.Modes.ModifyOtherKeys.MainLevel, target.Modes.ModifyOtherKeys.AltLevel));
+        Assert.Equal(0, target.Modes.ModifyOtherKeys.Level);
+
+        buffer.Modes.ModifyOtherKeys.SetSupported(true);
+        Assert.Equal("\x1b[>4;1m", Query(parser, responses));
     }
 }
