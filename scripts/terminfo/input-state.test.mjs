@@ -20,6 +20,7 @@ for (const [name, mutate] of [
     ['dispatch not available', f => f.actions[0].observed.app.eventDispatched = false],
     ['post state unavailable', f => f.actions[0].observed.app.observationAvailable = false],
     ['another event', f => f.actions[0].observed.request.key = '8'],
+    ['another profile', f => f.actions[1].observed.after.pane.profileName = 'personal'],
     ['post ownership lost', f => f.actions[0].observed.postVerified = false],
     ['partial App result', f => delete f.actions[0].observed.app.applicationKeypad],
     ['contradictory modifiers', f => f.actions[0].observed.app.modifiers = 4],

@@ -29,8 +29,9 @@ export async function generateOwnedInput(config, event, budget, {
     };
     try {
         attempt.before = await verify();
+        const target = endpoint(config.appData, config.app.pid), timeout = budget();
         attempt.rpcStarted = true;
-        attempt.app = structuredClone(await rpc(endpoint(config.appData, config.app.pid), attempt.request, budget()));
+        attempt.app = structuredClone(await rpc(target, attempt.request, timeout));
         attempt.after = await verify();
         attempt.postVerified = true;
         attempt.observedAt = new Date().toISOString();

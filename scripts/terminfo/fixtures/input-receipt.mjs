@@ -18,6 +18,9 @@ export function ownedInputReceiptFixture(action) {
         Object.assign(f.context, { inputSuiteId, ownedInputPolicy, sourceSnapshotPolicy, sourceSnapshotManifestSha256: snapshotHash(manifest) });
         f.proof.sourceSnapshot.policy = sourceSnapshotPolicy;
         f.proof.proofs[0].input = { policy: ownedInputPolicy, actions: [] };
+        const settings = JSON.parse(readFileSync(join(f.output, 'initial-settings.json')));
+        settings.Profiles[0].Name = 'fixture'; f.write('initial-settings.json', settings);
+        f.context.initialSettingsSha256 = createHash('sha256').update(readFileSync(join(f.output, 'initial-settings.json'))).digest('hex');
         const report = { schemaVersion: 1, runId: f.context.runId, suiteId: inputSuiteId, status: 'unavailable',
             reason: 'inputGeometryUnavailable', fixtureStarted: false, plannedExperiments: 39 };
         f.write('input-unavailable.json', report);

@@ -27,13 +27,15 @@ export function validateInputBytes(value, expectedHex, used) {
         && value.barrier === value.nonces.map(n => `\x1b[?${n};0$y`).join(''));
     const key = value.nonces.join(','); checkInput(!used.has(key)); used.add(key);
 }
-export function validateInputAction(action, item, paneId, runId, geometry) {
+export function validateInputAction(action, item, paneId, runId, geometry, profileName) {
     checkInput(action?.paneId === paneId && action.runId === runId && action.rpcStarted === true && action.postVerified === true
         && !action.error && sameInputFact(action.request, { paneId, ...item.event })
         && typeof action.observedAt === 'string' && new Date(action.observedAt).toISOString() === action.observedAt);
     for (const side of ['before', 'after']) {
         const fact = action[side];
         checkInput(fact?.pane?.paneId === paneId && fact.pane.kind === 'local' && !fact.pane.windowless
+            && typeof fact.pane.profileName === 'string' && fact.pane.profileName.length > 0 && fact.pane.profileName.length <= 128
+            && (profileName === undefined || fact.pane.profileName === profileName)
             && fact.pane.rows === geometry.rows && fact.pane.cols === geometry.cols
             && fact.terminalOutput?.tool === '/bin/stty' && fact.terminalOutput.outputProcessing === false);
         validateOutputGeometry(fact.terminalOutput.description, geometry.rows, geometry.cols);
@@ -59,7 +61,7 @@ export function buildInputReport(frames, actions, seal, runId) {
     checkInput(/^[a-f\d]{32}$/.test(runId ?? '') && frames?.length === 81 && actions?.length === 39);
     const paneId = frames[0].paneId, initial = frames[0].screen, geometry = { rows: initial.rows, cols: initial.cols };
     checkInput(pristineEditing(initial));
-    const cases = makeInputCases(initial.rows, initial.cols), used = new Set();
+    const cases = makeInputCases(initial.rows, initial.cols), used = new Set(), profileName = actions[0]?.observed?.before?.pane?.profileName;
     validateInputFrame(frames[0], 0, 'input-start', paneId);
     validateInputFrame(frames[1], 1, 'input-bind', paneId);
     const bound = boundInputScreen(initial, runId);
@@ -73,7 +75,7 @@ export function buildInputReport(frames, actions, seal, runId) {
             && actions[index].index === index && actions[index].caseId === item.id);
         validateInputBytes(control.capture, inputModeReplyHex(item.modes), used);
         validateInputBytes(observed.capture, item.expectedHex, used);
-        validateInputAction(actions[index].observed, item, paneId, runId, geometry);
+        validateInputAction(actions[index].observed, item, paneId, runId, geometry, profileName);
         return { featureId: item.id, result: 'passed', expectedHex: item.expectedHex, actualHex: observed.capture.hex,
             controlSnapshot: control.index, snapshot: observed.index, actionIndex: index };
     });

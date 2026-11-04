@@ -56,3 +56,13 @@ test('disconnect or shared-deadline exhaustion retains the started request witho
         });
     }
 });
+test('shared deadline exhausted before the RPC never marks or performs a started action', async () => {
+    const f = fixture(); let calls = 0;
+    await assert.rejects(generateOwnedInput(f.config, event, () => {
+        if (++calls === 6) throw new Error('shared deadline exhausted');
+        return 1000;
+    }, f.dependencies), error => {
+        assert.equal(error.inputAttempt.rpcStarted, false); assert.equal(error.inputAttempt.app, null); return true;
+    });
+    assert.ok(!f.steps.includes('event'));
+});

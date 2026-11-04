@@ -32,7 +32,7 @@ export class OwnedInputObserver {
             action.observed = error?.inputAttempt ? structuredClone(error.inputAttempt) : null;
             action.error = error instanceof Error ? error.message : String(error); throw error;
         }
-        validateInputAction(action.observed, item, this.paneId, this.runId, this.geometry);
+        validateInputAction(action.observed, item, this.paneId, this.runId, this.geometry, this.readers[0].profileName);
         this.phase = 'read';
         return { actionIndex: action.index };
     }

@@ -58,5 +58,7 @@ export function checkInputEvidence(output, binding, runId, context, proof) {
     const settingsBytes = bytes(output, 'initial-settings.json'); checkInput(hash(settingsBytes) === context.initialSettingsSha256);
     const settings = JSON.parse(settingsBytes);
     checkInput(settings.AgentAccessObserveEnabled === true && settings.AgentAccessActEnabled === true && settings.SessionPersistence === 'Off'
-        && settings.Profiles?.length === 1 && settings.Profiles[0].Type === 0);
+        && settings.Profiles?.length === 1 && settings.Profiles[0].Type === 0
+        && typeof settings.Profiles[0].Name === 'string' && settings.Profiles[0].Name.length > 0
+        && actions.every(action => ['before', 'after'].every(side => action.observed[side].pane.profileName === settings.Profiles[0].Name)));
 }
