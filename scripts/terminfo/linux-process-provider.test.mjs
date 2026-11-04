@@ -253,11 +253,37 @@ test('high-bit unsigned inode/dev identities normalize losslessly from signed No
     for (const ino of [-9223372036854775809n, 18446744073709551616n]) {
         assert.throws(() => linuxFileIdentity({ ...value, ino }, 'isFile'), /range/);
     }
-    for (const key of ['uid', 'mode', 'size', 'mtimeNs', 'ctimeNs']) {
+    for (const key of ['uid', 'mode', 'size']) {
         assert.throws(() => linuxFileIdentity({ ...value, [key]: -1n }, 'isFile'), /negative/);
     }
     const reader = synthetic(), linkStat = reader.linkStat, pathStat = reader.pathStat;
     reader.linkStat = (handle, entry) => entry === 'exe' ? value : linkStat(handle, entry);
     reader.pathStat = path => path === '/opt/worker' ? { ...value, ino: 9223372036855251315n } : pathStat(path);
     assert.equal(records(reader)[0].executableFile.ino, identity.ino);
+});
+
+
+test('valid pre-epoch timestamps stay signed, lossless and part of executable identity', () => {
+    const reader = synthetic(), linkStat = reader.linkStat, pathStat = reader.pathStat;
+    const executable = { ...file(), mtimeNs: -1000000000n, ctimeNs: -1n };
+    reader.linkStat = (handle, entry) => entry === 'exe' ? executable : linkStat(handle, entry);
+    reader.pathStat = path => path === '/opt/worker' ? executable : pathStat(path);
+    const [record] = records(reader);
+    assert.equal(record.executableFile.mtimeNs, '-1000000000');
+    assert.equal(record.executableFile.ctimeNs, '-1');
+});
+
+
+test('primary query refusal and every close failure are retained together after all handles close', () => {
+    const reader = synthetic(), primary = new Error('primary identity refusal');
+    const parentClose = new Error('parent close failed'), childClose = new Error('child close failed');
+    reader.read = () => { throw primary; };
+    reader.close = handle => { reader.closed.push(handle); throw handle.pid === 40 ? parentClose : childClose; };
+    assert.throws(() => readLinuxRecords(reader, [{ pid: 40, pty: false }, { pid: 42, pty: true }], 1000), error => {
+        assert.ok(error instanceof AggregateError);
+        assert.equal(error.errors[0], primary);
+        assert.ok(error.errors.includes(parentClose)); assert.ok(error.errors.includes(childClose));
+        return true;
+    });
+    assert.equal(reader.closed.length, 2);
 });

@@ -50,21 +50,21 @@ export function parseLinuxArgv(bytes) {
     return argv;
 }
 
+function linuxIdentityValue(key, value) {
+    if (typeof value !== 'bigint') throw new Error('Missing lossless Linux file identity.');
+    if (['dev', 'ino', 'rdev'].includes(key)) {
+        // Node/libuv may expose unsigned 64-bit identities as signed int64 BigInts.
+        if (value < -9223372036854775808n || value > 18446744073709551615n) throw new Error('Out-of-range Linux unsigned file identity.');
+        return BigInt.asUintN(64, value).toString();
+    }
+    if (!['mtimeNs', 'ctimeNs'].includes(key) && value < 0n) throw new Error('Invalid negative Linux file metadata.');
+    return value.toString();
+}
+
 function copyIdentity(stat, kind, fields) {
     if (!stat || typeof stat[kind] !== 'function' || !stat[kind]()) throw new Error('Linux file type mismatch.');
     const result = {};
-    for (const key of fields) {
-        const value = stat[key];
-        if (typeof value !== 'bigint') throw new Error('Missing lossless Linux file identity.');
-        if (['dev', 'ino', 'rdev'].includes(key)) {
-            // Node/libuv may expose unsigned 64-bit identities as signed int64 BigInts.
-            if (value < -9223372036854775808n || value > 18446744073709551615n) throw new Error('Out-of-range Linux unsigned file identity.');
-            result[key] = BigInt.asUintN(64, value).toString();
-        } else {
-            if (value < 0n) throw new Error('Invalid negative Linux file metadata.');
-            result[key] = value.toString();
-        }
-    }
+    for (const key of fields) result[key] = linuxIdentityValue(key, stat[key]);
     return result;
 }
 
@@ -127,6 +127,14 @@ function ptySnapshot(reader, handle, process, uid, query) {
     return { selectedFd: 1, descriptors };
 }
 
+function closeLinuxHandles(reader, opened) {
+    const failures = [];
+    for (const value of opened.toReversed()) {
+        try { reader.close(value.handle); } catch (error) { failures.push(error); }
+    }
+    return failures;
+}
+
 /** Internal deterministic seam. Readers are test objects, never CLI-controlled filesystem roots. */
 export function readLinuxRecords(reader, requests, timeoutMs) {
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 4000 || !Array.isArray(requests)
@@ -142,6 +150,7 @@ export function readLinuxRecords(reader, requests, timeoutMs) {
         return value;
     };
     const opened = [];
+    let result, primaryFailure, cleanupFailures;
     try {
         for (const request of requests) query(() => {
             const handle = reader.open(request.pid, query);
@@ -152,14 +161,16 @@ export function readLinuxRecords(reader, requests, timeoutMs) {
             const value = opened[i];
             if (!same(before[i], snapshot(reader, value.handle, value.pid, value.pty, query))) throw new Error('Linux process identity changed during query.');
         }
-        return before;
+        result = before;
+    } catch (error) {
+        primaryFailure = { error };
     } finally {
-        let closeError;
-        for (const value of opened.toReversed()) {
-            try { reader.close(value.handle); } catch (error) { closeError ??= error; }
-        }
-        if (closeError) throw closeError;
+        cleanupFailures = closeLinuxHandles(reader, opened);
     }
+    const failures = [...(primaryFailure ? [primaryFailure.error] : []), ...cleanupFailures];
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1) throw new AggregateError(failures, 'Linux provider query or cleanup failed.');
+    return result;
 }
 
 /** Exact expected launch values must come from the caller's own spawn, not these mutable observations. */

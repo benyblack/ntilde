@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { LinuxProviderOutput, linuxProviderOutputClosed } from './fixtures/linux-provider-output.mjs';
+import { LinuxProviderOutput, linuxProviderOutputClosed, assertLinuxProviderOutputComplete } from './fixtures/linux-provider-output.mjs';
 
 test('fixture stdout/stderr buffers reject before append and latch overflow', () => {
     for (const initial of [0, 4090, 4096]) {
@@ -32,7 +32,7 @@ test('late invalid buffered output between exit and close prevents success', asy
     assert.equal(settled, false);
     stream.emit('data', Buffer.alloc(4097));
     child.emit('close', 0, null);
-    await assert.rejects(observed, /Oversized/);
+    assert.match((await observed).error.message, /Oversized/);
     assert.equal(output.text(), '');
 });
 
@@ -41,4 +41,15 @@ test('valid output is checked after close and preserves actual exit facts', asyn
     const closed = linuxProviderOutputClosed(child, () => assert.equal(output.text(), 'final'));
     child.emit('exit', 0, null); output.append(Buffer.from('final')); child.emit('close', 0, null);
     assert.deepEqual(await closed, { code: 0, signal: null });
+});
+
+
+test('unterminated trailing bytes after valid frames refuse output at close', async () => {
+    const child = new EventEmitter(), output = new LinuxProviderOutput();
+    output.append(Buffer.from('{}\n{}\npartial'));
+    const closed = linuxProviderOutputClosed(child, () => assertLinuxProviderOutputComplete(output, 6));
+    child.emit('exit', 0, null); child.emit('close', 0, null);
+    const result = await closed;
+    assert.match(result.error.message, /unterminated/);
+    assert.equal(result.code, 0); // Actual process exit is retained but cannot become successful output validation.
 });

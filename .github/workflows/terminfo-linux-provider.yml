@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/terminfo-linux-provider.yml'
       - 'scripts/terminfo/linux-process-*.mjs'
+      - 'scripts/terminfo/linux-process-provider-python.test.py'
       - 'scripts/terminfo/fixtures/linux-provider-*'
       - 'docs/qa/linux-process-provider.md'
   workflow_dispatch:
@@ -23,6 +24,8 @@ jobs:
           node-version: '22'
       - name: Synthetic strict-provider regressions
         run: node --test scripts/terminfo/linux-process-provider.test.mjs scripts/terminfo/linux-process-selftest-output.test.mjs
+      - name: Deterministic signal and reap races
+        run: python3 scripts/terminfo/linux-process-provider-python.test.py
       - name: Own tagged child and private PTY facts
         run: node scripts/terminfo/linux-process-selftest.mjs linux-provider-foundation.json
       - name: Reap the private PTY child after helper interruption

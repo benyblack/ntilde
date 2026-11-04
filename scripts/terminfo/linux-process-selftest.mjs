@@ -5,7 +5,7 @@ import { lstatSync, realpathSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { readLinuxProcessFacts, readLinuxOwnedChildFacts } from './linux-process-provider.mjs';
 import { assertLinuxOwnedChild } from './linux-process-core.mjs';
-import { LinuxProviderOutput, linuxProviderOutputClosed } from './fixtures/linux-provider-output.mjs';
+import { LinuxProviderOutput, linuxProviderOutputClosed, assertLinuxProviderOutputComplete } from './fixtures/linux-provider-output.mjs';
 
 if (process.platform !== 'linux') throw new Error('Provider self-test requires Linux, not a simulated proc root.');
 if (process.argv.length !== 3) throw new Error('Expected a report path only.');
@@ -42,13 +42,13 @@ const stderrData = bytes => { try { stderr.append(bytes); } catch (error) { fail
 child.stdout.on('data', stdoutData); child.stderr.on('data', stderrData);
 child.once('error', failOutput);
 child.once('exit', () => { if (pending) failOutput(new Error('Provider fixture exited while awaiting metadata.')); });
-const exited = new Promise((resolve, reject) => {
-    child.once('error', reject); child.once('exit', (code, signal) => resolve({ code, signal }));
+const exited = new Promise(resolve => {
+    child.once('error', error => resolve({ error })); child.once('exit', (code, signal) => resolve({ code, signal }));
 });
-const outputClosed = linuxProviderOutputClosed(child, () => { if (outputFailure) throw outputFailure; });
-async function ignoreFailure(promise) { try { await promise; } catch { /* Failure is observed at the bounded shutdown point. */ } }
-void ignoreFailure(exited);
-void ignoreFailure(outputClosed);
+const outputClosed = linuxProviderOutputClosed(child, () => {
+    if (outputFailure) throw outputFailure;
+    assertLinuxProviderOutputComplete(stdout, processed);
+});
 async function nextMessage() {
     if (outputFailure) throw outputFailure;
     if (messages.length) return messages.shift();
@@ -101,6 +101,7 @@ try {
         timer = setTimeout(() => reject(new Error('Provider fixture exit timed out.')), 6000);
     })]);
     clearTimeout(timer);
+    if (exit.error) throw exit.error;
     assert.equal(exit.code, 0, stderr.text()); assert.equal(exit.signal, null);
     if (outputFailure) throw outputFailure;
     report = { schemaVersion: 1, platform: 'linux', qualification: 'provider-foundation-only',

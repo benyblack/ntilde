@@ -32,8 +32,6 @@ const stderrData = bytes => { try { stderr.append(bytes); } catch (error) { stop
 const ready = new Promise((resolve, reject) => { readyResolve = resolve; rejectReady = reject; });
 child.stdout.on('data', stdoutData); child.stderr.on('data', stderrData); child.once('error', stopReading);
 const closed = linuxProviderOutputClosed(child, () => { if (failure) throw failure; });
-async function ignoreFailure(promise) { try { await promise; } catch { /* Observed again at bounded shutdown. */ } }
-void ignoreFailure(closed);
 async function bounded(promise, milliseconds) {
     try {
         return await Promise.race([promise, new Promise((_, reject) => {
@@ -51,6 +49,7 @@ try {
     assert.equal(observed.child.pty.descriptors[1].path, target.tty);
     assert.equal(child.kill('SIGTERM'), true); // Only our own spawned Python helper.
     const exit = await bounded(closed, 3000);
+    if (exit.error) throw exit.error;
     assert.deepEqual(exit, { code: 143, signal: null }, stderr.text());
     assert.equal(stdout.text().endsWith('\n'), true);
     const frames = stdout.text().trimEnd().split('\n').map(line => JSON.parse(line));

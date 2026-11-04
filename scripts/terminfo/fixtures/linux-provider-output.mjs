@@ -13,12 +13,20 @@ export class LinuxProviderOutput {
 }
 
 
-/** Observe close, not exit: only close follows final stdout/stderr delivery. Caller bounds the shutdown wait. */
+/** Observe drained close, retaining actual exit facts plus explicit validation errors. Caller bounds the wait. */
 export function linuxProviderOutputClosed(child, validate) {
-    return new Promise((resolve, reject) => {
-        child.once('error', reject);
+    return new Promise(resolve => {
+        child.once('error', error => resolve({ code: null, signal: null, error }));
         child.once('close', (code, signal) => {
-            try { validate(); resolve({ code, signal }); } catch (error) { reject(error); }
+            try { validate(); resolve({ code, signal }); }
+            catch (error) { resolve({ code, signal, error }); }
         });
     });
+}
+
+
+/** Every retained byte must belong to an already validated newline-terminated frame. */
+export function assertLinuxProviderOutputComplete(output, processed) {
+    if (!Number.isSafeInteger(processed) || processed < 0 || processed !== output.text().length)
+        throw new Error('Provider fixture left unterminated stdout.');
 }

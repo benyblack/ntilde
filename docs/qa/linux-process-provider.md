@@ -31,6 +31,8 @@ A query has one 1–4000 ms monotonic budget, at most 160 counted operations, bo
 stat/status/cmdline sizes and at most two explicit processes. Every read/open is
 checked before and after, including bounded read loops. All opened proc/file
 handles close in `finally`, even after deadline, reuse or later-open failure.
+Primary query/identity refusals and every cleanup failure are retained together
+in AggregateError; a close failure cannot erase the reason for refusal.
 Synchronous syscalls cannot be interrupted by this deadline: the provider detects
 an overrun after the kernel returns. This is bounded query accounting, not a hard
 preemptive timeout or protection against a malicious kernel/filesystem.
@@ -63,7 +65,9 @@ file. Deleted executable suffixes and dereference restrictions are documented in
 [proc_pid_exe(5)](https://man7.org/linux/man-pages/man5/proc_pid_exe.5.html).
 Unsigned 64-bit inode/device identities are normalized losslessly from Node's
 possible signed int64 representation, only after a strict 64-bit range check.
-Other metadata is not wrapped, and no identity passes through Number.
+Signed pre-epoch mtime/ctime values remain signed decimal strings. UID, mode and
+size remain nonnegative; other metadata is not wrapped, and no identity passes
+through Number.
 This compares object/path facts; it does not hash the executable or establish
 source/build provenance. A future collector must separately pin that identity.
 
@@ -104,6 +108,7 @@ Run the deterministic suite with:
 
 ```sh
 rtk proxy node --test scripts/terminfo/linux-process-provider.test.mjs scripts/terminfo/linux-process-selftest-output.test.mjs
+rtk proxy python3 scripts/terminfo/linux-process-provider-python.test.py
 ```
 
 It covers adversarial comm syntax, start-time precision, signed devices, malformed
@@ -121,7 +126,10 @@ It retains a provider-only report after verified child exit. Stdout and stderr
 are each capped before append at 4096 bytes; overflow latches failure and later
 chunks are discarded without retention. Final output validation waits for the
 helper's `close` event, after stdio drains, rather than publishing at `exit`. A
-regression injects invalid buffered output between those events. See the
+regression injects invalid buffered output between those events. Unterminated
+trailing bytes also refuse success. The close observer always settles with actual
+exit facts plus an explicit error outcome, which is checked before publication;
+there is no detached async rejection handler. See the
 [Node child-process events](https://nodejs.org/docs/latest-v22.x/api/child_process.html#event-close). The private child performs one bounded
 activity exchange before shutdown. The control crosses the kernel's actual
 eight-second tty timestamp bucket (at most 8.1 seconds idle within existing
@@ -135,11 +143,16 @@ Python 3.14.4. The original core/provider SHA-256 values matched the reported
 snapshot and passed 36 tests plus the idle self-test. The old timestamp-inclusive
 PTY projection failed the real activity comparison with an unchanged device and
 changed mtime. The corrected projection passed the same real activity control and
-44 deterministic tests with zero skips after review fixes. A separate real
+47 Node tests plus four deterministic Python signal-race tests with zero skips
+after review fixes. A separate real
 interruption control sends SIGTERM only to its spawned helper while the tagged
 PTY child deliberately resists SIGTERM. The helper converts termination into
 normal unwinding, escalates only its unreaped fork child to SIGKILL and reports
-the actual waitpid acknowledgement. The controller requires drained helper
+the actual waitpid acknowledgement. SIGTERM/SIGINT are blocked while the fork PID
+is stored and while waitpid's result updates the owned-child state, so a pending
+handler cannot observe a stale unreaped flag. Every signal is preceded by an
+owned-child poll; ECHILD ends signaling. Synthetic tests inject termination exactly
+at mask restoration after fork/reap and verify no later signal targets a reaped PID. The controller requires drained helper
 stdio, normal exit143 and the recorded child's absence before publishing any
 success. The existing six-second hard cleanup ceiling is unchanged. This is provider evidence only; no App,
 desktop/GUI collection, clipboard or personal process enumeration was performed.
