@@ -11,10 +11,16 @@ const request = { paneId, runId, operation: 'begin' };
 const result = { fixtureId: '22222222-2222-2222-2222-222222222222', state: 'active', valueSha256: 'b'.repeat(64),
     acceptedWrites: 0, restored: false, complete: false };
 const frame = JSON.stringify({ v: 1, id: 1, result }) + '\n';
+const windowsEndpoint = suffix => String.raw`\\.\pipe\nt-clip-${suffix}`;
+
+test('synthetic Windows endpoint has the exact named-pipe prefix and no controls', () => {
+    assert.equal(windowsEndpoint('test'), '\\\\.\\pipe\\nt-clip-test');
+    assert.ok(!/[\x00-\x1f]/.test(windowsEndpoint('test')));
+});
 
 async function fixture(respond, work) {
     const root = mkdtempSync(join(tmpdir(), 'nt-clip-'));
-    const endpoint = process.platform === 'win32' ? `\\.\pipe\nt-clip-${process.pid}-${root.split(/[\\/]/).at(-1)}` : join(root, 's');
+    const endpoint = process.platform === 'win32' ? windowsEndpoint(`${process.pid}-${root.split(/[\\/]/).at(-1)}`) : join(root, 's');
     const sockets = new Set(); let calls = 0;
     const server = createServer({ allowHalfOpen: true }, socket => {
         sockets.add(socket); socket.on('close', () => sockets.delete(socket)); socket.on('error', () => {});

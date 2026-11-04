@@ -86,6 +86,48 @@ test('callback failure still restores and cancels pending arm, remains sticky th
     assert.equal(api.controller.evidence().fatal, true);
 });
 
+for (const index of [0, 2]) {
+    test('caught invalid seed remains fatal in callback ' + index, async () => {
+        const api = fixture();
+        for (let i = 0; i < index; i++) await runProbe(api, i);
+        await assert.rejects(api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[index], async f => {
+            if (index === 0) {
+                await f.beforeOsc52Write(nonce); api.output(nonce); await f.readText();
+            }
+            await assert.rejects(async () => await f.writeText('invalid'), /nonce/);
+            return { pass: false };
+        }));
+        assert.equal(api.controller.evidence().fatal, true);
+        assert.equal(api.controller.evidence().complete, false);
+        assert.deepEqual(api.calls.slice(-2).map(x => x.operation), ['restore', 'read']);
+        await assert.rejects(api.controller.finish(), /cannot resume/);
+        assert.equal(api.calls.some(x => x.operation === 'close'), false);
+    });
+}
+
+test('caught wrong-order control cannot consume the required seed phase', async () => {
+    const api = fixture();
+    await runProbe(api, 0); await runProbe(api, 1);
+    await assert.rejects(api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[2], async f => {
+        await assert.rejects(async () => await f.readText(), /order/);
+    }));
+    assert.equal(api.controller.evidence().fatal, true);
+    assert.deepEqual(api.calls.slice(-2).map(x => x.operation), ['restore', 'read']);
+    await assert.rejects(api.controller.finish(), /cannot resume/);
+});
+
+test('unconsumed control stays fatal after unrelated asynchronous work settles', async () => {
+    const api = fixture();
+    await runProbe(api, 0); await runProbe(api, 1);
+    await assert.rejects(api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[2], async f => {
+        f.writeText(nonce);
+        await new Promise(resolve => setImmediate(resolve));
+    }));
+    assert.equal(api.controller.evidence().fatal, true);
+    assert.deepEqual(api.calls.slice(-2).map(x => x.operation), ['restore', 'read']);
+    await assert.rejects(api.controller.finish(), /cannot resume/);
+});
+
 test('preserves original and restoration errors and never manufactures completion', async () => {
     const api = fixture();
     api.hook = async request => { if (request.operation === 'restore' && api.calls.filter(x => x.operation === 'restore').length === 2) throw new Error('restore failed'); };
@@ -159,7 +201,7 @@ test('fire-and-forget arm cannot outlive transaction restoration or authorize an
     const held = new Promise(resolve => { release = resolve; });
     api.hook = async request => { if (request.operation === 'armWrite') { entered(); await held; } };
     let arm;
-    const transaction = api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[0], async f => { arm = f.beforeOsc52Write(nonce); await enteredPromise; });
+    const transaction = api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[0], async f => { arm = Promise.resolve(f.beforeOsc52Write(nonce)); await enteredPromise; });
     await enteredPromise; release();
     await assert.rejects(transaction, /did not await/); await assert.rejects(arm, /not awaited/);
     assert.deepEqual(api.calls.slice(-2).map(x => x.operation), ['restore', 'read']);

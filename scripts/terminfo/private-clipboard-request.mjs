@@ -7,8 +7,8 @@ export const privateClipboardNonce = value => typeof value === 'string'
 
 /** Validate only the bounded App-private API, never an arbitrary acting method. */
 export function validatePrivateClipboardRequest(value) {
-    const allowed = ['paneId', 'runId', 'operation', 'fixtureId', 'value'];
-    if (!value || Object.keys(value).some(key => !allowed.includes(key)) || !uuid(value.paneId)
+    const allowed = new Set(['paneId', 'runId', 'operation', 'fixtureId', 'value']);
+    if (!value || Object.keys(value).some(key => !allowed.has(key)) || !uuid(value.paneId)
         || typeof value.runId !== 'string' || !/^[a-f\d]{32}$/.test(value.runId)) throw new Error('Invalid private clipboard request.');
     if (value.operation === 'begin') {
         if (value.fixtureId !== undefined || value.value !== undefined) throw new Error('Invalid private clipboard begin.');

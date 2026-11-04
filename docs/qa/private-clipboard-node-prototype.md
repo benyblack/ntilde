@@ -2,7 +2,7 @@
 
 This is an unintegrated, new-file prototype over the App foundation merged in
 #820. None of the existing worker, adapter, runtime, source inventory, receipt,
-shared CI or published measurement files imports it. A dedicated Ubuntu workflow
+shared CI or published measurement files imports it. A dedicated Ubuntu/Windows workflow
 runs the synthetic controls independently. The original issue remains open.
 It qualifies no real terminal, native clipboard, permission, child delivery or
 process/PTY ownership. Its tests use synthetic memory and temporary local sockets;
@@ -35,7 +35,12 @@ The three exact IDs are accepted once in their pinned tail order:
 do not consume the one process fixture. It restores and independently reads the
 fixed seed, then supplies a callback-lifetime fixture with `beforeOsc52Write`,
 `readText`, and `writeText`. Each call must be awaited; overlapping, stale or
-fire-and-forget fixture calls fail closed. A pending operation settles before
+fire-and-forget fixture calls fail closed. Each control returns a thenable that
+records consumption by promise assimilation separately from its settlement.
+This detects ignored controls even when unrelated asynchronous work lets them
+settle first; it does not attest JavaScript syntax. The pinned collector source
+separately supplies the explicit awaited barrier before terminal emission.
+A pending operation settles before
 restoration, and its handle cannot act in a later callback.
 
 The expected operation sequences are arm/read/seed, arm/read, and seed. Accepted

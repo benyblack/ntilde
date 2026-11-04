@@ -136,32 +136,45 @@ export class PrivateClipboardController {
         let result;
         this.#phase = probeId === PRIVATE_CLIPBOARD_PROBES[0] ? ['arm', 'readWrite', 'seed'] : ['arm', 'readWrite'];
         if (probeId === PRIVATE_CLIPBOARD_PROBES[2]) this.#phase = ['seed'];
-        const lease = { active: true, pending: null };
+        const lease = { active: true, pending: null, controls: [] };
         const invoke = action => {
             if (!lease.active || lease.pending) {
                 this.#fatal = true;
                 return Promise.reject(new Error('Private clipboard callback is inactive or busy.'));
             }
-            const promise = Promise.resolve().then(() => {
+            const control = { consumed: false, promise: null };
+            lease.pending = control;
+            lease.controls.push(control);
+            control.promise = Promise.resolve().then(() => {
                 if (!lease.active) throw new Error('Private clipboard callback ended before its operation.');
                 return action();
             }).then(value => {
                 if (!lease.active) throw new Error('Private clipboard operation was not awaited.');
                 this.#assertOpen();
                 return value;
+            }).catch(error => {
+                this.#fatal = true;
+                throw error;
+            }).finally(() => {
+                lease.pending = null;
             });
-            lease.pending = promise;
-            promise.finally(() => { if (lease.pending === promise) lease.pending = null; }).catch(() => {});
-            return promise;
+            // Track consumption independently of settlement; ignored controls can settle
+            // while the callback awaits unrelated work. Keep their errors handled here.
+            control.promise.catch(() => {});
+            return Object.freeze({ then(onFulfilled, onRejected) {
+                control.consumed = true;
+                return control.promise.then(onFulfilled, onRejected);
+            } });
         };
         const fixture = Object.freeze({ beforeOsc52Write: value => invoke(() => this.#beforeWrite(value)),
             readText: () => invoke(() => this.#readText()), writeText: value => invoke(() => this.#writeText(value)) });
         try {
             result = await work(fixture);
-            if (lease.pending || this.#phase.length) throw new Error('Private clipboard callback omitted or did not await its controls.');
+            if (lease.pending || this.#phase.length || lease.controls.some(control => !control.consumed))
+                throw new Error('Private clipboard callback omitted or did not await its controls.');
         } finally {
             lease.active = false;
-            if (lease.pending) await lease.pending.catch(() => {});
+            if (lease.pending) await lease.pending.promise.catch(() => {});
         }
         this.#assertOpen();
         return result;
