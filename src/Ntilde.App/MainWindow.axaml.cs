@@ -99,7 +99,6 @@ namespace Ntilde
         private readonly CommandAssistServices _commandAssistServices;
         // Not readonly: it follows the SessionPersistence setting (ApplySettingsWindowResult).
         private Ntilde.Pty.ITerminalSessionFactory _sessionFactory;
-        private readonly Ntilde.Shell.Clipboard.PrivateClipboardQaMode _privateClipboardQa;
 
         protected override void OnOpened(EventArgs e)
         {
@@ -279,7 +278,6 @@ namespace Ntilde
         public MainWindow(AppServiceBundle services)
         {
             ArgumentNullException.ThrowIfNull(services);
-            _privateClipboardQa = services.PrivateClipboardQa;
             _startup = services.Startup;
             _commandAssistServices = services.CommandAssist;
             // Assigned here rather than as a field initializer: an instance method group cannot

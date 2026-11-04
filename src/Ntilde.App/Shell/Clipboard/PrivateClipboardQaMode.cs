@@ -8,9 +8,41 @@ namespace Ntilde.Shell.Clipboard;
 internal sealed class PrivateClipboardQaMode
 {
     internal const string Flag = "--ntilde-terminfo-private-clipboard=";
-    internal static PrivateClipboardQaMode Process { get; } = FromStartup(
+    private static readonly PrivateClipboardQaMode StartupProcess = FromStartup(
         Environment.GetCommandLineArgs(), Environment.GetEnvironmentVariable("TERMINFO_RUN_ID"),
         Environment.GetEnvironmentVariable("NTILDE_APPDATA_ROOT"));
+    private static PrivateClipboardQaMode? s_processForTesting;
+    internal static PrivateClipboardQaMode Process => Volatile.Read(ref s_processForTesting) ?? StartupProcess;
+
+    /// <summary>Serialized headless tests only; production's explicit startup latch cannot be changed.</summary>
+    internal static IDisposable OverrideProcessForTesting(PrivateClipboardQaMode mode)
+    {
+        ArgumentNullException.ThrowIfNull(mode);
+        if (StartupProcess.IsEnabled || Interlocked.CompareExchange(ref s_processForTesting, mode, null) != null)
+            throw new InvalidOperationException("An active startup/test process latch cannot be replaced.");
+        try { return new ProcessOverrideScope(mode); }
+        catch
+        {
+            Interlocked.CompareExchange(ref s_processForTesting, null, mode);
+            throw;
+        }
+    }
+
+    private sealed class ProcessOverrideScope(PrivateClipboardQaMode mode) : IDisposable
+    {
+        private PrivateClipboardQaMode? _mode = mode;
+        private readonly IDisposable[] _controlGuards = mode.InstallControlGuards();
+        public void Dispose()
+        {
+            var current = Interlocked.Exchange(ref _mode, null);
+            if (current == null) return;
+            // Windows are torn down first. Do not leave a live fixture if test cleanup failed.
+            current._fixture?.Interrupt();
+            foreach (var guard in _controlGuards) guard.Dispose();
+            Interlocked.CompareExchange(ref s_processForTesting, null, current);
+        }
+    }
+
     private readonly object _gate = new();
     private object? _owner;
     private DisposableClipboardFixture? _fixture;
@@ -56,13 +88,13 @@ internal sealed class PrivateClipboardQaMode
 
     internal IClipboard? ResolveHostClipboard(Func<IClipboard?> provider) => IsEnabled ? null : provider();
 
-    internal DisposableClipboardFixture? Begin(string runId, object owner, Func<bool> isCurrent)
+    internal DisposableClipboardFixture? Begin(string runId, object owner, object sourceParser, Func<bool> isCurrent)
     {
         lock (_gate)
         {
             if (!IsEnabled || RunId != runId || _fixture != null || !isCurrent()) return null;
             _owner = owner;
-            _fixture = new DisposableClipboardFixture(runId, isCurrent);
+            _fixture = new DisposableClipboardFixture(runId, sourceParser, isCurrent);
             return _fixture;
         }
     }

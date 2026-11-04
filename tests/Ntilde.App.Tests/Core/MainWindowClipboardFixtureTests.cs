@@ -13,16 +13,23 @@ using System.Text;
 
 namespace Ntilde.Tests.Core;
 
+[Collection(Ntilde.Tests.Infra.PrivateClipboardProcessScope.Name)]
 public sealed class MainWindowClipboardFixtureTests : IClassFixture<TestAppDataRoot>, IDisposable
 {
     private const string Run = PrivateClipboardQaModeTests.Run;
     private const string Nonce = "terminfo-osc52-01234567-89ab-cdef-0123-456789abcdef";
     private readonly PrivateClipboardQaModeTests _startup = new();
-    public void Dispose() { TestMainWindowFactory.DisposeCreatedWindows(); _startup.Dispose(); }
+    private IDisposable? _processModeScope;
+    public void Dispose()
+    {
+        try { TestMainWindowFactory.DisposeCreatedWindows(); }
+        finally { _processModeScope?.Dispose(); _startup.Dispose(); }
+    }
 
     private (MainWindow Window, TerminalPane Pane, PrivateClipboardQaMode Mode) Create(bool qa = true)
     {
         var mode = _startup.Create();
+        if (qa) _processModeScope = PrivateClipboardQaMode.OverrideProcessForTesting(mode);
         var profile = new TerminalProfile { Name = "Private clipboard local", Type = ConnectionType.Local };
         var settings = new TerminalSettings
         {
@@ -34,7 +41,6 @@ public sealed class MainWindowClipboardFixtureTests : IClassFixture<TestAppDataR
         };
         var services = AppServices.BuildForDesigner() with
         { Settings = settings, SessionFactory = new RecordingSessionFactory(new FakeTerminalSession()), CommandAssist = TestCommandAssistServices.Instance };
-        if (qa) services = services with { PrivateClipboardQa = mode };
         var window = TestMainWindowFactory.Create(services);
         window.Show(); Dispatcher.UIThread.RunJobs();
         return (window, Assert.Single(window.AllPanesForTest()), mode);
@@ -77,6 +83,40 @@ public sealed class MainWindowClipboardFixtureTests : IClassFixture<TestAppDataR
     }
 
     [AvaloniaFact]
+    public async Task Armed_different_parser_payload_aborts_without_accepting_a_write()
+    {
+        var (window, pane, _) = Create();
+        var begun = await Call(window, pane, "begin"); Assert.NotNull(begun);
+        await Call(window, pane, "armWrite", begun.FixtureId, Nonce);
+        const string other = "terminfo-osc52-11111111-2222-3333-4444-555555555555";
+        pane.Parser!.Process("\u001b]52;c;" + Convert.ToBase64String(Encoding.ASCII.GetBytes(other)) + "\a");
+        Assert.Null(await Call(window, pane, "read", begun.FixtureId));
+        var closed = await Call(window, pane, "close", begun.FixtureId);
+        Assert.Equal("aborted", closed?.State);
+        Assert.Equal(0, closed?.AcceptedWrites);
+        Assert.True(closed?.Restored); Assert.False(closed?.Complete);
+        Assert.Null(closed?.Value);
+        Assert.Equal(0, pane.ClipboardWriteAttemptsForTest);
+    }
+
+    [AvaloniaFact]
+    public async Task Reconnect_with_zero_geometry_aborts_before_session_release_without_needing_a_new_parser()
+    {
+        var (window, pane, mode) = Create();
+        var begun = await Call(window, pane, "begin"); Assert.NotNull(begun);
+        var parser = pane.Parser;
+        var fixture = mode.For(pane)!;
+        pane.TermView.Arrange(new Avalonia.Rect(0, 0, 0, 0));
+        Assert.Equal(0, pane.TermView.Cols); Assert.Equal(0, pane.TermView.Rows);
+        pane.Reconnect();
+        Assert.Null(pane.Session);
+        Assert.Same(parser, pane.Parser);
+        Assert.Equal("aborted", fixture.Observe().State);
+        Assert.True(fixture.Observe().Restored); Assert.False(fixture.Observe().Complete);
+        Assert.Equal(0, pane.ClipboardWriteAttemptsForTest);
+    }
+
+    [AvaloniaFact]
     public async Task Read_query_keeps_empty_denial_even_after_independent_private_seed()
     {
         var (window, pane, _) = Create();
@@ -112,7 +152,7 @@ public sealed class MainWindowClipboardFixtureTests : IClassFixture<TestAppDataR
         parser.Process("\u001b]52;c;" + Convert.ToBase64String(Encoding.ASCII.GetBytes(Nonce)) + "\a");
         Assert.Equal(0, pane.ClipboardWriteAttemptsForTest);
         Assert.Null(mode.ResolveHostClipboard(() => throw new InvalidOperationException("Never inspect clipboard after interruption.")));
-        Assert.Null(mode.Begin(Run, new object(), () => true));
+        Assert.Null(mode.Begin(Run, new object(), new object(), () => true));
     }
 
     [AvaloniaFact]
@@ -134,6 +174,44 @@ public sealed class MainWindowClipboardFixtureTests : IClassFixture<TestAppDataR
         Assert.True((await Call(window, pane, "close", begun.FixtureId))?.Complete);
         Assert.Null(await Call(window, pane, "restore", begun.FixtureId));
         Assert.Equal(0, pane.ClipboardWriteAttemptsForTest);
+    }
+
+    [AvaloniaFact]
+    public async Task Paused_old_callback_cannot_enter_a_fixture_bound_after_parser_replacement()
+    {
+        var (window, pane, mode) = Create();
+        var old = pane.Parser!;
+        using var checkedSource = new ManualResetEventSlim();
+        using var resume = new ManualResetEventSlim();
+        pane.BeforePrivateClipboardWriteForTest = () =>
+        {
+            checkedSource.Set();
+            Assert.True(resume.Wait(TimeSpan.FromSeconds(5)), "The controller must release the paused callback.");
+        };
+        var callback = Task.Run(() => old.OnClipboardWrite?.Invoke("c", Encoding.ASCII.GetBytes(Nonce)));
+        try
+        {
+            Assert.True(checkedSource.Wait(TimeSpan.FromSeconds(5)), "The old source check must complete before replacement.");
+            Assert.Null(mode.For(pane));
+            pane.CreateAndWireParser();
+            Assert.NotSame(old, pane.Parser);
+            var begun = await Call(window, pane, "begin"); Assert.NotNull(begun);
+            await Call(window, pane, "armWrite", begun.FixtureId, Nonce);
+            resume.Set();
+            await callback.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.Null(await Call(window, pane, "read", begun.FixtureId));
+            var closed = await Call(window, pane, "close", begun.FixtureId);
+            Assert.Equal("aborted", closed?.State);
+            Assert.Equal(0, closed?.AcceptedWrites);
+            Assert.True(closed?.Restored); Assert.False(closed?.Complete);
+            Assert.Equal(0, pane.ClipboardWriteAttemptsForTest);
+        }
+        finally
+        {
+            resume.Set();
+            pane.BeforePrivateClipboardWriteForTest = null;
+            await callback.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
     }
 
     [AvaloniaFact]

@@ -10,6 +10,7 @@ internal sealed class DisposableClipboardFixture
     private const string Active = "active";
     private readonly object _gate = new();
     private readonly Func<bool> _isCurrent;
+    private readonly object _sourceParser;
     private readonly string _seed;
     private readonly string _runId;
     private string _value;
@@ -20,10 +21,12 @@ internal sealed class DisposableClipboardFixture
     private bool _complete;
     internal Guid Id { get; } = Guid.NewGuid();
 
-    internal DisposableClipboardFixture(string runId, Func<bool> isCurrent)
+    internal DisposableClipboardFixture(string runId, object sourceParser, Func<bool> isCurrent)
     {
         if (!ClipboardFixtureValidation.IsRunId(runId)) throw new ArgumentException("Invalid QA run identifier.", nameof(runId));
         _isCurrent = isCurrent;
+        ArgumentNullException.ThrowIfNull(sourceParser);
+        _sourceParser = sourceParser;
         _runId = runId;
         _seed = "terminfo-private-seed-" + runId;
         _value = _seed;
@@ -92,12 +95,12 @@ internal sealed class DisposableClipboardFixture
         return Snapshot(false);
     }
 
-    internal bool AcceptOsc52(string targets, byte[] bytes)
+    internal bool AcceptOsc52(object sourceParser, string targets, byte[] bytes)
     {
         lock (_gate)
         {
             if (_state != Active) return false;
-            if (!IsCurrent() || targets != "c" || _armed == null || bytes.Length != 51
+            if (!ReferenceEquals(sourceParser, _sourceParser) || !IsCurrent() || targets != "c" || _armed == null || bytes.Length != 51
                 || !bytes.AsSpan().SequenceEqual(Encoding.ASCII.GetBytes(_armed)))
             { Abort(); return false; }
             _value = _armed;

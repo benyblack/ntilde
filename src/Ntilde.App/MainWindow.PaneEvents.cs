@@ -71,7 +71,6 @@ namespace Ntilde
         /// </remarks>
         private void WirePane(TerminalPane pane)
         {
-            pane.PrivateClipboardQa = _privateClipboardQa;
             pane.FocusChromeHidden = _isFocusMode;
             pane.CommandAssistServices = _commandAssistServices;
             pane.SessionFactory = _sessionFactory;

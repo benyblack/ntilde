@@ -1,10 +1,12 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Ntilde.Shell.Clipboard;
 
 namespace Ntilde.AppTests.Shell;
 
+[Collection(Ntilde.Tests.Infra.PrivateClipboardProcessScope.Name)]
 public sealed class PrivateClipboardQaModeTests : IDisposable
 {
     internal const string Run = "0123456789abcdef0123456789abcdef";
@@ -24,12 +26,12 @@ public sealed class PrivateClipboardQaModeTests : IDisposable
         var mode = Create();
         int calls = 0;
         Assert.Null(mode.ResolveHostClipboard(() => { calls++; throw new InvalidOperationException("Must never inspect the host clipboard."); }));
-        Assert.Null(mode.Begin(Run, new object(), () => false));
+        Assert.Null(mode.Begin(Run, new object(), new object(), () => false));
         var owner = new object();
-        var fixture = mode.Begin(Run, owner, () => true);
+        var fixture = mode.Begin(Run, owner, new object(), () => true);
         Assert.NotNull(fixture);
         fixture.Interrupt();
-        Assert.Null(mode.Begin(Run, new object(), () => true));
+        Assert.Null(mode.Begin(Run, new object(), new object(), () => true));
         Assert.Null(mode.For(new object()));
         Assert.Null(mode.ResolveHostClipboard(() => { calls++; return null; }));
         Assert.Equal(0, calls);
@@ -52,35 +54,69 @@ public sealed class PrivateClipboardQaModeTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void Framework_text_controls_refuse_clipboard_events_before_native_provider_resolution()
+    public void Framework_text_controls_refuse_clipboard_access_and_positive_control_reaches_recorder()
     {
         var mode = Create();
-        var guards = mode.InstallControlGuards();
+        var (window, recorder) = RecordingClipboardWindow.Create();
+        using var clipboard = recorder;
         try
         {
-            var text = new TextBox { Text = "private QA text", SelectionStart = 0, SelectionEnd = 7 };
-            foreach (var routedEvent in new[] { TextBox.CopyingToClipboardEvent, TextBox.CuttingToClipboardEvent, TextBox.PastingFromClipboardEvent })
-            {
-                var args = new RoutedEventArgs(routedEvent);
-                text.RaiseEvent(args);
-                Assert.True(args.Handled);
-            }
-            // Exercise the actual framework paths as well; handled events return before resolving Clipboard.
-            text.Copy(); text.Cut(); text.Paste();
-            Assert.Equal("private QA text", text.Text);
+            var text = new TextBox { Text = "private QA text" };
             var selectable = new SelectableTextBlock { Text = "private QA selection" };
-            var copy = new RoutedEventArgs(SelectableTextBlock.CopyingToClipboardEvent);
-            selectable.RaiseEvent(copy);
-            Assert.True(copy.Handled);
-            mode.Interrupt(new object());
-            var after = new RoutedEventArgs(TextBox.PastingFromClipboardEvent);
-            new TextBox().RaiseEvent(after);
-            Assert.True(after.Handled);
+            window.Content = new StackPanel { Children = { text, selectable } };
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            text.SelectionStart = 0; text.SelectionEnd = 7;
+            selectable.SelectionStart = 0; selectable.SelectionEnd = 7;
+            var guards = mode.InstallControlGuards();
+            try
+            {
+                text.Copy(); text.Cut(); text.Paste(); selectable.Copy();
+                Assert.Equal("private QA text", text.Text);
+                Assert.Equal((0, 0, 0), (recorder.Resolutions, recorder.Reads, recorder.Writes));
+                foreach (var routedEvent in new[] { TextBox.CopyingToClipboardEvent, TextBox.CuttingToClipboardEvent, TextBox.PastingFromClipboardEvent })
+                {
+                    var args = new RoutedEventArgs(routedEvent); text.RaiseEvent(args); Assert.True(args.Handled);
+                }
+            }
+            finally { foreach (var guard in guards) guard.Dispose(); }
+
+            // The same attached controls/backend must detect every path when guards are absent.
+            text.Copy(); Assert.Equal(1, recorder.Writes);
+            text.Cut(); Assert.Equal(2, recorder.Writes);
+            text.Paste(); Assert.True(recorder.Reads > 0);
+            selectable.Copy(); Assert.Equal(3, recorder.Writes);
+            Assert.True(recorder.Resolutions >= 4);
         }
-        finally { foreach (var guard in guards) guard.Dispose(); }
-        var normal = new RoutedEventArgs(TextBox.PastingFromClipboardEvent);
-        new TextBox().RaiseEvent(normal);
-        Assert.False(normal.Handled);
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void One_process_override_drives_host_resolution_and_refuses_replacement_until_window_teardown()
+    {
+        var ordinary = PrivateClipboardQaMode.Process;
+        var mode = Create();
+        var (window, recorder) = RecordingClipboardWindow.Create();
+        using var clipboard = recorder;
+        IDisposable? scope = null;
+        DisposableClipboardFixture? fixture = null;
+        try
+        {
+            scope = PrivateClipboardQaMode.OverrideProcessForTesting(mode);
+            Assert.Same(mode, PrivateClipboardQaMode.Process);
+            fixture = mode.Begin(Run, new object(), new object(), () => true);
+            Assert.NotNull(fixture);
+            Assert.Null(HostClipboardAccess.Get(window));
+            Assert.Equal(0, recorder.Resolutions);
+            Assert.Throws<InvalidOperationException>(() => PrivateClipboardQaMode.OverrideProcessForTesting(Create()));
+            Assert.Same(mode, PrivateClipboardQaMode.Process);
+            Assert.Equal("active", fixture.Observe().State);
+        }
+        finally { window.Close(); scope?.Dispose(); }
+        Assert.Equal("aborted", fixture?.Observe().State);
+        Assert.False(fixture?.Observe().Complete);
+        Assert.Same(ordinary, PrivateClipboardQaMode.Process);
+        // The recorder remains a pure headless feature: no system provider is consulted.
+        Assert.Same(recorder.Facade, ordinary.ResolveHostClipboard(() => recorder.Facade));
     }
 
     [Fact]
@@ -91,6 +127,6 @@ public sealed class PrivateClipboardQaModeTests : IDisposable
         Assert.False(mode.IsEnabled);
         Assert.Null(mode.ResolveHostClipboard(() => { calls++; return null; }));
         Assert.Equal(1, calls);
-        Assert.Null(mode.Begin(Run, new object(), () => true));
+        Assert.Null(mode.Begin(Run, new object(), new object(), () => true));
     }
 }

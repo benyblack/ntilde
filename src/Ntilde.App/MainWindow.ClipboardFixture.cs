@@ -28,7 +28,7 @@ public partial class MainWindow
             && ReferenceEquals(pane.Session, session) && ReferenceEquals(registration.ObservationSession, session);
         if (!mode.IsEnabled || mode.RunId != input.RunId || parser == null || !BoundIdentity()) return null;
         cancellationToken.ThrowIfCancellationRequested();
-        if (input.Operation == "begin") return mode.Begin(input.RunId, pane, BoundIdentity)?.Observe();
+        if (input.Operation == "begin") return mode.Begin(input.RunId, pane, parser, BoundIdentity)?.Observe();
         return mode.For(pane)?.Apply(input);
     }
 }

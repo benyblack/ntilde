@@ -48,6 +48,10 @@ optional `value`. Unknown fields and mixed operations are rejected.
 | `restore` | fixtureId | Cancels any armed write and restores the fixed private seed, keeping the fixture active |
 | `close` | fixtureId | Restores fixed `terminfo-private-seed-<runId>` storage and closes |
 
+A fixture captures its originating parser object, and every write callback carries
+its own captured parser identity into the locked fixture check. A paused retired
+callback cannot write into a fixture created after parser replacement.
+
 The current visible single direct local pane must satisfy the same layout gates
 as resize: no remote, mux/deferred, windowless, split, inactive, stale or dead
 target. App registration, parser, buffer and session identity bind the fixture.
@@ -73,4 +77,9 @@ receipt integration remain follow-up work under #774.
 
 Native OS clipboard interchange remains in its separate qualification lane.
 This foundation's tests use fake sessions, private temporary roots and headless
-Avalonia; they do not access the OS clipboard or launch a desktop App.
+Avalonia; they do not access the OS clipboard or launch a desktop App. Process
+policy tests run in a nonparallel collection, with one scoped test-only process
+latch installed before window construction and removed after window teardown.
+The explicit production startup latch cannot be replaced. Framework control
+coverage uses a recording headless clipboard feature with normal-access positive
+controls, never an OS provider.

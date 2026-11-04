@@ -95,6 +95,29 @@ public sealed class AgentHostClipboardFixtureProtocolTests
         Assert.DoesNotContain(hash, JsonSerializer.Serialize(s.Journal.Snapshot()));
     }
 
+    [Fact]
+    public async Task Caller_cancellation_is_journaled_without_nonce_or_run_data_and_still_propagates()
+    {
+        var s = Setup(); using var service = s.Service;
+        using var cancelled = new CancellationTokenSource();
+        s.Executor.OnClipboardFixture = (_, _, _, token) =>
+        {
+            cancelled.Cancel();
+            return Task.FromCanceled<ClipboardFixtureResult?>(token);
+        };
+        const string nonce = "terminfo-osc52-01234567-89ab-cdef-0123-456789abcdef";
+        string request = Request(s.Registration.PaneId, "\"operation\":\"seed\",\"fixtureId\":\"" + Guid.NewGuid()
+            + "\",\"value\":\"" + nonce + "\"");
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.HandleRequestLineAsync(request, cancelled.Token));
+        var entry = Assert.Single(s.Journal.Snapshot());
+        Assert.Equal("clipboardFixture", entry.Method);
+        Assert.Equal(s.Registration.PaneId, entry.PaneId);
+        Assert.Equal("private QA fixture", entry.Target);
+        Assert.Equal("cancelled", entry.Outcome);
+        Assert.DoesNotContain(nonce, JsonSerializer.Serialize(entry));
+        Assert.DoesNotContain(Run, JsonSerializer.Serialize(entry));
+    }
+
     [Theory]
     [InlineData("registration")]
     [InlineData("session")]

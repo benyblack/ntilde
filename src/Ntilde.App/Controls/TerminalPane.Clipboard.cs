@@ -9,7 +9,8 @@ namespace Ntilde.Controls;
 public partial class TerminalPane
 {
     private KittyClipboardSession? _kittyClipboard;
-    internal PrivateClipboardQaMode PrivateClipboardQa { get; set; } = PrivateClipboardQaMode.Process;
+    internal PrivateClipboardQaMode PrivateClipboardQa { get; } = PrivateClipboardQaMode.Process;
+    internal Action? BeforePrivateClipboardWriteForTest { get; set; }
     internal Func<Func<Task>, Task>? ClipboardSchedulerForTest { get; set; }
 
     /// <summary>A private process never falls back to desktop I/O; retired parser callbacks cannot acquire a later fixture.</summary>
@@ -17,7 +18,11 @@ public partial class TerminalPane
     {
         if (!PrivateClipboardQa.IsEnabled) return false;
         if (!ReferenceEquals(Parser, source) || !allowed) PrivateClipboardQa.Interrupt(this);
-        else PrivateClipboardQa.For(this)?.AcceptOsc52(target, data);
+        else
+        {
+            BeforePrivateClipboardWriteForTest?.Invoke();
+            PrivateClipboardQa.For(this)?.AcceptOsc52(source, target, data);
+        }
         return true;
     }
 
