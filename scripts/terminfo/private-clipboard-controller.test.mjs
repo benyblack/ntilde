@@ -196,6 +196,41 @@ test('identity loss after App response retains actual facts and blocks all later
     assert.equal(api.calls.some(x => x.operation === 'close'), false);
 });
 
+for (const phase of ['baseline', 'terminal-write']) {
+    test('foreign canonical read value is rejected before retention at ' + phase, async () => {
+        const api = fixture(), rpc = api.rpc;
+        const foreign = 'terminfo-osc52-44444444-4444-4444-4444-444444444444';
+        api.rpc = async request => {
+            const result = await rpc(request);
+            const target = phase === 'baseline' ? result.value === seed : result.value === nonce;
+            return request.operation === 'read' && target ? { ...result, value: foreign, valueSha256: hash(foreign) } : result;
+        };
+        await assert.rejects(runProbe(api, 0));
+        const evidence = api.controller.evidence();
+        assert.equal(evidence.fatal, true); assert.equal(evidence.complete, false);
+        assert.ok(!JSON.stringify(evidence).includes(foreign));
+        assert.ok(!JSON.stringify(evidence).includes(hash(foreign)));
+        assert.ok(evidence.events.some(x => x.request.operation === 'read' && x.failed && !x.result));
+        await assert.rejects(api.controller.finish(), /cannot resume/);
+        assert.equal(api.calls.some(x => x.operation === 'close'), false);
+    });
+}
+
+test('validated source-known read survives later binding failure as actual failed-run evidence', async () => {
+    const api = fixture(), rpc = api.rpc;
+    api.rpc = async request => {
+        const result = await rpc(request);
+        if (request.operation === 'read') api.binding = 'c'.repeat(64);
+        return result;
+    };
+    await assert.rejects(runProbe(api, 0));
+    const read = api.controller.evidence().events.find(x => x.request.operation === 'read');
+    assert.equal(read.result.value, seed); assert.equal(read.result.valueSha256, hash(seed));
+    assert.equal(read.postVerified, false); assert.equal(read.failed, true);
+    assert.equal(api.controller.evidence().fatal, true);
+    assert.equal(api.controller.evidence().complete, false);
+});
+
 test('reset after begin cannot revive, rebind or complete the one fixture', async () => {
     const api = fixture();
     await assert.rejects(api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[0], async () => { api.reset(); throw new Error('reset'); }));

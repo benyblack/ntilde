@@ -60,7 +60,10 @@ pending arm; it does not close or reactivate anything. A failed restore/read is
 not retried by cleanup. A failed callback still attempts distinct restoration if
 its earlier operation was not itself a failed restoration. Original and cleanup
 errors are retained together. An unknown/malformed response value is rejected
-before journaling; only admitted source-known values enter this private evidence.
+before journaling, including a canonical nonce that differs from the expected
+seed/write value. The expected hash, count and state are checked before retaining
+a read result. An admitted read remains available if a later binding check fails;
+only admitted source-known values enter this private evidence.
 Ordinary App logs remain unchanged.
 
 Any refusal, interrupted callback, identity/hash/count mismatch or ambiguous

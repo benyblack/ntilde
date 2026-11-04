@@ -64,7 +64,7 @@ export class PrivateClipboardController {
     }
 
     /** Retain actual validated App facts even when the post-operation binding check fails. No replay. */
-    async #call(operation, value) {
+    async #call(operation, value, readExpectation) {
         if (this.#events.length >= 64) throw new Error('Private clipboard operation budget exhausted.');
         const request = { paneId: this.#paneId, runId: this.#runId, operation,
             ...(operation === 'begin' ? {} : { fixtureId: this.#fixtureId }), ...(value === undefined ? {} : { value }) };
@@ -77,6 +77,10 @@ export class PrivateClipboardController {
             if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 4000) throw new Error('Invalid private clipboard deadline.');
             event.rpcStarted = true;
             const result = validatePrivateClipboardResult(await this.#rpc(structuredClone(request), timeout), request);
+            if (operation === 'read') {
+                this.#require(result, readExpectation);
+                if (result.value !== readExpectation.value) throw new Error('Missing private clipboard readback.');
+            }
             event.result = result;
             if (operation === 'begin') this.#fixtureId = result.fixtureId;
             await this.#checkBinding();
@@ -98,9 +102,7 @@ export class PrivateClipboardController {
     }
 
     async #readExpected(value = this.#current, count = this.#count, restored = this.#restored) {
-        const result = await this.#call('read');
-        this.#require(result, { value, count, restored });
-        if (result.value !== value) throw new Error('Missing private clipboard readback.');
+        const result = await this.#call('read', undefined, { value, count, restored });
         return result.value;
     }
 
