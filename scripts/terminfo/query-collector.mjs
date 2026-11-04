@@ -8,7 +8,8 @@ function write(output, bytes, signal) {
     return new Promise((resolve, reject) => {
         let settled = false;
         const finish = error => {
-            if (settled) return; settled = true; clearTimeout(timer); signal.removeEventListener('abort', abort);
+            if (settled) return;
+            settled = true; clearTimeout(timer); signal.removeEventListener('abort', abort);
             if (error) reject(error); else resolve();
         };
         const abort = () => finish(signal.reason ?? new Error('Query write aborted.'));
@@ -43,14 +44,14 @@ export async function collectQueries({ runId, owner, expectedOwnerPid, outputDir
     };
     const reader = rawInputCapture(input, output, 4500, choose); let attempts = 0;
     try {
-        for (const entry of queryPlan) {
+        await queryPlan.reduce((previous, entry) => previous.then(async () => {
             const action = structuredClone(await callOwner('queries-admit', null, { index: entry.index }));
             const expected = queryAction(entry, { runId }, initial.cursorVisible);
             check(JSON.stringify(action) === JSON.stringify(expected));
             attempts++;
             const capture = await reader.capture(signal => write(output, Buffer.from(expected.commandHex, 'hex'), signal));
             await callOwner('queries-read', null, { index: entry.index, capture });
-        }
+        }), Promise.resolve());
         reader.dispose();
         await callOwner('queries-seal', null, { captureStatus: { attempts, failed: reader.failed, disposed: true, lastAttempt: reader.lastAttempt } });
     } catch (error) {

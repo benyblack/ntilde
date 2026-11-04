@@ -68,6 +68,23 @@ function requireStaticImageCompletion(state) {
     if (!state?.observer?.restored && !state?.unavailable) throw new Error('Static images must be restored and sealed.');
 }
 
+function requireQueryCompletion(state) {
+    if (!state?.observer?.restored && !state?.unavailable) throw new Error('Query suite must be sealed and restored or initially unavailable.');
+}
+function assertExecutableUnchanged(executable, image) {
+    const current = statSync(executable);
+    if (image.ino !== current.ino || image.size !== current.size || image.mtimeMs !== current.mtimeMs)
+        throw new Error('Owned executable changed during collection.');
+}
+function retainQueryReport(output, state, runId) {
+    requireQueryCompletion(state);
+    if (state.unavailable) return state.unavailable;
+    const report = state.observer.report, file = 'query-observations.json'; writeJson(join(output, file), report);
+    const counts = {};
+    for (const item of report.observations) { const key = item.contractMatched ? 'matched' : 'mismatched'; counts[key] = (counts[key] ?? 0) + 1; }
+    return { runId, suiteId: querySuiteId, file, sha256: hash(readFileSync(join(output, file))), counts, provisionalUntil: 'cell-receipt.json' };
+}
+
 function retainFailedMetadataAttempt(output, request, error, observer) {
     if (observer.lastAttempt && !initialMetadataRefusal(request, error, observer))
         writeJson(join(output, 'metadata-failed-observation.json'), { ...observer.lastAttempt, error: observer.failure(error) });
@@ -693,41 +710,42 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (journal.failed && !existsSync(join(output, 'query-failed-observation.json'))) writeJson(join(output, 'query-failed-observation.json'), journal);
         };
         const observeQueries = async (request, budget, owner, worker) => {
-            const { token: ignoredToken, runId: ignoredRun, workerPid: ignoredWorker, tty: ignoredTty, barrier, ...payload } = request;
-            if (barrier !== null) throw new Error('Query barriers are retained only in their raw capture.');
-            requireInputCompletion(inputState); requireStaticImageCompletion(staticImageState);
-            if (inputState.unavailable || staticImageState.unavailable) {
-                if (queryState || request.kind !== 'queries-start' || Object.keys(payload).length !== 1) throw new Error('Query prerequisite refusal must precede all fixture actions.');
-                const file = 'query-unavailable.json';
-                writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: querySuiteId, status: 'unavailable',
-                    reason: 'queryPrerequisiteUnavailable', fixtureStarted: false, plannedActions: 44, plannedContracts: 40,
-                    observedActions: 0, observedContracts: 0, observedFrames: 0,
-                    prerequisites: [['inputEvidence', inputState.unavailable], ['staticImageEvidence', staticImageState.unavailable]]
-                        .filter(([, value]) => value).map(([bindingKey, value]) => ({ bindingKey, ...value })) });
-                const unavailable = { runId, suiteId: querySuiteId, file, sha256: hash(readFileSync(join(output, file))),
-                    status: 'unavailable', reason: 'queryPrerequisiteUnavailable', counts: {} };
-                queryState = { unavailable };
-                return { status: unavailable.status, reason: unavailable.reason };
-            }
-            if (!queryState) {
-                if (request.kind !== 'queries-start') throw new Error('Query fixture must start before admission.');
-                const priorChallenges = [...inputState.observer.frames, ...staticImageState.observer.frames]
-                    .filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
-                if (priorChallenges.length !== 110) throw new Error('Incomplete earlier query challenges.');
-                queryState = { workerPid: worker.pid, tty: request.tty, recordedFrames: 0, recordedActions: 0 };
-                const binding = { runId, ownerPid: owner.pid, workerPid: worker.pid, uid: worker.uid,
-                    appExecutable: owner.executable, workerExecutable: worker.executable, tty: request.tty, profileName, paneId: cellObserver.paneId };
-                queryState.observer = new OwnedQueryObserver({ binding, appData, priorChallenges, attest: remaining => attestQuery(queryState, remaining) });
-                proofs[0].queries.binding = binding;
-            }
-            if (queryState.workerPid !== request.workerPid || queryState.tty !== request.tty) throw new Error('Query fixture ownership changed.');
             try {
+                const payload = { ...request };
+                for (const key of ['token', 'runId', 'workerPid', 'tty', 'barrier']) delete payload[key];
+                if (request.barrier !== null) throw new Error('Query barriers are retained only in their raw capture.');
+                requireInputCompletion(inputState); requireStaticImageCompletion(staticImageState);
+                if (inputState.unavailable || staticImageState.unavailable) {
+                    if (queryState || request.kind !== 'queries-start' || Object.keys(payload).length !== 1) throw new Error('Query prerequisite refusal must precede all fixture actions.');
+                    const file = 'query-unavailable.json';
+                    writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: querySuiteId, status: 'unavailable',
+                        reason: 'queryPrerequisiteUnavailable', fixtureStarted: false, plannedActions: 44, plannedContracts: 40,
+                        observedActions: 0, observedContracts: 0, observedFrames: 0,
+                        prerequisites: [['inputEvidence', inputState.unavailable], ['staticImageEvidence', staticImageState.unavailable]]
+                            .filter(([, value]) => value).map(([bindingKey, value]) => ({ bindingKey, ...value })) });
+                    const unavailable = { runId, suiteId: querySuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                        status: 'unavailable', reason: 'queryPrerequisiteUnavailable', counts: {} };
+                    queryState = { unavailable };
+                    return { status: unavailable.status, reason: unavailable.reason };
+                }
+                if (!queryState) {
+                    if (request.kind !== 'queries-start') throw new Error('Query fixture must start before admission.');
+                    const priorChallenges = [...inputState.observer.frames, ...staticImageState.observer.frames]
+                        .filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
+                    if (priorChallenges.length !== 110) throw new Error('Incomplete earlier query challenges.');
+                    queryState = { workerPid: worker.pid, tty: request.tty, recordedFrames: 0, recordedActions: 0 };
+                    const binding = { runId, ownerPid: owner.pid, workerPid: worker.pid, uid: worker.uid,
+                        appExecutable: owner.executable, workerExecutable: worker.executable, tty: request.tty, profileName, paneId: cellObserver.paneId };
+                    queryState.observer = new OwnedQueryObserver({ binding, appData, priorChallenges, attest: remaining => attestQuery(queryState, remaining) });
+                    proofs[0].queries.binding = binding;
+                }
+                if (queryState.workerPid !== request.workerPid || queryState.tty !== request.tty) throw new Error('Query fixture ownership changed.');
                 const result = await queryState.observer.handle(payload, budget);
                 const journal = queryState.observer.journal;
                 proofs[0].queries.actions = journal.actions;
                 if (journal.seal) proofs[0].queries.seal = journal.seal;
                 return result;
-            } catch (error) { queryState.observer.abort(error); throw error; }
+            } catch (error) { queryState?.observer?.abort(error); throw error; }
             finally { retainQueryJournal(); }
         };
         const observeCells = async (request, budget) => {
@@ -792,8 +810,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         throw new Error('Invalid run capability.');
                     }
                     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) throw new Error('Owned app is no longer live.');
-                    const currentImage = statSync(executable);
-                    if (image.ino !== currentImage.ino || image.size !== currentImage.size || image.mtimeMs !== currentImage.mtimeMs) throw new Error('Owned executable changed during collection.');
+                    assertExecutableUnchanged(executable, image);
                     // All lineage/mode queries and observations share the existing 4s budget.
                     const queryTimeout = createProcessBudget(4000);
                     const owner = processRecord(app.pid, queryTimeout());
@@ -803,7 +820,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (/^queries-/.test(request.kind)) {
+                    if (request.kind?.startsWith('queries-')) {
                         const result = await observeQueries(request, queryTimeout, owner, worker);
                         socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
                         return;
@@ -828,7 +845,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     } else if (request.kind === 'done') {
                         requireInputCompletion(inputState);
                         requireStaticImageCompletion(staticImageState);
-                        if (!queryState?.observer?.restored && !queryState?.unavailable) throw new Error('Query suite must be sealed and restored or initially unavailable.');
+                        requireQueryCompletion(queryState);
                         completed = true;
                         resolveDone();
                     } else if (request.kind === 'failed') {
@@ -884,14 +901,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 () => inputState.observer.report, 'input-observations.json');
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
-            if (queryState.unavailable) queryEvidence = queryState.unavailable;
-            else {
-                const queryReport = queryState.observer.report;
-                const queryFile = 'query-observations.json'; writeJson(join(output, queryFile), queryReport);
-                const queryCounts = {};
-                for (const item of queryReport.observations) { const key = item.contractMatched ? 'matched' : 'mismatched'; queryCounts[key] = (queryCounts[key] ?? 0) + 1; }
-                queryEvidence = { runId, suiteId: querySuiteId, file: queryFile, sha256: hash(readFileSync(join(output, queryFile))), counts: queryCounts, provisionalUntil: 'cell-receipt.json' };
-            }
+            queryEvidence = retainQueryReport(output, queryState, runId);
             summary.queryEvidence = queryEvidence;
             summary.staticImageEvidence = staticImageEvidence;
             summary.inputEvidence = inputEvidence;
@@ -911,7 +921,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
-            if (queryState?.observer) { queryState.observer.abort(error); retainQueryJournal(); }
+            queryState?.observer?.abort(error);
+            retainQueryJournal();
             writeJson(join(output, 'failure.json'), { error: error.message, at: new Date().toISOString() });
             throw new Error(`${error.message} Evidence retained in ${output}`);
         } finally {

@@ -7,7 +7,10 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const files = ['query-snapshots.jsonl', 'query-actions.jsonl', 'query-initial.json', 'query-observations.json', 'query-unavailable.json', 'query-failed-observation.json', 'query-raw-failure.json'];
 function present(path) {
     try { lstatSync(path); return true; }
-    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+    catch (error) {
+        if (error.code === 'ENOENT') return false;
+        throw error;
+    }
 }
 function read(output, file, limit = 16 * 1024 * 1024) {
     const path = join(output, file), stat = lstatSync(path); check(stat.isFile() && !stat.isSymbolicLink() && stat.size <= limit);

@@ -56,7 +56,7 @@ export function queryAction(entry, binding, cursorVisible = true) {
     else if (entry.kind === 'full') command = '\x1b[?6l\x1b[r\x1b[1;' + (nonce.length + 1) + 'H';
     else if (entry.kind === 'finish') { check(typeof cursorVisible === 'boolean'); command = '\x1bc\x1b[?25' + (cursorVisible ? 'h' : 'l'); }
     else command = fixed.find(value => value.id === entry.id)?.request;
-    check(typeof command === 'string' && command.length <= 64 && [...command].every(c => c.charCodeAt(0) <= 127));
+    check(typeof command === 'string' && command.length <= 64 && [...command].every(c => c.codePointAt(0) <= 127));
     return Object.freeze({ index: entry.index, kind: entry.kind, id: entry.id ?? null, reader: entry.reader,
         commandHex: Buffer.from(command, 'ascii').toString('hex'), commandSha256: hash(command) });
 }

@@ -112,7 +112,7 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
     if (report.snapshots) validateOutputGeometry(mode.description, report.snapshots[0].screen.rows, report.snapshots[0].screen.cols);
 }
 
-function ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata) {
+function ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -121,6 +121,9 @@ function ownedReceiptVersion(context, includesEditing, includesHistory, includes
     if (includesResize) schemaVersion = 6;
     if (includesSaved) schemaVersion = 7;
     if (includesMetadata) schemaVersion = 8;
+    if (includesInput) schemaVersion = 9;
+    if (includesImages) schemaVersion = 10;
+    if (includesQueries) schemaVersion = 11;
     return schemaVersion;
 }
 
@@ -158,10 +161,7 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (includesInput) checkInputEvidence(output, evidence.inputEvidence, runId, context, proof);
     if (includesImages) checkStaticImageEvidence(output, evidence.staticImageEvidence, runId, context, proof);
     if (includesQueries) checkQueryEvidence(output, evidence.queryEvidence, runId, context, proof, evidence);
-    let schemaVersion = ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata);
-    if (includesInput) schemaVersion = 9;
-    if (includesImages) schemaVersion = 10;
-    if (includesQueries) schemaVersion = 11;
+    const schemaVersion = ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries);
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

@@ -31,6 +31,17 @@ export function queryWorld({ priorChallenges = [], mutateReply, mutateState, mut
         if (id.startsWith('q12.xtgettcap.')) return '\x1bP0+r\x1b\\';
         return '';
     };
+    const applyControl = command => {
+        if (command === '\x1bc\x1b[?1049h' + nonce) {
+            screen = structuredClone(initial); screen.cursorVisible = true; screen.lines[0] = nonce; screen.cursorCol = nonce.length; screen.bufferState.alternateScreen = true;
+        } else if (command === '\x1b[2;6r\x1b[?6h') {
+            Object.assign(screen.bufferState, { scrollTop: 1, scrollBottom: 5, originMode: true }); screen.cursorRow = 1; screen.cursorCol = 0;
+        } else if (command === '\x1b[?6l\x1b[r\x1b[1;44H') {
+            Object.assign(screen.bufferState, { scrollTop: 0, scrollBottom: rows - 1, originMode: false }); screen.cursorRow = 0; screen.cursorCol = 43;
+        } else if (command === '\x1bc\x1b[?25' + (cursorVisible ? 'h' : 'l')) screen = structuredClone(initial);
+        else return false;
+        return true;
+    };
     const output = { write(bytes, callback) {
         const command = Buffer.isBuffer(bytes) ? bytes.toString('ascii') : bytes;
         queueMicrotask(() => {
@@ -41,14 +52,7 @@ export function queryWorld({ priorChallenges = [], mutateReply, mutateState, mut
                     reply = challengeFields.map(match => '\x1b[?' + match[1] + ';0$y').join('');
                 else {
                     packets.push(command);
-                    if (command === '\x1bc\x1b[?1049h' + nonce) {
-                        screen = structuredClone(initial); screen.cursorVisible = true; screen.lines[0] = nonce; screen.cursorCol = nonce.length; screen.bufferState.alternateScreen = true;
-                    } else if (command === '\x1b[2;6r\x1b[?6h') {
-                        Object.assign(screen.bufferState, { scrollTop: 1, scrollBottom: 5, originMode: true }); screen.cursorRow = 1; screen.cursorCol = 0;
-                    } else if (command === '\x1b[?6l\x1b[r\x1b[1;44H') {
-                        Object.assign(screen.bufferState, { scrollTop: 0, scrollBottom: rows - 1, originMode: false }); screen.cursorRow = 0; screen.cursorCol = 43;
-                    } else if (command === '\x1bc\x1b[?25' + (cursorVisible ? 'h' : 'l')) screen = structuredClone(initial);
-                    else {
+                    if (!applyControl(command)) {
                         const id = commands.get(command); if (!id) throw new Error('Synthetic writer received an undeclared packet.');
                         reply = mutateReply?.(id, replyFor(id)) ?? replyFor(id); mutateState?.(id, screen);
                     }
@@ -72,7 +76,7 @@ export function queryWorld({ priorChallenges = [], mutateReply, mutateState, mut
         let result;
         if (method === 'listSessions') result = { sessions: [{ paneId: binding.paneId, profileName: binding.profileName, kind: 'local', windowless: false, rows, cols }] };
         else if (method === 'readScrollback') result = structuredClone(screen.history);
-        else if (method === 'readScreen') result = { ...structuredClone(screen), attributeLines: Array(rows).fill('0300:-1/-1|'.repeat(cols)) };
+        else if (method === 'readScreen') result = { ...structuredClone(screen), attributeLines: new Array(rows).fill('0300:-1/-1|'.repeat(cols)) };
         else throw new Error('Synthetic observer received an acting method.');
         return mutateRpc?.(method, result, params) ?? result;
     };

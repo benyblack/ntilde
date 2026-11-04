@@ -95,7 +95,7 @@ export class OwnedQueryObserver {
             const request = structuredClone(input); this.#attempt = { request };
             const keys = { 'queries-start': ['kind'], 'queries-admit': ['kind', 'index'],
                 'queries-read': ['kind', 'index', 'capture'], 'queries-seal': ['kind', 'captureStatus'] }[request.kind];
-            check(keys && Object.keys(request).length === keys.length && keys.every(key => Object.hasOwn(request, key)));
+            check(Object.keys(request).length === keys?.length && keys.every(key => Object.hasOwn(request, key)));
             let result;
             if (request.kind === 'queries-start') result = await this.#start(remaining);
             else if (request.kind === 'queries-admit') result = await this.#admit(request.index, remaining);

@@ -2,6 +2,7 @@
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { queryWorld } from './query-world.mjs';
@@ -30,7 +31,7 @@ export async function queryReceiptFixture(action, worldOptions = {}) {
             processFacts: original, atStart: Date.parse(image.seal.ownership.at) + 1, priorChallenges, ...worldOptions });
         await world.collect(); const report = world.observer.report;
         for (const [key, file] of Object.entries(capturedV11SourceFiles)) {
-            const bytes = readFileSync(ownedSourcePath(new URL('../../../', import.meta.url).pathname, file));
+            const bytes = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), bytes); context[key] = hash(bytes);
         }
         const policy = 'readonly-owned-source-graph-v4', manifest = { schemaVersion: 1, policy,

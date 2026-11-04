@@ -19,6 +19,17 @@ function removeSnapshot(root) {
     setDirectoryModes(root, 0o700);
     rmSync(root, { recursive: true, force: true });
 }
+function checkCapturedImports(sources) {
+    // Check every literal runtime dependency before importing any measured module.
+    for (const [file, bytes] of sources) {
+        if (!file.endsWith('.mjs')) continue;
+        for (const [, target] of bytes.toString().matchAll(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['"]([^'"]+)['"]/g)) {
+            if (target.startsWith('node:')) continue;
+            if (!/^\.\/(?:terminfo\/)?[a-z][a-z0-9-]*\.mjs$/.test(target) || !sources.has(target.split('/').at(-1)))
+                throw new Error('Source dependency outside captured scope before import: ' + target);
+        }
+    }
+}
 function capture(root) {
     const input = readFileSync(join(repo, 'scripts/terminfo/owned-source-inventory.json'));
     const inventory = JSON.parse(input), hashes = {}, sources = new Map();
@@ -31,15 +42,7 @@ function capture(root) {
         const target = pathFor(root, file); mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
         writeFileSync(target, bytes, { flag: 'wx', mode: 0o400 }); hashes[key] = digest(bytes); sources.set(file, bytes);
     }
-    // Check every literal runtime dependency before importing any measured module.
-    for (const [file, bytes] of sources) {
-        if (!file.endsWith('.mjs')) continue;
-        for (const [, target] of bytes.toString().matchAll(/(?:\bfrom|\bimport(?:\s*\(\s*|\s+))\s*['"]([^'"]+)['"]/g)) {
-            if (target.startsWith('node:')) continue;
-            if (!/^\.\/(?:terminfo\/)?[a-z][a-z0-9-]*\.mjs$/.test(target) || !sources.has(target.split('/').at(-1)))
-                throw new Error('Source dependency outside captured scope before import: ' + target);
-        }
-    }
+    checkCapturedImports(sources);
     const manifest = Buffer.from(JSON.stringify({ schemaVersion: 1, policy, hashes }, null, 2) + '\n');
     writeFileSync(join(root, 'source-snapshot.json'), manifest, { flag: 'wx', mode: 0o400 });
     setDirectoryModes(root, 0o500); return digest(manifest);
