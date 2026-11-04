@@ -355,12 +355,19 @@ public sealed class VtTools
             return "DCS: " + (exact ? ContractSequenceTable["DCS:$qr"] : SequenceTable["DCS"]);
         }
 
-        // Abstract identifiers may omit framing. Their formatting spaces/ESC token
-        // are notation only and must never reinterpret a literal control string.
+        return ExplainDcsNotation(body, original.StartsWith("DCS", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string ExplainDcsNotation(string body, bool allowUnframed)
+    {
+        // Only the abstract DCS catalogue identifier may omit framing. Textual ESC-P
+        // notation denotes a complete frame and must include a standard ST token.
         body = body.TrimStart(' ');
+        bool hasTerminator = body.EndsWith("ESC\\", StringComparison.Ordinal) || body.EndsWith('\u009c');
         if (body.EndsWith("ESC\\", StringComparison.Ordinal)) body = body[..^4];
         else if (body.EndsWith('\u009c')) body = body[..^1];
-        return "DCS: " + (body == "$qr" ? ContractSequenceTable["DCS:$qr"] : SequenceTable["DCS"]);
+        bool exact = body == "$qr" && (allowUnframed || hasTerminator);
+        return "DCS: " + (exact ? ContractSequenceTable["DCS:$qr"] : SequenceTable["DCS"]);
     }
 
     private static string ExplainTertiaryDeviceAttributes(string prefix)

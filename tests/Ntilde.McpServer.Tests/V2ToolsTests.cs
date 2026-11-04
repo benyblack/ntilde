@@ -254,6 +254,7 @@ public class ExplainEscapeSequenceTests
     [Theory]
     [InlineData("DCS $qr")]
     [InlineData("ESC P$qrESC\\")]
+    [InlineData("ESCP$qrESC\\")]
     [InlineData("\x1bP$qr\x1b\\")]
     [InlineData("\u0090$qr\u009c")]
     [InlineData("\\x1bP$qr\\x1b\\")]
@@ -267,6 +268,8 @@ public class ExplainEscapeSequenceTests
     }
 
     [Theory]
+    [InlineData("ESC P$qr")]
+    [InlineData("ESCP$qr")]
     [InlineData("DCS $qm")]
     [InlineData("DCS $qr;")]
     [InlineData("\x1bP$qr\a")]
