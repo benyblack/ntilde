@@ -6,19 +6,28 @@ export const PRIVATE_CLIPBOARD_PROBES = Object.freeze([
 ]);
 const hash = value => createHash('sha256').update(value, 'utf8').digest('hex');
 
+// Consumer assimilation is the required observation here. This deliberately
+// instruments a native Promise, delegates to its implementation and keeps native
+// species. The exact then override is reviewed and covered by await, ignored-
+// rejection and chaining controls; a plain thenable is not used.
 class ClipboardControlPromise extends Promise {
     #consume;
     constructor(promise, consume) {
         super((resolve, reject) => promise.then(resolve, reject));
         this.#consume = consume;
-        // Handling an ignored rejection internally is not caller consumption.
-        Promise.prototype.then.call(this, undefined, () => {});
     }
     static get [Symbol.species]() { return Promise; }
-    then(onFulfilled, onRejected) {
+    then(onFulfilled, onRejected) { // NOSONAR - S7739: intentional Promise consumption instrumentation; see class remarks.
         this.#consume();
         return super.then(onFulfilled, onRejected);
     }
+}
+
+function clipboardControlPromise(promise, consume) {
+    const result = new ClipboardControlPromise(promise, consume);
+    // Handling an ignored rejection internally is not caller consumption.
+    void Promise.prototype.then.call(result, undefined, () => {});
+    return result;
 }
 
 /** Prototype only: caller-supplied binding verification must independently prove process/PTY/source identity.
@@ -176,7 +185,7 @@ export class PrivateClipboardController {
             // Track consumption independently of settlement; ignored controls can settle
             // while the callback awaits unrelated work. Keep their errors handled here.
             control.promise.catch(() => {});
-            return new ClipboardControlPromise(control.promise, () => { control.consumed = true; });
+            return clipboardControlPromise(control.promise, () => { control.consumed = true; });
         };
         const fixture = Object.freeze({ beforeOsc52Write: value => invoke(() => this.#beforeWrite(value)),
             readText: () => invoke(() => this.#readText()), writeText: value => invoke(() => this.#writeText(value)) });

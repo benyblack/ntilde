@@ -128,6 +128,31 @@ test('unconsumed control stays fatal after unrelated asynchronous work settles',
     await assert.rejects(api.controller.finish(), /cannot resume/);
 });
 
+test('unconsumed control rejection is handled but cannot become completion', async () => {
+    const api = fixture();
+    await runProbe(api, 0); await runProbe(api, 1);
+    await assert.rejects(api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[2], async f => {
+        f.writeText('invalid');
+        await new Promise(resolve => setImmediate(resolve));
+    }));
+    assert.equal(api.controller.evidence().fatal, true);
+    assert.deepEqual(api.calls.slice(-2).map(x => x.operation), ['restore', 'read']);
+    await assert.rejects(api.controller.finish(), /cannot resume/);
+});
+
+test('control chaining uses native Promise results and preserves the whole transaction', async () => {
+    const api = fixture();
+    await api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[0], f => {
+        const arm = f.beforeOsc52Write(nonce);
+        assert.ok(arm instanceof Promise);
+        const chain = arm.then(() => api.output(nonce)).then(() => f.readText()).then(() => f.writeText(nonce));
+        assert.equal(Object.getPrototypeOf(chain), Promise.prototype);
+        return chain;
+    });
+    await runProbe(api, 1); await runProbe(api, 2);
+    assert.equal((await api.controller.finish()).complete, true);
+});
+
 test('preserves original and restoration errors and never manufactures completion', async () => {
     const api = fixture();
     api.hook = async request => { if (request.operation === 'restore' && api.calls.filter(x => x.operation === 'restore').length === 2) throw new Error('restore failed'); };

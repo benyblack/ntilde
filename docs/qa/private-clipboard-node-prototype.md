@@ -44,6 +44,11 @@ records consumption by promise assimilation separately from its settlement.
 This detects ignored controls even when unrelated asynchronous work lets them
 settle first; it does not attest JavaScript syntax. The pinned collector source
 separately supplies the explicit awaited barrier before terminal emission.
+The native Promise subclass delegates chaining to the built-in implementation
+and forces native Promise species. Its intentional `then` override has one
+documented S7739 suppression on that exact method. Other promise checks remain
+enabled, and the project policy is unchanged. Dedicated controls
+cover native chaining and ignored rejecting operations as well as `await`.
 A pending operation settles before
 restoration, and its handle cannot act in a later callback.
 
