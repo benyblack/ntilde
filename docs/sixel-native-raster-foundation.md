@@ -44,6 +44,8 @@ This does not qualify arbitrary Pan/Pad, P2 transparency, animation or placehold
   or resume seeks. App restores either the cached checkpoint or the initial state
   there; the same selected stream remains open through restoration and consumption.
   Cancellation, declined preparation and callback failure dispose the reader.
+  Queued data, resize and metric updates carry the same run token to UI dispatch;
+  final position/error cleanup explicitly opts out while retaining its session gate.
   Path replacement cannot switch the stream between validation/restoration/replay.
   Existing live append (`FileShare.ReadWrite`) remains supported. This is not a
   frozen-byte guarantee against arbitrary concurrent in-place file modification.

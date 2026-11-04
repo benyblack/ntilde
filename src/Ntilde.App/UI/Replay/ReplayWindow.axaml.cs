@@ -201,17 +201,17 @@ namespace Ntilde.UI.Replay
             }, DispatcherPriority.Normal, cancellationToken);
         }
 
-        private Task ApplyHeaderMetricsAsync(int sessionId, ReplayHeader header, bool restoreHeader) =>
+        private Task ApplyHeaderMetricsAsync(int sessionId, ReplayHeader header, bool restoreHeader, CancellationToken cancellationToken) =>
             ApplyInSessionAsync(sessionId, () =>
             {
                 if (restoreHeader && _parser is { } parser) ReplayRunner.ApplyHeaderMetrics(parser, header);
-            });
+            }, cancellationToken);
 
-        private Task ApplyCellMetricsAsync(int sessionId, float width, float height) =>
+        private Task ApplyCellMetricsAsync(int sessionId, float width, float height, CancellationToken cancellationToken) =>
             ApplyInSessionAsync(sessionId, () =>
             {
                 if (_parser is { } parser) parser.SixelCellSizeOverride = new SixelCellSize(width, height);
-            });
+            }, cancellationToken);
 
         private static bool HasValidSeekSnapshot(ReplaySnapshot? snapshot)
         {
@@ -252,11 +252,11 @@ namespace Ntilde.UI.Replay
                     onDataCallback: data =>
                     {
                         string text = DecodeChunk(decoder, data);
-                        return ApplyInSessionAsync(sessionId, () => _parser.Process(text));
+                        return ApplyInSessionAsync(sessionId, () => _parser.Process(text), seekCts.Token);
                     },
-                    onHeaderCallback: header => ApplyHeaderMetricsAsync(sessionId, header, snapEntry is null),
-                    onSixelCellSizeCallback: (w, h) => ApplyCellMetricsAsync(sessionId, w, h),
-                    onResizeCallback: (w, h) => ApplyInSessionAsync(sessionId, () => _buffer.Resize(w, h)),
+                    onHeaderCallback: header => ApplyHeaderMetricsAsync(sessionId, header, snapEntry is null, seekCts.Token),
+                    onSixelCellSizeCallback: (w, h) => ApplyCellMetricsAsync(sessionId, w, h, seekCts.Token),
+                    onResizeCallback: (w, h) => ApplyInSessionAsync(sessionId, () => _buffer.Resize(w, h), seekCts.Token),
                     onTimeUpdate: time => { appliedTime = Math.Max(appliedTime, time); return Task.CompletedTask; },
                     options: new ReplayRunOptions
                     {
@@ -279,6 +279,8 @@ namespace Ntilde.UI.Replay
             }
             catch (OperationCanceledException) when (seekCts.IsCancellationRequested) { /* Keep the last applied seek position. */ }
             catch (Exception ex) { TerminalLogger.Error($"[ReplayWindow] Seek Error: {ex.Message}"); }
+            // Publish the last applied position even after cancellation; the session gate
+            // still prevents a superseded run from updating the current display.
             await ApplyInSessionAsync(sessionId, () =>
             {
                 _displayedTimeMs = reachedTarget ? targetTimeMs : appliedTime;
@@ -340,13 +342,13 @@ namespace Ntilde.UI.Replay
                     onDataCallback: async (data) =>
                     {
                         string text = DecodeChunk(decoder, data);
-                        await ApplyInSessionAsync(sessionId, () => _parser.Process(text));
+                        await ApplyInSessionAsync(sessionId, () => _parser.Process(text), ct);
                     },
-                    onHeaderCallback: header => ApplyHeaderMetricsAsync(sessionId, header, snapEntry is null),
-                    onSixelCellSizeCallback: (w, h) => ApplyCellMetricsAsync(sessionId, w, h),
+                    onHeaderCallback: header => ApplyHeaderMetricsAsync(sessionId, header, snapEntry is null, ct),
+                    onSixelCellSizeCallback: (w, h) => ApplyCellMetricsAsync(sessionId, w, h, ct),
                     onResizeCallback: async (w, h) =>
                     {
-                        await ApplyInSessionAsync(sessionId, () => _buffer.Resize(w, h));
+                        await ApplyInSessionAsync(sessionId, () => _buffer.Resize(w, h), ct);
                     },
                     // We don't apply snapshots during playback usually, or maybe we do to self-correct?
                     // For now ignore snapshots in stream during playback to avoid jitter

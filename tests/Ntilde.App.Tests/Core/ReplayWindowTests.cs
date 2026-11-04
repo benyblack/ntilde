@@ -12,6 +12,39 @@ namespace Ntilde.Tests.Core;
 
 public sealed class ReplayWindowTests
 {
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Cancelled_queued_metrics_cannot_mutate_the_parser(bool header)
+    {
+        var window = new ReplayWindow(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".rec"));
+        using var cts = new CancellationTokenSource();
+        try
+        {
+            var gate = (PlaybackSessionGate)typeof(ReplayWindow).GetField("_playbackSessionGate", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            var parser = (AnsiParser)typeof(ReplayWindow).GetField("_parser", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            int session = gate.BeginSession();
+            parser.SixelCellSizeOverride = new SixelCellSize(20, 6);
+            Task? queued = null;
+            using var posted = new ManualResetEventSlim();
+            var poster = Task.Run(() =>
+            {
+                string name = header ? "ApplyHeaderMetricsAsync" : "ApplyCellMetricsAsync";
+                object[] args = header ? [session, new ReplayHeader { SixelCellWidthPx = 10, SixelCellHeightPx = 20 }, true, cts.Token] : [session, 10f, 20f, cts.Token];
+                queued = (Task)typeof(ReplayWindow).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, args)!;
+                posted.Set();
+            }, TestContext.Current.CancellationToken);
+            Assert.True(posted.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            Assert.False(queued!.IsCompleted);
+            cts.Cancel();
+            Dispatcher.UIThread.RunJobs();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => queued);
+            await poster;
+            Assert.Equal(new SixelCellSize(20, 6), parser.SixelCellSizeOverride);
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaFact]
     public async Task A_restored_snapshot_keeps_its_geometry_until_an_in_stream_resize()
     {
@@ -84,7 +117,7 @@ public sealed class ReplayWindowTests
                 var poster = Task.Run(() =>
                 {
                     string name = header ? "ApplyHeaderMetricsAsync" : "ApplyCellMetricsAsync";
-                    object[] args = header ? [old, new ReplayHeader { SixelCellWidthPx = 10, SixelCellHeightPx = 20 }, true] : [old, 10f, 20f];
+                    object[] args = header ? [old, new ReplayHeader { SixelCellWidthPx = 10, SixelCellHeightPx = 20 }, true, CancellationToken.None] : [old, 10f, 20f, CancellationToken.None];
                     queued = (Task)typeof(ReplayWindow).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, args)!;
                     posted.Set();
                 }, TestContext.Current.CancellationToken);
@@ -161,10 +194,10 @@ public sealed class ReplayWindowTests
             int oldSession = gate.BeginSession();
             gate.InvalidateCurrentSession();
             parser.SixelCellSizeOverride = new SixelCellSize(20, 6);
-            await (Task)typeof(ReplayWindow).GetMethod("ApplyCellMetricsAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [oldSession, 10f, 20f])!;
+            await (Task)typeof(ReplayWindow).GetMethod("ApplyCellMetricsAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [oldSession, 10f, 20f, CancellationToken.None])!;
             Assert.Equal(new SixelCellSize(20, 6), parser.SixelCellSizeOverride);
             var header = new ReplayHeader { SixelCellWidthPx = 10, SixelCellHeightPx = 20 };
-            await (Task)typeof(ReplayWindow).GetMethod("ApplyHeaderMetricsAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [oldSession, header, true])!;
+            await (Task)typeof(ReplayWindow).GetMethod("ApplyHeaderMetricsAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [oldSession, header, true, CancellationToken.None])!;
             Assert.Equal(new SixelCellSize(20, 6), parser.SixelCellSizeOverride);
         }
         finally { window.Close(); }
