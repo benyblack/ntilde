@@ -8,8 +8,8 @@ namespace Ntilde.Rendering.Tests;
 // most-recently-used working set and is surfaced via RendererStatistics.GlyphAtlasResets.
 public class GlyphCacheTests
 {
-    // GlyphCache requires the SkiaSharp native library. It is present on Windows CI / dev
-    // machines but not on the Linux "non-headless" gating runner, so skip there rather than fail.
+    // Individual tests remain portable when native Skia is unavailable. The separate
+    // LinuxNativeAssetTests guard requires it on supported Linux release architectures.
     private static readonly bool SkiaAvailable = CheckSkiaAvailable();
 
     private static bool CheckSkiaAvailable()

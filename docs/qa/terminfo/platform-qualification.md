@@ -99,3 +99,24 @@ Keep #775 open until the real supported Windows/Linux environments satisfy its
 acceptance criteria. This foundation adds no new owned measurements, grades,
 capability promotions, receipt fields or collector behavior. The published stock
 78/0/177 results and every historical evidence file remain unchanged.
+
+## Linux native rendering unit prerequisite
+
+`Ntilde.Rendering.Tests` directly references the centrally pinned
+`SkiaSharp.NativeAssets.Linux` test dependency, matching the App's Skia version
+without changing shipping dependencies. Run the project independently through
+`scripts/build.sh test tests/Ntilde.Rendering.Tests`. No `LD_LIBRARY_PATH` override,
+App output borrowing, window or graphical session is needed for the raster lane.
+
+The separate `LinuxNativeAssetTests` guard applies to the repository's Linux
+x64/arm64 release matrix. It creates a CPU raster surface, clears an exact opaque
+color and reads its pixels back. A missing/unloadable native library fails that
+guard instead of silently allowing native-dependent tests to skip. Other
+operating systems and architectures outside that release matrix skip this
+Linux-specific guard explicitly; individual tests retain their existing
+portability checks. A library's mere presence is not enough to pass the guard.
+
+This is native unit-test prerequisite coverage, not Linux desktop or terminal
+qualification. Passing it does not prove App display, process/PTY ownership,
+collector effects, restoration or cleanup. Keep #775 and Windows/Linux owned
+collection unqualified until their independent live criteria are met.
