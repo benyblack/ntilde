@@ -30,10 +30,7 @@ public sealed partial class AgentHostService
         deadline.CancelAfter(TimeSpan.FromSeconds(2));
         // Session publication is UI-owned. The executor invokes this fact observer synchronously
         // on that UI thread, making the identity check/marker one UI operation without a new lease.
-        void NoteSubmission()
-        {
-            if (ReferenceEquals(registration.ObservationSession, session)) TryNoteWrote(registration, method);
-        }
+        void NoteSubmission() => NoteGeneratedSubmissionForSession(registration, session, method);
         GeneratePaneInputResult? result;
         try
         {
@@ -59,6 +56,11 @@ public sealed partial class AgentHostService
         return Journaled(request, method, p.PaneId, "synthetic event", Ok(request.Id,
             JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.GeneratePaneInputResult)));
     }
+    private static void NoteGeneratedSubmissionForSession(AgentSessionRegistration registration, Ntilde.Pty.ITerminalSession? session, string method)
+    {
+        if (ReferenceEquals(registration.ObservationSession, session)) TryNoteWrote(registration, method);
+    }
+
     /// <summary>Keep completed event facts while withholding geometry/modes for a target no longer current.</summary>
     private static GeneratePaneInputResult WithoutGeneratedInputObservation(GeneratePaneInputResult result) => result with
     {
