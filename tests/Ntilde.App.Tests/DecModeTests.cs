@@ -263,8 +263,9 @@ namespace Ntilde.Tests
 
             parser.Process("\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1006h");
 
-            Assert.True(buffer.Modes.MouseModeX10);
-            Assert.True(buffer.Modes.MouseModeButtonEvent);
+            // Tracking protocols are mutually exclusive: the last DECSET wins.
+            Assert.False(buffer.Modes.MouseModeX10);
+            Assert.False(buffer.Modes.MouseModeButtonEvent);
             Assert.True(buffer.Modes.MouseModeAnyEvent);
             Assert.True(buffer.Modes.MouseModeSGR);
 

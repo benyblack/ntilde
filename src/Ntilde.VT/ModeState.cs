@@ -6,7 +6,8 @@ namespace Ntilde.VT
     public class ModeState
     {
         // Mouse reporting modes (for TUI apps like vim, htop)
-        public bool MouseModeX10 { get; set; }          // ?1000 - X10 mouse reporting
+        public bool MouseModeX10PressOnly { get; set; } // ?9 - X10 compatibility tracking
+        public bool MouseModeX10 { get; set; }          // ?1000 - Normal tracking (legacy property name)
         public bool MouseModeButtonEvent { get; set; }  // ?1002 - Button event tracking
         public bool MouseModeAnyEvent { get; set; }     // ?1003 - Any event tracking
         public bool MouseModeSGR { get; set; }          // ?1006 - SGR extended mode
@@ -58,6 +59,7 @@ namespace Ntilde.VT
         /// </summary>
         public void ResetTransientInputReporting()
         {
+            MouseModeX10PressOnly = false;
             MouseModeX10 = false;
             MouseModeButtonEvent = false;
             MouseModeAnyEvent = false;
@@ -67,10 +69,21 @@ namespace Ntilde.VT
             KittyKeyboard.Reset();
         }
 
+        // Tracking is one protocol, independently of coordinate encoding (?1006).
+        // Like xterm, resetting any recognized tracking selector disables tracking.
+        internal void SetMouseTrackingMode(int mode, bool enabled)
+        {
+            MouseModeX10PressOnly = enabled && mode == 9;
+            MouseModeX10 = enabled && mode == 1000;
+            MouseModeButtonEvent = enabled && mode == 1002;
+            MouseModeAnyEvent = enabled && mode == 1003;
+        }
+
         public ModeState Clone()
         {
             return new ModeState
             {
+                MouseModeX10PressOnly = this.MouseModeX10PressOnly,
                 MouseModeX10 = this.MouseModeX10,
                 MouseModeButtonEvent = this.MouseModeButtonEvent,
                 MouseModeAnyEvent = this.MouseModeAnyEvent,

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "27bb2267bc06e2a8f2086acd30082a054f484af11213150e133b307f711a2851",
+  "matrixSha256": "e8e99935113b792c95cd7e89f71ee21d5061ad86c0f17c3a1f75ba6376168118",
   "summary": {
     "totalRows": 85,
     "supportedCount": 43,
@@ -995,7 +995,7 @@
       "feature": "Mouse reporting",
       "status": "\u26A0 Partial",
       "specOrNotes": "Click (\u0060?1000\u0060) and drag-motion (\u0060?1002\u0060) tracking, plus hover motion with no buttons held under any-event tracking (\u0060?1003\u0060, issue #269); SGR (\u0060?1006\u0060) and legacy X10 coordinate encodings both supported. Motion reports are coalesced to at most one per distinct terminal cell (tracked last-reported cell, reset on buffer attach/resize, alternate-screen switch, pointer exit, and \u0060?1002\u0060/\u0060?1003\u0060 mode changes observed between two motion events) so a stationary-but-jittery pointer or a TUI toggling tracking modes doesn\u0027t flood the PTY",
-      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/TerminalViewMouseMotionTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/LegacyMouseByteInputTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/LegacyMouseByteInputPtyTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/Client/ByteInputTransportTests.cs\u0060, \u0060tests/Ntilde.Platform.Tests/Ssh/SshByteInputForwardingTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/X10MouseTrackingTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/X10MouseRoutingTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/TextClient/TextClientRendererTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/TerminalViewMouseMotionTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/LegacyMouseByteInputTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/LegacyMouseByteInputPtyTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/Client/ByteInputTransportTests.cs\u0060, \u0060tests/Ntilde.Platform.Tests/Ssh/SshByteInputForwardingTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -1017,18 +1017,30 @@
           "exists": true
         },
         {
+          "path": "tests/Ntilde.App.Tests/Input/X10MouseRoutingTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.Mux.Tests/Client/ByteInputTransportTests.cs",
           "exists": true
         },
         {
+          "path": "tests/Ntilde.Mux.Tests/TextClient/TextClientRendererTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.Platform.Tests/Ssh/SshByteInputForwardingTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/X10MouseTrackingTests.cs",
           "exists": true
         }
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Input layer",
-      "knownDeviations": "\u0060?1001\u0060 (highlight tracking) and urxvt (\u0060?1015\u0060)/pixel-position (\u0060?1016\u0060) mouse coordinate encodings are not implemented; only X10 and SGR (\u0060?1006\u0060) coordinate encodings are supported. Coordinates are viewport-relative and 1-based on every report path (motion, press, release, wheel); the legacy X10 encoding clamps coordinates to its 223 ceiling rather than promoting the report to the SGR form the application never requested. Legacy high bytes use optional byte-preserving PTY/SSH/mux input; old text-only peers retain ASCII reports and refuse high bytes. A real POSIX raw child verifies six exact high-coordinate octets; native pointer events, Windows runtime and genuine DECSET 9 tracking remain unqualified. See \u0060docs/qa/terminfo/mouse-byte-input.md\u0060.",
+      "knownDeviations": "\u0060?1001\u0060 (highlight tracking) and urxvt (\u0060?1015\u0060)/pixel-position (\u0060?1016\u0060) mouse coordinate encodings are not implemented; only X10 and SGR (\u0060?1006\u0060) coordinate encodings are supported. Coordinates are viewport-relative and 1-based on every report path (motion, press, release, wheel); the legacy X10 encoding clamps coordinates to its 223 ceiling rather than promoting the report to the SGR form the application never requested. Legacy high bytes use optional byte-preserving PTY/SSH/mux input; old text-only peers retain ASCII reports and refuse high bytes. A real POSIX raw child verifies six exact high-coordinate octets; DECSET 9 is separately tested as modifier-free three-button presses only; parser tracking selectors are mutually exclusive and any recognized tracking reset disables tracking. Mux text output resets before enabling its target. Native pointer events, Windows and foreign-console input decoding remain unqualified. See \u0060docs/qa/terminfo/mouse-byte-input.md\u0060 and \u0060docs/qa/terminfo/x10-tracking.md\u0060.",
       "sourceLine": 125
     },
     {

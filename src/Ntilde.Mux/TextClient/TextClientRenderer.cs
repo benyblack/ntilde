@@ -29,7 +29,7 @@ public sealed class TextClientRenderer
     public const string EnterSequence = "\x1b[?1049h\x1b[?7l\x1b>\x1b[H\x1b[2J";
 
     /// <summary>Written on every exit path: plain SGR, cursor shown, modes off, autowrap back on, back to the outer main screen.</summary>
-    public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b>\x1b[?7h\x1b[?1049l";
+    public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b>\x1b[?7h\x1b[?1049l";
 
     private const string DetachHint = "Ctrl+\\ d to detach";
 
@@ -39,7 +39,8 @@ public sealed class TextClientRenderer
     private bool _lastAltScreen;
     private string? _lastStatus;
     private (int Row, int Col) _lastCursor = (-1, -1);
-    private bool? _appCursor, _bracketed, _cursorVisible, _mouse1000, _mouse1002, _mouse1003, _mouse1006;
+    private bool? _appCursor, _bracketed, _cursorVisible, _mouse1006;
+    private int? _mouseTrackingMode;
 
     public TextClientRenderer(TerminalBuffer buffer) => _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
 
@@ -51,7 +52,8 @@ public sealed class TextClientRenderer
     public void Invalidate()
     {
         _haveFrame = false;
-        _appCursor = _bracketed = _cursorVisible = _mouse1000 = _mouse1002 = _mouse1003 = _mouse1006 = null;
+        _appCursor = _bracketed = _cursorVisible = _mouse1006 = null;
+        _mouseTrackingMode = null;
         _lastCursor = (-1, -1);
     }
 
@@ -179,10 +181,27 @@ public sealed class TextClientRenderer
         Toggle(sb, ref _bracketed, m.IsBracketedPasteMode, 2004);
         // Mirrored only while the window is unclipped: the outer terminal's mouse reports then carry
         // the inner coordinates and go through as ordinary input (spec §6.6).
-        Toggle(sb, ref _mouse1000, unclipped && m.MouseModeX10, 1000);
-        Toggle(sb, ref _mouse1002, unclipped && m.MouseModeButtonEvent, 1002);
-        Toggle(sb, ref _mouse1003, unclipped && m.MouseModeAnyEvent, 1003);
+        // Old snapshots may contain multiple tracking flags. Preserve the former
+        // effective priority (any > button > normal), with the new press-only mode first.
+        int tracking = DesiredMouseTracking(m, unclipped);
+        if (_mouseTrackingMode != tracking)
+        {
+            // Resets disable the current tracking protocol even when naming another.
+            // Emit every reset before enabling the desired protocol, never after it.
+            sb.Append("\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l");
+            if (tracking != 0) sb.Append("\x1b[?").Append(tracking.ToString(CultureInfo.InvariantCulture)).Append('h');
+            _mouseTrackingMode = tracking;
+        }
         Toggle(sb, ref _mouse1006, unclipped && m.MouseModeSGR, 1006);
+    }
+
+    private static int DesiredMouseTracking(ModeState modes, bool unclipped)
+    {
+        if (!unclipped) return 0;
+        if (modes.MouseModeX10PressOnly) return 9;
+        if (modes.MouseModeAnyEvent) return 1003;
+        if (modes.MouseModeButtonEvent) return 1002;
+        return modes.MouseModeX10 ? 1000 : 0;
     }
 
     private static void Toggle(StringBuilder sb, ref bool? last, bool want, int mode)

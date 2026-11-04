@@ -234,6 +234,7 @@ namespace Ntilde.Replay
                         IsAutoWrapMode = buffer.Modes.IsAutoWrapMode,
                         IsApplicationCursorKeys = buffer.Modes.IsApplicationCursorKeys,
                         IsApplicationKeypad = buffer.Modes.IsApplicationKeypad,
+                        MouseModeX10PressOnly = buffer.Modes.MouseModeX10PressOnly,
                         IsOriginMode = buffer.Modes.IsOriginMode,
                         IsSixelDisplayMode = buffer.Modes.IsSixelDisplayMode,
                         SixelCellWidthPx = cellSize?.WidthPx,

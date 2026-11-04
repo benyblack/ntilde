@@ -242,6 +242,17 @@ A raw POSIX child independently verifies the high-coordinate legacy frame.
 This transport qualification does not establish native pointer delivery, Windows
 runtime behavior or genuine DECSET 9 X10 tracking; those remain in #769/#775.
 
+Mouse tracking is a session-wide protocol selector: DECSET 9 is X10 press-only
+tracking, distinct from the historically named `MouseModeX10` normal-1000 flag.
+The parser makes 9/1000/1002/1003 mutually exclusive; resetting any recognized
+tracking selector disables tracking, independently of SGR coordinate encoding.
+Mode 9 ignores modifiers and suppresses release/wheel/motion events. Clone,
+complete mux/replay state and new legacy replay cuts preserve it; absent old
+fields mean off. Full reset and prompt policy clear it, while soft reset and
+screen/cursor switches preserve it. The mux text renderer emits tracking resets
+before enabling its target mode, so an outer terminal keeps the intended choice.
+See `docs/qa/terminfo/x10-tracking.md` for runtime/evidence limits.
+
 **Key invariants**
 - Alternate screen is fully isolated from main screen
 - Scrollback is immutable once flushed

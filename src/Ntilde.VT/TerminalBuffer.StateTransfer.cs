@@ -780,6 +780,7 @@ namespace Ntilde.VT
 
         private static TerminalModeState ExportModes(ModeState modes) => new()
         {
+            MouseModeX10PressOnly = modes.MouseModeX10PressOnly,
             MouseModeX10 = modes.MouseModeX10,
             MouseModeButtonEvent = modes.MouseModeButtonEvent,
             MouseModeAnyEvent = modes.MouseModeAnyEvent,
@@ -803,6 +804,7 @@ namespace Ntilde.VT
 
         private static void ImportModes(ModeState target, TerminalModeState source)
         {
+            target.MouseModeX10PressOnly = source.MouseModeX10PressOnly;
             target.MouseModeX10 = source.MouseModeX10;
             target.MouseModeButtonEvent = source.MouseModeButtonEvent;
             target.MouseModeAnyEvent = source.MouseModeAnyEvent;

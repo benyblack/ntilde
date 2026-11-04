@@ -904,6 +904,7 @@ namespace Ntilde.VT
                 case 1: return _buffer.Modes.IsApplicationCursorKeys ? 1 : 2;    // DECCKM
                 case 6: return _buffer.Modes.IsOriginMode ? 1 : 2;               // DECOM
                 case 7: return _buffer.Modes.IsAutoWrapMode ? 1 : 2;             // DECAWM
+                case 9: return _buffer.Modes.MouseModeX10PressOnly ? 1 : 2;     // X10 compatibility
                 case 25: return _buffer.Modes.IsCursorVisible ? 1 : 2;           // DECTCEM
                 case 47: return _buffer.IsAltScreenActive ? 1 : 2;               // Alt screen (legacy)
                 case 66: return _buffer.Modes.IsApplicationKeypad ? 1 : 2;        // DECNKM
@@ -974,14 +975,11 @@ namespace Ntilde.VT
                     case 1004: // FocusIn/FocusOut event reporting
                         _buffer.Modes.IsFocusEventReporting = enable;
                         break;
-                    case 1000: // X10 mouse reporting
-                        _buffer.Modes.MouseModeX10 = enable;
-                        break;
-                    case 1002: // Button event tracking
-                        _buffer.Modes.MouseModeButtonEvent = enable;
-                        break;
-                    case 1003: // Any event tracking
-                        _buffer.Modes.MouseModeAnyEvent = enable;
+                    case 9:    // X10 compatibility: presses only, no modifiers
+                    case 1000: // Normal tracking
+                    case 1002: // Button-event tracking
+                    case 1003: // Any-event tracking
+                        _buffer.Modes.SetMouseTrackingMode(mode, enable);
                         break;
                     case 1006: // SGR extended mouse mode
                         _buffer.Modes.MouseModeSGR = enable;

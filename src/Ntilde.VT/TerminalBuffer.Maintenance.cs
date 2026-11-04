@@ -402,6 +402,7 @@ namespace Ntilde.VT
                 ResetCursorPresentationNoLock();
 
                 // Reset Mouse Modes
+                Modes.MouseModeX10PressOnly = false;
                 Modes.MouseModeX10 = false;
                 Modes.MouseModeButtonEvent = false;
                 Modes.MouseModeAnyEvent = false;
@@ -530,7 +531,7 @@ namespace Ntilde.VT
         /// </summary>
         public bool IsMouseReportingActive()
         {
-            return Modes.MouseModeX10 || Modes.MouseModeButtonEvent || Modes.MouseModeAnyEvent;
+            return Modes.MouseModeX10PressOnly || Modes.MouseModeX10 || Modes.MouseModeButtonEvent || Modes.MouseModeAnyEvent;
         }
     }
 }
