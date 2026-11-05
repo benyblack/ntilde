@@ -2,6 +2,7 @@
 // upstream evidence validation are unchanged; this adds a distinct owner arm.
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { preparePrivateClipboardSource } from './private-clipboard-source.mjs';
 
 export const upstreamBundleSha256 = 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6';
 export const adapterId = 'ntilde-owned-macos-v1';
@@ -21,11 +22,18 @@ export function validateCollectorReceipt(source, receipt) {
     }
 }
 
-export function adaptCollector(source, ownerModulePath) {
+/** Derive the pinned bundle without executing it. Default bytes stay stable; explicit private mode adds scoped controls. */
+export function adaptCollector(source, ownerModulePath, options) {
     const digest = createHash('sha256').update(source).digest('hex');
     if (digest !== upstreamBundleSha256) throw new Error('Unsupported collector bundle: expected terminfo.dev 4.0.0 pinned digest.');
+    const privateMode = options !== undefined;
+    if (privateMode && (!options || Array.isArray(options) || !Object.hasOwn(options, 'privateClipboardModulePath') || Object.keys(options).length !== 1
+        || typeof options.privateClipboardModulePath !== 'string' || !options.privateClipboardModulePath))
+        throw new Error('Invalid private collector options.');
+    if (privateMode) source = preparePrivateClipboardSource(source).source;
     // A shebang is only valid on the first line; the adapter prepends an import.
     source = source.replace(/^#![^\n]*/, '// Upstream CLI shebang removed for module import.');
+    /** Replace exactly one pinned upstream seam; any absent or repeated match refuses derivation. */
     function replaceOnce(before, after) {
         if (source.split(before).length !== 2) throw new Error('Pinned collector adapter seam changed.');
         source = source.replace(before, after);
@@ -33,7 +41,7 @@ export function adaptCollector(source, ownerModulePath) {
     replaceOnce('  let ownedTerminal;\n  if (clipboardReceipt && options.terminalAppOwner)',
         '  let ownedTerminal;\n  if (options.ntildeOwner) {\n    if (clipboardReceipt || options.terminalAppOwner) throw new Error("Conflicting Ntilde ownership");\n    ownedTerminal = await createNtildeOwnedTerminal(options.ntildeOwner, captureRunId, out);\n  }\n  if (clipboardReceipt && options.terminalAppOwner)');
     replaceOnce('program.parse();', '// CLI dispatch is disabled in the local adapter module.');
-    return `import { verifyNtildeOutput as ntildeVerifyOutput } from ${JSON.stringify(pathToFileURL(ownerModulePath).href)};\n${source}
+    let adapted = `import { verifyNtildeOutput as ntildeVerifyOutput } from ${JSON.stringify(pathToFileURL(ownerModulePath).href)};\n${source}
 
 // This capability is registered only after the local launcher and PTY proof.
 // Existing upstream owners, policy checks and callback grading remain intact.
@@ -62,4 +70,40 @@ export async function collectNtildeRun(assertion) {
   return collectProbeRun({ ntildeOwner: assertion, out: process.stdout });
 }
 `;
+    if (!privateMode) return adapted;
+    /** Apply one private-only rewrite to the derived text without changing the default adapter or running either bundle. */
+    const replacePrivate = (before, after) => {
+        if (adapted.split(before).length !== 2) throw new Error('Pinned private collector seam changed.');
+        adapted = adapted.replace(before, after);
+    };
+    replacePrivate('import { verifyNtildeOutput as ntildeVerifyOutput }',
+        'import { verifyNtildeOutput as ntildeVerifyOutput, requestOwner as ntildePrivateOwnerRequest }');
+    adapted = `import { createPrivateClipboardWorker } from ${JSON.stringify(pathToFileURL(options.privateClipboardModulePath).href)};\n` + adapted;
+    replacePrivate('  const owner = {\n    geometryAtGrant,',
+        '  const clipboard = createPrivateClipboardWorker(frame => ntildePrivateOwnerRequest(assertion, "private-clipboard", { tty: binding.tabTty, frame }).then(reply => { if (reply.ownerPid !== binding.ownerPid) throw new Error("Private clipboard owner changed"); return reply.result; }), assertion.runId);\n'
+        + '  const owner = {\n    clipboard,\n    geometryAtGrant,');
+    replacePrivate('    async dispose() { verifiedTerminalOwners.delete(owner); }',
+        '    async dispose() { try { await clipboard.finish(); } finally { verifiedTerminalOwners.delete(owner); } }');
+    replacePrivate('  const clipboard = ownedTerminal?.clipboard;',
+        '  const clipboard = options.ntildeOwner ? undefined : ownedTerminal?.clipboard;');
+    replacePrivate('  let batch;\n  try {',
+        '  let batch, ntildeCollectionError, ntildeFinalizeError;\n  let ntildeCollectionFailed = false, ntildeFinalizeFailed = false;\n  try {');
+    replacePrivate('  } finally {\n    await ownedTerminal?.dispose();\n  }',
+        '  } catch (error) { ntildeCollectionError = error; ntildeCollectionFailed = true; } finally {\n'
+        + '    try { await ownedTerminal?.dispose(); } catch (error) { ntildeFinalizeError = error; ntildeFinalizeFailed = true; }\n'
+        + '  }\n'
+        + '  if (ntildeCollectionFailed && ntildeFinalizeFailed) throw new AggregateError([ntildeCollectionError, ntildeFinalizeError], "Ntilde collection and private finalization failed.");\n'
+        + '  if (ntildeCollectionFailed) throw ntildeCollectionError;\n'
+        + '  if (ntildeFinalizeFailed) throw ntildeFinalizeError;');
+    replacePrivate('    if (options.ownedTerminal?.clipboard && options.ownedTerminal.clipboard.profile !== "default") {',
+        '    if (options.ownedTerminal?.clipboard && options.ownedTerminal.clipboard.profile !== "default"\n'
+        + '        && (options.ownedTerminal.clipboard.profile !== "ntilde-private-app-v1" || ["extensions.osc52-clipboard", "extensions.osc52-write", "extensions.osc52-read"].includes(probe.id))) {');
+    replacePrivate('context.withClipboardFixture = (work) => clipboard.withClipboardFixture(work, (event) => clipboardEvents.push(event));',
+        'context.withClipboardFixture = (work) => clipboard.profile === "ntilde-private-app-v1"\n'
+        + '        ? clipboard.withClipboardFixture(probe.id, work, (event) => clipboardEvents.push(event))\n'
+        + '        : clipboard.withClipboardFixture(work, (event) => clipboardEvents.push(event));');
+    replacePrivate('    batch.rawReplies["collector.terminalOwnership"] = ownedTerminal.summary;',
+        '    batch.rawReplies["collector.terminalOwnership"] = ownedTerminal.summary;\n'
+        + '  if (options.ntildeOwner && ownedTerminal?.clipboard) batch.rawReplies["collector.ntildePrivateClipboard"] = ownedTerminal.clipboard.summary;');
+    return adapted;
 }

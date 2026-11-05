@@ -90,8 +90,8 @@ def main() -> int:
         "analyzers job turns them off": real.replace(
             analyzers_block, analyzers_block.replace("--no-restore\n", "--no-restore -p:RunAnalyzers=false\n", 1)),
         "roll-up does not need it": real.replace(
-            "needs: [build_and_unit_tests, script_self_tests, query_publication_guards, analyzers]",
-            "needs: [build_and_unit_tests, script_self_tests, query_publication_guards]"),
+            "needs: [build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned, analyzers]",
+            "needs: [build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned]"),
         "roll-up ignores its result": real.replace("needs.analyzers.result", "needs.analyzers.outputs"),
         "analyzers job made conditional": real.replace(
             "\n  analyzers:\n    name: Analyzers\n", "\n  analyzers:\n    name: Analyzers\n    if: false\n"),

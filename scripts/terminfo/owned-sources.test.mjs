@@ -4,21 +4,21 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { pathToFileURL } from 'node:url';
-import { ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
         for (const [key, file] of Object.entries(ownedSourceFiles)) {
-            const bytes = readFileSync(new URL(file === 'terminfo-owned-runner.mjs' ? '../terminfo-owned-runner.mjs' : './' + file, import.meta.url));
+            const bytes = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../', import.meta.url)), file));
             const path = ownedSourcePath(root, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, bytes);
             context[key] = createHash('sha256').update(bytes).digest('hex');
         }
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 74 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 74); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 103 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 103); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -77,4 +77,15 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
         writeFileSync(join(root, 'entry.mjs'), '/* ' + 'import /* '.repeat(1024) + '*/');
         assert.throws(() => assertRetainedSourceClosure(root, { entrySourceSha256: 'entry.mjs' }), /traversal budget exceeded/);
     } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('private v12 fixed103 source scope includes all selected nonexecuted references while v11 remains fixed74', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV12SourceFiles);
+    assert.equal(Object.keys(capturedV11SourceFiles).length, 74);
+    assert.equal(Object.keys(privateClipboardReferencePaths).length, 21);
+    const bootstrap = readFileSync(new URL('../terminfo-owned.mjs', import.meta.url), 'utf8');
+    const start = bootstrap.indexOf('Object.freeze(') + 'Object.freeze('.length;
+    const literal = bootstrap.slice(start, bootstrap.indexOf(');', start));
+    assert.deepEqual(JSON.parse(literal), privateClipboardReferencePaths);
+    assert.ok(Object.values(privateClipboardReferencePaths).every(path => path.startsWith('src/') && path.endsWith('.cs')));
 });

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { prepareOwnedOutput, readOwnedOutputMode, sttyTool, validateOutputGeometry } from './terminal-output.mjs';
+import { ownedTerminalRestorer, readOwnedTerminalState, restoreOwnedTerminalState, prepareOwnedOutput, readOwnedOutputMode, sttyTool, validateOutputGeometry } from './terminal-output.mjs';
 const tty = '/dev/ttys123';
 function fixture({ flags = 'oflags: -opost onlcr', fail = null } = {}) {
     const calls = [], saved = 'gfmt1:cflag=4b00:iflag=0:oflag=3:lflag=0';
@@ -121,4 +121,109 @@ assert data==bytes([65,10,66,13,10]),data
 print('exclusive listeners; handoff LF; original CRLF and termios restored')`;
     const result = spawnSync('/usr/bin/python3', ['-c', script, process.execPath, program], { encoding: 'utf8', timeout: 5000 });
     assert.equal(result.status, 0, result.stdout + result.stderr); assert.match(result.stdout, /termios restored/);
+});
+
+test('private restoration attempts every path, preserves falsy failures and is idempotent', () => {
+    const calls = [], restore = ownedTerminalRestorer([() => { calls.push(1); throw undefined; },
+        () => { calls.push(2); throw null; }, () => calls.push(3)]);
+    let first;
+    assert.throws(restore, error => { first = error; return error instanceof AggregateError && error.errors.length === 2 && error.errors[0] === undefined && error.errors[1] === null; });
+    assert.deepEqual(calls, [1, 2, 3]); assert.throws(restore, error => error === first); assert.equal(calls.length, 3);
+});
+test('private original-state readback is exact and refuses malformed saved modes', () => {
+    const f = fixture(); assert.equal(readOwnedTerminalState(tty, 91, f.run), f.saved);
+    restoreOwnedTerminalState(tty, f.saved, 92, f.run);
+    assert.deepEqual(f.calls.slice(-3).map(value => value.args[2]), [f.saved, '-g', '-g']);
+    assert.throws(() => restoreOwnedTerminalState(tty, f.saved + ':ispeed=9600', 92, f.run), /exactly restored/);
+    for (const value of ['', '\n', '-echo;rm', null]) assert.throws(() => restoreOwnedTerminalState(tty, value, 92, f.run));
+});
+test('real private PTY keeps -opost through pinned stock raw-mode and nested TTY operations, then restores exact original termios', { skip: process.platform !== 'darwin' }, async () => {
+    const { original } = await import('./fixtures/private-clipboard-upstream.mjs');
+    const operation = original.slice(original.indexOf('function withTTYOperation('), original.indexOf('function currentTTYOutput('));
+    const raw = original.slice(original.indexOf('async function withRawMode('), original.indexOf('var ttyOperations,'));
+    const outputModule = new URL('./terminal-output.mjs', import.meta.url).href, fenceModule = new URL('./terminal-fence.mjs', import.meta.url).href;
+    const program = `import {AsyncLocalStorage} from 'node:async_hooks';
+        import {readOwnedTerminalState,readOwnedOutputMode,prepareOwnedOutput,restoreOwnedTerminalState,ownedTerminalRestorer} from ${JSON.stringify(outputModule)};
+        import {terminalFence} from ${JSON.stringify(fenceModule)};
+        const ttyOperations=new WeakMap(),operationContext=new AsyncLocalStorage();
+        ${operation} ${raw}
+        const tty=process.argv[1],original=readOwnedTerminalState(tty),paused=process.stdin.isPaused();
+        const fence=terminalFence(process.stdin,process.stdout),restoreOutput=prepareOwnedOutput(tty);
+        fence.detachInput();fence.retireInput();
+        const restore=ownedTerminalRestorer([restoreOutput,()=>fence.dispose(),()=>restoreOwnedTerminalState(tty,original)]);
+        try { await withRawMode(async()=>{readOwnedOutputMode(tty);await withTTYOperation(async()=>{
+          readOwnedOutputMode(tty);process.stdout.write('A\\n');},process.stdout);readOwnedOutputMode(tty);},process.stdout);
+          readOwnedOutputMode(tty);
+        }finally{restore();}
+        if(readOwnedTerminalState(tty)!==original||process.stdin.isRaw||process.stdin.isPaused()!==paused)throw Error('exact original restoration');
+        process.stdin.pause();process.stdout.write('B\\n');`;
+    const script = `import os,pty,subprocess,sys
+master,slave=pty.openpty()
+p=subprocess.Popen([sys.argv[1],'--input-type=module','-e',sys.argv[2],os.ttyname(slave)],stdin=slave,stdout=slave,stderr=slave)
+os.close(slave);data=b''
+while True:
+ try:
+  part=os.read(master,4096)
+  if not part:break
+  data+=part
+ except OSError:break
+p.wait();os.close(master)
+assert p.returncode==0,(p.returncode,data)
+assert data==bytes([65,10,66,13,10]),data
+print('pinned stock operations kept -opost; exact original termios restored')`;
+    const result = spawnSync('/usr/bin/python3', ['-c', script, process.execPath, program], { encoding: 'utf8', timeout: 5000 });
+    assert.equal(result.status, 0, result.stdout + result.stderr); assert.match(result.stdout, /exact original termios/);
+});
+
+test('private pending-input settlement refuses a different real PTY device without reading it', { skip: process.platform !== 'darwin' }, () => {
+    const module = new URL('./terminal-output.mjs', import.meta.url).href;
+    const program = `import{restoreOwnedTerminalState}from ${JSON.stringify(module)};
+        try{restoreOwnedTerminalState(process.argv[1],process.argv[2]);throw Error('unexpected success');}
+        catch(error){if(!/input device changed/.test(error.message))throw error;console.log('wrong private device refused');}
+        process.stdin.pause();`;
+    const script = `import os,pty,subprocess,sys,tty
+master,slave=pty.openpty();other_master,other_slave=pty.openpty()
+other=os.ttyname(other_slave)
+original=subprocess.check_output(['/bin/stty','-f',other,'-g']).decode().strip()
+tty.setraw(other_slave)
+p=subprocess.Popen([sys.argv[1],'--input-type=module','-e',sys.argv[2],other,original],stdin=slave,stdout=slave,stderr=slave)
+os.close(slave);data=b''
+while True:
+ try:
+  part=os.read(master,4096)
+  if not part:break
+  data+=part
+ except OSError:break
+p.wait();os.close(master);os.close(other_slave);os.close(other_master)
+assert p.returncode==0,(p.returncode,data)
+print(data.decode())`;
+    const result = spawnSync('/usr/bin/python3', ['-c', script, process.execPath, program], { encoding: 'utf8', timeout: 5000 });
+    assert.equal(result.status, 0, result.stdout + result.stderr); assert.match(result.stdout, /wrong private device refused/);
+});
+test('private pending-input settlement refuses a queued synthetic byte and retains no byte content in the error', { skip: process.platform !== 'darwin' }, () => {
+    const module = new URL('./terminal-output.mjs', import.meta.url).href;
+    const program = `import{readOwnedTerminalState,restoreOwnedTerminalState}from ${JSON.stringify(module)};
+        import{execFileSync}from'node:child_process';
+        const tty=process.argv[1],original=readOwnedTerminalState(tty);
+        process.stdin.setRawMode(true);process.stdin.pause();
+        process.stdout.write('READY\\n');await new Promise(resolve=>setTimeout(resolve,100));
+        process.stdin.setRawMode(false);
+        try{restoreOwnedTerminalState(tty,original);throw Error('unexpected success');}
+        catch(error){if(error.message!=='Unexpected input during private PTY final restoration.')throw error;console.log('unexpected input refused without content');}`;
+    const script = `import os,pty,subprocess,sys
+master,slave=pty.openpty()
+p=subprocess.Popen([sys.argv[1],'--input-type=module','-e',sys.argv[2],os.ttyname(slave)],stdin=slave,stdout=slave,stderr=slave)
+os.close(slave);data=b'';sent=False
+while True:
+ try:
+  part=os.read(master,4096)
+  if not part:break
+  data+=part
+  if b'READY' in data and not sent:os.write(master,b'X\\n');sent=True
+ except OSError:break
+p.wait();os.close(master)
+assert p.returncode==0,(p.returncode,data)
+print('unexpected input refused without content')`;
+    const result = spawnSync('/usr/bin/python3', ['-c', script, process.execPath, program], { encoding: 'utf8', timeout: 5000 });
+    assert.equal(result.status, 0, result.stdout + result.stderr); assert.match(result.stdout, /unexpected input refused/);
 });

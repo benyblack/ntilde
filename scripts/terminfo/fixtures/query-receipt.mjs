@@ -2,11 +2,10 @@
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { queryWorld } from './query-world.mjs';
-import { capturedV11SourceFiles, ownedSourcePath } from '../owned-sources.mjs';
+import { capturedV11SourceFiles } from '../owned-sources.mjs';
 import { querySuiteId, ownedQueryPolicy } from '../queries.mjs';
 import { completeOwnedReceipt } from '../receipt.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -30,8 +29,9 @@ export async function queryReceiptFixture(action, worldOptions = {}) {
         const world = queryWorld({ binding, initialScreen: last.screen, cursorVisible: last.screen.cursorVisible,
             processFacts: original, atStart: Date.parse(image.seal.ownership.at) + 1, priorChallenges, ...worldOptions });
         await world.collect(); const report = world.observer.report;
+        const frozenSources = historicalArchive('2026-11-05-query-observations');
         for (const [key, file] of Object.entries(capturedV11SourceFiles)) {
-            const bytes = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
+            const bytes = frozenSources.get('sources/' + file);
             writeFileSync(join(output, 'sources', file), bytes); context[key] = hash(bytes);
         }
         const policy = 'readonly-owned-source-graph-v4', manifest = { schemaVersion: 1, policy,

@@ -7,8 +7,36 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-const pathFor = (root, file) => join(root, 'scripts', file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file);
-const policy = 'readonly-owned-source-graph-v4';
+const privateClipboardReferencePaths = Object.freeze({
+    "clipboard-app-program.cs": "src/Ntilde.App/Program.cs",
+    "clipboard-app.cs": "src/Ntilde.App/App.axaml.cs",
+    "clipboard-private-mode.cs": "src/Ntilde.App/Shell/Clipboard/PrivateClipboardQaMode.cs",
+    "clipboard-disposable-fixture.cs": "src/Ntilde.App/Shell/Clipboard/DisposableClipboardFixture.cs",
+    "clipboard-main-window.cs": "src/Ntilde.App/MainWindow.ClipboardFixture.cs",
+    "clipboard-main-window-resize.cs": "src/Ntilde.App/MainWindow.AgentResize.cs",
+    "clipboard-pane.cs": "src/Ntilde.App/Controls/TerminalPane.Clipboard.cs",
+    "clipboard-pane-session.cs": "src/Ntilde.App/Controls/TerminalPane.Session.cs",
+    "clipboard-pane-lifecycle.cs": "src/Ntilde.App/Controls/TerminalPane.Lifecycle.cs",
+    "clipboard-pane-settings.cs": "src/Ntilde.App/Controls/TerminalPane.axaml.cs",
+    "clipboard-settings.cs": "src/Ntilde.App/Shell/TerminalSettings.cs",
+    "clipboard-agent-service.cs": "src/Ntilde.App/AgentHost/AgentHostService.cs",
+    "clipboard-agent-fixture.cs": "src/Ntilde.App/AgentHost/AgentHostService.ClipboardFixture.cs",
+    "clipboard-agent-executor.cs": "src/Ntilde.App/AgentHost/IAgentActionExecutor.cs",
+    "clipboard-contract.cs": "src/Ntilde.AgentHost.Contracts/ClipboardFixture.cs",
+    "clipboard-session-contract.cs": "src/Ntilde.AgentHost.Contracts/SessionContracts.cs",
+    "clipboard-agent-registration.cs": "src/Ntilde.App/AgentHost/AgentSessionRegistration.cs",
+    "clipboard-vt-osc.cs": "src/Ntilde.VT/AnsiParser.Osc.cs",
+    "clipboard-vt-csi.cs": "src/Ntilde.VT/AnsiParser.Csi.cs",
+    "clipboard-agent-registry.cs": "src/Ntilde.App/AgentHost/AgentSessionRegistry.cs",
+    "clipboard-agent-protocol.cs": "src/Ntilde.AgentHost.Contracts/AgentHostProtocol.cs"
+});
+/** Map admitted reference aliases or established script basenames without reading or executing them. */
+function pathFor(root, file) {
+    if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
+    const relative = file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file;
+    return join(root, 'scripts', relative);
+}
+const policy = 'readonly-owned-source-graph-v5';
 function setDirectoryModes(root, mode) {
     for (const entry of readdirSync(root, { withFileTypes: true })) if (entry.isDirectory()) setDirectoryModes(join(root, entry.name), mode);
     chmodSync(root, mode);
@@ -34,12 +62,13 @@ async function checkCapturedImports(sources) {
         }
     }
 }
+/** Copy regular fixed-scope inputs into an exclusive read-only tree, hash its manifest and check literal dependencies before execution. */
 async function capture(root) {
     const input = readFileSync(join(repo, 'scripts/terminfo/owned-source-inventory.json'));
     const inventory = JSON.parse(input), hashes = {}, sources = new Map();
     if (inventory.runnerSourceSha256 !== 'terminfo-owned-runner.mjs' || inventory.sourceInventorySha256 !== 'owned-source-inventory.json') throw new Error('Invalid source inventory.');
     for (const [key, file] of Object.entries(inventory)) {
-        if (!/^[a-zA-Z][a-zA-Z0-9]*Sha256$/.test(key) || !/^[a-z][a-z0-9-]*\.(?:mjs|json)$/.test(file)) throw new Error('Invalid source inventory entry.');
+        if (!/^[a-zA-Z][a-zA-Z0-9]*Sha256$/.test(key) || (!/^[a-z][a-z0-9-]*\.(?:mjs|json)$/.test(file) && !Object.hasOwn(privateClipboardReferencePaths, file))) throw new Error('Invalid source inventory entry.');
         const source = pathFor(repo, file), info = lstatSync(source);
         if (!info.isFile() || info.isSymbolicLink()) throw new Error('Expected a regular source file.');
         const bytes = file === 'owned-source-inventory.json' ? input : readFileSync(source);
@@ -52,6 +81,7 @@ async function capture(root) {
     await checkCapturedImports(sources);
     return digest(manifest);
 }
+/** Import only the verified captured runner; restore environment/signal handlers and retire the snapshot on every exit. */
 async function launch() {
     let root, interrupted;
     const note = signal => { interrupted ??= signal; process.env.NTILDE_TERMINFO_PENDING_SIGNAL = signal; };
