@@ -59,8 +59,7 @@ public sealed class ReplayRequiredPolicyIsolationTests
             string header = JsonSerializer.Serialize(new ReplayHeader { Type = ReplayHeader.TypeToken, Cols = 20, Rows = 8 }, ReplayJsonContext.Default.ReplayHeader);
             var source = new TerminalBuffer(20, 8);
             var ev = checkpoint
-                ? new ReplayEvent { Type = "snapshot",
-                TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { State = source.ExportState(0) } }
+                ? new ReplayEvent { Type = "snapshot", TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { State = source.ExportState(0) } }
                 : new ReplayEvent { Type = "data", TimeOffsetMs = 100, Data = "WA==" };
             string tail = "\n" + JsonSerializer.Serialize(ev, ReplayJsonContext.Default.ReplayEvent) + "\n";
             await File.WriteAllTextAsync(path, header + tail, TestContext.Current.CancellationToken);
@@ -101,8 +100,7 @@ public sealed class ReplayRequiredPolicyIsolationTests
         {
             var source = new TerminalBuffer(20, 8);
             var item = checkpoint
-                ? new ReplayEvent { Type = "snapshot",
-                TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { State = source.ExportState(0) } }
+                ? new ReplayEvent { Type = "snapshot", TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { State = source.ExportState(0) } }
                 : new ReplayEvent { Type = "data", TimeOffsetMs = 100, Data = "WA==" };
             await File.WriteAllTextAsync(path, JsonSerializer.Serialize(new ReplayHeader { Type = ReplayHeader.TypeToken }, ReplayJsonContext.Default.ReplayHeader) + "\n" +
                 JsonSerializer.Serialize(item, ReplayJsonContext.Default.ReplayEvent) + "\n", TestContext.Current.CancellationToken);
@@ -201,8 +199,7 @@ public sealed class ReplayRequiredPolicyIsolationTests
         try
         {
             var header = new ReplayHeader { Type = ReplayHeader.TypeToken, RequiredSixelRasterPolicy = 1 };
-            var snapshot = new ReplayEvent { Type = "snapshot",
-                TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { State = new TerminalBuffer(20, 8).ExportState(0) } };
+            var snapshot = new ReplayEvent { Type = "snapshot", TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { State = new TerminalBuffer(20, 8).ExportState(0) } };
             string prefix = leadingBlank ? "\n \r\n" : "";
             await File.WriteAllTextAsync(path, prefix + JsonSerializer.Serialize(header, ReplayJsonContext.Default.ReplayHeader) + "\n" +
                 JsonSerializer.Serialize(snapshot, ReplayJsonContext.Default.ReplayEvent), TestContext.Current.CancellationToken);
@@ -230,8 +227,7 @@ public sealed class ReplayRequiredPolicyIsolationTests
             var saved = new TerminalBuffer(20, 8);
             new AnsiParser(saved).Process("checkpoint");
             var item = checkpoint
-                ? new ReplayEvent { Type = "snapshot",
-                TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { Cols = 20, Rows = 8, State = saved.ExportState(0) } }
+                ? new ReplayEvent { Type = "snapshot", TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { Cols = 20, Rows = 8, State = saved.ExportState(0) } }
                 : new ReplayEvent { Type = "data", TimeOffsetMs = 100, Data = "WA==" };
             string data = JsonSerializer.Serialize(item, ReplayJsonContext.Default.ReplayEvent);
             await File.WriteAllTextAsync(path, header + "\n" + data + "\n", TestContext.Current.CancellationToken);
