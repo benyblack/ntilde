@@ -98,6 +98,11 @@ test('rejects tampered observations and barrier evidence', () => {
     badRunBarrier.run.cases[1].barriers[0] = '\x1b[6n';
     assert.throws(() => buildAsciiSgrGradingReport(badRunBarrier.frames, badRunBarrier.run, badRunBarrier.runId, badRunBarrier.adapter),
         /Invalid text.overwrite graded capture record/);
+
+    const fabricatedCursor = structuredClone(base.evidence);
+    fabricatedCursor.run.cases[0].reads[1].cursor = [999, 999];
+    assert.throws(() => buildAsciiSgrGradingReport(fabricatedCursor.frames, fabricatedCursor.run, fabricatedCursor.runId, fabricatedCursor.adapter),
+        /Graded text.basic cursor differs from its read frame/);
 });
 
 test('rejects mismatched run identities and adapter bindings', () => {

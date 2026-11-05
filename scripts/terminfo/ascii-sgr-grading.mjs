@@ -98,13 +98,21 @@ export function buildAsciiSgrGradingReport(frames, run, runId, adapter, replayMo
         for (const [step, read] of contract.plan.filter(item => item.read).entries()) {
             if (recorded.reads[step].kind !== read.read) throw new Error(`Wrong ${contract.caseId} read kind.`);
         }
-        // Every read frame must carry the barrier of the feed that preceded it.
+        // Every read frame must carry the barrier of the feed that preceded it
+        // and the cursor the run log claims for it.
         let feedSteps = 0, readSteps = 0;
         const readFrames = recorded.reads.map(() => frames[frameIndex++]);
         for (const step of contract.plan) {
             if (step.feed) feedSteps++;
-            else if (readFrames[readSteps++].barrier !== recorded.barriers[feedSteps - 1]) {
-                throw new Error(`Graded ${contract.caseId} barrier differs from its read frame.`);
+            else {
+                const frame = readFrames[readSteps];
+                if (frame.barrier !== recorded.barriers[feedSteps - 1]) {
+                    throw new Error(`Graded ${contract.caseId} barrier differs from its read frame.`);
+                }
+                if (JSON.stringify(recorded.reads[readSteps].cursor) !== JSON.stringify([frame.screen.cursorRow, frame.screen.cursorCol])) {
+                    throw new Error(`Graded ${contract.caseId} cursor differs from its read frame.`);
+                }
+                readSteps++;
             }
         }
         const screens = readFrames.map(frame => frame.screen);
