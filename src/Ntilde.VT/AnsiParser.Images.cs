@@ -110,6 +110,9 @@ namespace Ntilde.VT
         /// <summary>Retain bounded source/placement state for persistent-session attach snapshots.</summary>
         public bool RetainSixelSources { get; set; }
 
+        /// <summary>
+        /// Routes internal native sessions through bounded admission; public legacy sessions retain their decoder path.
+        /// </summary>
         private void HandleSixel(string dcs)
         {
             if (_buffer.NativeSixelBudget is { } nativeBudget)
@@ -120,6 +123,9 @@ namespace Ntilde.VT
             HandleLegacySixel(dcs);
         }
 
+        /// <summary>
+        /// Preserves legacy decoder-reported reservation geometry, fallback metrics and optional source retention.
+        /// </summary>
         private void HandleLegacySixel(string dcs)
         {
             var (pixelWidth, pixelHeight) = SixelGeometry.Measure(dcs);
@@ -159,6 +165,10 @@ namespace Ntilde.VT
                 _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
         }
 
+        /// <summary>
+        /// Reserves fixed decoder work before new source retention, decoding or cursor changes.
+        /// Unknown decoder contract failures retain credit rather than claiming disposal of resources they may own.
+        /// </summary>
         private void HandleBoundedSixel(string dcs, NativeSixelBudget budget)
         {
             // Cleanup existing failed owners first; no new decode, input retention or cursor effect precedes reservation.

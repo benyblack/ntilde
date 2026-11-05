@@ -72,6 +72,9 @@ public sealed class NativeSixelBudgetTests
         Assert.Equal((0, 0L), budget.Usage);
     }
 
+    /// <summary>
+    /// Keeps three maximum canvases charged to distinguish peak decoder scratch refusal from final-pixel-only accounting.
+    /// </summary>
     [Fact]
     public void Default_byte_limit_includes_peak_work_even_when_the_final_bitmap_alone_would_fit()
     {
@@ -108,6 +111,9 @@ public sealed class NativeSixelBudgetTests
         Assert.Equal((0, 0L), other.Usage);
     }
 
+    /// <summary>
+    /// Races 64 reservations against eight slots and confirms only admitted owners can release the resulting shared charge.
+    /// </summary>
     [Fact]
     public async Task Concurrent_admissions_never_oversubscribe_either_limit()
     {
@@ -119,6 +125,9 @@ public sealed class NativeSixelBudgetTests
         Assert.Equal((0, 0L), budget.Usage);
     }
 
+    /// <summary>
+    /// Derives a five-owner byte ceiling independently of the slot ceiling, then races admissions against that exact work budget.
+    /// </summary>
     [Fact]
     public async Task Concurrent_admissions_never_oversubscribe_the_byte_limit()
     {

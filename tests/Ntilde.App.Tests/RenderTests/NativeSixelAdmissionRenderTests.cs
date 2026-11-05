@@ -83,6 +83,9 @@ public sealed class NativeSixelAdmissionRenderTests
         public NativeSixelDecodeState DecodeState => NativeSixelDecodeState.Pending;
         internal int Attempts;
         internal bool Gone;
+        /// <summary>
+        /// Fails the first actual-view handoff while asserting disposal is outside the VT lock; only the retry releases credit.
+        /// </summary>
         public void Dispose()
         {
             Assert.False(buffer.Lock.IsWriteLockHeld);

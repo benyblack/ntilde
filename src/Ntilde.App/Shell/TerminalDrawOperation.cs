@@ -406,6 +406,10 @@ namespace Ntilde.Shell
             }
         }
 
+        /// <summary>
+        /// Paints one coherent terminal snapshot while the caller holds its image snapshot session through the final bitmap draw.
+        /// Live frames bound deferred image work; isolated captures materialize their selected images without draining retired handles.
+        /// </summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "S3776", Justification = "Pre-existing frame pipeline. Controlled captures record snapshot presentation facts and fill their own background here to preserve one-draw provenance; splitting the full pipeline is outside this capture change.")]
         private TerminalRenderSnapshot? DrawTerminalInternalCore(SKCanvas canvas, int snapshotSession)
         {

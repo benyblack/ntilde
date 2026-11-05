@@ -19,6 +19,10 @@ public partial class TerminalBuffer
     private readonly ConditionalWeakTable<object, ImageHandleLifetime> _imageHandleLifetimes = new();
     private readonly object _imageHandleGate = new();
 
+    /// <summary>
+    /// Admits live aliases under one lifetime gate; native final retirement and every disposal handoff are irreversible.
+    /// Native placement credit must belong to this buffer before admission can cancel legacy pending retirement.
+    /// </summary>
     private bool TryAdmitImageHandle(object handle)
     {
         NativeSixelAllocation? allocation = (handle as INativeSixelImage)?.Allocation;
@@ -38,6 +42,9 @@ public partial class TerminalBuffer
         }
     }
 
+    /// <summary>
+    /// Rejects ownership or retirement conflicts before a caller publishes an imported or newly placed handle.
+    /// </summary>
     private void RequireImageHandleAdmission(object handle)
     {
         if (!TryAdmitImageHandle(handle)) throw new InvalidOperationException("The image handle cannot be admitted to this buffer.");
@@ -73,6 +80,9 @@ public partial class TerminalBuffer
         }
     }
 
+    /// <summary>
+    /// Queues a handle at most once under the lifetime gate; neither queueing nor the immediate flag performs disposal.
+    /// </summary>
     private void QueueImageHandleRetirement(object handle, bool disposeImmediately)
     {
         lock (_imageHandleGate)
@@ -99,6 +109,9 @@ public partial class TerminalBuffer
         }
     }
 
+    /// <summary>
+    /// Advances the retirement generation under the lifetime gate so stale drain entries cannot complete a later handoff.
+    /// </summary>
     private void EnqueueImageRetirement(object handle, ImageHandleLifetime lifetime, bool disposeImmediately)
     {
         lifetime.Pending = true;
@@ -107,6 +120,9 @@ public partial class TerminalBuffer
         _retiredImageHandles.Enqueue((handle, Environment.TickCount64, disposeImmediately, lifetime.RetirementToken));
     }
 
+    /// <summary>
+    /// Checks the pending retirement generation while the lifetime gate is held; a stale token cannot authorize disposal.
+    /// </summary>
     private bool IsCurrentImageRetirement(object handle, long token) =>
         _imageHandleLifetimes.TryGetValue(handle, out ImageHandleLifetime? lifetime)
         && lifetime.Pending && lifetime.RetirementToken == token;

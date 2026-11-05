@@ -320,11 +320,17 @@ namespace Ntilde.VT
             : this(cols, rows, sixelRasterPolicyVersion, null) { }
 
         // Test-only construction keeps the unadvertised implementation exercised while the public ceiling is zero.
+        /// <summary>
+        /// Constructs only the internal test path with native accounting; it does not raise the public policy ceiling.
+        /// </summary>
         internal static TerminalBuffer CreateNativeSixelTestBuffer(int cols, int rows, NativeSixelBudget budget, SixelSourceBudget? sources = null) =>
             new(cols, rows, SixelRasterPolicy.PresenterNativeVersion, budget ?? throw new ArgumentNullException(nameof(budget))) { SixelSources = sources ?? new() };
 
         internal NativeSixelBudget? NativeSixelBudget { get; }
 
+        /// <summary>
+        /// Admits public policy before initialization, or irreversibly binds an internal test budget to this one buffer generation.
+        /// </summary>
         private TerminalBuffer(int cols, int rows, int sixelRasterPolicyVersion, NativeSixelBudget? budget)
         {
             if (budget is null) SixelRasterPolicy.RequireSupported(sixelRasterPolicyVersion);

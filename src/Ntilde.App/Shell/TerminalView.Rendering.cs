@@ -31,6 +31,9 @@ namespace Ntilde.Shell
         internal void DisposeRetiredImageBitmaps() =>
             DisposeRetiredImageBitmaps(Environment.TickCount64 - RetiredImageDisposalGraceMs);
 
+        /// <summary>
+        /// Disposes snapshot-eligible handles outside VT locks; failed native disposal is requeued without returning credit.
+        /// </summary>
         internal void DisposeRetiredImageBitmaps(long drainTick)
         {
             var buffer = _buffer;

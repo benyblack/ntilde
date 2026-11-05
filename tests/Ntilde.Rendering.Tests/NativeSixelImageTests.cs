@@ -15,6 +15,9 @@ public sealed class NativeSixelImageTests
         "q\"1;1;16;16#2!16~-!16~-!16N", "q#2~$#3@-#4B",
     };
 
+    /// <summary>
+    /// Compares every real decoded pixel against the legacy oracle, including late palette definitions and malformed commands.
+    /// </summary>
     [Theory]
     [MemberData(nameof(LegacyCases))]
     public void Fixed_storage_decoder_preserves_existing_pixels_and_register_semantics(string data)
@@ -71,6 +74,9 @@ public sealed class NativeSixelImageTests
         Assert.Null(image.GetBitmap(ref work, out _));
     }
 
+    /// <summary>
+    /// Holds a real red bitmap across RIS and refused readmission; releasing the snapshot permits drain but not early credit.
+    /// </summary>
     [Fact]
     public void Retired_snapshot_keeps_real_pixels_and_charge_until_it_can_be_disposed()
     {
@@ -106,6 +112,10 @@ public sealed class NativeSixelImageTests
         Assert.Equal((0, 0L), budget.Usage);
     }
 
+    /// <summary>
+    /// Blocks real decoding at accounting publication and independently runs source pruning to expose lock-order regressions.
+    /// The failed-input branch fills the cap and pins the first disposal frame, proving later attempts recover without another eviction.
+    /// </summary>
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -202,6 +212,9 @@ public sealed class NativeSixelImageTests
         Assert.Equal((0, 0L), budget.Usage);
     }
 
+    /// <summary>
+    /// Detects the in-flight point in both the current state machine and the preserved old-source regression implementation.
+    /// </summary>
     private static bool DecodeStarted(NativeSixelImage image)
     {
         const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;

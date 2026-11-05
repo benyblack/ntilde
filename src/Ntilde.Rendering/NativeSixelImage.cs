@@ -54,6 +54,10 @@ public sealed class NativeSixelImage : INativeSixelImage
         return result;
     }
 
+    /// <summary>
+    /// Disposes bitmap and source before returning their reservation; failure leaves credit charged for retry.
+    /// The owning buffer must have released its snapshot gate before invoking this outside VT locks.
+    /// </summary>
     public void Dispose()
     {
         lock (_gate)

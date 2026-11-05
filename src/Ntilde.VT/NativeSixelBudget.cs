@@ -16,6 +16,9 @@ internal sealed class NativeSixelBudget
     private int _placements;
     private bool _bound;
 
+    /// <summary>
+    /// Creates production-bounded accounting; test overrides may only reduce either ceiling.
+    /// </summary>
     public NativeSixelBudget(int maxPlacements = MaxPlacements, long maxBytes = MaxBytes)
     {
         if (maxPlacements is < 1 or > MaxPlacements) throw new ArgumentOutOfRangeException(nameof(maxPlacements));
@@ -55,6 +58,10 @@ internal sealed class NativeSixelBudget
         }
     }
 
+    /// <summary>
+    /// Claims the reserved first placement or charges a live alias without charging its pixels twice.
+    /// All alias charges remain until the shared owner is actually disposed.
+    /// </summary>
     internal bool TryAdmitPlacement(NativeSixelAllocation allocation)
     {
         lock (_gate)
@@ -69,16 +76,25 @@ internal sealed class NativeSixelBudget
         }
     }
 
+    /// <summary>
+    /// Observes whether this budget still owns a charge; foreign allocations are rejected.
+    /// </summary>
     internal bool IsActive(NativeSixelAllocation allocation)
     {
         lock (_gate) { RequireOwner(allocation); return !allocation.Released; }
     }
 
+    /// <summary>
+    /// Identifies a reserved owner that never acquired a placement and may be retired as unplaced.
+    /// </summary>
     internal bool IsUnclaimed(NativeSixelAllocation allocation)
     {
         lock (_gate) { RequireOwner(allocation); return !allocation.Claimed && !allocation.Released; }
     }
 
+    /// <summary>
+    /// Credits decoder scratch once after decode succeeds or fails; retained pixel credit stays charged.
+    /// </summary>
     internal void CompleteDecode(NativeSixelAllocation allocation)
     {
         lock (_gate)
@@ -103,6 +119,9 @@ internal sealed class NativeSixelBudget
         }
     }
 
+    /// <summary>
+    /// Rejects foreign accounting before any reservation counters can change.
+    /// </summary>
     private void RequireOwner(NativeSixelAllocation allocation)
     {
         if (!ReferenceEquals(allocation.Owner, this)) throw new InvalidOperationException("Foreign native SIXEL allocation.");

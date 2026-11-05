@@ -112,6 +112,9 @@ namespace Ntilde.Rendering
             return pixelWidth > 0 && pixelHeight > 0 ? new DeferredSixelImage(source, MaxPixelDimension) : null;
         }
 
+        /// <summary>
+        /// Creates a deferred native owner only when retained source geometry matches its predecode reservation.
+        /// </summary>
         INativeSixelImage? INativeSixelDecoder.DecodeNativeSixel(SixelSource source, NativeSixelAllocation allocation)
         {
             if (source.DecodeData is not { } data || data.Length != allocation.SourceChars ||

@@ -8,6 +8,10 @@ namespace Ntilde.Rendering;
 internal static class NativeSixelDecoder
 {
     private readonly record struct RasterCanvas(ushort[] Pixels, uint[] Palette, int Width, int Height);
+    /// <summary>
+    /// Decodes only the canvas and source length admitted by the reservation using fixed charged storage.
+    /// A geometry mismatch returns null; failed bitmap construction disposes the partial bitmap.
+    /// </summary>
     internal static SKBitmap? Decode(string data, NativeSixelAllocation allocation)
     {
         if (data.Length != allocation.SourceChars ||
@@ -38,6 +42,9 @@ internal static class NativeSixelDecoder
         }
     }
 
+    /// <summary>
+    /// Interprets SIXEL commands into the fixed register plane; palette lookup occurs after all commands.
+    /// </summary>
     private static void PaintRegisters(ReadOnlySpan<char> data, ushort[] pixels, uint[] palette, int width, int height)
     {
         var canvas = new RasterCanvas(pixels, palette, width, height);
@@ -63,11 +70,17 @@ internal static class NativeSixelDecoder
         }
     }
 
+    /// <summary>
+    /// Consumes raster attributes without allocating fields; admitted canvas geometry already bounds storage.
+    /// </summary>
     private static void SkipParameters(ReadOnlySpan<char> data, ref int i)
     {
         while (i < data.Length && (char.IsDigit(data[i]) || data[i] == ';')) i++;
     }
 
+    /// <summary>
+    /// Saturates remote repeat counts and paints only a following SIXEL data character within the canvas.
+    /// </summary>
     private static void PaintRepeat(ReadOnlySpan<char> data, ref int i, ref int x, int y, int current,
         RasterCanvas canvas)
     {
@@ -79,6 +92,9 @@ internal static class NativeSixelDecoder
             Paint(data[i++], (int)count, ref x, y, current, canvas);
     }
 
+    /// <summary>
+    /// Clips a SIXEL band to admitted storage while preserving legacy transparent and undefined-register behavior.
+    /// </summary>
     private static void Paint(char c, int count, ref int x, int y, int current, RasterCanvas canvas)
     {
         int width = canvas.Width, height = canvas.Height;
@@ -93,6 +109,9 @@ internal static class NativeSixelDecoder
                 canvas.Pixels.AsSpan((y + row) * width + start, end - start).Fill((ushort)(current + 1));
     }
 
+    /// <summary>
+    /// Applies bounded register selection or RGB/HLS definition with the legacy malformed-field rules.
+    /// </summary>
     private static void ReadPalette(ReadOnlySpan<char> data, ref int i, uint[] palette, ref int current)
     {
         int start = i;
@@ -117,6 +136,9 @@ internal static class NativeSixelDecoder
         }
     }
 
+    /// <summary>
+    /// Counts every field but stores only the fixed prefix, reporting malformed fields without input-sized allocation.
+    /// </summary>
     private static int ReadParameters(ReadOnlySpan<char> command, Span<int> values, out bool valid)
     {
         int count = 0;

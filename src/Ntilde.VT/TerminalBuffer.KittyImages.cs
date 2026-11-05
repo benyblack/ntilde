@@ -173,6 +173,9 @@ public partial class TerminalBuffer
 
     private bool IsRetainedKittyHandle(object handle) => _kittyImageAssets.Any(asset => ReferenceEquals(asset.Handle, handle));
 
+    /// <summary>
+    /// Queues an unreferenced retained handle; a native source enters the retired tier only after its last alias is gone.
+    /// </summary>
     internal void RetireUnstoredKittyHandle(object handle)
     {
         bool lockTaken = EnterWriteLockIfNeeded();

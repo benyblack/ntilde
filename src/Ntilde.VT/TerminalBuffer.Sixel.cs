@@ -40,6 +40,9 @@ public partial class TerminalBuffer
         return true;
     }
 
+    /// <summary>
+    /// Prunes expired pending sources and retires an unusable native owner without publishing a placement.
+    /// </summary>
     private object? PrepareSixelPlacementHandle(object? handle, SixelSource? source)
     {
         if (source is null) return handle;
@@ -49,6 +52,9 @@ public partial class TerminalBuffer
         return null;
     }
 
+    /// <summary>
+    /// Admits the handle before publishing it, then commits source retention with the alias already visible.
+    /// </summary>
     private bool TryAddSixelPlacement(TerminalImage? image)
     {
         if (image is null) return true;
@@ -68,6 +74,9 @@ public partial class TerminalBuffer
         return true;
     }
 
+    /// <summary>
+    /// Queues only this buffer's unclaimed native owner after placement refusal; never retires a borrowed allocation.
+    /// </summary>
     internal void RetireUnplacedNativeSixel(INativeSixelImage image)
     {
         if (ReferenceEquals(image.Allocation.Owner, NativeSixelBudget) && image.Allocation.Owner.IsUnclaimed(image.Allocation))
@@ -76,6 +85,9 @@ public partial class TerminalBuffer
 
     private static bool CanDiscardSixelHandle(object? handle) => CanDiscardSixelHandle(handle, out _);
 
+    /// <summary>
+    /// Reads native decode state once without its decode lock; in-flight and materialized owners must survive pruning.
+    /// </summary>
     private static bool CanDiscardSixelHandle(object? handle, out bool decoding)
     {
         decoding = false;
@@ -104,6 +116,9 @@ public partial class TerminalBuffer
         if (needsDisposalFrame) Invalidate();
     }
 
+    /// <summary>
+    /// Retires expired discardable placements and remembers in-flight owners for a later prune without new eviction.
+    /// </summary>
     private void PruneExpiredSixelSources()
     {
         long version = SixelSources.EvictionVersion;

@@ -104,6 +104,10 @@ namespace Ntilde.Rendering
             return (byte)((percentage * 255 + 50) / 100);
         }
 
+        /// <summary>
+        /// Decodes the legacy band-based raster under MaxPixelDimension; a missing SIXEL final returns null.
+        /// The caller owns a returned bitmap; this path does not acquire native-policy accounting or layout intent.
+        /// </summary>
         public SKBitmap? Decode(string dcs)
         {
             // dcs is everything between 'q' and 'ST'
