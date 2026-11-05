@@ -628,3 +628,9 @@ retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
 Its complete 266-file archive preserves the original SGR/cursor-style expectation
 mismatches and cursor/pixel negatives. Matched negative replies and silence do
 not qualify support; stock 85/0/170 remains incomplete. Earlier grades stay frozen.
+
+The [Neovim capability check](terminfo/2026-11-05-neovim-capability-check.md) is #844's
+manual application check. Neovim 0.12.6, run in a build of `main`, learns truecolor and the
+table's capabilities through XTGETTCAP, DECRQSS `m` and the `xterm-ntilde` entry. The run
+covers direct and persistent panes and both OSC 52 settings, with 0.13.0 as the baseline.
+It is a manual QA run and changes no grade.
