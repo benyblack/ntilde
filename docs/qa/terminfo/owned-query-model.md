@@ -3,9 +3,11 @@
 The optional owned driver adds a sixteenth suite under receipt schema 11,
 `readonly-owned-source-graph-v4` and the fixed 74-file `capturedV11SourceFiles`
 map. The query experiment is `owned-exact-query-paired-raw-state-v1`.
-The separately announced, source-pinned [v11 collection](2026-11-05-query-observations.md)
-now retains actual runtime evidence from source `630fe126`. Its 38 matched and two
-mismatched contracts preserve the original v1 expectations and all prefix negatives;
+The separately announced [v11 collection](2026-11-05-query-observations.md)
+retains actual runtime evidence with operator-supplied App build source
+`630fe126` and independently retained adapter source inputs. The build-source
+label is not binary-to-source attestation. Its 38 matched and two mismatched
+contracts preserve the original v1 expectations and all prefix negatives;
 portable synthetic tests remain a distinct source of evidence.
 Frozen v8/v9/v10 maps, published bytes and receipts remain independently reproducible.
 

@@ -9,8 +9,10 @@ published raw trace or grade. The frozen stock result remains **78 supported,
 Current source disposition is checked at main
 `2b8f4905cf06efeda44b17b81e03d8923655c6ef`. The foundations and their merged PRs
 are mapped below. [PR #859][pr859] added the owned query collector;
-[PR #864][pr864] published the first completed schema 11 collection from exact
-App/adapter source `630fe12606f24a0cf482b8756da32cf02c46ae72`.
+[PR #864][pr864] published the first completed schema 11 collection with declared
+App build source `630fe12606f24a0cf482b8756da32cf02c46ae72` and independently
+retained adapter inputs at that commit. The operator-supplied build-source label
+is not binary-to-source attestation.
 The [dated report][measurement] preserves all 40 exact requests, 44 actions,
 current provenance and original outcomes. Source/unit coverage is broader than
 this one live run; neither replaces the other.
