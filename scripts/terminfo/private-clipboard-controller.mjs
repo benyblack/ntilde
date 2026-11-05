@@ -23,7 +23,7 @@ class ClipboardControlPromise extends Promise {
     }
 }
 
-function clipboardControlPromise(promise, consume) {
+export function clipboardControlPromise(promise, consume) {
     const result = new ClipboardControlPromise(promise, consume);
     // Handling an ignored rejection internally is not caller consumption.
     void Promise.prototype.then.call(result, undefined, () => {});
