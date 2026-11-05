@@ -8,6 +8,13 @@ public static class SixelRasterPolicy
     public const int PresenterNativeVersion = 1;
     // Activation requires native transforms, irreversible clipping, bounded ownership and peer negotiation.
     public const int EnabledVersion = 0;
+
+    /// <summary>Admission is explicit; never clamp an unsupported requirement to legacy.</summary>
+    public static void RequireSupported(int requiredVersion)
+    {
+        if (requiredVersion < 0 || requiredVersion > EnabledVersion)
+            throw new InvalidOperationException("Unsupported SIXEL raster policy requirement.");
+    }
 }
 
 /// <summary>Immutable source-pixel bounds; presentation changes must never expand these bounds.</summary>

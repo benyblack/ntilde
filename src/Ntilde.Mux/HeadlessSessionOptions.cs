@@ -4,6 +4,7 @@ namespace Ntilde.Mux;
 
 public sealed class HeadlessSessionOptions
 {
+    public int RequiredSixelRasterPolicy { get; init; }
     public string Title { get; init; } = string.Empty;
     public string Command { get; init; } = string.Empty;
     public string? Arguments { get; init; }

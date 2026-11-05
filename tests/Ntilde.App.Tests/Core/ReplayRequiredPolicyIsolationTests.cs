@@ -10,6 +10,53 @@ namespace Ntilde.Tests.Core;
 public sealed class ReplayRequiredPolicyIsolationTests
 {
     [AvaloniaTheory]
+    [InlineData(3, false, false)]
+    [InlineData(3, false, true)]
+    [InlineData(3, true, false)]
+    [InlineData(3, true, true)]
+    [InlineData(99, false, false)]
+    [InlineData(99, false, true)]
+    [InlineData(99, true, false)]
+    [InlineData(99, true, true)]
+    public async Task Unsupported_version_is_rejected_before_GUI_checkpoint_or_initial_restore(int version, bool checkpoint, bool playback)
+    {
+        string path = Path.GetTempFileName();
+        ReplayWindow? window = null;
+        try
+        {
+            string header = JsonSerializer.Serialize(new ReplayHeader { Type = ReplayHeader.TypeToken, Cols = 20, Rows = 8 }, ReplayJsonContext.Default.ReplayHeader);
+            var source = new TerminalBuffer(20, 8);
+            var ev = checkpoint
+                ? new ReplayEvent { Type = "snapshot", TimeOffsetMs = 100, Snapshot = new ReplaySnapshot { State = source.ExportState(0) } }
+                : new ReplayEvent { Type = "data", TimeOffsetMs = 100, Data = "WA==" };
+            string tail = "\n" + JsonSerializer.Serialize(ev, ReplayJsonContext.Default.ReplayEvent) + "\n";
+            await File.WriteAllTextAsync(path, header + tail, TestContext.Current.CancellationToken);
+            window = new ReplayWindow(path);
+            var model = (ReplayViewModel)window.DataContext!;
+            await model.Initialization;
+            var buffer = Field<TerminalBuffer>(window, "_buffer");
+            var parser = Field<AnsiParser>(window, "_parser");
+            parser.Process("preserved\x1b[?25l\x1b[31;");
+            byte[] before = Pair(buffer, parser);
+            await File.WriteAllTextAsync(path, header.Replace("\"v\":2", "\"v\":" + version) + tail, TestContext.Current.CancellationToken);
+            if (playback)
+            {
+                model.CurrentTimeMs = 100;
+                int session = Field<PlaybackSessionGate>(window, "_playbackSessionGate").BeginSession();
+                await Invoke(window, "PlaybackLoop", session, CancellationToken.None);
+            }
+            else await Invoke(window, "PerformSeek", 100L, CancellationToken.None);
+            Assert.Equal(before, Pair(buffer, parser));
+            var rejectedIndex = new ReplayViewModel(path);
+            await rejectedIndex.Initialization;
+            Assert.Equal(0, rejectedIndex.DurationMs);
+            Assert.Null(rejectedIndex.GetNearestSnapshotEntry(100));
+            Assert.Null(rejectedIndex.GetNearestSeekCheckpoint(100));
+        }
+        finally { window?.Close(); File.Delete(path); }
+    }
+
+    [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Cancellation_before_UI_restoration_preserves_state_and_releases_the_reader(bool checkpoint)

@@ -4,6 +4,7 @@ namespace Ntilde.Mux;
 
 public sealed class MuxClientOptions
 {
+    public int MaxSixelRasterPolicy { get; init; }
     public int MinProtocolVersion { get; init; } = MuxProtocol.MinSupportedVersion;
     public int MaxProtocolVersion { get; init; } = MuxProtocol.MaxSupportedVersion;
     public string ClientKind { get; init; } = "ntilde";

@@ -94,8 +94,10 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     /// </summary>
     public bool ModifyOtherKeysSupported => Volatile.Read(ref _modifyOtherKeysSupported) != 0;
 
-    internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared)
+    internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared, int requiredSixelRasterPolicy = 0)
     {
+        SixelPolicyAdmission.RequireClient(requiredSixelRasterPolicy, client.MaxSixelRasterPolicy);
+        RequiredSixelRasterPolicy = requiredSixelRasterPolicy;
         _client = client;
         Id = sessionId;
         ShellCommand = shellCommand;
@@ -105,6 +107,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
     /// <summary>The mode <see cref="AttachAsync(int, MuxPresentation, CancellationToken)"/> uses (chosen by whoever opened the session).</summary>
     public MuxAttachMode AttachMode { get; }
+    public int RequiredSixelRasterPolicy { get; }
 
     /// <summary>True when the connection negotiated v2 sharing and kill events; explicit keyboard capability updates also work on v1.</summary>
     public bool SupportsSessionEvents => _client.ProtocolVersion >= MuxProtocol.SessionEventsVersion;
@@ -556,6 +559,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private void DeliverSnapshotCore(long seq, TerminalStateSnapshot snapshot, int byteCount)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
+        SixelPolicyAdmission.RequireClientSession(snapshot.RequiredSixelRasterPolicy, RequiredSixelRasterPolicy, _client.MaxSixelRasterPolicy);
         if (seq != snapshot.StreamSeq)
         {
             throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Snapshot frame says seq {seq}; its payload says {snapshot.StreamSeq}.");

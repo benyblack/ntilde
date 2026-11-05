@@ -279,19 +279,36 @@ namespace Ntilde.Replay
         public static ReplayHeader? ReadHeader(string line)
         {
             ReplayHeader? header;
+            bool recognized = false;
             try
             {
                 using var document = JsonDocument.Parse(line);
+                recognized = IsRecognizedRecordingHeader(document.RootElement);
                 ValidateRequiredSixelPolicy(document.RootElement);
                 header = JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayHeader);
             }
-            catch (JsonException) { return null; }
+            catch (JsonException ex)
+            {
+                if (recognized) throw new InvalidDataException("Malformed recording header.", ex);
+                return null;
+            }
             return header is not null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2 ? header : null;
         }
 
         private static void ValidateRequiredSixelPolicy(JsonElement root)
         {
             if (!IsRecognizedRecordingHeader(root)) return;
+            bool seenVersion = false;
+            foreach (var property in root.EnumerateObject())
+            {
+                if (!property.NameEquals("v")) continue;
+                if (seenVersion || property.Value.ValueKind != JsonValueKind.Number ||
+                    !property.Value.TryGetInt32(out int version) || version != 2)
+                    throw new InvalidDataException("The recording header has an unsupported or ambiguous version.");
+                seenVersion = true;
+            }
+            if (!seenVersion)
+                throw new InvalidDataException("The recording header is missing its version.");
             bool seen = false;
             foreach (var property in root.EnumerateObject())
             {

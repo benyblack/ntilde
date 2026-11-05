@@ -28,6 +28,7 @@ namespace Ntilde.VT
                 var snapshot = new TerminalStateSnapshot
                 {
                     Version = TerminalStateSnapshot.CurrentVersion,
+                    RequiredSixelRasterPolicy = SixelRasterPolicyVersion,
                     Cols = Cols,
                     Rows = Rows,
                     CellsSizeOf = Unsafe.SizeOf<TerminalCell>(),
@@ -132,6 +133,7 @@ namespace Ntilde.VT
             // every rejection this import can make happens here, outside the write lock and
             // before a single field is written. The decoded blobs and the synchronized-output
             // timestamp come back with it because proving them well-formed *is* decoding them.
+            RequireSixelSessionPolicy(snapshot.RequiredSixelRasterPolicy);
             ValidatedBufferState validated = ValidateBufferState(snapshot);
             byte[]? mainCells = validated.MainCells;
             byte[]? altCells = validated.AltCells;
@@ -888,8 +890,16 @@ namespace Ntilde.VT
         /// callable, so it validates its own input regardless of what a caller already checked.
         /// </para>
         /// </remarks>
+        internal void RequireSixelSessionPolicy(int requiredVersion)
+        {
+            SixelRasterPolicy.RequireSupported(requiredVersion);
+            if (requiredVersion != SixelRasterPolicyVersion)
+                throw new InvalidOperationException("SIXEL raster policy does not match this buffer generation.");
+        }
+
         internal static ValidatedBufferState ValidateBufferState(TerminalStateSnapshot snapshot)
         {
+            SixelRasterPolicy.RequireSupported(snapshot.RequiredSixelRasterPolicy);
             ValidateVersionAndCellLayout(snapshot);
             ValidateRequiredStructure(snapshot);
             ValidateSixelState(snapshot);

@@ -440,9 +440,14 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         else session.SendInput(Encoding.UTF8.GetString(input));
     }
 
+    private int _maxSixelRasterPolicy;
+
     private void HandleHello(MuxRequest request)
     {
         HelloParams p = MuxFrames.ParseParams(request.Params, MuxJsonContext.Default.HelloParams);
+        if (p.MaxSixelRasterPolicy < 0)
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError, "Negative SIXEL raster policy ceiling.");
+        _maxSixelRasterPolicy = Math.Min(p.MaxSixelRasterPolicy, Ntilde.VT.SixelRasterPolicy.EnabledVersion);
         MuxServerOptions o = _server.Options;
         if (MuxProtocol.NegotiateVersion(o.MinProtocolVersion, o.MaxProtocolVersion, p.MinVersion, p.MaxVersion) is not int chosen)
         {
@@ -473,6 +478,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         Reply(request, new WelcomeResult
         {
             Version = chosen,
+            MaxSixelRasterPolicy = _maxSixelRasterPolicy,
             ForceConPtyFiltering = o.ForceConPtyFiltering,
             ServerVersion = string.IsNullOrEmpty(o.AppVersion) ? null : o.AppVersion,
             SupportsPresentationOnly = true,
@@ -497,8 +503,10 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     Reply(request, new ListSessionsResult { Sessions = _server.ListSessions() }, MuxJsonContext.Default.ListSessionsResult);
                     break;
                 case MuxMethods.Spawn:
-                    Guid spawned = _server.Spawn(Params(request, MuxJsonContext.Default.SpawnParams));
-                    Reply(request, new SpawnResult { SessionId = spawned }, MuxJsonContext.Default.SpawnResult);
+                    SpawnParams spawn = Params(request, MuxJsonContext.Default.SpawnParams);
+                    SixelPolicyAdmission.Require(spawn.RequiredSixelRasterPolicy, _maxSixelRasterPolicy);
+                    Guid spawned = _server.Spawn(spawn);
+                    Reply(request, new SpawnResult { SessionId = spawned, RequiredSixelRasterPolicy = spawn.RequiredSixelRasterPolicy }, MuxJsonContext.Default.SpawnResult);
                     break;
                 case MuxMethods.Attach:
                     HandleAttach(request);
@@ -694,9 +702,10 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             throw new MuxRequestException(MuxErrorCodes.ProtocolError, $"Unknown attach mode '{Clip(p.Mode ?? string.Empty)}'.");
         }
 
+        HeadlessTerminalSession session = Session(p.SessionId);
+        SixelPolicyAdmission.RequireSession(session.RequiredSixelRasterPolicy, p.RequiredSixelRasterPolicy, _maxSixelRasterPolicy);
         _server.RequireGeometry(p.Presentation.Cols, p.Presentation.Rows);
         MuxServer.RequireHistoryRequest(p.Presentation.MaxHistory);
-        HeadlessTerminalSession session = Session(p.SessionId);
         int rows = Math.Clamp(p.MaxScrollbackRows, 0, _server.Options.MaxAttachScrollbackRows);
         _attached.Add(p.SessionId);
 
@@ -716,6 +725,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     {
         ReadScreenParams p = Params(request, MuxJsonContext.Default.ReadScreenParams);
         HeadlessTerminalSession session = Session(p.SessionId);
+        SixelPolicyAdmission.RequireSession(session.RequiredSixelRasterPolicy, p.RequiredSixelRasterPolicy, _maxSixelRasterPolicy);
         if (request.Id == 0) return; // a read does nothing but answer
 
         int rows = Math.Clamp(p.MaxScrollbackRows, 0, MuxReadScreenLimits.MaxScrollbackRows);
