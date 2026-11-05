@@ -209,6 +209,25 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/trim_test_outputs_tests.py
 
+  # Preserve the existing portable lane's bounded budget. Frozen v11 publication
+  # rederivation runs independently on every CI event and gates the same required roll-up.
+  query_publication_guards:
+    name: Query publication guards (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Rederive frozen v11 query publication and complete receipt
+        shell: bash
+        run: node --test scripts/terminfo/query-publication.test.mjs
+
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -933,8 +952,8 @@ jobs:
   # failure here, not as the pass a skipped required check would otherwise report.
   unit_tests:
     name: Unit Tests (${{ matrix.os }})
-    needs: [build_and_unit_tests, script_self_tests, analyzers]
-    if: ${{ !cancelled() }}
+    needs: [build_and_unit_tests, script_self_tests, query_publication_guards, analyzers]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
@@ -947,11 +966,13 @@ jobs:
         env:
           result: ${{ needs.build_and_unit_tests.result }}
           scripts: ${{ needs.script_self_tests.result }}
+          publication: ${{ needs.query_publication_guards.result }}
           analyzers: ${{ needs.analyzers.result }}
         run: |
-          echo "Unit Tests shards: $result; script self-tests: $scripts; analyzers: $analyzers"
+          echo "Unit Tests shards: $result; script self-tests: $scripts; query publication: $publication; analyzers: $analyzers"
           [ "$result" = success ] || { echo "::error::A Unit Tests shard did not succeed ($result); see the 'Unit Tests (<os>, <shard>)' jobs."; exit 1; }
           [ "$scripts" = success ] || { echo "::error::The CI script self-tests did not succeed ($scripts); see the 'Script self-tests (<os>)' jobs."; exit 1; }
+          [ "$publication" = success ] || { echo "::error::The frozen query publication guards did not succeed ($publication); see the 'Query publication guards (<os>)' jobs."; exit 1; }
           [ "$analyzers" = success ] || { echo "::error::The analyzer and code-style build did not succeed ($analyzers); see the 'Analyzers' job."; exit 1; }
 
   # Native SSH end-to-end against a real sshd in a container.
