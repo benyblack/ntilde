@@ -34,14 +34,14 @@ export function clipboardControlPromise(promise, consume) {
  * Its stable digest is an equality witness, never proof supplied by this helper or by App results.
  */
 export class PrivateClipboardController {
-    #runId; #paneId; #rpc; #verify; #budget; #binding; #fixtureId; #busy = false; #fatal = false;
+    #runId; #paneId; #rpc; #verify; #budget; #clock; #binding; #fixtureId; #busy = false; #fatal = false;
     #finished = false; #attemptedBegin = false; #restoreFailed = false; #completed = []; #events = []; #count = 0;
     #seed; #current; #restored = false; #phase = []; #probe; #pendingNonce;
 
-    constructor({ runId, paneId, rpc, verifyBinding, budget }) {
+    constructor({ runId, paneId, rpc, verifyBinding, budget, clock = () => performance.now() }) {
         validatePrivateClipboardRequest({ runId, paneId, operation: 'begin' });
-        if ([rpc, verifyBinding, budget].some(value => typeof value !== 'function')) throw new Error('Missing private clipboard boundary.');
-        this.#runId = runId; this.#paneId = paneId; this.#rpc = rpc; this.#verify = verifyBinding; this.#budget = budget;
+        if ([rpc, verifyBinding, budget, clock].some(value => typeof value !== 'function')) throw new Error('Missing private clipboard boundary.');
+        this.#runId = runId; this.#paneId = paneId; this.#rpc = rpc; this.#verify = verifyBinding; this.#budget = budget; this.#clock = clock;
         this.#seed = 'terminfo-private-seed-' + runId; this.#current = this.#seed;
     }
 
@@ -56,8 +56,9 @@ export class PrivateClipboardController {
         if (this.#fatal || this.#finished) throw new Error('Private clipboard lifecycle cannot resume.');
     }
 
-    async #checkBinding() {
-        const witness = await this.#verify(this.#budget());
+    async #checkBinding(budget) {
+        const witness = await this.#verify(budget());
+        budget();
         if (typeof witness !== 'string' || !/^[a-f\d]{64}$/.test(witness)) throw new Error('Missing private clipboard binding witness.');
         this.#binding ??= witness;
         if (witness !== this.#binding) throw new Error('Private clipboard binding changed.');
@@ -72,9 +73,21 @@ export class PrivateClipboardController {
         const event = { index: this.#events.length, probeId: this.#probe ?? null, request, rpcStarted: false, postVerified: false };
         this.#events.push(event);
         try {
-            await this.#checkBinding();
-            const timeout = this.#budget();
-            if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 4000) throw new Error('Invalid private clipboard deadline.');
+            // Freeze this event's budget before awaiting anything. A later owner
+            // frame or concurrent abort may supply a new budget for cleanup, but
+            // cannot extend this in-flight pre/RPC/post boundary.
+            const available = this.#budget(), start = this.#clock();
+            if (!Number.isSafeInteger(available) || available < 1 || available > 4000 || !Number.isFinite(start))
+                throw new Error('Invalid private clipboard deadline.');
+            const deadline = start + available;
+            const budget = () => {
+                const remaining = Math.floor(deadline - this.#clock());
+                if (!Number.isSafeInteger(remaining) || remaining < 1 || remaining > available)
+                    throw new Error('Private clipboard event deadline exhausted.');
+                return remaining;
+            };
+            await this.#checkBinding(budget);
+            const timeout = budget();
             event.rpcStarted = true;
             const result = validatePrivateClipboardResult(await this.#rpc(structuredClone(request), timeout), request);
             if (operation === 'read') {
@@ -83,7 +96,7 @@ export class PrivateClipboardController {
             }
             event.result = result;
             if (operation === 'begin') this.#fixtureId = result.fixtureId;
-            await this.#checkBinding();
+            await this.#checkBinding(budget);
             event.postVerified = true;
             return result;
         } catch (error) {
