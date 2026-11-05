@@ -1,0 +1,2 @@
+# The new Linux helper is executed from a held descriptor after a raw SHA-256 check.
+/linux-endpoint-probe.py text eol=lf

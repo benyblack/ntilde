@@ -1,0 +1,37 @@
+name: Linux endpoint probe foundation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/terminfo-linux-endpoint.yml'
+      - 'scripts/terminfo/linux-owned-endpoint*.mjs'
+      - 'scripts/terminfo/linux-endpoint-probe.py'
+      - 'scripts/terminfo/fixtures/linux-endpoint-*'
+      - 'scripts/terminfo/linux-process-provider.mjs'
+      - 'scripts/terminfo/linux-process-core.mjs'
+      - 'scripts/terminfo/linux-owned-output-core.mjs'
+      - 'docs/qa/linux-owned-endpoint.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  endpoint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Deterministic private endpoint regressions
+        run: node --test scripts/terminfo/linux-owned-endpoint.test.mjs
+      - name: Own tagged servers and zero-payload credential probes
+        run: node scripts/terminfo/linux-owned-endpoint-selftest.mjs linux-private-endpoint-foundation.json
+      - name: Retain explicitly limited endpoint result
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-private-endpoint-foundation-only
+          path: linux-private-endpoint-foundation.json
+          if-no-files-found: error
