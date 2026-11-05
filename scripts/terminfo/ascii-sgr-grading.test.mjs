@@ -180,6 +180,22 @@ test('divergence between the pinned grading and the contract grader is refused',
         /Missing pinned text.overwrite grading result/);
 });
 
+test('fabricated pinned assertions, notes and responses are refused', () => {
+    const base = report();
+    for (const [name, mutate] of [
+        ['fabricated assertion detail', pinned => { pinned.assertions[0].expected = 'made up criterion'; }],
+        ['dropped assertion', pinned => { delete pinned.assertions; }],
+        ['added note', pinned => { pinned.note = 'made up note'; }],
+        ['wrong pass flag', pinned => { pinned.pass = false; }],
+        ['wrong response', pinned => { pinned.response = '{"fabricated":true}'; }],
+    ]) {
+        const tampered = structuredClone(base.evidence);
+        mutate(tampered.run.cases[2].pinned);
+        assert.throws(() => buildAsciiSgrGradingReport(tampered.frames, tampered.run, tampered.runId, tampered.adapter),
+            /does not match its observed evidence/, name);
+    }
+});
+
 test('the replay module must reproduce the live pinned grading exactly', () => {
     const base = report();
     const replayed = buildAsciiSgrGradingReport(base.evidence.frames, base.evidence.run, base.evidence.runId, base.evidence.adapter,

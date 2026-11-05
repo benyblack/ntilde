@@ -14,17 +14,25 @@ const cellAt = (screen, row, col) => {
         bold: (flags & 0x0001) !== 0, italic: (flags & 0x0004) !== 0 };
 };
 
-/** Re-derive the pinned termless pass/response pair from observed screens.
- * Mirrors the pinned parserStateResult response shapes exactly. */
+/** Re-derive the complete pinned termless result from observed screens.
+ * Mirrors the pinned parserStateResult pass/response/assertions/note shapes
+ * exactly, so retained run-log claims cannot diverge from the journal. */
 export function replayPinnedFromScreens(contract, screens) {
-    const pass = gradeRecordedCase(contract, screens).outcome === 'supported';
+    const graded = gradeRecordedCase(contract, screens);
     const response = contract.caseId === 'text.basic'
         ? JSON.stringify({ before: screens[0].lines.join('\n'), after: screens[1].lines.join('\n') })
         : contract.caseId === 'text.overwrite'
             ? JSON.stringify({ before: [cellAt(screens[0], 0, 0), cellAt(screens[0], 0, 1)],
                 first: cellAt(screens[1], 0, 0), second: cellAt(screens[1], 0, 1) })
             : JSON.stringify(cellAt(screens[0], 0, 0));
-    return { pass, response };
+    const expected = contract.caseId.startsWith('sgr.')
+        ? `${contract.caseId}: attribute applied to the rendered X cell`
+        : contract.pinnedCriterion;
+    const inconclusive = graded.outcome === 'inconclusive';
+    return { pass: graded.outcome === 'supported', response,
+        note: inconclusive ? graded.note : undefined,
+        assertions: inconclusive ? []
+            : [{ kind: graded.outcome === 'supported' ? 'positive' : 'negative', expected, observed: response }] };
 }
 
 const readCount = asciiSgrContracts.reduce((sum, contract) => sum + contractReads(contract), 0);
@@ -102,10 +110,12 @@ export function buildAsciiSgrGradingReport(frames, run, runId, adapter, replayMo
         if (pinned?.probeId !== contract.caseId || pinned.observation?.evidence !== 'parser-state') {
             throw new Error(`Missing pinned ${contract.caseId} grading result.`);
         }
-        // The pinned pass/response pair is a pure function of the observed
-        // screens; the retained run-log values must match that derivation.
+        // The pinned result is a pure function of the observed screens; the
+        // retained run-log values must match that derivation.
         const replayedPair = replayPinnedFromScreens(contract, screens);
-        if (pinned.pass !== replayedPair.pass || pinned.response !== replayedPair.response) {
+        if (pinned.pass !== replayedPair.pass || pinned.response !== replayedPair.response
+            || (pinned.note ?? null) !== (replayedPair.note ?? null)
+            || JSON.stringify(pinned.assertions ?? null) !== JSON.stringify(replayedPair.assertions.length ? replayedPair.assertions : null)) {
             throw new Error(`Pinned ${contract.caseId} grading does not match its observed evidence.`);
         }
         if (pinned.observation.outcome !== contractResult.outcome
