@@ -18,11 +18,13 @@ function present(path) {
     }
 }
 
-/** Any retained grading artifact or declaration requires the v13 suffix. The
- * shared source graph retains the modules in every run, so their presence in
- * sources/ alone says nothing about whether grading evidence was collected. */
+/** Any retained grading artifact or declaration requires the v13 suffix —
+ * and a policy-v6 run always carries them, because the current worker
+ * collects grading unconditionally. The shared source graph retains the
+ * modules in every run, so their presence in sources/ alone says nothing. */
 export function includesAsciiSgrEvidence(output, evidence, context) {
-    return context.gradingAdapterId !== undefined || context.asciiSgrSuiteId !== undefined
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v6'
+        || context.gradingAdapterId !== undefined || context.asciiSgrSuiteId !== undefined
         || context.gradingBundleSha256 !== undefined || evidence.gradingEvidence !== undefined
         || files.some(file => present(join(output, file)));
 }

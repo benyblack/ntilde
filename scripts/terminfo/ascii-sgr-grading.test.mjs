@@ -156,9 +156,10 @@ test('a measured mismatch stays unsupported only while its control holds', () =>
     // Missing rendered X: no control, so the outcome must not be conclusive.
     const noX = structuredClone(noBold);
     noX.lines = ['Y', '', '', '', '', ''];
+    const noXCell = { char: 'Y', flags: 0, bold: false, italic: false };
     evidence.frames[6].screen = noX;
     evidence.frames[6].sha256 = snapshotHash(noX);
-    evidence.run.cases[2].pinned = { probeId: 'sgr.bold', pass: false, response: JSON.stringify({ char: 'Y' }),
+    evidence.run.cases[2].pinned = { probeId: 'sgr.bold', pass: false, response: JSON.stringify(noXCell),
         note: 'No rendered X cell to evaluate',
         observation: { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'parser-state', note: 'No rendered X cell to evaluate' } };
     const inconclusive = buildAsciiSgrGradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter);
