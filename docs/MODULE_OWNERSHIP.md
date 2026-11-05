@@ -1236,3 +1236,10 @@ Standalone Exes — not test libraries — used for performance benchmarking (Be
 > If documentation disagrees with code, **add an architecture test that catches the disagreement**. Then fix whichever side was wrong.
 
 > If code disagrees with the architecture-test layer, the change must un-skip a known violation or add a new rule. Silently changing layering is never the right move.
+
+Native SIXEL creation policy is buffer-owned immutable stream state, selected
+before startup output. VT validates snapshot requirements against that generation
+before mutation; Mux owns peer intersection and refusal before process creation,
+subscription or snapshot delivery; Replay owns recognized-header admission before
+any resume or host preparation. Policy remains disabled (ceiling 0). App presenter
+context and QA provenance do not select or reconstruct stream policy.

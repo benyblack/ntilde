@@ -358,3 +358,36 @@ test('concurrent transaction refusal while arm is pending prevents later termina
     assert.equal(outputs, 0); assert.equal(api.controller.evidence().fatal, true);
     assert.deepEqual(api.calls.slice(-2).map(x => x.operation), ['restore', 'read']);
 });
+
+
+for (const reason of [null, false, 0, '', undefined]) {
+    test('falsy begin rejection survives without a completed callback: ' + String(reason), async () => {
+        const api = fixture(); let called = false;
+        api.hook = request => { if (request.operation === 'begin') throw reason; };
+        const outcome = await api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[0], () => { called = true; })
+            .then(value => ({ value }), error => ({ rejected: true, error }));
+        assert.equal(outcome.rejected, true); assert.ok(Object.is(outcome.error, reason));
+        assert.equal(called, false); assert.deepEqual(api.controller.evidence().completedProbes, []);
+        assert.equal(api.controller.evidence().complete, false);
+    });
+    test('original callback error and falsy cleanup rejection both survive: ' + String(reason), async () => {
+        const api = fixture(), original = new Error('original callback failure');
+        const outcome = await api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[0], async () => {
+            api.hook = request => { if (request.operation === 'restore') throw reason; };
+            throw original;
+        }).then(value => ({ value }), error => ({ rejected: true, error }));
+        assert.equal(outcome.rejected, true); assert.ok(outcome.error instanceof AggregateError);
+        assert.equal(outcome.error.errors[0], original); assert.ok(Object.is(outcome.error.errors[1], reason));
+        assert.deepEqual(api.controller.evidence().completedProbes, []);
+    });
+    test('falsy cleanup rejection cannot acknowledge an otherwise valid callback: ' + String(reason), async () => {
+        const api = fixture();
+        const outcome = await api.controller.transaction(PRIVATE_CLIPBOARD_PROBES[0], async f => {
+            await f.beforeOsc52Write(nonce); api.output(nonce); await f.readText(); await f.writeText(nonce);
+            api.hook = request => { if (request.operation === 'restore') throw reason; };
+            return 'unchanged callback result';
+        }).then(value => ({ value }), error => ({ rejected: true, error }));
+        assert.equal(outcome.rejected, true); assert.ok(Object.is(outcome.error, reason));
+        assert.deepEqual(api.controller.evidence().completedProbes, []);
+    });
+}

@@ -260,6 +260,7 @@ public sealed class MuxServer : IDisposable
 
     internal Guid Spawn(SpawnParams p)
     {
+        SixelPolicyAdmission.Require(p.RequiredSixelRasterPolicy, Ntilde.VT.SixelRasterPolicy.EnabledVersion);
         RequireGeometry(p.Cols, p.Rows);
         RequireInitialCellMetrics(p.CellWidthPx, p.CellHeightPx);
         RequireHistoryRequest(p.MaxHistory);
@@ -332,6 +333,7 @@ public sealed class MuxServer : IDisposable
                 MaxHistoryLimit = Options.MaxSessionHistoryRows,
                 MaxScrollbackBytes = Options.MaxSessionScrollbackBytes,
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,
+                RequiredSixelRasterPolicy = p.RequiredSixelRasterPolicy,
                 Log = Options.Log,
                 MaxQueuedInputBytes = Options.MaxQueuedInputBytes,
                 SessionChangedInterval = Options.SessionChangedInterval,

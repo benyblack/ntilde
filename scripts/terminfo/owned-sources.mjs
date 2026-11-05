@@ -1,10 +1,12 @@
+import { literalImports } from './source-imports.mjs';
 import { chmodSync, lstatSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v3';
+export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v4';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -81,6 +83,14 @@ export const capturedV10SourceFiles = Object.freeze({
     staticImageCaptureSourceSha256: 'static-images-capture.mjs', staticImageCollectorSourceSha256: 'static-images-collector.mjs',
     staticImageReceiptSourceSha256: 'static-images-receipt.mjs',
 });
+// Frozen v11 query scope; future experiments must create a distinct policy and map.
+export const capturedV11SourceFiles = Object.freeze({
+    ...capturedV10SourceFiles,
+    querySuiteSourceSha256: 'queries.mjs', queryCaptureSourceSha256: 'query-capture.mjs',
+    queryCollectorSourceSha256: 'query-collector.mjs', queryReceiptSourceSha256: 'query-receipt.mjs',
+    queryWitnessCasesSourceSha256: 'query-witness-cases.mjs', queryWitnessFrameSourceSha256: 'query-witness-frame.mjs',
+    sourceImportsSourceSha256: 'source-imports.mjs',
+});
 export const ownedSourcePath = (root, file) => join(root, 'scripts', file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Literal relative imports must close over the retained fixed scope; never fall back to live sources. */
@@ -89,9 +99,9 @@ export function assertRetainedSourceClosure(directory, inventory) {
     for (const file of paths) {
         if (!file.endsWith('.mjs')) continue;
         const source = readFileSync(join(directory, file), 'utf8');
-        const imports = source.matchAll(/(?:\bfrom|\bimport\s*\()\s*['"]([^'"]+)['"]/g);
-        for (const [, target] of imports) {
-            if (target.startsWith('node:')) continue;
+        const imports = literalImports(source);
+        for (const target of imports) {
+            if (/^node:[a-z][a-z0-9_/-]*$/.test(target)) continue;
             if (!/^\.\/(?:terminfo\/)?[a-z][a-z0-9-]*\.mjs$/.test(target)
                 || !paths.has(target.split('/').at(-1))) throw new Error('Retained source dependency is outside its versioned scope: ' + target);
         }
@@ -105,7 +115,7 @@ export function assertOwnedSourcesUnchanged(root, context) {
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV10SourceFiles)) throw new Error('Invalid current v10 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV11SourceFiles)) throw new Error('Invalid current v11 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

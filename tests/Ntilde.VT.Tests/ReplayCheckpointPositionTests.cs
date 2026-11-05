@@ -158,10 +158,13 @@ public sealed class ReplayCheckpointPositionTests
             string prefix = leadingBlank ? "\n \r\n" : "";
             File.WriteAllText(path, prefix + header + "\n" + Data(0, "X", false));
             int callbacks = 0;
-            await Assert.ThrowsAsync<JsonException>(() => new ReplayReader(path).RunWithResultAsync(
+            Func<Task> run = () => new ReplayReader(path).RunWithResultAsync(
                 _ => { callbacks++; return Task.CompletedTask; },
                 onHeaderCallback: _ => { callbacks++; return Task.CompletedTask; },
-                options: new ReplayRunOptions { StartAfterLineNumber = leadingBlank ? 3 : 1 }, ct: TestContext.Current.CancellationToken));
+                options: new ReplayRunOptions { StartAfterLineNumber = leadingBlank ? 3 : 1 }, ct: TestContext.Current.CancellationToken);
+            if (header.Contains("ntilderec", StringComparison.Ordinal))
+                await Assert.ThrowsAsync<InvalidDataException>(run); // explicit recognized-version admission
+            else await Assert.ThrowsAsync<JsonException>(run); // unknown type is not a supported recording envelope
             Assert.Equal(0, callbacks);
         }
         finally { File.Delete(path); }

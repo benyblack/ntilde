@@ -1,10 +1,10 @@
 # Optional terminfo.dev desktop baseline
 
-The current owned driver adds a fifteenth, bounded static-image suite under
-schema10/fixed67-source policyv3. Its controller, exact pixel/reply model and
-remaining runtime boundary are documented in
-[the static-image model](terminfo/static-image-model.md). Published schema9
-input and schema8 observations retain their original source scopes and bytes.
+The current owned driver adds a sixteenth, bounded exact-query suite under
+schema 11/fixed 74-source policy v4. Its packet/state/ownership contract is
+[the owned query model](terminfo/owned-query-model.md). The preceding calibrated
+static-image suite and frozen v10 publication retain their original 67-source
+scope; published v9 input and v8 observations likewise keep their original bytes.
 
 
 [terminfo.dev](https://github.com/beorn/terminfo.dev) collects external terminal
@@ -621,3 +621,10 @@ causal inconclusive), 31 paired frames and 62 original image PNGs. Its 255-file 
 binds all 15 suites and 67 sources; both older failed/uncalibrated preparation archives
 remain separate. Current raw stock 84/0/171 stays incomplete, and historical grades
 are unchanged. This publishes evidence, not a renderer fix or full #770 completion.
+
+The [completed v11 exact-query measurement](terminfo/2026-11-05-query-observations.md)
+retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
+90 state captures, with all 16 suite bindings and a fixed 74-file source graph.
+Its complete 266-file archive preserves the original SGR/cursor-style expectation
+mismatches and cursor/pixel negatives. Matched negative replies and silence do
+not qualify support; stock 85/0/170 remains incomplete. Earlier grades stay frozen.

@@ -35,6 +35,10 @@ public sealed record MuxEmpty;
 
 public sealed record HelloParams
 {
+    /// <summary>Maximum understood SIXEL raster policy; absent/zero means legacy only.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int MaxSixelRasterPolicy { get; init; }
+
     public int MinVersion { get; init; }
     public int MaxVersion { get; init; }
     public string ClientKind { get; init; } = string.Empty;
@@ -54,6 +58,10 @@ public sealed record HelloParams
 
 public sealed record WelcomeResult
 {
+    /// <summary>Maximum understood SIXEL raster policy; absent/zero means legacy only.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int MaxSixelRasterPolicy { get; init; }
+
     public int Version { get; init; }
     public bool ForceConPtyFiltering { get; init; }
 
@@ -118,6 +126,10 @@ public sealed record MuxPresentation
 /// <summary>The local fields of <c>TerminalSessionRequest</c>; SSH is not spawnable through the mux (spec §9.2).</summary>
 public sealed record SpawnParams
 {
+    /// <summary>Required stream semantics; unsupported requirements must never silently downgrade.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int RequiredSixelRasterPolicy { get; init; }
+
     /// <summary>Initial retained rows, capped by the daemon. Absent retains the legacy 10,000-row default.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? MaxHistory { get; init; }
@@ -167,7 +179,12 @@ public sealed record SpawnParams
     public string? SessionId { get; init; }
 }
 
-public sealed record SpawnResult { public Guid SessionId { get; init; } }
+public sealed record SpawnResult
+{
+    public Guid SessionId { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int RequiredSixelRasterPolicy { get; init; }
+}
 
 public sealed record SessionSummary
 {
@@ -202,6 +219,10 @@ public sealed record ListSessionsResult { public IReadOnlyList<SessionSummary> S
 
 public sealed record AttachParams
 {
+    /// <summary>Required stream semantics; unsupported requirements must never silently downgrade.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int RequiredSixelRasterPolicy { get; init; }
+
     public Guid SessionId { get; init; }
     public int MaxScrollbackRows { get; init; }
     public required MuxPresentation Presentation { get; init; }
@@ -270,6 +291,10 @@ public sealed record SessionInfoResult
 /// <summary>Params of <see cref="MuxMethods.ReadScreen"/>.</summary>
 public sealed record ReadScreenParams
 {
+    /// <summary>Required stream semantics; unsupported requirements must never silently downgrade.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int RequiredSixelRasterPolicy { get; init; }
+
     public Guid SessionId { get; init; }
 
     /// <summary>Clamped by the daemon to 0..<see cref="MuxReadScreenLimits.MaxScrollbackRows"/>, never refused.</summary>

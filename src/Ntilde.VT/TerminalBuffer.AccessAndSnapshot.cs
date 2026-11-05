@@ -1047,6 +1047,7 @@ namespace Ntilde.VT
         public static void ValidateReplaySnapshot(ReplaySnapshot snapshot)
         {
             ArgumentNullException.ThrowIfNull(snapshot);
+            if (snapshot.State is { } state) SixelRasterPolicy.RequireSupportedState(state);
             if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
                 throw new InvalidOperationException("Invalid replay geometry: columns and rows must be positive.");
             byte[]? cells = string.IsNullOrEmpty(snapshot.CellsBase64) ? null : Convert.FromBase64String(snapshot.CellsBase64);

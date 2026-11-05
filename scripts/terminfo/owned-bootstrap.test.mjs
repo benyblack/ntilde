@@ -12,8 +12,9 @@ function fixture(action) {
         mkdirSync(join(root, 'scripts/terminfo'), { recursive: true });
         copyFileSync(new URL('../terminfo-owned.mjs', import.meta.url), join(root, 'scripts/terminfo-owned.mjs'));
         const inventory = { runnerSourceSha256: 'terminfo-owned-runner.mjs', workerSourceSha256: 'worker.mjs',
-            fixtureSourceSha256: 'fixture.mjs', sourceInventorySha256: 'owned-source-inventory.json' };
+            fixtureSourceSha256: 'fixture.mjs', sourceInventorySha256: 'owned-source-inventory.json', sourceImportsSourceSha256: 'source-imports.mjs' };
         writeFileSync(join(root, 'scripts/terminfo/owned-source-inventory.json'), JSON.stringify(inventory));
+        copyFileSync(new URL('./source-imports.mjs', import.meta.url), join(root, 'scripts/terminfo/source-imports.mjs'));
         writeFileSync(join(root, 'scripts/terminfo/fixture.mjs'), "export default 'CAPTURED';");
         writeFileSync(join(root, 'scripts/terminfo/worker.mjs'), "import value from './fixture.mjs'; console.log(value);");
         const parent = `import value from './terminfo/fixture.mjs';
@@ -45,7 +46,7 @@ test('original edits before measured parent imports cannot replace the captured 
 test('an unlisted original module has no fallback into the measured snapshot', () => fixture(f => {
     writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), "import './terminfo/unlisted.mjs';");
     writeFileSync(join(f.root, 'scripts/terminfo/unlisted.mjs'), "console.log('UNLISTED EXECUTED');");
-    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /Cannot find module/);
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
     assert.ok(!result.stdout.includes('UNLISTED EXECUTED'));
 }));
 test('path traversal in the inventory is rejected before source loading', () => fixture(f => {
@@ -53,3 +54,62 @@ test('path traversal in the inventory is rejected before source loading', () => 
     writeFileSync(join(f.root, 'scripts/terminfo/owned-source-inventory.json'), JSON.stringify(f.inventory));
     const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /Invalid source inventory entry/);
 }));
+
+test('a side-effect import outside the graph is rejected before any measured module executes', () => fixture(f => {
+    const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+    writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED');");
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), 'import ' + JSON.stringify(pathToFileURL(outside).href) + ';');
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
+    assert.equal(existsSync(marker), false);
+}));
+
+for (const spelling of ['compact-side-effect', 'literal-dynamic']) test('pre-import closure rejects ' + spelling + ' outside the captured graph', () => fixture(f => {
+    const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+    writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED');");
+    const target = JSON.stringify(pathToFileURL(outside).href);
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), spelling === 'literal-dynamic' ? 'await import(' + target + ');' : 'import' + target + ';');
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
+    assert.equal(existsSync(marker), false);
+}));
+
+for (const spelling of ['side-effect', 'dynamic', 'from', 'line-comment']) test('comment-separated ' + spelling + ' import is rejected before source execution', () => fixture(f => {
+    const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+    writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED'); export default 1;");
+    const target = JSON.stringify(pathToFileURL(outside).href);
+    const commands = { 'side-effect': 'import/* gap */' + target + ';', dynamic: 'await import/* gap */(/* inner */' + target + ');',
+        from: 'import value from/* gap */' + target + ';', 'line-comment': 'import// gap\n' + target + ';' };
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), commands[spelling]);
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
+    assert.equal(existsSync(marker), false);
+}));
+
+test('unsupported template dynamic import is rejected before an unretained module executes', () => fixture(f => {
+    const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+    writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED');");
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), 'await import(`' + pathToFileURL(outside).href + '`);');
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /Unsupported template import/);
+    assert.equal(existsSync(marker), false);
+}));
+
+test('modified scanner bytes never execute before the trusted bootstrap pin check', () => fixture(f => {
+    writeFileSync(join(f.root, 'scripts/terminfo/source-imports.mjs'), "console.log('UNREVIEWED SCANNER EXECUTED'); export const literalImports = () => [];");
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /changed trusted source scanner/);
+    assert.equal(result.stdout.includes('UNREVIEWED SCANNER EXECUTED'), false);
+}));
+
+test('a dependency-looking keyword in a line comment cannot hide a later real import', () => fixture(f => {
+    const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+    writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED');");
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), '// import /*\nimport ' + JSON.stringify(pathToFileURL(outside).href) + ';\n// */');
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
+    assert.equal(existsSync(marker), false);
+}));
+
+for (const [label, prefix] of [['string', 'const lookalike = "import /*";\n'], ['regexp', 'const lookalike = /[import /*]/;\n']])
+    test(label + ' lookalike cannot suppress a later actual import keyword', () => fixture(f => {
+        const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+        writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED');");
+        writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), prefix + 'import ' + JSON.stringify(pathToFileURL(outside).href) + ';\n// */');
+        const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
+        assert.equal(existsSync(marker), false);
+    }));

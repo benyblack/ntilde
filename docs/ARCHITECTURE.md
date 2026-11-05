@@ -520,6 +520,21 @@ Path replacement cannot switch the validated input between restoration and repla
 live append is preserved without promising immutable bytes against arbitrary in-place writes.
 Existing v1/v2 recordings and ordinary
 v2 writers retain their formats; no v3 writer or mux capability is enabled.
+The buffer owns an immutable creation policy selected before startup bytes; RIS and
+DECSTR cannot change it. Snapshot requirements must match that buffer generation
+before resize/import/decode, including native placements hidden behind legacy or
+unknown-version replay fallback. Historical playback selects policy 0 when creating
+or replacing a buffer generation, never by downgrading a running native session.
+Mux intersects explicit peer ceilings (absent means 0) and refuses unsupported
+spawn/attach/readScreen before process creation, subscription, presentation changes
+or snapshot delivery; client snapshot admission checks every native placement too.
+Recognized replay headers with unsupported/malformed/duplicate/missing versions
+fail before resume, indexing or host preparation. Replay snapshot JSON also rejects
+duplicate requirements; supported zero-policy legacy fields retain their behavior.
+The enabled ceiling is still 0: no native session or mux capability is advertised.
+App presenter context and QA provenance cannot select or reconstruct stream policy.
+Old binaries' byte-offset resume may bypass a v3 header; upgraded readers remain a
+prerequisite for eventual native-policy replay.
 App carries an immutable presenter density P with the UI-published font/grid values,
 clearing it on detach. Offscreen requested scale S stays separate. This plumbing
 changes neither geometry nor the raw v1 capture schemas. The

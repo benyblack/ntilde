@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged } from './owned-sources.mjs';
+import { ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 67 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 67); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 74 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 74); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -29,6 +29,7 @@ test('future measured inputs cannot change the historical published v8 source sc
     const root = mkdtempSync(join(tmpdir(), 'nt-legacy-source-unit-'));
     try {
         writeFileSync(join(root, 'owned-sources.mjs'), readFileSync(new URL('./owned-sources.mjs', import.meta.url)));
+        writeFileSync(join(root, 'source-imports.mjs'), readFileSync(new URL('./source-imports.mjs', import.meta.url)));
         const inventory = { ...ownedSourceFiles, futureSourceSha256: 'future.mjs' };
         writeFileSync(join(root, 'owned-source-inventory.json'), JSON.stringify(inventory));
         const module = await import(pathToFileURL(join(root, 'owned-sources.mjs')).href);
@@ -39,5 +40,41 @@ test('future measured inputs cannot change the historical published v8 source sc
         assert.equal(historical.length, 51);
         assert.deepEqual(Object.values(module.legacyV8SourceFiles).sort(), historical.sort());
         assert.ok(Object.keys(module.legacyV8SourceFiles).every(key => typeof published.context[key] === 'string'));
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+for (const statement of ["import/* a */'./dependency.mjs';", "import value from/* a */'./dependency.mjs';", "await import/* a */(/* b */'./dependency.mjs');", "import// a\n'./dependency.mjs';"])
+    test('retained closure accepts only inventoried comment-separated dependency: ' + statement, () => {
+        const root = mkdtempSync(join(tmpdir(), 'nt-comment-closure-'));
+        try {
+            writeFileSync(join(root, 'entry.mjs'), statement); writeFileSync(join(root, 'dependency.mjs'), 'export default 1;');
+            const inventory = { entrySourceSha256: 'entry.mjs', dependencySourceSha256: 'dependency.mjs' };
+            assert.doesNotThrow(() => assertRetainedSourceClosure(root, inventory));
+            writeFileSync(join(root, 'entry.mjs'), statement.replace('./dependency.mjs', './unlisted.mjs'));
+            assert.throws(() => assertRetainedSourceClosure(root, inventory), /outside its versioned scope/);
+        } finally { rmSync(root, { recursive: true, force: true }); }
+    });
+
+test('retained closure refuses a genuine dependency hidden behind a comment-context lookalike', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-comment-context-'));
+    try {
+        writeFileSync(join(root, 'entry.mjs'), '// import /*\nimport "file:///outside.mjs";\n// */');
+        assert.throws(() => assertRetainedSourceClosure(root, { entrySourceSha256: 'entry.mjs' }), /outside its versioned scope/);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+for (const [label, prefix] of [['string', 'const lookalike = "import /*";\n'], ['regexp', 'const lookalike = /[import /*]/;\n']])
+    test('retained ' + label + ' candidate cannot suppress the later real dependency', () => {
+        const root = mkdtempSync(join(tmpdir(), 'nt-literal-context-'));
+        try {
+            writeFileSync(join(root, 'entry.mjs'), prefix + 'import "file:///outside.mjs";\n// */');
+            assert.throws(() => assertRetainedSourceClosure(root, { entrySourceSha256: 'entry.mjs' }), /outside its versioned scope/);
+        } finally { rmSync(root, { recursive: true, force: true }); }
+    });
+test('repeated spurious comment candidates fail closed within the cumulative traversal budget', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-import-budget-'));
+    try {
+        writeFileSync(join(root, 'entry.mjs'), '/* ' + 'import /* '.repeat(1024) + '*/');
+        assert.throws(() => assertRetainedSourceClosure(root, { entrySourceSha256: 'entry.mjs' }), /traversal budget exceeded/);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });

@@ -95,6 +95,8 @@ public sealed class MuxClient : IDisposable
     }
 
     public int ProtocolVersion { get; private set; }
+    /// <summary>Negotiated stream-policy ceiling; zero for absent or legacy peer capability.</summary>
+    public int MaxSixelRasterPolicy { get; private set; }
 
     /// <summary>From Welcome. Construct the pane's parser with this so both halves of a snapshot parse identically.</summary>
     public bool ForceConPtyFiltering { get; private set; }
@@ -133,12 +135,14 @@ public sealed class MuxClient : IDisposable
     {
         ArgumentNullException.ThrowIfNull(stream);
         options ??= new MuxClientOptions();
-        var client = new MuxClient(stream, options);
+        MuxClient? client = null;
         try
         {
+            SixelPolicyAdmission.RequireClient(options.MaxSixelRasterPolicy, SixelRasterPolicy.EnabledVersion);
+            client = new MuxClient(stream, options);
             WelcomeResult welcome = await client.RequestAsync(
                 MuxMethods.Hello,
-                new HelloParams { MinVersion = options.MinProtocolVersion, MaxVersion = options.MaxProtocolVersion, ClientKind = options.ClientKind, ClientInstanceId = options.ClientInstanceId, ByteInput = true },
+                new HelloParams { MinVersion = options.MinProtocolVersion, MaxVersion = options.MaxProtocolVersion, ClientKind = options.ClientKind, ClientInstanceId = options.ClientInstanceId, ByteInput = true, MaxSixelRasterPolicy = options.MaxSixelRasterPolicy },
                 MuxJsonContext.Default.HelloParams,
                 MuxJsonContext.Default.WelcomeResult,
                 cancellationToken).ConfigureAwait(false);
@@ -148,6 +152,8 @@ public sealed class MuxClient : IDisposable
                     $"Server chose protocol {welcome.Version}, outside this client's {options.MinProtocolVersion}..{options.MaxProtocolVersion}.");
             }
 
+            SixelPolicyAdmission.RequireClient(welcome.MaxSixelRasterPolicy, options.MaxSixelRasterPolicy);
+            client.MaxSixelRasterPolicy = welcome.MaxSixelRasterPolicy;
             client.ProtocolVersion = welcome.Version;
             client.ForceConPtyFiltering = welcome.ForceConPtyFiltering;
             if (welcome.HistoryLimits is { } limits && (limits.MaxRows < 0 || limits.MaxBytes <= 0 || limits.MaxAttachRows < 0))
@@ -160,7 +166,8 @@ public sealed class MuxClient : IDisposable
         }
         catch
         {
-            client.Dispose();
+            if (client is null) await stream.DisposeAsync().ConfigureAwait(false);
+            else client.Dispose();
             throw;
         }
     }
@@ -184,8 +191,11 @@ public sealed class MuxClient : IDisposable
     {
         ArgumentNullException.ThrowIfNull(request);
         SpawnParams p = sessionId is Guid id ? request with { SessionId = id.ToString("D") } : request;
-        return (await RequestAsync(MuxMethods.Spawn, p, MuxJsonContext.Default.SpawnParams,
-            MuxJsonContext.Default.SpawnResult, cancellationToken).ConfigureAwait(false)).SessionId;
+        SixelPolicyAdmission.RequireClient(p.RequiredSixelRasterPolicy, MaxSixelRasterPolicy);
+        SpawnResult result = await RequestAsync(MuxMethods.Spawn, p, MuxJsonContext.Default.SpawnParams,
+            MuxJsonContext.Default.SpawnResult, cancellationToken).ConfigureAwait(false);
+        SixelPolicyAdmission.RequireClientSession(result.RequiredSixelRasterPolicy, p.RequiredSixelRasterPolicy, MaxSixelRasterPolicy);
+        return result.SessionId;
     }
 
     public Task KillAsync(Guid sessionId, CancellationToken cancellationToken = default) =>
@@ -220,10 +230,15 @@ public sealed class MuxClient : IDisposable
     /// cannot decode is <see cref="MalformedReplyCode"/>, and fails this call only, never the connection: it arrived
     /// inside a well-formed reply.
     /// </exception>
-    public async Task<MuxScreenRead?> ReadScreenAsync(Guid sessionId, int maxScrollbackRows, CancellationToken cancellationToken = default)
+    public Task<MuxScreenRead?> ReadScreenAsync(Guid sessionId, int maxScrollbackRows, CancellationToken cancellationToken = default) =>
+        ReadScreenAsync(sessionId, maxScrollbackRows, 0, cancellationToken);
+
+    /// <summary>Requires the selected stream policy; never silently interprets native state as legacy.</summary>
+    public async Task<MuxScreenRead?> ReadScreenAsync(Guid sessionId, int maxScrollbackRows, int requiredSixelRasterPolicy, CancellationToken cancellationToken = default)
     {
+        SixelPolicyAdmission.RequireClient(requiredSixelRasterPolicy, MaxSixelRasterPolicy);
         long id = Interlocked.Increment(ref _nextId);
-        JsonElement p = MuxFrames.ToElement(new ReadScreenParams { SessionId = sessionId, MaxScrollbackRows = maxScrollbackRows },
+        JsonElement p = MuxFrames.ToElement(new ReadScreenParams { SessionId = sessionId, MaxScrollbackRows = maxScrollbackRows, RequiredSixelRasterPolicy = requiredSixelRasterPolicy },
             MuxJsonContext.Default.ReadScreenParams);
         MuxResponse response = await SendAndAwaitAsync(id, MuxMethods.ReadScreen, p, cancellationToken).ConfigureAwait(false);
         if (response.Error is { } error)
@@ -238,6 +253,7 @@ public sealed class MuxClient : IDisposable
         {
             ReadScreenResult result = MuxFrames.ParseParams(response.Result, MuxJsonContext.Default.ReadScreenResult);
             TerminalStateSnapshot snapshot = DecodeSnapshot(result.Snapshot);
+            SixelPolicyAdmission.RequireClientSession(snapshot.RequiredSixelRasterPolicy, requiredSixelRasterPolicy, MaxSixelRasterPolicy);
             return new MuxScreenRead(snapshot, result with { Snapshot = [] }); // the bytes are decoded: do not hold both
         }
         catch (MuxProtocolException ex) when (ex.Code == MuxErrorCodes.ProtocolError)
@@ -258,9 +274,9 @@ public sealed class MuxClient : IDisposable
     /// An unattached session. Wire its events, then call <see cref="MuxClientSession.AttachAsync(int, MuxPresentation, CancellationToken)"/>:
     /// nothing is raised before a handler can exist, so nothing needs buffering (spec §9.6).
     /// </summary>
-    public MuxClientSession OpenSession(Guid sessionId, string shellCommand = "", string? shellArguments = null, MuxAttachMode attachMode = MuxAttachMode.Shared)
+    public MuxClientSession OpenSession(Guid sessionId, string shellCommand = "", string? shellArguments = null, MuxAttachMode attachMode = MuxAttachMode.Shared, int requiredSixelRasterPolicy = 0)
     {
-        var session = new MuxClientSession(this, sessionId, shellCommand, shellArguments, attachMode);
+        var session = new MuxClientSession(this, sessionId, shellCommand, shellArguments, attachMode, requiredSixelRasterPolicy);
         if (!_sessions.TryAdd(sessionId, session))
         {
             throw new InvalidOperationException($"Session {sessionId} is already open on this client; dispose it first.");
@@ -297,7 +313,7 @@ public sealed class MuxClient : IDisposable
 
         long id = Interlocked.Increment(ref _nextId);
         JsonElement p = MuxFrames.ToElement(
-            new AttachParams { SessionId = session.Id, MaxScrollbackRows = maxScrollbackRows, Presentation = presentation, Mode = MuxAttachModes.ToWire(mode) },
+            new AttachParams { SessionId = session.Id, MaxScrollbackRows = maxScrollbackRows, Presentation = presentation, Mode = MuxAttachModes.ToWire(mode), RequiredSixelRasterPolicy = session.RequiredSixelRasterPolicy },
             MuxJsonContext.Default.AttachParams);
         var tcs = new TaskCompletionSource<MuxResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[id] = tcs;
@@ -779,6 +795,7 @@ public sealed class MuxClient : IDisposable
             throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Malformed snapshot: {ex.Message}", ex);
         }
 
+        SixelPolicyAdmission.RequireClientSnapshot(snapshot, MaxSixelRasterPolicy);
         if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
         {
             throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Snapshot geometry {snapshot.Cols}x{snapshot.Rows} is invalid.");
