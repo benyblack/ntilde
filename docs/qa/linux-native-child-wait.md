@@ -24,7 +24,8 @@ The PID is captured once using the existing pre-thread native spawn query and
 the existing immutable Rust session Id supplies the generation. The new getter
 only reads cached fields and disposal state; it never invokes the existing
 active status probe. Disposed, replaced, wrapped, remote, mux, windowless,
-background, split and hidden targets are unavailable. The current original
+background, split, hidden and minimized targets are unavailable. Normal and
+maximized visible windows are eligible under the same identity gates. The current original
 exited session remains readable when its pane is retained, for example by the
 existing private runner choice ShellExitPolicy=Never. Product exit behavior is
 unchanged.

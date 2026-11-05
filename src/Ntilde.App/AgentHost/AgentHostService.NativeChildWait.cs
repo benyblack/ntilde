@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Ntilde.AgentHost.Contracts;
 using Ntilde.Shell.Clipboard;
@@ -35,14 +36,17 @@ public sealed partial class AgentHostService
         catch (Exception) { return Unavailable(); }
         cancellationToken.ThrowIfCancellationRequested();
         if (deadline.IsCancellationRequested) return Unavailable();
-        if (result == null || !IsCurrent() || !NativeChildWaitValidation.IsCoherent(result)
-            || result.PaneId != input.PaneId || result.OriginalChildPid != input.ExpectedChildPid
-            || result.NativeSessionId != session.Id
-            || input.ExpectedNativeSessionId is { } expectedId && result.NativeSessionId != expectedId) return Unavailable();
+        if (!IsCurrent() || !MatchesNativeChildWaitResult(result, input, session.Id)) return Unavailable();
         TryNoteRead(registration);
         _journal.RecordRead(AgentHostProtocol.Methods.ReadNativeChildWait, input.PaneId, "private QA child wait", "ok");
         cancellationToken.ThrowIfCancellationRequested();
         if (deadline.IsCancellationRequested || !IsCurrent()) return Unavailable();
         return Ok(request.Id, JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.NativeChildWaitResult));
     }
+
+    private static bool MatchesNativeChildWaitResult([NotNullWhen(true)] NativeChildWaitResult? result,
+        ReadNativeChildWaitParams input, Guid nativeSessionId) => result != null
+        && NativeChildWaitValidation.IsCoherent(result) && result.PaneId == input.PaneId
+        && result.OriginalChildPid == input.ExpectedChildPid && result.NativeSessionId == nativeSessionId
+        && (input.ExpectedNativeSessionId is not { } expectedId || result.NativeSessionId == expectedId);
 }

@@ -100,6 +100,18 @@ public sealed class MainWindowNativeChildWaitTests : IClassFixture<TestAppDataRo
     }
 
     [AvaloniaFact]
+    public async Task Maximized_visible_single_pane_retains_passive_native_wait_observation()
+    {
+        var (window, pane, session) = Create(); var input = Input(pane, session);
+        Assert.NotNull(await Read(window, pane, input));
+        window.WindowState = WindowState.Maximized; Dispatcher.UIThread.RunJobs();
+        Assert.Equal(WindowState.Maximized, window.WindowState); Assert.True(pane.IsEffectivelyVisible);
+        var result = await Read(window, pane, input); Assert.NotNull(result);
+        Assert.Equal(session.Id, result.NativeSessionId); Assert.Equal(input.ExpectedChildPid, result.OriginalChildPid);
+        Assert.False(result.NativeWaitObserved); Assert.Null(result.ExitCode);
+    }
+
+    [AvaloniaFact]
     public async Task Ordinary_process_latch_cannot_observe_even_a_real_current_local_session()
     {
         var (window, pane, session) = Create(qa: false);

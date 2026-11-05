@@ -25,7 +25,7 @@ public partial class MainWindow
         var mode = pane.PrivateClipboardQa;
         bool IsCurrent() => mode.IsEnabled && mode.RunId == input.RunId && ReferenceEquals(mode, PrivateClipboardQaMode.Process)
             && registration.Kind == "local" && registration.IsActive && pane.IsActivePane
-            && IsVisible && WindowState == WindowState.Normal && !_isFocusMode && pane.IsEffectivelyVisible
+            && IsVisible && WindowState != WindowState.Minimized && !_isFocusMode && pane.IsEffectivelyVisible
             && ReferenceEquals(TopLevel.GetTopLevel(pane), this) && ReferenceEquals(_currentPane, pane)
             && pane.Profile?.Type != ConnectionType.SSH && !pane.TermView.DefersBufferResizeToSession
             && pane.IsCurrentAgentRegistration(registration) && ReferenceEquals(pane.Buffer, registration.Buffer)
