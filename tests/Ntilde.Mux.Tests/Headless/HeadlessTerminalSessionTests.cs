@@ -221,6 +221,29 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task Sixel_attribute_replies_come_from_the_daemon_parser_with_the_windows_cell_size()
+    {
+        // XTSMGRAPHICS (#872): Sixel works in persistent sessions, so the daemon answers, and its
+        // geometry read uses the cell size the window sent (12 x 24 here, so 140 x 40 cells is
+        // 1680 x 960 pixels).
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            mux.PostResize(140, 40, Presentation80x24 with { Cols = 140, Rows = 40, CellWidthPx = 12, CellHeightPx = 24 });
+            await mux.InvokeAsync(() => 0); // the authoritative VT resize completed
+            fake.Emit("\x1b[?1;1;0S\x1b[?2;1;0S\x1b[?2;4;0S");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count == 3, "the Sixel attribute replies reached the child writer");
+            Assert.Equal(new[]
+            {
+                "\x1b[?1;0;4096S",
+                "\x1b[?2;0;1680;960S",
+                "\x1b[?2;0;2000;2000S",
+            }, fake.SentInput.ToArray());
+        }
+    }
+
+    [Fact]
     public async Task Character_geometry_query_reaches_the_child_writer_after_the_ordered_resize()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
