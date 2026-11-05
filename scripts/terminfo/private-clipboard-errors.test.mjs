@@ -105,7 +105,9 @@ for (const newline of ['\n', '\r\n']) for (const primary of [new Error('original
         && error.errors[0].cause === primary && error.errors[1] === cleanup);
 });
 
-for (const primary of [new Error('original operation failed'), undefined]) test('actual lifecycle attempts cleanup and preserves journal failure plus primary=' + typeof primary, async () => {
+let thenReads = 0;
+const opaqueThenable = { get then() { thenReads++; throw new Error('A thrown reason must never be assimilated.'); } };
+for (const [label, primary] of [['Error', new Error('original operation failed')], ['undefined', undefined], ['opaque thenable', opaqueThenable]]) test('actual lifecycle attempts cleanup and preserves journal failure plus primary=' + label, async () => {
     const retention = new Error('journal retention failed'); let cleaned = false, retained;
     const start = source.indexOf('        let deadline;');
     const ending = /\r?\n    } catch \(error\) {\r?\n        retainPreparationFailure/.exec(source.slice(start));
@@ -122,4 +124,5 @@ for (const primary of [new Error('original operation failed'), undefined]) test(
     await assert.rejects(run(...Object.values(dependencies)), error => cleaned && error instanceof AggregateError
         && error.errors[0] === retained && error.errors[1] === undefined && retained.cause instanceof AggregateError
         && retained.cause.errors[0] === primary && retained.cause.errors[1] === retention);
+    assert.equal(thenReads, 0);
 });

@@ -93,18 +93,20 @@ async function captureOwnedCleanup(action) {
     try { await action(); return { failed: false }; }
     catch (error) { return { failed: true, error }; }
 }
-/** Attempt every source-known failure journal in order, preserving original and falsy save failures before process cleanup. */
-async function retainOwnedFailureSequence(error, actions) {
-    let current = error;
-    for (const action of actions) {
-        try {
-            const replacement = await action(current);
-            if (replacement !== undefined) current = replacement;
-        } catch (retention) {
-            current = new AggregateError([current, retention], 'Owned failure evidence retention failed.');
-        }
+/** Await one source-known evidence write; keep arbitrary rejection reasons inside an explicit outcome, never Promise-assimilate them. */
+async function retainOwnedFailureStep(outcome, action) {
+    try {
+        const replacement = await action(outcome.error);
+        if (replacement !== undefined) outcome.error = replacement;
+    } catch (error_) {
+        outcome.error = new AggregateError([outcome.error, error_], 'Owned failure evidence retention failed.');
     }
-    return current;
+}
+/** Chain every source-known failure journal serially so later writes see all earlier original/save outcomes before shutdown. */
+async function retainOwnedFailureSequence(error, actions) {
+    const outcome = { failed: true, error };
+    await actions.reduce((pending, action) => pending.then(() => retainOwnedFailureStep(outcome, action)), Promise.resolve());
+    return outcome;
 }
 /** Run after finally: aggregate the original run/cause and shutdown failure without truthiness tests. */
 function throwOwnedRunFailures(run, cleanup) {
@@ -992,7 +994,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     if (authenticated && privateClipboardState?.observer) {
                         rejectDone(error);
                         try { await retainPrivateClipboardAbort(privateClipboardState, error, 'authenticatedOwnerDispatch', retainPrivateClipboardJournal); }
-                        catch (retention) { recordPrivateClipboardRetentionFailure(privateClipboardState, 'authenticatedOwnerDispatch', retention); }
+                        catch (error_) { recordPrivateClipboardRetentionFailure(privateClipboardState, 'authenticatedOwnerDispatch', error_); }
                     }
                     rejectQueryOwnerRequest({ authenticated, observer: queryState?.observer, error, request, reject: rejectDone });
                     socket.end(JSON.stringify(ownerFailure(error, Boolean(privateClipboardState))) + '\n');
@@ -1066,7 +1068,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
             runOutcome = { failed: true, error };
-            runOutcome.error = await retainOwnedFailureSequence(error, [
+            runOutcome = await retainOwnedFailureSequence(error, [
                 async () => { await retainPrivateClipboardAbort(privateClipboardState, error, 'runFailure', retainPrivateClipboardJournal); },
                 () => { queryState?.observer?.abort(error); retainQueryJournal(); },
                 reason => retainOwnedFailure(output, reason, privateClipboardState),

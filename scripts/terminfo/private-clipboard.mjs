@@ -41,6 +41,16 @@ function copyPrivateClipboardData(input, evidence) {
     // copyAttributeRuns: at most 8192 five-node tuples; copyCellDetails: at most 1024 eleven-node tuples.
     // The exposed screen also has at most 128 lines, 64 history lines and fewer than 64 fixed structural nodes.
     const screenNodeLimit = 8192 * 5 + 1024 * 11 + 128 + 64 + 64;
+    /** Copy only dense own-data array entries; the fixed frame array has its separate 22-entry admission cap. */
+    const copyArray = (descriptors, keys, depth, budget, route) => {
+        const length = descriptors.length.value;
+        check(Number.isSafeInteger(length) && length <= 32768 && keys.length === length + 1);
+        if (route === 1) check(length <= 22);
+        return Array.from({ length }, (_, index) => {
+            const field = descriptors[index]; check(field && Object.hasOwn(field, 'value') && field.enumerable);
+            return copy(field.value, depth + 1, budget, route === 1 ? 2 : -1);
+        });
+    };
     /** Copy one subtree under its own node allowance; only the exact fixed screen route can start another allowance. */
     const copy = (value, depth, budget, route) => {
         const screen = route === 4;
@@ -54,15 +64,7 @@ function copyPrivateClipboardData(input, evidence) {
         const array = Array.isArray(value), prototype = Object.getPrototypeOf(value);
         check(array ? prototype === Array.prototype : prototype === Object.prototype || prototype === null);
         const descriptors = Object.getOwnPropertyDescriptors(value), keys = Reflect.ownKeys(descriptors);
-        if (array) {
-            const length = descriptors.length.value;
-            check(Number.isSafeInteger(length) && length <= 32768 && keys.length === length + 1);
-            if (route === 1) check(length <= 22);
-            return Array.from({ length }, (_, index) => {
-                const field = descriptors[index]; check(field && Object.hasOwn(field, 'value') && field.enumerable);
-                return copy(field.value, depth + 1, budget, route === 1 ? 2 : -1);
-            });
-        }
+        if (array) return copyArray(descriptors, keys, depth, budget, route);
         const output = {};
         for (const key of keys) {
             check(typeof key === 'string' && key.length <= 128 && key !== '__proto__');
