@@ -68,7 +68,16 @@ export function buildAsciiSgrGradingReport(frames, run, runId, adapter, replayMo
         for (const [step, read] of contract.plan.filter(item => item.read).entries()) {
             if (recorded.reads[step].kind !== read.read) throw new Error(`Wrong ${contract.caseId} read kind.`);
         }
-        const screens = recorded.reads.map(() => frames[frameIndex++].screen);
+        // Every read frame must carry the barrier of the feed that preceded it.
+        let feedSteps = 0, readSteps = 0;
+        const readFrames = recorded.reads.map(() => frames[frameIndex++]);
+        for (const step of contract.plan) {
+            if (step.feed) feedSteps++;
+            else if (readFrames[readSteps++].barrier !== recorded.barriers[feedSteps - 1]) {
+                throw new Error(`Graded ${contract.caseId} barrier differs from its read frame.`);
+            }
+        }
+        const screens = readFrames.map(frame => frame.screen);
         const contractResult = gradeRecordedCase(contract, screens);
         const pinned = recorded.pinned;
         if (pinned?.probeId !== contract.caseId || pinned.observation?.evidence !== 'parser-state') {
@@ -80,7 +89,8 @@ export function buildAsciiSgrGradingReport(frames, run, runId, adapter, replayMo
         }
         if (replayModule) {
             const replay = replayModule.ntildeRunTermless(contract.caseId, recordingContext(contract, screens));
-            if (replay.observation.outcome !== pinned.observation.outcome
+            if (replay.pass !== pinned.pass || replay.response !== pinned.response
+                || replay.observation.outcome !== pinned.observation.outcome
                 || JSON.stringify(replay.assertions ?? null) !== JSON.stringify(pinned.assertions ?? null)) {
                 throw new Error(`Pinned ${contract.caseId} replay does not reproduce the live grading.`);
             }

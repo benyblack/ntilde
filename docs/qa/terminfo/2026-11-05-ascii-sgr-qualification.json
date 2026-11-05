@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
-  "measuredAt": "2026-11-05T18:35:36.348Z",
-  "runId": "b31dae14c2025b7154f072627168cc48",
+  "measuredAt": "2026-11-05T19:06:35.853Z",
+  "runId": "4b8df57a3605f24c1020bb45cff6672c",
   "context": {
-    "runId": "b31dae14c2025b7154f072627168cc48",
+    "runId": "4b8df57a3605f24c1020bb45cff6672c",
     "appVersion": "0.13.0+21393245f58b7faeb980d3103a049f60f3cae79b",
     "nodeVersion": "v24.22.1",
-    "startedAt": "2026-11-05T18:35:07.864Z",
+    "startedAt": "2026-11-05T19:06:05.749Z",
     "executable": "/Users/behnam/.local/share/ntilde-sidecar/Release/net10.0/Ntilde",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "assemblySha256": "6f34136967a13b71c1b95da1f7fc5a70215545ff3aae5d826ed772a060991dbe",
     "adapter": "ntilde-owned-macos-v1",
-    "adapterBundleSha256": "d5fd36ee1b04a65a1dd7c278eb823593d6f4155586f391d3648bebe29dce4dc4",
+    "adapterBundleSha256": "14e0c8c61ae95db1be88071f4b8dd508fa37ac4af24315b2ffc27a1271a6369b",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
     "gradingAdapterId": "ntilde-owned-ascii-sgr-grading-v1",
     "asciiSgrSuiteId": "ntilde-owned-ascii-sgr-graded-v1",
-    "gradingBundleSha256": "f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c",
+    "gradingBundleSha256": "97db8ff0e24b2d8f11e8e3901d692535dbd03956770478068c5d10b572521529",
     "gradingContractsVersion": 1,
     "grading": "versioned collector extension; pinned termless criteria replayed on parent-observed cells; not stock output"
   },
@@ -23,18 +23,18 @@
   "adapter": {
     "id": "ntilde-owned-ascii-sgr-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-macos-v1",
-    "bundleSha256": "f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c",
+    "bundleSha256": "97db8ff0e24b2d8f11e8e3901d692535dbd03956770478068c5d10b572521529",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "gradingReport": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
-    "runId": "b31dae14c2025b7154f072627168cc48",
+    "runId": "4b8df57a3605f24c1020bb45cff6672c",
     "contractsVersion": 1,
     "adapter": {
       "id": "ntilde-owned-ascii-sgr-grading-v1",
       "derivedFromAdapterId": "ntilde-owned-macos-v1",
-      "bundleSha256": "f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c",
+      "bundleSha256": "97db8ff0e24b2d8f11e8e3901d692535dbd03956770478068c5d10b572521529",
       "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
     },
     "scope": "Pinned terminfo.dev@4.0.0 termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen cells/flags. SGR conclusions cover stored flags, never glyph appearance. Not stock collector output.",
@@ -326,7 +326,7 @@
       {
         "index": 0,
         "kind": "grading-start",
-        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "paneId": "17169f93-f81f-4ca4-b534-b73542e8848e",
         "barrier": null,
         "screen": {
           "rows": 40,
@@ -390,13 +390,13 @@
       {
         "index": 1,
         "kind": "grading-bind",
-        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "paneId": "17169f93-f81f-4ca4-b534-b73542e8848e",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
           "cols": 140,
           "lines": [
-            "NTILDE_AG_b31dae14c2025b7154f072627168cc48",
+            "NTILDE_AG_4b8df57a3605f24c1020bb45cff6672c",
             "",
             "",
             "",
@@ -449,12 +449,12 @@
             }
           ]
         },
-        "sha256": "637a20d0b70af515d54f98196cf79b383ece2bf3709d8ad43c6c7aa3f642178e"
+        "sha256": "761b21ec6d60a897f38b56e0c93a5669cf46094cb3b1c0f71c2feafc85d45085"
       },
       {
         "index": 2,
         "kind": "grading-read",
-        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "paneId": "17169f93-f81f-4ca4-b534-b73542e8848e",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
@@ -518,7 +518,7 @@
       {
         "index": 3,
         "kind": "grading-read",
-        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "paneId": "17169f93-f81f-4ca4-b534-b73542e8848e",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
@@ -582,7 +582,7 @@
       {
         "index": 4,
         "kind": "grading-read",
-        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "paneId": "17169f93-f81f-4ca4-b534-b73542e8848e",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
@@ -646,7 +646,7 @@
       {
         "index": 5,
         "kind": "grading-read",
-        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "paneId": "17169f93-f81f-4ca4-b534-b73542e8848e",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
@@ -710,7 +710,7 @@
       {
         "index": 6,
         "kind": "grading-read",
-        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "paneId": "17169f93-f81f-4ca4-b534-b73542e8848e",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
@@ -780,7 +780,7 @@
       {
         "index": 7,
         "kind": "grading-read",
-        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "paneId": "17169f93-f81f-4ca4-b534-b73542e8848e",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
@@ -850,7 +850,7 @@
       {
         "index": 8,
         "kind": "grading-finish",
-        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "paneId": "17169f93-f81f-4ca4-b534-b73542e8848e",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
@@ -1095,7 +1095,7 @@
     },
     "suiteComplete": false,
     "probeHash": "16a690f34c0e",
-    "rawSha256": "08dee0a1b1d8c0036dd6ddefb62e3d7754f053413b5ea1610159cf4461baf031",
+    "rawSha256": "4078e7e6768b3c0e0284ebef6ff83e2789f06d4579b46d7d4e017f2cf29da8a2",
     "probes": {
       "sgr.bold": {
         "outcome": "inconclusive",
@@ -1126,30 +1126,30 @@
   "receipt": {
     "schemaVersion": 13,
     "gradingEvidence": {
-      "runId": "b31dae14c2025b7154f072627168cc48",
+      "runId": "4b8df57a3605f24c1020bb45cff6672c",
       "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
       "file": "grading-observations.json",
-      "sha256": "2664192c6d1f717348260fcfa9365ff7c1ac0df3a4dffdb33a09f8f5bf4cfdd1",
+      "sha256": "86fefd60ef65013866bddffa79de671aefb183695680cac59e0b48023e5e5d75",
       "runFile": "grading-run.json",
       "runSha256": "eff452cfc4f44b8339d020780bcc9ae17962c4f110fb5d47e2d92edf6f6418cf",
-      "adapterBundleSha256": "f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c",
+      "adapterBundleSha256": "97db8ff0e24b2d8f11e8e3901d692535dbd03956770478068c5d10b572521529",
       "contractsVersion": 1,
       "counts": {
         "supported": 4
       },
       "provisionalUntil": "cell-receipt.json"
     },
-    "ownershipProofSha256": "87c84bb0b2e6842cf0c8f3909a45a63c11240a5880d02d13a46ffb9fa3471c27",
-    "contextSha256": "e01cf00492621bbc3262484c04386b68ce9ce218ad78dfa879207c08750804e9",
-    "rawSha256": "08dee0a1b1d8c0036dd6ddefb62e3d7754f053413b5ea1610159cf4461baf031",
+    "ownershipProofSha256": "485b1dc84ce589f90e1ceb438bf80026a660cd3ff09fc4c4d9a45a57346f42b1",
+    "contextSha256": "896bed9bd855a0eb3ae847e2c119ab4e298aeb40e9c713622ec04f0a0222048d",
+    "rawSha256": "4078e7e6768b3c0e0284ebef6ff83e2789f06d4579b46d7d4e017f2cf29da8a2",
     "fixtureRemoved": true,
-    "completedAt": "2026-11-05T18:35:42.864Z"
+    "completedAt": "2026-11-05T19:06:42.367Z"
   },
   "retained": {
-    "gradingObservationsSha256": "2664192c6d1f717348260fcfa9365ff7c1ac0df3a4dffdb33a09f8f5bf4cfdd1",
+    "gradingObservationsSha256": "86fefd60ef65013866bddffa79de671aefb183695680cac59e0b48023e5e5d75",
     "gradingRunSha256": "eff452cfc4f44b8339d020780bcc9ae17962c4f110fb5d47e2d92edf6f6418cf",
-    "gradingJournalSha256": "7756cad0b9bcc7434fd72d8d7a7ff4fac9c0818e1dd74ec71ef63ef4fa9ce388",
-    "collectorGradingSha256": "f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c"
+    "gradingJournalSha256": "edab64e971cb3a78266d2fe5aab4965ba9dde05d033083eb2108c4d41ac0d77f",
+    "collectorGradingSha256": "97db8ff0e24b2d8f11e8e3901d692535dbd03956770478068c5d10b572521529"
   },
   "attempts": [
     {
@@ -1165,17 +1165,20 @@
     {
       "directory": "owned-VOeDQQ",
       "error": "Owned private clipboard collection failed; see bounded failure facts.",
-      "at": "2026-11-05T18:21:42.093Z"
+      "at": "2026-11-05T18:21:42.093Z",
+      "underlying": "Attribute columns do not match the ASCII viewport."
     },
     {
       "directory": "owned-Xssiax",
       "error": "Owned private clipboard collection failed; see bounded failure facts.",
-      "at": "2026-11-05T18:29:29.637Z"
+      "at": "2026-11-05T18:29:29.637Z",
+      "underlying": "pathToFileURL is not defined"
     },
     {
       "directory": "owned-u4Y4G2",
       "error": "Owned private clipboard collection failed; see bounded failure facts.",
-      "at": "2026-11-05T16:43:52.817Z"
+      "at": "2026-11-05T16:43:52.817Z",
+      "underlying": "Attribute columns do not match the ASCII viewport."
     }
   ]
 }

@@ -55,7 +55,7 @@ conclusive grade (covered by CI regressions).
 | Grading adapter | `ntilde-owned-ascii-sgr-grading-v1` (contracts v1) |
 | Derived from | owned adapter `ntilde-owned-macos-v1` over pinned `terminfo.dev@4.0.0` |
 | Pinned bundle SHA-256 | `aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6` |
-| Grading bundle SHA-256 | `f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c` |
+| Grading bundle SHA-256 | `97db8ff0e24b2d8f11e8e3901d692535dbd03956770478068c5d10b572521529` |
 | Receipt schema | 13; graded binding provisional until the shared cleanup receipt |
 
 The derivation refuses unless the pinned bundle still contains the exact four
@@ -66,13 +66,13 @@ byte-identical underneath the appended exports.
 
 | Measure | Value |
 |---|---|
-| Run / receipt completed | run `b31dae14c2025b7154f072627168cc48`, receipt 2026-11-05T18:35:42.864Z |
+| Run / receipt completed | run `4b8df57a3605f24c1020bb45cff6672c`, receipt 2026-11-05T19:06:42.367Z |
 | App informational version | `0.13.0+21393245f58b7faeb980d3103a049f60f3cae79b` |
 | App source | `21393245f58b7faeb980d3103a049f60f3cae79b` (= origin/main; this branch changes scripts/docs only) |
 | Stock run (untouched) | 86 supported / 1 unsupported / 168 inconclusive; `suiteComplete=false` |
 | Stock four-case outcomes | inconclusive (`query` for the text cases, `consumed` for SGR) |
 | Geometry | 40 rows × 140 columns |
-| Local evidence | `artifacts/terminfo/owned-dgb3Fk` (machine-readable copy with digests in the [JSON](2026-11-05-ascii-sgr-qualification.json)) |
+| Local evidence | `artifacts/terminfo/owned-tuChY4` (machine-readable copy with digests in the [JSON](2026-11-05-ascii-sgr-qualification.json)) |
 
 The stock run's single `unsupported` is `extensions.osc5522-clipboard`
 ("Mode 5522 not supported", evidence `query`) — outside this batch's four
@@ -80,13 +80,14 @@ cases and unchanged by it.
 
 ## Preserved failures and the observer fix
 
-Five preparation attempts are retained in the machine-readable evidence: one
-display-sleep abort (Avalonia `RenderTimer` `-6661`), two
-private-clipboard observation failures after wide stock probes, and two
-retention failures of this batch's own making (`pathToFileURL is not
-defined`, surfacing under the private-clipboard summary, and
-`gradingEvidence is not defined`) — both runner regressions fixed before the
-successful run.
+Five preparation attempts are retained in the machine-readable evidence with
+their bounded underlying facts: one display-sleep abort (Avalonia
+`RenderTimer` `-6661`), two pre-existing private-clipboard observation
+failures after wide stock probes (`Attribute columns do not match the ASCII
+viewport.`), and two retention failures of this batch's own making
+(`pathToFileURL is not defined`, surfacing under the private-clipboard
+summary, and `gradingEvidence is not defined`) — both runner regressions
+fixed before the successful run.
 
 The private-clipboard observation failure is **pre-existing on current
 main**: a pristine `21393245` worktree failed identically (the legacy

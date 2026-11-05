@@ -47,7 +47,7 @@ function snapshotMode(output, context) {
 }
 function checkSnapshot(output, context, proof) {
     const policy = context.sourceSnapshotPolicy, inventory = retainedInventory(output, context);
-    check([capturedV8SourcePolicy, 'readonly-owned-source-graph-v2', 'readonly-owned-source-graph-v3', 'readonly-owned-source-graph-v4', 'readonly-owned-source-graph-v5'].includes(policy) && /^[a-f\d]{64}$/.test(context.sourceSnapshotManifestSha256 ?? ''));
+    check([capturedV8SourcePolicy, 'readonly-owned-source-graph-v2', 'readonly-owned-source-graph-v3', 'readonly-owned-source-graph-v4', 'readonly-owned-source-graph-v5', 'readonly-owned-source-graph-v6'].includes(policy) && /^[a-f\d]{64}$/.test(context.sourceSnapshotManifestSha256 ?? ''));
     const data = bytes(output, 'source-snapshot.json', 65536), manifest = JSON.parse(data);
     check(hash(data) === context.sourceSnapshotManifestSha256 && manifest.schemaVersion === 1 && manifest.policy === policy
         && Object.keys(manifest.hashes ?? {}).length === Object.keys(inventory).length
@@ -57,8 +57,10 @@ function checkSnapshot(output, context, proof) {
         && Number.isFinite(Date.parse(proof.sourceSnapshot.removedAt))
         && Date.parse(proof.sourceSnapshot.removedAt) >= Date.parse(proof.cleanedUpAt));
 }
-function retainedInventory(output, context) {
-    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v5') return capturedV13SourceFiles;
+/** Each source-snapshot policy maps to exactly its own captured file set. */
+export function retainedInventory(output, context) {
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v6') return capturedV13SourceFiles;
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v5') return capturedV12SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v4') return capturedV11SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v3') return capturedV10SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v2') return capturedV9SourceFiles;

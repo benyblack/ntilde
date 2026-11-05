@@ -31,7 +31,8 @@ export function syntheticCaseScreens(caseId) {
         case 'text.basic':
             return [screen(blank(), 0, 0), screen(['Hello', ...blank().slice(1)], 0, 5)];
         case 'text.overwrite':
-            return [screen(['AB', ...blank().slice(1)], 0, 2), screen(['CB', ...blank().slice(1)], 0, 2)];
+            // After CSI 1 G and printing C at column 0, the cursor sits at column 1.
+            return [screen(['AB', ...blank().slice(1)], 0, 2), screen(['CB', ...blank().slice(1)], 0, 1)];
         case 'sgr.bold':
             return [screen(['X', ...blank().slice(1)], 0, 1,
                 [{ count: 1, flags: 0x0001, fg: -1, bg: -1 }, { count: cells - 1, flags: 0, fg: -1, bg: -1 }])];

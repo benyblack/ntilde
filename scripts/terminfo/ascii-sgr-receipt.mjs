@@ -4,8 +4,8 @@
 import { lstatSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { asciiSgrSuiteId } from './ascii-sgr-contracts.mjs';
-import { gradingAdapterId } from './grading-collector.mjs';
+import { asciiSgrSuiteId, asciiSgrContractsVersion } from './ascii-sgr-contracts.mjs';
+import { adaptGradingCollector, gradingAdapterId } from './grading-collector.mjs';
 import { buildAsciiSgrGradingReport } from './ascii-sgr-grading.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const files = ['grading-observations.json', 'grading-run.json', 'grading-snapshots.jsonl', 'collector-grading.mjs'];
@@ -38,7 +38,8 @@ export function checkAsciiSgrEvidence(output, evidence, runId, context) {
         || binding.provisionalUntil !== 'cell-receipt.json'
         || !/^[a-f\d]{64}$/.test(binding.sha256 ?? '') || !/^[a-f\d]{64}$/.test(binding.runSha256 ?? '')
         || !/^[a-f\d]{64}$/.test(binding.adapterBundleSha256 ?? '')
-        || !Number.isSafeInteger(binding.contractsVersion)) {
+        || binding.contractsVersion !== asciiSgrContractsVersion
+        || context.gradingContractsVersion !== asciiSgrContractsVersion) {
         throw new Error('Invalid graded suite receipt binding.');
     }
     const bytes = readFileSync(join(output, binding.file));
@@ -49,7 +50,18 @@ export function checkAsciiSgrEvidence(output, evidence, runId, context) {
     if (hash(adapterBytes) !== binding.adapterBundleSha256 || context.gradingBundleSha256 !== binding.adapterBundleSha256) {
         throw new Error('Grading adapter bytes changed.');
     }
+    // The retained extension must be exactly the derivation of the retained
+    // owned adapter; matching declarations alone do not establish that.
+    const derivedFromOwned = Buffer.from(adaptGradingCollector(readFileSync(join(output, 'collector-adapter.mjs'))));
+    if (Buffer.compare(derivedFromOwned, adapterBytes) !== 0) {
+        throw new Error('Grading adapter is not the retained owned-adapter derivation.');
+    }
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
+    if (report.adapter.bundleSha256 !== binding.adapterBundleSha256
+        || report.adapter.upstreamBundleSha256 !== context.upstreamBundleSha256
+        || report.contractsVersion !== asciiSgrContractsVersion) {
+        throw new Error('Graded report adapter or contract identity differs from the receipt.');
+    }
     const journalText = readFileSync(join(output, 'grading-snapshots.jsonl'), 'utf8').trim();
     if (!journalText) throw new Error('Graded journal is empty.');
     const frames = journalText.split('\n').map(line => JSON.parse(line));

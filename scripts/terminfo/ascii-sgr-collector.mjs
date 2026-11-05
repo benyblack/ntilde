@@ -63,6 +63,8 @@ export async function collectAsciiSgrGrading({ config, fence, owner, gradingModu
     const restore = asciiSgrReset + '\x1b[?1049l';
     const run = { schemaVersion: 1, adapterId: adapter.id, probeIds: [...adapter.probeIds], cases: [] };
     await owner('grading-start');
+    // Keep the collection failure visible when restoration also fails.
+    let primary, failed = false;
     try {
         const bindBarrier = await fence.write('\x1b[?1049h' + asciiSgrReset + nonce);
         await owner('grading-bind', bindBarrier);
@@ -86,8 +88,13 @@ export async function collectAsciiSgrGrading({ config, fence, owner, gradingModu
                 reads: reads.map(read => ({ kind: read.kind, cursor: [read.screen.cursorRow, read.screen.cursorCol] })),
                 pinned });
         }
-    } finally {
+    } catch (error) { primary = error; failed = true; }
+    let restoreFailed = false, restoreError;
+    try {
         await owner('grading-finish', await fence.write(restore));
-    }
+    } catch (error) { restoreFailed = true; restoreError = error; }
+    if (failed && restoreFailed) throw new AggregateError([primary, restoreError], 'Graded collection and restoration failed.');
+    if (restoreFailed) throw restoreError;
+    if (failed) throw primary;
     return run;
 }
