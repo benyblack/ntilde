@@ -54,3 +54,27 @@ for (const statement of ["import/* a */'./dependency.mjs';", "import value from/
             assert.throws(() => assertRetainedSourceClosure(root, inventory), /outside its versioned scope/);
         } finally { rmSync(root, { recursive: true, force: true }); }
     });
+
+test('retained closure refuses a genuine dependency hidden behind a comment-context lookalike', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-comment-context-'));
+    try {
+        writeFileSync(join(root, 'entry.mjs'), '// import /*\nimport "file:///outside.mjs";\n// */');
+        assert.throws(() => assertRetainedSourceClosure(root, { entrySourceSha256: 'entry.mjs' }), /outside its versioned scope/);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+for (const [label, prefix] of [['string', 'const lookalike = "import /*";\n'], ['regexp', 'const lookalike = /[import /*]/;\n']])
+    test('retained ' + label + ' candidate cannot suppress the later real dependency', () => {
+        const root = mkdtempSync(join(tmpdir(), 'nt-literal-context-'));
+        try {
+            writeFileSync(join(root, 'entry.mjs'), prefix + 'import "file:///outside.mjs";\n// */');
+            assert.throws(() => assertRetainedSourceClosure(root, { entrySourceSha256: 'entry.mjs' }), /outside its versioned scope/);
+        } finally { rmSync(root, { recursive: true, force: true }); }
+    });
+test('repeated spurious comment candidates fail closed within the cumulative traversal budget', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-import-budget-'));
+    try {
+        writeFileSync(join(root, 'entry.mjs'), '/* ' + 'import /* '.repeat(1024) + '*/');
+        assert.throws(() => assertRetainedSourceClosure(root, { entrySourceSha256: 'entry.mjs' }), /traversal budget exceeded/);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});

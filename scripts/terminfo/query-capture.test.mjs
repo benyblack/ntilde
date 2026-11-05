@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { queryWorld } from './fixtures/query-world.mjs';
 import { queryAction, queryPlan, queryPrior, buildQueryReport } from './queries.mjs';
+import { rejectQueryOwnerRequest } from './query-capture.mjs';
 import { snapshotHash } from './agent-observer.mjs';
 
 const reportInput = report => {
@@ -196,4 +197,20 @@ for (const count of [0, 109]) test('collector rejects initial owner reply with o
     await assert.rejects(world.collect());
     assert.equal(world.packets.length, 0); assert.equal(world.observer.journal.actions.length, 0); assert.equal(world.observer.journal.frames.length, 0);
     assert.equal(world.input.listenerCount('data'), 0); assert.equal(world.input.isRaw, false); assert.equal(world.input.isPaused(), true);
+});
+
+test('authenticated pre-dispatch rejection aborts promptly with original cause and retains original raw request without capability', async () => {
+    const original = new Error('Recorded query worker disappeared before dispatch.');
+    const world = queryWorld({ transport: true, beforeDispatch: request => { if (request.kind === 'queries-read' && request.index === 1) throw original; } });
+    await assert.rejects(world.collect()); assert.equal(world.ownerFailure(), original);
+    const journal = world.observer.journal; assert.equal(journal.failed, true); assert.equal(world.observer.restored, false);
+    assert.equal(journal.failure.error, original.message); assert.equal(journal.failure.rejectedOwnerRequest.kind, 'queries-read');
+    assert.equal(journal.failure.rejectedOwnerRequest.index, 1); assert.ok(journal.failure.rejectedOwnerRequest.capture.hex);
+    assert.equal(JSON.stringify(journal).includes('synthetic-capability-must-not-be-retained'), false);
+    assert.equal(world.input.listenerCount('data'), 0);
+});
+test('an unauthenticated socket rejection cannot abort the owned query observer', () => {
+    let rejected = false; const world = queryWorld();
+    assert.equal(rejectQueryOwnerRequest({ authenticated: false, observer: world.observer, error: new Error('bad capability'), request: {}, reject: () => rejected = true }), false);
+    assert.equal(world.observer.failed, false); assert.equal(rejected, false);
 });

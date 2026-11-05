@@ -96,3 +96,20 @@ test('modified scanner bytes never execute before the trusted bootstrap pin chec
     const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /changed trusted source scanner/);
     assert.equal(result.stdout.includes('UNREVIEWED SCANNER EXECUTED'), false);
 }));
+
+test('a dependency-looking keyword in a line comment cannot hide a later real import', () => fixture(f => {
+    const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+    writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED');");
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), '// import /*\nimport ' + JSON.stringify(pathToFileURL(outside).href) + ';\n// */');
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
+    assert.equal(existsSync(marker), false);
+}));
+
+for (const [label, prefix] of [['string', 'const lookalike = "import /*";\n'], ['regexp', 'const lookalike = /[import /*]/;\n']])
+    test(label + ' lookalike cannot suppress a later actual import keyword', () => fixture(f => {
+        const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+        writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED');");
+        writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), prefix + 'import ' + JSON.stringify(pathToFileURL(outside).href) + ';\n// */');
+        const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
+        assert.equal(existsSync(marker), false);
+    }));

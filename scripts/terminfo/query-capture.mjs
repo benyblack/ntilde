@@ -25,10 +25,11 @@ export class OwnedQueryObserver {
         readerCounts: this.#readers.map(reader => reader.snapshots), failed: this.#failed, failure: this.#failure }); }
     get report() { check(this.restored); return structuredClone(this.#report); }
     /** Trusted coordinator calls this on worker/socket/controller exit; there is no recovery/reset API. */
-    abort(error) {
+    abort(error, rejectedOwnerRequest) {
         if (this.#failed) return;
         this.#failed = true; this.#attempt ??= {};
         this.#attempt.error = String(error?.message ?? error).slice(0, 1024);
+        if (rejectedOwnerRequest !== undefined) this.#attempt.rejectedOwnerRequest = structuredClone(rejectedOwnerRequest);
         const rawFailure = error?.queryFailure;
         if (rawFailure !== undefined) this.#attempt.rawFailure = structuredClone(rawFailure);
         this.#failure = structuredClone(this.#attempt);
@@ -107,4 +108,12 @@ export class OwnedQueryObserver {
             throw error;
         } finally { if (entered) this.#busy = false; }
     }
+}
+
+/** Authenticated common-dispatch failures settle the run with its original error; main retains the failed journal. */
+export function rejectQueryOwnerRequest({ authenticated, observer, error, request, reject }) {
+    if (authenticated !== true || !observer) return false;
+    const keys = ['kind', 'workerPid', 'tty', 'index', 'barrier', 'capture', 'captureStatus'];
+    const retained = Object.fromEntries(keys.filter(key => Object.hasOwn(request, key)).map(key => [key, request[key]]));
+    observer.abort(error, retained); reject(error); return true;
 }

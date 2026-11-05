@@ -20,7 +20,7 @@ function removeSnapshot(root) {
     rmSync(root, { recursive: true, force: true });
 }
 // The scanner is the sole reviewed pure bootstrap dependency; import only these verified captured bytes.
-const sourceScannerSha256 = 'f60f89b9273a727e5550ece87ff852656c7090d7dce580ffc88ad8ab22918cbd';
+const sourceScannerSha256 = '27737137fc22aa080b671153573a1f0741ba136fc7e35c0db39b6a3849fda6fd';
 async function checkCapturedImports(sources) {
     const scanner = sources.get('source-imports.mjs');
     if (!scanner || digest(scanner) !== sourceScannerSha256) throw new Error('Missing or changed trusted source scanner.');

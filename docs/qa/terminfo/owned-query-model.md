@@ -86,6 +86,9 @@ exact source plan, validated prefix challenges and parent process facts. All
 six executed query dependencies plus the shared pure source scanner are captured
 and checked in the fixed source closure before measured imports. Both checks treat comment-separated import
 specifiers as lexical trivia and reject escaped, template or out-of-scope literal targets.
+The scanner checks every keyword candidate independently: parsed comment/string
+lookalikes never advance its keyword search. A cumulative traversal budget bounds
+repeated lookalikes; spurious candidates may refuse source conservatively.
 The trusted BCL launcher verifies a reviewed hard SHA-256 pin over the captured,
 dependency-free scanner before importing those exact bytes through a data URL;
 retained validation shares the captured helper. This is no JavaScript sandbox

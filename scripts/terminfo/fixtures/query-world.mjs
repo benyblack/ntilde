@@ -2,7 +2,7 @@
 import { EventEmitter } from 'node:events';
 import { initialInputScreen } from './input-journal.mjs';
 import { queryWitnessPlan } from '../query-witness-cases.mjs';
-import { OwnedQueryObserver } from '../query-capture.mjs';
+import { OwnedQueryObserver, rejectQueryOwnerRequest } from '../query-capture.mjs';
 import { collectQueries } from '../query-collector.mjs';
 
 export class QueryInput extends EventEmitter {
@@ -12,14 +12,14 @@ export class QueryInput extends EventEmitter {
     resume() { this.paused = false; }
     pause() { this.paused = true; }
 }
-export function queryWorld({ priorChallenges = Array.from({ length: 110 }, (_, index) => [32768 + index * 2, 32769 + index * 2].join(',')), mutateReply, mutateState, mutateOwnership, mutateRpc, mutateAction, nextNonces, cursorVisible = true, binding: suppliedBinding, initialScreen, processFacts, transport = false, atStart = Date.UTC(2026, 10, 4, 12) } = {}) {
+export function queryWorld({ priorChallenges = Array.from({ length: 110 }, (_, index) => [32768 + index * 2, 32769 + index * 2].join(',')), mutateReply, mutateState, mutateOwnership, mutateRpc, mutateAction, nextNonces, cursorVisible = true, binding: suppliedBinding, initialScreen, processFacts, transport = false, beforeDispatch, atStart = Date.UTC(2026, 10, 4, 12) } = {}) {
     const binding = suppliedBinding ?? { runId: 'a'.repeat(32), ownerPid: 42, workerPid: 43, uid: 1000, appExecutable: '/owned/app',
         workerExecutable: '/node', tty: '/dev/ttys100', profileName: 'fixture', paneId: '11111111-1111-1111-1111-111111111111' };
     const initial = initialScreen ? structuredClone(initialScreen) : initialInputScreen(10, 60); initial.cursorVisible = cursorVisible;
     const rows = initial.rows, cols = initial.cols;
     initial.attributeRuns = [{ count: rows * cols, flags: 768, fg: -1, bg: -1 }];
     let screen = structuredClone(initial), tick = 0, challenge = 0;
-    const input = new QueryInput(), packets = [], ownerships = [];
+    const input = new QueryInput(), packets = [], ownerships = []; let ownerFailure;
     const specs = queryWitnessPlan({ rows, cols, top: 1, bottom: rows });
     const commands = new Map(specs.map(item => [item.request, item.id]));
     const nonce = 'NTILDE_QRY_' + binding.runId;
@@ -83,11 +83,19 @@ export function queryWorld({ priorChallenges = Array.from({ length: 110 }, (_, i
     const observer = new OwnedQueryObserver({ binding, attest, appData: '/not-a-real-app', rpc,
         endpoint: () => 'synthetic-only', priorChallenges });
     const owner = async (kind, ignored, extra = {}) => {
-        const result = await observer.handle({ kind, ...extra }, () => 1000);
-        const value = mutateAction?.(kind, result) ?? result;
-        return transport ? { ok: true, ownerPid: binding.ownerPid, ...value } : value;
+        const request = { kind, ...extra };
+        try {
+            beforeDispatch?.(request);
+            const result = await observer.handle(request, () => 1000);
+            const value = mutateAction?.(kind, result) ?? result;
+            return transport ? { ok: true, ownerPid: binding.ownerPid, ...value } : value;
+        } catch (error) {
+            rejectQueryOwnerRequest({ authenticated: true, observer, error,
+                request: { ...request, token: 'synthetic-capability-must-not-be-retained' }, reject: value => ownerFailure = value });
+            throw error;
+        }
     };
-    return { observer, input, output, binding, packets, ownerships, screen: () => screen,
+    return { observer, input, output, binding, packets, ownerships, ownerFailure: () => ownerFailure, screen: () => screen,
         collect: async () => {
             try { await collectQueries({ runId: binding.runId, owner, expectedOwnerPid: transport ? binding.ownerPid : undefined, input, output,
                 nextNonces: nextNonces ?? (() => [42000 + challenge * 2, 42001 + challenge++ * 2]) }); }

@@ -1,4 +1,6 @@
-// Pure, dependency-free literal-source audit. This is not a computed-import or JavaScript sandbox.
+// Pure conservative all-candidate audit; spurious candidates may refuse source.
+// Parsed trivia or strings never move the independent keyword-search cursor.
+// This is not a computed-import or JavaScript sandbox.
 // Comments are lexical trivia, including inside literal dynamic-import parentheses.
 function importTriviaEnd(source, offset) {
     while (offset < source.length) {
@@ -19,17 +21,24 @@ function importTriviaEnd(source, offset) {
 }
 export function literalImports(source) {
     const keywords = /\b(?:(?<from>from)|(?<imported>import))\b/g, targets = [];
+    let work = 0;
+    const charge = amount => {
+        work += amount;
+        if (work > source.length * 4) throw new Error('Source import traversal budget exceeded.');
+    };
     let match = keywords.exec(source);
     while (match) {
         let offset = importTriviaEnd(source, keywords.lastIndex);
-        if (Boolean(match.groups.imported) && source[offset] === '(') offset = importTriviaEnd(source, offset + 1);
-        keywords.lastIndex = offset;
+        charge(offset - keywords.lastIndex);
+        if (Boolean(match.groups.imported) && source[offset] === '(') {
+            const next = importTriviaEnd(source, offset + 1); charge(next - offset); offset = next;
+        }
         const quote = source[offset];
         if (quote === '`') throw new Error('Unsupported template import syntax.');
         if (quote === '"' || quote === "'") {
             const end = source.indexOf(quote, offset + 1), target = source.slice(offset + 1, end);
             if (end < 0 || target.includes('\\')) throw new Error('Unsupported captured import specifier.');
-            targets.push(target); keywords.lastIndex = end + 1;
+            charge(end - offset); targets.push(target);
         }
         match = keywords.exec(source);
     }

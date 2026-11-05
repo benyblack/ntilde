@@ -23,7 +23,7 @@ import { resizeOwnedPane } from './terminfo/resize-action.mjs';
 import { OwnedInputObserver } from './terminfo/input-capture.mjs';
 import { inputSuiteId, ownedInputPolicy } from './terminfo/input-cases.mjs';
 import { generateOwnedInput } from './terminfo/input-action.mjs';
-import { OwnedQueryObserver } from './terminfo/query-capture.mjs';
+import { OwnedQueryObserver, rejectQueryOwnerRequest } from './terminfo/query-capture.mjs';
 import { querySuiteId, ownedQueryPolicy } from './terminfo/queries.mjs';
 import { OwnedStaticImageObserver } from './terminfo/static-images-capture.mjs';
 import { staticImageSuiteId } from './terminfo/static-images-cases.mjs';
@@ -803,12 +803,14 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 if (buffer.length > 8192) return socket.destroy();
                 if (!buffer.includes('\n')) return;
                 socket.removeAllListeners('data');
+                let request, authenticated = false;
                 try {
-                    const request = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
+                    request = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
                     if (typeof request.token !== 'string' || request.token.length !== token.length
                         || !timingSafeEqual(Buffer.from(request.token), Buffer.from(token)) || request.runId !== runId) {
                         throw new Error('Invalid run capability.');
                     }
+                    authenticated = true;
                     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) throw new Error('Owned app is no longer live.');
                     assertExecutableUnchanged(executable, image);
                     // All lineage/mode queries and observations share the existing 4s budget.
@@ -853,6 +855,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     } else throw new Error('Unknown owner request.');
                     socket.end(JSON.stringify({ ok: true, ownerPid: app.pid }) + '\n');
                 } catch (error) {
+                    rejectQueryOwnerRequest({ authenticated, observer: queryState?.observer, error, request, reject: rejectDone });
                     socket.end(JSON.stringify(ownerFailure(error)) + '\n');
                 }
             });
