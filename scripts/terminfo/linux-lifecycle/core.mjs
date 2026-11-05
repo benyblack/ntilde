@@ -1,8 +1,8 @@
 // Internal deterministic seam; production dependencies are fixed by the public facade.
 import { isDeepStrictEqual } from 'node:util';
-import { copyLinuxOutputExpected, linuxOutputBudget, linuxOutputDeadline } from '../linux-owned-output-core.mjs';
+import { copyLinuxOutputExpected, linuxOutputBudget } from '../linux-owned-output-core.mjs';
 
-export { linuxOutputDeadline as createLinuxLifecycleDeadline };
+export { linuxOutputDeadline as createLinuxLifecycleDeadline } from '../linux-owned-output-core.mjs';
 export const lifecycleLimits = Object.freeze({ lifetimeMs: 300000, abortReserveMs: 4000,
     closeReserveMs: 250, commands: 64, frameBytes: 4096, stdoutBytes: 262144,
     stderrBytes: 4096, helperBytes: 65536, interpreterBytes: 16777216 });
@@ -92,17 +92,18 @@ export async function acquireWithIo(io, expectedInput, pythonInput, options) {
         return { helperDeadlineNs: conservativeDeadline(result.clockNs, receivedNs, phase.deadlineNs),
             lifetimeDeadlineNs: (BigInt(result.clockNs) + totalDeadlineNs - receivedNs).toString(), clock: latest };
     };
+    const verifySurvivors = phase => {
+        for (const role of ['app', 'worker']) {
+            if (latest[role].exitObserved) continue;
+            const facts = io.process(expected[role].pid, phase.remainingMs()); phase.check();
+            processMatches(facts, expected[role], expected.uid);
+            if (facts.ppid !== (role === 'app' ? expected.app.ppid : expected.app.pid)) fail('Surviving lifecycle ancestry changed.');
+        }
+    };
     const verify = phase => {
         if (!latest.app.exitObserved && !latest.worker.exitObserved) {
             const facts = io.paired(expected, phase.remainingMs()); phase.check(); pairedMatches(facts, expected); acceptedFacts = detached(facts);
-        } else {
-            for (const role of ['app', 'worker']) {
-                if (latest[role].exitObserved) continue;
-                const facts = io.process(expected[role].pid, phase.remainingMs()); phase.check();
-                processMatches(facts, expected[role], expected.uid);
-                if (facts.ppid !== (role === 'app' ? expected.app.ppid : expected.app.pid)) fail('Surviving lifecycle ancestry changed.');
-            }
-        }
+        } else verifySurvivors(phase);
         if (latest.app.exitObserved && !appTerminationRequested) fail('Original App exited before its requested termination.');
     };
     const act = async (op, phase, ownership = true) => {
@@ -146,9 +147,13 @@ export async function acquireWithIo(io, expectedInput, pythonInput, options) {
         finally { busy = false; }
     }
     async function settle(abort, phaseOptions) {
-        if (settled) { if (settled.error) throw settled.error; return settled.result; }
+        if (settled) {
+            if (settled.error) throw settled.error;
+            return settled.result;
+        }
         if (busy) throw mark(new Error('Overlapping lifecycle settlement.'));
-        busy = true; const errors = [];
+        busy = true;
+        const errors = [];
         let phase = { deadlineNs: io.now(), now: io.now };
         if (abort) mark(new Error('Explicit lifecycle abort cleanup.'));
         try {

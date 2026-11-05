@@ -105,3 +105,15 @@ test('failed normal settlement kills only helper instead of manufacturing admitt
     await assert.rejects(channel.finish(s.phase()));
     assert.equal(ended, false); assert.equal(s.killed, 'SIGKILL'); assert.deepEqual(s.closes, [11, 10]);
 });
+test('fragmented fatal diagnostics remain bounded and complete after request rejection', async () => {
+    const s = transport(), channel = await s.open();
+    s.action = (child, request) => {
+        if (request.op !== 'clock') return;
+        child.stderr.write(Buffer.from('{"errors":'));
+        child.stderr.write(Buffer.from('[],"observation":null}\n'));
+        return false;
+    };
+    await assert.rejects(channel.request({ op: 'clock' }, s.phase()));
+    await assert.rejects(channel.finish(s.phase()));
+    assert.deepEqual(JSON.parse(Buffer.from(channel.resources().stderrHex, 'hex').toString('utf8')), { errors: [], observation: null });
+});

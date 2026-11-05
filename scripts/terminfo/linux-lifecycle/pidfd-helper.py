@@ -50,27 +50,39 @@ class Transport:
         while True:
             if now() >= deadline:
                 raise TimeoutError("Lifecycle input deadline expired")
-            end = self.buffer.find(b"\n")
-            if end >= 0:
-                if end + 1 > MAX_FRAME:
-                    raise RuntimeError("Lifecycle input frame too large")
-                raw = bytes(self.buffer[:end])
-                del self.buffer[:end + 1]
-                self.frames += 1
-                if self.frames > MAX_COMMANDS:
-                    raise RuntimeError("Lifecycle command limit exhausted")
-                return json.loads(raw.decode("utf-8", "strict"), object_pairs_hook=unique)
+            frame = self.take_frame()
+            if frame is not None:
+                return frame
             ready, _, _ = select.select([0], [], [], max(0, (deadline - now()) / 1e9))
             if not ready:
                 continue
-            data = os.read(0, min(1024, MAX_FRAME + 1 - len(self.buffer)))
-            if not data:
-                if self.buffer:
-                    raise RuntimeError("Partial lifecycle input frame")
-                raise EOFError("Lifecycle input closed")
-            self.buffer.extend(data)
-            if len(self.buffer) > MAX_FRAME:
-                raise RuntimeError("Lifecycle input frame too large")
+            self.receive()
+
+    def take_frame(self):
+        end = self.buffer.find(b"\n")
+        if end < 0:
+            return None
+        if end + 1 > MAX_FRAME:
+            raise RuntimeError("Lifecycle input frame too large")
+        raw = bytes(self.buffer[:end])
+        del self.buffer[:end + 1]
+        self.frames += 1
+        if self.frames > MAX_COMMANDS:
+            raise RuntimeError("Lifecycle command limit exhausted")
+        frame = json.loads(raw.decode("utf-8", "strict"), object_pairs_hook=unique)
+        if type(frame) is not dict:
+            raise RuntimeError("Expected lifecycle object frame")
+        return frame
+
+    def receive(self):
+        data = os.read(0, min(1024, MAX_FRAME + 1 - len(self.buffer)))
+        if not data:
+            if self.buffer:
+                raise RuntimeError("Partial lifecycle input frame")
+            raise EOFError("Lifecycle input closed")
+        self.buffer.extend(data)
+        if len(self.buffer) > MAX_FRAME:
+            raise RuntimeError("Lifecycle input frame too large")
 
     def write(self, value, deadline):
         data = (json.dumps(value, separators=(",", ":")) + "\n").encode("ascii")
@@ -86,6 +98,26 @@ class Transport:
         self.written += len(data)
 
 
+class RoleFailure(RuntimeError):
+    def __init__(self, phase, role, cause):
+        self.phase, self.role, self.cause = phase, role, cause
+
+
+class LifecycleFailure(RuntimeError):
+    def __init__(self, errors, observation=None):
+        self.errors, self.observation = errors, observation
+
+
+def failure_records(error, phase="run", role=None):
+    if isinstance(error, RoleFailure):
+        return failure_records(error.cause, error.phase, error.role)
+    if isinstance(error, LifecycleFailure):
+        return [record for item in error.errors for record in failure_records(item, phase, role)][:8]
+    return [{"phase": phase, "role": role, "type": type(error).__name__,
+             "errno": error.errno if isinstance(error, OSError) else None,
+             "message": str(error).encode("ascii", "backslashreplace")[:128].decode("ascii")}]
+
+
 class Targets:
     def __init__(self):
         self.fds = {}
@@ -96,15 +128,21 @@ class Targets:
         self.close_attempted = False
 
     def open(self, app, worker):
+        phase, role = "pidfd-open", None
         try:
             for role, pid in (("app", app), ("worker", worker)):
                 self.fds[role] = os.pidfd_open(pid, 0)
+            phase, role = "acquisition-poll", None
             self.poll()
             if any(self.exited.values()):
                 raise RuntimeError("Original target already exited")
-        except BaseException:
-            self.close()
-            raise
+        except Exception as error:
+            errors = [RoleFailure(phase, role, error)]
+            try:
+                self.close()
+            except LifecycleFailure as close_error:
+                errors.extend(close_error.errors)
+            raise LifecycleFailure(errors) from error
 
     def poll(self):
         if self.closed:
@@ -175,47 +213,39 @@ class Targets:
             try:
                 # Share the original absolute budget; don't renew it per target.
                 self.terminate(role, deadline)
-            except (OSError, RuntimeError, TimeoutError) as error:
-                errors.append(type(error).__name__)
+            except (OSError, RuntimeError) as error:
+                errors.append(RoleFailure("abort", role, error))
         if errors:
-            raise RuntimeError("Original-target abort failed: " + ",".join(errors))
+            raise LifecycleFailure(errors)
 
     def close(self):
         if self.close_attempted:
             return  # Never retry a numeric FD whose failed close may already have freed it.
         self.close_attempted = True
         errors = []
-        for fd in self.fds.values():
+        for role, fd in self.fds.items():
             try:
                 os.close(fd)
             except OSError as error:
-                errors.append(error)
+                errors.append(RoleFailure("pidfd-close", role, error))
         self.fds.clear()
         self.closed = not errors
         if errors:
-            raise RuntimeError("Original pidfd close unconfirmed")
+            raise LifecycleFailure(errors)
 
 
-class LifecycleFailure(RuntimeError):
-    def __init__(self, errors, observation):
-        self.errors = errors
-        self.observation = observation
+class Session:
+    def __init__(self):
+        self.transport, self.targets = Transport(), Targets()
+        self.admitted = False
+        self.aborted = False
+        self.settled = False
+        self.hard_deadline = now() + PHASE_NS
+        self.last_clock = None
+        self.sequence = 0
 
-
-def run():
-    if sys.platform != "linux" or len(sys.argv) != 1:
-        raise RuntimeError("Expected isolated Linux pidfd helper")
-    transport, targets = Transport(), Targets()
-    admitted = False
-    aborted = False
-    settled = False
-    hard_deadline = now() + PHASE_NS
-    last_clock = None
-    sequence = 0
-    primary = None
-    cleanup_errors = []
-    try:
-        opening = transport.read(hard_deadline)
+    def open(self):
+        opening = self.transport.read(self.hard_deadline)
         exact(opening, ("op", "seq", "appPid", "workerPid", "lifetimeMs"))
         if opening["op"] != "open" or opening["seq"] != 1:
             raise RuntimeError("Expected initial lifecycle open")
@@ -224,101 +254,125 @@ def run():
         if app == worker:
             raise RuntimeError("Distinct original roles required")
         lifetime = integer(opening["lifetimeMs"], 10000, 300000)
-        targets.open(app, worker)
-        hard_deadline = now() + lifetime * 1_000_000
-        sequence = 1
-        transport.write({"seq": sequence, "kind": "opened", "observation": targets.observation()}, min(hard_deadline, now() + PHASE_NS))
-        while True:
-            request = transport.read(hard_deadline - RESERVE_NS)
-            sequence += 1
-            if type(request) is not dict or request.get("seq") != sequence:
-                raise RuntimeError("Lifecycle sequence mismatch")
-            op = request.get("op")
-            if op == "clock":
-                exact(request, ("seq", "op"))
-                last_clock = now()
-                transport.write({"seq": sequence, "kind": "clock", "clockNs": str(last_clock),
-                                 "observation": targets.observation()}, min(hard_deadline - RESERVE_NS, now() + PHASE_NS))
-                continue
-            exact(request, ("seq", "op", "deadlineNs", "lifetimeDeadlineNs") if op == "admit" else ("seq", "op", "deadlineNs"))
-            raw = request["deadlineNs"]
-            if type(raw) is not str or not raw.isascii() or not raw.isdecimal() or len(raw) > 20:
-                raise RuntimeError("Invalid helper absolute deadline")
-            deadline = int(raw)
-            bound = hard_deadline - (CLOSE_NS if op in ("abort", "close") else RESERVE_NS)
-            if last_clock is None or not now() < deadline <= min(bound, last_clock + PHASE_NS):
-                raise TimeoutError("Expired/unarmed lifecycle phase")
-            last_clock = None
-            if op == "admit":
-                if admitted or aborted:
-                    raise RuntimeError("Lifecycle admission is one-shot")
-                lifetime_raw = request["lifetimeDeadlineNs"]
-                if type(lifetime_raw) is not str or not lifetime_raw.isascii() or not lifetime_raw.isdecimal() or len(lifetime_raw) > 20:
-                    raise RuntimeError("Invalid conservative lifecycle lifetime")
-                hard_deadline = min(hard_deadline, int(lifetime_raw))
-                if deadline >= hard_deadline - RESERVE_NS:
-                    raise RuntimeError("Lifecycle lifetime has no cleanup reserve")
-                targets.poll()
-                if any(targets.exited.values()):
-                    raise RuntimeError("Original target exited across admission")
-                admitted = True
-            elif op == "close":
-                # Critical: normal close must not turn its own EOF into target cleanup.
-                admitted = False
-                settled = True
-                targets.poll()
-                targets.close()
-            elif op == "abort":
-                cleanup_authorized = admitted
-                admitted = False  # This explicit phase must not restart on failure in finally.
-                settled = True
-                if cleanup_authorized:
-                    aborted = True
-                    targets.abort(deadline)
-                targets.close()
-            elif op in ("observe", "terminateWorker", "terminateApp"):
-                if not admitted or aborted:
-                    raise RuntimeError("Lifecycle is not admitted/active")
-                if op == "terminateApp":
-                    targets.poll()
-                    if not targets.exited["worker"]:
-                        raise RuntimeError("Worker exit required before App termination")
-                    targets.terminate("app", deadline)
-                elif op == "terminateWorker":
-                    targets.terminate("worker", deadline)
-            else:
-                raise RuntimeError("Unknown fixed lifecycle operation")
-            transport.write({"seq": sequence, "kind": op, "observation": targets.observation()}, deadline)
-            if settled:
-                break
-    except BaseException as error:
+        self.targets.open(app, worker)
+        self.hard_deadline = now() + lifetime * 1_000_000
+        self.sequence = 1
+        self.reply("opened", min(self.hard_deadline, now() + PHASE_NS))
+
+    def reply(self, kind, deadline, clock=None):
+        frame = {"seq": self.sequence, "kind": kind, "observation": self.targets.observation()}
+        if clock is not None:
+            frame["clockNs"] = str(clock)
+        self.transport.write(frame, deadline)
+
+    def phase_deadline(self, request, op):
+        exact(request, ("seq", "op", "deadlineNs", "lifetimeDeadlineNs") if op == "admit" else ("seq", "op", "deadlineNs"))
+        raw = request["deadlineNs"]
+        if type(raw) is not str or not raw.isascii() or not raw.isdecimal() or len(raw) > 20:
+            raise RuntimeError("Invalid helper absolute deadline")
+        deadline = int(raw)
+        bound = self.hard_deadline - (CLOSE_NS if op in ("abort", "close") else RESERVE_NS)
+        if self.last_clock is None or not now() < deadline <= min(bound, self.last_clock + PHASE_NS):
+            raise TimeoutError("Expired/unarmed lifecycle phase")
+        self.last_clock = None
+        return deadline
+
+    def admit(self, request, deadline):
+        if self.admitted or self.aborted:
+            raise RuntimeError("Lifecycle admission is one-shot")
+        raw = request["lifetimeDeadlineNs"]
+        if type(raw) is not str or not raw.isascii() or not raw.isdecimal() or len(raw) > 20:
+            raise RuntimeError("Invalid conservative lifecycle lifetime")
+        self.hard_deadline = min(self.hard_deadline, int(raw))
+        if deadline >= self.hard_deadline - RESERVE_NS:
+            raise RuntimeError("Lifecycle lifetime has no cleanup reserve")
+        self.targets.poll()
+        if any(self.targets.exited.values()):
+            raise RuntimeError("Original target exited across admission")
+        self.admitted = True
+
+    def settle(self, op, deadline):
+        cleanup_authorized = self.admitted
+        self.admitted = False  # Disarm before normal close or an explicit abort can fail.
+        self.settled = True
+        if op == "abort" and cleanup_authorized:
+            self.aborted = True
+            self.targets.abort(deadline)
+        elif op == "close":
+            self.targets.poll()
+        self.targets.close()
+
+    def action(self, op, deadline):
+        if not self.admitted or self.aborted:
+            raise RuntimeError("Lifecycle is not admitted/active")
+        if op == "terminateApp":
+            self.targets.poll()
+            if not self.targets.exited["worker"]:
+                raise RuntimeError("Worker exit required before App termination")
+            self.targets.terminate("app", deadline)
+        elif op == "terminateWorker":
+            self.targets.terminate("worker", deadline)
+
+    def dispatch(self, request):
+        self.sequence += 1
+        if type(request) is not dict or request.get("seq") != self.sequence:
+            raise RuntimeError("Lifecycle sequence mismatch")
+        op = request.get("op")
+        if op == "clock":
+            exact(request, ("seq", "op"))
+            self.last_clock = now()
+            self.reply(op, min(self.hard_deadline - RESERVE_NS, now() + PHASE_NS), self.last_clock)
+            return
+        deadline = self.phase_deadline(request, op)
+        if op == "admit":
+            self.admit(request, deadline)
+        elif op in ("close", "abort"):
+            self.settle(op, deadline)
+        elif op in ("observe", "terminateWorker", "terminateApp"):
+            self.action(op, deadline)
+        else:
+            raise RuntimeError("Unknown fixed lifecycle operation")
+        self.reply(op, deadline)
+
+    def cleanup(self):
+        errors = []
+        try:
+            if self.admitted and now() < self.hard_deadline - CLOSE_NS:
+                # One originally reserved phase only, never renewed after expiry.
+                self.targets.abort(min(self.hard_deadline - CLOSE_NS, now() + RESERVE_NS - CLOSE_NS))
+        except Exception as error:
+            errors.append(error)
+        try:
+            if not self.targets.closed:
+                self.targets.close()
+        except Exception as error:
+            errors.append(error)
+        return errors
+
+
+def run():
+    if sys.platform != "linux" or len(sys.argv) != 1:
+        raise RuntimeError("Expected isolated Linux pidfd helper")
+    session = Session()
+    primary = None
+    try:
+        session.open()
+        while not session.settled:
+            request = session.transport.read(session.hard_deadline - RESERVE_NS)
+            session.dispatch(request)
+    except (Exception, KeyboardInterrupt) as error:
         primary = error
     finally:
-        try:
-            if admitted and now() < hard_deadline - CLOSE_NS:
-                # Originally authorized reserve only; never extend the lifetime on EOF.
-                targets.abort(min(hard_deadline - CLOSE_NS, now() + RESERVE_NS - CLOSE_NS))
-        except BaseException as error:
-            cleanup_errors.append(error)
-        finally:
-            if not targets.closed:
-                try:
-                    targets.close()
-                except BaseException as error:
-                    cleanup_errors.append(error)
+        cleanup_errors = session.cleanup()
     if primary is not None or cleanup_errors:
-        # Keep primary failure and actual cleanup attempts even if cleanup itself failed.
-        raise LifecycleFailure(([primary] if primary is not None else []) + cleanup_errors, targets.observation())
-
+        raise LifecycleFailure(([primary] if primary is not None else []) + cleanup_errors, session.targets.observation())
 
 if __name__ == "__main__":
     try:
         run()
     except (Exception, KeyboardInterrupt) as failure:
         # Fixed, bounded diagnostics: no mutable process argv or terminal bytes.
-        failures = failure.errors if isinstance(failure, LifecycleFailure) else [failure]
-        errors = [{"type": type(error).__name__, "message": str(error).encode("ascii", "backslashreplace")[:256].decode("ascii")} for error in failures[:4]]
-        diagnostic = {"errors": errors, "observation": failure.observation if isinstance(failure, LifecycleFailure) else None}
+        diagnostic = {"errors": failure_records(failure), "observation": failure.observation if isinstance(failure, LifecycleFailure) else None}
         raw = (json.dumps(diagnostic, separators=(",", ":")) + "\n").encode("ascii")
         os.write(2, raw[:4096])
         raise SystemExit(1) from None

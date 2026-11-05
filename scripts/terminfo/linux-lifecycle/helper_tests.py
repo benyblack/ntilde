@@ -15,7 +15,7 @@ class DomainTests(unittest.TestCase):
     def test_partial_acquisition_closes_only_acquired_original_fd(self):
         target = helper.Targets()
         with patch.object(helper.os, "pidfd_open", side_effect=[77, OSError("gone")]) as opened, patch.object(helper.os, "close") as close:
-            with self.assertRaises(OSError):
+            with self.assertRaises(helper.LifecycleFailure):
                 target.open(40, 42)
             self.assertEqual(opened.call_args_list[0].args, (40, 0))
             self.assertEqual(opened.call_args_list[1].args, (42, 0))
@@ -31,6 +31,44 @@ class DomainTests(unittest.TestCase):
             target.close()
             close.assert_called_once_with(77)
             self.assertFalse(target.closed)
+
+    def test_acquisition_primary_and_first_fd_close_failure_both_survive_diagnostics(self):
+        target = helper.Targets()
+        with patch.object(helper.os, "pidfd_open", side_effect=[77, OSError(3, 'original worker gone')]), \
+                patch.object(helper.os, "close", side_effect=OSError(5, 'original app fd close uncertain')) as close:
+            with self.assertRaises(helper.LifecycleFailure) as caught:
+                target.open(40, 42)
+            records = helper.failure_records(caught.exception)
+            self.assertEqual([(item['phase'], item['role'], item['errno']) for item in records],
+                             [('pidfd-open', 'worker', 3), ('pidfd-close', 'app', 5)])
+            self.assertIn('worker gone', records[0]['message'])
+            self.assertIn('app fd close uncertain', records[1]['message'])
+            target.close()
+            close.assert_called_once_with(77)
+            self.assertFalse(target.closed)
+
+    def test_both_distinct_fd_close_errors_are_role_labelled_and_never_retried(self):
+        target = helper.Targets()
+        target.fds = {'app': 77, 'worker': 78}
+
+        def close(fd):
+            raise OSError(5 if fd == 77 else 4, 'app close' if fd == 77 else 'worker close')
+
+        with patch.object(helper.os, 'close', side_effect=close) as closed:
+            with self.assertRaises(helper.LifecycleFailure) as caught:
+                target.close()
+            records = helper.failure_records(caught.exception)
+            self.assertEqual([(item['role'], item['errno']) for item in records], [('app', 5), ('worker', 4)])
+            target.close()
+            self.assertEqual(closed.call_count, 2)
+
+    def test_abort_retains_both_role_errors_and_actual_errno(self):
+        target = helper.Targets()
+        target.terminate = lambda role, _deadline: (_ for _ in ()).throw(OSError(1 if role == 'worker' else 13, role + ' signal denied'))
+        with self.assertRaises(helper.LifecycleFailure) as caught:
+            target.abort(100)
+        records = helper.failure_records(caught.exception)
+        self.assertEqual([(item['phase'], item['role'], item['errno']) for item in records], [('abort', 'worker', 1), ('abort', 'app', 13)])
 
     def test_deadline_is_checked_immediately_before_signal_syscall(self):
         target = helper.Targets()

@@ -43,7 +43,11 @@ function childProcess(args) {
         diagnostics += chunk.toString('utf8');
     });
     child.once('exit', () => { exited = true; });
-    const close = new Promise(resolve => child.once('close', (code, signal) => { closed = true; if (pending) fail(new Error('Private fixture closed during response.')); resolve({ code, signal }); }));
+    const close = new Promise(resolve => child.once('close', (code, signal) => {
+        closed = true;
+        if (pending) fail(new Error('Private fixture closed during response.'));
+        resolve({ code, signal });
+    }));
     let consumed = 0;
     async function next() {
         if (failure) throw failure;
@@ -81,7 +85,11 @@ async function fixture(name, action) {
         result = await action({ expected, control, target });
     } catch (error) { primary = error; }
     let cleanup;
-    try { cleanup = await control.finish(); } catch (error) { if (primary) throw new AggregateError([primary, error], name + ' and fixture cleanup failed.'); throw error; }
+    try { cleanup = await control.finish(); }
+    catch (error) {
+        if (primary) throw new AggregateError([primary, error], name + ' and fixture cleanup failed.');
+        throw error;
+    }
     if (primary) throw primary;
     const final = cleanup.frames.at(-1); assert.equal(final.fixtureCleanup, true); assert.equal(final.childReaped, true);
     return { scenario: name, ...result, fixture: cleanup };
@@ -100,8 +108,8 @@ outcomes.push(await fixture('normal-close-leaves-live-targets-unsignalled', asyn
     assert.deepEqual(result.observation.attempts, []); assert.equal(result.helper.helperCloseConfirmed, true);
     assert.deepEqual(await control.command('alive'), { appTerms: 0, workerTerms: 0 });
     return { result, liveTargetsUnsignalled: true };
-}));
-outcomes.push(await fixture('term-resistant-worker-original-pidfd-kill', async ({ expected, control }) => {
+}),
+await fixture('term-resistant-worker-original-pidfd-kill', async ({ expected, control }) => {
     assert.deepEqual(await control.command('resist'), { resistant: true });
     const lease = await acquireLinuxLifecycle(expected, pin, { ...phase(), lifetimeMs: 20000 });
     const worker = await lease.terminateWorker(phase());
@@ -112,8 +120,8 @@ outcomes.push(await fixture('term-resistant-worker-original-pidfd-kill', async (
     const app = await lease.terminateApp(phase()); assert.equal(app.observation.app.exitObserved, true);
     const result = await lease.close(phase()); assert.equal(result.aborted, false);
     return { worker, parentReap, result };
-}));
-outcomes.push(await fixture('zombie-readable-not-reaped-nonparent-echild', async ({ expected, control, target }) => {
+}),
+await fixture('zombie-readable-not-reaped-nonparent-echild', async ({ expected, control, target }) => {
     const lease = await acquireLinuxLifecycle(expected, pin, { ...phase(), lifetimeMs: 20000 });
     const zombie = await control.command('zombie'); assert.equal(zombie.parentWaitWasNowait, true);
     const observation = await lease.observe(phase()); assert.equal(observation.observation.worker.exitObserved, true);
@@ -125,8 +133,8 @@ outcomes.push(await fixture('zombie-readable-not-reaped-nonparent-echild', async
     const result = await lease.close(phase());
     assert.equal(result.observation.app.exitObserved, false);
     return { zombie, observation, nonparent, witnessClose, parentReap, result };
-}));
-outcomes.push(await fixture('admitted-eof-aborts-original-targets', async ({ expected }) => {
+}),
+await fixture('admitted-eof-aborts-original-targets', async ({ expected, control }) => {
     let channel;
     const lease = await acquireWithIo({ now: () => process.hrtime.bigint(), currentUid: () => process.getuid(),
         paired: (value, timeoutMs) => readLinuxOwnedChildFacts({ parentPid: value.app.pid, childPid: value.worker.pid,
@@ -136,9 +144,19 @@ outcomes.push(await fixture('admitted-eof-aborts-original-targets', async ({ exp
     // Internal test-only transport seam: deliberately end stdin without normal close/disarm.
     const refusal = await channel.interrupt({ deadlineNs: createLinuxLifecycleDeadline(4000), now: () => process.hrtime.bigint() }).catch(error => error);
     assert.ok(refusal instanceof Error); assert.equal(channel.resources().helperCloseConfirmed, true);
-    return { helper: channel.resources(), admittedBeforeInterruption: lease.observation().admitted, interrupted: true };
-}));
-outcomes.push(await fixture('identity-drift-aborts-original-held-targets', async ({ expected, control }) => {
+    const diagnostic = JSON.parse(Buffer.from(channel.resources().stderrHex, 'hex').toString('utf8'));
+    assert.ok(diagnostic.errors.some(item => item.type === 'EOFError'));
+    assert.equal(diagnostic.observation.worker.exitObserved, true);
+    assert.equal(diagnostic.observation.app.exitObserved, true);
+    assert.equal(diagnostic.observation.pidfdsClosed, true);
+    assert.deepEqual(diagnostic.observation.attempts.map(item => [item.role, item.signal, item.sent]),
+        [['worker', 'TERM', true], ['app', 'TERM', true]]);
+    // Observe parent exit BEFORE fixture.finish can send any cleanup command/signal.
+    assert.deepEqual(await bounded(control.close, 1000, 'EOF cleanup did not exit original parent.'), { code: 0, signal: null });
+    return { helper: channel.resources(), diagnostic, originalTargetExitsObservedBeforeFixtureCleanup: true,
+        admittedBeforeInterruption: lease.observation().admitted, interrupted: true };
+}),
+await fixture('identity-drift-aborts-original-held-targets', async ({ expected, control }) => {
     const lease = await acquireLinuxLifecycle(expected, pin, { ...phase(), lifetimeMs: 20000 });
     assert.deepEqual(await control.command('drift'), { drifted: true });
     await assert.rejects(lease.observe(phase()));

@@ -7,10 +7,30 @@ import { fileURLToPath } from 'node:url';
 import { linuxFileIdentity } from '../linux-process-core.mjs';
 import { lifecycleLimits } from './core.mjs';
 
-export const helperSha256 = 'd7c9714c1d2511d4768c6372f4edc8ddb82e2e8459709b3c2a5cbbf35fb0f836';
+export const helperSha256 = 'beb8320080a7961133087899f9318a11254492c560b5bde5e1213c83702ce804';
 const helperPath = fileURLToPath(new URL('./pidfd-helper.py', import.meta.url));
 
 export function createResources(fs = nodeFs) {
+    function validateFile(kind, stat, expected, limit) {
+        if (stat.uid !== BigInt(kind === 'python' ? 0 : expected.uid) || (stat.mode & 0o022n) !== 0n
+            || stat.size < 4n || stat.size > BigInt(limit)) throw new Error('Invalid lifecycle source/interpreter ownership or size.');
+        if (kind === 'python' && (stat.mode & 0o111n) === 0n) throw new Error('Lifecycle interpreter is not executable.');
+    }
+    function digest(kind, fd, stat, python, limit, budget) {
+        const hash = createHash('sha256'), buffer = Buffer.alloc(65536);
+        let used = 0, magic = Buffer.alloc(0);
+        while (true) {
+            const count = budget.query(() => fs.readSync(fd, buffer, 0, buffer.length, null));
+            if (!count) break;
+            if (count > limit - used) throw new Error('Lifecycle source/interpreter byte cap exceeded.');
+            if (magic.length < 4) magic = Buffer.concat([magic, buffer.subarray(0, Math.min(4 - magic.length, count))]);
+            used += count; hash.update(buffer.subarray(0, count));
+        }
+        const sha256 = hash.digest('hex');
+        if (used !== Number(stat.size) || sha256 !== (kind === 'python' ? python.sha256 : helperSha256)) throw new Error('Lifecycle source/interpreter digest mismatch.');
+        if (kind === 'python' && !magic.equals(Buffer.from([127, 69, 76, 70]))) throw new Error('Lifecycle interpreter ELF mismatch.');
+        return sha256;
+    }
     function open(kind, expected, python, budget) {
         const { constants } = fs;
         if (!Number.isInteger(constants.O_NOFOLLOW) || !constants.O_NOFOLLOW) throw new Error('Required lifecycle no-follow flag unavailable.');
@@ -22,21 +42,9 @@ export function createResources(fs = nodeFs) {
             const stat = budget.query(() => fs.fstatSync(fd, { bigint: true }));
             const identity = Object.freeze(linuxFileIdentity(stat, 'isFile'));
             const limit = kind === 'python' ? lifecycleLimits.interpreterBytes : lifecycleLimits.helperBytes;
-            if (stat.uid !== BigInt(kind === 'python' ? 0 : expected.uid) || (stat.mode & 0o022n) !== 0n
-                || stat.size < 4n || stat.size > BigInt(limit) || kind === 'python' && (stat.mode & 0o111n) === 0n) throw new Error('Invalid lifecycle source/interpreter ownership or size.');
+            validateFile(kind, stat, expected, limit);
             observation = { ...observation, identity };
-            const hash = createHash('sha256'), buffer = Buffer.alloc(65536);
-            let used = 0, magic = Buffer.alloc(0);
-            while (true) {
-                const count = budget.query(() => fs.readSync(fd, buffer, 0, buffer.length, null));
-                if (!count) break;
-                if (count > limit - used) throw new Error('Lifecycle source/interpreter byte cap exceeded.');
-                if (magic.length < 4) magic = Buffer.concat([magic, buffer.subarray(0, Math.min(4 - magic.length, count))]);
-                used += count; hash.update(buffer.subarray(0, count));
-            }
-            const sha256 = hash.digest('hex');
-            if (used !== Number(stat.size) || sha256 !== (kind === 'python' ? python.sha256 : helperSha256)
-                || kind === 'python' && !magic.equals(Buffer.from([127, 69, 76, 70]))) throw new Error('Lifecycle source/interpreter digest or ELF mismatch.');
+            const sha256 = digest(kind, fd, stat, python, limit, budget);
             const resource = Object.freeze({ fd, identity, observation: Object.freeze({ ...observation, sha256 }) });
             check(resource, budget); return resource;
         } catch (error) {
@@ -89,6 +97,13 @@ export function createChannelFactory({ spawnChild = spawn, setTimer = setTimeout
                 catch (killError) { fatal = new AggregateError([fatal, killError], 'Lifecycle helper termination failed.'); }
             }
         };
+        const deliver = raw => {
+            const frame = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(raw));
+            if (!pending || frame.seq !== pending.sequence || frame.kind !== pending.op) throw new Error('Unsolicited/mismatched lifecycle response.');
+            if (accepted.length >= lifecycleLimits.commands) throw new Error('Lifecycle response count exceeded.');
+            const item = pending; pending = undefined; clearTimer(item.timer);
+            accepted.push(Object.freeze({ sequence: item.sequence, op: item.op })); item.resolve(frame);
+        };
         const stdout = chunk => {
             if (fatal) return;
             if (!Buffer.isBuffer(chunk) || chunk.length > lifecycleLimits.stdoutBytes - stdoutBytes) { stop(new Error('Lifecycle stdout cap exceeded.')); return; }
@@ -96,20 +111,19 @@ export function createChannelFactory({ spawnChild = spawn, setTimer = setTimeout
             buffered = Buffer.concat([buffered, chunk]);
             while (true) {
                 const end = buffered.indexOf(10);
-                if (end < 0) { if (buffered.length >= lifecycleLimits.frameBytes) stop(new Error('Lifecycle response frame cap exceeded.')); return; }
+                if (end < 0) {
+                    if (buffered.length >= lifecycleLimits.frameBytes) stop(new Error('Lifecycle response frame cap exceeded.'));
+                    return;
+                }
                 if (end + 1 > lifecycleLimits.frameBytes) { stop(new Error('Lifecycle response frame cap exceeded.')); return; }
                 try {
-                    const frame = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(buffered.subarray(0, end)));
+                    const frame = buffered.subarray(0, end);
                     buffered = buffered.subarray(end + 1);
-                    if (!pending || frame.seq !== pending.sequence || frame.kind !== pending.op) throw new Error('Unsolicited/mismatched lifecycle response.');
-                    if (accepted.length >= lifecycleLimits.commands) throw new Error('Lifecycle response count exceeded.');
-                    const item = pending; pending = undefined; clearTimer(item.timer);
-                    accepted.push(Object.freeze({ sequence: item.sequence, op: item.op })); item.resolve(frame);
+                    deliver(frame);
                 } catch (error) { stop(error); return; }
             }
         };
         const errorOutput = chunk => {
-            if (fatal) return;
             if (!Buffer.isBuffer(chunk) || chunk.length > lifecycleLimits.stderrBytes - stderrBytes) { stop(new Error('Lifecycle stderr cap exceeded.')); return; }
             stderr.push(Buffer.from(chunk)); stderrBytes += chunk.length;
             stop(new Error('Lifecycle helper emitted diagnostics.'));
