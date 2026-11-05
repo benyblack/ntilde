@@ -18,8 +18,9 @@ public partial class TerminalBuffer
             bottom = Math.Clamp(bottom, 0, Rows - 1);
             if (left > right || top > bottom) return;
             int first = TextSizingAbsoluteRow(top), end = TextSizingAbsoluteRow(bottom) + 1;
-            EraseTextSizingRange(left, right + 1, first, end);
-            var blank = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
+            var blank = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground,
+                fgIdx: CurrentFgIndex, bgIdx: CurrentBgIndex);
+            EraseTextSizingRange(left, right + 1, first, end, blank);
             for (int rowIndex = top; rowIndex <= bottom; rowIndex++)
             {
                 EraseRectangularRow(_viewport[rowIndex], left, right, blank);

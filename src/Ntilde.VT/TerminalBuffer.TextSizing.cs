@@ -347,7 +347,8 @@ public partial class TerminalBuffer
         _textSizingPrunedHistory = (_scrollback.Generation, _scrollback.TotalRowsEvicted);
     }
 
-    private void EraseTextSizingRange(int x0, int x1, int y0, int y1)
+    /// <summary>Erases complete intersected scaled units; callers may supply one shared blank for erasure beyond their rectangle.</summary>
+    private void EraseTextSizingRange(int x0, int x1, int y0, int y1, TerminalCell? replacementCell = null)
     {
         if (_textSizingBlocks == null || _textSizingBlocks.Count == 0) return;
         Dictionary<TextSizingBlock, (int X, int Y)>? anchors = null;
@@ -359,7 +360,7 @@ public partial class TerminalBuffer
                     anchors.TryAdd(piece.Block, (col - piece.ColumnOffset, row - piece.RowOffset));
                 }
         if (anchors == null) return;
-        foreach (var entry in anchors) EraseTextSizingBlock(entry.Key, entry.Value.X, entry.Value.Y);
+        foreach (var entry in anchors) EraseTextSizingBlockInPlane(entry.Key, entry.Value.X, entry.Value.Y, _isAltScreen, replacementCell);
     }
 
     private void InvalidateTextSizingHistory()

@@ -124,8 +124,10 @@ public sealed class RectangularEraseTests
         Assert.False(erased.IsUnderline);
         Assert.False(erased.IsInverse);
         Assert.False(erased.HasExtendedText);
-        Assert.Equal(buffer.CurrentForeground, erased.Foreground);
-        Assert.Equal(buffer.CurrentBackground, erased.Background);
+        Assert.True(erased.IsPaletteForeground);
+        Assert.True(erased.IsPaletteBackground);
+        Assert.Equal((uint)buffer.CurrentFgIndex, erased.Fg);
+        Assert.Equal((uint)buffer.CurrentBgIndex, erased.Bg);
         Assert.True(buffer.IsBold);
         Assert.True(buffer.IsUnderline);
         buffer.Lock.EnterReadLock();
@@ -180,7 +182,8 @@ public sealed class RectangularEraseTests
         {
             var cell = Cell(buffer, col, 0);
             Assert.Equal(new TerminalCell(' ', buffer.CurrentForeground, buffer.CurrentBackground,
-                false, false, buffer.IsDefaultForeground, buffer.IsDefaultBackground), cell);
+                false, false, buffer.IsDefaultForeground, buffer.IsDefaultBackground,
+                fgIdx: buffer.CurrentFgIndex, bgIdx: buffer.CurrentBgIndex), cell);
         }
         Assert.Equal(adjacent, Cell(buffer, 2, 0));
         Assert.True(buffer.IsBold);
@@ -197,6 +200,33 @@ public sealed class RectangularEraseTests
             }
         }
         finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    /// <summary>Ordinary, wide and scaled erasure retains palette identity through subsequent palette overrides in both screen banks.</summary>
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    public void Erase_blanks_retain_palette_indices(int kind, bool alternate)
+    {
+        var buffer = new TerminalBuffer(8, 4);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        if (alternate) parser.Process("\u001b[?1049h");
+        parser.Process(kind switch { 0 => "ABX", 1 => "界X", _ => "\u001b]66;s=2;A\a" });
+        parser.Process("\u001b[38;5;201;48;5;200m\u001b]4;200;#112233;201;#445566\a");
+        parser.Process(kind == 2 ? "\u001b[2;2;2;2$z" : "\u001b[1;2;1;2$z");
+        var erased = new TerminalCell(' ', buffer.CurrentForeground, buffer.CurrentBackground,
+            false, false, buffer.IsDefaultForeground, buffer.IsDefaultBackground,
+            fgIdx: buffer.CurrentFgIndex, bgIdx: buffer.CurrentBgIndex);
+        for (int row = 0; row < (kind == 2 ? 2 : 1); row++)
+            for (int col = kind == 0 ? 1 : 0; col < 2; col++)
+                Assert.Equal(erased, Cell(buffer, col, row));
+        parser.Process("\u001b]4;200;#abcdef;201;#fedcba\a");
+        Assert.Equal(0xffabcdefu, buffer.GetPaletteColor((int)Cell(buffer, 1, 0).Bg).ToUint());
+        Assert.Equal(0xfffedcbau, buffer.GetPaletteColor((int)Cell(buffer, 1, 0).Fg).ToUint());
     }
 
     /// <summary>DECERA reuses the existing OSC66 whole-unit erasure contract rather than retaining a partial scaled glyph.</summary>

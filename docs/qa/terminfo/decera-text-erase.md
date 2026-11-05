@@ -13,7 +13,8 @@ clipping, extra parameters, colon subparameters, private leaders and other
 intermediates are ignored. Horizontal-margin state is not implemented.
 
 Erased text becomes spaces with normal cell rendition and the existing Ntilde
-erase foreground/background colors. The live pen, cursor position, pending-wrap
+erase foreground/background colors, including retained palette indices so later
+palette changes apply to the blanks. The live pen, cursor position, pending-wrap
 state and row continuation flags remain intact. Extended text, hyperlinks and
 underline side metadata are removed from erased cells.
 
