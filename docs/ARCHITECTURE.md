@@ -524,7 +524,12 @@ App carries an immutable presenter density P with the UI-published font/grid val
 clearing it on detach. Offscreen requested scale S stays separate. This plumbing
 changes neither geometry nor the raw v1 capture schemas. The
 [staged native-raster contract](sixel-native-raster-foundation.md) records the remaining
-transform, clipping, ownership and compatibility gates before activation.
+transform, clipping and compatibility gates before activation. The internal native
+test path reserves fixed decoder scratch and pixel storage before decode (256
+placements, 64 MiB), keeps deferred/retired/pinned and alias charges until actual
+disposal, and uses Rendering's fixed-plane span decoder. VT owns only BCL accounting
+and admission; native disposal remains in the Rendering owner outside buffer locks.
+Public policy remains zero and legacy draw/serialized behavior is unchanged.
 
 Skia-only helpers: glyph atlas (`GlyphAtlas`), glyph cache (`GlyphCache`), pixel grid math (`PixelGrid`), font wrappers (`SharedSKFont`, `SharedSKTypeface`), image registry, sixel decoder, render performance metrics.
 

@@ -16,7 +16,11 @@ public partial class TerminalBuffer
             if (source is not null)
             {
                 PruneExpiredSixelSources();
-                if (source.Data is null && CanDiscardSixelHandle(handle)) handle = null;
+                if (source.Data is null && CanDiscardSixelHandle(handle))
+                {
+                    if (handle is INativeSixelImage) QueueImageHandleRetirement(handle, disposeImmediately: true);
+                    handle = null;
+                }
             }
             bool display = Modes.IsSixelDisplayMode;
             int row = display ? 0 : _cursorRow;
@@ -60,6 +64,12 @@ public partial class TerminalBuffer
             PruneExpiredSixelSources();
         }
         return true;
+    }
+
+    internal void RetireUnplacedNativeSixel(INativeSixelImage image)
+    {
+        if (ReferenceEquals(image.Allocation.Owner, NativeSixelBudget) && image.Allocation.Owner.IsUnclaimed(image.Allocation))
+            QueueImageHandleRetirement(image, disposeImmediately: true);
     }
 
     private static bool CanDiscardSixelHandle(object? handle) =>

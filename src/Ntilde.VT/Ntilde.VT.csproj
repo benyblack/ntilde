@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Ntilde.VT.Tests" />
+    <InternalsVisibleTo Include="Ntilde.Rendering" />
+    <InternalsVisibleTo Include="Ntilde.Rendering.Tests" />
   </ItemGroup>
 
 </Project>

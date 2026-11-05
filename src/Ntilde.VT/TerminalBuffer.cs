@@ -317,8 +317,18 @@ namespace Ntilde.VT
         public TerminalBuffer(int cols, int rows) : this(cols, rows, 0) { }
 
         public TerminalBuffer(int cols, int rows, int sixelRasterPolicyVersion)
+            : this(cols, rows, sixelRasterPolicyVersion, null) { }
+
+        // Test-only construction keeps the unadvertised implementation exercised while the public ceiling is zero.
+        internal static TerminalBuffer CreateNativeSixelTestBuffer(int cols, int rows, NativeSixelBudget budget, SixelSourceBudget? sources = null) =>
+            new(cols, rows, 1, budget ?? throw new ArgumentNullException(nameof(budget))) { SixelSources = sources ?? new() };
+
+        internal NativeSixelBudget? NativeSixelBudget { get; }
+
+        private TerminalBuffer(int cols, int rows, int sixelRasterPolicyVersion, NativeSixelBudget? budget)
         {
-            SixelRasterPolicy.RequireSupported(sixelRasterPolicyVersion);
+            if (budget is null) SixelRasterPolicy.RequireSupported(sixelRasterPolicyVersion);
+            NativeSixelBudget = budget;
             SixelRasterPolicyVersion = sixelRasterPolicyVersion;
             Cols = cols;
             Rows = rows;

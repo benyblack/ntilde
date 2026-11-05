@@ -138,7 +138,7 @@ namespace Ntilde.Rendering
                     // Cap the palette index: sixel is remote-controlled input, and an
                     // arbitrary idx would grow the palette dictionary without bound
                     // (memory DoS). Modern extended implementations top out at 4096.
-                    if (parts.Length > 0 && int.TryParse(parts[0], out int idx) && idx >= 0 && idx < 4096)
+                    if (parts.Length > 0 && int.TryParse(parts[0], out int idx) && idx >= 0 && idx <= Ntilde.VT.SixelGeometry.DefaultMaxPaletteRegister)
                     {
                         if (parts.Length == 5) // Set color: idx; type; p1; p2; p3
                         {

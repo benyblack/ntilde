@@ -853,6 +853,11 @@ namespace Ntilde.Shell
                                 bitmap = deferred.GetBitmap(ref remainingImageDecodes, out bool pending);
                                 pendingImageDecode |= pending;
                             }
+                            if (img.ImageHandle is NativeSixelImage native)
+                            {
+                                bitmap = native.GetBitmap(ref remainingImageDecodes, out bool pending);
+                                pendingImageDecode |= pending;
+                            }
                             if (bitmap is { } bmp)
                             {
                                 SKRect destination = img.PreserveAspectRatio ? FitImageWithin(rect, bmp.Width, bmp.Height) : rect;

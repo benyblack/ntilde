@@ -21,10 +21,12 @@ public partial class TerminalBuffer
 
     private bool TryAdmitImageHandle(object handle)
     {
+        NativeSixelAllocation? allocation = (handle as INativeSixelImage)?.Allocation;
+        if (allocation is not null && !ReferenceEquals(allocation.Owner, NativeSixelBudget)) return false;
         lock (_imageHandleGate)
         {
             ImageHandleLifetime lifetime = _imageHandleLifetimes.GetValue(handle, static _ => new ImageHandleLifetime());
-            if (lifetime.HandedOff) return false;
+            if (lifetime.HandedOff || (allocation is not null && !allocation.Owner.TryAdmitPlacement(allocation))) return false;
             lifetime.MayBeShared |= lifetime.Admitted;
             lifetime.Admitted = true;
             lifetime.Pending = false;
@@ -34,7 +36,7 @@ public partial class TerminalBuffer
 
     private void RequireImageHandleAdmission(object handle)
     {
-        if (!TryAdmitImageHandle(handle)) throw new InvalidOperationException("An image handle already handed to the disposer cannot be admitted.");
+        if (!TryAdmitImageHandle(handle)) throw new InvalidOperationException("The image handle cannot be admitted to this buffer.");
     }
 
     private bool HasOtherImageReference(TerminalImage retiring)

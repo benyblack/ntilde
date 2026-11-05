@@ -271,8 +271,13 @@ invariant changes.
   ordinary headers retain exact v2 bytes. App owns the detached presenter density P,
   published with font/grid inputs and withdrawn on detach; requested capture scale S
   remains independent. Neither changes draw sizing or `renderDetails`/`imageDetails` v1.
-  Activation additionally requires native transforms/culling/crop, bounded decoder and
-  lifetime admission, and explicit mux/replay compatibility; see
+  Internal native test buffers now exercise predecode pixel/placement admission and
+  Rendering's fixed-storage decoder/owning handle. The 256-placement/64 MiB budget
+  spans deferred, live, retired and pinned owners, with conservative alias charges;
+  only successful actual disposal returns pixel credit. Source budgets and existing
+  snapshot gates remain their respective lifetime owners. Public selection stays
+  zero. Activation additionally requires native transforms/culling/crop and explicit
+  mux/replay compatibility; see
   [the staged contract](sixel-native-raster-foundation.md).
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
   Exception: `RuntimeForeground` and `RuntimeBackground` each read one immutable,
