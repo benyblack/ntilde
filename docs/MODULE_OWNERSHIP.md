@@ -279,7 +279,9 @@ invariant changes.
   only successful actual disposal returns pixel credit. Each budget binds once to
   its buffer generation. Native decode state is lock-free metadata, so VT pruning
   never waits for native decoding under the write lock; skipped in-flight sources
-  are revisited after completion or failure. Source budgets and existing
+  are revisited after completion or failure, including before reservation checks
+  when their own charge could refuse admission. Removal invalidates the view for
+  outside-lock disposal without returning credit early. Source budgets and existing
   snapshot gates remain their respective lifetime owners. Public selection stays
   zero. Activation additionally requires native transforms/culling/crop and explicit
   mux/replay compatibility; see

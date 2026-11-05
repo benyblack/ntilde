@@ -161,8 +161,9 @@ namespace Ntilde.VT
 
         private void HandleBoundedSixel(string dcs, NativeSixelBudget budget)
         {
-            // No decoder call, source retention or cursor effect precedes admission.
+            // Cleanup existing failed owners first; no new decode, input retention or cursor effect precedes reservation.
             if (ImageDecoder is not INativeSixelDecoder decoder) return;
+            _buffer.PruneBeforeNativeSixelAdmission();
             var (width, height) = SixelGeometry.Measure(dcs);
             NativeSixelAllocation? allocation = budget.TryReserve(width, height, dcs.Length);
             if (allocation is null) return;

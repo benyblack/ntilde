@@ -109,7 +109,8 @@ identities/placements and 64 MiB across live, deferred, retired and snapshot-pin
 owners. A budget binds once to one buffer generation and cannot be shared or
 migrated; handle retirement and snapshot gates stay under that same owner. Shared opaque handles add placement charges without charging their bitmap
 twice. These conservative alias charges remain until the shared owner is disposed.
-An admission refusal has no decoder, source-retention or cursor side effect. Hosts
+An admission refusal does not decode or retain the new input or move the cursor;
+cleanup of an existing failed/retired owner may invalidate the view for disposal. Hosts
 without the bounded decoder contract cannot fall back to the legacy decoder.
 
 The native decoder uses one fixed ushort register plane, a fixed 4096-entry uint
@@ -126,7 +127,11 @@ work, not whole-process RSS, allocator overhead or GPU caches.
 Native decode state is published without taking the native decode lock. Source
 pruning under the VT write lock observes one state value, preserves in-flight
 owners, and retries skipped expired sources after completion (including failure)
-even without another source eviction. Native decode captures its immutable input
+even without another source eviction. Native admission runs that bounded prune
+before checking the reservation cap, so a failed skipped owner cannot strand its
+own charge behind a refused admission. Removing it invalidates the view to schedule
+the outside-lock disposer; invalidation and drain do not return pixel credit.
+Native decode captures its immutable input
 before publishing in-flight state; metadata reads never wait for that work.
 
 The existing image-retirement registry and snapshot sessions protect native owners.

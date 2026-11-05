@@ -88,6 +88,22 @@ public partial class TerminalBuffer
         return handle is SixelSource || handle is IDeferredSixelImage { IsMaterialized: false };
     }
 
+    /// <summary>Failed skipped owners must progress even when their outstanding charge refuses the next reservation.</summary>
+    internal void PruneBeforeNativeSixelAdmission()
+    {
+        bool lockTaken = EnterWriteLockIfNeeded();
+        bool needsDisposalFrame;
+        try
+        {
+            PruneExpiredSixelSources();
+            needsDisposalFrame = !_retiredImageHandles.IsEmpty;
+        }
+        finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+        // A prior requested frame may have been blocked by a snapshot. Retry the real
+        // outside-lock consumer on later attempts; invalidation never returns credit.
+        if (needsDisposalFrame) Invalidate();
+    }
+
     private void PruneExpiredSixelSources()
     {
         long version = SixelSources.EvictionVersion;

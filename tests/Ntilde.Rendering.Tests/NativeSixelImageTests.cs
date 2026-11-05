@@ -111,7 +111,7 @@ public sealed class NativeSixelImageTests
     [InlineData(false)]
     public async Task Source_pruning_does_not_wait_for_native_decode_and_retries_a_failed_inflight_owner(bool hasData)
     {
-        var budget = new NativeSixelBudget();
+        var budget = new NativeSixelBudget(maxPlacements: 1);
         var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelSourceBudget(100, 1));
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = new SkiaImageDecoder() };
         parser.Process("\x1b[?80h\x1bPq#2~\x1b\\");
@@ -158,10 +158,43 @@ public sealed class NativeSixelImageTests
         Assert.False(image.NeedsSource);
         Assert.Equal(hasData, image.IsMaterialized);
         if (hasData) Assert.Equal(SKColors.Red, (await decode!)!.GetPixel(0, 0));
-        // No further eviction is necessary to revisit an expired owner skipped in flight.
-        buffer.PlaceSixelImage(null, 1, 1, replacement);
-        if (hasData) Assert.Single(buffer.Images);
-        else Assert.Empty(buffer.Images);
+        // The placement cap is full: cleanup must happen before another admission,
+        // without another source eviction. The failed owner still owes disposal credit.
+        long evictions = buffer.SixelSources.EvictionVersion;
+        int invalidations = 0;
+        buffer.OnInvalidate += () => Interlocked.Increment(ref invalidations);
+        int pinned = buffer.BeginSnapshotSession();
+        parser.Process("\x1bPq#2~\x1b\\");
+        Assert.Equal(evictions, buffer.SixelSources.EvictionVersion);
+        Assert.Equal((1, 24L), budget.Usage);
+        if (hasData)
+        {
+            Assert.Same(image, Assert.Single(buffer.Images).ImageHandle);
+            buffer.EndSnapshotSession(pinned);
+        }
+        else
+        {
+            Assert.Empty(buffer.Images);
+            Assert.True(invalidations > 0, "Removing the failed owner must schedule its real disposal drainer.");
+            var failed = new List<object>();
+            buffer.DrainRetiredImageHandles(failed, long.MaxValue);
+            Assert.Empty(failed); // An older snapshot can block the first requested disposal frame.
+            int beforeRetry = invalidations;
+            buffer.EndSnapshotSession(pinned);
+            parser.Process("\x1bPq#2~\x1b\\");
+            Assert.True(invalidations > beforeRetry, "A still-queued owner needs another disposal frame after unpinning.");
+            Assert.Equal(evictions, buffer.SixelSources.EvictionVersion);
+            buffer.DrainRetiredImageHandles(failed, long.MaxValue);
+            Assert.Same(image, Assert.Single(failed));
+            Assert.Equal((1, 24L), budget.Usage); // Invalidation and drain are not disposal.
+            image.Dispose();
+            Assert.Equal((0, 0L), budget.Usage);
+            parser.Process("\x1bPq#2~\x1b\\");
+            var recovered = Assert.IsType<NativeSixelImage>(Assert.Single(buffer.Images).ImageHandle);
+            Assert.NotSame(image, recovered);
+            int work = 1;
+            Assert.Equal(SKColors.Red, recovered.GetBitmap(ref work, out _)!.GetPixel(0, 0));
+        }
         buffer.ClearImages();
         var retired = new List<object>();
         buffer.DrainRetiredImageHandles(retired, long.MaxValue);
