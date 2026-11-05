@@ -413,6 +413,9 @@ namespace Ntilde.VT
                         else if (mode == 2) _buffer.EraseLineAll();
                     }
                     break;
+                case 'z': // DECERA - Erase Rectangular Area
+                    EraseRectangularArea(csi);
+                    break;
                 case 'X': // Erase Character (ECH)
                     if (bare)
                     {

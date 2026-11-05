@@ -204,6 +204,15 @@
       "description": "Modes 0, 1 and 2 alias ordinary erase while protected-cell storage (DECSCA) is unsupported. Undefined mode 3 is ignored; it never clears scrollback.",
       "matrixFeature": "DECSEL (? K)",
       "evidencePath": "tests/Ntilde.VT.Tests/SelectiveEraseHistoryTests.cs"
+    },
+    {
+      "key": "CSI:$z",
+      "mnemonic": "DECERA",
+      "support": "partial",
+      "description": "Erase a bounded stored-text rectangle with omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. Wide/scaled text follows existing atomic erasure. Image-plane erasure and protected-cell storage remain unqualified.",
+      "matrixFeature": "DECERA ($ z)",
+      "evidencePath": "tests/Ntilde.VT.Tests/RectangularEraseTests.cs",
+      "contractCase": "erase-rectangular-area"
     }
   ]
 }
