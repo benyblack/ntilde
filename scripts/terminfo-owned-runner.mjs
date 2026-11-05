@@ -270,7 +270,6 @@ async function retainGradingEvidence(output, runId, gradingBundle, upstream) {
         contractsVersion: asciiSgrContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
 }
 
-
 async function terminateLaunchedApp(app) {
     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return;
     app.kill('SIGTERM');
