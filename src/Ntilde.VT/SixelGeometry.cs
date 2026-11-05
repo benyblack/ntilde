@@ -7,6 +7,7 @@ public sealed record SixelCellSize(float WidthPx, float HeightPx);
 public static class SixelGeometry
 {
     public const int DefaultMaxPixelDimension = 2000;
+    public const int DefaultMaxPaletteRegister = 4095;
 
     /// <summary>Measures the painted extent using the same clipping and raster-size policy as the bitmap decoder.</summary>
     public static (int Width, int Height) Measure(ReadOnlySpan<char> dcs, int maxPixelDimension = DefaultMaxPixelDimension)

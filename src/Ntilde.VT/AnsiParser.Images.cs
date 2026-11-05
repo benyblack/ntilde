@@ -109,7 +109,23 @@ namespace Ntilde.VT
         /// <summary>Retain bounded source/placement state for persistent-session attach snapshots.</summary>
         public bool RetainSixelSources { get; set; }
 
+        /// <summary>
+        /// Routes internal native sessions through bounded admission; public legacy sessions retain their decoder path.
+        /// </summary>
         private void HandleSixel(string dcs)
+        {
+            if (_buffer.NativeSixelBudget is { } nativeBudget)
+            {
+                HandleBoundedSixel(dcs, nativeBudget);
+                return;
+            }
+            HandleLegacySixel(dcs);
+        }
+
+        /// <summary>
+        /// Preserves legacy decoder-reported reservation geometry, fallback metrics and optional source retention.
+        /// </summary>
+        private void HandleLegacySixel(string dcs)
         {
             var (pixelWidth, pixelHeight) = SixelGeometry.Measure(dcs);
             var dimensionOrigin = SixelReservationDimensionOrigin.SixelGeometry;
@@ -146,6 +162,60 @@ namespace Ntilde.VT
                 SixelPlacementProvenance.MetricOrigin(cellHeight, size is not null));
             if (_buffer.PlaceSixelImage(handle ?? source, (int)Math.Ceiling(pixelWidth / cw), (int)Math.Ceiling(pixelHeight / ch), source, provenance))
                 _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
+        }
+
+        /// <summary>
+        /// Reserves fixed decoder work before new source retention, decoding or cursor changes.
+        /// Unknown decoder contract failures retain credit rather than claiming disposal of resources they may own.
+        /// </summary>
+        private void HandleBoundedSixel(string dcs, NativeSixelBudget budget)
+        {
+            // Cleanup existing failed owners first; no new decode, input retention or cursor effect precedes reservation.
+            if (ImageDecoder is not INativeSixelDecoder decoder) return;
+            _buffer.PruneBeforeNativeSixelAdmission();
+            var (width, height) = SixelGeometry.Measure(dcs);
+            NativeSixelAllocation? allocation = budget.TryReserve(width, height, dcs.Length);
+            if (allocation is null) return;
+            SixelSource source = _buffer.SixelSources.CreateProvisional(dcs);
+            if (source.DecodeData is null)
+            {
+                source.Dispose();
+                budget.CompleteDisposal(allocation);
+                return;
+            }
+            INativeSixelImage? image;
+            try { image = decoder.DecodeNativeSixel(source, allocation); }
+            catch (Exception ex)
+            {
+                // An unknown host decoder may have allocated before throwing. Fail closed:
+                // do not credit resources whose actual disposal cannot be established.
+                TerminalLogger.Debug($"[SIXEL] Native decoder contract failed: {ex.Message}");
+                source.Dispose();
+                return;
+            }
+            if (image is null)
+            {
+                source.Dispose();
+                budget.CompleteDisposal(allocation);
+                return;
+            }
+            if (!ReferenceEquals(image.Allocation, allocation) || !ReferenceEquals(image.Source, source))
+            {
+                // Never dispose a possibly borrowed host handle to repair a contract violation.
+                source.Dispose();
+                return;
+            }
+            SixelCellSize? size = SixelCellSizeOverride;
+            float widthMetric = size?.WidthPx ?? CellWidth;
+            float heightMetric = size?.HeightPx ?? CellHeight;
+            float cw = float.IsFinite(widthMetric) && widthMetric > 0 ? Math.Max(1, widthMetric) : 10;
+            float ch = float.IsFinite(heightMetric) && heightMetric > 0 ? Math.Max(1, heightMetric) : 20;
+            var provenance = new SixelPlacementProvenance(width, height, SixelReservationDimensionOrigin.SixelGeometry,
+                cw, ch, SixelPlacementProvenance.MetricOrigin(widthMetric, size is not null),
+                SixelPlacementProvenance.MetricOrigin(heightMetric, size is not null));
+            if (_buffer.PlaceSixelImage(image, (int)Math.Ceiling(width / cw), (int)Math.Ceiling(height / ch), source, provenance))
+                _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
+            else _buffer.RetireUnplacedNativeSixel(image);
         }
 
         // APC: kitty graphics after a "Kitty:" or "K:" prefix, Sixel otherwise.

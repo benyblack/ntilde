@@ -4,6 +4,7 @@ public partial class TerminalBuffer
 {
     private TerminalImage? _placingSixel;
     private long _lastSixelSourceEviction;
+    private bool _retrySixelSourcePrune;
     public SixelSourceBudget SixelSources { get; init; } = new();
 
     /// <summary>Applies SIXEL geometry even on headless hosts. Never writes placeholder text or wraps an image horizontally.</summary>
@@ -13,11 +14,7 @@ public partial class TerminalBuffer
         bool lockTaken = EnterWriteLockIfNeeded();
         try
         {
-            if (source is not null)
-            {
-                PruneExpiredSixelSources();
-                if (source.Data is null && CanDiscardSixelHandle(handle)) handle = null;
-            }
+            handle = PrepareSixelPlacementHandle(handle, source);
             bool display = Modes.IsSixelDisplayMode;
             int row = display ? 0 : _cursorRow;
             int col = display ? 0 : _cursorCol;
@@ -43,6 +40,21 @@ public partial class TerminalBuffer
         return true;
     }
 
+    /// <summary>
+    /// Prunes expired pending sources and retires an unusable native owner without publishing a placement.
+    /// </summary>
+    private object? PrepareSixelPlacementHandle(object? handle, SixelSource? source)
+    {
+        if (source is null) return handle;
+        PruneExpiredSixelSources();
+        if (source.Data is not null || !CanDiscardSixelHandle(handle)) return handle;
+        if (handle is INativeSixelImage) QueueImageHandleRetirement(handle, disposeImmediately: true);
+        return null;
+    }
+
+    /// <summary>
+    /// Admits the handle before publishing it, then commits source retention with the alias already visible.
+    /// </summary>
     private bool TryAddSixelPlacement(TerminalImage? image)
     {
         if (image is null) return true;
@@ -62,18 +74,64 @@ public partial class TerminalBuffer
         return true;
     }
 
-    private static bool CanDiscardSixelHandle(object? handle) =>
-        handle is SixelSource || handle is IDeferredSixelImage { IsMaterialized: false };
+    /// <summary>
+    /// Queues only this buffer's unclaimed native owner after placement refusal; never retires a borrowed allocation.
+    /// </summary>
+    internal void RetireUnplacedNativeSixel(INativeSixelImage image)
+    {
+        if (ReferenceEquals(image.Allocation.Owner, NativeSixelBudget) && image.Allocation.Owner.IsUnclaimed(image.Allocation))
+            QueueImageHandleRetirement(image, disposeImmediately: true);
+    }
 
+    private static bool CanDiscardSixelHandle(object? handle) => CanDiscardSixelHandle(handle, out _);
+
+    /// <summary>
+    /// Reads native decode state once without its decode lock; in-flight and materialized owners must survive pruning.
+    /// </summary>
+    private static bool CanDiscardSixelHandle(object? handle, out bool decoding)
+    {
+        decoding = false;
+        if (handle is INativeSixelImage native)
+        {
+            NativeSixelDecodeState state = native.DecodeState;
+            decoding = state == NativeSixelDecodeState.Decoding;
+            return state is NativeSixelDecodeState.Pending or NativeSixelDecodeState.Failed or NativeSixelDecodeState.Disposed;
+        }
+        return handle is SixelSource || handle is IDeferredSixelImage { IsMaterialized: false };
+    }
+
+    /// <summary>Failed skipped owners must progress even when their outstanding charge refuses the next reservation.</summary>
+    internal void PruneBeforeNativeSixelAdmission()
+    {
+        bool lockTaken = EnterWriteLockIfNeeded();
+        bool needsDisposalFrame;
+        try
+        {
+            PruneExpiredSixelSources();
+            needsDisposalFrame = !_retiredImageHandles.IsEmpty;
+        }
+        finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+        // A prior requested frame may have been blocked by a snapshot. Retry the real
+        // outside-lock consumer on later attempts; invalidation never returns credit.
+        if (needsDisposalFrame) Invalidate();
+    }
+
+    /// <summary>
+    /// Retires expired discardable placements and remembers in-flight owners for a later prune without new eviction.
+    /// </summary>
     private void PruneExpiredSixelSources()
     {
         long version = SixelSources.EvictionVersion;
-        if (version == _lastSixelSourceEviction) return;
+        if (version == _lastSixelSourceEviction && !_retrySixelSourcePrune) return;
         _lastSixelSourceEviction = version;
+        _retrySixelSourcePrune = false;
         for (int i = _images.Count - 1; i >= 0; i--)
         {
             var image = _images[i];
-            if (image.SixelSource is not { Data: null } || !CanDiscardSixelHandle(image.ImageHandle)) continue;
+            if (image.SixelSource is not { Data: null }) continue;
+            bool discard = CanDiscardSixelHandle(image.ImageHandle, out bool decoding);
+            _retrySixelSourcePrune |= decoding;
+            if (!discard) continue;
             RetireImage(image, disposeImmediately: true);
             _images.RemoveAt(i);
         }

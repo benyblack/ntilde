@@ -9,6 +9,23 @@ namespace Ntilde.VT
         SixelSource Source { get; }
     }
 
+    /// <summary>Host contract for the separately budgeted native implementation; no unbounded decoder fallback.</summary>
+    internal interface INativeSixelDecoder
+    {
+        /// <summary>Must use only the allocation's fixed pixel/scratch limits; null owns no native resources.</summary>
+        INativeSixelImage? DecodeNativeSixel(SixelSource source, NativeSixelAllocation allocation);
+    }
+
+    internal enum NativeSixelDecodeState { Pending, Decoding, Materialized, Failed, Disposed }
+
+    /// <summary>The handle owns its reservation until successful actual disposal, including deferred and pinned time.</summary>
+    internal interface INativeSixelImage : IDeferredSixelImage, IDisposable
+    {
+        NativeSixelAllocation Allocation { get; }
+        /// <summary>One lock-free observation; VT never waits on native decoding while holding its write lock.</summary>
+        NativeSixelDecodeState DecodeState { get; }
+    }
+
     public interface IImageDecoder
     {
         object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight);
