@@ -36,15 +36,16 @@ namespace Ntilde.VT
 
             foreach ((string encoded, string name) in names)
             {
-                OnResponse?.Invoke(TryGetAdvertisedCapability(name, out TerminalCapability capability)
-                    ? FormatXtgettcapReply(encoded, capability)
-                    : XtgettcapFailure);
+                TerminalCapability? capability = AdvertisedCapability(name);
+                OnResponse?.Invoke(capability is null ? XtgettcapFailure : FormatXtgettcapReply(encoded, capability));
             }
         }
 
-        private bool TryGetAdvertisedCapability(string name, out TerminalCapability capability)
-            => TerminalCapabilities.TryGet(name, out capability)
-                && (!capability.RequiresClipboardWrite || ClipboardWriteAvailable?.Invoke() == true);
+        private TerminalCapability? AdvertisedCapability(string name)
+            => TerminalCapabilities.TryGet(name, out TerminalCapability? capability)
+                && (!capability.RequiresClipboardWrite || ClipboardWriteAvailable?.Invoke() == true)
+                ? capability
+                : null;
 
         private static string FormatXtgettcapReply(string encodedName, TerminalCapability capability)
         {

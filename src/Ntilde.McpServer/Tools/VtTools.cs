@@ -369,15 +369,17 @@ public sealed class VtTools
     {
         // Each representation validates its complete framing independently. A rejected
         // form cannot fall through to a globally normalized positive alias.
-        if (!TryGetDcsPayload(original, representation, out string payload))
-            return "DCS: " + SequenceTable["DCS"];
-        if (DecrqssReportPayloads.Contains(payload, StringComparer.Ordinal))
-            return "DCS: " + ContractSequenceTable["DCS:" + payload];
-        // XTGETTCAP: which names are answered is the parser's capability table; the
-        // catalogue entry describes the reply rules rather than one name.
-        return payload.StartsWith("+q", StringComparison.Ordinal)
-            ? "DCS: " + ContractSequenceTable["DCS:+q"]
-            : "DCS: " + SequenceTable["DCS"];
+        string description = SequenceTable["DCS"];
+        if (TryGetDcsPayload(original, representation, out string payload))
+        {
+            if (DecrqssReportPayloads.Contains(payload, StringComparer.Ordinal))
+                description = ContractSequenceTable["DCS:" + payload];
+            // XTGETTCAP: which names are answered is the parser's capability table; the
+            // catalogue entry describes the reply rules rather than one name.
+            else if (payload.StartsWith("+q", StringComparison.Ordinal))
+                description = ContractSequenceTable["DCS:+q"];
+        }
+        return "DCS: " + description;
     }
 
     private static bool TryGetDcsPayload(string original, DcsInputRepresentation representation, out string payload)
@@ -397,11 +399,25 @@ public sealed class VtTools
             _ => null,
         };
         if (framed is null) return false;
-        int open = framed.StartsWith("\x1bP", StringComparison.Ordinal) ? 2 : framed.StartsWith('\u0090') ? 1 : 0;
-        int close = framed.EndsWith("\x1b\\", StringComparison.Ordinal) ? 2 : framed.EndsWith('\u009c') ? 1 : 0;
+        int open = IntroducerLength(framed);
+        int close = TerminatorLength(framed);
         if (open == 0 || close == 0 || framed.Length < open + close) return false;
         payload = framed[open..^close];
         return true;
+    }
+
+    // Seven-bit ESC P or C1 DCS; zero when the text does not start with either.
+    private static int IntroducerLength(string framed)
+    {
+        if (framed.StartsWith("\x1bP", StringComparison.Ordinal)) return 2;
+        return framed.StartsWith('\u0090') ? 1 : 0;
+    }
+
+    // Seven-bit ESC \\ or C1 ST; zero when the text does not end with either.
+    private static int TerminatorLength(string framed)
+    {
+        if (framed.EndsWith("\x1b\\", StringComparison.Ordinal)) return 2;
+        return framed.EndsWith('\u009c') ? 1 : 0;
     }
 
     private static string? TextualFraming(string original)

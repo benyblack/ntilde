@@ -29,7 +29,7 @@ public sealed class TerminalCapabilityTests
             Assert.All(capability.Value, ch => Assert.InRange((int)ch, 0, 0x7E));
             Assert.Contains("tests/Ntilde.VT.Tests/TerminalCapabilityTests.cs", capability.Evidence);
             Assert.All(capability.Evidence, path => Assert.True(File.Exists(Path.Combine(root, path)), $"{capability.Name}: {path}"));
-            Assert.True(TerminalCapabilities.TryGet(capability.Name, out TerminalCapability found));
+            Assert.True(TerminalCapabilities.TryGet(capability.Name, out TerminalCapability? found));
             Assert.Same(capability, found);
         }
         Assert.False(TerminalCapabilities.TryGet("co", out _)); // names are case-sensitive
@@ -51,7 +51,7 @@ public sealed class TerminalCapabilityTests
     [Fact]
     public void Color_count_matches_the_palette_the_parser_accepts()
     {
-        Assert.True(TerminalCapabilities.TryGet("colors", out TerminalCapability colors));
+        Assert.True(TerminalCapabilities.TryGet("colors", out TerminalCapability? colors));
         int top = int.Parse(colors.Value, System.Globalization.CultureInfo.InvariantCulture) - 1;
         Assert.Equal($"\x1bP1$r0;38;5;{top}m\x1b\\", Reply($"\x1b[38;5;{top}m\x1bP$qm\x1b\\"));
         Assert.Equal("\x1bP1$r0m\x1b\\", Reply($"\x1b[38;5;{top + 1}m\x1bP$qm\x1b\\"));
@@ -277,7 +277,7 @@ public sealed class TerminalCapabilityTests
 
     private static string Expand(string name, params object[] parameters)
     {
-        Assert.True(TerminalCapabilities.TryGet(name, out TerminalCapability capability));
+        Assert.True(TerminalCapabilities.TryGet(name, out TerminalCapability? capability));
         Assert.Equal(TerminalCapabilityKind.Text, capability.Kind);
         return TerminfoExpander.Expand(capability.Value, parameters);
     }

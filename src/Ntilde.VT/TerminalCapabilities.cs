@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Ntilde.VT;
 
 /// <summary>The terminfo type of a <see cref="TerminalCapability"/>.</summary>
@@ -75,6 +77,6 @@ public static class TerminalCapabilities
         All.ToDictionary(capability => capability.Name, StringComparer.Ordinal);
 
     /// <summary>Looks a capability up by its exact, case-sensitive terminfo name.</summary>
-    public static bool TryGet(string name, out TerminalCapability capability)
-        => ByName.TryGetValue(name, out capability!);
+    public static bool TryGet(string name, [MaybeNullWhen(false)] out TerminalCapability capability)
+        => ByName.TryGetValue(name, out capability);
 }
