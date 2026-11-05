@@ -4,7 +4,7 @@ import { privateClipboardNonce, privateClipboardRequest } from './private-clipbo
 import { observerEndpoint, snapshotHash } from './agent-observer.mjs';
 import { createProcessBudget } from './runtime.mjs';
 import { buildPrivateClipboardReport, checkPrivateClipboard, privateClipboardBinding, privateClipboardCallbackResult,
-    privateClipboardData, privateClipboardFailureFacts, validatePrivateClipboardOwnership } from './private-clipboard.mjs';
+    privateClipboardData, privateClipboardEvidenceData, privateClipboardFailureFacts, validatePrivateClipboardOwnership } from './private-clipboard.mjs';
 import { queryScreen } from './queries.mjs';
 const check = checkPrivateClipboard;
 
@@ -16,6 +16,7 @@ export class OwnedPrivateClipboardObserver {
     #binding; #bridge; #attest; #capture; #activeBudget; #clock; #frames = []; #callbacks = [];
     #busy = false; #baseline; #failure; #failed = false; #finished = false; #report;
 
+    /** Bind only explicit parent callbacks and fixed process facts; construction itself performs no App or clipboard operation. */
     constructor({ binding, attest, capture, appData, rpc = privateClipboardRequest, endpoint = observerEndpoint,
         clock = () => performance.now() }) {
         this.#binding = privateClipboardBinding(binding);
@@ -126,11 +127,14 @@ export class OwnedPrivateClipboardObserver {
         if (budget && !this.#busy) this.#activeBudget = budget;
         return this.#bridge.abort(error);
     }
+    /** Completion requires the final close and no prior control, overlap, capture or restoration failure. */
     get complete() { return this.#finished && !this.#failed; }
+    /** Copy every retained partial/complete frame under the fixed per-screen and shared byte budgets, without exposing mutable internals. */
     get journal() {
-        return privateClipboardData({ binding: this.#binding, controller: this.#bridge.evidence(),
+        return privateClipboardEvidenceData({ binding: this.#binding, controller: this.#bridge.evidence(),
             frames: this.#frames, callbackResults: this.#callbacks, failed: this.#failed, complete: this.complete,
             ...(this.#failed ? { failure: privateClipboardFailureFacts(this.#failure) } : {}) });
     }
-    get report() { check(this.complete); return privateClipboardData(this.#report); }
+    /** Return a bounded independent report copy only after successful final close; partial or poisoned lifecycles always throw. */
+    get report() { check(this.complete); return privateClipboardEvidenceData(this.#report); }
 }

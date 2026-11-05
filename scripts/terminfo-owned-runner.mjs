@@ -49,7 +49,7 @@ import { buildHistoryReport } from './terminfo/history.mjs';
 import { completeOwnedReceipt } from './terminfo/receipt.mjs';
 import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMode } from './terminfo/terminal-output.mjs';
 
-import { abortPrivateClipboardWithFacts, privateClipboardFailureFacts } from './terminfo/private-clipboard.mjs';
+import { abortPrivateClipboardWithFacts, privateClipboardFailureFacts, privateClipboardEvidenceJson } from './terminfo/private-clipboard.mjs';
 import { OwnedPrivateClipboardObserver } from './terminfo/private-clipboard-capture.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './terminfo/private-clipboard-worker.mjs';
 
@@ -65,6 +65,12 @@ async function retainPrivateClipboardAbort(state, error, phase, retain) {
     await abortPrivateClipboardWithFacts(state, error, phase, createProcessBudget(4000));
     retain();
 }
+/** Keep at most eight privacy-safe journal-write failures; retention failure never grants completion or skips shutdown. */
+function recordPrivateClipboardRetentionFailure(state, phase, error) {
+    state.retentionFailures ??= [];
+    if (state.retentionFailures.length < 8) state.retentionFailures.push({ phase, error: privateClipboardFailureFacts(error) });
+    else state.retentionFailuresTruncated = true;
+}
 
 /** Retain privacy-safe private failure facts and return an Error preserving the original cause. */
 function retainOwnedFailure(output, error, privateState) {
@@ -75,6 +81,8 @@ function retainOwnedFailure(output, error, privateState) {
         failure.primary = privateClipboardFailureFacts(error);
         failure.privateClipboardFailures = privateState.failures ?? [];
         failure.failureFactsTruncated = privateState.failureFactsTruncated === true;
+        failure.privateClipboardRetentionFailures = privateState.retentionFailures ?? [];
+        failure.retentionFailuresTruncated = privateState.retentionFailuresTruncated === true;
     }
     writeJson(join(output, 'failure.json'), failure);
     return new Error(`${message} Evidence retained in ${output}`, { cause: error });
@@ -84,6 +92,19 @@ function retainOwnedFailure(output, error, privateState) {
 async function captureOwnedCleanup(action) {
     try { await action(); return { failed: false }; }
     catch (error) { return { failed: true, error }; }
+}
+/** Attempt every source-known failure journal in order, preserving original and falsy save failures before process cleanup. */
+async function retainOwnedFailureSequence(error, actions) {
+    let current = error;
+    for (const action of actions) {
+        try {
+            const replacement = await action(current);
+            if (replacement !== undefined) current = replacement;
+        } catch (retention) {
+            current = new AggregateError([current, retention], 'Owned failure evidence retention failed.');
+        }
+    }
+    return current;
 }
 /** Run after finally: aggregate the original run/cause and shutdown failure without truthiness tests. */
 function throwOwnedRunFailures(run, cleanup) {
@@ -798,7 +819,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const retainPrivateClipboardJournal = () => {
             if (!privateClipboardState?.observer) return;
             // The expected-only journal contains synthetic seed/nonce values, never arbitrary clipboard data.
-            writeFileSync(join(output, 'private-clipboard-journal.json'), JSON.stringify({ ...privateClipboardState.observer.journal, ...(privateClipboardState.failures?.length ? { failures: privateClipboardState.failures, failureFactsTruncated: privateClipboardState.failureFactsTruncated === true } : {}) }, null, 2) + '\n', { mode: 0o600 });
+            writeFileSync(join(output, 'private-clipboard-journal.json'), privateClipboardEvidenceJson({ ...privateClipboardState.observer.journal, ...(privateClipboardState.failures?.length ? { failures: privateClipboardState.failures, failureFactsTruncated: privateClipboardState.failureFactsTruncated === true } : {}) }), { mode: 0o600 });
         };
         /** Independently reread live process, source, binary, PTY and birth facts inside one shared event budget. */
         const attestPrivateClipboard = (state, budget) => {
@@ -835,7 +856,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await privateClipboardState.observer.handle(request.frame, budget);
                 if (request.frame.kind !== 'finish') return result;
                 const report = privateClipboardState.observer.report, file = 'private-clipboard-observations.json';
-                writeJson(join(output, file), report);
+                writeFileSync(join(output, file), privateClipboardEvidenceJson(report), { mode: 0o600 });
                 privateClipboardEvidence = { runId, suiteId: ownedPrivateClipboardSuiteId, file,
                     sha256: hash(readFileSync(join(output, file))), counts: { completedProbes: 3, acceptedWrites: 2 }, complete: true };
                 return privateClipboardEvidence;
@@ -934,10 +955,12 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             } else throw new Error('Unknown owner request.');
             return { ok: true, ownerPid: app.pid, ...(request.kind === 'prove' ? { privateClipboard: true, originalTerminalState: proofs[0].privateClipboard.originalTerminalState } : {}) };
         };
+        /** Bound owner input to 8 KiB and authenticate before routing; asynchronous refusal must never bypass owned cleanup. */
         const server = createServer(socket => {
             let buffer = '';
             socket.setTimeout(5000, () => socket.destroy());
             socket.on('error', () => {});
+            /** Consume one authenticated request; contain failed journal writes and still emit the closed refusal response. */
             socket.on('data', async chunk => {
                 buffer += chunk;
                 if (buffer.length > 8192) return socket.destroy();
@@ -968,7 +991,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 } catch (error) {
                     if (authenticated && privateClipboardState?.observer) {
                         rejectDone(error);
-                        await retainPrivateClipboardAbort(privateClipboardState, error, 'authenticatedOwnerDispatch', retainPrivateClipboardJournal);
+                        try { await retainPrivateClipboardAbort(privateClipboardState, error, 'authenticatedOwnerDispatch', retainPrivateClipboardJournal); }
+                        catch (retention) { recordPrivateClipboardRetentionFailure(privateClipboardState, 'authenticatedOwnerDispatch', retention); }
                     }
                     rejectQueryOwnerRequest({ authenticated, observer: queryState?.observer, error, request, reject: rejectDone });
                     socket.end(JSON.stringify(ownerFailure(error, Boolean(privateClipboardState))) + '\n');
@@ -1041,10 +1065,12 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
-            await retainPrivateClipboardAbort(privateClipboardState, error, 'runFailure', retainPrivateClipboardJournal);
-            queryState?.observer?.abort(error);
-            retainQueryJournal();
-            runOutcome = { failed: true, error: retainOwnedFailure(output, error, privateClipboardState) };
+            runOutcome = { failed: true, error };
+            runOutcome.error = await retainOwnedFailureSequence(error, [
+                async () => { await retainPrivateClipboardAbort(privateClipboardState, error, 'runFailure', retainPrivateClipboardJournal); },
+                () => { queryState?.observer?.abort(error); retainQueryJournal(); },
+                reason => retainOwnedFailure(output, reason, privateClipboardState),
+            ]);
         } finally {
             clearTimeout(deadline);
             preserveScratch = true;

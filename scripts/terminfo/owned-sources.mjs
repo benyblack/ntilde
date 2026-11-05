@@ -169,11 +169,13 @@ export function assertRetainedSourceClosure(directory, inventory) {
         }
     }
 }
+/** Rehash every fixed current input, including nonexecuted C# references; any missing or changed byte prevents completion. */
 export function assertOwnedSourcesUnchanged(root, context) {
     for (const [key, file] of Object.entries(ownedSourceFiles)) {
         if (digest(readFileSync(ownedSourcePath(root, file))) !== context[key]) throw new Error('Owned source changed before completion: ' + file);
     }
 }
+/** Bind the private temporary root, exact v12 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');

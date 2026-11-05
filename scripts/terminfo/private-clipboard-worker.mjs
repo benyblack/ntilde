@@ -5,6 +5,7 @@ export const ownedPrivateClipboardPolicy = 'private-app-storage-parent-transacti
 export const ownedPrivateClipboardSuiteId = 'ntilde-owned-private-clipboard-v1';
 const profile = 'ntilde-private-app-v1';
 
+/** Refuse extra, missing or inherited owner-result fields before the worker consumes authority or a completion binding. */
 function exact(value, keys) {
     if (!value || typeof value !== 'object' || Array.isArray(value)
         || Object.keys(value).length !== keys.length || !keys.every(key => Object.hasOwn(value, key)))

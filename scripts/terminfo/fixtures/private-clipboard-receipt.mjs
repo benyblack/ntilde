@@ -12,7 +12,7 @@ import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
 import { privateClipboardOutputPolicy } from '../terminal-output.mjs';
-import { emptyPrivateClipboardReply } from '../private-clipboard.mjs';
+import { emptyPrivateClipboardReply, privateClipboardEvidenceJson } from '../private-clipboard.mjs';
 import { completeOwnedReceipt } from '../receipt.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Clone immutable v11 data into a private temporary directory, add a synthetic 17th suffix and always remove the copy. */
@@ -45,7 +45,8 @@ export async function privateClipboardReceiptFixture(action) {
         const api = await privateClipboardFixture({ binding, processFacts: process, initialScreen: query.initial.before.screen,
             atStart: Date.parse(query.seal.ownership.at) + 1 });
         const report = await api.run(), file = 'private-clipboard-observations.json';
-        write(file, report); write('private-clipboard-journal.json', api.observer.journal);
+        writeFileSync(join(output, file), privateClipboardEvidenceJson(report));
+        writeFileSync(join(output, 'private-clipboard-journal.json'), privateClipboardEvidenceJson(api.observer.journal));
         const privateBinding = { runId: context.runId, suiteId: ownedPrivateClipboardSuiteId, file,
             sha256: hash(readFileSync(join(output, file))), counts: { completedProbes: 3, acceptedWrites: 2 }, complete: true };
         evidence.privateClipboardEvidence = privateBinding;

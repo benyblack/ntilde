@@ -33,6 +33,7 @@ export function adaptCollector(source, ownerModulePath, options) {
     if (privateMode) source = preparePrivateClipboardSource(source).source;
     // A shebang is only valid on the first line; the adapter prepends an import.
     source = source.replace(/^#![^\n]*/, '// Upstream CLI shebang removed for module import.');
+    /** Replace exactly one pinned upstream seam; any absent or repeated match refuses derivation. */
     function replaceOnce(before, after) {
         if (source.split(before).length !== 2) throw new Error('Pinned collector adapter seam changed.');
         source = source.replace(before, after);
@@ -70,6 +71,7 @@ export async function collectNtildeRun(assertion) {
 }
 `;
     if (!privateMode) return adapted;
+    /** Apply one private-only rewrite to the derived text without changing the default adapter or running either bundle. */
     const replacePrivate = (before, after) => {
         if (adapted.split(before).length !== 2) throw new Error('Pinned private collector seam changed.');
         adapted = adapted.replace(before, after);

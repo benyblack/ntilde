@@ -51,6 +51,15 @@ with independent ownership checks on both sides of every capture. It preserves
 attributes, stored cells, cursor state, exposed buffer state and margins.
 Reverse-video memory and hidden parser/session state are not exposed or claimed.
 
+The two new private JSON files use deterministic compact serialization and keep
+every independently captured sample. Their byte cap remains 16 MiB. Only the
+fixed 22-frame/44-screen paths receive separate node allowances derived from
+the existing viewport/run/history limits; other metadata retains its 250,000-node
+allowance. Depth 32, plain-data admission and a shared 16 MiB string budget still
+apply, together with the actual serialized-file cap. A dense valid screen cannot
+exhaust another sample's node allowance, and extra frames or malformed screens
+cannot obtain additional allowances.
+
 Fresh checks include the original App/worker lineage, UID, exact executable,
 private run markers, PTY and device identity, source/input hashes and binary
 hashes. UTC/C-locale `ps lstart` is additional second-resolution corroboration;
@@ -63,6 +72,10 @@ Original and separate abort/restoration failures remain in the failed journal.
 Bounded type, message-prefix digest/length and aggregate/cause facts preserve
 failure correlation without invoking exception getters or retaining arbitrary
 exception text, clipboard values or input bytes. Truncation is explicit.
+Journal-save failure is also contained in the socket listener so the refusal
+reply and independent process shutdown still run. Bounded save-failure facts and
+explicit original/save/shutdown outcomes remain separate, including falsy reasons;
+one failed evidence write does not prevent the other failure journals being attempted.
 
 Only the fixed seed and source-known fresh nonce values enter the journal.
 Callback results are admitted as provisional expected-only objects; the original
@@ -98,6 +111,8 @@ requires App/worker cleanup, fixture removal and captured-source removal.
 For schema 12, cell, SGR, RGB, rendition and cursor reports are rebuilt from
 their original journals and compared in full, including identities and counts.
 Their existing stored negatives are preserved; historical receipt paths are unchanged.
+An allowed pre-start unavailable marker cannot coexist with retained observations
+for that same optional suite.
 A private declaration, import, source alias, partial journal or summary cannot
 be coherently stripped into a schema 11 receipt. Typed earlier unavailable
 reports remain historical facts; a started private fixture has no unavailable

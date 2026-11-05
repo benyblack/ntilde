@@ -119,12 +119,17 @@ export async function terminateRecordedWorker(recorded, runId) {
     throw new Error(`Owned worker ${recorded.pid} did not exit after SIGKILL.`);
 }
 
-/** Exchange a bounded private capability request; only source-known initial refusals carry optional codes. */
+/**
+ * Exchange one newline-delimited capability request on the configured owner socket.
+ * The five-second socket timeout and per-kind response cap reject missing/oversized replies;
+ * only the explicit initial-unavailability codes survive a rejected owner response.
+ */
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(config.socket);
         socket.setEncoding('utf8');
         let buffer = '';
+        /** Destroy this request's socket before resolving its result or rejecting the supplied error. */
         const finish = (error, result) => {
             socket.destroy();
             if (error) reject(error); else resolve(result);
@@ -134,6 +139,7 @@ export function requestOwner(config, kind, extra = {}) {
         socket.on('connect', () => socket.write(JSON.stringify({
             ...extra, kind, token: config.token, runId: config.runId, workerPid: process.pid,
         }) + '\n'));
+        /** Parse the first capped response line; malformed or refused replies never become ownership evidence. */
         socket.on('data', chunk => {
             buffer += chunk;
             const limit = /^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|resize|saved|metadata|input|images)-/.test(kind) ? 512 * 1024 : 16384;
@@ -187,6 +193,12 @@ export function assertPrivateFile(path) {
     }
 }
 
+/**
+ * Bind the worker's actual stdin/stdout device to a freshly acknowledged parent proof.
+ * Refuse a foreign launch environment, executable, ancestry, UID or run marker before
+ * returning the binding; private mode also requires the original kernel-mode token.
+ * These process observations do not create an immutable PID or held PTY lease.
+ */
 export async function verifyNtildeOutput(config, out) {
     if (process.platform !== 'darwin') throw new Error('This owned adapter currently supports macOS.');
     if (process.env.NTILDE_APPDATA_ROOT !== config.appData || process.env.TERMINFO_RUN_ID !== config.runId

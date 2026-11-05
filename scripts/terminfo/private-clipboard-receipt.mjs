@@ -53,7 +53,10 @@ function checkPrivatePrefixes(output, evidence, runId, paneId) {
         check(binding?.runId === runId && binding.suiteId === spec.suiteId && [observationsFile, unavailableFile].includes(binding.file));
         const data = bytes(output, binding.file); check(hash(data) === binding.sha256);
         const report = JSON.parse(data), frames = prefixFrames(output, spec.prefix);
-        if (binding.file === unavailableFile) { checkPrefixUnavailable(report, binding, frames, spec, runId); continue; }
+        if (binding.file === unavailableFile) {
+            check(!present(join(output, observationsFile)));
+            checkPrefixUnavailable(report, binding, frames, spec, runId); continue;
+        }
         check(binding.status === undefined && binding.reason === undefined && !present(join(output, unavailableFile)));
         const derived = spec.build(frames, runId), counts = {};
         for (const item of derived.observations) counts[item.result] = (counts[item.result] ?? 0) + 1;

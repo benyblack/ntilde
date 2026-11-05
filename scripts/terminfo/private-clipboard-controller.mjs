@@ -23,6 +23,7 @@ class ClipboardControlPromise extends Promise {
     }
 }
 
+/** Observe real consumer assimilation while handling ignored rejections internally; return a native-species instrumented Promise. */
 export function clipboardControlPromise(promise, consume) {
     const result = new ClipboardControlPromise(promise, consume);
     // Handling an ignored rejection internally is not caller consumption.

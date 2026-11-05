@@ -6,6 +6,27 @@ import * as model from './private-clipboard.mjs';
 const hash = value => createHash('sha256').update(value).digest('hex');
 const source = readFileSync(new URL('../terminfo-owned-runner.mjs', import.meta.url), 'utf8');
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+for (const primary of [new Error('operation failed'), undefined]) test('actual socket listener contains journal retention rejection, primary=' + typeof primary, async () => {
+    let listener, refused = false, ended = false;
+    const retained = new Error('journal save failed'), rejected = [];
+    const socket = { setTimeout() {}, on(name, callback) { if (name === 'data') listener = callback; },
+        removeAllListeners() {}, end() { ended = true; }, destroy() {} };
+    const start = source.indexOf('        const server = createServer(socket => {');
+    const end = source.indexOf('        let deadline;', start);
+    assert.ok(start > 0 && end > start);
+    const dependencies = { createServer(callback) { callback(socket); return {}; }, token: 'c'.repeat(32), runId: 'a'.repeat(32),
+        app: { pid: 42, exitCode: null, signalCode: null }, timingSafeEqual: (a, b) => a.equals(b),
+        assertExecutableUnchanged() { throw primary; }, executable: '/synthetic/Ntilde', image: {},
+        privateClipboardState: { observer: {} }, rejectDone(error) { rejected.push(error); },
+        retainPrivateClipboardAbort: async () => { throw retained; }, retainPrivateClipboardJournal() {},
+        rejectQueryOwnerRequest() { refused = true; }, queryState: undefined, ownerFailure: () => ({ ok: false }),
+        privateClipboardFailureFacts: model.privateClipboardFailureFacts };
+    const helper = source.slice(source.indexOf('function recordPrivateClipboardRetentionFailure('), source.indexOf('/** Retain privacy-safe'));
+    new Function(...Object.keys(dependencies), helper + source.slice(start, end))(...Object.values(dependencies));
+    await assert.doesNotReject(listener(Buffer.from(JSON.stringify({ token: dependencies.token, runId: dependencies.runId }) + '\n')));
+    assert.equal(rejected[0], primary); assert.equal(refused, true); assert.equal(ended, true);
+    assert.equal(dependencies.privateClipboardState.retentionFailures[0].error.messageSha256, hash(retained.message));
+});
 for (const phase of ['authenticatedOwnerDispatch', 'runFailure']) test('actual parent ' + phase + ' catch retains primary plus abort/restoration failure', async () => {
     const primary = new Error('operation failed'), restore = new Error('restore failed');
     const combined = new AggregateError([primary, restore], 'operation and restoration failed');
@@ -82,4 +103,23 @@ for (const newline of ['\n', '\r\n']) for (const primary of [new Error('original
     const run = new AsyncFunction(...Object.keys(dependencies), actualSource.slice(helperStart, helperEnd) + actualSource.slice(start, end));
     await assert.rejects(run(...Object.values(dependencies)), error => error instanceof AggregateError && error.errors[0] === wrapped
         && error.errors[0].cause === primary && error.errors[1] === cleanup);
+});
+
+for (const primary of [new Error('original operation failed'), undefined]) test('actual lifecycle attempts cleanup and preserves journal failure plus primary=' + typeof primary, async () => {
+    const retention = new Error('journal retention failed'); let cleaned = false, retained;
+    const start = source.indexOf('        let deadline;');
+    const ending = /\r?\n    } catch \(error\) {\r?\n        retainPreparationFailure/.exec(source.slice(start));
+    assert.ok(start > 0 && ending && ending.index > 0);
+    const end = start + ending.index;
+    const dependencies = { done: Promise.reject(primary), server: { once() {}, listen(_socket, resolve) { resolve(); } },
+        config: { socket: '/synthetic' }, privateClipboardState: { observer: {} }, queryState: undefined,
+        retainPrivateClipboardJournal() {}, retainQueryJournal() {}, retainPrivateClipboardAbort: async () => { throw retention; },
+        retainOwnedFailure: (_output, reason) => { retained = new Error('retained failure', { cause: reason }); return retained; },
+        cleanupOwnedRun: async () => { cleaned = true; throw undefined; }, output: '/synthetic', workerIdentity: undefined,
+        runId: 'a'.repeat(32), app: undefined, proofs: [], completed: false, scratch: '/synthetic', preserveScratch: false };
+    const helperStart = source.indexOf('async function captureOwnedCleanup('), helperEnd = source.indexOf('/** Preserve only', helperStart);
+    const run = new AsyncFunction(...Object.keys(dependencies), source.slice(helperStart, helperEnd) + source.slice(start, end));
+    await assert.rejects(run(...Object.values(dependencies)), error => cleaned && error instanceof AggregateError
+        && error.errors[0] === retained && error.errors[1] === undefined && retained.cause instanceof AggregateError
+        && retained.cause.errors[0] === primary && retained.cause.errors[1] === retention);
 });

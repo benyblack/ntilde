@@ -62,6 +62,7 @@ async function checkCapturedImports(sources) {
         }
     }
 }
+/** Copy regular fixed-scope inputs into an exclusive read-only tree, hash its manifest and check literal dependencies before execution. */
 async function capture(root) {
     const input = readFileSync(join(repo, 'scripts/terminfo/owned-source-inventory.json'));
     const inventory = JSON.parse(input), hashes = {}, sources = new Map();
@@ -80,6 +81,7 @@ async function capture(root) {
     await checkCapturedImports(sources);
     return digest(manifest);
 }
+/** Import only the verified captured runner; restore environment/signal handlers and retire the snapshot on every exit. */
 async function launch() {
     let root, interrupted;
     const note = signal => { interrupted ??= signal; process.env.NTILDE_TERMINFO_PENDING_SIGNAL = signal; };

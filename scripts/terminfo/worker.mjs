@@ -22,7 +22,11 @@ import { collectHistory } from './history-cases.mjs';
 import { collectColors } from './color-cases.mjs';
 import { collectPixels } from './pixels-cases.mjs';
 
-/** Bound failed worker evidence to eight nested/aggregate reasons and a caller-side 64 KiB cap; keep falsy causes. */
+/**
+ * Format worker-owned failures, including falsy reasons and up to eight entries per
+ * AggregateError at each of eight nesting levels. Each reason contributes at most
+ * 8,192 characters; the caller separately truncates the final retained text to 65,536.
+ */
 function retainedFailure(error, depth = 0) {
     if (depth >= 8) return '[nested failure limit]';
     const text = String(error?.stack ?? error).slice(0, 8192);
@@ -38,6 +42,7 @@ try {
     const fence = terminalFence(process.stdin, process.stdout);
     let restoreOutput;
     const restore = ownedTerminalRestorer([() => restoreOutput?.(), () => fence.dispose(),
+        /** Require the pre-fixture kernel-mode token in private mode; other runs use the legacy restorers. */
         () => { if (config.privateClipboard === true) restoreOwnedTerminalState(binding.tabTty, binding.originalTerminalState); }]);
     let run, primary, failed = false, restoreFailure, restoreFailed = false;
     try {

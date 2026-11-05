@@ -6,6 +6,7 @@ import { createPrivateClipboardWorker, ownedPrivateClipboardSuiteId } from '../p
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
 import { preparePrivateClipboardCallback } from '../private-clipboard-source.mjs';
 import { stockClipboardCallback } from './private-clipboard-callback.mjs';
+import { privateClipboardEvidenceJson } from '../private-clipboard.mjs';
 
 export const privateRunId = 'a'.repeat(32), privatePaneId = '11111111-1111-1111-1111-111111111111';
 const fixtureId = '22222222-2222-2222-2222-222222222222';
@@ -53,7 +54,7 @@ export async function privateClipboardFixture(options = {}) {
         api.ownerFrames.push(structuredClone(frame));
         const result = await api.observer.handle(frame, () => 4000);
         if (frame.kind !== 'finish') return result;
-        const bytes = JSON.stringify(api.observer.report, null, 2) + '\n';
+        const bytes = privateClipboardEvidenceJson(api.observer.report);
         return { runId: selectedRun, suiteId: ownedPrivateClipboardSuiteId, file: 'private-clipboard-observations.json',
             sha256: hash(bytes), counts: { completedProbes: 3, acceptedWrites: 2 }, complete: true };
     }, selectedRun);

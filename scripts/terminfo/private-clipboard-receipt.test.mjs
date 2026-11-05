@@ -14,7 +14,11 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { capturedV11SourceFiles } from './owned-sources.mjs';
 import { historicalArchive } from './fixtures/captured-sources.mjs';
+import { rgbCases } from './rgb.mjs';
+import { renditionCases } from './rendition.mjs';
+import { cursorCases } from './cursor.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+/** Coherently rehash synthetic report, journal and raw bindings so refusal tests cannot pass merely because an outer digest is stale. */
 function rewriteReport(f) {
     f.write('private-clipboard-observations.json', f.report);
     f.evidence.privateClipboardEvidence.sha256 = hash(readFileSync(join(f.output, 'private-clipboard-observations.json')));
@@ -84,3 +88,19 @@ for (const [label, mutate] of [
     ['changed cursor counts', f => { f.evidence.cursorEvidence.counts = { passed: 9 }; }],
     ['missing SGR journal entry', f => { const file = join(f.output, 'sgr-snapshots.jsonl'); const lines = readFileSync(file, 'utf8').trimEnd().split('\n'); lines.pop(); writeFileSync(file, lines.join('\n') + '\n'); }],
 ]) test('schema12 original prefix replay refuses ' + label, () => privateClipboardReceiptFixture(f => { mutate(f); assert.throws(f.finish); }));
+
+for (const [prefix, cases] of [['rgb', rgbCases], ['rendition', renditionCases], ['cursor', cursorCases]])
+    test('schema12 refuses simultaneous observations beside a valid ' + prefix + ' unavailable marker', () => privateClipboardReceiptFixture(f => {
+        const observations = readFileSync(join(f.output, prefix + '-observations.json'));
+        rmSync(join(f.output, prefix + '-observations.json'));
+        f.write(prefix + '-unavailable.json', { schemaVersion: 1, runId: f.context.runId,
+            suiteId: f.evidence[prefix + 'Evidence'].suiteId, status: 'unavailable', reason: 'screenDetailsUnavailable',
+            fixtureStarted: false, plannedExperiments: cases.length });
+        writeFileSync(join(f.output, prefix + '-snapshots.jsonl'), '');
+        Object.assign(f.evidence[prefix + 'Evidence'], { file: prefix + '-unavailable.json', status: 'unavailable',
+            reason: 'screenDetailsUnavailable', counts: {}, sha256: hash(readFileSync(join(f.output, prefix + '-unavailable.json'))) });
+        assert.equal(f.finish().schemaVersion, 12, 'the marker alone is a valid original pre-start refusal');
+        rmSync(join(f.output, 'cell-receipt.json'));
+        writeFileSync(join(f.output, prefix + '-observations.json'), observations);
+        assert.throws(f.finish);
+    }));

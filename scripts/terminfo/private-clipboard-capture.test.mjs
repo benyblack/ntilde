@@ -1,7 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { privateClipboardFixture } from './fixtures/private-clipboard-owned.mjs';
-import { buildPrivateClipboardReport, privateClipboardData } from './private-clipboard.mjs';
+import { buildPrivateClipboardReport, privateClipboardData, privateClipboardEvidenceData, privateClipboardEvidenceJson } from './private-clipboard.mjs';
+import { queryScreen } from './queries.mjs';
+
+test('44 valid maximum-detail screens complete and retain the independent full journal', async () => {
+    const base = await privateClipboardFixture(), screen = structuredClone(base.screen), cells = screen.rows * screen.cols;
+    screen.cellDetails = Array.from({ length: 1024 }, (_, index) => ({ ...screen.cellDetails[0],
+        count: index === 1023 ? cells - 1023 : 1, flags: 512 | 16384, fg: index % 2, foregroundArgb: null }));
+    screen.attributeRuns = screen.cellDetails.map(({ count, flags, fg, bg }) => ({ count, flags, fg, bg }));
+    assert.deepEqual(queryScreen(screen), screen, 'the dense source screen must satisfy the existing App-state contract');
+    const api = await privateClipboardFixture({ initialScreen: screen }), report = await api.run();
+    assert.equal(report.frames.length, 22); assert.equal(api.observer.journal.frames.length, 22);
+    assert.equal(api.observer.report.frames[21].after.screen.cellDetails.length, 1024);
+    assert.equal(api.observer.journal.frames[0].before.screen.cellDetails.length, 1024);
+    const retained = privateClipboardEvidenceJson(report);
+    assert.ok(Buffer.byteLength(retained) <= 16 * 1024 * 1024);
+    assert.deepEqual(JSON.parse(retained), report);
+    assert.equal(privateClipboardEvidenceJson(report), retained);
+});
+
+test('evidence admission keeps exact frame, plain-data and actual serialized-byte bounds', () => {
+    assert.throws(() => privateClipboardEvidenceData({ frames: Array(23).fill({}) }));
+    assert.throws(() => privateClipboardEvidenceData({ frames: {}, note: 'not an array' }));
+    assert.throws(() => privateClipboardEvidenceData({ frames: [], note: '\\'.repeat(9 * 1024 * 1024) }));
+    assert.throws(() => privateClipboardEvidenceData({ frames: [], metadata: Array(32768).fill({ a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8 }) }));
+    let read = false;
+    assert.throws(() => privateClipboardEvidenceData({ frames: [{ before: { get screen() { read = true; return {}; } } }] }));
+    assert.equal(read, false);
+});
 
 test('actual pinned callbacks use22 App RPCs and44 independent paired state captures, preserve original grades and final close', async () => {
     const api = await privateClipboardFixture(), report = await api.run();

@@ -113,6 +113,7 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
     if (report.snapshots) validateOutputGeometry(mode.description, report.snapshots[0].screen.rows, report.snapshots[0].screen.cols);
 }
 
+/** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
 function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard }) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;

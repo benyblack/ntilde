@@ -14,10 +14,39 @@ const baseBindingKeys = ['runId', 'ownerPid', 'workerPid', 'uid', 'appExecutable
 
 /** Copy only bounded plain data; accessors, prototypes and unbounded strings cannot enter a retained journal. */
 export function privateClipboardData(input) {
-    let nodes = 0, bytes = 0;
-    /** Copy a dense/plain subtree within the shared depth 32, node 250k and 16 MiB budgets; reject accessors. */
-    const copy = (value, depth) => {
-        check(++nodes <= 250000 && depth <= 32);
+    return copyPrivateClipboardData(input, false);
+}
+/** Copy at most 22 paired frames without charging their independently bounded screens to metadata.
+ * All strings still share 16 MiB; the compact retained file must also fit 16 MiB.
+ * Screen allowances apply only to the fixed frames[index].before/after.screen paths, never arbitrary keys.
+ */
+export function privateClipboardEvidenceData(input) {
+    const data = copyPrivateClipboardData(input, true);
+    check(Buffer.byteLength(JSON.stringify(data) + '\n') <= 16 * 1024 * 1024);
+    return data;
+}
+/** Preserve every admitted field in deterministic compact JSON within the unchanged retained-file byte limit. */
+export function privateClipboardEvidenceJson(input) {
+    return JSON.stringify(privateClipboardEvidenceData(input)) + '\n';
+}
+/** Follow only the four structural steps to a retained screen; all other metadata shares the original allowance. */
+function privateClipboardCopyRoute(route, key) {
+    if (route === 0 && key === 'frames') return 1;
+    if (route === 2 && (key === 'before' || key === 'after')) return 3;
+    return route === 3 && key === 'screen' ? 4 : -1;
+}
+/** Admit plain own-data descriptors with depth 32 and a shared string budget; reject malformed fixed screen slots. */
+function copyPrivateClipboardData(input, evidence) {
+    let bytes = 0, screens = 0;
+    // copyAttributeRuns: at most 8192 five-node tuples; copyCellDetails: at most 1024 eleven-node tuples.
+    // The exposed screen also has at most 128 lines, 64 history lines and fewer than 64 fixed structural nodes.
+    const screenNodeLimit = 8192 * 5 + 1024 * 11 + 128 + 64 + 64;
+    /** Copy one subtree under its own node allowance; only the exact fixed screen route can start another allowance. */
+    const copy = (value, depth, budget, route) => {
+        const screen = route === 4;
+        if (screen) { check(++screens <= 44 && value && typeof value === 'object' && !Array.isArray(value)); budget = { nodes: 0, limit: screenNodeLimit }; }
+        if (route === 1) check(Array.isArray(value));
+        check(++budget.nodes <= budget.limit && depth <= 32);
         if (value === null || typeof value === 'boolean') return value;
         if (typeof value === 'number') { check(Number.isFinite(value)); return value; }
         if (typeof value === 'string') { bytes += Buffer.byteLength(value); check(bytes <= 16 * 1024 * 1024); return value; }
@@ -28,20 +57,22 @@ export function privateClipboardData(input) {
         if (array) {
             const length = descriptors.length.value;
             check(Number.isSafeInteger(length) && length <= 32768 && keys.length === length + 1);
+            if (route === 1) check(length <= 22);
             return Array.from({ length }, (_, index) => {
                 const field = descriptors[index]; check(field && Object.hasOwn(field, 'value') && field.enumerable);
-                return copy(field.value, depth + 1);
+                return copy(field.value, depth + 1, budget, route === 1 ? 2 : -1);
             });
         }
         const output = {};
         for (const key of keys) {
             check(typeof key === 'string' && key.length <= 128 && key !== '__proto__');
             const field = descriptors[key]; check(Object.hasOwn(field, 'value') && field.enumerable);
-            output[key] = copy(field.value, depth + 1);
+            output[key] = copy(field.value, depth + 1, budget, privateClipboardCopyRoute(route, key));
         }
+        if (screen) check(equalData(output, queryScreen(output)));
         return output;
     };
-    return copy(input, 0);
+    return copy(input, 0, { nodes: 0, limit: 250000 }, evidence ? 0 : -1);
 }
 /** Require the complete own-key shape after plain-data admission; unknown fields never disappear. */
 function exact(value, keys) {
@@ -155,7 +186,7 @@ function validateSample(sample, binding, original, clock) {
 }
 /** Derive the scoped report only after all 44 state captures, original callback results and final close agree. */
 export function buildPrivateClipboardReport(input) {
-    const data = privateClipboardData(input); exact(data, ['binding', 'controller', 'frames', 'callbackResults']);
+    const data = privateClipboardEvidenceData(input); exact(data, ['binding', 'controller', 'frames', 'callbackResults']);
     const { binding: supplied, controller, frames, callbackResults } = data, binding = privateClipboardBinding(supplied);
     validateController(controller, binding);
     check(frames?.length === 22 && callbackResults?.length === 3);

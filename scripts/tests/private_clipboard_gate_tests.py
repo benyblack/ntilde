@@ -11,16 +11,19 @@ TESTS = ['ownership', 'private-clipboard-request', 'private-clipboard-source',
 
 
 def jobs(text):
+    """Preserve complete anchored top-level job blocks for exact required-lane checks."""
     matches = list(re.finditer(r'^  ([a-zA-Z_][a-zA-Z0-9_]*):\s*$', text, re.M))
     return {match[1]: text[match.start():matches[index + 1].start() if index + 1 < len(matches) else len(text)]
             for index, match in enumerate(matches)}
 
 
 def validate(text):
+    """Reject missing or suppressible private controls and any rollup that can accept a non-success result."""
     blocks = jobs(text)
     lane, rollup, scripts = (blocks.get(key, '') for key in ('private_clipboard_owned', 'unit_tests', 'script_self_tests'))
     assert lane and rollup and scripts, 'missing evidence or required-rollup job'
     assert not re.search(r'^    if:', lane, re.M), 'evidence job must run on every CI event'
+    assert 'continue-on-error' not in lane, 'the evidence job cannot suppress a failed test step'
     assert 'timeout-minutes: 10' in lane and "node-version: '24'" in lane
     assert 'os: [windows-latest, ubuntu-latest]' in lane and 'fail-fast: false' in lane
     for name in TESTS:
@@ -34,6 +37,7 @@ def validate(text):
 
 
 def main():
+    """Check the real workflow, then prove every deliberate weakening fails without running CI or a desktop."""
     real = WORKFLOW.read_text()
     validate(real)
     mutants = {
@@ -43,6 +47,8 @@ def main():
         'missing result': real.replace('needs.private_clipboard_owned.result', 'needs.private_clipboard_owned.outputs'),
         'ignored failure': real.replace('[ "$clipboard" = success ] ||', '[ true ] ||'),
         'lost full finalizer': real.replace(' scripts/terminfo/private-clipboard-receipt.test.mjs', ''),
+        'ignored step failure': real.replace('name: Source-pinned callbacks, parent controls and complete schema12 receipt\n        shell: bash\n',
+                                            'name: Source-pinned callbacks, parent controls and complete schema12 receipt\n        shell: bash\n        continue-on-error: true\n'),
     }
     for name, text in mutants.items():
         assert text != real, 'mutation did not apply: ' + name
@@ -51,7 +57,7 @@ def main():
         except AssertionError:
             continue
         raise AssertionError('incorrect evidence wiring was accepted: ' + name)
-    print('private clipboard required lane and six wiring refusals passed')
+    print(f'private clipboard required lane and {len(mutants)} wiring refusals passed')
 
 
 if __name__ == '__main__':

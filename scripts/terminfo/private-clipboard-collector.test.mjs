@@ -24,6 +24,8 @@ test('explicit private adaptation gates original Q11 bytes, binds exact probe ID
         prepared.indexOf('var sixelDa1Reply, foregroundQuery'))));
     assert.ok(adapted.includes('createPrivateClipboardWorker'));
     assert.ok(adapted.includes('clipboard.withClipboardFixture(probe.id, work,'));
+    assert.ok(adapted.includes('    if (options.ownedTerminal?.clipboard && options.ownedTerminal.clipboard.profile !== "default"\n'
+        + '        && (options.ownedTerminal.clipboard.profile !== "ntilde-private-app-v1" || ["extensions.osc52-clipboard", "extensions.osc52-write", "extensions.osc52-read"].includes(probe.id))) {'));
     assert.ok(adapted.includes('batch.rawReplies["collector.ntildePrivateClipboard"]'));
     assert.ok(adapted.includes('await clipboard.finish()'));
     assert.ok(adapted.includes('permissions: null'));
