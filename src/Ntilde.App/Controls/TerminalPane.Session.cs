@@ -214,6 +214,10 @@ namespace Ntilde.Controls
             // to re-wire the parser. Read (query) is handled entirely inside the parser via
             // an OnResponse denial reply and never reaches this handler.
             var clipboardParser = Parser;
+            // XTGETTCAP Ms follows the same gate. A mux-backed pane leaves it unset: its replies
+            // come from the daemon's parser, which cannot know what an attached client accepts.
+            if (!muxBacked)
+                Parser.ClipboardWriteAvailable = () => _settings == null || BuildEffectiveSettings(_settings).AllowOsc52ClipboardWrite;
             Parser.OnClipboardWrite += (target, data) =>
             {
                 // Resolved through BuildEffectiveSettings rather than off raw _settings, matching

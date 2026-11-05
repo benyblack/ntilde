@@ -10,10 +10,11 @@ using System.Threading.Tasks;
 
 namespace Ntilde.Pty
 {
-    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink, ITerminalByteInput
+    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink, ITerminalByteInput, ITerminalNativeChildWaitObservation
     {
         public Guid Id { get; } = Guid.NewGuid();
         private readonly PtySafeHandle _handle;
+        private readonly int? _originalChildPid;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         // The read/process loops run on these dedicated threads. Exposed to tests to
         // assert they are background, non-threadpool threads — a leaked session must
@@ -108,6 +109,17 @@ namespace Ntilde.Pty
         /// the expected consequence of cancelling it, not a session failure worth reporting
         /// as <see cref="ReadFailureExitCode"/>.
         private bool ChildExitObserved => Volatile.Read(ref _childExitObserved) == 1;
+
+        /// <summary>Passive cached Unix wait fact, never an active probe or generic exit notification.</summary>
+        public NativeChildWaitObservation? ReadNativeChildWaitObservation()
+        {
+            if (!(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+                || Volatile.Read(ref _disposed) != 0 || _originalChildPid is not int pid) return null;
+            bool observed = Volatile.Read(ref _childExitObserved) == 1;
+            int? code = observed ? Volatile.Read(ref _childExitCode) : null;
+            var result = new NativeChildWaitObservation(Id, pid, observed, code);
+            return Volatile.Read(ref _disposed) == 0 ? result : null;
+        }
 
         /// The status to report when the stream has ended: the child's real one, waited for
         /// briefly if it is not available yet (#323), or 0 when it cannot be determined.
@@ -848,8 +860,9 @@ namespace Ntilde.Pty
             // the gates match `pid=\d+` so that case stays red. Reword this and re-anchor both
             // workflows - do not delete it, or those gates go back to proving only that a
             // process launched, which is what #443 shipped through.
+            _originalChildPid = Pid;
             PtyLogger.Info(
-                $"[RustPtySession] Spawned '{effectiveShell}' pid={(Pid is int spawnedPid ? spawnedPid.ToString(System.Globalization.CultureInfo.InvariantCulture) : "unknown")}");
+                $"[RustPtySession] Spawned '{effectiveShell}' pid={(_originalChildPid is int spawnedPid ? spawnedPid.ToString(System.Globalization.CultureInfo.InvariantCulture) : "unknown")}");
 
             // Start reading and processing on DEDICATED background threads, not the
             // threadpool. These loops make blocking native calls (pty_read) and an

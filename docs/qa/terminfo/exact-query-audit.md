@@ -65,9 +65,11 @@ and fresh runtime evidence.
 rejection. `QueryVariantAuditTests` enumerates the unavailable settings below and
 checks their complete rejection at every split in the input. The narrow positive
 `r` contract is covered separately by `DecrqssMarginQueryTests`, and the `m` and
-`SP q` reports by `DecrqssSettingReportTests`. It also caps retained
-query text in a tiny fixture and verifies a constant-length rejection and parser
-recovery after overlong payloads. No request payload is reflected into a reply.
+`SP q` reports by `DecrqssSettingReportTests`, and XTGETTCAP answers by
+`TerminalCapabilityTests`. It also caps retained query text in a tiny fixture and
+verifies a constant-length rejection and parser recovery after overlong payloads.
+Apart from an XTGETTCAP name that has already been checked to be hex, no request
+payload is reflected into a reply.
 
 | Family | Requested setting/name | Current source disposition / exact reply | Regression / merged PR / v11 witness |
 |---|---|---|---|
@@ -83,12 +85,12 @@ recovery after overlong payloads. No request payload is reflected into a reply.
 | DECRQSS | `*x` (change extent) | Unavailable: bounded `DCS 0$r ST`. | [negative tests][variant-tests], [#807][pr807]; `q12.decrqss.change-extent`: matched negative. |
 | DECRQSS | `unknown` | Bounded `DCS 0$r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.decrqss.unknown`: matched negative. |
 | DECRQSS | empty setting | Bounded `DCS 0$r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.decrqss.empty`: matched negative. |
-| XTGETTCAP | TN: `544e` | Bounded `DCS 0+r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.xtgettcap.terminal-name`: matched negative. |
-| XTGETTCAP | Co: `436f` | Bounded `DCS 0+r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.xtgettcap.color-count`: matched negative. |
-| XTGETTCAP | colors: `636f6c6f7273` | Bounded `DCS 0+r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.xtgettcap.colors`: matched negative. |
-| XTGETTCAP | RGB: `524742` | Bounded `DCS 0+r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.xtgettcap.rgb`: matched negative. |
+| XTGETTCAP | TN: `544e` | Bounded `DCS 0+r ST` rejection; deliberately not answered (its value depends on TERM). | [negative tests][variant-tests], [#807][pr807]; `q12.xtgettcap.terminal-name`: matched negative. |
+| XTGETTCAP | Co: `436f` | Implemented: `DCS 1+r436f=323536 ST` (256). | [capability tests][capability-tests], [#861][pr861]; `q12.xtgettcap.color-count`: matched negative before #861. |
+| XTGETTCAP | colors: `636f6c6f7273` | Implemented: `DCS 1+r636f6c6f7273=323536 ST` (256). | [capability tests][capability-tests], [#861][pr861]; `q12.xtgettcap.colors`: matched negative before #861. |
+| XTGETTCAP | RGB: `524742` | Implemented flag: `DCS 1+r524742 ST`. | [capability tests][capability-tests], [#861][pr861]; `q12.xtgettcap.rgb`: matched negative before #861. |
 | XTGETTCAP | kcuu1: `6b63757531` | Bounded `DCS 0+r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.xtgettcap.cursor-up-key`: matched negative. |
-| XTGETTCAP | TN;Co list: `544e;436f` | Bounded `DCS 0+r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.xtgettcap.list`: matched negative. |
+| XTGETTCAP | TN;Co list: `544e;436f` | One reply per name, in order: `DCS 0+r ST` for `TN`, then `DCS 1+r436f=323536 ST`. | [capability tests][capability-tests], [#861][pr861]; `q12.xtgettcap.list`: matched negative before #861. |
 | XTGETTCAP | unknown name: `6e6f742d612d6361706162696c697479` | Bounded `DCS 0+r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.xtgettcap.unknown`: matched negative. |
 | XTGETTCAP | odd-length hex: `5` | Bounded `DCS 0+r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.xtgettcap.odd-hex`: matched negative. |
 | XTGETTCAP | invalid hex: `zz` | Bounded `DCS 0+r ST` rejection. | [negative tests][variant-tests], [#807][pr807]; `q12.xtgettcap.invalid-hex`: matched negative. |
@@ -98,7 +100,9 @@ All v11 identifiers refer to the unchanged full query report in the
 [publication JSON][measurement-json] and [complete archive][measurement-zip].
 A valid failure is negative query evidence, never a terminal-name/color/key
 success. The SGR/cursor-style mismatch is a versioned expectation difference,
-not proof of a terminal defect or a retroactive pass.
+not proof of a terminal defect or a retroactive pass. Likewise, the v11
+`Co`, `colors`, `RGB` and list observations predate #861; a fresh run would
+differ from their v1 negative expectations, and no grade is changed here.
 
 No terminal database or key string is synthesized from a guessed `$TERM`.
 
@@ -217,12 +221,43 @@ claims that this one live run exercised them. The existing cursor/text-pixel
 `CSI 0 q` negatives likewise retain their earlier `isDefault=false` expectations;
 #853 now restores host-default intent. No published grade or expectation changes.
 
+## XTGETTCAP capability reports
+
+XTGETTCAP (#844) answers from `TerminalCapabilities` in `Ntilde.VT`, the one table of
+what Ntilde advertises beyond `xterm-256color`. The opt-in `xterm-ntilde` terminfo
+entry is generated from the same table, so the two cannot disagree. The table holds
+`Co`/`colors` (256), the `RGB`, `Tc`, `Su` and `hs` flags, and the strings `setrgbf`,
+`setrgbb`, `Smulx`, `Setulc`, `Sync`, `Ss`, `Se`, `Ms`, `tsl` and `fsl`. The terminfo
+entry leaves out `Co` (a termcap name), `RGB` (ncurses would read it as direct-color
+`setaf`) and `Ms` (setting- and session-dependent); see
+`packaging/terminfo/README.md`.
+`TerminalCapabilityTests` expands every string value the way curses does and runs it
+through the parser, checking the pen, mode, cursor style, clipboard write or title
+it claims to produce; each entry also lists the owning tests for that feature.
+
+Replies follow kitty and foot: one per name, in request order. A string or number
+is reported as `DCS 1 + r name=value ST` with the value as uppercase hex of its
+compiled bytes (real ESC and BEL, `%` parameters left unexpanded); a flag as
+`DCS 1 + r name ST`; a name not in the table as xterm's bare `DCS 0 + r ST`. The
+name is echoed as the request spelled it, which is safe because the whole list is
+checked first. `TN` is deliberately not answered: its honest value is the TERM the
+session uses, which VT does not know. Names are case-sensitive (`co` and `kcuu1`
+get `DCS 0 + r ST`). A list that is not entirely valid (truncated, BEL-terminated,
+odd-length or non-hex, an empty name, a name that does not decode to printable
+ASCII, a name over 32 characters, or more than 16 names) gets one `DCS 0 + r ST`
+and nothing else, even when it also holds valid names. `Ms` is answered only while
+`AnsiParser.ClipboardWriteAvailable` says the host accepts OSC 52 writes; headless
+and mux parsers leave it unset, so persistent sessions never advertise it. Every
+input split, complete JSON parser-state restore, the four DCS framings and the
+daemon parser are covered. Source/scripted-transport evidence only; no application
+has been checked against these replies yet.
+
 ## Issue acceptance evidence
 
 | #771 requirement | Recorded evidence |
 |---|---|
 | Disposition for every audited query, with regression/PR | The 18 Q07 and 22 named Q12 rows above link the owning tests, merged implementation/policy PRs and exact v11 observation IDs. Deliberate unavailability is an explicit policy, not a missing-reply support score. |
-| Implemented spellings have framing, correlation, bounds and malformed coverage | [18t][window-tests], [DA3][da3-tests], [DCS completeness][dcs-tests], [margins][margin-tests] and [SGR/cursor style][setting-tests] cover their exact families and malformed/truncated variants. Requests without a protocol request ID do not acquire an invented one: the live serialized transaction uses independent paired ordering fences and owning App-state reads. |
+| Implemented spellings have framing, correlation, bounds and malformed coverage | [18t][window-tests], [DA3][da3-tests], [DCS completeness][dcs-tests], [margins][margin-tests], [SGR/cursor style][setting-tests] and [XTGETTCAP][capability-tests] cover their exact families and malformed/truncated variants. Requests without a protocol request ID do not acquire an invented one: the live serialized transaction uses independent paired ordering fences and owning App-state reads. |
 | Fresh owned replies/current provenance; historical observations unchanged | [#859][pr859] supplies the bounded driver; [#864][pr864] retains its genuine 630fe126 collection, all 16 receipt bindings and 74 source files. The [full report][measurement] distinguishes observed replies, silence, negative responses and v1 mismatches, and retains the older grades unchanged. |
 
 The fresh collection has 110 validated prior input/image challenge pairs followed
@@ -241,6 +276,7 @@ nor does it claim complete terminal-family conformance.
 [pr819]: https://github.com/benyblack/ntilde/pull/819
 [pr835]: https://github.com/benyblack/ntilde/pull/835
 [pr853]: https://github.com/benyblack/ntilde/pull/853
+[pr861]: https://github.com/benyblack/ntilde/pull/861
 [pr859]: https://github.com/benyblack/ntilde/pull/859
 [pr864]: https://github.com/benyblack/ntilde/pull/864
 [variant-tests]: ../../../tests/Ntilde.VT.Tests/QueryVariantAuditTests.cs
@@ -249,6 +285,7 @@ nor does it claim complete terminal-family conformance.
 [dcs-tests]: ../../../tests/Ntilde.VT.Tests/DcsTruncationStateTests.cs
 [margin-tests]: ../../../tests/Ntilde.VT.Tests/DecrqssMarginQueryTests.cs
 [setting-tests]: ../../../tests/Ntilde.VT.Tests/DecrqssSettingReportTests.cs
+[capability-tests]: ../../../tests/Ntilde.VT.Tests/TerminalCapabilityTests.cs
 [measurement]: 2026-11-05-query-observations.md
 [measurement-json]: 2026-11-05-query-observations.json
 [measurement-zip]: 2026-11-05-query-observations-evidence.zip

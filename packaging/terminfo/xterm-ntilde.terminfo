@@ -1,0 +1,20 @@
+# xterm-ntilde: opt-in terminfo entry for Ntilde.
+#
+# Generated from src/Ntilde.VT/TerminalCapabilities.cs, the table XTGETTCAP answers from.
+# Do not edit by hand: change the table and regenerate (see packaging/terminfo/README.md).
+# Install: tic -x -o ~/.terminfo xterm-ntilde.terminfo
+xterm-ntilde|Ntilde terminal emulator,
+	colors#256,
+	Tc,
+	setrgbf=\E[38;2;%p1%d;%p2%d;%p3%dm,
+	setrgbb=\E[48;2;%p1%d;%p2%d;%p3%dm,
+	Su,
+	Smulx=\E[4\:%p1%dm,
+	Setulc=\E[58\:2\:\:%p1%{65536}%/%d\:%p1%{256}%/%{255}%&%d\:%p1%{255}%&%dm,
+	Sync=\E[?2026%?%p1%{1}%-%tl%eh%;,
+	Ss=\E[%p1%d q,
+	Se=\E[0 q,
+	hs,
+	tsl=\E]2;,
+	fsl=^G,
+	use=xterm-256color,

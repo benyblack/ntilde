@@ -199,6 +199,28 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task Capability_replies_come_from_the_daemon_parser_without_advertising_clipboard_writes()
+    {
+        // XTGETTCAP Ms (OSC 52 write) needs a desktop clipboard the daemon cannot reach, so a
+        // persistent session refuses it while the rest of the capability table is answered.
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            mux.PostResize(140, 40, presentation: null);
+            fake.Emit("\x1bP+q436f;4d73;5463\x1b\\");
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count == 3, "the capability replies reached the child writer");
+            Assert.Null(mux.Parser.ClipboardWriteAvailable);
+            Assert.Equal(new[]
+            {
+                "\x1bP1+r436f=323536\x1b\\",
+                "\x1bP0+r\x1b\\",
+                "\x1bP1+r5463\x1b\\",
+            }, fake.SentInput.ToArray());
+        }
+    }
+
+    [Fact]
     public async Task Character_geometry_query_reaches_the_child_writer_after_the_ordered_resize()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();

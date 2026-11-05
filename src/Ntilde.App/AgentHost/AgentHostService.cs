@@ -895,6 +895,7 @@ namespace Ntilde.AgentHost
                 {
                     AgentHostProtocol.Methods.ListSessions => await HandleListSessionsAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.ReadPaneMetadata => await HandleReadPaneMetadataAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.ReadNativeChildWait => await HandleReadNativeChildWaitAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.ReadScreen => await HandleReadScreenAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.ReadScrollback => await HandleReadScrollbackAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.GetSessionStatus => await HandleGetSessionStatusAsync(request, cancellationToken).ConfigureAwait(false),

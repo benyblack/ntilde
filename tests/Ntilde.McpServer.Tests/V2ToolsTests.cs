@@ -377,6 +377,28 @@ public class ExplainEscapeSequenceTests
         Assert.DoesNotContain("DECRQSS cursor style report", result, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("\x1bP+q436f\x1b\\")]
+    [InlineData("\u0090+q436f;5463\u009c")]
+    [InlineData("\\x1bP+q436f\\x1b\\")]
+    [InlineData("\\eP+q544e\\e\\")]
+    [InlineData("ESC P+q436fESC\\")]
+    [InlineData("DCS +q")]
+    public void Capability_queries_explain_the_xtgettcap_report(string sequence)
+    {
+        Assert.Contains("XTGETTCAP capability report", VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("\x1bP+q436f\a")]
+    [InlineData("\x1bP+q436f")]
+    [InlineData("ESC P+q436f")]
+    [InlineData("\x1bP+q436f\\e\\")]
+    public void Unterminated_or_mixed_capability_queries_claim_no_report(string sequence)
+    {
+        Assert.DoesNotContain("XTGETTCAP", VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void CatalogCapabilities_AgreeWithExplainerSupportClaims()
     {

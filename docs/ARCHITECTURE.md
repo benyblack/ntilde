@@ -239,8 +239,8 @@ terminated by standard ST. VT returns absolute one-based margin values with xter
 1-success/0-failure polarity, preserving its existing failures despite the VT510
 manual's opposite documented status. The parser's batch lock protects the owned
 state read; invalid margins, lost/unknown input and BEL recovery stay negative.
-This query changes no terminal state. Other DECRQSS settings and XTGETTCAP remain
-negative; no family-wide or fresh runtime support is inferred.
+This query changes no terminal state. DECRQSS settings other than `r`, `m` and
+`SP q` remain negative; no family-wide or fresh runtime support is inferred.
 
 DECRQSS `m` and `SP q` (#844) use the same exact-request, standard-ST and
 completeness rules. `m` reports the active pen xterm style, starting with `0` so
@@ -248,6 +248,25 @@ replaying the report reproduces the pen; underline styles use `4:n` and extended
 colors use semicolon forms. `SP q` reports `0` while the host's configured cursor
 is shown and xterm's 1-6 code for an application override. DECSCUSR 0 restores the
 host's configured cursor, so a saved report restores exactly what was shown.
+
+XTGETTCAP (#844) answers from `TerminalCapabilities`, the one table of what Ntilde
+advertises beyond `xterm-256color`; `TerminfoSource` generates the opt-in `xterm-ntilde`
+terminfo entry (`packaging/terminfo/xterm-ntilde.terminfo`) from the same table, leaving
+out only entries that state a `TerminfoOmission` reason (`Co`, `RGB`, `Ms`). A VT test
+pins the checked-in file to the generator and, on POSIX, compiles it with `tic -x` and
+checks `infocmp -x` against the table and `xterm-256color`. `TERM` stays
+`xterm-256color` on every path. Each entry names the tests that pin its behaviour, and a
+VT test expands every string value as curses would and runs it through the parser.
+Each hex-encoded name gets its own reply in request order (`DCS 1 + r name=value ST`,
+`DCS 1 + r name ST` for a flag, `DCS 0 + r ST` for a name not in the table). Names
+are case-sensitive; `TN` and capabilities inherited from `xterm-256color` are not
+answered. A list that is truncated, BEL-terminated, has more than 16 names, or holds
+a name that is not even-length hex decoding to printable ASCII (at most 32
+characters) gets one `DCS 0 + r ST` and nothing else, and only validated hex is ever
+echoed. `Ms` (OSC 52 write) is answered only while the host's
+`AnsiParser.ClipboardWriteAvailable` says writes are accepted: a direct App pane
+follows `AllowOsc52ClipboardWrite`, and headless or mux parsers leave it unset
+because a daemon cannot reach the desktop clipboard.
 
 Tertiary DA accepts only a default or single numeric-zero parameter with the `=`
 leader and no intermediates. Its DECRPTUI reply contains the fixed eight zero hex
@@ -540,6 +559,24 @@ This module is intentionally **Avalonia-agnostic**. The actual Avalonia `DrawOpe
 ## 6. PTY Transport — `Ntilde.Pty`
 
 Native OS integration via the Rust PTY library (`rusty_pty.dll`/`.so`/`.dylib`). Defines the session contracts and `RustPtySession` as the canonical implementation.
+
+Its optional passive native child-wait capability pairs the immutable Rust
+session Id with the original PID cached from the existing pre-thread spawn
+query. It reads only the native-return1 `_childExitObserved` latch and cached
+code; EOF, generic exit notifications, read failure and Dispose's fallback zero
+cannot manufacture a Unix wait. The getter performs no native query or wait.
+Unsupported/disposed sessions are unavailable, and an unobserved wait is unknown
+rather than proof of a live child. This adds no native ABI or VT/UI dependency.
+
+App's raw `readNativeChildWait` binds this fact to the current visible single
+direct-local Rust session under the existing explicit process/pane private-QA
+startup latch. It accepts the original naturally exited session, rechecks
+registration/buffer/session identity, and refuses remote/mux/windowless/split,
+inactive/replaced/disposed targets. The BCL-only additive DTO carries the
+original PID/generation, genuine wait flag and nullable code. Independent kernel
+ownership and overall cleanup completion remain caller responsibilities. It
+does not operate on clipboard storage, consent, input, settings or window state;
+ordinary processes and default wire bytes are unchanged.
 
 `ITerminalSession` is a composite of four narrow interfaces:
 

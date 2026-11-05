@@ -367,38 +367,74 @@ public sealed class VtTools
 
     private static string ExplainDcs(string original, DcsInputRepresentation representation)
     {
-        // Each representation validates its complete grammar independently. A rejected
+        // Each representation validates its complete framing independently. A rejected
         // form cannot fall through to a globally normalized positive alias.
-        string? payload = DecrqssReportPayloads.FirstOrDefault(
-            candidate => IsExactDcs(original, representation, candidate));
-        return payload is null
-            ? "DCS: " + SequenceTable["DCS"]
-            : "DCS: " + ContractSequenceTable["DCS:" + payload];
+        string description = SequenceTable["DCS"];
+        if (TryGetDcsPayload(original, representation, out string payload))
+        {
+            if (DecrqssReportPayloads.Contains(payload, StringComparer.Ordinal))
+                description = ContractSequenceTable["DCS:" + payload];
+            // XTGETTCAP: which names are answered is the parser's capability table; the
+            // catalogue entry describes the reply rules rather than one name.
+            else if (payload.StartsWith("+q", StringComparison.Ordinal))
+                description = ContractSequenceTable["DCS:+q"];
+        }
+        return "DCS: " + description;
     }
 
-    private static bool IsExactDcs(string original, DcsInputRepresentation representation, string payload)
-        => representation switch
+    private static bool TryGetDcsPayload(string original, DcsInputRepresentation representation, out string payload)
+    {
+        payload = "";
+        if (representation == DcsInputRepresentation.Abstract)
         {
-            DcsInputRepresentation.Raw => original == "\x1bP" + payload + "\x1b\\"
-                || original == "\x1bP" + payload + "\u009c"
-                || original == "\u0090" + payload + "\x1b\\"
-                || original == "\u0090" + payload + "\u009c",
-            DcsInputRepresentation.Escaped => IsEscapedQuery(original, payload),
-            DcsInputRepresentation.Textual => original[
-                (original.StartsWith("ESC P", StringComparison.OrdinalIgnoreCase) ? 5 : 4)..] == payload + "ESC\\",
             // Only the explicit abstract catalogue identifier may omit framing.
-            DcsInputRepresentation.Abstract => original[3..].TrimStart(' ') == payload,
-            _ => false
+            payload = original[3..].TrimStart(' ');
+            return true;
+        }
+        string? framed = representation switch
+        {
+            DcsInputRepresentation.Raw => original,
+            DcsInputRepresentation.Escaped => UnescapeQuery(original),
+            DcsInputRepresentation.Textual => TextualFraming(original),
+            _ => null,
         };
+        if (framed is null) return false;
+        int open = IntroducerLength(framed);
+        int close = TerminatorLength(framed);
+        if (open == 0 || close == 0 || framed.Length < open + close) return false;
+        payload = framed[open..^close];
+        return true;
+    }
 
-    private static bool IsEscapedQuery(string original, string payload)
+    // Seven-bit ESC P or C1 DCS; zero when the text does not start with either.
+    private static int IntroducerLength(string framed)
+    {
+        if (framed.StartsWith("\x1bP", StringComparison.Ordinal)) return 2;
+        return framed.StartsWith('\u0090') ? 1 : 0;
+    }
+
+    // Seven-bit ESC \\ or C1 ST; zero when the text does not end with either.
+    private static int TerminatorLength(string framed)
+    {
+        if (framed.EndsWith("\x1b\\", StringComparison.Ordinal)) return 2;
+        return framed.EndsWith('\u009c') ? 1 : 0;
+    }
+
+    private static string? TextualFraming(string original)
+    {
+        string rest = original[(original.StartsWith("ESC P", StringComparison.OrdinalIgnoreCase) ? 5 : 4)..];
+        return rest.EndsWith("ESC\\", StringComparison.Ordinal) ? "\x1bP" + rest[..^4] + "\x1b\\" : null;
+    }
+
+    private static string? UnescapeQuery(string original)
     {
         // Explicitly escaped input accepts supported escaped ST spellings only;
         // actual control bytes belong to the raw representation.
-        if (original.AsSpan().IndexOfAny('\x1b', '\u0090', '\u009c') >= 0) return false;
+        if (original.AsSpan().IndexOfAny('\x1b', '\u0090', '\u009c') >= 0) return null;
         string framed = original.Replace("\\x1b", "\x1b", StringComparison.OrdinalIgnoreCase)
             .Replace("\\e", "\x1b", StringComparison.OrdinalIgnoreCase);
-        return framed == "\x1bP" + payload + "\x1b\\";
+        return framed.StartsWith("\x1bP", StringComparison.Ordinal) && framed.EndsWith("\x1b\\", StringComparison.Ordinal)
+            ? framed : null;
     }
 
     private static string ExplainTertiaryDeviceAttributes(string prefix)
