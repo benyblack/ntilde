@@ -9,8 +9,11 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypt
 import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
+import { adaptGradingCollector, gradingAdapterId } from './terminfo/grading-collector.mjs';
+import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
+import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
 import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
 import { OwnedSavedObserver } from './terminfo/saved-capture.mjs';
@@ -50,7 +53,7 @@ import { completeOwnedReceipt } from './terminfo/receipt.mjs';
 import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMode } from './terminfo/terminal-output.mjs';
 
 import { abortPrivateClipboardWithFacts, privateClipboardFailureFacts, privateClipboardEvidenceJson } from './terminfo/private-clipboard.mjs';
-import { OwnedPrivateClipboardObserver } from './terminfo/private-clipboard-capture.mjs';
+import { OwnedPrivateClipboardObserver, privateClipboardScreen } from './terminfo/private-clipboard-capture.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './terminfo/private-clipboard-worker.mjs';
 
 const sourceRepo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -188,6 +191,17 @@ function prepareCollector(tool) {
     return { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes, originalBundle: source };
 }
 
+/** Derive and lock the ASCII/SGR grading extension beside the owned adapter. */
+function prepareGradingCollector(tool, ownedBundle, output) {
+    const adapted = adaptGradingCollector(readFileSync(ownedBundle));
+    const gradingBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-grading-${gradingBundleSha256}.mjs`);
+    if (!existsSync(bundle)) writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== gradingBundleSha256) throw new Error('Derived grading bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-grading.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, gradingBundleSha256 };
+}
+
 function collectionSummary(output, appVersion) {
     const rawPath = join(output, 'raw.json');
     const raw = JSON.parse(readFileSync(rawPath));
@@ -236,6 +250,25 @@ function retainCellReport(output, observer, runId, buildReport = buildCellReport
         provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Re-derive the graded report parent-side, replaying the pinned probes over
+ * the retained journal before publishing the binding. */
+async function retainGradingEvidence(output, runId, gradingBundle, upstream) {
+    const runBytes = readFileSync(join(output, 'grading-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'grading-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-grading.mjs'));
+    const adapter = { id: gradingAdapterId, derivedFromAdapterId: adapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(gradingBundle).href);
+    const report = buildAsciiSgrGradingReport(frames, run, runId, adapter, replayModule);
+    writeJson(join(output, 'grading-observations.json'), report);
+    const counts = {};
+    for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;
+    return { runId, suiteId: asciiSgrSuiteId, file: 'grading-observations.json',
+        sha256: hash(readFileSync(join(output, 'grading-observations.json'))),
+        runFile: 'grading-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: asciiSgrContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
+}
 
 async function terminateLaunchedApp(app) {
     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return;
@@ -311,6 +344,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let preserveScratch = false;
     let cellEvidence;
     let sgrEvidence;
+    let gradingEvidence;
     let rgbEvidence;
     let renditionEvidence;
     let cursorEvidence;
@@ -339,6 +373,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const privateTool = join(scratch, 'collector');
         installLockedCollector(privateTool, input.manifestBytes, input.lockBytes);
         const { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes, originalBundle } = prepareCollector(privateTool);
+        const { bundle: gradingBundle, gradingBundleSha256 } = prepareGradingCollector(privateTool, bundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = randomBytes(16).toString('hex');
@@ -346,7 +381,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const configPath = join(scratch, 'worker.json');
         const workerScript = join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs');
         const profileName = `terminfo disposable worker ${runId}`;
-        const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, profileName, cellNonce: `NTILDE_QA_${runId}`,
+        const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
+            profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
         const command = join(scratch, 'worker.sh');
@@ -372,6 +408,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let workerIdentity;
         let cellObserver;
         let sgrObserver;
+        let gradingObserver;
         let pixelObserver;
         let pixelUnavailable;
         let colorObserver;
@@ -412,6 +449,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
             privateClipboardReferenceScope: 'selected App/VT observational reference inputs; not complete App closure or binary-source attestation',
             retainedOriginalCollector: 'collector-original.mjs', terminalOutput: privateClipboardOutputPolicy, querySuiteId, ownedQueryPolicy, staticImageSuiteId, ownedStaticImagePolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
+            gradingAdapterId, asciiSgrSuiteId, gradingBundleSha256, gradingContractsVersion: asciiSgrContractsVersion,
+            grading: 'versioned collector extension; pinned termless criteria replayed on parent-observed cells; not stock output',
             cells: 'private AgentHost readScreen; nonce-bound pane; separate ASCII cell-state suite',
             attributes: 'separate ASCII SGR flags and palette-index suite',
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
@@ -420,6 +459,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         sourceContext = context;
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'grading-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -849,9 +889,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         sourceSnapshotManifestSha256: snapshot.sha256, executableSha256: context.executableSha256, assemblySha256: context.assemblySha256,
                         appBirth: first.appBirth, workerBirth: first.workerBirth, outputDevice: first.outputDevice };
                     const reader = new OwnedCellObserver({ appData, ownerPid: owner.pid, profileName, expectedPaneId: binding.paneId,
-                        includeAttributes: true, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true });
+                        includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true });
                     privateClipboardState.observer = new OwnedPrivateClipboardObserver({ binding, appData,
-                        attest: remaining => attestPrivateClipboard(privateClipboardState, remaining), capture: remaining => reader.capture(remaining) });
+                        attest: remaining => attestPrivateClipboard(privateClipboardState, remaining),
+                        capture: async remaining => privateClipboardScreen(await reader.capture(remaining)) });
                     first.binding = binding;
                 }
                 if (privateClipboardState.workerPid !== worker.pid || privateClipboardState.tty !== request.tty) throw new Error('Private clipboard worker changed.');
@@ -875,6 +916,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (prefix === 'color') return observeColors(request, budget);
             if (Object.hasOwn(editingSpecs, prefix)) return observeEditing(prefix, request, budget);
             if (Object.hasOwn(detailSpecs, prefix)) return observeDetails(prefix, request, budget);
+            if (prefix === 'grading') {
+                // The graded suite runs after the attribute-reading SGR suite.
+                if (!sgrObserver?.restored) throw new Error('SGR suite must restore before grading observations.');
+                gradingObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_AG_${runId}`, includeAttributes: true, prefix: 'grading', expectedPaneId: cellObserver.paneId });
+                const result = await gradingObserver.handle(request.kind, budget, request.barrier);
+                appendFileSync(join(output, 'grading-snapshots.jsonl'), JSON.stringify(gradingObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             const attributes = request.kind.startsWith('sgr-');
             if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
             if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
@@ -926,7 +976,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeImageRequest(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+            if (/^(?:cell|sgr|grading|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
@@ -1028,6 +1078,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             const summary = collectionSummary(output, args[3]);
             cellEvidence = retainCellReport(output, cellObserver, runId);
             sgrEvidence = retainCellReport(output, sgrObserver, runId, buildSgrReport, 'sgr-observations.json');
+            gradingEvidence = await retainGradingEvidence(output, runId, gradingBundle, upstreamBundleSha256);
             rgbEvidence = retainDetails('rgb');
             renditionEvidence = retainDetails('rendition');
             cursorEvidence = retainDetails('cursor');
@@ -1064,6 +1115,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.rgbEvidence = rgbEvidence;
             summary.cellEvidence = cellEvidence;
             summary.sgrEvidence = sgrEvidence;
+            summary.gradingEvidence = gradingEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
@@ -1103,7 +1155,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

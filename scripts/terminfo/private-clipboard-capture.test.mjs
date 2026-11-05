@@ -3,6 +3,37 @@ import assert from 'node:assert/strict';
 import { privateClipboardFixture } from './fixtures/private-clipboard-owned.mjs';
 import { buildPrivateClipboardReport, privateClipboardData, privateClipboardEvidenceData, privateClipboardEvidenceJson } from './private-clipboard.mjs';
 import { queryScreen } from './queries.mjs';
+import { privateClipboardScreen } from './private-clipboard-capture.mjs';
+
+test('private clipboard observes wide lead and continuation columns from full cell details', async () => {
+    const base = await privateClipboardFixture(), screen = structuredClone(base.screen);
+    delete screen.attributeRuns;
+    screen.lines[0] = '界';
+    const detail = screen.cellDetails[0], cells = screen.rows * screen.cols;
+    screen.cellDetails = [{ ...detail, count: 1, flags: detail.flags | 2048 },
+        { ...detail, count: 1, flags: detail.flags | 4096 }, { ...detail, count: cells - 2 }];
+    const captured = privateClipboardScreen(screen);
+    assert.deepEqual(captured.attributeRuns, screen.cellDetails.map(({ count, flags, fg, bg }) => ({ count, flags, fg, bg })));
+    const api = await privateClipboardFixture({ initialScreen: captured });
+    const report = await api.run();
+    assert.equal(report.frames.length, 22);
+    assert.deepEqual(report.frames[21].after.screen, captured);
+    assert.deepEqual(report.callbackResults.map(value => value.result.pass), [false, true, false]);
+    const incomplete = structuredClone(screen); incomplete.cellDetails.at(-1).count--;
+    assert.throws(() => privateClipboardScreen(incomplete));
+    assert.throws(() => privateClipboardScreen(captured));
+});
+
+test('private clipboard coalesces identical attribute projections without losing differing detail fields', async () => {
+    const base = await privateClipboardFixture(), screen = structuredClone(base.screen);
+    delete screen.attributeRuns;
+    const detail = screen.cellDetails[0], cells = screen.rows * screen.cols;
+    screen.cellDetails = [{ ...detail, count: 1, overline: !detail.overline }, { ...detail, count: cells - 1 }];
+    const captured = privateClipboardScreen(screen);
+    assert.equal(captured.attributeRuns.length, 1);
+    assert.equal(captured.attributeRuns[0].count, cells);
+    assert.deepEqual(captured.cellDetails, screen.cellDetails);
+});
 
 test('44 valid maximum-detail screens complete and retain the independent full journal', async () => {
     const base = await privateClipboardFixture(), screen = structuredClone(base.screen), cells = screen.rows * screen.cols;

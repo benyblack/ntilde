@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV12SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV13SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV12SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV13SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV12SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV13SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -62,6 +62,30 @@ export async function privateClipboardReceiptFixture(action) {
         const adapted = adaptCollector(originalCollector, join(context.sourceSnapshotRoot, 'scripts', 'terminfo', 'ownership.mjs'),
             { privateClipboardModulePath: join(context.sourceSnapshotRoot, 'scripts', 'terminfo', 'private-clipboard-worker.mjs') });
         writeFileSync(join(output, 'collector-adapter.mjs'), adapted); context.adapterBundleSha256 = hash(adapted);
+        // Policy v6 always carries the grading suffix; add the synthetic
+        // grading evidence beside the private-clipboard one.
+        {
+            const { syntheticGradingEvidence } = await import('./ascii-sgr-evidence.mjs');
+            const { buildAsciiSgrGradingReport } = await import('../ascii-sgr-grading.mjs');
+            const { adaptGradingCollector, gradingAdapterId } = await import('../grading-collector.mjs');
+            const { asciiSgrSuiteId, asciiSgrContractsVersion } = await import('../ascii-sgr-contracts.mjs');
+            const gradingBytes = Buffer.from(adaptGradingCollector(adapted));
+            const grading = syntheticGradingEvidence(context.runId, hash(gradingBytes));
+            grading.adapter = { id: gradingAdapterId, derivedFromAdapterId: 'ntilde-owned-macos-v1',
+                bundleSha256: hash(gradingBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const gradingReport = buildAsciiSgrGradingReport(grading.frames, grading.run, context.runId, grading.adapter);
+            write('grading-observations.json', gradingReport);
+            write('grading-run.json', grading.run);
+            writeFileSync(join(output, 'grading-snapshots.jsonl'), grading.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-grading.mjs'), gradingBytes);
+            Object.assign(context, { gradingAdapterId, asciiSgrSuiteId, gradingBundleSha256: hash(gradingBytes),
+                gradingContractsVersion: asciiSgrContractsVersion });
+            evidence.gradingEvidence = { runId: context.runId, suiteId: asciiSgrSuiteId,
+                file: 'grading-observations.json', sha256: hash(readFileSync(join(output, 'grading-observations.json'))),
+                runFile: 'grading-run.json', runSha256: hash(readFileSync(join(output, 'grading-run.json'))),
+                adapterBundleSha256: hash(gradingBytes), contractsVersion: asciiSgrContractsVersion,
+                counts: { supported: 4 }, provisionalUntil: 'cell-receipt.json' };
+        }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;
         raw.observations = raw.observations.filter(value => !PRIVATE_CLIPBOARD_PROBES.includes(value.featureId));

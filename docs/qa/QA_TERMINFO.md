@@ -451,6 +451,44 @@ and history attributes remain separate work; stock grades stay unchanged. The
 [2026-11-03 measurement](terminfo/2026-11-03-history.md) retains all 30 passing
 comparisons, exact source provenance and the parent-observed output-mode proof.
 
+### ASCII/SGR benchmark qualification grading
+
+The [ASCII/SGR qualification batch](terminfo/2026-11-05-ascii-sgr-qualification.md)
+grades exactly four pinned cases — `text.basic`, `text.overwrite`, `sgr.bold`
+and `sgr.italic` — through an explicitly versioned collector extension
+(`ntilde-owned-ascii-sgr-grading-v1`). The extension is a second digest-checked
+derivation on top of the owned adapter: the pinned bundle and the owned adapter
+stay byte-identical, and derivation refuses unless the bundle still contains the
+exact four probe definitions.
+
+The worker replays each case's exact pinned termless fixture bytes through the
+owned fence and reads the resulting cells/flags through the parent-journaled
+`readScreen` observer. The extension then executes the pinned probe's own
+termless code over those observed screens, so the collector's criteria — not a
+re-implementation — produce the outcome. An independent contract grader must
+agree before any conclusion is published, and the parent replays the pinned
+grading a second time over the retained journal. Graded results carry the
+extension identity and are never stock CLI output; the untouched stock run
+keeps its own identity, grades and inconclusive four-case outcomes.
+
+`unsupported` requires a measured mismatch behind a valid control (the pinned
+notes, such as "Control already contained Hello", keep failures inconclusive).
+Missing captures, wrong input bytes, changed observations, mismatched run
+identities and incomplete restoration all prevent a conclusive grade. Receipt
+v13 re-derives the graded report, run log, adapter bytes and journal after
+verified cleanup. The bold/italic conclusions cover the stored cell flags the
+pinned scorer demands — the pin's own terminal path states "Cursor advance does
+not verify SGR styling" — and explicitly do not claim glyph appearance; that
+remains the separate pixel scope in [bold-glyphs.md](terminfo/bold-glyphs.md).
+
+The batch carries one explicitly attributed cherry-pick (`8ffc6d19`, the
+private-clipboard wide-column observer fix from
+`codex/terminfo-benchmark-refresh`): current main cannot complete the shared
+owned pipeline's cleanup receipt without it, while the four ASCII/SGR cases
+themselves do not depend on it. See the
+[measurement](terminfo/2026-11-05-ascii-sgr-qualification.md) for the
+retained failure evidence and the pristine-main discrimination run.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh

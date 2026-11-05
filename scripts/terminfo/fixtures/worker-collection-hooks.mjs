@@ -18,6 +18,7 @@ for (const [file, name] of [['cells', 'Cells'], ['sgr', 'Sgr'], ['rgb', 'Rgb'], 
     code.set(new URL(file + '.mjs', root).href, log + `export async function collect${name}() { record('${name}'); }`);
 }
 code.set(new URL('editing-cases.mjs', root).href, log + `export async function collectErase() { record('Erase'); } export async function collectEditing() { record('Editing'); }`);
+code.set(new URL('ascii-sgr-collector.mjs', root).href, log + `export async function collectAsciiSgrGrading() { record('Grading'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);

@@ -7,6 +7,7 @@ import { assertPrivateFile, processRecord, requestOwner, verifyNtildeOutput } fr
 import { collectCells } from './cells.mjs';
 import { terminalFence } from './terminal-fence.mjs';
 import { ownedTerminalRestorer, restoreOwnedTerminalState, prepareOwnedOutput } from './terminal-output.mjs';
+import { collectAsciiSgrGrading } from './ascii-sgr-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -62,6 +63,16 @@ try {
         await collectResize({ config, fence, owner });
         await collectSaved({ config, fence, owner });
         await collectMetadata({ config, fence, owner });
+        // Graded ASCII/SGR qualification replays the pinned fixtures through the
+        // fence while it is still exclusively owned; the derived extension
+        // executes the pinned termless probes over parent-observed screens.
+        const gradingSource = readFileSync(config.gradingBundle);
+        if (createHash('sha256').update(gradingSource).digest('hex') !== config.gradingBundleSha256) {
+            throw new Error('Local grading adapter bundle changed.');
+        }
+        const gradingModule = await import(pathToFileURL(config.gradingBundle).href);
+        const gradingRun = await collectAsciiSgrGrading({ config, fence, owner, gradingModule });
+        writeFileSync(join(config.output, 'grading-run.json'), JSON.stringify(gradingRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

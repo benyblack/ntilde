@@ -101,5 +101,10 @@
   "privateClipboardInput18SourceSha256": "clipboard-vt-osc.cs",
   "privateClipboardInput19SourceSha256": "clipboard-vt-csi.cs",
   "privateClipboardInput20SourceSha256": "clipboard-agent-registry.cs",
-  "privateClipboardInput21SourceSha256": "clipboard-agent-protocol.cs"
+  "privateClipboardInput21SourceSha256": "clipboard-agent-protocol.cs",
+  "gradingCollectorSourceSha256": "grading-collector.mjs",
+  "asciiSgrContractsSourceSha256": "ascii-sgr-contracts.mjs",
+  "asciiSgrCollectorSourceSha256": "ascii-sgr-collector.mjs",
+  "asciiSgrGradingSourceSha256": "ascii-sgr-grading.mjs",
+  "asciiSgrReceiptSourceSha256": "ascii-sgr-receipt.mjs"
 }
