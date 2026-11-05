@@ -3,7 +3,7 @@
 // the resulting cells/flags through the parent-observed readScreen journal,
 // and then executes the pinned termless probe (from the derived grading
 // extension) against those independently observed screens.
-import { asciiSgrContracts, asciiSgrNoncePrefix, asciiSgrReset, contractFeeds, contractReads } from './ascii-sgr-contracts.mjs';
+import { asciiSgrContracts, asciiSgrNoncePrefix, asciiSgrReset, contractFeeds, contractReads, cellAt } from './ascii-sgr-contracts.mjs';
 
 /** Serve pre-captured screens to a pinned termless probe, cross-checking that
  * the pinned code itself replays exactly the contracted fixture bytes. */
@@ -31,29 +31,9 @@ export function recordingContext(contract, screens) {
             return serve('text').lines.join('\n');
         },
         getCell(row, col) {
-            const screen = serve('cells');
-            const flags = screenFlags(screen)[row * screen.cols + col] ?? 0;
-            return { char: (screen.lines[row] ?? ' ')[col] ?? ' ', flags,
-                bold: (flags & 0x0001) !== 0, italic: (flags & 0x0004) !== 0 };
+            return cellAt(serve('cells'), row, col);
         },
     };
-}
-
-/** Pure per-screen flag expansion; observed evidence is never mutated. */
-function screenFlags(screen) {
-    const cells = screen.rows * screen.cols;
-    const all = Array(cells).fill(0);
-    let offset = 0;
-    for (const run of screen.attributeRuns ?? []) {
-        if (!Number.isSafeInteger(run?.count) || run.count < 1 || !Number.isSafeInteger(run.flags)
-            || run.flags < 0 || run.flags > 65535 || offset + run.count > cells) {
-            throw new Error('Invalid graded attribute runs.');
-        }
-        all.fill(run.flags, offset, offset + run.count);
-        offset += run.count;
-    }
-    if (offset !== cells) throw new Error('Incomplete graded attribute runs.');
-    return all;
 }
 
 /** Run every contracted case serially with parent-journaled controls. */

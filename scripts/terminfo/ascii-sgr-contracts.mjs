@@ -29,9 +29,11 @@ export function expandScreenFlags(screen) {
     return all;
 }
 
-const cellOf = (screen, row, col) => {
+/** Project one observed cell to the pinned getCell shape; the collector and
+ * the grading replay must share this single projection. */
+export const cellAt = (screen, row, col) => {
     const flags = expandScreenFlags(screen)[row * screen.cols + col] ?? 0;
-    return { char: (screen.lines[row] ?? '')[col] ?? ' ', flags,
+    return { char: (screen.lines[row] ?? ' ')[col] ?? ' ', flags,
         bold: (flags & asciiSgrFlagBits.bold) !== 0, italic: (flags & asciiSgrFlagBits.italic) !== 0 };
 };
 
@@ -65,14 +67,14 @@ export const asciiSgrContracts = Object.freeze([
         terminalFixture: { writes: ['\x1b[1;1H\x1b[2K', 'AB', '\x1b[1;2H', 'X'], demand: 'overwritten B cell', minimum: { rows: 1, cols: 3 } },
         plan: Object.freeze([feed(asciiSgrReset), feed('AB'), read('cells'), feed('\x1b[1GC'), read('cells')]),
         grade(screens) {
-            const before = [cellOf(screens[0], 0, 0), cellOf(screens[0], 0, 1)];
-            const after = [cellOf(screens[1], 0, 0), cellOf(screens[1], 0, 1)];
+            const before = [cellAt(screens[0], 0, 0), cellAt(screens[0], 0, 1)];
+            const after = [cellAt(screens[1], 0, 0), cellAt(screens[1], 0, 1)];
             if (before[0].char !== 'A' || before[1].char !== 'B') return { outcome: 'inconclusive', note: 'AB control was not measured' };
             return { outcome: after[0].char === 'C' && after[1].char === 'B' ? 'supported' : 'unsupported' };
         },
         observed(screens) {
-            return { before: [cellOf(screens[0], 0, 0), cellOf(screens[0], 0, 1)],
-                after: [cellOf(screens[1], 0, 0), cellOf(screens[1], 0, 1)] };
+            return { before: [cellAt(screens[0], 0, 0), cellAt(screens[0], 0, 1)],
+                after: [cellAt(screens[1], 0, 0), cellAt(screens[1], 0, 1)] };
         },
     }),
     Object.freeze({
@@ -82,12 +84,12 @@ export const asciiSgrContracts = Object.freeze([
         terminalFixture: { writes: ['\x1b[1;1H\x1b[2K', '\x1b[1mX\x1b[0m'], demand: 'consumed (cursor advance does not verify SGR styling)', minimum: { rows: 1, cols: 2 } },
         plan: Object.freeze([feed(asciiSgrReset), feed('\x1b[1mX'), read('cells')]),
         grade(screens) {
-            const cell = cellOf(screens[0], 0, 0);
+            const cell = cellAt(screens[0], 0, 0);
             if (cell.char !== 'X') return { outcome: 'inconclusive', note: 'No rendered X cell to evaluate' };
             return { outcome: cell.bold ? 'supported' : 'unsupported' };
         },
         observed(screens) {
-            const cell = cellOf(screens[0], 0, 0);
+            const cell = cellAt(screens[0], 0, 0);
             return { char: cell.char, bold: cell.bold, flags: cell.flags };
         },
         appearanceScope: 'stored bold flag only; glyph appearance is a separate claim (see docs/qa/terminfo/bold-glyphs.md)',
@@ -99,12 +101,12 @@ export const asciiSgrContracts = Object.freeze([
         terminalFixture: { writes: ['\x1b[1;1H\x1b[2K', '\x1b[3mX\x1b[0m'], demand: 'consumed (cursor advance does not verify SGR styling)', minimum: { rows: 1, cols: 2 } },
         plan: Object.freeze([feed(asciiSgrReset), feed('\x1b[3mX'), read('cells')]),
         grade(screens) {
-            const cell = cellOf(screens[0], 0, 0);
+            const cell = cellAt(screens[0], 0, 0);
             if (cell.char !== 'X') return { outcome: 'inconclusive', note: 'No rendered X cell to evaluate' };
             return { outcome: cell.italic ? 'supported' : 'unsupported' };
         },
         observed(screens) {
-            const cell = cellOf(screens[0], 0, 0);
+            const cell = cellAt(screens[0], 0, 0);
             return { char: cell.char, italic: cell.italic, flags: cell.flags };
         },
         appearanceScope: 'stored italic flag only; glyph appearance is a separate claim (see docs/qa/terminfo/bold-glyphs.md)',

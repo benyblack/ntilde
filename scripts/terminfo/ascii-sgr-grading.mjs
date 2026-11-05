@@ -4,15 +4,9 @@
 // before a conclusive outcome is published.
 import { screenSnapshot, snapshotHash } from './agent-observer.mjs';
 import { asciiSgrContracts, asciiSgrCaseIds, asciiSgrContractsVersion, asciiSgrNoncePrefix,
-    asciiSgrSuiteId, contractFeeds, contractReads, gradeRecordedCase, validateRecordedFeeds, expandScreenFlags } from './ascii-sgr-contracts.mjs';
+    asciiSgrSuiteId, contractFeeds, contractReads, gradeRecordedCase, validateRecordedFeeds, cellAt } from './ascii-sgr-contracts.mjs';
 import { recordingContext } from './ascii-sgr-collector.mjs';
 import { gradingAdapterId } from './grading-collector.mjs';
-
-const cellAt = (screen, row, col) => {
-    const flags = expandScreenFlags(screen)[row * screen.cols + col] ?? 0;
-    return { char: (screen.lines[row] ?? ' ')[col] ?? ' ', flags,
-        bold: (flags & 0x0001) !== 0, italic: (flags & 0x0004) !== 0 };
-};
 
 /** Re-derive the complete pinned termless result from observed screens.
  * Mirrors the pinned parserStateResult pass/response/assertions/note shapes
