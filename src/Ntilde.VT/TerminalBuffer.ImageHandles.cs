@@ -26,7 +26,11 @@ public partial class TerminalBuffer
         lock (_imageHandleGate)
         {
             ImageHandleLifetime lifetime = _imageHandleLifetimes.GetValue(handle, static _ => new ImageHandleLifetime());
-            if (lifetime.HandedOff || (allocation is not null && !allocation.Owner.TryAdmitPlacement(allocation))) return false;
+            // Final native retirement is irreversible, even before handoff: its source
+            // has entered the retired tier. Live aliases remain shareable; legacy handles
+            // retain their existing pending-retirement cancellation contract.
+            if (lifetime.HandedOff || (allocation is not null && lifetime.Pending) ||
+                (allocation is not null && !allocation.Owner.TryAdmitPlacement(allocation))) return false;
             lifetime.MayBeShared |= lifetime.Admitted;
             lifetime.Admitted = true;
             lifetime.Pending = false;

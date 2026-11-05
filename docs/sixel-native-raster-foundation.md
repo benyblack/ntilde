@@ -129,7 +129,10 @@ after its owned bitmap and source are disposed. No native disposal runs under th
 buffer or budget gate. Failed disposal retains credit; the actual view requeues
 that native owner in its original buffer for a later disposal attempt. Handoff
 stays irreversible, retry generations cannot duplicate pending work, and a retry
-never readmits the handle. An undecoded native source stays live while another
+never readmits the handle. Final native retirement is irreversible even before
+handoff: callers need a fresh owner after the final placement/asset retires. Active
+native aliases remain supported; nonnative handles retain their historical pending-
+retirement cancellation behavior. An undecoded native source stays live while another
 placement or retained asset still references its owner. Unknown decoder
 exceptions or foreign reservation/source responses fail closed without crediting
 unproven disposal or destroying a possibly borrowed host handle. These internal

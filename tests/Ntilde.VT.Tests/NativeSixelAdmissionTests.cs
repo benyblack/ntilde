@@ -222,6 +222,35 @@ public sealed class NativeSixelAdmissionTests
         Assert.Equal(2, budget.Usage.Placements);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void Final_native_retirement_is_irreversible_even_before_disposal_handoff(bool retainedAsset, bool alternate)
+    {
+        var budget = new NativeSixelBudget();
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget);
+        var decoder = new ProbeDecoder(budget, buffer);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
+        if (alternate) parser.Process("\x1b[?1049h");
+        parser.Process(Wire);
+        var handle = Assert.IsType<ProbeImage>(Assert.Single(buffer.Images).ImageHandle);
+        if (retainedAsset) Assert.NotNull(buffer.StoreKittyImage(handle, 1, 6, 17, 0));
+        buffer.ClearImages();
+        var charge = budget.Usage;
+        Assert.Throws<InvalidOperationException>(() => buffer.AddImage(new TerminalImage(handle, 5, 0, 1, 1)));
+        Assert.Null(buffer.StoreKittyImage(handle, 1, 6, 18, 0));
+        Assert.Empty(buffer.Images);
+        Assert.Equal(charge, budget.Usage);
+        var retired = new List<object>();
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Same(handle, Assert.Single(retired));
+        Assert.Equal(charge, budget.Usage);
+        handle.Dispose();
+        Assert.Equal((0, 0L), budget.Usage);
+    }
+
     private sealed class ProbeDecoder(NativeSixelBudget budget, TerminalBuffer buffer) : IImageDecoder, INativeSixelDecoder
     {
         internal int Calls, LegacyCalls;
