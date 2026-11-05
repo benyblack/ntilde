@@ -72,8 +72,8 @@ public sealed class XtsmgraphicsTests
     [Fact]
     public void Geometry_read_uses_the_cell_size_sixel_placement_uses()
     {
-        // A scaled display: logical 8.5 x 18.5 cells for CSI 14 t, Sixel placed in 17 x 37
-        // device-pixel cells, as the App sets them.
+        // A scaled display: logical 8.5 x 18.5 cells, Sixel placed in 17 x 37 device-pixel cells,
+        // as the App sets them. The read and CSI 14 t both report the device-pixel text area (#876).
         var buffer = new TerminalBuffer(20, 10);
         var replies = new List<string>();
         var parser = new AnsiParser(buffer)
@@ -85,7 +85,7 @@ public sealed class XtsmgraphicsTests
             OnResponse = replies.Add,
         };
         parser.Process("\x1b[?2;1;0S\x1b[14t");
-        Assert.Equal(new[] { "\x1b[?2;0;340;370S", "\x1b[4;185;170t" }, replies);
+        Assert.Equal(new[] { "\x1b[?2;0;340;370S", "\x1b[4;370;340t" }, replies);
 
         // An image exactly as wide as the reported width spans exactly the pane's columns.
         parser.Process("\x1bPq!340~\x1b\\");

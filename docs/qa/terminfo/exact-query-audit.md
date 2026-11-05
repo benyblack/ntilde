@@ -266,8 +266,8 @@ is `CSI ? Pi ; Ps S` with no value (1 unknown item, 2 unknown action, 3 failed a
   notcurses' startup attempts to set 256 and 1024 get `Ps` 3 and change nothing.
 - **Sixel geometry (`Pi` 2):** read reports the text area in Sixel pixels, capped at the
   2000-pixel clip per side. That is columns and rows times the cell size Sixel placement
-  uses, so an image exactly that wide fills the pane. On a scaled display the App places
-  Sixel in device pixels while `CSI 14 t` reports logical pixels, so the two can differ. Read-maximum reports `2000;2000`.
+  uses, so an image exactly that wide fills the pane. It is the same text area `CSI 14 t`
+  reports (device pixels on a scaled display, #876), capped at 2000. Read-maximum reports `2000;2000`.
   Reset and set fail with `Ps` 3, as in xterm, because the window sets the size.
 - **ReGIS (`Pi` 3) and other items:** `Ps` 1.
 

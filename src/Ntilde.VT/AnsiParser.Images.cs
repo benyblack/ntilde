@@ -6,6 +6,28 @@ namespace Ntilde.VT
     /// </summary>
     public partial class AnsiParser
     {
+        /// <summary>
+        /// One cell in the pixels images are measured in: <see cref="SixelCellSizeOverride"/> when the host set it,
+        /// else <see cref="CellWidth"/> and <see cref="CellHeight"/>. The App sets the override in device pixels
+        /// (logical cell size times the view's render scaling) and the mux daemon gets the same unit, so on a
+        /// scaled display this is device pixels in every pane. A non-finite or non-positive value falls back to
+        /// 10 x 20 and a cell is never under one pixel, as in Sixel placement.
+        /// </summary>
+        /// <remarks>
+        /// Sixel placement, Kitty and iTerm2 sizing and the <c>CSI 14 t</c> / <c>CSI 16 t</c> reports all use
+        /// this, so a client that sizes an image from <c>CSI 16 t</c> gets one that fills the cells it drew it
+        /// for. <c>CSI 16 t</c> used to report the logical cell while Sixel placement used device pixels, and
+        /// notcurses drew Sixel at half size on a 2x display in direct panes.
+        /// </remarks>
+        internal (float Width, float Height) ImageCellPixels()
+        {
+            SixelCellSize? size = SixelCellSizeOverride;
+            float width = size?.WidthPx ?? CellWidth;
+            float height = size?.HeightPx ?? CellHeight;
+            return (float.IsFinite(width) && width > 0 ? Math.Max(1, width) : 10,
+                float.IsFinite(height) && height > 0 ? Math.Max(1, height) : 20);
+        }
+
         private void HandleDcs(string dcs, bool standardTerminator = true)
         {
             // DCS routing (#169). Previously ANY DCS containing 'q' was fed to the Sixel
@@ -296,29 +318,25 @@ namespace Ntilde.VT
                     return;
                 }
 
+                // Image pixels map to cells in the unit CSI 16 t reports (ImageCellPixels).
+                var (cellWidthPx, cellHeightPx) = ImageCellPixels();
+                double cellRatio = cellWidthPx / (double)cellHeightPx;
+                double imageRatio = (double)pixelHeight / pixelWidth;
                 if (width == 0 && height == 0)
                 {
                     // Default: Scale to fit 100% of image pixel width mapped to cells
-                    float divisor = CellWidth > 0 ? CellWidth : 10.0f;
-                    width = Math.Max(10, (int)Math.Ceiling(pixelWidth / divisor));
+                    width = Math.Max(10, (int)Math.Ceiling(pixelWidth / cellWidthPx));
 
                     // Sanity check: Clamp width to terminal width to prevent massive wrapping
                     width = Math.Min(width, _buffer.Cols);
-
-                    double cellRatio = (CellHeight > 0 && CellWidth > 0) ? (CellWidth / (double)CellHeight) : 0.5;
-                    double imageRatio = (double)pixelHeight / pixelWidth;
                     height = Math.Max(1, (int)Math.Round(width * cellRatio * imageRatio));
                 }
                 else if (width == 0)
                 {
-                    double cellRatio = (CellHeight > 0 && CellWidth > 0) ? (CellWidth / (double)CellHeight) : 0.5;
-                    double imageRatio = (double)pixelHeight / pixelWidth;
                     width = Math.Max(1, (int)Math.Round(height / (cellRatio * imageRatio)));
                 }
                 else if (height == 0)
                 {
-                    double cellRatio = (CellHeight > 0 && CellWidth > 0) ? (CellWidth / (double)CellHeight) : 0.5;
-                    double imageRatio = (double)pixelHeight / pixelWidth;
                     height = Math.Max(1, (int)Math.Round(width * cellRatio * imageRatio));
                 }
 
@@ -403,9 +421,9 @@ namespace Ntilde.VT
             {
                 if (double.TryParse(val.AsSpan(0, val.Length - 2), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double px))
                 {
-                    // Convert pixels to cells based on current metrics
-                    float metric = isHeight ? CellHeight : CellWidth;
-                    return (int)Math.Max(1, Math.Ceiling(px / (metric > 0 ? metric : 10f)));
+                    // Convert pixels to cells in the unit CSI 16 t reports.
+                    var (cellWidthPx, cellHeightPx) = ImageCellPixels();
+                    return (int)Math.Max(1, Math.Ceiling(px / (isHeight ? cellHeightPx : cellWidthPx)));
                 }
             }
             if (val.EndsWith('%'))

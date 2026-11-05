@@ -270,9 +270,9 @@ because a daemon cannot reach the desktop clipboard.
 
 XTSMGRAPHICS (#872, `CSI ? Pi ; Pa ; Pv S`) follows xterm's handler and reports the
 Sixel decoder's real limits: 4096 color registers, fixed (only a set to 4096 succeeds),
-and a geometry read of the text area in Sixel pixels (columns and rows times the cell
-size Sixel placement uses, device pixels on a scaled display) capped at
-`SixelGeometry.DefaultMaxPixelDimension`. Geometry reset and set fail, ReGIS
+and a geometry read of the same text area `CSI 14 t` reports (columns and rows times the
+cell size images are placed in, `AnsiParser.ImageCellPixels`, device pixels on a scaled
+display) capped at `SixelGeometry.DefaultMaxPixelDimension`. Geometry reset and set fail, ReGIS
 is an unknown item, and only the exact three-parameter form is answered. It changes no
 state; the daemon parser answers with the window's cell size.
 

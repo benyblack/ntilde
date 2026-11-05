@@ -137,7 +137,10 @@ namespace Ntilde.VT
         private char? _lastGraphicChar;
         private static readonly TimeSpan CursorTransientSuppressionWindow = TimeSpan.FromMilliseconds(60);
 
-        /// <summary>Optional authoritative device-pixel metrics for SIXEL layout (mux stream or local host).</summary>
+        /// <summary>
+        /// Optional authoritative device-pixel cell size (mux stream or local host). Despite the name it sizes every
+        /// image protocol and the CSI 14 t / 16 t replies, through <see cref="ImageCellPixels"/>.
+        /// </summary>
         private SixelCellSize? _sixelCellSizeOverride;
         /// <summary>Host policy for image protocols without headless geometry support. SIXEL remains independent.</summary>
         public bool AllowNonSixelImages { get; set; } = true;

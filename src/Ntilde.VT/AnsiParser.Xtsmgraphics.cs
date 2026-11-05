@@ -76,19 +76,14 @@ namespace Ntilde.VT
         }
 
         /// <summary>
-        /// The text area measured in Sixel pixels: columns and rows times the cell size Sixel
-        /// placement uses (<see cref="SixelCellSizeOverride"/>, else <see cref="CellWidth"/> and
-        /// <see cref="CellHeight"/>, with the same fallbacks as <c>HandleSixel</c>). An image this
-        /// wide spans exactly the pane's columns. On a scaled display the App sets the override in
-        /// device pixels, so this can differ from <c>CSI 14 t</c>, which reports logical pixels.
+        /// The text area measured in Sixel pixels: columns and rows times the cell size images are
+        /// placed in (<see cref="ImageCellPixels"/>, device pixels on a scaled display). An image this
+        /// wide spans exactly the pane's columns. It is the same area <c>CSI 14 t</c> reports;
+        /// <see cref="SixelGeometryAttribute"/> then caps it at the decoder's clip.
         /// </summary>
         private (int Width, int Height) SixelAreaPixels()
         {
-            SixelCellSize? size = SixelCellSizeOverride;
-            float cellWidth = size?.WidthPx ?? CellWidth;
-            float cellHeight = size?.HeightPx ?? CellHeight;
-            float cw = float.IsFinite(cellWidth) && cellWidth > 0 ? Math.Max(1, cellWidth) : 10;
-            float ch = float.IsFinite(cellHeight) && cellHeight > 0 ? Math.Max(1, cellHeight) : 20;
+            var (cw, ch) = ImageCellPixels();
             return (Math.Max(1, (int)Math.Round(_buffer.Cols * cw)), Math.Max(1, (int)Math.Round(_buffer.Rows * ch)));
         }
     }
