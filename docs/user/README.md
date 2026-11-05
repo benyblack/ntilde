@@ -18,7 +18,7 @@ Shortcuts in this guide are the Windows and Linux defaults. On macOS most use `C
 - [Tabs, panes and workspaces](tabs-and-panes.md): tabs, the vertical sidebar, splits, workspaces,
   templates and bundles.
 - [The terminal](terminal.md): cursor, bell and scrolling, notifications, inline images, snapshots,
-  recording and replay.
+  recording and replay, and the optional `xterm-ntilde` terminfo entry.
 - [Persistent sessions and the multiplexer](persistent-sessions.md): shells that keep running when
   the window closes, SSH tabs that survive a disconnect, and `ntilde mux`.
 - [SSH and file transfer](ssh.md): the Connection Manager, profiles, backends, signing in, host

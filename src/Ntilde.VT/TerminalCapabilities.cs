@@ -29,12 +29,19 @@ public sealed record TerminalCapability(string Name, TerminalCapabilityKind Kind
     /// available (see <see cref="AnsiParser.ClipboardWriteAvailable"/>).
     /// </summary>
     public bool RequiresClipboardWrite { get; init; }
+
+    /// <summary>
+    /// Why the generated <c>xterm-ntilde</c> terminfo entry leaves this capability out, or null
+    /// when the entry writes it (see <see cref="TerminfoSource"/>). XTGETTCAP still reports it.
+    /// </summary>
+    public string? TerminfoOmission { get; init; }
 }
 
 /// <summary>
 /// The single source of truth for what Ntilde advertises beyond <c>xterm-256color</c> (#844).
-/// XTGETTCAP answers from this table, and the opt-in <c>xterm-ntilde</c> terminfo entry is built
-/// from it, so the two cannot disagree. Capabilities inherited from <c>xterm-256color</c> are not
+/// XTGETTCAP answers from this table, and the opt-in <c>xterm-ntilde</c> terminfo entry is generated
+/// from it (<see cref="TerminfoSource"/>), so the two cannot disagree; an entry the static file
+/// cannot carry says why in <see cref="TerminalCapability.TerminfoOmission"/>. Capabilities inherited from <c>xterm-256color</c> are not
 /// listed and XTGETTCAP does not report them. An entry belongs here only when a test pins the
 /// behaviour its value relies on; <c>TerminalCapabilityTests</c> also runs every string value
 /// through the parser.
@@ -48,9 +55,16 @@ public static class TerminalCapabilities
     /// <summary>Every advertised capability, in a stable order.</summary>
     public static IReadOnlyList<TerminalCapability> All { get; } =
     [
-        new("Co", TerminalCapabilityKind.Number, "256", [Owner, Sgr]),
+        new("Co", TerminalCapabilityKind.Number, "256", [Owner, Sgr])
+        {
+            TerminfoOmission = "Termcap name for colors, which the entry carries.",
+        },
         new("colors", TerminalCapabilityKind.Number, "256", [Owner, Sgr]),
-        new("RGB", TerminalCapabilityKind.Flag, "", [Owner, Sgr]),
+        new("RGB", TerminalCapabilityKind.Flag, "", [Owner, Sgr])
+        {
+            TerminfoOmission = "In a terminfo entry, ncurses reads RGB as setaf/setab taking direct colors, "
+                + "which a 256-color entry does not do; truecolor is Tc with setrgbf/setrgbb.",
+        },
         new("Tc", TerminalCapabilityKind.Flag, "", [Owner, Sgr]),
         new("setrgbf", TerminalCapabilityKind.Text, "\u001b[38;2;%p1%d;%p2%d;%p3%dm", [Owner, Sgr]),
         new("setrgbb", TerminalCapabilityKind.Text, "\u001b[48;2;%p1%d;%p2%d;%p3%dm", [Owner, Sgr]),
@@ -68,7 +82,11 @@ public static class TerminalCapabilities
             [Owner, "tests/Ntilde.App.Tests/OscUxTests.cs", "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs"])
         {
             RequiresClipboardWrite = true,
+            TerminfoOmission = "Depends on the OSC 52 write setting and is unavailable in persistent "
+                + "sessions, which a static file cannot express; the entry adds nothing and inherits "
+                + "whatever xterm-256color says.",
         },
+        new("hs", TerminalCapabilityKind.Flag, "", [Owner, "tests/Ntilde.VT.Tests/OscTitleTests.cs"]),
         new("tsl", TerminalCapabilityKind.Text, "\u001b]2;", [Owner, "tests/Ntilde.VT.Tests/OscTitleTests.cs"]),
         new("fsl", TerminalCapabilityKind.Text, "\u0007", [Owner, "tests/Ntilde.VT.Tests/OscTitleTests.cs"]),
     ];

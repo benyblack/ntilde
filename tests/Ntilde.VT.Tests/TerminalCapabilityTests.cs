@@ -118,6 +118,7 @@ public sealed class TerminalCapabilityTests
     [InlineData("536d756c78", "\x1bP1+r536d756c78=1B5B343A25703125646D\x1b\\")] // Smulx
     [InlineData("5365", "\x1bP1+r5365=1B5B302071\x1b\\")] // Se
     [InlineData("66736c", "\x1bP1+r66736c=07\x1b\\")] // fsl
+    [InlineData("6873", "\x1bP1+r6873\x1b\\")] // hs, a boolean
     [InlineData("544e", Failure)] // TN
     [InlineData("636f", Failure)] // co: names are case-sensitive
     [InlineData("6b63757531", Failure)] // kcuu1, inherited from xterm-256color
@@ -282,7 +283,7 @@ public sealed class TerminalCapabilityTests
         return TerminfoExpander.Expand(capability.Value, parameters);
     }
 
-    private static string RepositoryRoot()
+    internal static string RepositoryRoot()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
         {

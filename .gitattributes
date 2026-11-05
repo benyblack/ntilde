@@ -48,3 +48,7 @@ assets/shell-integration/**   text eol=lf
 docs/qa/terminfo/2026-11-04-image-observations.json text eol=lf
 scripts/terminfo/source-imports.mjs text eol=lf
 docs/qa/terminfo/2026-11-05-query-observations.json text eol=lf
+
+# The generated xterm-ntilde terminfo source is pinned byte for byte to the capability table and
+# read by tic on POSIX hosts.
+packaging/terminfo/*.terminfo text eol=lf
