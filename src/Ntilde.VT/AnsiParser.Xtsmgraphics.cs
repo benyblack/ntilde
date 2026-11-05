@@ -33,39 +33,46 @@ namespace Ntilde.VT
         private void HandleXtsmgraphics(ReadOnlySpan<int> args, ReadOnlySpan<char> separators)
         {
             if (args.Length != 3 || separators[0] != ';' || separators[1] != ';') return;
-            int item = args[0], action = args[1], value = args[2];
-            const int Success = 0, UnknownItem = 1, UnknownAction = 2, Failed = 3;
-            int status;
-            string values = "";
-            switch (item)
+            int item = args[0];
+            (int status, string values) = item switch
             {
-                case 1:
-                    status = action switch
-                    {
-                        1 or 2 or 4 => Success,
-                        3 => value == SixelColorRegisterCount ? Success : Failed,
-                        _ => UnknownAction,
-                    };
-                    values = SixelColorRegisterCount.ToString(CultureInfo.InvariantCulture);
-                    break;
-                case 2:
-                    int cap = SixelGeometry.DefaultMaxPixelDimension;
-                    (int width, int height) = action == 1 ? SixelAreaPixels() : (cap, cap);
-                    status = action switch
-                    {
-                        1 or 4 => Success,
-                        2 or 3 => Failed,
-                        _ => UnknownAction,
-                    };
-                    values = string.Create(CultureInfo.InvariantCulture, $"{Math.Min(width, cap)};{Math.Min(height, cap)}");
-                    break;
-                default:
-                    status = UnknownItem;
-                    break;
-            }
-            OnResponse?.Invoke(status == Success
+                1 => ColorRegisterAttribute(action: args[1], value: args[2]),
+                2 => SixelGeometryAttribute(action: args[1]),
+                _ => (XtsmgraphicsUnknownItem, ""),
+            };
+            OnResponse?.Invoke(status == XtsmgraphicsSuccess
                 ? string.Create(CultureInfo.InvariantCulture, $"\x1b[?{item};0;{values}S")
                 : string.Create(CultureInfo.InvariantCulture, $"\x1b[?{item};{status}S"));
+        }
+
+        // XTSMGRAPHICS reply statuses, as xterm numbers them.
+        private const int XtsmgraphicsSuccess = 0;
+        private const int XtsmgraphicsUnknownItem = 1;
+        private const int XtsmgraphicsUnknownAction = 2;
+        private const int XtsmgraphicsFailed = 3;
+
+        /// <summary>Pi 1: the fixed register count; only a set to that same count succeeds.</summary>
+        private static (int Status, string Values) ColorRegisterAttribute(int action, int value) => (
+            action switch
+            {
+                1 or 2 or 4 => XtsmgraphicsSuccess,
+                3 => value == SixelColorRegisterCount ? XtsmgraphicsSuccess : XtsmgraphicsFailed,
+                _ => XtsmgraphicsUnknownAction,
+            },
+            SixelColorRegisterCount.ToString(CultureInfo.InvariantCulture));
+
+        /// <summary>Pi 2: read and read-max succeed; the window, not the program, sets the size.</summary>
+        private (int Status, string Values) SixelGeometryAttribute(int action)
+        {
+            int cap = SixelGeometry.DefaultMaxPixelDimension;
+            (int width, int height) = action == 1 ? SixelAreaPixels() : (cap, cap);
+            int status = action switch
+            {
+                1 or 4 => XtsmgraphicsSuccess,
+                2 or 3 => XtsmgraphicsFailed,
+                _ => XtsmgraphicsUnknownAction,
+            };
+            return (status, string.Create(CultureInfo.InvariantCulture, $"{Math.Min(width, cap)};{Math.Min(height, cap)}"));
         }
 
         /// <summary>
