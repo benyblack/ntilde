@@ -41,6 +41,7 @@ public sealed class SixelPolicyClientTests
         using var client = await connect;
         Assert.Equal(0, client.MaxSixelRasterPolicy);
         await Assert.ThrowsAsync<MuxProtocolException>(() => client.SpawnAsync(new SpawnParams { Command = "scripted", RequiredSixelRasterPolicy = 1 }, Ct));
+        await Assert.ThrowsAsync<MuxProtocolException>(() => client.ReadScreenAsync(Guid.NewGuid(), 0, 1, Ct));
         Assert.Throws<MuxProtocolException>(() => client.OpenSession(Guid.NewGuid(), requiredSixelRasterPolicy: 1));
         using var session = client.OpenSession(Guid.NewGuid());
         Assert.Equal(0, session.RequiredSixelRasterPolicy);

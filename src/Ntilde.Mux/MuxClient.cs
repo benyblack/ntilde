@@ -227,10 +227,15 @@ public sealed class MuxClient : IDisposable
     /// cannot decode is <see cref="MalformedReplyCode"/>, and fails this call only, never the connection: it arrived
     /// inside a well-formed reply.
     /// </exception>
-    public async Task<MuxScreenRead?> ReadScreenAsync(Guid sessionId, int maxScrollbackRows, CancellationToken cancellationToken = default)
+    public Task<MuxScreenRead?> ReadScreenAsync(Guid sessionId, int maxScrollbackRows, CancellationToken cancellationToken = default) =>
+        ReadScreenAsync(sessionId, maxScrollbackRows, 0, cancellationToken);
+
+    /// <summary>Requires the selected stream policy; never silently interprets native state as legacy.</summary>
+    public async Task<MuxScreenRead?> ReadScreenAsync(Guid sessionId, int maxScrollbackRows, int requiredSixelRasterPolicy, CancellationToken cancellationToken = default)
     {
+        SixelPolicyAdmission.RequireClient(requiredSixelRasterPolicy, MaxSixelRasterPolicy);
         long id = Interlocked.Increment(ref _nextId);
-        JsonElement p = MuxFrames.ToElement(new ReadScreenParams { SessionId = sessionId, MaxScrollbackRows = maxScrollbackRows },
+        JsonElement p = MuxFrames.ToElement(new ReadScreenParams { SessionId = sessionId, MaxScrollbackRows = maxScrollbackRows, RequiredSixelRasterPolicy = requiredSixelRasterPolicy },
             MuxJsonContext.Default.ReadScreenParams);
         MuxResponse response = await SendAndAwaitAsync(id, MuxMethods.ReadScreen, p, cancellationToken).ConfigureAwait(false);
         if (response.Error is { } error)
@@ -245,6 +250,7 @@ public sealed class MuxClient : IDisposable
         {
             ReadScreenResult result = MuxFrames.ParseParams(response.Result, MuxJsonContext.Default.ReadScreenResult);
             TerminalStateSnapshot snapshot = DecodeSnapshot(result.Snapshot);
+            SixelPolicyAdmission.RequireClientSession(snapshot.RequiredSixelRasterPolicy, requiredSixelRasterPolicy, MaxSixelRasterPolicy);
             return new MuxScreenRead(snapshot, result with { Snapshot = [] }); // the bytes are decoded: do not hold both
         }
         catch (MuxProtocolException ex) when (ex.Code == MuxErrorCodes.ProtocolError)
