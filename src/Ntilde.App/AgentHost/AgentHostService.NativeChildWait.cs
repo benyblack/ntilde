@@ -41,7 +41,8 @@ public sealed partial class AgentHostService
             || input.ExpectedNativeSessionId is { } expectedId && result.NativeSessionId != expectedId) return Unavailable();
         TryNoteRead(registration);
         _journal.RecordRead(AgentHostProtocol.Methods.ReadNativeChildWait, input.PaneId, "private QA child wait", "ok");
-        if (!IsCurrent()) return Unavailable();
+        cancellationToken.ThrowIfCancellationRequested();
+        if (deadline.IsCancellationRequested || !IsCurrent()) return Unavailable();
         return Ok(request.Id, JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.NativeChildWaitResult));
     }
 }

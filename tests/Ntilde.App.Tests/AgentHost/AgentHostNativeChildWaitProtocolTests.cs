@@ -171,6 +171,37 @@ public sealed class AgentHostNativeChildWaitProtocolTests
         Assert.Equal(AgentAttentionTier.Idle, registration.AttentionMachine.Snapshot().Tier);
     }
 
+    [AvaloniaTheory]
+    [InlineData("attention", "caller")]
+    [InlineData("attention", "deadline")]
+    [InlineData("journal", "caller")]
+    [InlineData("journal", "deadline")]
+    public async Task Notification_reentry_cannot_publish_after_cancellation_or_deadline(string notification, string expiry)
+    {
+        using var startup = new PrivateClipboardQaModeTests(); using var mode = PrivateClipboardQaMode.OverrideProcessForTesting(startup.Create());
+        var registry = new AgentSessionRegistry(); var registration = Register(registry);
+        var journal = new AgentActivityJournal(); using var service = new AgentHostService(registry, journal: journal);
+        using var cancelled = new CancellationTokenSource(); CancellationToken deadline = default; int callbacks = 0;
+        service.SetPaneObserver(new Observer
+        {
+            Read = (_, value, token) =>
+        { deadline = token; return Task.FromResult<NativeChildWaitResult?>(Result(value)); }
+        });
+        void Expire()
+        {
+            callbacks++;
+            if (expiry == "caller") cancelled.Cancel();
+            else Assert.True(deadline.WaitHandle.WaitOne(TimeSpan.FromSeconds(10)), "The existing source-selected read deadline did not expire.");
+        }
+        if (notification == "attention") registration.AttentionMachine.Changed += _ => Expire();
+        else journal.EntryAdded += _ => Expire();
+        if (expiry == "caller")
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Request(service, Input(registration), cancelled.Token));
+        else
+            Assert.Equal(AgentHostProtocol.ErrorCodes.NativeChildWaitUnavailable, (await Request(service, Input(registration))).Error?.Code);
+        Assert.Equal(1, callbacks);
+    }
+
     [AvaloniaFact]
     public async Task Missing_legacy_observer_and_windowless_identity_have_no_native_wait_fallback()
     {
