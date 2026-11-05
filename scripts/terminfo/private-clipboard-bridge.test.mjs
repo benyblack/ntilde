@@ -235,3 +235,19 @@ test('array-valued kind cannot consume the legitimate pending readback', async (
     await assert.rejects(api.bridge.handle({ kind: 'read' }));
     assert.equal(api.bridge.evidence().complete, false);
 });
+
+
+for (const reason of [null, false, 0, '', undefined]) {
+    test('falsy begin rejection settles bridge start within one event-loop turn: ' + String(reason), async () => {
+        const api = fixture(); api.hook = request => { if (request.operation === 'begin') throw reason; };
+        const outcome = api.bridge.handle({ kind: 'start', probeId: PRIVATE_CLIPBOARD_PROBES[0] })
+            .then(value => ({ value }), error => ({ rejected: true, error }));
+        // The synthetic RPC rejects immediately. All resulting promise jobs must
+        // drain before the next loop turn; this is not a wall-clock timeout.
+        const observed = await Promise.race([outcome, new Promise(resolve => setImmediate(() => resolve({ pending: true })))]);
+        assert.equal(observed.rejected, true); assert.ok(Object.is(observed.error, reason));
+        assert.deepEqual(api.bridge.evidence().completedProbes, []);
+        assert.equal(api.bridge.evidence().bridgeFailed, true);
+        assert.equal(api.bridge.evidence().complete, false);
+    });
+}
