@@ -65,6 +65,19 @@ async function retainPrivateClipboardAbort(state, error, phase, retain) {
     retain();
 }
 
+function retainOwnedFailure(output, error, privateState) {
+    let message = 'Owned private clipboard collection failed; see bounded failure facts.';
+    if (!privateState) message = String(error?.message ?? error);
+    const failure = { error: message, at: new Date().toISOString() };
+    if (privateState) {
+        failure.primary = privateClipboardFailureFacts(error);
+        failure.privateClipboardFailures = privateState.failures ?? [];
+        failure.failureFactsTruncated = privateState.failureFactsTruncated === true;
+    }
+    writeJson(join(output, 'failure.json'), failure);
+    return new Error(`${message} Evidence retained in ${output}`, { cause: error });
+}
+
 /** Preserve only source-known initial App/geometry-budget refusal codes. */
 function ownerFailure(error, privateFailure = false) {
     if (privateFailure) return { ok: false, error: 'Owned private clipboard owner refused; see bounded parent failure facts.' };
@@ -1011,10 +1024,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             await retainPrivateClipboardAbort(privateClipboardState, error, 'runFailure', retainPrivateClipboardJournal);
             queryState?.observer?.abort(error);
             retainQueryJournal();
-            writeJson(join(output, 'failure.json'), { error: privateClipboardState ? 'Owned private clipboard collection failed; see bounded failure facts.' : error.message,
-                ...(privateClipboardState ? { primary: privateClipboardFailureFacts(error), privateClipboardFailures: privateClipboardState.failures ?? [], failureFactsTruncated: privateClipboardState.failureFactsTruncated === true } : {}), at: new Date().toISOString() });
-            const message = privateClipboardState ? 'Owned private clipboard collection failed.' : String(error?.message ?? error);
-            throw new Error(`${message} Evidence retained in ${output}`, { cause: error });
+            throw retainOwnedFailure(output, error, privateClipboardState);
         } finally {
             clearTimeout(deadline);
             preserveScratch = true;

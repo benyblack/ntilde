@@ -49,3 +49,16 @@ test('a rejection identical to the primary remains explicit and failure-fact ret
     assert.equal(state.failures.length, 8); assert.equal(state.failureFactsTruncated, true); assert.equal(state.failures[0].primary.type, 'undefined');
     assert.equal(state.failures[0].samePrimary, true); assert.equal(state.failures[0].abort, 'rejected');
 });
+
+test('actual parent failure file preserves the original cause without reading exception text getters', () => {
+    let invoked = false, retained;
+    const primary = {};
+    Object.defineProperty(primary, 'message', { get() { invoked = true; throw Error('foreign value'); } });
+    const start = source.indexOf('function retainOwnedFailure('), end = source.indexOf('/** Preserve only', start);
+    const run = new Function('output', 'error', 'privateState', 'privateClipboardFailureFacts', 'writeJson', 'join',
+        source.slice(start, end) + 'return retainOwnedFailure(output,error,privateState);');
+    const result = run('/synthetic', primary, { failures: [{ phase: 'runFailure' }] }, model.privateClipboardFailureFacts,
+        (_path, value) => { retained = value; }, (a, b) => a + '/' + b);
+    assert.equal(invoked, false); assert.equal(result.cause, primary); assert.equal(retained.primary.messageUnavailable, true);
+    assert.equal(retained.privateClipboardFailures[0].phase, 'runFailure'); assert.equal(retained.error.includes('foreign value'), false);
+});
