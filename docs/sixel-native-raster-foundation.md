@@ -52,7 +52,10 @@ This does not qualify arbitrary Pan/Pad, P2 transparency, animation or placehold
   Current readers now also reject recognized recording headers with missing,
   malformed, duplicate or unsupported versions before indexing, preparation,
   seeks or data callbacks. Recognized v3/future headers cannot fall through to
-  the v1 event reader, even without a required-policy marker. Historical v1
+  the v1 event reader, even without a required-policy marker. A complete recognized
+  root type token in a valid JSON prefix also rejects later syntax errors before
+  byte resume/preparation; nested properties and quoted lookalike text are not
+  classified as headers. Historical v1
   event streams and recognized v2 policy-zero recordings remain supported.
   This does not repair old binaries: pre-foundation byte-offset resume readers
   may bypass a v3 header. Native recordings will require upgraded readers.

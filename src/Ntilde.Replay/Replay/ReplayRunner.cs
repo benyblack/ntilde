@@ -289,10 +289,37 @@ namespace Ntilde.Replay
             }
             catch (JsonException ex)
             {
-                if (recognized) throw new InvalidDataException("Malformed recording header.", ex);
+                if (recognized || HasRecognizedHeaderPrefix(line))
+                    throw new InvalidDataException("Malformed recording header.", ex);
                 return null;
             }
             return header is not null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2 ? header : null;
+        }
+
+        /// <summary>Recognizes complete root type tokens before a later JSON syntax failure, never nested/string lookalikes.</summary>
+        private static bool HasRecognizedHeaderPrefix(string line)
+        {
+            var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(line), isFinalBlock: false, state: default);
+            try
+            {
+                if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) return false;
+                bool typeValue = false;
+                while (reader.Read())
+                {
+                    if (reader.CurrentDepth != 1) continue;
+                    if (reader.TokenType == JsonTokenType.PropertyName)
+                        typeValue = reader.ValueTextEquals("type");
+                    else
+                    {
+                        if (typeValue && reader.TokenType == JsonTokenType.String &&
+                            (reader.ValueTextEquals(ReplayHeader.TypeToken) || reader.ValueTextEquals(ReplayHeader.LegacyTypeToken)))
+                            return true;
+                        typeValue = false;
+                    }
+                }
+            }
+            catch (JsonException) { /* No recognized type occurred before the invalid prefix ended. */ }
+            return false;
         }
 
         private static void ValidateRequiredSixelPolicy(JsonElement root)

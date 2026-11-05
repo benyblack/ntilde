@@ -5,6 +5,64 @@ namespace Ntilde.VT.Tests;
 [Trait("Category", "Replay")]
 public sealed class ReplayVersionAdmissionTests
 {
+    public static IEnumerable<object[]> TruncatedHeaders()
+    {
+        foreach (string header in new[]
+        {
+            "{\"type\":\"ntilderec\",\"v\":",
+            "{\"type\":\"novarec\",\"v\":\"",
+            "{\"v\":3,\"type\":\"ntilderec\"",
+            "{\"\\u0074ype\":\"\\u006eovarec\",\"v\":",
+            "{\"type\":\"ntilderec\" \"v\":3}"
+        })
+            foreach (int resume in new[] { 0, 1, 2, 3 })
+                yield return new object[] { header, resume };
+    }
+
+    [Theory]
+    [MemberData(nameof(TruncatedHeaders))]
+    public async Task Complete_top_level_type_in_a_malformed_prefix_is_rejected_before_resume_or_preparation(string header, int resume)
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllTextAsync(path, header + "\n{\"t\":0,\"type\":\"data\",\"d\":\"WA==\"}\n", TestContext.Current.CancellationToken);
+            int calls = 0;
+            await Assert.ThrowsAsync<InvalidDataException>(() => new ReplayRunner(path).RunWithResultAsync(
+                _ => { calls++; return Task.CompletedTask; },
+                onHeaderCallback: _ => { calls++; return Task.CompletedTask; },
+                options: new ReplayRunOptions
+                {
+                    StartAfterLineNumber = resume == 2 ? 2 : 0,
+                    OnValidatedStart = _ => { calls++; return Task.FromResult(true); }
+                },
+                minTimeMs: resume == 1 ? 100 : 0,
+                startOffsetBytes: resume == 3 ? System.Text.Encoding.UTF8.GetByteCount(header) + 1 : 0,
+                ct: TestContext.Current.CancellationToken));
+            Assert.Equal(0, calls);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData("{\"meta\":{\"type\":\"ntilderec\"},\"t\":")]
+    [InlineData("{\"note\":\"\\\"type\\\":\\\"ntilderec\\\"\",\"t\":")]
+    [InlineData("{\"typewriter\":\"ntilderec\",\"t\":")]
+    [InlineData("{\"type\":\"other\",\"t\":")]
+    public async Task Malformed_legacy_prefix_with_a_nested_or_quoted_lookalike_keeps_byte_resume(string header)
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllTextAsync(path, header + "\n{\"t\":0,\"d\":\"WA==\"}\n", TestContext.Current.CancellationToken);
+            var bytes = new List<byte>();
+            await new ReplayRunner(path).RunAsync(data => { bytes.AddRange(data); return Task.CompletedTask; },
+                startOffsetBytes: System.Text.Encoding.UTF8.GetByteCount(header) + 1, ct: TestContext.Current.CancellationToken);
+            Assert.Equal(new byte[] { (byte)'X' }, bytes);
+        }
+        finally { File.Delete(path); }
+    }
+
     public static IEnumerable<object[]> RejectedHeaders()
     {
         foreach (string type in new[] { "ntilderec", "novarec" })
