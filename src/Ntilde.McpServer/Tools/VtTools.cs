@@ -224,6 +224,11 @@ public sealed class VtTools
                 return ExplainTertiaryDeviceAttributes(prefix);
             }
 
+            if (finalByte == 'z' && qualifiers == "$")
+            {
+                return ExplainRectangularErase(prefix[..^1]) + note;
+            }
+
             // XTSMGRAPHICS shares 'S' with SU but never scrolls (#274); it is answered (#872).
             if (finalByte == 'S' && qualifiers == "?")
             {
@@ -450,6 +455,15 @@ public sealed class VtTools
             ? "CSI sequence, final byte 'c': " + ContractSequenceTable["CSI:=c"]
             : "CSI tertiary device attributes: DA3 accepts only an omitted or zero single parameter; "
                 + "Ntilde's parser ignores this form.";
+    }
+
+    /// <summary>Names the Partial rectangle contract only for up to four plain, possibly omitted borders.</summary>
+    private static string ExplainRectangularErase(string parameters)
+    {
+        if (parameters.Count(c => c == ';') >= 4
+            || parameters.Any(c => c != ';' && (c < '0' || c > '9')))
+            return "CSI rectangular erase form: only up to four plain borders are admitted; Ntilde's parser ignores this form.";
+        return "CSI sequence, final byte 'z': " + ContractSequenceTable["CSI:$z"];
     }
 
     /// <summary>

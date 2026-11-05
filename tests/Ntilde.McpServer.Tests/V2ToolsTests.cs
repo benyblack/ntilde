@@ -411,6 +411,34 @@ public class ExplainEscapeSequenceTests
         Assert.DoesNotContain("XTGETTCAP", VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
     }
 
+    /// <summary>Exact rectangular erasure spellings retain the catalogue's Partial support limitation.</summary>
+    [Theory]
+    [InlineData("CSI $ z")]
+    [InlineData("\x1b[1;2;3;4$z")]
+    [InlineData("\\e[;;;$z")]
+    [InlineData("CSI 0;0;0;0 $ z")]
+    public void Rectangular_erase_explains_the_partial_contract(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Contains("DECERA", result, StringComparison.Ordinal);
+        Assert.Contains("PARTIALLY", result, StringComparison.Ordinal);
+    }
+
+    /// <summary>Other identities, excess borders and subparameters cannot inherit the admitted rectangle explanation.</summary>
+    [Theory]
+    [InlineData("CSI z")]
+    [InlineData("CSI ? $ z")]
+    [InlineData("CSI $$ z")]
+    [InlineData("CSI $! z")]
+    [InlineData("CSI 1:2 $ z")]
+    [InlineData("CSI 1;2;3;4;5 $ z")]
+    [InlineData("CSI ;;;; $ z")]
+    [InlineData("CSI $1 z")]
+    public void Other_rectangle_forms_claim_no_contract(string sequence)
+    {
+        Assert.DoesNotContain("DECERA", VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void CatalogCapabilities_AgreeWithExplainerSupportClaims()
     {

@@ -44,6 +44,7 @@ public sealed class VtCapabilityContractTests
             ["cursor-next-line"] = AssertCursorNextLine,
             ["cursor-previous-line"] = AssertCursorPreviousLine,
             ["cursor-horizontal-absolute"] = AssertCursorHorizontalAbsolute,
+            ["erase-rectangular-area"] = AssertRectangularTextErase,
             ["color-stack-push"] = AssertRuntimeColorStack,
             ["color-stack-pop"] = AssertRuntimeColorStack,
             ["color-scheme-query"] = AssertColorSchemeQuery,
@@ -70,6 +71,7 @@ public sealed class VtCapabilityContractTests
             ["cursor-next-line"] = "\x1b[2E",
             ["cursor-previous-line"] = "\x1b[2F",
             ["cursor-horizontal-absolute"] = "\x1b[4G",
+            ["erase-rectangular-area"] = "\u001b[2;2;3;3$z",
             ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
             ["color-stack-pop"] = "\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a",
             ["color-scheme-query"] = "\x1b[?996n",
@@ -80,6 +82,35 @@ public sealed class VtCapabilityContractTests
             ["sgr-overline-off"] = "\x1b[53mA\x1b[55mB",
             ["modify-other-keys-query"] = "\x1b[>4;2m\x1b[?4mA",
         };
+
+    /// <summary>Pins the advertised partial text contract without claiming image-plane erasure or protected-cell support.</summary>
+    [Fact]
+    public void Partial_DECERA_catalogue_has_an_executable_text_contract()
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == "CSI:$z");
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal("erase-rectangular-area", capability.ContractCase);
+        ContractCases["erase-rectangular-area"]();
+    }
+
+    /// <summary>Checks a real rectangle in authored rows, including preservation of pending wrap at the last column.</summary>
+    private static void AssertRectangularTextErase()
+    {
+        var buffer = new TerminalBuffer(4, 3);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("AAAA\r\nBBBB\r\nCCCC\u001b[2;2;3;3$z");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal('A', buffer.GetCell(1, 0).Character);
+            Assert.Equal('B', buffer.GetCell(0, 1).Character);
+            Assert.Equal(' ', buffer.GetCell(1, 1).Character);
+            Assert.Equal(' ', buffer.GetCell(2, 2).Character);
+            Assert.Equal('C', buffer.GetCell(3, 2).Character);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        Assert.Equal((2, 3, true), (buffer.CursorRow, buffer.CursorCol, buffer.IsPendingWrap));
+    }
 
     private static void AssertDecrqssMargins()
     {
