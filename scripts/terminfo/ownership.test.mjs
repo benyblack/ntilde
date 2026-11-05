@@ -4,9 +4,11 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { processBirth, assertPrivateFile, assertProcessOwnership, bindOutput, matchesRecordedWorker, parseProcessRecord, processRecord, requestOwner, terminateRecordedWorker, workerExists } from './ownership.mjs';
+
+const ownerSocket = dir => process.platform === 'win32' ? String.raw`\\.\pipe\ntilde-owner-${process.pid}-${basename(dir)}` : join(dir, 'owner.sock');
 
 const proof = () => ({
     app: { pid: 100, uid: 501, executable: '/test/Ntilde' },
@@ -42,7 +44,7 @@ test('a stream-like object cannot obtain a PTY binding', () => {
     assert.throws(() => bindOutput({ fd: 1 }, '/dev/ttys012'), /real stdin and stdout PTYs/);
 });
 
-test('worker configuration refuses symlinks and group-readable files', () => {
+test('worker configuration refuses symlinks and group-readable files', { skip: process.platform === 'win32' ? 'Requires Unix UID and permission-mode semantics' : false }, () => {
     const dir = mkdtempSync(join(tmpdir(), 'ntilde-owner-test-'));
     try {
         const path = join(dir, 'worker.json');
@@ -56,8 +58,8 @@ test('worker configuration refuses symlinks and group-readable files', () => {
 });
 
 test('an owner refusal propagates instead of granting a worker capability', async () => {
-    const dir = mkdtempSync('/tmp/ntilde-owner-test-');
-    const path = join(dir, 'owner.sock');
+    const dir = mkdtempSync(join(tmpdir(), 'ntilde-owner-test-'));
+    const path = ownerSocket(dir);
     const server = createServer(socket => {
         socket.once('data', () => socket.end('{"ok":false,"error":"wrong owner"}\n'));
     });
@@ -101,7 +103,7 @@ test('cleanup refuses another run marker or a missing ownership record', () => {
 
 test('an owner success response resolves with its measured owner PID', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'nto-'));
-    const path = join(dir, 'owner.sock');
+    const path = ownerSocket(dir);
     const server = createServer(socket => {
         socket.once('data', () => socket.end('{"ok":true,"ownerPid":100}\n'));
     });

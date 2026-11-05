@@ -91,6 +91,9 @@ no normalized receipt, extra terminal query or input-content qualification.
 The complete **schema 12** receipt rederives all 17 reports, original Q11 raw
 traces, controller sequence, selected source closure and exact restoration, then
 requires App/worker cleanup, fixture removal and captured-source removal.
+For schema 12, cell, SGR, RGB, rendition and cursor reports are rebuilt from
+their original journals and compared in full, including identities and counts.
+Their existing stored negatives are preserved; historical receipt paths are unchanged.
 A private declaration, import, source alias, partial journal or summary cannot
 be coherently stripped into a schema 11 receipt. Typed earlier unavailable
 reports remain historical facts; a started private fixture has no unavailable

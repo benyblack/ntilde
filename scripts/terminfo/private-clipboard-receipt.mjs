@@ -8,6 +8,11 @@ import { PRIVATE_CLIPBOARD_PROBES } from './private-clipboard-controller.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './private-clipboard-worker.mjs';
 import { buildPrivateClipboardReport, checkPrivateClipboard as check, emptyPrivateClipboardReply } from './private-clipboard.mjs';
 import { privateClipboardOutputPolicy } from './terminal-output.mjs';
+import { buildCellReport, cellCases, cellSuiteId } from './cells.mjs';
+import { buildSgrReport, sgrCases, sgrSuiteId } from './sgr.mjs';
+import { buildRgbReport, rgbCases, rgbSuiteId } from './rgb.mjs';
+import { buildRenditionReport, renditionCases, renditionSuiteId } from './rendition.mjs';
+import { buildCursorReport, cursorCases, cursorSuiteId } from './cursor.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 function present(path) { try { lstatSync(path); return true; } catch (error) {
     if (error.code !== 'ENOENT') throw error;
@@ -18,6 +23,41 @@ function bytes(output, file, max = 16 * 1024 * 1024) {
     const data = readFileSync(path); check(data.length <= max); return data;
 }
 const json = (output, file) => JSON.parse(bytes(output, file));
+const prefixModels = [
+    { prefix: 'cell', suiteId: cellSuiteId, cases: cellCases, build: buildCellReport, optional: false },
+    { prefix: 'sgr', suiteId: sgrSuiteId, cases: sgrCases, build: buildSgrReport, optional: false },
+    { prefix: 'rgb', suiteId: rgbSuiteId, cases: rgbCases, build: buildRgbReport, optional: true },
+    { prefix: 'rendition', suiteId: renditionSuiteId, cases: renditionCases, build: buildRenditionReport, optional: true },
+    { prefix: 'cursor', suiteId: cursorSuiteId, cases: cursorCases, build: buildCursorReport, optional: true },
+];
+function prefixFrames(output, prefix) {
+    const text = bytes(output, prefix + '-snapshots.jsonl').toString();
+    if (!text) return [];
+    check(text.endsWith('\n'));
+    return text.slice(0, -1).split('\n').map(line => { check(line.length > 0); return JSON.parse(line); });
+}
+function checkPrefixUnavailable(report, binding, frames, spec, runId) {
+    check(spec.optional && binding.status === 'unavailable' && binding.reason === 'screenDetailsUnavailable' && same(binding.counts, {}) && !frames.length);
+    check(same(report, { schemaVersion: 1, runId, suiteId: spec.suiteId, status: 'unavailable',
+        reason: 'screenDetailsUnavailable', fixtureStarted: false, plannedExperiments: spec.cases.length }));
+}
+/** v12 closes the inherited digest-only boundary for these five original report formats. */
+function checkPrivatePrefixes(output, evidence, runId, paneId) {
+    for (const spec of prefixModels) {
+        const binding = spec.prefix === 'cell' ? evidence : evidence[spec.prefix + 'Evidence'];
+        const observationsFile = spec.prefix + '-observations.json', unavailableFile = spec.prefix + '-unavailable.json';
+        check(binding?.runId === runId && binding.suiteId === spec.suiteId && [observationsFile, unavailableFile].includes(binding.file));
+        const data = bytes(output, binding.file); check(hash(data) === binding.sha256);
+        const report = JSON.parse(data), frames = prefixFrames(output, spec.prefix);
+        if (binding.file === unavailableFile) { checkPrefixUnavailable(report, binding, frames, spec, runId); continue; }
+        check(binding.status === undefined && binding.reason === undefined && !present(join(output, unavailableFile)));
+        const derived = spec.build(frames, runId), counts = {};
+        for (const item of derived.observations) counts[item.result] = (counts[item.result] ?? 0) + 1;
+        check(derived.suiteId === spec.suiteId && derived.runId === runId && same(report, derived) && same(report.snapshots, frames) && same(binding.counts, counts)
+            && frames.every(frame => frame.paneId === paneId));
+    }
+}
+
 /** No declaration, partial journal, source input, import or summary can downgrade to a v11 receipt. */
 export function includesPrivateClipboardEvidence(output, evidence, context, proof) {
     if (context.terminalOutput === privateClipboardOutputPolicy || context.retainedOriginalCollector !== undefined
@@ -91,6 +131,7 @@ export function checkPrivateClipboardEvidence(output, binding, runId, context, p
     const derived = buildPrivateClipboardReport({ binding: journal.binding, controller: journal.controller, frames: journal.frames, callbackResults: journal.callbackResults });
     check(same(report, derived));
     const b = derived.binding;
+    checkPrivatePrefixes(output, prefixes, runId, b.paneId);
     check(b.runId === runId && b.ownerPid === original.app.pid && b.workerPid === original.worker.pid && b.uid === original.worker.uid
         && b.appExecutable === original.app.executable && b.workerExecutable === original.worker.executable && b.tty === original.tty
         && b.sourceSnapshotManifestSha256 === context.sourceSnapshotManifestSha256 && b.executableSha256 === context.executableSha256 && b.assemblySha256 === context.assemblySha256);

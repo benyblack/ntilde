@@ -71,7 +71,7 @@ export async function privateClipboardFixture(options = {}) {
                 queryCursorPosition: async () => ({ row: api.screen.cursorRow + 1, col: api.screen.cursorCol + 1 }),
                 queryOutcome: async packet => {
                     api.queryTraces.push(packet);
-                    const raw = '\x1b]52;c;\x1b\\'; return { raw, reason: 'reply', match: new RegExp(String.raw`\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)`).exec(raw) };
+                    const raw = '\x1b]52;c;\x1b\\'; return { raw, reason: 'reply', match: [raw, ''] }; // The pinned callback independently parses this exact synthetic denial.
                 },
             }, kind);
             api.callbackResults.push(result);

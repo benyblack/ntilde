@@ -4,13 +4,13 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
         for (const [key, file] of Object.entries(ownedSourceFiles)) {
-            const bytes = readFileSync(ownedSourcePath(new URL('../../', import.meta.url).pathname, file));
+            const bytes = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../', import.meta.url)), file));
             const path = ownedSourcePath(root, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, bytes);
             context[key] = createHash('sha256').update(bytes).digest('hex');
         }

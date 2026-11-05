@@ -66,3 +66,21 @@ test('raw JSON object-key order is not confused with a changed original packet o
         f.raw.rawReplies[id] = JSON.stringify(reorder(JSON.parse(f.raw.rawReplies[id])));
     f.write('raw.json', reorder(f.raw)); assert.equal(f.finish().schemaVersion, 12);
 }));
+
+for (const prefix of ['cell', 'sgr', 'rgb', 'rendition', 'cursor']) test('schema12 refuses a coherently rehashed ' + prefix + ' grade change with unchanged original captures', () => privateClipboardReceiptFixture(f => {
+    const file = prefix + '-observations.json', report = JSON.parse(readFileSync(join(f.output, file)));
+    const observation = prefix === 'cursor' ? report.observations.find(value => value.featureId === 'cursor.style.0') : report.observations[0];
+    if (prefix === 'cursor') assert.equal(observation.result, 'failed', 'the genuine original cursor negative must be preserved');
+    observation.result = observation.result === 'passed' ? 'failed' : 'passed';
+    f.write(file, report);
+    const binding = prefix === 'cell' ? f.evidence : f.evidence[prefix + 'Evidence'];
+    binding.sha256 = hash(readFileSync(join(f.output, file))); binding.counts = {};
+    for (const item of report.observations) binding.counts[item.result] = (binding.counts[item.result] ?? 0) + 1;
+    assert.throws(f.finish);
+}));
+
+for (const [label, mutate] of [
+    ['changed SGR suite identity', f => { f.evidence.sgrEvidence.suiteId = 'unrelated'; }],
+    ['changed cursor counts', f => { f.evidence.cursorEvidence.counts = { passed: 9 }; }],
+    ['missing SGR journal entry', f => { const file = join(f.output, 'sgr-snapshots.jsonl'); const lines = readFileSync(file, 'utf8').trimEnd().split('\n'); lines.pop(); writeFileSync(file, lines.join('\n') + '\n'); }],
+]) test('schema12 original prefix replay refuses ' + label, () => privateClipboardReceiptFixture(f => { mutate(f); assert.throws(f.finish); }));
