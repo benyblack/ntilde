@@ -10,7 +10,7 @@ public sealed partial class AgentHostService
     private async Task<AgentHostResponse> HandleReadNativeChildWaitAsync(AgentHostRequest request, CancellationToken cancellationToken)
     {
         var input = DeserializeParams(request, AgentHostJsonContext.Default.ReadNativeChildWaitParams);
-        if (input == null || !NativeChildWaitValidation.IsValid(input))
+        if (!NativeChildWaitValidation.IsValid(input))
             return Error(request.Id, AgentHostProtocol.ErrorCodes.MalformedRequest, "A private QA pane, run, child PID and optional native session are required.");
         AgentHostResponse Unavailable() => Error(request.Id, AgentHostProtocol.ErrorCodes.NativeChildWaitUnavailable,
             "A complete current private QA native child-wait observation is unavailable.");

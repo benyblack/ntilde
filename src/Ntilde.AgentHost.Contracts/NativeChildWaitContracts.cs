@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
 namespace Ntilde.AgentHost.Contracts;
@@ -28,7 +29,7 @@ public sealed record NativeChildWaitResult
 
 public static class NativeChildWaitValidation
 {
-    public static bool IsValid(ReadNativeChildWaitParams value) => value.PaneId != Guid.Empty
+    public static bool IsValid([NotNullWhen(true)] ReadNativeChildWaitParams? value) => value != null && value.PaneId != Guid.Empty
         && ClipboardFixtureValidation.IsRunId(value.RunId) && value.ExpectedChildPid > 0
         && value.ExpectedNativeSessionId != Guid.Empty;
 

@@ -50,6 +50,7 @@ public sealed class AgentHostNativeChildWaitProtocolTests
     public void Contract_rejects_selectors_invalid_binding_and_conflicting_wait_code()
     {
         var registry = new AgentSessionRegistry(); var registration = Register(registry); var valid = Input(registration);
+        Assert.False(NativeChildWaitValidation.IsValid(null));
         Assert.True(NativeChildWaitValidation.IsValid(valid with { ExpectedNativeSessionId = null }));
         foreach (var input in new[] { valid with { PaneId = Guid.Empty }, valid with { RunId = "anything" },
             valid with { ExpectedChildPid = 0 }, valid with { ExpectedChildPid = -1 }, valid with { ExpectedNativeSessionId = Guid.Empty } })
