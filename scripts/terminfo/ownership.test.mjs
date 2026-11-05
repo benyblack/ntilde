@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { assertPrivateFile, assertProcessOwnership, bindOutput, matchesRecordedWorker, parseProcessRecord, processRecord, requestOwner, terminateRecordedWorker, workerExists } from './ownership.mjs';
+import { processBirth, assertPrivateFile, assertProcessOwnership, bindOutput, matchesRecordedWorker, parseProcessRecord, processRecord, requestOwner, terminateRecordedWorker, workerExists } from './ownership.mjs';
 
 const proof = () => ({
     app: { pid: 100, uid: 501, executable: '/test/Ntilde' },
@@ -181,4 +181,16 @@ test('worker cleanup tolerates a process that has already exited', { skip: proce
         await terminateRecordedWorker(recorded, workerRun);
         assert.equal(workerExists(child.pid), false);
     });
+});
+
+test('process birth corroboration is bounded UTC/C locale and separate from legacy process fields', () => {
+    let options;
+    const value = processBirth(42, 87, (tool, args, supplied) => {
+        assert.equal(tool, '/bin/ps'); assert.deepEqual(args, ['-p', '42', '-o', 'lstart=']); options = supplied;
+        return 'Thu Nov  5 09:00:00 2026\n';
+    });
+    assert.equal(value, 'Thu Nov  5 09:00:00 2026'); assert.equal(options.timeout, 87); assert.equal(options.maxBuffer, 256);
+    assert.equal(options.env.LC_ALL, 'C'); assert.equal(options.env.LANG, 'C'); assert.equal(options.env.TZ, 'UTC');
+    assert.deepEqual(Object.keys(parseProcessRecord('42 10 501 ttys1 /test/node')), ['pid', 'ppid', 'uid', 'tty', 'executable']);
+    for (const invalid of ['', 'unknown', 'Thu Nov  5 09:00:00 2026\nEXTRA']) assert.throws(() => processBirth(42, 87, () => invalid));
 });

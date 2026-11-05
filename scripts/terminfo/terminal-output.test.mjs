@@ -134,7 +134,7 @@ test('private original-state readback is exact and refuses malformed saved modes
     const f = fixture(); assert.equal(readOwnedTerminalState(tty, 91, f.run), f.saved);
     restoreOwnedTerminalState(tty, f.saved, 92, f.run);
     assert.deepEqual(f.calls.slice(-3).map(value => value.args[2]), [f.saved, '-g', '-g']);
-    assert.throws(() => restoreOwnedTerminalState(tty, f.saved + ':changed', 92, f.run), /exactly restored/);
+    assert.throws(() => restoreOwnedTerminalState(tty, f.saved + ':ispeed=9600', 92, f.run), /exactly restored/);
     for (const value of ['', '\n', '-echo;rm', null]) assert.throws(() => restoreOwnedTerminalState(tty, value, 92, f.run));
 });
 test('real private PTY keeps -opost through pinned stock raw-mode and nested TTY operations, then restores exact original termios', { skip: process.platform !== 'darwin' }, async () => {

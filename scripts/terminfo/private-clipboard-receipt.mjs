@@ -18,7 +18,10 @@ function bytes(output, file, max = 16 * 1024 * 1024) {
 const json = (output, file) => JSON.parse(bytes(output, file));
 /** No declaration, partial journal, source input, import or summary can downgrade to a v11 receipt. */
 export function includesPrivateClipboardEvidence(output, evidence, context, proof) {
-    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v5' || proof.sourceSnapshot?.policy === 'readonly-owned-source-graph-v5'
+    if (context.terminalOutput === privateClipboardOutputPolicy || context.retainedOriginalCollector !== undefined
+        || context.clipboard === 'armed synthetic App-private storage only; no native interchange or OSC52 read permission'
+        || (present(join(output, 'initial-settings.json')) && json(output, 'initial-settings.json').AllowOsc52ClipboardWrite === true)
+        || context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v5' || proof.sourceSnapshot?.policy === 'readonly-owned-source-graph-v5'
         || evidence.privateClipboardEvidence !== undefined || Object.keys(context).some(key => /privateClipboard/i.test(key))
         || proof.proofs?.some(item => item.privateClipboard !== undefined)
         || readdirSync(output).some(file => file.startsWith('private-clipboard-') || file === 'collector-original.mjs')) return true;

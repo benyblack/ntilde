@@ -164,6 +164,7 @@ jobs:
           py=python3
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/analyzer_gate_tests.py
+          "$py" scripts/tests/private_clipboard_gate_tests.py
 
       - name: Self-test the pinned terminfo triage inventory
         shell: bash
@@ -243,7 +244,7 @@ jobs:
           node-version: '24'
       - name: Source-pinned callbacks, parent controls and complete schema12 receipt
         shell: bash
-        run: node --test scripts/terminfo/private-clipboard-request.test.mjs scripts/terminfo/private-clipboard-source.test.mjs scripts/terminfo/private-clipboard-controller.test.mjs scripts/terminfo/private-clipboard-bridge.test.mjs scripts/terminfo/private-clipboard-worker.test.mjs scripts/terminfo/private-clipboard-collector.test.mjs scripts/terminfo/private-clipboard-capture.test.mjs scripts/terminfo/private-clipboard-receipt.test.mjs
+        run: node --test scripts/terminfo/ownership.test.mjs scripts/terminfo/private-clipboard-request.test.mjs scripts/terminfo/private-clipboard-source.test.mjs scripts/terminfo/private-clipboard-controller.test.mjs scripts/terminfo/private-clipboard-bridge.test.mjs scripts/terminfo/private-clipboard-worker.test.mjs scripts/terminfo/private-clipboard-collector.test.mjs scripts/terminfo/private-clipboard-capture.test.mjs scripts/terminfo/private-clipboard-receipt.test.mjs
 
   build:
     name: Build (${{ matrix.os }})
