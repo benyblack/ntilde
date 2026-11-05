@@ -13,7 +13,7 @@ function validateFrame(frame) {
         throw new Error('Invalid clipboard bridge frame or kind.');
     const fields = { start: ['kind', 'probeId'], arm: ['kind', 'value'], read: ['kind'],
         seed: ['kind', 'value'], complete: ['kind'], finish: ['kind'] }[frame.kind];
-    if (!fields || Object.keys(frame).length !== fields.length || !fields.every(key => Object.hasOwn(frame, key)))
+    if (Object.keys(frame).length !== fields?.length || !fields.every(key => Object.hasOwn(frame, key)))
         throw new Error('Unexpected clipboard bridge fields.');
     if (frame.kind === 'start' && !PRIVATE_CLIPBOARD_PROBES.includes(frame.probeId))
         throw new Error('Unknown clipboard bridge probe.');
