@@ -6,7 +6,7 @@ import { adapterId } from './collector.mjs';
 import { assertPrivateFile, processRecord, requestOwner, verifyNtildeOutput } from './ownership.mjs';
 import { collectCells } from './cells.mjs';
 import { terminalFence } from './terminal-fence.mjs';
-import { prepareOwnedOutput } from './terminal-output.mjs';
+import { ownedTerminalRestorer, restoreOwnedTerminalState, prepareOwnedOutput } from './terminal-output.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -22,6 +22,17 @@ import { collectHistory } from './history-cases.mjs';
 import { collectColors } from './color-cases.mjs';
 import { collectPixels } from './pixels-cases.mjs';
 
+/**
+ * Format worker-owned failures, including falsy reasons and up to eight entries per
+ * AggregateError at each of eight nesting levels. Each reason contributes at most
+ * 8,192 characters; the caller separately truncates the final retained text to 65,536.
+ */
+function retainedFailure(error, depth = 0) {
+    if (depth >= 8) return '[nested failure limit]';
+    const text = String(error?.stack ?? error).slice(0, 8192);
+    return error instanceof AggregateError ? text + '\n' + error.errors.slice(0, 8)
+        .map((value, index) => '[' + index + '] ' + retainedFailure(value, depth + 1)).join('\n') : text;
+}
 let config;
 try {
     assertPrivateFile(process.argv[2]);
@@ -30,6 +41,10 @@ try {
     const binding = await verifyNtildeOutput(config, process.stdout);
     const fence = terminalFence(process.stdin, process.stdout);
     let restoreOutput;
+    const restore = ownedTerminalRestorer([() => restoreOutput?.(), () => fence.dispose(),
+        /** Require the pre-fixture kernel-mode token in private mode; other runs use the legacy restorers. */
+        () => { if (config.privateClipboard === true) restoreOwnedTerminalState(binding.tabTty, binding.originalTerminalState); }]);
+    let run, primary, failed = false, restoreFailure, restoreFailed = false;
     try {
         restoreOutput = prepareOwnedOutput(binding.tabTty);
         await requestOwner(config, 'raw-output', { tty: binding.tabTty });
@@ -50,22 +65,28 @@ try {
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
-    } finally {
-        try { restoreOutput?.(); }
-        finally { fence.dispose(); }
+        if (config.privateClipboard === true) fence.retireInput();
+        else restore();
+        const source = readFileSync(config.bundle);
+        const digest = createHash('sha256').update(source).digest('hex');
+        if (digest !== config.adapterBundleSha256) throw new Error('Local adapter bundle changed.');
+        const { collectNtildeRun } = await import(pathToFileURL(config.bundle).href);
+        run = await collectNtildeRun(config);
+    } catch (error) { primary = error; failed = true; }
+    finally {
+        try { restore(); }
+        catch (error) { restoreFailure = error; restoreFailed = true; }
     }
-    const source = readFileSync(config.bundle);
-    const digest = createHash('sha256').update(source).digest('hex');
-    if (digest !== config.adapterBundleSha256) throw new Error('Local adapter bundle changed.');
-    const { collectNtildeRun } = await import(pathToFileURL(config.bundle).href);
-    const run = await collectNtildeRun(config);
-    run.collectorAdapter = { id: adapterId, bundleSha256: digest, upstreamBundleSha256: config.upstreamBundleSha256 };
+    if (failed && restoreFailed) throw new AggregateError([primary, restoreFailure], 'Owned collection and terminal restoration failed.');
+    if (restoreFailed) throw restoreFailure;
+    if (failed) throw primary;
+    run.collectorAdapter = { id: adapterId, bundleSha256: config.adapterBundleSha256, upstreamBundleSha256: config.upstreamBundleSha256 };
     writeFileSync(join(config.output, 'raw.json'), JSON.stringify(run) + '\n', { flag: 'wx', mode: 0o600 });
     await requestOwner(config, 'done', { tty: `/dev/${processRecord(process.pid).tty}` });
 } catch (error) {
     if (config) {
-        writeFileSync(join(config.output, 'worker-error.txt'), error.stack + '\n', { flag: 'wx', mode: 0o600 });
-        try { await requestOwner(config, 'failed', { error: error.message, tty: `/dev/${processRecord(process.pid).tty}` }); } catch {}
+        writeFileSync(join(config.output, 'worker-error.txt'), retainedFailure(error).slice(0, 65536) + '\n', { flag: 'wx', mode: 0o600 });
+        try { await requestOwner(config, 'failed', { error: String(error?.message ?? error).slice(0, 1024), tty: `/dev/${processRecord(process.pid).tty}` }); } catch {}
     }
     console.error(error);
     process.exitCode = 1;

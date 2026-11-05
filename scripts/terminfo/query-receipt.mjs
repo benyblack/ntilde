@@ -20,7 +20,7 @@ const json = (output, file) => JSON.parse(read(output, file));
 const journal = (output, file) => read(output, file).toString().trim().split('\n').filter(Boolean).map(value => JSON.parse(value));
 /** Any retained query journal, declaration or import requires the complete v11 query suffix. */
 export function includesQueryEvidence(output, evidence, context, proof) {
-    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v4' || proof.sourceSnapshot?.policy === 'readonly-owned-source-graph-v4'
+    if (['readonly-owned-source-graph-v4', 'readonly-owned-source-graph-v5'].includes(context.sourceSnapshotPolicy) || ['readonly-owned-source-graph-v4', 'readonly-owned-source-graph-v5'].includes(proof.sourceSnapshot?.policy)
         || context.querySuiteId !== undefined || context.ownedQueryPolicy !== undefined || evidence.queryEvidence !== undefined
         || Object.keys(context).some(key => key.startsWith('query') && key.endsWith('SourceSha256'))
         || proof.proofs?.some(value => value.queries !== undefined) || files.some(file => present(join(output, file)))) return true;
@@ -31,7 +31,7 @@ export function includesQueryEvidence(output, evidence, context, proof) {
 /** Full query rederivation binds both original journals, exact prefix challenges and process facts. */
 export function checkQueryEvidence(output, binding, runId, context, proof, prefixEvidence) {
     const original = proof.proofs?.[0], marker = original?.queries;
-    check(context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v4' && context.querySuiteId === querySuiteId
+    check(['readonly-owned-source-graph-v4', 'readonly-owned-source-graph-v5'].includes(context.sourceSnapshotPolicy) && context.querySuiteId === querySuiteId
         && context.ownedQueryPolicy === ownedQueryPolicy && marker?.policy === ownedQueryPolicy
         && Object.keys(marker).every(key => ['policy', 'binding', 'actions', 'seal'].includes(key))
         && !present(join(output, 'query-failed-observation.json')) && !present(join(output, 'query-raw-failure.json')));

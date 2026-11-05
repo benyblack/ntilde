@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-bootstrap-test-'));
@@ -113,3 +113,21 @@ for (const [label, prefix] of [['string', 'const lookalike = "import /*";\n'], [
         const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
         assert.equal(existsSync(marker), false);
     }));
+
+test('reviewed selected C# alias is captured as nonexecuted reference bytes before parent import', () => fixture(f => {
+    f.inventory.privateClipboardInput18SourceSha256 = 'clipboard-vt-osc.cs';
+    writeFileSync(join(f.root, 'scripts/terminfo/owned-source-inventory.json'), JSON.stringify(f.inventory));
+    const source = join(f.root, 'src/Ntilde.VT/AnsiParser.Osc.cs'); mkdirSync(dirname(source), { recursive: true });
+    writeFileSync(source, 'SELECTED OBSERVATIONAL INPUT');
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), `import {readFileSync,writeFileSync} from 'node:fs';
+        writeFileSync(${JSON.stringify(source)},'CHANGED ORIGINAL');
+        console.log(readFileSync(new URL('../src/Ntilde.VT/AnsiParser.Osc.cs',import.meta.url),'utf8'));`);
+    const result = f.run({}); assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), 'SELECTED OBSERVATIONAL INPUT');
+    assert.equal(readFileSync(source, 'utf8'), 'CHANGED ORIGINAL');
+}));
+test('unreviewed C# aliases cannot broaden the bootstrap reference-input allowlist', () => fixture(f => {
+    f.inventory.privateClipboardInputSourceSha256 = 'unreviewed-app.cs';
+    writeFileSync(join(f.root, 'scripts/terminfo/owned-source-inventory.json'), JSON.stringify(f.inventory));
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /Invalid source inventory entry/);
+}));

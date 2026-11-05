@@ -1,3 +1,4 @@
+import { includesPrivateClipboardEvidence, checkPrivateClipboardEvidence } from './private-clipboard-receipt.mjs';
 import { includesMetadataEvidence, checkMetadataEvidence } from './metadata-receipt.mjs';
 import { includesInputEvidence, checkInputEvidence } from './input-receipt.mjs';
 import { includesQueryEvidence, checkQueryEvidence } from './query-receipt.mjs';
@@ -17,7 +18,7 @@ import { buildEraseReport, buildCellEditingReport } from './editing.mjs';
 import { eraseSuiteId, editingSuiteId } from './editing-cases.mjs';
 import { historySuiteId } from './history-cases.mjs';
 import { buildHistoryReport } from './history.mjs';
-import { ownedOutputPolicy, sttyTool, validateOutputDescription, validateOutputGeometry } from './terminal-output.mjs';
+import { privateClipboardOutputPolicy, ownedOutputPolicy, sttyTool, validateOutputDescription, validateOutputGeometry } from './terminal-output.mjs';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const suites = ['sgr', 'rgb', 'rendition', 'cursor'];
@@ -104,7 +105,7 @@ function checkEditingSuites(output, evidence, runId, context) {
 
 /** Require the parent-observed transport and matching geometry before accepting v5 history evidence. */
 function checkHistoryProof(output, evidence, runId, context, proof) {
-    if (context.historySuiteId !== historySuiteId || context.terminalOutput !== ownedOutputPolicy) throw new Error('Missing or changed required v5 history identity/output policy.');
+    if (context.historySuiteId !== historySuiteId || ![ownedOutputPolicy, privateClipboardOutputPolicy].includes(context.terminalOutput)) throw new Error('Missing or changed required v5 history identity/output policy.');
     const mode = proof.proofs?.[0]?.terminalOutput;
     if (mode?.outputProcessing !== false || mode.tool !== sttyTool || typeof mode.verifiedAt !== 'string' || !Number.isFinite(Date.parse(mode.verifiedAt))) throw new Error('Missing parent-observed private PTY output proof.');
     validateOutputDescription(mode.description);
@@ -112,7 +113,8 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
     if (report.snapshots) validateOutputGeometry(mode.description, report.snapshots[0].screen.rows, report.snapshots[0].screen.cols);
 }
 
-function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries }) {
+/** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
+function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard }) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -124,6 +126,7 @@ function ownedReceiptVersion(context, { includesEditing, includesHistory, includ
     if (includesInput) schemaVersion = 9;
     if (includesImages) schemaVersion = 10;
     if (includesQueries) schemaVersion = 11;
+    if (includesPrivateClipboard) schemaVersion = 12;
     return schemaVersion;
 }
 
@@ -147,7 +150,8 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     const historyMarkers = ['historySuiteId', 'terminalOutput', 'historyCasesSourceSha256', 'historyCaptureSourceSha256', 'historySuiteSourceSha256', 'terminalOutputSourceSha256'];
     const includesHistory = evidence.historyEvidence !== undefined || historyMarkers.some(key => context[key] !== undefined)
         || proof.proofs?.some(entry => entry.terminalOutput !== undefined) === true;
-    const includesQueries = includesQueryEvidence(output, evidence, context, proof);
+    const includesPrivateClipboard = includesPrivateClipboardEvidence(output, evidence, context, proof);
+    const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
     const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
     const includesMetadata = includesMetadataEvidence(output, evidence, context, proof) || includesInput;
@@ -161,7 +165,8 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (includesInput) checkInputEvidence(output, evidence.inputEvidence, runId, context, proof);
     if (includesImages) checkStaticImageEvidence(output, evidence.staticImageEvidence, runId, context, proof);
     if (includesQueries) checkQueryEvidence(output, evidence.queryEvidence, runId, context, proof, evidence);
-    const schemaVersion = ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries });
+    if (includesPrivateClipboard) checkPrivateClipboardEvidence(output, evidence.privateClipboardEvidence, runId, context, proof, evidence);
+    const schemaVersion = ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard });
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

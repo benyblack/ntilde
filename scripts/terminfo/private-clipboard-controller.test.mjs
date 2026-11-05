@@ -391,3 +391,23 @@ for (const reason of [null, false, 0, '', undefined]) {
         assert.deepEqual(api.controller.evidence().completedProbes, []);
     });
 }
+
+for (const phase of ['before', 'rpc']) test('an App event keeps its original deadline when a later frame renews the parent budget during ' + phase, async () => {
+    const api = fixture(); let elapsed = 0, frameBudget = 10, checks = 0;
+    api.controller = new PrivateClipboardController({ runId, paneId, rpc: request => api.rpc(request),
+        clock: () => elapsed, budget: () => frameBudget,
+        verifyBinding: async () => {
+            if (++checks === 1 && phase === 'before') { elapsed = 50; frameBudget = 1000; }
+            return api.binding;
+        } });
+    api.hook = async request => {
+        if (request.operation === 'begin' && phase === 'rpc') { elapsed = 50; frameBudget = 1000; }
+    };
+    await assert.rejects(runProbe(api, 0), /deadline|budget/);
+    const first = api.controller.evidence().events[0];
+    assert.equal(first.postVerified, false);
+    assert.equal(first.failed, true);
+    assert.equal(first.rpcStarted, phase === 'rpc');
+    if (phase === 'rpc') assert.equal(first.result.state, 'active');
+    assert.equal(api.controller.evidence().complete, false);
+});

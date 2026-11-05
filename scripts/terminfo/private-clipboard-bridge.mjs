@@ -23,7 +23,7 @@ function validateFrame(frame) {
 
 /** Parent-side seam only. Callers authenticate every frame and independently prove
  * the App/process/PTY/source binding. This module grants no such authority.
- * The central collector is deliberately not wired to this seam yet.
+ * The owned collector supplies that boundary; this helper alone has no authority.
  */
 export class PrivateClipboardBridge {
     #controller; #fixture; #work; #transaction; #busy = false; #failure; #abortPromise; #finished = false;
@@ -32,7 +32,7 @@ export class PrivateClipboardBridge {
 
     evidence() {
         return { ...this.#controller.evidence(), complete: this.#finished && !this.#failure, bridgeFailed: Boolean(this.#failure),
-            bridgeFinished: this.#finished, qualification: 'unwired-parent-bridge-only' };
+            bridgeFinished: this.#finished, qualification: 'caller-verifies-binding' };
     }
 
     async #start(probeId) {

@@ -438,9 +438,10 @@ namespace Ntilde.VT
                 height = ParseDimension(hSfx, isHeight: true);
             }
 
-            float effectiveCellWidth = CellWidth > 0 ? CellWidth : 10f;
-            float effectiveCellHeight = CellHeight > 0 ? CellHeight : 20f;
-            double cellRatio = (effectiveCellHeight > 0 && effectiveCellWidth > 0) ? (effectiveCellWidth / (double)effectiveCellHeight) : 0.5;
+            // One image pixel is one pixel of the cell CSI 16 t reports (device pixels on a scaled
+            // display), as in kitty, so a client that sized its image from that reply fills its cells.
+            var (effectiveCellWidth, effectiveCellHeight) = ImageCellPixels();
+            double cellRatio = effectiveCellWidth / (double)effectiveCellHeight;
             double imageRatio = (double)pixelHeight / pixelWidth;
 
             if (width == 0 && height == 0)

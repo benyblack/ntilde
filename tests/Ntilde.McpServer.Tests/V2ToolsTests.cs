@@ -86,7 +86,6 @@ public class ExplainEscapeSequenceTests
     /// reader the opposite of what Ntilde does.
     /// </summary>
     [Theory]
-    [InlineData("CSI ?1;1;0S", "SU")] // XTSMGRAPHICS, not Scroll Up
     [InlineData("CSI >2T", "SD")]     // XTRMTITLE, not Scroll Down
     [InlineData("CSI <1P", "DCH")]
     [InlineData("CSI =1d", "VPA")]
@@ -100,6 +99,19 @@ public class ExplainEscapeSequenceTests
 
         Assert.DoesNotContain(bareName, result, System.StringComparison.Ordinal);
         Assert.Contains("selects a different function", result, System.StringComparison.Ordinal);
+    }
+
+    /// <summary>XTSMGRAPHICS shares the final byte with SU but is a Sixel attribute query (#872).</summary>
+    [Theory]
+    [InlineData("CSI ?1;1;0S")]
+    [InlineData("CSI ?2;1;0S")]
+    public void Xtsmgraphics_is_explained_as_the_graphics_attribute_query(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+
+        Assert.Contains("XTSMGRAPHICS", result, System.StringComparison.Ordinal);
+        Assert.Contains("4096 color registers", result, System.StringComparison.Ordinal);
+        Assert.DoesNotContain("Scroll", result, System.StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

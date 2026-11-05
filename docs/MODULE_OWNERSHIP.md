@@ -167,6 +167,11 @@ invariant changes.
   the whole name list before replying and echoes only checked hex. `Ms` depends on
   `AnsiParser.ClipboardWriteAvailable`, which the App sets for direct panes from
   `AllowOsc52ClipboardWrite`; headless and mux parsers leave it unset.
+- **XTSMGRAPHICS reports the Sixel decoder's limits, owned by VT and Rendering.**
+  VT answers from `AnsiParser.SixelColorRegisterCount` and
+  `SixelGeometry.DefaultMaxPixelDimension`; a Rendering test fails if the decoder
+  accepts a different register range. The geometry read uses the cell size Sixel
+  placement uses (the host's `SixelCellSizeOverride`), so a reported width fills the pane.
 - **DA3 returns an unassigned compatibility identifier.** VT accepts the `=`
   leader with default/single numeric-zero Ps and no intermediates, and returns
   DECRPTUI with eight zero hex digits. It is nonunique, not a host or hardware

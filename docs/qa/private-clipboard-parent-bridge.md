@@ -1,6 +1,8 @@
 # Parent-side private clipboard callback bridge
 
-This is the parent-side seam for #774. It is **not wired into the owned collector**.
+This records the original parent-side seam for #774. It is now wired into the
+[owned private collector](owned-private-clipboard.md); the future-integration
+language below preserves the foundation's original design boundary.
 No App is launched and no new source graph, receipt, OSC52 permission, OS clipboard
 provider or Windows desktop qualification is introduced here. The existing private
 controller, request transport and source preparation retain their own boundaries.
@@ -62,7 +64,7 @@ acknowledgment, malformed/pre-callback refusal, original begin error retention,
 missing callback phases, external abort, binding loss, overlapping controls,
 abort during begin, a competing request during final close, and simultaneous
 callback/restore failure. They use synthetic private storage and no desktop,
-process or native clipboard. The Ubuntu/Windows foundation workflow runs them
+process or native clipboard. The required Ubuntu/Windows owned-private control job now runs them
 alongside the existing controller, source and transport tests. Its established
 Windows Unix-socket skips remain explicit; this bridge's tests have no skips.
 

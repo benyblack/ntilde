@@ -8,10 +8,10 @@ import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { basename, dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
-import { assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
+import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
 import { OwnedSavedObserver } from './terminfo/saved-capture.mjs';
 import { savedSuiteId, ownedSavedPolicy } from './terminfo/saved-cases.mjs';
@@ -47,7 +47,11 @@ import { OwnedHistoryObserver } from './terminfo/history-capture.mjs';
 import { historySuiteId } from './terminfo/history-cases.mjs';
 import { buildHistoryReport } from './terminfo/history.mjs';
 import { completeOwnedReceipt } from './terminfo/receipt.mjs';
-import { readOwnedOutputMode, ownedOutputPolicy } from './terminfo/terminal-output.mjs';
+import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMode } from './terminfo/terminal-output.mjs';
+
+import { abortPrivateClipboardWithFacts, privateClipboardFailureFacts, privateClipboardEvidenceJson } from './terminfo/private-clipboard.mjs';
+import { OwnedPrivateClipboardObserver } from './terminfo/private-clipboard-capture.mjs';
+import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './terminfo/private-clipboard-worker.mjs';
 
 const sourceRepo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = process.env.NTILDE_TERMINFO_ORIGINAL_REPO ?? sourceRepo;
@@ -55,8 +59,65 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writeJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
 const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 
+/** Attempt parent-owned abort, then retain bounded primary/cleanup facts before independent process shutdown. */
+async function retainPrivateClipboardAbort(state, error, phase, retain) {
+    if (!state?.observer) return;
+    await abortPrivateClipboardWithFacts(state, error, phase, createProcessBudget(4000));
+    retain();
+}
+/** Keep at most eight privacy-safe journal-write failures; retention failure never grants completion or skips shutdown. */
+function recordPrivateClipboardRetentionFailure(state, phase, error) {
+    state.retentionFailures ??= [];
+    if (state.retentionFailures.length < 8) state.retentionFailures.push({ phase, error: privateClipboardFailureFacts(error) });
+    else state.retentionFailuresTruncated = true;
+}
+
+/** Retain privacy-safe private failure facts and return an Error preserving the original cause. */
+function retainOwnedFailure(output, error, privateState) {
+    let message = 'Owned private clipboard collection failed; see bounded failure facts.';
+    if (!privateState) message = String(error?.message ?? error);
+    const failure = { error: message, at: new Date().toISOString() };
+    if (privateState) {
+        failure.primary = privateClipboardFailureFacts(error);
+        failure.privateClipboardFailures = privateState.failures ?? [];
+        failure.failureFactsTruncated = privateState.failureFactsTruncated === true;
+        failure.privateClipboardRetentionFailures = privateState.retentionFailures ?? [];
+        failure.retentionFailuresTruncated = privateState.retentionFailuresTruncated === true;
+    }
+    writeJson(join(output, 'failure.json'), failure);
+    return new Error(`${message} Evidence retained in ${output}`, { cause: error });
+}
+
+/** Await one shutdown attempt and retain rejection presence independently of its value. */
+async function captureOwnedCleanup(action) {
+    try { await action(); return { failed: false }; }
+    catch (error) { return { failed: true, error }; }
+}
+/** Await one source-known evidence write; keep arbitrary rejection reasons inside an explicit outcome, never Promise-assimilate them. */
+async function retainOwnedFailureStep(outcome, action) {
+    try {
+        const replacement = await action(outcome.error);
+        if (replacement !== undefined) outcome.error = replacement;
+    } catch (error_) {
+        outcome.error = new AggregateError([outcome.error, error_], 'Owned failure evidence retention failed.');
+    }
+}
+/** Chain every source-known failure journal serially so later writes see all earlier original/save outcomes before shutdown. */
+async function retainOwnedFailureSequence(error, actions) {
+    const outcome = { failed: true, error };
+    await actions.reduce((pending, action) => pending.then(() => retainOwnedFailureStep(outcome, action)), Promise.resolve());
+    return outcome;
+}
+/** Run after finally: aggregate the original run/cause and shutdown failure without truthiness tests. */
+function throwOwnedRunFailures(run, cleanup) {
+    if (run.failed && cleanup.failed) throw new AggregateError([run.error, cleanup.error], 'Owned run and process cleanup failed.');
+    if (run.failed) throw run.error;
+    if (cleanup.failed) throw cleanup.error;
+}
+
 /** Preserve only source-known initial App/geometry-budget refusal codes. */
-function ownerFailure(error) {
+function ownerFailure(error, privateFailure = false) {
+    if (privateFailure) return { ok: false, error: 'Owned private clipboard owner refused; see bounded parent failure facts.' };
     return { ok: false, error: error.message,
         ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable', 'inputGeometryUnavailable', 'imageGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
 }
@@ -115,7 +176,8 @@ function readPreparedCollector(tool) {
 function prepareCollector(tool) {
     const { source, receiptBytes, lockBytes } = readPreparedCollector(tool);
     const ownerModule = join(sourceRepo, 'scripts', 'terminfo', 'ownership.mjs');
-    const adapted = adaptCollector(source, ownerModule);
+    const privateClipboardModulePath = join(sourceRepo, 'scripts', 'terminfo', 'private-clipboard-worker.mjs');
+    const adapted = adaptCollector(source, ownerModule, { privateClipboardModulePath });
     const adapterBundleSha256 = hash(adapted);
     // Keep external package resolution beside the original bundle. A derived
     // file is content-addressed; the downloaded original is never overwritten.
@@ -123,7 +185,7 @@ function prepareCollector(tool) {
     if (!existsSync(bundle)) writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
     if (hash(readFileSync(bundle)) !== adapterBundleSha256) throw new Error('Derived adapter bundle digest mismatch.');
 
-    return { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes };
+    return { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes, originalBundle: source };
 }
 
 function collectionSummary(output, appVersion) {
@@ -157,7 +219,7 @@ function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, wo
     const digests = {};
     for (const [field, path] of Object.entries(sources)) {
         const bytes = readFileSync(path);
-        writeFileSync(join(sourceDirectory, basename(path)), bytes, { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(sourceDirectory, ownedSourceFiles[field]), bytes, { flag: 'wx', mode: 0o600 });
         digests[field] = hash(bytes);
     }
     return digests;
@@ -224,6 +286,7 @@ Requires an npm installation (or NTILDE_TERMINFO_NPM_CLI) to recreate locked dep
 Prepare terminfo.dev@4.0.0 under
 artifacts/terminfo/tool (see docs/qa/QA_TERMINFO.md). Launches a disposable
 Ntilde process with private settings and runs a locally extended collector.
+Includes synthetic App-private clipboard transactions with native providers disabled; no OS clipboard qualification.
 Results go to artifacts/terminfo/owned-*. No existing sessions are used.
 The collector extension and its digest are recorded; this is not stock CLI data.`);
         return;
@@ -262,6 +325,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let inputEvidence;
     let staticImageEvidence;
     let queryEvidence;
+    let privateClipboardEvidence;
     let sourceContext;
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
@@ -274,7 +338,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         if (interruption) throw interruption;
         const privateTool = join(scratch, 'collector');
         installLockedCollector(privateTool, input.manifestBytes, input.lockBytes);
-        const { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes } = prepareCollector(privateTool);
+        const { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes, originalBundle } = prepareCollector(privateTool);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = randomBytes(16).toString('hex');
@@ -282,7 +346,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const configPath = join(scratch, 'worker.json');
         const workerScript = join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs');
         const profileName = `terminfo disposable worker ${runId}`;
-        const config = { runId, token, appData, output, executable, bundle, profileName, cellNonce: `NTILDE_QA_${runId}`,
+        const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
         const command = join(scratch, 'worker.sh');
@@ -291,7 +355,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const settings = {
             Profiles: [{ Id: profileId, Name: profileName, Command: command, Arguments: '', StartingDirectory: scratch, Type: 0 }],
             DefaultProfileId: profileId, SessionPersistence: 'Off', ShellExitPolicy: 'Always', PaneClosePolicy: 'Always',
-            QuakeModeEnabled: false, AutomaticUpdateChecks: false, AllowOsc52ClipboardWrite: false,
+            QuakeModeEnabled: false, AutomaticUpdateChecks: false, AllowOsc52ClipboardWrite: true,
             MinimumContrast: 1, EnableLigatures: false,
             BellAudioEnabled: false, BellVisualEnabled: false, SmoothScrolling: false,
             Osc9NotificationsEnabled: true, Osc9ProgressReportingEnabled: true, TabStripOrientation: 'Horizontal',
@@ -301,6 +365,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
         writeFileSync(join(output, 'upstream-suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'collector-original.mjs'), originalBundle, { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'package-lock.json'), lockBytes, { flag: 'wx', mode: 0o600 });
 
         let app;
@@ -329,6 +394,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let inputState;
         let staticImageState;
         let queryState;
+        let privateClipboardState;
         let completed = false, outputModeVerified = false;
         const proofs = [];
         const image = statSync(executable);
@@ -342,7 +408,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             nodeVersion: process.version, dependencyInstall: 'isolated npm ci --ignore-scripts', startedAt: new Date().toISOString(), runId,
             ...retainCollectorEvidence(output, bundle, adapterBundleSha256, ownerModule, workerScript),
             retainedAdapterBundle: 'collector-adapter.mjs', retainedSources: 'sources',
-            clipboard: 'disabled; no clipboard fixture', terminalOutput: ownedOutputPolicy, querySuiteId, ownedQueryPolicy, staticImageSuiteId, ownedStaticImagePolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
+            clipboard: 'armed synthetic App-private storage only; no native interchange or OSC52 read permission',
+            privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
+            privateClipboardReferenceScope: 'selected App/VT observational reference inputs; not complete App closure or binary-source attestation',
+            retainedOriginalCollector: 'collector-original.mjs', terminalOutput: privateClipboardOutputPolicy, querySuiteId, ownedQueryPolicy, staticImageSuiteId, ownedStaticImagePolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             cells: 'private AgentHost readScreen; nonce-bound pane; separate ASCII cell-state suite',
             attributes: 'separate ASCII SGR flags and palette-index suite',
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
@@ -748,6 +817,54 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             } catch (error) { queryState?.observer?.abort(error); throw error; }
             finally { retainQueryJournal(); }
         };
+        /** Persist expected-only controller/state facts and bounded failures, without the owner capability. */
+        const retainPrivateClipboardJournal = () => {
+            if (!privateClipboardState?.observer) return;
+            // The expected-only journal contains synthetic seed/nonce values, never arbitrary clipboard data.
+            writeFileSync(join(output, 'private-clipboard-journal.json'), privateClipboardEvidenceJson({ ...privateClipboardState.observer.journal, ...(privateClipboardState.failures?.length ? { failures: privateClipboardState.failures, failureFactsTruncated: privateClipboardState.failureFactsTruncated === true } : {}) }), { mode: 0o600 });
+        };
+        /** Independently reread live process, source, binary, PTY and birth facts inside one shared event budget. */
+        const attestPrivateClipboard = (state, budget) => {
+            const fact = attestQuery(state, budget);
+            assertExecutableUnchanged(executable, image);
+            assertOwnedSourcesUnchanged(sourceRepo, context); budget();
+            const executableSha256 = hash(readFileSync(executable)); budget();
+            const assemblySha256 = context.assemblySha256 === null ? null : hash(readFileSync(join(dirname(executable), 'Ntilde.dll'))); budget();
+            return { ...fact, app: { ...fact.app, birth: processBirth(fact.app.pid, budget()) },
+                worker: { ...fact.worker, birth: processBirth(fact.worker.pid, budget()) },
+                executableSha256, assemblySha256, sourceSnapshotManifestSha256: snapshot.sha256, outputDevice: outputDevice(state.tty) };
+        };
+        /** Lazily admit Q11 only after the query seal; route the fixed parent API and retain only a closed full report. */
+        const observePrivateClipboard = async (request, budget, owner, worker) => {
+            try {
+                if (Object.keys(request).length !== 6 || !Object.hasOwn(request, 'frame')) throw new Error('Invalid private clipboard owner envelope.');
+                requireQueryCompletion(queryState);
+                if (queryState.unavailable) throw new Error('Private clipboard requires all sixteen completed prefix suites.');
+                if (!privateClipboardState) {
+                    if (request.frame?.kind !== 'start') throw new Error('Private clipboard must start at its original Q11 callback.');
+                    const first = proofs[0].privateClipboard;
+                    privateClipboardState = { workerPid: worker.pid, tty: request.tty };
+                    const binding = { runId, ownerPid: owner.pid, workerPid: worker.pid, uid: worker.uid,
+                        appExecutable: owner.executable, workerExecutable: worker.executable, tty: request.tty, profileName, paneId: cellObserver.paneId,
+                        sourceSnapshotManifestSha256: snapshot.sha256, executableSha256: context.executableSha256, assemblySha256: context.assemblySha256,
+                        appBirth: first.appBirth, workerBirth: first.workerBirth, outputDevice: first.outputDevice };
+                    const reader = new OwnedCellObserver({ appData, ownerPid: owner.pid, profileName, expectedPaneId: binding.paneId,
+                        includeAttributes: true, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true });
+                    privateClipboardState.observer = new OwnedPrivateClipboardObserver({ binding, appData,
+                        attest: remaining => attestPrivateClipboard(privateClipboardState, remaining), capture: remaining => reader.capture(remaining) });
+                    first.binding = binding;
+                }
+                if (privateClipboardState.workerPid !== worker.pid || privateClipboardState.tty !== request.tty) throw new Error('Private clipboard worker changed.');
+                const result = await privateClipboardState.observer.handle(request.frame, budget);
+                if (request.frame.kind !== 'finish') return result;
+                const report = privateClipboardState.observer.report, file = 'private-clipboard-observations.json';
+                writeFileSync(join(output, file), privateClipboardEvidenceJson(report), { mode: 0o600 });
+                privateClipboardEvidence = { runId, suiteId: ownedPrivateClipboardSuiteId, file,
+                    sha256: hash(readFileSync(join(output, file))), counts: { completedProbes: 3, acceptedWrites: 2 }, complete: true };
+                return privateClipboardEvidence;
+            } catch (error) { rejectDone(error); throw error; }
+            finally { retainPrivateClipboardJournal(); }
+        };
         const observeCells = async (request, budget) => {
             const prefix = request.kind.split('-')[0];
             if (prefix === 'input') return observeInput(request, budget);
@@ -774,9 +891,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             return observeCells(request, budget);
         };
         /** Retain the first measured lineage and PTY without storing the run capability. */
-        const retainFirstProof = (owner, worker, tty) => {
+        const retainFirstProof = (owner, worker, tty, budget) => {
             if (proofs.length !== 0) return;
-            proofs.push({ app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] }, staticImages: { policy: ownedStaticImagePolicy, actions: [] }, queries: { policy: ownedQueryPolicy, actions: [] } });
+            proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()),
+                workerBirth: processBirth(worker.pid, budget()), outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) }, app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] }, staticImages: { policy: ownedStaticImagePolicy, actions: [] }, queries: { policy: ownedQueryPolicy, actions: [] } });
         };
         /** Bind one kernel-observed output-mode proof to the already verified worker. */
         const attestOutputMode = (request, budget) => {
@@ -794,10 +912,57 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 terminalOutput: readOwnedOutputMode(request.tty, budget()) };
             return observeImages(request, budget, ownership);
         };
+        /** Route already authenticated requests serially; preserve each suite's existing response shape and budget. */
+        const routeOwnedObservation = async (request, queryTimeout, owner, worker) => {
+            if (request.kind === 'private-clipboard') {
+                const result = await observePrivateClipboard(request, queryTimeout, owner, worker);
+                return { ok: true, ownerPid: app.pid, result };
+            }
+            if (request.kind?.startsWith('queries-')) {
+                const result = await observeQueries(request, queryTimeout, owner, worker);
+                return { ok: true, ownerPid: app.pid, ...result };
+            }
+            if (/^images-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
+                const result = await observeImageRequest(request, queryTimeout, owner, worker);
+                return { ok: true, ownerPid: app.pid, ...result };
+            }
+            if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+                || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
+                || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
+                const result = await observeUntranslatedCells(request, queryTimeout);
+                return { ok: true, ownerPid: app.pid, ...result };
+            }
+            return null;
+        };
+        /** Handle proof/done/failure only after lineage verification; done additionally requires close and exact termios. */
+        const controlOwnedWorker = (request, queryTimeout, owner, worker) => {
+            if (request.kind === 'prove') {
+                // Retain the measured proof, never the capability token.
+                retainFirstProof(owner, worker, request.tty, queryTimeout);
+            } else if (request.kind === 'raw-output') {
+                attestOutputMode(request, queryTimeout);
+            } else if (request.kind === 'done') {
+                requireInputCompletion(inputState);
+                requireStaticImageCompletion(staticImageState);
+                requireQueryCompletion(queryState);
+                if (!privateClipboardState?.observer.complete || !privateClipboardEvidence) throw new Error('Private clipboard did not close.');
+                const original = proofs[0].privateClipboard.originalTerminalState;
+                if (readOwnedTerminalState(request.tty, queryTimeout()) !== original) throw new Error('Original private kernel mode was not restored.');
+                proofs[0].privateClipboard.restoredTerminalState = original;
+                proofs[0].privateClipboard.restoredAt = new Date().toISOString();
+                completed = true;
+                resolveDone();
+            } else if (request.kind === 'failed') {
+                rejectDone(new Error(request.error ?? 'Worker failed.'));
+            } else throw new Error('Unknown owner request.');
+            return { ok: true, ownerPid: app.pid, ...(request.kind === 'prove' ? { privateClipboard: true, originalTerminalState: proofs[0].privateClipboard.originalTerminalState } : {}) };
+        };
+        /** Bound owner input to 8 KiB and authenticate before routing; asynchronous refusal must never bypass owned cleanup. */
         const server = createServer(socket => {
             let buffer = '';
             socket.setTimeout(5000, () => socket.destroy());
             socket.on('error', () => {});
+            /** Consume one authenticated request; contain failed journal writes and still emit the closed refusal response. */
             socket.on('data', async chunk => {
                 buffer += chunk;
                 if (buffer.length > 8192) return socket.destroy();
@@ -822,46 +987,23 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (request.kind?.startsWith('queries-')) {
-                        const result = await observeQueries(request, queryTimeout, owner, worker);
-                        socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
-                        return;
-                    }
-                    if (/^images-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
-                        const result = await observeImageRequest(request, queryTimeout, owner, worker);
-                        socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
-                        return;
-                    }
-                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
-                        || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
-                        || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
-                        const result = await observeUntranslatedCells(request, queryTimeout);
-                        socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
-                        return;
-                    }
-                    if (request.kind === 'prove') {
-                        // Retain the measured proof, never the capability token.
-                        retainFirstProof(owner, worker, request.tty);
-                    } else if (request.kind === 'raw-output') {
-                        attestOutputMode(request, queryTimeout);
-                    } else if (request.kind === 'done') {
-                        requireInputCompletion(inputState);
-                        requireStaticImageCompletion(staticImageState);
-                        requireQueryCompletion(queryState);
-                        completed = true;
-                        resolveDone();
-                    } else if (request.kind === 'failed') {
-                        rejectDone(new Error(request.error ?? 'Worker failed.'));
-                    } else throw new Error('Unknown owner request.');
-                    socket.end(JSON.stringify({ ok: true, ownerPid: app.pid }) + '\n');
+                    const observation = await routeOwnedObservation(request, queryTimeout, owner, worker);
+                    if (observation) { socket.end(JSON.stringify(observation) + '\n'); return; }
+                    socket.end(JSON.stringify(controlOwnedWorker(request, queryTimeout, owner, worker)) + '\n');
                 } catch (error) {
+                    if (authenticated && privateClipboardState?.observer) {
+                        rejectDone(error);
+                        try { await retainPrivateClipboardAbort(privateClipboardState, error, 'authenticatedOwnerDispatch', retainPrivateClipboardJournal); }
+                        catch (error_) { recordPrivateClipboardRetentionFailure(privateClipboardState, 'authenticatedOwnerDispatch', error_); }
+                    }
                     rejectQueryOwnerRequest({ authenticated, observer: queryState?.observer, error, request, reject: rejectDone });
-                    socket.end(JSON.stringify(ownerFailure(error)) + '\n');
+                    socket.end(JSON.stringify(ownerFailure(error, Boolean(privateClipboardState))) + '\n');
                 }
             });
         });
         let deadline;
         let logFd;
+        let runOutcome = { failed: false }, cleanupOutcome;
         try {
             await Promise.race([done, new Promise((resolve, reject) => {
                 server.once('error', reject);
@@ -874,7 +1016,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             for (const name of ['__CFBundleIdentifier', 'TMUX', 'STY', 'SSH_CONNECTION', 'SSH_TTY',
                 'TERMINFO_CAPTURE_DIRECTORY', 'TERMINFO_CLIPBOARD_FIXTURE_RECEIPT', 'TERMINFO_RUNTIME_PROVENANCE']) delete env[name];
             logFd = openSync(join(output, 'app-output.log'), 'wx', 0o600);
-            app = spawn(executable, [`--ntilde-terminfo-owner=${runId}`], { env, cwd: dirname(executable), stdio: ['ignore', logFd, logFd] });
+            app = spawn(executable, [`--ntilde-terminfo-owner=${runId}`, `--ntilde-terminfo-private-clipboard=${runId}`], { env, cwd: dirname(executable), stdio: ['ignore', logFd, logFd] });
             app.once('error', rejectDone);
             app.once('exit', (code, signal) => { if (!completed) rejectDone(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
             context.ownerPid = app.pid;
@@ -905,6 +1047,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
             queryEvidence = retainQueryReport(output, queryState, runId);
+            summary.privateClipboardEvidence = privateClipboardEvidence;
             summary.queryEvidence = queryEvidence;
             summary.staticImageEvidence = staticImageEvidence;
             summary.inputEvidence = inputEvidence;
@@ -924,16 +1067,19 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
-            queryState?.observer?.abort(error);
-            retainQueryJournal();
-            writeJson(join(output, 'failure.json'), { error: error.message, at: new Date().toISOString() });
-            throw new Error(`${error.message} Evidence retained in ${output}`);
+            runOutcome = { failed: true, error };
+            runOutcome = await retainOwnedFailureSequence(error, [
+                async () => { await retainPrivateClipboardAbort(privateClipboardState, error, 'runFailure', retainPrivateClipboardJournal); },
+                () => { queryState?.observer?.abort(error); retainQueryJournal(); },
+                reason => retainOwnedFailure(output, reason, privateClipboardState),
+            ]);
         } finally {
             clearTimeout(deadline);
             preserveScratch = true;
-            await cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch });
-            preserveScratch = false;
+            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }));
+            preserveScratch = cleanupOutcome.failed;
         }
+        throwOwnedRunFailures(runOutcome, cleanupOutcome);
     } catch (error) {
         retainPreparationFailure(output, error);
         throw error;
@@ -957,7 +1103,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

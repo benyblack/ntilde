@@ -281,11 +281,16 @@ namespace Ntilde.VT
                           // CSI ? Pi ; Pa ; Pv S is XTSMGRAPHICS, not SU. This one is live
                           // rather than theoretical: the DA1 reply below advertises sixel
                           // (CSI ?62;4;22c), so sixel-capable clients probe XTSMGRAPHICS as a
-                          // matter of course - and every probe used to scroll the screen.
+                          // matter of course - and every probe used to scroll the screen. It is
+                          // answered now (AnsiParser.Xtsmgraphics.cs, #872).
                     if (bare)
                     {
                         int suCount = Math.Max(1, arg0);
                         for (int i = 0; i < suCount; i++) _buffer.ScrollUp();
+                    }
+                    else if (leader == '?' && intermediates.Length == 0)
+                    {
+                        HandleXtsmgraphics(validArgs, validSeparators);
                     }
                     break;
                 case 'T': // SD - Scroll Down
@@ -732,11 +737,15 @@ namespace Ntilde.VT
             // arg0 == 0 is a DSR *response* arriving on the input stream: ignored.
         }
 
-        /// <summary>XTWINOPS 14 and 16: the pane's size and a cell's size, in pixels.</summary>
+        /// <summary>
+        /// XTWINOPS 14 and 16: the pane's size and a cell's size, in the pixels images are placed in
+        /// (<see cref="ImageCellPixels"/>). On a scaled display that is device pixels, so a Sixel or Kitty
+        /// image sized from these replies fills the cells it was drawn for. Direct, persistent and replay
+        /// panes all set the same unit; the in-band resize report (mode 2048) uses it too.
+        /// </summary>
         private void ReportWindowGeometry(int arg0)
         {
-            float cw = CellWidth > 0 ? CellWidth : 10f;
-            float ch = CellHeight > 0 ? CellHeight : 20f;
+            var (cw, ch) = ImageCellPixels();
             if (arg0 == 14)
             {
                 int widthPx = Math.Max(1, (int)Math.Round(_buffer.Cols * cw));

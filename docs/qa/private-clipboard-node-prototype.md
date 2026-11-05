@@ -1,9 +1,11 @@
 # Private clipboard Node foundation (#774)
 
-This is an unintegrated, new-file prototype over the App foundation merged in
-#820. None of the existing worker, adapter, runtime, source inventory, receipt,
-shared CI or published measurement files imports it. A dedicated Ubuntu/Windows workflow
-runs the synthetic controls independently. The original issue remains open.
+This records the original standalone prototype over the App foundation merged
+in #820. It has since been integrated into the
+[owned private collector](owned-private-clipboard.md), whose required Ubuntu/Windows
+CI job also runs these foundation controls. The integration sections below describe
+the original design prerequisites; genuine runtime evidence is still pending.
+The original issue remains open.
 It qualifies no real terminal, native clipboard, permission, child delivery or
 process/PTY ownership. Its tests use synthetic memory and temporary local sockets;
 no App, GUI, OS clipboard, native peer or Node clipboard package is launched.

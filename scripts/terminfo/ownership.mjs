@@ -11,6 +11,24 @@ export function processRecord(pid, timeout = 2000) {
     return parseProcessRecord(text, pid);
 }
 
+/** UTC/C-locale, second-resolution corroboration only; not immutable PID identity or a held lease. */
+export function processBirth(pid, timeout = 2000, run = execFileSync) {
+    if (!Number.isSafeInteger(pid) || pid < 2) throw new Error('Invalid process ID.');
+    const value = run('/bin/ps', ['-p', String(pid), '-o', 'lstart='], {
+        encoding: 'utf8', timeout, maxBuffer: 256,
+        env: { ...process.env, LC_ALL: 'C', LANG: 'C', TZ: 'UTC' },
+    }).trim();
+    if (!/^[A-Za-z]{3} [A-Za-z]{3} +\d{1,2} \d{2}:\d{2}:\d{2} \d{4}$/.test(value)) throw new Error('Could not corroborate process start time.');
+    return value;
+}
+/** Read the canonical private macOS character-device identity; this is not a held descriptor or PTY lease. */
+export function outputDevice(tty) {
+    if (typeof tty !== 'string' || !/^\/dev\/ttys\d+$/.test(tty)) throw new Error('Invalid private PTY.');
+    const stat = statSync(tty, { bigint: true });
+    if (!stat.isCharacterDevice()) throw new Error('Private PTY is not a device.');
+    return device(stat);
+}
+
 export function parseProcessRecord(text, pid = '?') {
     const fields = [];
     let offset = 0;
@@ -101,12 +119,17 @@ export async function terminateRecordedWorker(recorded, runId) {
     throw new Error(`Owned worker ${recorded.pid} did not exit after SIGKILL.`);
 }
 
-/** Exchange a bounded private capability request; only source-known initial refusals carry optional codes. */
+/**
+ * Exchange one newline-delimited capability request on the configured owner socket.
+ * The five-second socket timeout and per-kind response cap reject missing/oversized replies;
+ * only the explicit initial-unavailability codes survive a rejected owner response.
+ */
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(config.socket);
         socket.setEncoding('utf8');
         let buffer = '';
+        /** Destroy this request's socket before resolving its result or rejecting the supplied error. */
         const finish = (error, result) => {
             socket.destroy();
             if (error) reject(error); else resolve(result);
@@ -116,6 +139,7 @@ export function requestOwner(config, kind, extra = {}) {
         socket.on('connect', () => socket.write(JSON.stringify({
             ...extra, kind, token: config.token, runId: config.runId, workerPid: process.pid,
         }) + '\n'));
+        /** Parse the first capped response line; malformed or refused replies never become ownership evidence. */
         socket.on('data', chunk => {
             buffer += chunk;
             const limit = /^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|resize|saved|metadata|input|images)-/.test(kind) ? 512 * 1024 : 16384;
@@ -169,6 +193,12 @@ export function assertPrivateFile(path) {
     }
 }
 
+/**
+ * Bind the worker's actual stdin/stdout device to a freshly acknowledged parent proof.
+ * Refuse a foreign launch environment, executable, ancestry, UID or run marker before
+ * returning the binding; private mode also requires the original kernel-mode token.
+ * These process observations do not create an immutable PID or held PTY lease.
+ */
 export async function verifyNtildeOutput(config, out) {
     if (process.platform !== 'darwin') throw new Error('This owned adapter currently supports macOS.');
     if (process.env.NTILDE_APPDATA_ROOT !== config.appData || process.env.TERMINFO_RUN_ID !== config.runId
@@ -185,5 +215,7 @@ export async function verifyNtildeOutput(config, out) {
     assertProcessOwnership({ app: { ...app, executable: realpathSync(app.executable) }, worker,
         ownerPid: receipt.ownerPid, executable: config.executable, uid: process.getuid(),
         runId: config.runId, appCommand: command, tty });
-    return { ...binding, ownerPid: app.pid, workerPid: worker.pid, launchRunId: config.runId };
+    if (config.privateClipboard === true && (receipt.privateClipboard !== true || typeof receipt.originalTerminalState !== 'string')) throw new Error('Missing original private terminal state.');
+    return { ...binding, ownerPid: app.pid, workerPid: worker.pid, launchRunId: config.runId,
+        ...(config.privateClipboard === true ? { originalTerminalState: receipt.originalTerminalState } : {}) };
 }

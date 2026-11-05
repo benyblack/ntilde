@@ -72,6 +72,12 @@ export function terminalFence(input, output, timeoutMs = 1000) {
             // The next exclusive reader inherits raw input and controlled -opost.
             // Only outer dispose restores the modes captured by this original fence.
         },
+        retireInput() {
+            if (disposed || fatal || pending) throw new Error('Expected a healthy idle fence before final reader retirement.');
+            disposed = true;
+            input.removeListener('data', receive); input.removeListener('error', fail);
+            // Stock owns the only reader. Keep raw/-opost until its final private close.
+        },
         dispose() {
             disposed = true;
             pending?.finish(new Error('Cell barrier disposed.'));

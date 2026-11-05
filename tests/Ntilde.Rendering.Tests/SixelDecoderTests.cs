@@ -68,6 +68,23 @@ public class SixelDecoderTests
         Assert.Equal(rgb.GetPixel(0, 0), hls.GetPixel(0, 0));
     }
 
+    [Fact]
+    public void Color_registers_are_the_count_XTSMGRAPHICS_reports()
+    {
+        // XTSMGRAPHICS answers AnsiParser.SixelColorRegisterCount (#872): the last register must be
+        // definable, and the next one must not be.
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+        int last = Ntilde.VT.AnsiParser.SixelColorRegisterCount - 1;
+        var red = new SKColor(255, 0, 0);
+
+        using var highest = new SixelDecoder().Decode($"0;0;0q#{last};2;100;0;0#{last}~");
+        using var beyond = new SixelDecoder().Decode($"0;0;0q#{last + 1};2;100;0;0#{last + 1}~");
+
+        Assert.NotNull(highest);
+        Assert.Equal(red, highest.GetPixel(0, 0));
+        Assert.NotEqual(red, beyond?.GetPixel(0, 0) ?? SKColors.Empty);
+    }
+
     [Theory]
     [InlineData("0;0;0q#1;;2;3;4~~")]          // empty param via consecutive ';'
     [InlineData("0;0;0q#1;2;;3;~~")]           // multiple empties

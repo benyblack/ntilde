@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
-import { ownedSourceFiles } from './owned-sources.mjs';
+import { ownedSourcePath, ownedSourceFiles } from './owned-sources.mjs';
 import { upstreamReceipt } from './collector.mjs';
 import { installLockedCollector } from './runtime.mjs';
 import { terminateRecordedWorker } from './ownership.mjs';
@@ -47,11 +47,12 @@ function withCollectorFixture(receipt, lockfile, action) {
     // Clone the small runner fixture so tests never mutate the real tool cache.
     const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
     try {
-        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs', ...Object.values(ownedSourceFiles)
-            .map(file => file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file)]) {
-            const target = join(root, 'scripts', file);
-            mkdirSync(dirname(target), { recursive: true });
-            copyFileSync(join(repo, 'scripts', file), target);
+        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs']) {
+            mkdirSync(join(root, 'scripts'), { recursive: true }); copyFileSync(join(repo, 'scripts', file), join(root, 'scripts', file));
+        }
+        for (const file of Object.values(ownedSourceFiles)) {
+            const target = ownedSourcePath(root, file); mkdirSync(dirname(target), { recursive: true });
+            copyFileSync(ownedSourcePath(repo, file), target);
         }
         const tool = join(root, 'artifacts/terminfo/tool');
         const pkg = join(tool, 'node_modules/terminfo.dev');
@@ -163,53 +164,10 @@ function assertRetainedCollector(output) {
     const context = JSON.parse(readFileSync(join(output, 'context.json')));
     const digest = bytes => createHash('sha256').update(bytes).digest('hex');
     assert.equal(digest(readFileSync(join(output, context.retainedAdapterBundle))), context.adapterBundleSha256);
-    for (const [field, source] of [
-        ['runnerSourceSha256', 'terminfo-owned-runner.mjs'], ['adapterSourceSha256', 'terminfo/collector.mjs'],
-        ['ownershipSourceSha256', 'terminfo/ownership.mjs'], ['workerSourceSha256', 'terminfo/worker.mjs'],
-        ['runtimeSourceSha256', 'terminfo/runtime.mjs'],
-        ['observerSourceSha256', 'terminfo/agent-observer.mjs'], ['cellSuiteSourceSha256', 'terminfo/cells.mjs'],
-        ['cellFenceSourceSha256', 'terminfo/terminal-fence.mjs'], ['terminalOutputSourceSha256', 'terminfo/terminal-output.mjs'],
-        ['attributeSourceSha256', 'terminfo/attributes.mjs'], ['sgrSuiteSourceSha256', 'terminfo/sgr.mjs'],
-        ['cellDetailsSourceSha256', 'terminfo/cell-details.mjs'], ['rgbSuiteSourceSha256', 'terminfo/rgb.mjs'],
-        ['renditionSuiteSourceSha256', 'terminfo/rendition.mjs'], ['cursorSuiteSourceSha256', 'terminfo/cursor.mjs'],
-        ['pixelCaptureSourceSha256', 'terminfo/pixels-capture.mjs'], ['pixelSuiteSourceSha256', 'terminfo/pixels.mjs'],
-        ['pixelCasesSourceSha256', 'terminfo/pixels-cases.mjs'], ['pixelPngSourceSha256', 'terminfo/pixels-png.mjs'],
-        ['colorQuerySourceSha256', 'terminfo/color-query.mjs'], ['colorCaptureSourceSha256', 'terminfo/color-capture.mjs'],
-        ['colorCasesSourceSha256', 'terminfo/color-cases.mjs'], ['colorSuiteSourceSha256', 'terminfo/colors.mjs'],
-        ['editingStateSourceSha256', 'terminfo/editing-state.mjs'], ['editingCasesSourceSha256', 'terminfo/editing-cases.mjs'],
-        ['editingExpectationsSourceSha256', 'terminfo/editing-expectations.mjs'], ['editingCaptureSourceSha256', 'terminfo/editing-capture.mjs'],
-        ['editingSuiteSourceSha256', 'terminfo/editing.mjs'],
-        ['historyCasesSourceSha256', 'terminfo/history-cases.mjs'], ['historyCaptureSourceSha256', 'terminfo/history-capture.mjs'],
-        ['historySuiteSourceSha256', 'terminfo/history.mjs'],
-        ['sourceRegistrySourceSha256', 'terminfo/owned-sources.mjs'], ['sourceInventorySha256', 'terminfo/owned-source-inventory.json'],
-        ['metadataCasesSourceSha256', 'terminfo/metadata-cases.mjs'], ['metadataCaptureSourceSha256', 'terminfo/metadata-capture.mjs'],
-        ['metadataStateSourceSha256', 'terminfo/metadata-state.mjs'], ['metadataExpectationsSourceSha256', 'terminfo/metadata-expectations.mjs'],
-        ['metadataSuiteSourceSha256', 'terminfo/metadata.mjs'], ['metadataReceiptSourceSha256', 'terminfo/metadata-receipt.mjs'],
-        ['savedCasesSourceSha256', 'terminfo/saved-cases.mjs'], ['savedCaptureSourceSha256', 'terminfo/saved-capture.mjs'],
-        ['savedSuiteSourceSha256', 'terminfo/saved.mjs'], ['savedExpectationsSourceSha256', 'terminfo/saved-expectations.mjs'],
-        ['savedReceiptSourceSha256', 'terminfo/saved-receipt.mjs'],
-        ['resizeCasesSourceSha256', 'terminfo/resize-cases.mjs'], ['resizeCaptureSourceSha256', 'terminfo/resize-capture.mjs'],
-        ['resizeSuiteSourceSha256', 'terminfo/resize.mjs'], ['resizeActionSourceSha256', 'terminfo/resize-action.mjs'],
-        ['resizeReceiptSourceSha256', 'terminfo/resize-receipt.mjs'],
-        ['inputBytesSourceSha256', 'terminfo/input-bytes.mjs'], ['inputCasesSourceSha256', 'terminfo/input-cases.mjs'],
-        ['inputRequestSourceSha256', 'terminfo/input-request.mjs'], ['inputActionSourceSha256', 'terminfo/input-action.mjs'],
-        ['inputStateSourceSha256', 'terminfo/input-state.mjs'], ['inputCaptureSourceSha256', 'terminfo/input-capture.mjs'],
-        ['inputCollectorSourceSha256', 'terminfo/input-collector.mjs'], ['inputReceiptSourceSha256', 'terminfo/input-receipt.mjs'],
-        ['staticImageInputsSourceSha256', 'terminfo/static-images-inputs.mjs'], ['staticImageCasesSourceSha256', 'terminfo/static-images-cases.mjs'],
-        ['staticImageOracleSourceSha256', 'terminfo/static-images-oracle.mjs'], ['staticImageSuiteSourceSha256', 'terminfo/static-images.mjs'],
-        ['staticImageCaptureSourceSha256', 'terminfo/static-images-capture.mjs'], ['staticImageCollectorSourceSha256', 'terminfo/static-images-collector.mjs'],
-        ['staticImageReceiptSourceSha256', 'terminfo/static-images-receipt.mjs'],
-        ['querySuiteSourceSha256', 'terminfo/queries.mjs'], ['queryCaptureSourceSha256', 'terminfo/query-capture.mjs'],
-        ['queryCollectorSourceSha256', 'terminfo/query-collector.mjs'], ['queryReceiptSourceSha256', 'terminfo/query-receipt.mjs'],
-        ['queryWitnessCasesSourceSha256', 'terminfo/query-witness-cases.mjs'], ['queryWitnessFrameSourceSha256', 'terminfo/query-witness-frame.mjs'],
-        ['sourceImportsSourceSha256', 'terminfo/source-imports.mjs'],
-        ['receiptSourceSha256', 'terminfo/receipt.mjs'],
-        ['collectorManifestSha256', 'terminfo/collector-package.json'],
-        ['collectorLockSha256', 'terminfo/collector-package-lock.json'],
-    ]) {
-        const retained = readFileSync(join(output, context.retainedSources, source.split('/').at(-1)));
+    for (const [field, source] of Object.entries(ownedSourceFiles)) {
+        const retained = readFileSync(join(output, context.retainedSources, source));
         assert.equal(digest(retained), context[field], source);
-        assert.deepEqual(retained, readFileSync(join(repo, 'scripts', source)), source);
+        assert.deepEqual(retained, readFileSync(ownedSourcePath(repo, source)), source);
     }
 }
 
@@ -429,7 +387,11 @@ test('owned cleanup waits for a proved worker that ignores SIGTERM and PTY hangu
         assert.deepEqual(rgb.snapshots[0].screen, rgb.snapshots.at(-1).screen);
         assert.equal(rgb.snapshots[0].paneId, report.snapshots[0].paneId);
         assert.ok(rgb.observations.every(item => item.result === 'passed'), JSON.stringify(rgb.observations));
-        assert.equal(receipt.schemaVersion, 11);
+        assert.equal(receipt.schemaVersion, 12);
+        assert.equal(receipt.privateClipboardEvidence.sha256, digest('private-clipboard-observations.json'));
+        const privateClipboard = JSON.parse(readFileSync(join(output, 'private-clipboard-observations.json')));
+        assert.deepEqual(privateClipboard.observations.map(value => value.originalPass), [false, true, false]);
+        assert.equal(privateClipboard.controller.complete, true);
         assert.equal(receipt.queryEvidence.sha256, digest('query-observations.json'));
         const queries = JSON.parse(readFileSync(join(output, 'query-observations.json')));
         assert.equal(queries.observations.length, 40); assert.equal(queries.actions.length, 44); assert.equal(queries.frames.length, 44);

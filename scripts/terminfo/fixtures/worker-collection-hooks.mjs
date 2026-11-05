@@ -1,4 +1,5 @@
 // Test-only child preload: exercise worker orchestration without an App, PTY or production bypass.
+import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 const root = new URL('../', import.meta.url);
 const log = String.raw`import { appendFileSync } from 'node:fs'; const record = value => appendFileSync(process.env.NTILDE_WORKER_TEST_LOG, value + '\n');`;
@@ -9,8 +10,10 @@ code.set(new URL('ownership.mjs', root).href, log + `
     export function processRecord() { return { tty: 'test-only' }; }
     export async function requestOwner(_, kind) { record(kind); }
 `);
-code.set(new URL('terminal-output.mjs', root).href, log + `export function prepareOwnedOutput() { record('output-setup'); return () => record('output-restore'); }`);
-code.set(new URL('terminal-fence.mjs', root).href, log + `export function terminalFence() { record('fence'); return { dispose() { record('dispose'); } }; }`);
+const outputSource = readFileSync(new URL('terminal-output.mjs', root), 'utf8');
+const restorer = outputSource.slice(outputSource.indexOf('export function ownedTerminalRestorer('), outputSource.indexOf('// Darwin canonical-mode'));
+code.set(new URL('terminal-output.mjs', root).href, log + restorer + `export function prepareOwnedOutput() { record('output-setup'); return () => record('output-restore'); } export function restoreOwnedTerminalState() { record('exact-original-mode'); }`);
+code.set(new URL('terminal-fence.mjs', root).href, log + `export function terminalFence() { record('fence'); return { dispose() { record('dispose'); }, retireInput() { record('retire'); } }; }`);
 for (const [file, name] of [['cells', 'Cells'], ['sgr', 'Sgr'], ['rgb', 'Rgb'], ['rendition', 'Rendition'], ['cursor', 'Cursor'], ['pixels-cases', 'Pixels'], ['color-cases', 'Colors'], ['history-cases', 'History'], ['resize-cases', 'Resize'], ['saved-cases', 'Saved'], ['metadata-cases', 'Metadata'], ['input-collector', 'Input'], ['static-images-collector', 'StaticImages'], ['query-collector', 'Queries']]) {
     code.set(new URL(file + '.mjs', root).href, log + `export async function collect${name}() { record('${name}'); }`);
 }
