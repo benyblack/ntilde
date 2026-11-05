@@ -245,9 +245,11 @@ invariant changes.
   charge; quota pressure evicts unused assets first. Soft deletion/ordinary erase
   removes placements without retiring stored data. Hard deletion, replacement,
   eviction, reset/full clear and snapshot import release the final asset ownership
-  through the snapshot-session gate, exactly once per handle. Re-admission cancels
-  pending retirement generations across Kitty/iTerm2/SIXEL/legacy admissions;
-  handed-off handles cannot become live again. Generic retirement retains its
+  through the snapshot-session gate, exactly once per handle. Nonnative re-admission
+  cancels pending retirement generations across Kitty/iTerm2/SIXEL/legacy admissions;
+  the inactive native SIXEL owner is stricter: final retirement is irreversible even
+  before handoff, while live aliases remain shareable. Handed-off handles of either
+  kind cannot become live again. Generic retirement retains its
   existing grace; fresh handles avoid history scans and bulk unlink is linear.
   Weak lifetime records and a short private admission/drain gate preserve ordering
   without retaining disposed wrappers or blocking frame drain on the parser lock.
@@ -279,8 +281,18 @@ invariant changes.
   ordinary headers retain exact v2 bytes. App owns the detached presenter density P,
   published with font/grid inputs and withdrawn on detach; requested capture scale S
   remains independent. Neither changes draw sizing or `renderDetails`/`imageDetails` v1.
-  Activation additionally requires native transforms/culling/crop, bounded decoder and
-  lifetime admission, and explicit mux/replay compatibility; see
+  Internal native test buffers now exercise predecode pixel/placement admission and
+  Rendering's fixed-storage decoder/owning handle. The 256-placement/64 MiB budget
+  spans deferred, live, retired and pinned owners, with conservative alias charges;
+  only successful actual disposal returns pixel credit. Each budget binds once to
+  its buffer generation. Native decode state is lock-free metadata, so VT pruning
+  never waits for native decoding under the write lock; skipped in-flight sources
+  are revisited after completion or failure, including before reservation checks
+  when their own charge could refuse admission. Removal invalidates the view for
+  outside-lock disposal without returning credit early. Source budgets and existing
+  snapshot gates remain their respective lifetime owners. Public selection stays
+  zero. Activation additionally requires native transforms/culling/crop and explicit
+  mux/replay compatibility; see
   [the staged contract](sixel-native-raster-foundation.md).
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
   Exception: `RuntimeForeground` and `RuntimeBackground` each read one immutable,

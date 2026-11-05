@@ -632,3 +632,9 @@ not qualify support; stock 85/0/170 remains incomplete. Earlier grades stay froz
 The [owned App-private clipboard collection](owned-private-clipboard.md) adds a
 separate schema 12 private-storage suffix under fixed policy v5. It preserves
 original Q11 grades and denied reads; fresh runtime evidence remains required.
+
+The [Neovim capability check](terminfo/2026-11-05-neovim-capability-check.md) is #844's
+manual application check. Neovim 0.12.6, run in a build of `main`, learns truecolor and the
+table's capabilities through XTGETTCAP, DECRQSS `m` and the `xterm-ntilde` entry. The run
+covers direct and persistent panes and both OSC 52 settings, with 0.13.0 as the baseline.
+It is a manual QA run and changes no grade.

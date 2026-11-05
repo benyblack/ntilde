@@ -19,12 +19,22 @@ public partial class TerminalBuffer
     private readonly ConditionalWeakTable<object, ImageHandleLifetime> _imageHandleLifetimes = new();
     private readonly object _imageHandleGate = new();
 
+    /// <summary>
+    /// Admits live aliases under one lifetime gate; native final retirement and every disposal handoff are irreversible.
+    /// Native placement credit must belong to this buffer before admission can cancel legacy pending retirement.
+    /// </summary>
     private bool TryAdmitImageHandle(object handle)
     {
+        NativeSixelAllocation? allocation = (handle as INativeSixelImage)?.Allocation;
+        if (allocation is not null && !ReferenceEquals(allocation.Owner, NativeSixelBudget)) return false;
         lock (_imageHandleGate)
         {
             ImageHandleLifetime lifetime = _imageHandleLifetimes.GetValue(handle, static _ => new ImageHandleLifetime());
-            if (lifetime.HandedOff) return false;
+            // Final native retirement is irreversible, even before handoff: its source
+            // has entered the retired tier. Live aliases remain shareable; legacy handles
+            // retain their existing pending-retirement cancellation contract.
+            if (lifetime.HandedOff || (allocation is not null && lifetime.Pending) ||
+                (allocation is not null && !allocation.Owner.TryAdmitPlacement(allocation))) return false;
             lifetime.MayBeShared |= lifetime.Admitted;
             lifetime.Admitted = true;
             lifetime.Pending = false;
@@ -32,9 +42,12 @@ public partial class TerminalBuffer
         }
     }
 
+    /// <summary>
+    /// Rejects ownership or retirement conflicts before a caller publishes an imported or newly placed handle.
+    /// </summary>
     private void RequireImageHandleAdmission(object handle)
     {
-        if (!TryAdmitImageHandle(handle)) throw new InvalidOperationException("An image handle already handed to the disposer cannot be admitted.");
+        if (!TryAdmitImageHandle(handle)) throw new InvalidOperationException("The image handle cannot be admitted to this buffer.");
     }
 
     private bool HasOtherImageReference(TerminalImage retiring)
@@ -67,22 +80,52 @@ public partial class TerminalBuffer
         }
     }
 
+    /// <summary>
+    /// Queues a handle at most once under the lifetime gate; neither queueing nor the immediate flag performs disposal.
+    /// </summary>
     private void QueueImageHandleRetirement(object handle, bool disposeImmediately)
     {
         lock (_imageHandleGate)
         {
             ImageHandleLifetime lifetime = _imageHandleLifetimes.GetValue(handle, static _ => new ImageHandleLifetime());
             if (lifetime.HandedOff || lifetime.Pending) return;
-            lifetime.Pending = true;
-            lifetime.RetirementToken = unchecked(lifetime.RetirementToken + 1);
-            if (lifetime.RetirementToken == 0) lifetime.RetirementToken++;
-            _retiredImageHandles.Enqueue((handle, Environment.TickCount64, disposeImmediately, lifetime.RetirementToken));
+            EnqueueImageRetirement(handle, lifetime, disposeImmediately);
         }
     }
 
+    /// <summary>Requeues a failed native disposal without reopening image admission or returning its charge.</summary>
+    public bool RetryRetiredImageDisposal(object handle)
+    {
+        if (handle is not INativeSixelImage image) return false;
+        NativeSixelAllocation allocation = image.Allocation;
+        if (!ReferenceEquals(allocation.Owner, NativeSixelBudget)) return false;
+        lock (_imageHandleGate)
+        {
+            if (!_imageHandleLifetimes.TryGetValue(handle, out var lifetime) || !lifetime.HandedOff || lifetime.Pending ||
+                !allocation.Owner.IsActive(allocation)) return false;
+            // HandedOff stays true: a retry can never cancel retirement or revive a placement.
+            EnqueueImageRetirement(handle, lifetime, disposeImmediately: true);
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Advances the retirement generation under the lifetime gate so stale drain entries cannot complete a later handoff.
+    /// </summary>
+    private void EnqueueImageRetirement(object handle, ImageHandleLifetime lifetime, bool disposeImmediately)
+    {
+        lifetime.Pending = true;
+        lifetime.RetirementToken = unchecked(lifetime.RetirementToken + 1);
+        if (lifetime.RetirementToken == 0) lifetime.RetirementToken++;
+        _retiredImageHandles.Enqueue((handle, Environment.TickCount64, disposeImmediately, lifetime.RetirementToken));
+    }
+
+    /// <summary>
+    /// Checks the pending retirement generation while the lifetime gate is held; a stale token cannot authorize disposal.
+    /// </summary>
     private bool IsCurrentImageRetirement(object handle, long token) =>
         _imageHandleLifetimes.TryGetValue(handle, out ImageHandleLifetime? lifetime)
-        && lifetime.Pending && !lifetime.HandedOff && lifetime.RetirementToken == token;
+        && lifetime.Pending && lifetime.RetirementToken == token;
 
     private bool TryCompleteImageRetirement(object handle, long token)
     {

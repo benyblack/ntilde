@@ -462,8 +462,10 @@ Quiet and correlated replies describe actual admission/lookup/decode results.
 Erasing a placement cannot retire a stored handle. Hard deletion, replacement,
 quota eviction, full clear/reset and state import retire each final owned handle
 through the existing snapshot-session gate. Weak per-handle lifetime records cancel
-obsolete retirement generations on re-admission and reject a handle already handed
-to the disposer; the same tracking covers preceding iTerm2/SIXEL/legacy retirement.
+obsolete retirement generations on nonnative re-admission; the same tracking covers
+preceding iTerm2/SIXEL/legacy retirement. The inactive native SIXEL owner instead
+makes final retirement irreversible before handoff; its live aliases remain shareable.
+Both kinds reject a handle already handed to the disposer.
 A short private gate serializes admission and drain without waiting on the parser
 lock. Generic retirement keeps its existing grace, and fresh handles avoid history
 scans; bulk cleanup unlinks placements before releasing shared handles. Transmit-only removals request a redraw. Limits are 128 assets, 512 placements
@@ -543,7 +545,12 @@ App carries an immutable presenter density P with the UI-published font/grid val
 clearing it on detach. Offscreen requested scale S stays separate. This plumbing
 changes neither geometry nor the raw v1 capture schemas. The
 [staged native-raster contract](sixel-native-raster-foundation.md) records the remaining
-transform, clipping, ownership and compatibility gates before activation.
+transform, clipping and compatibility gates before activation. The internal native
+test path reserves fixed decoder scratch and pixel storage before decode (256
+placements, 64 MiB), keeps deferred/retired/pinned and alias charges until actual
+disposal, and uses Rendering's fixed-plane span decoder. VT owns only BCL accounting
+and admission; native disposal remains in the Rendering owner outside buffer locks.
+Public policy remains zero and legacy draw/serialized behavior is unchanged.
 
 Skia-only helpers: glyph atlas (`GlyphAtlas`), glyph cache (`GlyphCache`), pixel grid math (`PixelGrid`), font wrappers (`SharedSKFont`, `SharedSKTypeface`), image registry, sixel decoder, render performance metrics.
 

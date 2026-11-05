@@ -104,6 +104,10 @@ namespace Ntilde.Rendering
             return (byte)((percentage * 255 + 50) / 100);
         }
 
+        /// <summary>
+        /// Decodes the legacy band-based raster under MaxPixelDimension; a missing SIXEL final returns null.
+        /// The caller owns a returned bitmap; this path does not acquire native-policy accounting or layout intent.
+        /// </summary>
         public SKBitmap? Decode(string dcs)
         {
             // dcs is everything between 'q' and 'ST'
@@ -138,7 +142,7 @@ namespace Ntilde.Rendering
                     // Cap the palette index: sixel is remote-controlled input, and an
                     // arbitrary idx would grow the palette dictionary without bound
                     // (memory DoS). Modern extended implementations top out at 4096.
-                    if (parts.Length > 0 && int.TryParse(parts[0], out int idx) && idx >= 0 && idx < 4096)
+                    if (parts.Length > 0 && int.TryParse(parts[0], out int idx) && idx >= 0 && idx <= Ntilde.VT.SixelGeometry.DefaultMaxPaletteRegister)
                     {
                         if (parts.Length == 5) // Set color: idx; type; p1; p2; p3
                         {
