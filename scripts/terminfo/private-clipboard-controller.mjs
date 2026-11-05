@@ -209,19 +209,20 @@ export class PrivateClipboardController {
             this.#fatal = true; throw new Error('Invalid or overlapping private clipboard transaction.');
         }
         this.#assertOpen(); this.#busy = true; this.#probe = probeId;
-        let result, original, cleanup;
+        let result; const errors = [];
         try {
             if (!this.#attemptedBegin) await this.#begin();
             await this.#readExpected(this.#seed, this.#count, true);
             result = await this.#runWork(probeId, work);
-        } catch (error) { original = error; this.#fatal = true; }
+        } catch (error) { errors.push(error); this.#fatal = true; }
         finally {
             try { await this.#restore(); }
-            catch (error) { cleanup = error; this.#fatal = true; }
+            catch (error) { errors.push(error); this.#fatal = true; }
             this.#busy = false; this.#probe = undefined;
         }
-        if (original && cleanup) throw new AggregateError([original, cleanup], 'Private clipboard callback and restoration failed.');
-        if (original || cleanup) throw original ?? cleanup;
+        // Rejection reasons may be falsy; presence, not truthiness, decides failure.
+        if (errors.length > 1) throw new AggregateError(errors, 'Private clipboard callback and restoration failed.');
+        if (errors.length) throw errors[0];
         this.#completed.push(probeId);
         return result; // Preserve the stock grader, including empty-read denial and negative observations.
     }
