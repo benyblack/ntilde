@@ -10,7 +10,7 @@ namespace Ntilde.Rendering
     /// bitmap handles the terminal draws. Handles are <see cref="SKBitmap"/> or, when explicitly
     /// requested for SIXEL, <see cref="DeferredSixelImage"/> materialized by the renderer.
     /// </summary>
-    public sealed class SkiaImageDecoder : IImageDecoder
+    public sealed class SkiaImageDecoder : IImageDecoder, INativeSixelDecoder
     {
         /// <summary>
         /// Largest declared width/height (in pixels) this decoder will materialize, applied
@@ -110,6 +110,17 @@ namespace Ntilde.Rendering
             if (!DeferSixelDecoding) return DecodeSixel(data, out pixelWidth, out pixelHeight);
             (pixelWidth, pixelHeight) = SixelGeometry.Measure(data, MaxPixelDimension);
             return pixelWidth > 0 && pixelHeight > 0 ? new DeferredSixelImage(source, MaxPixelDimension) : null;
+        }
+
+        /// <summary>
+        /// Creates a deferred native owner only when retained source geometry matches its predecode reservation.
+        /// </summary>
+        INativeSixelImage? INativeSixelDecoder.DecodeNativeSixel(SixelSource source, NativeSixelAllocation allocation)
+        {
+            if (source.DecodeData is not { } data || data.Length != allocation.SourceChars ||
+                allocation.Width > MaxPixelDimension || allocation.Height > MaxPixelDimension ||
+                SixelGeometry.Measure(data) != (allocation.Width, allocation.Height)) return null;
+            return new NativeSixelImage(source, allocation);
         }
 
         public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)
