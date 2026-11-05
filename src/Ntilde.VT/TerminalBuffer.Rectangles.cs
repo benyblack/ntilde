@@ -19,23 +19,29 @@ public partial class TerminalBuffer
             if (left > right || top > bottom) return;
             int first = TextSizingAbsoluteRow(top), end = TextSizingAbsoluteRow(bottom) + 1;
             EraseTextSizingRange(left, right + 1, first, end);
-            EraseOrdinaryWideSizingBoundaries(left, first, right - left + 1, bottom - top + 1);
             var blank = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
             for (int rowIndex = top; rowIndex <= bottom; rowIndex++)
             {
-                var row = _viewport[rowIndex];
-                row.NoteColumnsWritten(right + 1);
-                for (int col = left; col <= right; col++)
-                {
-                    row.Cells[col] = blank;
-                    row.SetExtendedText(col, null);
-                    row.SetHyperlink(col, null);
-                    row.SetUnderline(col, null);
-                }
-                row.TouchRevision();
+                EraseRectangularRow(_viewport[rowIndex], left, right, blank);
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         OnInvalidate?.Invoke();
+    }
+
+    /// <summary>Expands only split ordinary-wide edges, then applies one erase blank and complete side-table cleanup to the row.</summary>
+    private void EraseRectangularRow(TerminalRow row, int left, int right, TerminalCell blank)
+    {
+        if (left > 0 && row.Cells[left].IsWideContinuation && row.Cells[left - 1].IsWide) left--;
+        if (right + 1 < Cols && row.Cells[right].IsWide && row.Cells[right + 1].IsWideContinuation) right++;
+        row.NoteColumnsWritten(right + 1);
+        for (int col = left; col <= right; col++)
+        {
+            row.Cells[col] = blank;
+            row.SetExtendedText(col, null);
+            row.SetHyperlink(col, null);
+            row.SetUnderline(col, null);
+        }
+        row.TouchRevision();
     }
 }

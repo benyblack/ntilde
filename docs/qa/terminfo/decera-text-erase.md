@@ -19,7 +19,8 @@ underline side metadata are removed from erased cells.
 
 The existing wide/OSC66 text-unit policy applies: intersecting either half of a
 wide glyph clears the whole glyph; touching a scaled block clears the whole
-block. This can clear a unit's cells outside the requested rectangle, including
+block. The same erase colors, default-color flags and side-table cleanup apply
+throughout the whole erased unit. This can clear cells outside the requested rectangle, including
 its retained history anchor when the same block spans history and the viewport.
 History rows and unrelated cells remain present. Image handles and their
 ownership are unchanged; protected-cell storage and DECSERA remain unsupported.
@@ -34,3 +35,5 @@ catalogue also has an executable partial contract in `VtCapabilityContractTests`
 Eight old-parser failures and eight passing refusal controls are retained in
 the isolated development proof. No frozen terminfo observation or grade is
 changed by these unit contracts; an owned App measurement remains separate.
+Eight further wide-glyph color regressions failed on the initial implementation
+and pass with complete whole-unit erase blanks in both screen banks.

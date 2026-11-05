@@ -157,6 +157,48 @@ public sealed class RectangularEraseTests
         Assert.Equal('X', Cell(buffer, 2, 0).Character);
     }
 
+    /// <summary>Both halves of an intersected wide glyph receive the complete erase blank and lose all side metadata in either bank.</summary>
+    [Theory]
+    [InlineData(1, false, false)]
+    [InlineData(2, false, false)]
+    [InlineData(1, true, false)]
+    [InlineData(2, true, false)]
+    [InlineData(1, false, true)]
+    [InlineData(2, false, true)]
+    [InlineData(1, true, true)]
+    [InlineData(2, true, true)]
+    public void Wide_erasure_applies_one_blank_to_the_whole_unit(int column, bool alternate, bool defaultForeground)
+    {
+        var buffer = new TerminalBuffer(8, 4);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        if (alternate) parser.Process("\u001b[?1049h");
+        parser.Process("\u001b]8;;https://example.invalid/wide\a\u001b[32;44;1;4:3;53;58:5:5m界\u001b]8;;\aX");
+        var adjacent = Cell(buffer, 2, 0);
+        parser.Process(defaultForeground ? "\u001b[39;41m" : "\u001b[31;49m");
+        parser.Process($"\u001b[1;{column};1;{column}$z");
+        for (int col = 0; col < 2; col++)
+        {
+            var cell = Cell(buffer, col, 0);
+            Assert.Equal(new TerminalCell(' ', buffer.CurrentForeground, buffer.CurrentBackground,
+                false, false, buffer.IsDefaultForeground, buffer.IsDefaultBackground), cell);
+        }
+        Assert.Equal(adjacent, Cell(buffer, 2, 0));
+        Assert.True(buffer.IsBold);
+        Assert.True(buffer.IsUnderline);
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            var row = buffer.GetRowAbsolute(alternate ? 0 : buffer.Scrollback.Count)!;
+            for (int col = 0; col < 2; col++)
+            {
+                Assert.Null(row.GetExtendedText(col));
+                Assert.Null(row.GetHyperlink(col));
+                Assert.Null(row.GetUnderline(col));
+            }
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
     /// <summary>DECERA reuses the existing OSC66 whole-unit erasure contract rather than retaining a partial scaled glyph.</summary>
     [Fact]
     public void Scaled_text_blocks_are_erased_atomically()
