@@ -107,6 +107,7 @@ public sealed class NativeSixelAdmissionTests
         parser.Process(Wire);
         Assert.Equal(0, decoder.Calls);
         Assert.Equal((0, 0L), budget.Usage);
+        budget = new NativeSixelBudget();
         var normal = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget);
         decoder = new ProbeDecoder(budget, normal) { ReturnNull = true };
         parser = new AnsiParser(normal, forceConPtyFiltering: false) { ImageDecoder = decoder };
@@ -251,6 +252,20 @@ public sealed class NativeSixelAdmissionTests
         Assert.Equal((0, 0L), budget.Usage);
     }
 
+    [Fact]
+    public void A_native_budget_can_belong_to_only_one_buffer_generation()
+    {
+        var budget = new NativeSixelBudget();
+        var first = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget);
+        var decoder = new ProbeDecoder(budget, first);
+        new AnsiParser(first, forceConPtyFiltering: false) { ImageDecoder = decoder }.Process(Wire);
+        var handle = Assert.Single(first.Images).ImageHandle;
+        var before = budget.Usage;
+        Assert.Throws<InvalidOperationException>(() => TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget));
+        Assert.Same(handle, Assert.Single(first.Images).ImageHandle);
+        Assert.Equal(before, budget.Usage);
+    }
+
     private sealed class ProbeDecoder(NativeSixelBudget budget, TerminalBuffer buffer) : IImageDecoder, INativeSixelDecoder
     {
         internal int Calls, LegacyCalls;
@@ -274,6 +289,7 @@ public sealed class NativeSixelAdmissionTests
         public NativeSixelAllocation Allocation => allocation;
         public bool NeedsSource => true;
         public bool IsMaterialized => false;
+        public NativeSixelDecodeState DecodeState => NativeSixelDecodeState.Pending;
         internal bool FailDisposal;
         public void Dispose()
         {

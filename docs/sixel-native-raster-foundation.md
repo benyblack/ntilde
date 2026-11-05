@@ -106,7 +106,8 @@ path is coherent; this is operational admission code, not a native-pixel grade.
 A native owner reserves one identity plus peak pixel storage **before** decoder
 invocation or cursor effects. Its session budget permits at most 256 admitted
 identities/placements and 64 MiB across live, deferred, retired and snapshot-pinned
-owners. Shared opaque handles add placement charges without charging their bitmap
+owners. A budget binds once to one buffer generation and cannot be shared or
+migrated; handle retirement and snapshot gates stay under that same owner. Shared opaque handles add placement charges without charging their bitmap
 twice. These conservative alias charges remain until the shared owner is disposed.
 An admission refusal has no decoder, source-retention or cursor side effect. Hosts
 without the bounded decoder contract cannot fall back to the legacy decoder.
@@ -121,6 +122,12 @@ so materialization never waits for scratch promised to another deferred owner.
 After decoding returns, scratch credit is released; `4 × W × H` remains until
 successful actual bitmap disposal. This bounds owned pixel storage and decoder
 work, not whole-process RSS, allocator overhead or GPU caches.
+
+Native decode state is published without taking the native decode lock. Source
+pruning under the VT write lock observes one state value, preserves in-flight
+owners, and retries skipped expired sources after completion (including failure)
+even without another source eviction. Native decode captures its immutable input
+before publishing in-flight state; metadata reads never wait for that work.
 
 The existing image-retirement registry and snapshot sessions protect native owners.
 Removing a placement, evicting its source, ending a snapshot or draining a retired

@@ -4,6 +4,7 @@ public partial class TerminalBuffer
 {
     private TerminalImage? _placingSixel;
     private long _lastSixelSourceEviction;
+    private bool _retrySixelSourcePrune;
     public SixelSourceBudget SixelSources { get; init; } = new();
 
     /// <summary>Applies SIXEL geometry even on headless hosts. Never writes placeholder text or wraps an image horizontally.</summary>
@@ -73,18 +74,33 @@ public partial class TerminalBuffer
             QueueImageHandleRetirement(image, disposeImmediately: true);
     }
 
-    private static bool CanDiscardSixelHandle(object? handle) =>
-        handle is SixelSource || handle is IDeferredSixelImage { IsMaterialized: false };
+    private static bool CanDiscardSixelHandle(object? handle) => CanDiscardSixelHandle(handle, out _);
+
+    private static bool CanDiscardSixelHandle(object? handle, out bool decoding)
+    {
+        decoding = false;
+        if (handle is INativeSixelImage native)
+        {
+            NativeSixelDecodeState state = native.DecodeState;
+            decoding = state == NativeSixelDecodeState.Decoding;
+            return state is NativeSixelDecodeState.Pending or NativeSixelDecodeState.Failed or NativeSixelDecodeState.Disposed;
+        }
+        return handle is SixelSource || handle is IDeferredSixelImage { IsMaterialized: false };
+    }
 
     private void PruneExpiredSixelSources()
     {
         long version = SixelSources.EvictionVersion;
-        if (version == _lastSixelSourceEviction) return;
+        if (version == _lastSixelSourceEviction && !_retrySixelSourcePrune) return;
         _lastSixelSourceEviction = version;
+        _retrySixelSourcePrune = false;
         for (int i = _images.Count - 1; i >= 0; i--)
         {
             var image = _images[i];
-            if (image.SixelSource is not { Data: null } || !CanDiscardSixelHandle(image.ImageHandle)) continue;
+            if (image.SixelSource is not { Data: null }) continue;
+            bool discard = CanDiscardSixelHandle(image.ImageHandle, out bool decoding);
+            _retrySixelSourcePrune |= decoding;
+            if (!discard) continue;
             RetireImage(image, disposeImmediately: true);
             _images.RemoveAt(i);
         }

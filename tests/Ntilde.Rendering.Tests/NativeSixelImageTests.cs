@@ -105,4 +105,77 @@ public sealed class NativeSixelImageTests
         foreach (var handle in retired) ((IDisposable)handle).Dispose();
         Assert.Equal((0, 0L), budget.Usage);
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Source_pruning_does_not_wait_for_native_decode_and_retries_a_failed_inflight_owner(bool hasData)
+    {
+        var budget = new NativeSixelBudget();
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelSourceBudget(100, 1));
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = new SkiaImageDecoder() };
+        parser.Process("\x1b[?80h\x1bPq#2~\x1b\\");
+        var image = Assert.IsType<NativeSixelImage>(Assert.Single(buffer.Images).ImageHandle);
+        if (!hasData) image.Source.Dispose();
+        object accountingGate = typeof(NativeSixelBudget).GetField("_gate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(budget)!;
+        using var held = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        var blocker = Task.Factory.StartNew(() =>
+        {
+            lock (accountingGate)
+            {
+                held.Set();
+                Assert.True(release.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
+            }
+        }, TestContext.Current.CancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        Task<SKBitmap?>? decode = null;
+        Task<bool>? prune = null;
+        SixelSource? replacement = null;
+        bool finishedBeforeRelease = false;
+        try
+        {
+            Assert.True(held.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+            decode = Task.Factory.StartNew(() =>
+            {
+                int work = 1;
+                return image.GetBitmap(ref work, out _);
+            }, TestContext.Current.CancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            Assert.True(SpinWait.SpinUntil(() => DecodeStarted(image), TimeSpan.FromSeconds(10)));
+            replacement = buffer.SixelSources.Retain("q@");
+            Assert.Null(image.Source.Data);
+            prune = Task.Factory.StartNew(() => buffer.PlaceSixelImage(null, 1, 1, replacement),
+                TestContext.Current.CancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            finishedBeforeRelease = await Task.WhenAny(prune, Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken)) == prune;
+        }
+        finally
+        {
+            release.Set();
+            await blocker;
+            if (decode is not null) await decode;
+            if (prune is not null) await prune;
+        }
+        Assert.True(finishedBeforeRelease, "Pruning must not wait for the native decode lock while holding the VT write lock.");
+        Assert.False(image.NeedsSource);
+        Assert.Equal(hasData, image.IsMaterialized);
+        if (hasData) Assert.Equal(SKColors.Red, (await decode!)!.GetPixel(0, 0));
+        // No further eviction is necessary to revisit an expired owner skipped in flight.
+        buffer.PlaceSixelImage(null, 1, 1, replacement);
+        if (hasData) Assert.Single(buffer.Images);
+        else Assert.Empty(buffer.Images);
+        buffer.ClearImages();
+        var retired = new List<object>();
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        foreach (var handle in retired) ((IDisposable)handle).Dispose();
+        Assert.Equal((0, 0L), budget.Usage);
+    }
+
+    private static bool DecodeStarted(NativeSixelImage image)
+    {
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        // The old implementation uses _attempted; the fixed state machine publishes Decoding=1.
+        var state = typeof(NativeSixelImage).GetField("_state", flags);
+        if (state is not null) return (int)state.GetValue(image)! == 1;
+        return (bool)typeof(NativeSixelImage).GetField("_attempted", flags)!.GetValue(image)!;
+    }
+
 }

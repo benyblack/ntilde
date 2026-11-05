@@ -328,6 +328,7 @@ namespace Ntilde.VT
         private TerminalBuffer(int cols, int rows, int sixelRasterPolicyVersion, NativeSixelBudget? budget)
         {
             if (budget is null) SixelRasterPolicy.RequireSupported(sixelRasterPolicyVersion);
+            budget?.BindToBuffer();
             NativeSixelBudget = budget;
             SixelRasterPolicyVersion = sixelRasterPolicyVersion;
             Cols = cols;

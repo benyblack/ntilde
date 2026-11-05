@@ -14,6 +14,7 @@ internal sealed class NativeSixelBudget
     private readonly long _maxBytes;
     private long _bytes;
     private int _placements;
+    private bool _bound;
 
     public NativeSixelBudget(int maxPlacements = MaxPlacements, long maxBytes = MaxBytes)
     {
@@ -21,6 +22,16 @@ internal sealed class NativeSixelBudget
         if (maxBytes is < 1 or > MaxBytes) throw new ArgumentOutOfRangeException(nameof(maxBytes));
         _maxPlacements = maxPlacements;
         _maxBytes = maxBytes;
+    }
+
+    /// <summary>Retirement gates belong to one buffer generation; budgets can never migrate or be shared.</summary>
+    internal void BindToBuffer()
+    {
+        lock (_gate)
+        {
+            if (_bound) throw new InvalidOperationException("A native SIXEL budget already belongs to a buffer.");
+            _bound = true;
+        }
     }
 
     /// <summary>One coherent observation; callers never combine counters from different admissions.</summary>

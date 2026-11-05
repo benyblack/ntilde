@@ -276,7 +276,10 @@ invariant changes.
   Internal native test buffers now exercise predecode pixel/placement admission and
   Rendering's fixed-storage decoder/owning handle. The 256-placement/64 MiB budget
   spans deferred, live, retired and pinned owners, with conservative alias charges;
-  only successful actual disposal returns pixel credit. Source budgets and existing
+  only successful actual disposal returns pixel credit. Each budget binds once to
+  its buffer generation. Native decode state is lock-free metadata, so VT pruning
+  never waits for native decoding under the write lock; skipped in-flight sources
+  are revisited after completion or failure. Source budgets and existing
   snapshot gates remain their respective lifetime owners. Public selection stays
   zero. Activation additionally requires native transforms/culling/crop and explicit
   mux/replay compatibility; see

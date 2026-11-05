@@ -80,6 +80,7 @@ public sealed class NativeSixelAdmissionRenderTests
         public NativeSixelAllocation Allocation => allocation;
         public bool NeedsSource => true;
         public bool IsMaterialized => false;
+        public NativeSixelDecodeState DecodeState => NativeSixelDecodeState.Pending;
         internal int Attempts;
         internal bool Gone;
         public void Dispose()

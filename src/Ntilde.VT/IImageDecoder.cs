@@ -16,10 +16,14 @@ namespace Ntilde.VT
         INativeSixelImage? DecodeNativeSixel(SixelSource source, NativeSixelAllocation allocation);
     }
 
+    internal enum NativeSixelDecodeState { Pending, Decoding, Materialized, Failed, Disposed }
+
     /// <summary>The handle owns its reservation until successful actual disposal, including deferred and pinned time.</summary>
     internal interface INativeSixelImage : IDeferredSixelImage, IDisposable
     {
         NativeSixelAllocation Allocation { get; }
+        /// <summary>One lock-free observation; VT never waits on native decoding while holding its write lock.</summary>
+        NativeSixelDecodeState DecodeState { get; }
     }
 
     public interface IImageDecoder

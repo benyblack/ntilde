@@ -118,4 +118,21 @@ public sealed class NativeSixelBudgetTests
         foreach (var allocation in reservations.OfType<NativeSixelAllocation>()) budget.CompleteDisposal(allocation);
         Assert.Equal((0, 0L), budget.Usage);
     }
+
+    [Fact]
+    public async Task Concurrent_admissions_never_oversubscribe_the_byte_limit()
+    {
+        var probe = new NativeSixelBudget();
+        var seed = Assert.IsType<NativeSixelAllocation>(probe.TryReserve(100, 100, 1));
+        long perReservation = probe.Usage.Bytes;
+        probe.CompleteDisposal(seed);
+        var budget = new NativeSixelBudget(maxBytes: perReservation * 5);
+        var reservations = await Task.WhenAll(Enumerable.Range(0, 64).Select(_ => Task.Run(
+            () => budget.TryReserve(100, 100, 1), TestContext.Current.CancellationToken)));
+        Assert.Equal(5, reservations.Count(a => a is not null));
+        Assert.Equal((5, perReservation * 5), budget.Usage);
+        foreach (var allocation in reservations.OfType<NativeSixelAllocation>()) budget.CompleteDisposal(allocation);
+        Assert.Equal((0, 0L), budget.Usage);
+    }
+
 }
