@@ -237,9 +237,11 @@ invariant changes.
   charge; quota pressure evicts unused assets first. Soft deletion/ordinary erase
   removes placements without retiring stored data. Hard deletion, replacement,
   eviction, reset/full clear and snapshot import release the final asset ownership
-  through the snapshot-session gate, exactly once per handle. Re-admission cancels
-  pending retirement generations across Kitty/iTerm2/SIXEL/legacy admissions;
-  handed-off handles cannot become live again. Generic retirement retains its
+  through the snapshot-session gate, exactly once per handle. Nonnative re-admission
+  cancels pending retirement generations across Kitty/iTerm2/SIXEL/legacy admissions;
+  the inactive native SIXEL owner is stricter: final retirement is irreversible even
+  before handoff, while live aliases remain shareable. Handed-off handles of either
+  kind cannot become live again. Generic retirement retains its
   existing grace; fresh handles avoid history scans and bulk unlink is linear.
   Weak lifetime records and a short private admission/drain gate preserve ordering
   without retaining disposed wrappers or blocking frame drain on the parser lock.

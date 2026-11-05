@@ -443,8 +443,10 @@ Quiet and correlated replies describe actual admission/lookup/decode results.
 Erasing a placement cannot retire a stored handle. Hard deletion, replacement,
 quota eviction, full clear/reset and state import retire each final owned handle
 through the existing snapshot-session gate. Weak per-handle lifetime records cancel
-obsolete retirement generations on re-admission and reject a handle already handed
-to the disposer; the same tracking covers preceding iTerm2/SIXEL/legacy retirement.
+obsolete retirement generations on nonnative re-admission; the same tracking covers
+preceding iTerm2/SIXEL/legacy retirement. The inactive native SIXEL owner instead
+makes final retirement irreversible before handoff; its live aliases remain shareable.
+Both kinds reject a handle already handed to the disposer.
 A short private gate serializes admission and drain without waiting on the parser
 lock. Generic retirement keeps its existing grace, and fresh handles avoid history
 scans; bulk cleanup unlinks placements before releasing shared handles. Transmit-only removals request a redraw. Limits are 128 assets, 512 placements
