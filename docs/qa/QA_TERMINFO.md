@@ -621,3 +621,10 @@ causal inconclusive), 31 paired frames and 62 original image PNGs. Its 255-file 
 binds all 15 suites and 67 sources; both older failed/uncalibrated preparation archives
 remain separate. Current raw stock 84/0/171 stays incomplete, and historical grades
 are unchanged. This publishes evidence, not a renderer fix or full #770 completion.
+
+The [completed v11 exact-query measurement](terminfo/2026-11-05-query-observations.md)
+retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
+90 state captures, with all 16 suite bindings and a fixed 74-file source graph.
+Its complete 266-file archive preserves the original SGR/cursor-style expectation
+mismatches and cursor/pixel negatives. Matched negative replies and silence do
+not qualify support; stock 85/0/170 remains incomplete. Earlier grades stay frozen.
