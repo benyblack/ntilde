@@ -87,12 +87,11 @@ namespace Ntilde.UI.Replay
 
                     try
                     {
-                        var ev = System.Text.Json.JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayEvent);
+                        var ev = ParseIndexEvent(line);
                         if (ev != null)
                         {
                             if (ev.Type == "snapshot" && ev.Snapshot != null)
                             {
-                                if (ev.Snapshot.State is { } state) SixelRasterPolicy.RequireSupportedState(state);
                                 snapshots.Add(new SnapshotIndexEntry { TimeMs = ev.TimeOffsetMs, Snapshot = ev.Snapshot, LineNumber = lineNumber });
                             }
                             lastTime = ev.TimeOffsetMs;
@@ -109,6 +108,15 @@ namespace Ntilde.UI.Replay
             {
                 TerminalLogger.Error($"[ReplayViewModel] Init Error: {ex.Message}");
             }
+        }
+
+        /// <summary>Admits embedded requirements before either snapshot or timestamp can enter the index.</summary>
+        private static ReplayEvent? ParseIndexEvent(string line)
+        {
+            var ev = System.Text.Json.JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayEvent);
+            if (ev is { Type: "snapshot", Snapshot.State: { } state })
+                SixelRasterPolicy.RequireSupportedState(state);
+            return ev;
         }
 
         private void UpdateTimeDisplay()

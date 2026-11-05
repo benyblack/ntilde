@@ -166,7 +166,7 @@ public sealed class MuxClient : IDisposable
         }
         catch
         {
-            if (client is null) stream.Dispose();
+            if (client is null) await stream.DisposeAsync().ConfigureAwait(false);
             else client.Dispose();
             throw;
         }
