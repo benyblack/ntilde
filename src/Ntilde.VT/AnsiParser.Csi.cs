@@ -281,11 +281,16 @@ namespace Ntilde.VT
                           // CSI ? Pi ; Pa ; Pv S is XTSMGRAPHICS, not SU. This one is live
                           // rather than theoretical: the DA1 reply below advertises sixel
                           // (CSI ?62;4;22c), so sixel-capable clients probe XTSMGRAPHICS as a
-                          // matter of course - and every probe used to scroll the screen.
+                          // matter of course - and every probe used to scroll the screen. It is
+                          // answered now (AnsiParser.Xtsmgraphics.cs, #872).
                     if (bare)
                     {
                         int suCount = Math.Max(1, arg0);
                         for (int i = 0; i < suCount; i++) _buffer.ScrollUp();
+                    }
+                    else if (leader == '?' && intermediates.Length == 0)
+                    {
+                        HandleXtsmgraphics(validArgs, validSeparators);
                     }
                     break;
                 case 'T': // SD - Scroll Down

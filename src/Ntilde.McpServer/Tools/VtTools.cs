@@ -175,9 +175,9 @@ public sealed class VtTools
             string key = "CSI:" + finalByte;
             // A leader or an intermediate byte selects a DIFFERENT function, so neither table's
             // description of the bare final byte may be used for a qualified spelling unless that
-            // spelling is itself defined. CSI ? 1;1;0 S is XTSMGRAPHICS and CSI > 2 T is XTRMTITLE;
-            // the parser ignores both (#274), so calling them SU and SD tells the reader the
-            // opposite of what Ntilde does.
+            // spelling is itself defined. CSI > 2 T is XTRMTITLE, which the parser ignores (#274),
+            // so calling it SD tells the reader the opposite of what Ntilde does. (CSI ? 1;1;0 S,
+            // XTSMGRAPHICS, is answered and explained separately above.)
             //
             // CHA used to be special-cased here as a "qualified form ... currently processed as
             // CHA", mirroring the parser's missing leader guard. That guard now exists, and the
@@ -222,6 +222,12 @@ public sealed class VtTools
             if (finalByte == 'c' && qualifiers == "=")
             {
                 return ExplainTertiaryDeviceAttributes(prefix);
+            }
+
+            // XTSMGRAPHICS shares 'S' with SU but never scrolls (#274); it is answered (#872).
+            if (finalByte == 'S' && qualifiers == "?")
+            {
+                return "CSI sequence, final byte 'S': " + ContractSequenceTable["CSI:?S"];
             }
 
             // xterm key-modifier options share 'm' with SGR but are never SGR (#829).

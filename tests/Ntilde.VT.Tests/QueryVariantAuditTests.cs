@@ -15,7 +15,6 @@ public sealed class QueryVariantAuditTests
         { "extensions.osc701-locale", "\u001b]701;?\u0007" },
         { "extensions.osc702-version", "\u001b]702\u0007" },
         { "extensions.osc776-cell-size", "\u001b]776\u0007" },
-        { "extensions.sixel-geometry-report", "\u001b[?2;1;0S" },
         { "editing.decrqcra", "\u001b[1;1;1;1;1;1*y" },
         { "device.xtwinops-20", "\u001b[20t" },
         { "device.xtwinops-21", "\u001b[21t" },

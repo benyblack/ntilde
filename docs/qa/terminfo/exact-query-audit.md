@@ -49,11 +49,11 @@ correlation value; the regression uses a fixed synthetic identifier.
 | `extensions.osc7770-font-size` | `OSC 7770;? BEL` | Unavailable. Font settings belong to the presenting host, with no query contract here. | [silent tests][variant-tests], [#807][pr807]; `q07.extensions.osc7770-font-size`: matched silence. |
 | `extensions.osc7777-font-window-size` | `OSC 7777;? BEL` | Unavailable. No combined host font/window service is claimed. | [silent tests][variant-tests], [#807][pr807]; `q07.extensions.osc7777-font-window-size`: matched silence. |
 | `extensions.osc99-kitty-notify` | `OSC 99;i=<id>:p=?; ST` | Unavailable. Existing OSC 9 notification handling does not implement Kitty's correlated OSC 99 service or attest OS display. | [silent tests][variant-tests], [#807][pr807]; `q07.extensions.osc99-kitty-notify`: matched silence. |
-| `extensions.sixel-geometry-report` | `CSI ? 2;1;0 S` | Unavailable XTSMGRAPHICS spelling. Sixel layout/decoding is not a maximum-geometry attribute contract. The request must not be mistaken for scroll-up. | [silent tests][variant-tests], [#807][pr807]; `q07.extensions.sixel-geometry-report`: matched silence. |
+| `extensions.sixel-geometry-report` | `CSI ? 2;1;0 S` | Implemented XTSMGRAPHICS (#872): `CSI ? 2;0;width;height S`, the text area in Sixel pixels capped at the 2000-pixel Sixel clip. Color registers and the other actions are covered below. It is never mistaken for scroll-up. | [XTSMGRAPHICS tests][xtsm-tests], [#872][issue872]; `q07.extensions.sixel-geometry-report`: matched silence before #872. |
 
-The sixteen unavailable requests have exact silent/no-state-mutation
+The fifteen unavailable requests have exact silent/no-state-mutation
 regressions in `QueryVariantAuditTests`, followed by an independent DA framing
-check. This is a scoped availability policy for these spellings, not a claim
+check. (The sixteenth, the XTSMGRAPHICS geometry read, is answered since #872.) This is a scoped availability policy for these spellings, not a claim
 that the broader feature families are absent or that missing replies are
 negative capability scores. The positive DA3 contract is in
 `TertiaryDeviceAttributeTests`. Further implementations require their own contracts
@@ -254,6 +254,36 @@ confirms the replies from a real application: Neovim's startup queries turn true
 on, and `Ms` follows the setting and is absent in persistent panes. The check doesn't
 change the published grades or observations.
 
+## XTSMGRAPHICS Sixel attributes
+
+XTSMGRAPHICS (#872) follows xterm's handler and reports the Sixel decoder's real
+limits. Only the exact three-parameter form `CSI ? Pi ; Pa ; Pv S` is answered; any
+other shape stays silent, as in xterm. Success is `CSI ? Pi ; 0 ; Pv S`, and a failure
+is `CSI ? Pi ; Ps S` with no value (1 unknown item, 2 unknown action, 3 failed action).
+
+- **Color registers (`Pi` 1):** every image may define registers 0 to 4095. Read, reset
+  and read-maximum report `4096`. The count is fixed, so a set succeeds only for `4096`;
+  notcurses' startup attempts to set 256 and 1024 get `Ps` 3 and change nothing.
+- **Sixel geometry (`Pi` 2):** read reports the text area in Sixel pixels, capped at the
+  2000-pixel clip per side. That is columns and rows times the cell size Sixel placement
+  uses, so an image exactly that wide fills the pane. On a scaled display the App places
+  Sixel in device pixels while `CSI 14 t` reports logical pixels, so the two can differ. Read-maximum reports `2000;2000`.
+  Reset and set fail with `Ps` 3, as in xterm, because the window sets the size.
+- **ReGIS (`Pi` 3) and other items:** `Ps` 1.
+
+Nothing changes terminal state, and the probe never scrolls. The daemon parser answers
+for persistent sessions using the window's cell size. A Rendering test pins the
+register count to what the decoder accepts. The frozen v11 silence observation and
+the grades are unchanged.
+
+A manual check with notcurses 3.0.17 (`notcurses-info`, Homebrew, macOS 27.0.1 arm64,
+140 x 41 cells on a 2x display) recorded what its startup receives. It sends
+`?1;3;256S`, `?1;3;1024S`, `?2;1;0S` and `?1;1;0S`. Released 0.13.0 answered none of
+them. This branch answered `?1;3S` twice, then `?2;0;2000;1517S` and `?1;0;4096S`, the
+same in a direct pane and a persistent pane, where the daemon answers. notcurses
+prefers Kitty graphics where Ntilde accepts them, so this check confirms what it
+learns, not Sixel drawing based on it.
+
 ## Issue acceptance evidence
 
 | #771 requirement | Recorded evidence |
@@ -281,7 +311,9 @@ nor does it claim complete terminal-family conformance.
 [pr861]: https://github.com/benyblack/ntilde/pull/861
 [pr859]: https://github.com/benyblack/ntilde/pull/859
 [pr864]: https://github.com/benyblack/ntilde/pull/864
+[issue872]: https://github.com/benyblack/ntilde/issues/872
 [variant-tests]: ../../../tests/Ntilde.VT.Tests/QueryVariantAuditTests.cs
+[xtsm-tests]: ../../../tests/Ntilde.VT.Tests/XtsmgraphicsTests.cs
 [window-tests]: ../../../tests/Ntilde.VT.Tests/ExactWindowQueryTests.cs
 [da3-tests]: ../../../tests/Ntilde.VT.Tests/TertiaryDeviceAttributeTests.cs
 [dcs-tests]: ../../../tests/Ntilde.VT.Tests/DcsTruncationStateTests.cs

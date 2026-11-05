@@ -36,6 +36,7 @@ public sealed class VtCapabilityContractTests
             ["decrqss-sgr"] = AssertDecrqssSgr,
             ["decrqss-cursor-style"] = AssertDecrqssCursorStyle,
             ["xtgettcap"] = AssertXtgettcap,
+            ["xtsmgraphics"] = AssertXtsmgraphics,
             ["tertiary-device-attributes"] = AssertTertiaryDeviceAttributes,
             ["text-area-size-query"] = AssertTextAreaSizeQuery,
             ["title-stack-push"] = AssertTitleStack,
@@ -61,6 +62,7 @@ public sealed class VtCapabilityContractTests
             ["decrqss-sgr"] = "\x1bP$qm\x1b\\",
             ["decrqss-cursor-style"] = "\x1bP$q q\x1b\\",
             ["xtgettcap"] = "\x1bP+q436f;544e\x1b\\",
+            ["xtsmgraphics"] = "\x1b[?1;1;0S\x1b[?2;1;0S",
             ["tertiary-device-attributes"] = "\x1b[=0c",
             ["text-area-size-query"] = "\x1b[18t",
             ["title-stack-push"] = "\x1b]2;saved\a\x1b[22;0t",
@@ -119,6 +121,14 @@ public sealed class VtCapabilityContractTests
         var responses = new List<string>();
         new AnsiParser(new TerminalBuffer(40, 6)) { OnResponse = responses.Add }.Process("\x1b[=0c");
         Assert.Equal("\x1bP!|00000000\x1b\\", Assert.Single(responses));
+    }
+
+    private static void AssertXtsmgraphics()
+    {
+        var responses = new List<string>();
+        new AnsiParser(new TerminalBuffer(80, 24)) { CellWidth = 9, CellHeight = 18, OnResponse = responses.Add }
+            .Process("\x1b[?1;1;0S\x1b[?2;1;0S\x1b[?2;3;640S");
+        Assert.Equal(new[] { "\x1b[?1;0;4096S", "\x1b[?2;0;720;432S", "\x1b[?2;3S" }, responses);
     }
 
     private static void AssertTextAreaSizeQuery()

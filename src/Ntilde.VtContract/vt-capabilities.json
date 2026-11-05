@@ -190,6 +190,15 @@
       "contractCase": "xtgettcap"
     },
     {
+      "key": "CSI:?S",
+      "mnemonic": "XTSMGRAPHICS",
+      "support": "supported",
+      "description": "Report Sixel graphics attributes as xterm does, CSI ? Pi ; Ps ; Pv S. Pi 1: 4096 color registers for read, reset and read-maximum; set succeeds only for 4096. Pi 2: read gives the text area in Sixel pixels (columns and rows times the cell size Sixel placement uses, device pixels on a scaled display) capped at 2000 per side, read-maximum gives 2000;2000, reset and set fail (Ps 3). ReGIS and other items get Ps 1, unknown actions Ps 2. Only the exact three-parameter form is answered.",
+      "matrixFeature": "XTSMGRAPHICS graphics attributes",
+      "evidencePath": "tests/Ntilde.VT.Tests/XtsmgraphicsTests.cs",
+      "contractCase": "xtsmgraphics"
+    },
+    {
       "key": "CSI:?J",
       "mnemonic": "DECSED",
       "support": "partial",
