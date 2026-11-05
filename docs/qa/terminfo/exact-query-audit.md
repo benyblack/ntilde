@@ -249,8 +249,10 @@ and nothing else, even when it also holds valid names. `Ms` is answered only whi
 `AnsiParser.ClipboardWriteAvailable` says the host accepts OSC 52 writes; headless
 and mux parsers leave it unset, so persistent sessions never advertise it. Every
 input split, complete JSON parser-state restore, the four DCS framings and the
-daemon parser are covered. Source/scripted-transport evidence only; no application
-has been checked against these replies yet.
+daemon parser are covered. A [manual Neovim 0.12.6 check](2026-11-05-neovim-capability-check.md)
+confirms the replies from a real application: Neovim's startup queries turn truecolor
+on, and `Ms` follows the setting and is absent in persistent panes. The check doesn't
+change the published grades or observations.
 
 ## Issue acceptance evidence
 
