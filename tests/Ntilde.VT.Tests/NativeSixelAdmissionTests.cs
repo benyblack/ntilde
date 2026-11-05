@@ -190,6 +190,38 @@ public sealed class NativeSixelAdmissionTests
         Assert.Contains(buffer.Images, image => ReferenceEquals(image.ImageHandle, first));
     }
 
+    [Fact]
+    public void Final_retained_asset_release_retires_its_native_source_before_live_source_pressure()
+    {
+        var budget = new NativeSixelBudget();
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelSourceBudget(10, 2));
+        var decoder = new ProbeDecoder(budget, buffer);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
+        parser.Process(Wire);
+        var first = Assert.IsType<ProbeImage>(Assert.Single(buffer.Images).ImageHandle);
+        var secondSource = buffer.SixelSources.Retain("q@");
+        var allocation = Assert.IsType<NativeSixelAllocation>(budget.TryReserve(1, 6, 2));
+        var second = Assert.IsType<ProbeImage>(decoder.DecodeNativeSixel(secondSource, allocation));
+        var asset = Assert.IsType<KittyImageAsset>(buffer.StoreKittyImage(second, 1, 6, 17, 0));
+        buffer.PlaceKittyImage(asset, new TerminalImage(second, 5, 0, 1, 1), 0);
+        buffer.DeleteKittyImages(17, 0, 0, freeData: false, visibleOnly: false);
+        Assert.NotNull(buffer.FindKittyImage(17, 0));
+        Assert.Equal("q@", second.Source.Data);
+        buffer.DeleteKittyImages(17, 0, 0, freeData: true, visibleOnly: false);
+        Assert.Null(buffer.FindKittyImage(17, 0));
+        Assert.Equal(3, budget.Usage.Placements); // Retired asset is still charged before disposal.
+        parser.Process("\x1bPqB\x1b\\");
+        Assert.Equal("q~", first.Source.Data);
+        Assert.Null(second.Source.Data);
+        Assert.Contains(buffer.Images, image => ReferenceEquals(image.ImageHandle, first));
+        var retired = new List<object>();
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Same(second, Assert.Single(retired));
+        Assert.Equal(4, budget.Usage.Placements);
+        second.Dispose();
+        Assert.Equal(2, budget.Usage.Placements);
+    }
+
     private sealed class ProbeDecoder(NativeSixelBudget budget, TerminalBuffer buffer) : IImageDecoder, INativeSixelDecoder
     {
         internal int Calls, LegacyCalls;

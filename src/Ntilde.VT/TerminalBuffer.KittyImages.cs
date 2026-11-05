@@ -179,6 +179,7 @@ public partial class TerminalBuffer
         try
         {
             if (IsRetainedKittyHandle(handle) || _images.Any(image => ReferenceEquals(image.ImageHandle, handle))) return;
+            if (handle is INativeSixelImage native) native.Source.Retire();
             QueueImageHandleRetirement(handle, disposeImmediately: true);
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
