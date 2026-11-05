@@ -58,6 +58,11 @@ internal sealed class NativeSixelBudget
         }
     }
 
+    internal bool IsActive(NativeSixelAllocation allocation)
+    {
+        lock (_gate) { RequireOwner(allocation); return !allocation.Released; }
+    }
+
     internal bool IsUnclaimed(NativeSixelAllocation allocation)
     {
         lock (_gate) { RequireOwner(allocation); return !allocation.Claimed && !allocation.Released; }

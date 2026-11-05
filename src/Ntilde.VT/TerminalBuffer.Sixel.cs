@@ -13,15 +13,7 @@ public partial class TerminalBuffer
         bool lockTaken = EnterWriteLockIfNeeded();
         try
         {
-            if (source is not null)
-            {
-                PruneExpiredSixelSources();
-                if (source.Data is null && CanDiscardSixelHandle(handle))
-                {
-                    if (handle is INativeSixelImage) QueueImageHandleRetirement(handle, disposeImmediately: true);
-                    handle = null;
-                }
-            }
+            handle = PrepareSixelPlacementHandle(handle, source);
             bool display = Modes.IsSixelDisplayMode;
             int row = display ? 0 : _cursorRow;
             int col = display ? 0 : _cursorCol;
@@ -45,6 +37,15 @@ public partial class TerminalBuffer
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();
         return true;
+    }
+
+    private object? PrepareSixelPlacementHandle(object? handle, SixelSource? source)
+    {
+        if (source is null) return handle;
+        PruneExpiredSixelSources();
+        if (source.Data is not null || !CanDiscardSixelHandle(handle)) return handle;
+        if (handle is INativeSixelImage) QueueImageHandleRetirement(handle, disposeImmediately: true);
+        return null;
     }
 
     private bool TryAddSixelPlacement(TerminalImage? image)

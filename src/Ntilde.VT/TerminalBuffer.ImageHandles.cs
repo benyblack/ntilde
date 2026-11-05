@@ -75,16 +75,37 @@ public partial class TerminalBuffer
         {
             ImageHandleLifetime lifetime = _imageHandleLifetimes.GetValue(handle, static _ => new ImageHandleLifetime());
             if (lifetime.HandedOff || lifetime.Pending) return;
-            lifetime.Pending = true;
-            lifetime.RetirementToken = unchecked(lifetime.RetirementToken + 1);
-            if (lifetime.RetirementToken == 0) lifetime.RetirementToken++;
-            _retiredImageHandles.Enqueue((handle, Environment.TickCount64, disposeImmediately, lifetime.RetirementToken));
+            EnqueueImageRetirement(handle, lifetime, disposeImmediately);
         }
+    }
+
+    /// <summary>Requeues a failed native disposal without reopening image admission or returning its charge.</summary>
+    public bool RetryRetiredImageDisposal(object handle)
+    {
+        if (handle is not INativeSixelImage image) return false;
+        NativeSixelAllocation allocation = image.Allocation;
+        if (!ReferenceEquals(allocation.Owner, NativeSixelBudget)) return false;
+        lock (_imageHandleGate)
+        {
+            if (!_imageHandleLifetimes.TryGetValue(handle, out var lifetime) || !lifetime.HandedOff || lifetime.Pending ||
+                !allocation.Owner.IsActive(allocation)) return false;
+            // HandedOff stays true: a retry can never cancel retirement or revive a placement.
+            EnqueueImageRetirement(handle, lifetime, disposeImmediately: true);
+            return true;
+        }
+    }
+
+    private void EnqueueImageRetirement(object handle, ImageHandleLifetime lifetime, bool disposeImmediately)
+    {
+        lifetime.Pending = true;
+        lifetime.RetirementToken = unchecked(lifetime.RetirementToken + 1);
+        if (lifetime.RetirementToken == 0) lifetime.RetirementToken++;
+        _retiredImageHandles.Enqueue((handle, Environment.TickCount64, disposeImmediately, lifetime.RetirementToken));
     }
 
     private bool IsCurrentImageRetirement(object handle, long token) =>
         _imageHandleLifetimes.TryGetValue(handle, out ImageHandleLifetime? lifetime)
-        && lifetime.Pending && !lifetime.HandedOff && lifetime.RetirementToken == token;
+        && lifetime.Pending && lifetime.RetirementToken == token;
 
     private bool TryCompleteImageRetirement(object handle, long token)
     {

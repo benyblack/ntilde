@@ -321,7 +321,7 @@ namespace Ntilde.VT
 
         // Test-only construction keeps the unadvertised implementation exercised while the public ceiling is zero.
         internal static TerminalBuffer CreateNativeSixelTestBuffer(int cols, int rows, NativeSixelBudget budget, SixelSourceBudget? sources = null) =>
-            new(cols, rows, 1, budget ?? throw new ArgumentNullException(nameof(budget))) { SixelSources = sources ?? new() };
+            new(cols, rows, SixelRasterPolicy.PresenterNativeVersion, budget ?? throw new ArgumentNullException(nameof(budget))) { SixelSources = sources ?? new() };
 
         internal NativeSixelBudget? NativeSixelBudget { get; }
 

@@ -45,4 +45,51 @@ public sealed class NativeSixelAdmissionRenderTests
         owner.Dispose();
         Assert.Equal((0, 0L), budget.Usage);
     }
+
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public void Failed_native_disposal_is_retried_by_the_actual_view_without_releasing_credit_early()
+    {
+        var budget = new NativeSixelBudget();
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 6, budget);
+        var allocation = Assert.IsType<NativeSixelAllocation>(budget.TryReserve(1, 6, 2));
+        var source = buffer.SixelSources.Retain("q~");
+        var handle = new RetryImage(source, allocation, buffer);
+        buffer.AddImage(new TerminalImage(handle, 0, 0, 1, 1));
+        var view = new TerminalView();
+        view.SetBuffer(buffer);
+        int snapshot = buffer.BeginSnapshotSession();
+        buffer.Clear(true);
+        view.DisposeRetiredImageBitmaps(long.MaxValue);
+        Assert.Equal(0, handle.Attempts);
+        buffer.EndSnapshotSession(snapshot);
+        view.DisposeRetiredImageBitmaps(long.MaxValue);
+        Assert.Equal(1, handle.Attempts);
+        Assert.False(handle.Gone);
+        Assert.Equal(1, budget.Usage.Placements);
+        view.DisposeRetiredImageBitmaps(long.MaxValue);
+        Assert.Equal(2, handle.Attempts);
+        Assert.True(handle.Gone);
+        Assert.Equal((0, 0L), budget.Usage);
+        view.DisposeRetiredImageBitmaps(long.MaxValue);
+        Assert.Equal(2, handle.Attempts);
+    }
+
+    private sealed class RetryImage(SixelSource source, NativeSixelAllocation allocation, TerminalBuffer buffer) : INativeSixelImage
+    {
+        public SixelSource Source => source;
+        public NativeSixelAllocation Allocation => allocation;
+        public bool NeedsSource => true;
+        public bool IsMaterialized => false;
+        internal int Attempts;
+        internal bool Gone;
+        public void Dispose()
+        {
+            Assert.False(buffer.Lock.IsWriteLockHeld);
+            if (++Attempts == 1) throw new InvalidOperationException("transient disposal failure");
+            source.Dispose();
+            Gone = true;
+            allocation.Owner.CompleteDisposal(allocation);
+        }
+    }
+
 }

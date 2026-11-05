@@ -117,6 +117,11 @@ namespace Ntilde.VT
                 HandleBoundedSixel(dcs, nativeBudget);
                 return;
             }
+            HandleLegacySixel(dcs);
+        }
+
+        private void HandleLegacySixel(string dcs)
+        {
             var (pixelWidth, pixelHeight) = SixelGeometry.Measure(dcs);
             var dimensionOrigin = SixelReservationDimensionOrigin.SixelGeometry;
             SixelSource? source = RetainSixelSources && pixelWidth > 0 && pixelHeight > 0 ? _buffer.SixelSources.CreateProvisional(dcs) : null;

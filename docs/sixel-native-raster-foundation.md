@@ -126,7 +126,11 @@ The existing image-retirement registry and snapshot sessions protect native owne
 Removing a placement, evicting its source, ending a snapshot or draining a retired
 handle does **not** release pixel credit. `NativeSixelImage.Dispose` releases only
 after its owned bitmap and source are disposed. No native disposal runs under the
-buffer or budget gate. Failed disposal retains credit for retry. Unknown decoder
+buffer or budget gate. Failed disposal retains credit; the actual view requeues
+that native owner in its original buffer for a later disposal attempt. Handoff
+stays irreversible, retry generations cannot duplicate pending work, and a retry
+never readmits the handle. An undecoded native source stays live while another
+placement or retained asset still references its owner. Unknown decoder
 exceptions or foreign reservation/source responses fail closed without crediting
 unproven disposal or destroying a possibly borrowed host handle. These internal
 contracts constrain the built-in decoder; they do not attest arbitrary host code.

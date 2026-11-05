@@ -7,6 +7,7 @@ namespace Ntilde.Rendering;
 /// <summary>Fixed-storage decoder for the native-policy owner. Legacy decoding remains unchanged.</summary>
 internal static class NativeSixelDecoder
 {
+    private readonly record struct RasterCanvas(ushort[] Pixels, uint[] Palette, int Width, int Height);
     internal static SKBitmap? Decode(string data, NativeSixelAllocation allocation)
     {
         if (data.Length != allocation.SourceChars ||
@@ -39,6 +40,7 @@ internal static class NativeSixelDecoder
 
     private static void PaintRegisters(ReadOnlySpan<char> data, ushort[] pixels, uint[] palette, int width, int height)
     {
+        var canvas = new RasterCanvas(pixels, palette, width, height);
         int x = 0, y = 0, current = 0;
         for (int i = data.IndexOf('q') + 1; i < data.Length;)
         {
@@ -52,10 +54,10 @@ internal static class NativeSixelDecoder
                 case '$': x = 0; continue;
                 case '-': x = 0; y = Math.Min(y + 6, SixelGeometry.DefaultMaxPixelDimension); continue;
                 case '!':
-                    PaintRepeat(data, ref i, ref x, y, current, pixels, palette, width, height);
+                    PaintRepeat(data, ref i, ref x, y, current, canvas);
                     continue;
                 default:
-                    if (c is >= '?' and <= '~') Paint(c, 1, ref x, y, current, pixels, palette, width, height);
+                    if (c is >= '?' and <= '~') Paint(c, 1, ref x, y, current, canvas);
                     continue;
             }
         }
@@ -67,27 +69,28 @@ internal static class NativeSixelDecoder
     }
 
     private static void PaintRepeat(ReadOnlySpan<char> data, ref int i, ref int x, int y, int current,
-        ushort[] pixels, uint[] palette, int width, int height)
+        RasterCanvas canvas)
     {
         int start = i;
         long count = 0;
         while (i < data.Length && char.IsAsciiDigit(data[i]))
             count = Math.Min(count * 10 + data[i++] - '0', int.MaxValue);
         if (i > start && i < data.Length && data[i] is >= '?' and <= '~')
-            Paint(data[i++], (int)count, ref x, y, current, pixels, palette, width, height);
+            Paint(data[i++], (int)count, ref x, y, current, canvas);
     }
 
-    private static void Paint(char c, int count, ref int x, int y, int current, ushort[] pixels, uint[] palette, int width, int height)
+    private static void Paint(char c, int count, ref int x, int y, int current, RasterCanvas canvas)
     {
+        int width = canvas.Width, height = canvas.Height;
         int end = (int)Math.Min((long)x + count, width);
         if (end <= x || y >= height) return;
         int start = x;
         x = end;
         int bits = c - '?';
-        if (bits == 0 || palette[current] == 0) return;
+        if (bits == 0 || canvas.Palette[current] == 0) return;
         for (int row = 0; row < Math.Min(6, height - y); row++)
             if ((bits & (1 << row)) != 0)
-                pixels.AsSpan((y + row) * width + start, end - start).Fill((ushort)(current + 1));
+                canvas.Pixels.AsSpan((y + row) * width + start, end - start).Fill((ushort)(current + 1));
     }
 
     private static void ReadPalette(ReadOnlySpan<char> data, ref int i, uint[] palette, ref int current)

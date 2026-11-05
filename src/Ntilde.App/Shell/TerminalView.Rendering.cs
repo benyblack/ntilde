@@ -51,7 +51,10 @@ namespace Ntilde.Shell
                     }
                     catch
                     {
-                        // Best effort: never break rendering over a dispose failure.
+                        // Native pixel credit remains charged. Retain the failed owner in
+                        // its original buffer queue for a later frame, without readmission.
+                        // Legacy failures keep their existing best-effort behavior.
+                        buffer.RetryRetiredImageDisposal(handle);
                     }
                 }
             }
