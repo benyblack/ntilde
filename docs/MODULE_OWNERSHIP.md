@@ -374,6 +374,12 @@ invariant changes.
 
 **Owns**
 - The rust-PTY adapter (`RustPtySession` + `ConPtyNative` P/Invoke)
+- Passive native child-wait observation: original PID is cached from the existing
+  pre-thread spawn query and paired with the immutable Rust session Id. Only the
+  native-return1 `_childExitObserved` latch publishes a Unix wait/code fact;
+  EOF, generic exit notifications, read failure and disposal never create it.
+  The optional getter performs no native query or wait, and is unavailable for
+  disposed/unsupported sessions. Unknown is not evidence that the child is alive.
 - Session contracts: four narrow interfaces composed into `ITerminalSession`
 - Raw byte-stream recording lifecycle (no buffer snapshots — those moved out in Phase 5)
 
@@ -1057,6 +1063,15 @@ requires public test classes.
 - Windows launch support (`Shell/`): `LauncherRelease.cs` (sets the `ntilde.com` release event on the GUI path; discards it in the mux branch) and `UserPathRegistration.cs` (the install folder on the user `PATH`, from Velopack's install, update and uninstall hooks only); `AppVersionInfo.cs` (the app's version, for the About window, the editor and the release download); `VelopackHookLog.cs` (where a Velopack hook's lines go: Velopack's own log, since a hook exits before `AppLogger` starts)
 - `Shell/SshAskPassVaultPolicy.cs` (Phase 5 Task 2): whether the OpenSSH askpass helper may fill the vault password on a user's attempt through a jump host (not with ssh before 8.4, a hop named like the target, or a proxy in the extra arguments)
 - Updates and the multiplexer (`Update/`): `MuxUpdateCompatibility.cs` (R10: the protocol marker in the staged release notes, whether an apply keeps the daemon, and the startup auto-apply gate) and `UpdateSourceOverride.cs` (`NTILDE_UPDATE_SOURCE_DIR`, a local feed honoured only for the `NtildeSurvival` verification package id)
+- **Private native-wait binding belongs to App.** Raw `readNativeChildWait` is
+  read-only and requires the immutable explicit process/pane private-QA startup
+  latch with matching run ID. It copies the genuine cached Unix fact only from
+  the current visible single direct-local Rust session, including its natural
+  exited state, and rechecks pane/registration/buffer/session identity. Remote,
+  mux, windowless, split, inactive, replaced and disposed targets are unavailable.
+  Caller-pinned PID/generation and independent kernel ownership remain separate;
+  this fact cannot establish overall cleanup completion. The zero-ref wire DTOs,
+  default protocol bytes, native ABI and clipboard/permission lifecycle stay unchanged.
 - **Generated terminal input belongs to App.** Raw `generatePaneInput` validates
   one bounded keypad/text/mouse event using BCL-only contracts, then dispatches
   Avalonia routed events in the same visible single direct local pane boundary as

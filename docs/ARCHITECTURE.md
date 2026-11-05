@@ -541,6 +541,24 @@ This module is intentionally **Avalonia-agnostic**. The actual Avalonia `DrawOpe
 
 Native OS integration via the Rust PTY library (`rusty_pty.dll`/`.so`/`.dylib`). Defines the session contracts and `RustPtySession` as the canonical implementation.
 
+Its optional passive native child-wait capability pairs the immutable Rust
+session Id with the original PID cached from the existing pre-thread spawn
+query. It reads only the native-return1 `_childExitObserved` latch and cached
+code; EOF, generic exit notifications, read failure and Dispose's fallback zero
+cannot manufacture a Unix wait. The getter performs no native query or wait.
+Unsupported/disposed sessions are unavailable, and an unobserved wait is unknown
+rather than proof of a live child. This adds no native ABI or VT/UI dependency.
+
+App's raw `readNativeChildWait` binds this fact to the current visible single
+direct-local Rust session under the existing explicit process/pane private-QA
+startup latch. It accepts the original naturally exited session, rechecks
+registration/buffer/session identity, and refuses remote/mux/windowless/split,
+inactive/replaced/disposed targets. The BCL-only additive DTO carries the
+original PID/generation, genuine wait flag and nullable code. Independent kernel
+ownership and overall cleanup completion remain caller responsibilities. It
+does not operate on clipboard storage, consent, input, settings or window state;
+ordinary processes and default wire bytes are unchanged.
+
 `ITerminalSession` is a composite of four narrow interfaces:
 
 | Interface | Concern |
