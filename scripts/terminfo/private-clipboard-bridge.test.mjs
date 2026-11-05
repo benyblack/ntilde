@@ -199,3 +199,39 @@ test('callback rejection preserves both original failure and independent restore
     assert.equal(api.bridge.evidence().bridgeFailed, true);
     assert.equal(api.calls.some(x => x.operation === 'close'), false);
 });
+
+
+for (const reason of [null, false, 0, '', NaN]) {
+    test('falsy abort reason stays terminal before the first callback: ' + String(reason), async () => {
+        const api = fixture(); await api.bridge.abort(reason);
+        await assert.rejects(api.bridge.handle({ kind: 'start', probeId: PRIVATE_CLIPBOARD_PROBES[0] }),
+            error => error instanceof Error && Object.is(error.cause, reason));
+        assert.deepEqual(api.calls, []);
+        assert.equal(api.bridge.evidence().bridgeFailed, true);
+        assert.equal(api.bridge.evidence().complete, false);
+    });
+    test('falsy abort reason during final close cannot become completion: ' + String(reason), async () => {
+        const api = fixture(), entered = deferred(), release = deferred(); await all(api);
+        api.hook = async request => { if (request.operation === 'close') { entered.resolve(); await release.promise; } };
+        const finish = assert.rejects(api.bridge.handle({ kind: 'finish' }),
+            error => error instanceof Error && Object.is(error.cause, reason));
+        await entered.promise; await api.bridge.abort(reason); release.resolve(); await finish;
+        assert.equal(api.bridge.evidence().bridgeFailed, true);
+        assert.equal(api.bridge.evidence().complete, false);
+        assert.equal(api.bridge.evidence().bridgeFinished, false);
+    });
+}
+
+test('array-valued kind cannot consume the legitimate pending readback', async () => {
+    const api = fixture(); await api.bridge.handle({ kind: 'start', probeId: PRIVATE_CLIPBOARD_PROBES[0] });
+    await api.bridge.handle({ kind: 'arm', value: nonce }); api.output(nonce);
+    const before = api.calls.filter(x => x.operation === 'read').length;
+    await assert.rejects(api.bridge.handle({ kind: ['read'] }), /frame|kind/);
+    // Exactly the abort restoration read is allowed; the malformed input never
+    // consumes the terminal-write readback, and no later callback may resume.
+    assert.equal(api.calls.filter(x => x.operation === 'read').length, before + 1);
+    assert.deepEqual(api.calls.slice(-2).map(x => x.operation), ['restore', 'read']);
+    assert.equal(api.bridge.evidence().bridgeFailed, true);
+    await assert.rejects(api.bridge.handle({ kind: 'read' }));
+    assert.equal(api.bridge.evidence().complete, false);
+});

@@ -9,7 +9,8 @@ function deferred() {
 }
 
 function validateFrame(frame) {
-    if (!frame || typeof frame !== 'object' || Array.isArray(frame)) throw new Error('Invalid clipboard bridge frame.');
+    if (typeof frame !== 'object' || Array.isArray(frame) || typeof frame?.kind !== 'string')
+        throw new Error('Invalid clipboard bridge frame or kind.');
     const fields = { start: ['kind', 'probeId'], arm: ['kind', 'value'], read: ['kind'],
         seed: ['kind', 'value'], complete: ['kind'], finish: ['kind'] }[frame.kind];
     if (!fields || Object.keys(frame).length !== fields.length || !fields.every(key => Object.hasOwn(frame, key)))
@@ -71,7 +72,8 @@ export class PrivateClipboardBridge {
         if (!this.#fixture) throw new Error('Clipboard bridge callback is not active.');
         if (frame.kind === 'arm') { await this.#fixture.beforeOsc52Write(frame.value); return null; }
         if (frame.kind === 'seed') { await this.#fixture.writeText(frame.value); return null; }
-        return this.#fixture.readText();
+        if (frame.kind === 'read') return this.#fixture.readText();
+        throw new Error('Unknown clipboard bridge kind.');
     }
 
     /** Strictly serialized authenticated frames. A refusal poisons the bridge even
@@ -93,9 +95,9 @@ export class PrivateClipboardBridge {
             return result;
         } catch (error) {
             try { await this.abort(error); }
-            catch (cleanup) {
-                if (cleanup === error) throw error;
-                throw new AggregateError([error, cleanup], 'Clipboard bridge operation and cleanup failed.');
+            catch (error_) {
+                if (error_ === error) throw error;
+                throw new AggregateError([error, error_], 'Clipboard bridge operation and cleanup failed.');
             }
             throw error;
         } finally { this.#busy = false; }
@@ -106,7 +108,9 @@ export class PrivateClipboardBridge {
      */
     abort(error = new Error('Clipboard bridge aborted.')) {
         if (this.#finished) return Promise.resolve();
-        this.#failure ??= error;
+        // Rejection/cancellation reasons are arbitrary JS values. Normalize the
+        // failure marker while retaining the exact supplied value as its cause.
+        this.#failure ??= error instanceof Error ? error : new Error('Clipboard bridge aborted.', { cause: error });
         this.#abortPromise ??= this.#settleAbort();
         return this.#abortPromise;
     }

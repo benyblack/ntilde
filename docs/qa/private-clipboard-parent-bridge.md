@@ -35,13 +35,14 @@ roundtrip/read empty OSC52 denial remains negative/inconclusive evidence. An
 accepted write here establishes private App storage only; it establishes neither
 native interchange nor user consent to clipboard reads.
 
-Every control is serialized. Unknown fields, malformed nonces, missing phases,
+Every control is serialized. Non-string frame kinds, unknown fields, malformed nonces, missing phases,
 wrong callback order, concurrent requests and binding failures are sticky. A
 collector catching an exception cannot resume the bridge or manufacture a final
 close claim. An original begin failure settles the start request even when no
 callback fixture was exposed. Parent cancellation uses `abort(error)`, rejects
 the active callback, and awaits the controller's bounded restoration attempt;
-original and cleanup failures survive together. Binding loss is checked before
+original and cleanup failures survive together. Non-Error cancellation reasons,
+including falsy values, are retained as an Error cause and still stop the bridge. Binding loss is checked before
 any cleanup RPC. Repeated abort does not replay operations. After a successful
 finish, later frames are refused and abort is inert.
 
