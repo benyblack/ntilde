@@ -53,7 +53,7 @@ import { completeOwnedReceipt } from './terminfo/receipt.mjs';
 import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMode } from './terminfo/terminal-output.mjs';
 
 import { abortPrivateClipboardWithFacts, privateClipboardFailureFacts, privateClipboardEvidenceJson } from './terminfo/private-clipboard.mjs';
-import { OwnedPrivateClipboardObserver } from './terminfo/private-clipboard-capture.mjs';
+import { OwnedPrivateClipboardObserver, privateClipboardScreen } from './terminfo/private-clipboard-capture.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './terminfo/private-clipboard-worker.mjs';
 
 const sourceRepo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -889,9 +889,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         sourceSnapshotManifestSha256: snapshot.sha256, executableSha256: context.executableSha256, assemblySha256: context.assemblySha256,
                         appBirth: first.appBirth, workerBirth: first.workerBirth, outputDevice: first.outputDevice };
                     const reader = new OwnedCellObserver({ appData, ownerPid: owner.pid, profileName, expectedPaneId: binding.paneId,
-                        includeAttributes: true, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true });
+                        includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true });
                     privateClipboardState.observer = new OwnedPrivateClipboardObserver({ binding, appData,
-                        attest: remaining => attestPrivateClipboard(privateClipboardState, remaining), capture: remaining => reader.capture(remaining) });
+                        attest: remaining => attestPrivateClipboard(privateClipboardState, remaining),
+                        capture: async remaining => privateClipboardScreen(await reader.capture(remaining)) });
                     first.binding = binding;
                 }
                 if (privateClipboardState.workerPid !== worker.pid || privateClipboardState.tty !== request.tty) throw new Error('Private clipboard worker changed.');

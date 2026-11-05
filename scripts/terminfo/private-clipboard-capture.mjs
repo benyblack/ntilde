@@ -1,12 +1,28 @@
 import { PrivateClipboardBridge } from './private-clipboard-bridge.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from './private-clipboard-controller.mjs';
 import { privateClipboardNonce, privateClipboardRequest } from './private-clipboard-request.mjs';
-import { observerEndpoint, snapshotHash } from './agent-observer.mjs';
+import { observerEndpoint, screenSnapshot, snapshotHash } from './agent-observer.mjs';
 import { createProcessBudget } from './runtime.mjs';
 import { buildPrivateClipboardReport, checkPrivateClipboard, privateClipboardBinding, privateClipboardCallbackResult,
     privateClipboardData, privateClipboardEvidenceData, privateClipboardFailureFacts, validatePrivateClipboardOwnership } from './private-clipboard.mjs';
 import { queryScreen } from './queries.mjs';
 const check = checkPrivateClipboard;
+
+/** Stock probes may leave wide text. The legacy attribute strings omit wide
+ * continuation columns; derive their full physical-column projection from the
+ * independently captured, validated cell details instead of inventing padding.
+ */
+export function privateClipboardScreen(value) {
+    check(!Object.hasOwn(value, 'attributeRuns'));
+    const screen = screenSnapshot(value, false, true, true, true, true);
+    const attributeRuns = [];
+    for (const { count, flags, fg, bg } of screen.cellDetails) {
+        const previous = attributeRuns.at(-1);
+        if (previous && previous.flags === flags && previous.fg === fg && previous.bg === bg) previous.count += count;
+        else attributeRuns.push({ count, flags, fg, bg });
+    }
+    return queryScreen({ ...screen, attributeRuns });
+}
 
 /** Parent-side coordinator. The caller authenticates every owner frame BEFORE
  * dispatch and supplies fresh process/source/PTY attestation plus a dedicated

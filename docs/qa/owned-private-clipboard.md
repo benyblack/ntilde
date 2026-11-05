@@ -50,6 +50,11 @@ A dedicated 64-read observer takes 44 before/after full exposed-state snapshots,
 with independent ownership checks on both sides of every capture. It preserves
 attributes, stored cells, cursor state, exposed buffer state and margins.
 Reverse-video memory and hidden parser/session state are not exposed or claimed.
+The stock prefix can leave wide characters in the viewport. This suite derives
+the flags/palette-index projection from the same validated physical-cell detail
+runs, retaining wide lead and continuation columns. The legacy `attributeLines`
+text omits continuation columns and is unsuitable for this non-ASCII screen;
+the earlier ASCII suites retain their original observers and expectations.
 
 The two new private JSON files use deterministic compact serialization and keep
 every independently captured sample. Their byte cap remains 16 MiB. Only the
