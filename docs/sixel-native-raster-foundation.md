@@ -124,7 +124,8 @@ After decoding returns, scratch credit is released; `4 × W × H` remains until
 successful actual bitmap disposal. This bounds owned pixel storage and decoder
 work, not whole-process RSS, allocator overhead or GPU caches.
 
-Native decode state is published without taking the native decode lock. Source
+VT pruning reads published native decode state without taking the native decode
+lock. GetBitmap publishes state with Volatile.Write while holding its owner gate. Source
 pruning under the VT write lock observes one state value, preserves in-flight
 owners, and retries skipped expired sources after completion (including failure)
 even without another source eviction. Native admission runs that bounded prune
