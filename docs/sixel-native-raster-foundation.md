@@ -73,7 +73,7 @@ an omitted-zero requirement; spawn replies and snapshots retain the requirement.
 Absent peer capability means zero. Explicit unsupported requests fail before
 factory creation, subscription, geometry changes, process probes or snapshots.
 The shared attach/readScreen client decoder checks the negotiated ceiling before
-delivery; an opened client session retains its immutable required policy across
+delivery, including native entries a later source budget would discard; an opened client session retains its immutable required policy across
 reattach. Reconnect starts a fresh negotiation, not a silent policy downgrade.
 Current native ceilings remain zero. `SupportsSixelScrolling` and mux protocol 2
 are not native policy capability. Contracts remains a zero-reference leaf.

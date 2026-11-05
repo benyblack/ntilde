@@ -792,7 +792,7 @@ public sealed class MuxClient : IDisposable
             throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Malformed snapshot: {ex.Message}", ex);
         }
 
-        SixelPolicyAdmission.RequireClient(snapshot.RequiredSixelRasterPolicy, MaxSixelRasterPolicy);
+        SixelPolicyAdmission.RequireClientSnapshot(snapshot, MaxSixelRasterPolicy);
         if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
         {
             throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Snapshot geometry {snapshot.Cols}x{snapshot.Rows} is invalid.");

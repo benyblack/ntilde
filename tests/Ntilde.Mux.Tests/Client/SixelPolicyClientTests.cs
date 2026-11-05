@@ -49,9 +49,11 @@ public sealed class SixelPolicyClientTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Snapshot_policy_is_checked_before_attach_or_readScreen_delivery(bool readScreen)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Snapshot_policy_is_checked_before_attach_or_readScreen_delivery(bool readScreen, bool hiddenPlacement)
     {
         using var fake = FakeMuxServerEnd.Create();
         Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, cancellationToken: Ct);
@@ -64,7 +66,14 @@ public sealed class SixelPolicyClientTests
         Task pending = readScreen ? client.ReadScreenAsync(id, 0, Ct) : session.AttachAsync(0, MuxTestHost.DefaultPresentation, Ct);
         MuxRequest request = await fake.ReadRequestAsync();
         TerminalStateSnapshot state = TerminalStateSerializer.FromBytes(FakeMuxServerEnd.SnapshotJson());
-        state.RequiredSixelRasterPolicy = 1;
+        if (hiddenPlacement)
+        {
+            // Import keeps only the newest source-budget entries: this native entry is outside that suffix.
+            state.Sixels = [new() { Source = "q~", Width = 1, Height = 1, NativeRaster = new(1, 1, 1, new(0, 0, 1, 1)) }];
+            for (int i = 0; i < SixelSourceBudget.DefaultMaxSources; i++)
+                state.Sixels.Add(new() { Source = "q~", Width = 1, Height = 1 });
+        }
+        else state.RequiredSixelRasterPolicy = 1;
         byte[] bytes = TerminalStateSerializer.ToBytes(state);
         if (readScreen)
             fake.Reply(request.Id, new ReadScreenResult { Snapshot = bytes }, MuxJsonContext.Default.ReadScreenResult);

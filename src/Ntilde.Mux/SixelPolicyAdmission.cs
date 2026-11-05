@@ -6,6 +6,16 @@ namespace Ntilde.Mux;
 /// <summary>One refusal rule before process creation, subscription and snapshot delivery.</summary>
 internal static class SixelPolicyAdmission
 {
+    internal static void RequireClientSnapshot(TerminalStateSnapshot snapshot, int maximum)
+    {
+        RequireClient(snapshot.RequiredSixelRasterPolicy, maximum);
+        if (snapshot.Sixels is null) return;
+        // Check every entry, including ones a source/placement budget would discard later.
+        foreach (var placement in snapshot.Sixels)
+            if (placement?.NativeRaster is { } native)
+                RequireClientSession(native.Version, snapshot.RequiredSixelRasterPolicy, maximum);
+    }
+
     internal static void RequireClient(int required, int maximum)
     {
         try { Require(required, maximum); }
