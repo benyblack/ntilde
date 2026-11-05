@@ -78,6 +78,51 @@ echoed. Older recordings may also contain raw typed input: check any recording b
 
 Recordings from NovaTerminal play unchanged.
 
+## TERM and the `xterm-ntilde` entry
+
+Ntilde sets `TERM=xterm-256color`, `COLORTERM=truecolor` and `TERM_PROGRAM=Ntilde` for local
+shells, SSH profiles and persistent sessions, because every host already knows `xterm-256color`.
+Programs that ask the terminal directly (XTGETTCAP, as Neovim does) also learn about Ntilde's
+extras: truecolor, curly and colored underlines, synchronized output, cursor shapes, and the window
+title as a status line.
+
+Programs that only read terminfo can learn the same from the optional `xterm-ntilde` entry, which is
+`xterm-256color` plus those extras. It stays optional because a host that doesn't have it installed
+doesn't know the name, and programs there fall back to a bare terminal.
+
+**Install it** on each machine where you'll use it, with no root needed:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/benyblack/ntilde/main/packaging/terminfo/xterm-ntilde.terminfo
+tic -x -o ~/.terminfo xterm-ntilde.terminfo
+```
+
+To copy it to a remote host from a machine that already has it:
+
+```bash
+infocmp -a -x xterm-ntilde | ssh host 'tic -x -o ~/.terminfo /dev/stdin'
+```
+
+**Use it** by switching `TERM` in your shell startup file, only inside Ntilde and only where the
+entry is installed:
+
+```bash
+if [ "$TERM_PROGRAM" = Ntilde ] && infocmp xterm-ntilde >/dev/null 2>&1; then
+  export TERM=xterm-ntilde
+fi
+```
+
+The system `ssh` command passes your `TERM` on to the remote host, so install the entry there too,
+or connect with `TERM=xterm-256color ssh host`. Ntilde's own SSH profiles always use
+`xterm-256color`.
+
+**What it adds:** `Tc`, `setrgbf` and `setrgbb` (truecolor); `Su`, `Smulx` and `Setulc` (underline
+styles and colors); `Sync` (synchronized output); `Ss` and `Se` (`Se` returns to your configured
+cursor); and `hs`, `tsl` and `fsl` (the title as a status line). It deliberately leaves out `RGB`:
+in a terminfo entry, ncurses would take it to mean that the 256-color `setaf` and `setab` take
+direct RGB values. Clipboard writes (`Ms`) are inherited from `xterm-256color` unchanged and still
+follow `AllowOsc52ClipboardWrite`.
+
 ## Diagnostic tools
 
 - *Pane: Toggle Render HUD* shows frame time, redrawn rows and cells, draw calls and glyph cache hits

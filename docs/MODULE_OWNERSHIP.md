@@ -161,7 +161,9 @@ invariant changes.
   exact-request, standard-ST and completeness rules as `r`.
 - **The capability table belongs to VT; the clipboard gate belongs to the host.**
   `TerminalCapabilities` lists what Ntilde advertises beyond `xterm-256color`, each
-  entry with the tests that pin it, and XTGETTCAP answers only from it. VT validates
+  entry with the tests that pin it, and XTGETTCAP answers only from it. The
+  `xterm-ntilde` terminfo source is generated from the same table by
+  `TerminfoSource` and checked in; it is never edited by hand. VT validates
   the whole name list before replying and echoes only checked hex. `Ms` depends on
   `AnsiParser.ClipboardWriteAvailable`, which the App sets for direct panes from
   `AllowOsc52ClipboardWrite`; headless and mux parsers leave it unset.

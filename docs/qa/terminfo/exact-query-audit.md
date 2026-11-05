@@ -225,9 +225,12 @@ claims that this one live run exercised them. The existing cursor/text-pixel
 
 XTGETTCAP (#844) answers from `TerminalCapabilities` in `Ntilde.VT`, the one table of
 what Ntilde advertises beyond `xterm-256color`. The opt-in `xterm-ntilde` terminfo
-entry is to be built from the same table, so the two cannot disagree. The table holds
-`Co`/`colors` (256), the `RGB`, `Tc` and `Su` flags, and the strings `setrgbf`,
-`setrgbb`, `Smulx`, `Setulc`, `Sync`, `Ss`, `Se`, `Ms`, `tsl` and `fsl`.
+entry is generated from the same table, so the two cannot disagree. The table holds
+`Co`/`colors` (256), the `RGB`, `Tc`, `Su` and `hs` flags, and the strings `setrgbf`,
+`setrgbb`, `Smulx`, `Setulc`, `Sync`, `Ss`, `Se`, `Ms`, `tsl` and `fsl`. The terminfo
+entry leaves out `Co` (a termcap name), `RGB` (ncurses would read it as direct-color
+`setaf`) and `Ms` (setting- and session-dependent); see
+`packaging/terminfo/README.md`.
 `TerminalCapabilityTests` expands every string value the way curses does and runs it
 through the parser, checking the pen, mode, cursor style, clipboard write or title
 it claims to produce; each entry also lists the owning tests for that feature.

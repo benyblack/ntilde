@@ -250,8 +250,12 @@ is shown and xterm's 1-6 code for an application override. DECSCUSR 0 restores t
 host's configured cursor, so a saved report restores exactly what was shown.
 
 XTGETTCAP (#844) answers from `TerminalCapabilities`, the one table of what Ntilde
-advertises beyond `xterm-256color`; the opt-in `xterm-ntilde` terminfo entry is to be
-built from the same table. Each entry names the tests that pin its behaviour, and a
+advertises beyond `xterm-256color`; `TerminfoSource` generates the opt-in `xterm-ntilde`
+terminfo entry (`packaging/terminfo/xterm-ntilde.terminfo`) from the same table, leaving
+out only entries that state a `TerminfoOmission` reason (`Co`, `RGB`, `Ms`). A VT test
+pins the checked-in file to the generator and, on POSIX, compiles it with `tic -x` and
+checks `infocmp -x` against the table and `xterm-256color`. `TERM` stays
+`xterm-256color` on every path. Each entry names the tests that pin its behaviour, and a
 VT test expands every string value as curses would and runs it through the parser.
 Each hex-encoded name gets its own reply in request order (`DCS 1 + r name=value ST`,
 `DCS 1 + r name ST` for a flag, `DCS 0 + r ST` for a name not in the table). Names
