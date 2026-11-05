@@ -188,7 +188,7 @@ jobs:
 
       - name: Self-test terminfo cell observations without a desktop or collector installation
         shell: bash
-        run: node --test scripts/terminfo/agent-observer.test.mjs scripts/terminfo/cells.test.mjs scripts/terminfo/terminal-fence.test.mjs scripts/terminfo/runtime.test.mjs scripts/terminfo/attributes.test.mjs scripts/terminfo/sgr.test.mjs scripts/terminfo/cell-details.test.mjs scripts/terminfo/rgb.test.mjs scripts/terminfo/rendition.test.mjs scripts/terminfo/cursor.test.mjs scripts/terminfo/receipt.test.mjs scripts/terminfo/pixels-png.test.mjs scripts/terminfo/pixels-capture.test.mjs scripts/terminfo/pixels.test.mjs scripts/terminfo/color-query.test.mjs scripts/terminfo/colors.test.mjs scripts/terminfo/editing-state.test.mjs scripts/terminfo/editing-cases.test.mjs scripts/terminfo/editing-expectations.test.mjs scripts/terminfo/editing-observer.test.mjs scripts/terminfo/editing-capture.test.mjs scripts/terminfo/editing.test.mjs scripts/terminfo/editing-receipt.test.mjs scripts/terminfo/editing-collector.test.mjs scripts/terminfo/history-cases.test.mjs scripts/terminfo/history.test.mjs scripts/terminfo/history-capture.test.mjs scripts/terminfo/history-collector.test.mjs scripts/terminfo/history-receipt.test.mjs scripts/terminfo/terminal-output.test.mjs scripts/terminfo/resize-action.test.mjs scripts/terminfo/resize-capture.test.mjs scripts/terminfo/resize-cases.test.mjs scripts/terminfo/resize-collector.test.mjs scripts/terminfo/resize-receipt.test.mjs scripts/terminfo/resize-request.test.mjs scripts/terminfo/resize.test.mjs scripts/terminfo/saved-capture.test.mjs scripts/terminfo/saved-cases.test.mjs scripts/terminfo/saved-collector.test.mjs scripts/terminfo/saved-receipt.test.mjs scripts/terminfo/saved-request.test.mjs scripts/terminfo/saved.test.mjs scripts/terminfo/owned-bootstrap.test.mjs scripts/terminfo/owned-snapshot-receipt.test.mjs scripts/terminfo/owned-sources.test.mjs scripts/terminfo/owned-scope-history.test.mjs scripts/terminfo/metadata-state.test.mjs scripts/terminfo/metadata-cases.test.mjs scripts/terminfo/metadata.test.mjs scripts/terminfo/metadata-snapshot.test.mjs scripts/terminfo/reset-publication.test.mjs scripts/terminfo/metadata-capture.test.mjs scripts/terminfo/metadata-collector.test.mjs scripts/terminfo/metadata-receipt.test.mjs scripts/terminfo/metadata-request.test.mjs scripts/terminfo/input-bytes.test.mjs scripts/terminfo/input-cases.test.mjs scripts/terminfo/input-state.test.mjs scripts/terminfo/input-action.test.mjs scripts/terminfo/input-capture.test.mjs scripts/terminfo/input-collector.test.mjs scripts/terminfo/input-request.test.mjs scripts/terminfo/input-receipt.test.mjs scripts/terminfo/input-publication.test.mjs scripts/terminfo/static-images-inputs.test.mjs scripts/terminfo/static-images-cases.test.mjs scripts/terminfo/static-images-oracle.test.mjs scripts/terminfo/static-images.test.mjs scripts/terminfo/static-images-capture.test.mjs scripts/terminfo/static-images-receipt.test.mjs scripts/terminfo/query-witness-cases.test.mjs scripts/terminfo/query-witness-frame.test.mjs scripts/terminfo/inline-platform.test.mjs scripts/terminfo/image-publication.test.mjs scripts/terminfo/query-capture.test.mjs scripts/terminfo/query-receipt.test.mjs scripts/terminfo/query-integration.test.mjs scripts/terminfo/query-publication.test.mjs
+        run: node --test scripts/terminfo/agent-observer.test.mjs scripts/terminfo/cells.test.mjs scripts/terminfo/terminal-fence.test.mjs scripts/terminfo/runtime.test.mjs scripts/terminfo/attributes.test.mjs scripts/terminfo/sgr.test.mjs scripts/terminfo/cell-details.test.mjs scripts/terminfo/rgb.test.mjs scripts/terminfo/rendition.test.mjs scripts/terminfo/cursor.test.mjs scripts/terminfo/receipt.test.mjs scripts/terminfo/pixels-png.test.mjs scripts/terminfo/pixels-capture.test.mjs scripts/terminfo/pixels.test.mjs scripts/terminfo/color-query.test.mjs scripts/terminfo/colors.test.mjs scripts/terminfo/editing-state.test.mjs scripts/terminfo/editing-cases.test.mjs scripts/terminfo/editing-expectations.test.mjs scripts/terminfo/editing-observer.test.mjs scripts/terminfo/editing-capture.test.mjs scripts/terminfo/editing.test.mjs scripts/terminfo/editing-receipt.test.mjs scripts/terminfo/editing-collector.test.mjs scripts/terminfo/history-cases.test.mjs scripts/terminfo/history.test.mjs scripts/terminfo/history-capture.test.mjs scripts/terminfo/history-collector.test.mjs scripts/terminfo/history-receipt.test.mjs scripts/terminfo/terminal-output.test.mjs scripts/terminfo/resize-action.test.mjs scripts/terminfo/resize-capture.test.mjs scripts/terminfo/resize-cases.test.mjs scripts/terminfo/resize-collector.test.mjs scripts/terminfo/resize-receipt.test.mjs scripts/terminfo/resize-request.test.mjs scripts/terminfo/resize.test.mjs scripts/terminfo/saved-capture.test.mjs scripts/terminfo/saved-cases.test.mjs scripts/terminfo/saved-collector.test.mjs scripts/terminfo/saved-receipt.test.mjs scripts/terminfo/saved-request.test.mjs scripts/terminfo/saved.test.mjs scripts/terminfo/owned-bootstrap.test.mjs scripts/terminfo/owned-snapshot-receipt.test.mjs scripts/terminfo/owned-sources.test.mjs scripts/terminfo/owned-scope-history.test.mjs scripts/terminfo/metadata-state.test.mjs scripts/terminfo/metadata-cases.test.mjs scripts/terminfo/metadata.test.mjs scripts/terminfo/metadata-snapshot.test.mjs scripts/terminfo/reset-publication.test.mjs scripts/terminfo/metadata-capture.test.mjs scripts/terminfo/metadata-collector.test.mjs scripts/terminfo/metadata-receipt.test.mjs scripts/terminfo/metadata-request.test.mjs scripts/terminfo/input-bytes.test.mjs scripts/terminfo/input-cases.test.mjs scripts/terminfo/input-state.test.mjs scripts/terminfo/input-action.test.mjs scripts/terminfo/input-capture.test.mjs scripts/terminfo/input-collector.test.mjs scripts/terminfo/input-request.test.mjs scripts/terminfo/input-receipt.test.mjs scripts/terminfo/input-publication.test.mjs scripts/terminfo/static-images-inputs.test.mjs scripts/terminfo/static-images-cases.test.mjs scripts/terminfo/static-images-oracle.test.mjs scripts/terminfo/static-images.test.mjs scripts/terminfo/static-images-capture.test.mjs scripts/terminfo/static-images-receipt.test.mjs scripts/terminfo/query-witness-cases.test.mjs scripts/terminfo/query-witness-frame.test.mjs scripts/terminfo/inline-platform.test.mjs scripts/terminfo/image-publication.test.mjs scripts/terminfo/query-capture.test.mjs scripts/terminfo/query-receipt.test.mjs scripts/terminfo/query-integration.test.mjs
 
       # The check below decides whether dotnet build may skip compiling the Rust libraries, so a
       # wrong "skip" would ship a build with none: scripts/ci/native-libs-present.sh, tested here.
@@ -208,6 +208,25 @@ jobs:
           py=python3
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/trim_test_outputs_tests.py
+
+  # Preserve the existing portable lane's bounded budget. Frozen v11 publication
+  # rederivation runs independently on every CI event and gates the same required roll-up.
+  query_publication_guards:
+    name: Query publication guards (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Rederive frozen v11 query publication and complete receipt
+        shell: bash
+        run: node --test scripts/terminfo/query-publication.test.mjs
 
   build:
     name: Build (${{ matrix.os }})
@@ -933,8 +952,8 @@ jobs:
   # failure here, not as the pass a skipped required check would otherwise report.
   unit_tests:
     name: Unit Tests (${{ matrix.os }})
-    needs: [build_and_unit_tests, script_self_tests, analyzers]
-    if: ${{ !cancelled() }}
+    needs: [build_and_unit_tests, script_self_tests, query_publication_guards, analyzers]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
@@ -947,11 +966,13 @@ jobs:
         env:
           result: ${{ needs.build_and_unit_tests.result }}
           scripts: ${{ needs.script_self_tests.result }}
+          publication: ${{ needs.query_publication_guards.result }}
           analyzers: ${{ needs.analyzers.result }}
         run: |
-          echo "Unit Tests shards: $result; script self-tests: $scripts; analyzers: $analyzers"
+          echo "Unit Tests shards: $result; script self-tests: $scripts; query publication: $publication; analyzers: $analyzers"
           [ "$result" = success ] || { echo "::error::A Unit Tests shard did not succeed ($result); see the 'Unit Tests (<os>, <shard>)' jobs."; exit 1; }
           [ "$scripts" = success ] || { echo "::error::The CI script self-tests did not succeed ($scripts); see the 'Script self-tests (<os>)' jobs."; exit 1; }
+          [ "$publication" = success ] || { echo "::error::The frozen query publication guards did not succeed ($publication); see the 'Query publication guards (<os>)' jobs."; exit 1; }
           [ "$analyzers" = success ] || { echo "::error::The analyzer and code-style build did not succeed ($analyzers); see the 'Analyzers' job."; exit 1; }
 
   # Native SSH end-to-end against a real sshd in a container.
