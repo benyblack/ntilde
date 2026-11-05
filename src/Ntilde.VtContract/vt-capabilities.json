@@ -188,6 +188,22 @@
       "matrixFeature": "XTGETTCAP capability query",
       "evidencePath": "tests/Ntilde.VT.Tests/TerminalCapabilityTests.cs",
       "contractCase": "xtgettcap"
+    },
+    {
+      "key": "CSI:?J",
+      "mnemonic": "DECSED",
+      "support": "partial",
+      "description": "Modes 0, 1 and 2 alias ordinary erase while protected-cell storage (DECSCA) is unsupported. Undefined mode 3 is ignored; it never clears scrollback.",
+      "matrixFeature": "DECSED (? J)",
+      "evidencePath": "tests/Ntilde.VT.Tests/SelectiveEraseHistoryTests.cs"
+    },
+    {
+      "key": "CSI:?K",
+      "mnemonic": "DECSEL",
+      "support": "partial",
+      "description": "Modes 0, 1 and 2 alias ordinary erase while protected-cell storage (DECSCA) is unsupported. Undefined mode 3 is ignored; it never clears scrollback.",
+      "matrixFeature": "DECSEL (? K)",
+      "evidencePath": "tests/Ntilde.VT.Tests/SelectiveEraseHistoryTests.cs"
     }
   ]
 }

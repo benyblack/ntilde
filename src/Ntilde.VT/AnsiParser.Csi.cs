@@ -393,13 +393,12 @@ namespace Ntilde.VT
                           // DECSCA (CSI Ps " q), the sequence that marks characters as
                           // protected, is not implemented, so every character in the buffer is
                           // unprotected and DECSED is exactly ED. The alias is therefore
-                          // correct today rather than merely convenient - and refusing the
-                          // private form instead would leave a client's screen uncleared,
-                          // which is a worse outcome than the nonconformance. If DECSCA is
-                          // ever implemented, this case has to split.
+                          // correct for modes 0-2 today. Private mode 3 is undefined and must
+                          // never inherit ordinary ED 3's scrollback-history deletion.
+                          // If DECSCA is implemented, this case has to split.
                     if (intermediates.Length == 0 && (leader == '\0' || leader == '?'))
                     {
-                        EraseInDisplay(argCount > 0 ? validArgs[0] : 0);
+                        EraseInDisplay(argCount > 0 ? validArgs[0] : 0, allowHistoryErase: leader == '\0');
                     }
                     break;
                 case 'K': // Erase in Line
@@ -649,9 +648,10 @@ namespace Ntilde.VT
         }
 
         /// <summary>
-        /// ED (and DECSED): erases part of the screen, or the scrollback, as <paramref name="displayMode"/> says.
+        /// ED and unprotected DECSED erase the screen as <paramref name="displayMode"/> says.
+        /// Only ordinary ED can erase scrollback.
         /// </summary>
-        private void EraseInDisplay(int displayMode)
+        private void EraseInDisplay(int displayMode, bool allowHistoryErase)
         {
             if (displayMode == 0) // Erase from cursor to end of screen
             {
@@ -676,7 +676,7 @@ namespace Ntilde.VT
                 _buffer.ClearScreen(resetCursor: false);
                 _verticalOffset = 0; // Reset offset on clear screen
             }
-            else if (displayMode == 3) // Erase saved lines (scrollback only, xterm ED 3)
+            else if (displayMode == 3 && allowHistoryErase) // Erase saved lines (scrollback only, xterm ED 3)
             {
                 _buffer.ClearScrollbackHistory();
                 _verticalOffset = 0; // Scrollback is gone; snap view to bottom
