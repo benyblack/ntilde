@@ -1,0 +1,39 @@
+name: Linux source-owned launch foundation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/terminfo-linux-launch.yml'
+      - 'scripts/terminfo/linux-launch/**'
+      - 'scripts/terminfo/linux-owned-launch*.mjs'
+      - 'scripts/terminfo/linux-process-provider.mjs'
+      - 'scripts/terminfo/linux-process-core.mjs'
+      - 'scripts/terminfo/linux-lifecycle/core.mjs'
+      - 'scripts/terminfo/linux-owned-output-core.mjs'
+      - 'docs/qa/linux-owned-launch.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Deterministic identity, resource and bounded transport controls
+        run: node --test scripts/terminfo/linux-owned-launch.test.mjs scripts/terminfo/linux-owned-launch-platform.test.mjs
+      - name: Original direct child, no-autoreap, failure and genuine wait controls
+        run: python3 -I -B scripts/terminfo/linux-launch/helper_tests.py -v
+      - name: Source-built private ELF, PTY, EOF and resistant termination controls
+        run: node scripts/terminfo/linux-owned-launch-selftest.mjs linux-launch-foundation.json
+      - name: Retain limited launch foundation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-source-owned-launch-foundation-only
+          path: linux-launch-foundation.json
+          if-no-files-found: error
