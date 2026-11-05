@@ -91,9 +91,26 @@ test('worker then App fixed operations observe exit, not reap', async () => {
     const worker = await active.terminateWorker(t.phase()); assert.equal(worker.observation.worker.exitObserved, true);
     assert.equal(worker.observation.app.exitObserved, false);
     const app = await active.terminateApp(t.phase()); assert.equal(app.observation.app.exitObserved, true);
+    await active.terminateApp(t.phase()); // Previously submitted original target needs no duplicate signal.
     assert.deepEqual(t.attempts.map(x => [x.role, x.signal]), [['worker', 'TERM'], ['app', 'TERM']]);
     const closed = await active.close(t.phase()); assert.equal(closed.aborted, false);
     assert.equal(t.events.filter(([n]) => n === 'open').length, 1);
+});
+test('App exit before fresh terminateApp observation is unexpected and cannot arm termination', async () => {
+    const s = synthetic(), lease = await s.acquire(); await lease.terminateWorker(s.phase());
+    s.alive.app = false;
+    await assert.rejects(lease.terminateApp(s.phase()), /Original App exited/);
+    assert.equal(s.events.some(([name]) => name === 'terminateApp'), false);
+    assert.equal(s.attempts.some(item => item.role === 'app'), false);
+    await assert.rejects(lease.close(s.phase()));
+});
+test('App exit at dispatch without successful signal cannot become expected termination', async () => {
+    const s = synthetic(), lease = await s.acquire(); await lease.terminateWorker(s.phase());
+    s.hook = name => { if (name === 'terminateApp') s.alive.app = false; };
+    await assert.rejects(lease.terminateApp(s.phase()), /without a new successful/);
+    assert.equal(s.attempts.some(item => item.role === 'app'), false);
+    assert.equal(lease.observation().aborted, true);
+    s.hook = null; await assert.rejects(lease.close(s.phase()));
 });
 test('fatal identity drift cleanup signals only retained original roles and remains aborted', async () => {
     const s = synthetic(), lease = await s.acquire(); s.facts.child.argv.push('drift');

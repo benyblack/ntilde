@@ -10,12 +10,13 @@ import { lifecycleLimits } from './core.mjs';
 export const helperSha256 = 'beb8320080a7961133087899f9318a11254492c560b5bde5e1213c83702ce804';
 const helperPath = fileURLToPath(new URL('./pidfd-helper.py', import.meta.url));
 
+function validateFile(kind, stat, expected, limit) {
+    if (stat.uid !== BigInt(kind === 'python' ? 0 : expected.uid) || (stat.mode & 0o022n) !== 0n
+        || stat.size < 4n || stat.size > BigInt(limit)) throw new Error('Invalid lifecycle source/interpreter ownership or size.');
+    if (kind === 'python' && (stat.mode & 0o111n) === 0n) throw new Error('Lifecycle interpreter is not executable.');
+}
+
 export function createResources(fs = nodeFs) {
-    function validateFile(kind, stat, expected, limit) {
-        if (stat.uid !== BigInt(kind === 'python' ? 0 : expected.uid) || (stat.mode & 0o022n) !== 0n
-            || stat.size < 4n || stat.size > BigInt(limit)) throw new Error('Invalid lifecycle source/interpreter ownership or size.');
-        if (kind === 'python' && (stat.mode & 0o111n) === 0n) throw new Error('Lifecycle interpreter is not executable.');
-    }
     function digest(kind, fd, stat, python, limit, budget) {
         const hash = createHash('sha256'), buffer = Buffer.alloc(65536);
         let used = 0, magic = Buffer.alloc(0);

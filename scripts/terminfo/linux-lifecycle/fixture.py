@@ -117,7 +117,7 @@ class ParentFixture:
         while True:
             got, _status = os.waitpid(self.child, os.WNOHANG)
             if got:
-                self.reaped = got == self.child
+                self.reaped = True  # Positive waitpid(self.child) can return only that exact child.
                 return self.reaped
             if time.monotonic() >= deadline:
                 return False

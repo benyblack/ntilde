@@ -166,6 +166,20 @@ await fixture('identity-drift-aborts-original-held-targets', async ({ expected, 
     assert.equal(error.linuxLifecycle.observation.worker.exitObserved, true);
     assert.equal(error.linuxLifecycle.helper.helperCloseConfirmed, true);
     return { aborted: error.linuxLifecycle };
+}),
+await fixture('independent-App-exit-cannot-become-requested-termination', async ({ expected, control }) => {
+    const lease = await acquireLinuxLifecycle(expected, pin, { ...phase(), lifetimeMs: 20000 });
+    try {
+        await control.command('zombie'); await lease.observe(phase());
+        assert.equal((await control.command('reap')).childReaped, true);
+        assert.equal((await control.command('close')).fixtureCleanup, true);
+        await bounded(control.close, 1000, 'Independent fixture parent exit unobserved.');
+        await assert.rejects(lease.terminateApp(phase()), /Original App exited/);
+        const refusal = await lease.close(phase()).catch(error => error);
+        assert.equal(refusal.linuxLifecycle.aborted, true);
+        assert.deepEqual(refusal.linuxLifecycle.observation.attempts, []);
+        return { unexpectedExitRetained: true, refusal: refusal.linuxLifecycle };
+    } finally { await lease.close(phase()).catch(() => {}); }
 }));
 const sentinelAlive = await sentinel.command('alive');
 assert.deepEqual(sentinelAlive, { sentinelAlive: true, pid: sentinelReady.pid });

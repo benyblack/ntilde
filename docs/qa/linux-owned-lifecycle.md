@@ -77,7 +77,9 @@ python3 -I -S -B scripts/terminfo/linux-lifecycle/helper_tests.py
 
 These controls cover normal close with zero target signals, TERM resistance and
 KILL, exact launch refusal, sticky argv drift, admitted EOF, and an independent
-sentinel surviving every target action. A private fixture parent deliberately
+sentinel surviving every target action. A separately controlled App-role exit
+must remain unexpected rather than becoming an unsent requested termination.
+A private fixture parent deliberately
 retains its worker zombie with WNOWAIT; the pidfd reports exit while a nonparent
 P_PIDFD wait gets ECHILD. Only the fixture parent subsequently reaps that worker.
 The Node harness verifies its own fixture/helper closure. The result contains no

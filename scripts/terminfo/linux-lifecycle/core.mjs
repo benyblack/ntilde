@@ -110,8 +110,16 @@ export async function acquireWithIo(io, expectedInput, pythonInput, options) {
         const token = await sample(phase);
         if (ownership) verify(phase);
         if (primary && ownership) throw primary;
+        const priorAttempts = latest.attempts.length;
         const result = await channel.request({ op, deadlineNs: token.helperDeadlineNs }, phase);
-        consume(result.observation); phase.check();
+        consume(result.observation);
+        if (op === 'terminateApp' && !appTerminationRequested) {
+            if (!latest.attempts.slice(priorAttempts).some(item => item.role === 'app' && item.sent)) {
+                fail('App exited without a new successful original-pidfd termination attempt.');
+            }
+            appTerminationRequested = true;
+        }
+        phase.check();
         if (ownership) verify(phase);
         if (primary && ownership) throw primary;
         return state();
@@ -140,7 +148,6 @@ export async function acquireWithIo(io, expectedInput, pythonInput, options) {
             const phase = linuxOutputBudget(phaseOptions, io.now);
             if (op === 'terminateApp') {
                 if (!latest.worker.exitObserved) fail('Worker exit must be observed before App termination.');
-                appTerminationRequested = true;
             }
             return await act(op, phase);
         } catch (error) { throw mark(error); }
