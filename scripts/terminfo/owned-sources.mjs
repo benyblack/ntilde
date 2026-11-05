@@ -148,6 +148,15 @@ export const capturedV12SourceFiles = Object.freeze({
     privateClipboardInput20SourceSha256: "clipboard-agent-registry.cs",
     privateClipboardInput21SourceSha256: "clipboard-agent-protocol.cs",
 });
+// Frozen v13 ASCII/SGR grading scope; future experiments must create a distinct policy and map.
+export const capturedV13SourceFiles = Object.freeze({
+    ...capturedV12SourceFiles,
+    gradingCollectorSourceSha256: "grading-collector.mjs",
+    asciiSgrContractsSourceSha256: "ascii-sgr-contracts.mjs",
+    asciiSgrCollectorSourceSha256: "ascii-sgr-collector.mjs",
+    asciiSgrGradingSourceSha256: "ascii-sgr-grading.mjs",
+    asciiSgrReceiptSourceSha256: "ascii-sgr-receipt.mjs",
+});
 /** Resolve paths from the caller's fixed inventory; selected C# inputs remain nonexecuted reference bytes. */
 export function ownedSourcePath(root, file) {
     if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
@@ -175,11 +184,11 @@ export function assertOwnedSourcesUnchanged(root, context) {
         if (digest(readFileSync(ownedSourcePath(root, file))) !== context[key]) throw new Error('Owned source changed before completion: ' + file);
     }
 }
-/** Bind the private temporary root, exact v12 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v13 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV12SourceFiles)) throw new Error('Invalid current v12 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV13SourceFiles)) throw new Error('Invalid current v13 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

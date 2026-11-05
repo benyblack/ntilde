@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV12SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV13SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV12SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV13SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV12SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV13SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,

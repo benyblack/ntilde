@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { capturedV8SourceFiles, legacyV8SourceFiles, capturedV8SourcePolicy, capturedV9SourceFiles, capturedV10SourceFiles, capturedV11SourceFiles, capturedV12SourceFiles, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV8SourceFiles, legacyV8SourceFiles, capturedV8SourcePolicy, capturedV9SourceFiles, capturedV10SourceFiles, capturedV11SourceFiles, capturedV12SourceFiles, capturedV13SourceFiles, assertRetainedSourceClosure } from './owned-sources.mjs';
 import { buildMetadataReport } from './metadata.mjs';
 import { metadataSuiteId, ownedMetadataPolicy } from './metadata-cases.mjs';
 import { validateOutputGeometry } from './terminal-output.mjs';
@@ -58,7 +58,7 @@ function checkSnapshot(output, context, proof) {
         && Date.parse(proof.sourceSnapshot.removedAt) >= Date.parse(proof.cleanedUpAt));
 }
 function retainedInventory(output, context) {
-    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v5') return capturedV12SourceFiles;
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v5') return capturedV13SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v4') return capturedV11SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v3') return capturedV10SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v2') return capturedV9SourceFiles;
