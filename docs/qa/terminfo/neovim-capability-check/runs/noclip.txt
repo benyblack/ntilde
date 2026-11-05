@@ -1,0 +1,51 @@
+TERM=xterm-256color TERM_PROGRAM=Ntilde COLORTERM=unset NTILDE_MUX_SESSION=none
+terminfo xterm-256color: found
+nvim exit 0
+nvim 0.12.6
+TermResponse \x1B]11;rgb:0000/0000/0000
+TermResponse \x1B[0n
+TermResponse \x1BP1+r5463
+TermResponse \x1BP1+r524742
+TermResponse \x1BP1+r73657472676266=1B5B33383B323B25703125643B25703225643B25703325646D
+TermResponse \x1BP1+r73657472676262=1B5B34383B323B25703125643B25703225643B25703325646D
+TermResponse \x1BP1$r0;48;2;1;2;3m
+TermResponse \x1B[?62;4;22c
+TermResponse \x1BP0+r
+auto termguicolors=true
+TermResponse \x1BP1+r5463
+TermResponse \x1BP1+r524742
+TermResponse \x1BP1+r73657472676266=1B5B33383B323B25703125643B25703225643B25703325646D
+TermResponse \x1BP1+r73657472676262=1B5B34383B323B25703125643B25703225643B25703325646D
+TermResponse \x1BP1+r5375
+TermResponse \x1BP1+r536D756C78=1B5B343A25703125646D
+TermResponse \x1BP1+r536574756C63=1B5B35383A323A3A257031257B36353533367D252F25643A257031257B3235367D252F257B3235357D252625643A257031257B3235357D252625646D
+TermResponse \x1BP1+r53796E63=1B5B3F32303236253F257031257B317D252D25746C256568253B
+TermResponse \x1BP1+r5373=1B5B25703125642071
+TermResponse \x1BP1+r5365=1B5B302071
+TermResponse \x1BP1+r6873
+TermResponse \x1BP1+r74736C=1B5D323B
+TermResponse \x1BP1+r66736C=07
+TermResponse \x1BP0+r
+TermResponse \x1BP1+r436F=323536
+TermResponse \x1BP1+r636F6C6F7273=323536
+TermResponse \x1BP0+r
+TermResponse \x1BP0+r
+termcap Tc       found 
+termcap RGB      found 
+termcap setrgbf  found \x1B[38;2;%d;%d;%dm
+termcap setrgbb  found \x1B[48;2;%d;%d;%dm
+termcap Su       found 
+termcap Smulx    found \x1B[4:%dm
+termcap Setulc   found \x1B[58:2::%{65536}%/%d:%{256}%/%{255}%&%d:%{255}%&%dm
+termcap Sync     found \x1B[?2026%?%{1}%-%tl%eh%;
+termcap Ss       found \x1B[%d q
+termcap Se       found \x1B[0 q
+termcap hs       found 
+termcap tsl      found \x1B]2;
+termcap fsl      found \x07
+termcap Ms       not found
+termcap Co       found 256
+termcap colors   found 256
+termcap TN       not found
+termcap kcuu1    not found
+clipboard=nil

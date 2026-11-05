@@ -32,7 +32,7 @@ It is a manual QA run. It does not change any published terminfo.dev observation
 
 ## Results
 
-The complete logs are in [`neovim-capability-check/logs`](neovim-capability-check/logs).
+The complete record of each run (environment, every reply and the probe results) is in [`neovim-capability-check/runs`](neovim-capability-check/runs), one file per run name.
 
 | Run | Session | `termguicolors` set by Neovim's startup | Table names | `Ms` | `TN`, `kcuu1` |
 |---|---|---|---|---|---|

@@ -1,0 +1,30 @@
+TERM=xterm-256color TERM_PROGRAM=Ntilde COLORTERM=unset NTILDE_MUX_SESSION=none
+terminfo xterm-256color: found
+nvim exit 0
+nvim 0.12.6
+TermResponse \x1BP0+r
+TermResponse \x1BP0$r
+TermResponse \x1B[?62;4;22c
+TermResponse \x1BP0+r
+auto termguicolors=false
+TermResponse \x1BP0+r
+TermResponse \x1BP0+r
+termcap Tc       not found
+termcap RGB      not found
+termcap setrgbf  not found
+termcap setrgbb  not found
+termcap Su       not found
+termcap Smulx    not found
+termcap Setulc   not found
+termcap Sync     not found
+termcap Ss       not found
+termcap Se       not found
+termcap hs       not found
+termcap tsl      not found
+termcap fsl      not found
+termcap Ms       not found
+termcap Co       not found
+termcap colors   not found
+termcap TN       not found
+termcap kcuu1    not found
+clipboard=nil
