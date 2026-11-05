@@ -8,6 +8,11 @@ export const launchLimits = Object.freeze({ lifetimeMs: 300000, abortReserveMs: 
     commands: 64, frameBytes: 4096, stdoutBytes: 262144, stderrBytes: 4096, logBytes: 1048576,
     helperBytes: 65536, pythonBytes: 16777216, appBytes: 33554432, managedBytes: 67108864, ptyBytes: 16777216 });
 const fail = message => { throw new Error(message); };
+/** Compare lossless monotonic BigInts without converting deadlines to Number for Math.min. */
+function earlierDeadline(first, second) {
+    if (first < second) return first;
+    return second;
+}
 const pid = value => Number.isSafeInteger(value) && value >= 2 && value <= 2147483647;
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const path = value => typeof value === 'string' && value.length < 4096 && value.startsWith('/')
@@ -102,7 +107,10 @@ class Launch {
     /** Keep the first failure sticky while cleanup facts remain separately observable. */
     mark(error) { this.primary ??= error; return error; }
     /** Retain actual helper facts before a later deadline or identity failure can refuse the call. */
-    consume(frame) { if (frame?.observation) this.observation = copyLaunchObservation(frame.observation); return frame; }
+    consume(frame) {
+        if (frame?.observation) this.observation = copyLaunchObservation(frame.observation);
+        return frame;
+    }
     /** Copy the latest factual state and sticky abort; never provide whole-run completion or a PID selector. */
     snapshot() {
         const helper = this.channel?.snapshot() ?? null;
@@ -118,7 +126,10 @@ class Launch {
         try {
             const frame = this.consume(await this.channel.request({ op, ...extra }, phase));
             phase.check(); return frame;
-        } catch (error) { if (error.launchObservation) this.observation = copyLaunchObservation(error.launchObservation); throw error; }
+        } catch (error) {
+            if (error.launchObservation) this.observation = copyLaunchObservation(error.launchObservation);
+            throw error;
+        }
     }
     /** Translate remaining parent time conservatively from a received helper monotonic sample. */
     async clock(phase) {
@@ -179,15 +190,40 @@ class Launch {
             const phase = linuxOutputBudget(options, this.io.now); const clock = await this.clock(phase);
             this.assertHeldAlive(); this.appFacts(phase); this.channel.check(phase, false);
             await this.call(op, phase, { deadlineNs: clock.deadlineNs }); phase.check();
-            this.assertHeldAlive(); if (this.primary) throw this.primary; return this.snapshot();
+            this.assertHeldAlive();
+            if (this.primary) throw this.primary;
+            return this.snapshot();
         } catch (error) { throw this.mark(error); }
         finally { this.busy = false; }
     }
+    /** Reserve only the original remaining cleanup allowance, even when caller phase validation failed. */
+    cleanupPhase() {
+        this.cleanupDeadlineNs ??= this.io.now() + 4000000000n;
+        const deadlineNs = earlierDeadline(this.cleanupDeadlineNs, this.totalDeadlineNs);
+        return { deadlineNs, remainingMs: () => {
+            const left = deadlineNs - this.io.now();
+            if (left < 1000000n) fail('Owned launch cleanup deadline exhausted.');
+            return Number(left / 1000000n);
+        } };
+    }
+    /** Always close coordinator transport/resources; invalid deadlines cannot strand the sole writer. */
+    async closeAfterSettlement(phase, errors) {
+        try {
+            const closing = !phase || errors.length || this.primary ? this.cleanupPhase() : phase;
+            const final = await this.channel.finish(closing);
+            if (final) this.observation = copyLaunchObservation(final);
+            if (!errors.length && !this.primary) phase.check();
+        } catch (error) { this.mark(error); errors.push(error); }
+    }
     /** Settle once with genuine owner-wait and resource facts, preserving primary and cleanup failures. */
     async settle(abort, options) {
-        if (this.settled) { if (this.settled.error) throw this.settled.error; return this.settled.value; }
+        if (this.settled) {
+            if (this.settled.error) throw this.settled.error;
+            return this.settled.value;
+        }
         if (this.busy) throw this.mark(new Error('Overlapping launch settlement.'));
-        this.busy = true; if (abort) this.mark(new Error('Explicit owned launch abort.'));
+        this.busy = true;
+        if (abort) this.mark(new Error('Explicit owned launch abort.'));
         const errors = []; let phase;
         try {
             phase = linuxOutputBudget(options, this.io.now); const clock = await this.clock(phase);
@@ -195,23 +231,12 @@ class Launch {
             await this.call(abort || this.primary ? 'abort' : 'stop', phase, { deadlineNs: clock.deadlineNs });
         } catch (error) { this.mark(error); errors.push(error); }
         finally {
-            if (phase) {
-                try {
-                    let closing = phase;
-                    if (errors.length || this.primary) {
-                        this.cleanupDeadlineNs ??= this.io.now() + 4000000000n;
-                        const limit = this.cleanupDeadlineNs < this.totalDeadlineNs ? this.cleanupDeadlineNs : this.totalDeadlineNs;
-                        closing = linuxOutputBudget({ deadlineNs: limit }, this.io.now);
-                    }
-                    const final = await this.channel.finish(closing);
-                    if (final) this.observation = copyLaunchObservation(final);
-                    if (!errors.length && !this.primary) phase.check();
-                } catch (error) { this.mark(error); errors.push(error); }
-            }
+            await this.closeAfterSettlement(phase, errors);
             this.busy = false;
         }
         if (!abort && !this.primary && (!this.observation?.appReaped || !this.observation.pidfdClosed
-            || !this.observation.childPipesClosed || !this.observation.appLogClosed)) errors.push(new Error('Owned App reap/resource closure is unconfirmed.'));
+            || !this.observation.childPipesClosed || !this.observation.appLogClosed
+            || !this.observation.attempts.some(item => item.sent))) errors.push(this.mark(new Error('Owned App signal/reap/resource closure is unconfirmed.')));
         if (errors.length || this.primary) {
             const error = new AggregateError([this.primary, ...errors].filter(Boolean), 'Owned launch action/wait/close failed.');
             Object.defineProperty(error, 'linuxLaunch', { value: this.snapshot() }); this.settled = { error }; throw error;
@@ -223,8 +248,8 @@ class Launch {
         this.mark(error); const errors = [];
         if (this.channel) {
             const limit = this.io.now() + 4000000000n;
-            const deadlineNs = limit < this.totalDeadlineNs ? limit : this.totalDeadlineNs;
-            try { await this.settle(true, { deadlineNs }); } catch (cleanup) { errors.push(cleanup); }
+            const deadlineNs = earlierDeadline(limit, this.totalDeadlineNs);
+            try { await this.settle(true, { deadlineNs }); } catch (error_) { errors.push(error_); }
         }
         const failure = new AggregateError([error, ...errors], 'Owned launch admission/cleanup failed.');
         Object.defineProperty(failure, 'linuxLaunch', { value: this.snapshot() }); throw failure;

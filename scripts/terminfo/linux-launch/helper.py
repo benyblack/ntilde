@@ -307,7 +307,7 @@ class Child:
             argv = [config["appPath"], "--ntilde-terminfo-owner=" + config["runId"], "--ntilde-terminfo-private-clipboard=" + config["runId"]]
             os.set_inheritable(6, False)
             os.execve(6, argv, environment)
-        except BaseException as ex:
+        except Exception as ex:
             value = ex.errno if isinstance(ex, OSError) and ex.errno else errno.EINVAL
             try:
                 os.write(error, b"E" + struct.pack("<I", value))
@@ -386,9 +386,18 @@ class Child:
 
     def close_gate(self):
         """Close the sole parent gate writer once; unreleased children must not exec."""
-        if self.gate is not None:
-            value, self.gate = self.gate, None
-            os.close(value)
+        self.close_pipe("gate")
+
+    def close_pipe(self, name):
+        """Discard a known pipe once while preserving any unconfirmed close as an abort."""
+        value = getattr(self, name)
+        setattr(self, name, None)
+        if value is not None:
+            try:
+                os.close(value)
+            except OSError:
+                self.abort("ChildPipeClose")
+                raise
 
     def pump_log(self, limit=None):
         """Drain private App output while checking the cap before retention or file writes."""
@@ -400,8 +409,7 @@ class Child:
         except BlockingIOError:
             return
         if not data:
-            value, self.output = self.output, None
-            os.close(value)
+            self.close_pipe("output")
             return
         if "AppLogOverflow" in self.state["errors"]:
             return
@@ -436,8 +444,7 @@ class Child:
         if self.error_bytes and self.error_bytes[:1] != b"E":
             raise ValueError("ChildErrorPrefix")
         if not data:
-            value, self.exec_error = self.exec_error, None
-            os.close(value)
+            self.close_pipe("exec_error")
             self.state["execPipeClosed"] = True
             if self.error_bytes:
                 if len(self.error_bytes) != 5:
@@ -465,7 +472,7 @@ class Child:
         if self.pidfd is None or self.state["childReaped"]:
             return
         result = os.waitid(os.P_PIDFD, self.pidfd, os.WEXITED | os.WNOHANG)
-        if result is None:
+        if not result:
             self.guard(limit)
             return
         if result.si_pid != self.pid or result.si_code not in (os.CLD_EXITED, os.CLD_KILLED, os.CLD_DUMPED):
@@ -539,12 +546,29 @@ class Child:
         self.state["attempts"].append(item)
         check(limit)
 
-    def stop(self, limit):
+    def cleanup_pump(self, limit):
+        """Retain observation failures without blocking original-reference signals or waits."""
+        self.guard(limit)
+        observations = ((lambda: self.pump_log(limit), "CleanupLog"), (self.pump_exec, "CleanupExec"),
+                        (self.poll, "CleanupPoll"), (lambda: self.reap(limit), "CleanupWait"))
+        for operation, code in observations:
+            try:
+                operation()
+            except TimeoutError:
+                raise
+            except (OSError, ValueError, RuntimeError):
+                self.abort(code)
+            self.guard(limit)
+
+    def stop(self, limit, require_signal=False):
         """Share one deadline across gate closure, fixed signals and genuine owner waiting."""
         limit = self.active_limit(limit)
         check(limit)
-        self.close_gate()
-        self.pump(False, limit)
+        try:
+            self.close_gate()
+        except OSError:
+            self.abort("ChildPipeClose")
+        self.cleanup_pump(limit)
         if self.pid is None:
             return
         if self.pidfd is None:
@@ -552,15 +576,17 @@ class Child:
             return
         if not self.state["exitObserved"]:
             self.send(signal.SIGTERM, limit)
+        if require_signal and not any(item["sent"] for item in self.state["attempts"]):
+            self.abort("IndependentExitBeforeStop")
         grace = min(limit - CLOSE_RESERVE, now() + min(1_000_000_000, max(0, (limit - now()) // 2)))
         while not self.state["childReaped"] and now() < grace:
-            self.pump(False, limit)
+            self.cleanup_pump(limit)
             time.sleep(0.001)
         if not self.state["exitObserved"]:
             self.send(signal.SIGKILL, limit)
         while not self.state["childReaped"]:
             check(limit - CLOSE_RESERVE)
-            self.pump(False, limit)
+            self.cleanup_pump(limit)
             time.sleep(0.001)
 
     def close(self):
@@ -627,20 +653,30 @@ class Session:
         """Stop/close the created child without converting explicit abort to normal success."""
         if abort:
             self.child.abort("ExplicitAbort")
-        self.child.stop(min(limit, self.lifetime or limit))
+        self.child.stop(min(limit, self.lifetime or limit), require_signal=not abort)
         self.child.close()
         self.done = True
+
+    def command_limit(self, operation, limit):
+        """Keep ordinary work outside the original abort reserve, including clock responses."""
+        if operation in ("stop", "abort"):
+            limit = min(limit, self.lifetime or limit)
+        else:
+            cutoff = self.lifetime - RESERVE if self.lifetime is not None else self.startup_deadline
+            limit = min(limit, cutoff)
+        check(limit)
+        return limit
 
     def command(self, frame):
         """Dispatch only the fixed sequenced protocol operations and their exact fields."""
         operation = frame.get("op")
         if operation == "clock":
             exact(frame, ("seq", "op"))
-            self.response(frame["seq"], now() + PHASE, True)
+            self.response(frame["seq"], self.command_limit(operation, now() + PHASE), True)
             return
         expected = ("seq", "op", "deadlineNs", "lifetimeDeadlineNs") if operation == "prepare" else ("seq", "op", "deadlineNs")
         exact(frame, expected)
-        limit = deadline(frame["deadlineNs"])
+        limit = self.command_limit(operation, deadline(frame["deadlineNs"]))
         operations = {"prepare": lambda: self.prepare_command(frame, limit), "release": lambda: self.child.release(limit),
                       "admitApp": lambda: self.admit_command(limit), "observe": lambda: self.child.pump(limit=limit),
                       "stop": lambda: self.finish_command(False, limit), "abort": lambda: self.finish_command(True, limit)}
@@ -655,13 +691,13 @@ class Session:
         limit = min(now() + RESERVE, self.lifetime or now() + RESERVE)
         try:
             self.child.stop(limit)
-        except BaseException:
+        except Exception:
             self.child.abort("AbortCleanup")
         finally:
             self.child.close()
         try:
             self.response(None, max(now() + 1, limit))
-        except BaseException:
+        except Exception:
             pass
         self.done = True
 
@@ -723,7 +759,7 @@ def main():
         session.response(1, startup, True)
         session.run()
         return 0
-    except BaseException as error:
+    except Exception as error:
         if session is not None:
             session.abort("HelperFailure")
         try:

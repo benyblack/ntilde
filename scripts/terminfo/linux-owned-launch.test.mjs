@@ -175,3 +175,27 @@ test('a late release response retains actual release facts while refusing admiss
     assert.equal(env.calls.filter(op => op === 'release').length, 1);
     assert.equal(env.calls.includes('admitApp'), false);
 });
+
+for (const deadlineNs of [1n, 'malformed']) {
+    test('invalid settlement deadline closes once and remains aborted on repeated cleanup: ' + deadlineNs, async () => {
+        const env = environment(); const lease = await env.launch();
+        const first = await lease.stop({ deadlineNs }).catch(error => error);
+        assert.equal(env.finished(), 1);
+        assert.equal(first.linuxLaunch.aborted, true);
+        assert.equal(first.linuxLaunch.helper.closeConfirmed, true);
+        await assert.rejects(lease.abortCleanup(env.deadline()), error => error === first);
+        assert.equal(env.finished(), 1);
+        assert.equal(env.calls.includes('stop'), false);
+    });
+}
+
+test('normal settlement cannot accept independent exit without an actual original-reference signal attempt', async () => {
+    const env = environment({ after(command, state) { if (command.op === 'stop') state.attempts = []; } });
+    const lease = await env.launch();
+    await assert.rejects(lease.stop(env.deadline()), error => {
+        assert.equal(error.linuxLaunch.aborted, true);
+        assert.equal(error.linuxLaunch.observation.appReaped, true);
+        assert.deepEqual(error.linuxLaunch.observation.attempts, []);
+        return true;
+    });
+});

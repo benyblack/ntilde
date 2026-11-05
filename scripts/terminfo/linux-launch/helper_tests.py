@@ -46,8 +46,9 @@ class LaunchHelperTests(unittest.TestCase):
         child = helper.Child({})
         closed = []
         with patch.object(helper, "file_check"), patch.object(helper.os, "pipe2", side_effect=[(900, 901), OSError(errno.EMFILE, "controlled")]), patch.object(helper.os, "close", side_effect=closed.append), patch.object(helper.os, "fork") as fork:
+            limit = helper.now() + helper.PHASE
             with self.assertRaises(OSError):
-                child.prepare(helper.now() + helper.PHASE)
+                child.prepare(limit)
         self.assertEqual(closed, [900, 901])
         fork.assert_not_called()
         self.assertFalse(child.state["forked"])
@@ -101,8 +102,9 @@ class LaunchHelperTests(unittest.TestCase):
         child.child_main = lambda *_args: os._exit(7)
         try:
             with patch.object(helper, "file_check"), patch.object(helper.os, "pidfd_open", side_effect=after_zombie):
+                limit = helper.now() + helper.PHASE
                 with self.assertRaises(RuntimeError):
-                    child.prepare(helper.now() + helper.PHASE)
+                    child.prepare(limit)
             child.pump(False)
             self.assertEqual(retained, [(child.pid, 7)])
             self.assertTrue(child.state["pidfdOpened"])
@@ -122,8 +124,9 @@ class LaunchHelperTests(unittest.TestCase):
         child.child_main = lambda *_args: os._exit(0)
         try:
             with patch.object(helper, "file_check"), patch.object(helper.os, "pidfd_open", side_effect=OSError(errno.EMFILE, "controlled")):
+                limit = helper.now() + helper.PHASE
                 with self.assertRaises(OSError):
-                    child.prepare(helper.now() + helper.PHASE)
+                    child.prepare(limit)
             self.assertTrue(child.state["preExecChildReaped"])
             self.assertFalse(child.state["appReaped"])
             self.assertFalse(child.state["pidfdOpened"])
@@ -148,8 +151,9 @@ class LaunchHelperTests(unittest.TestCase):
         child = helper.Child({})
         child.pidfd = 900
         with patch.object(helper.signal, "pidfd_send_signal") as send:
+            limit = helper.now() - 1
             with self.assertRaises(TimeoutError):
-                child.send(signal.SIGTERM, helper.now() - 1)
+                child.send(signal.SIGTERM, limit)
         send.assert_not_called()
         self.assertEqual(child.state["attempts"], [])
 
@@ -196,17 +200,102 @@ class LaunchHelperTests(unittest.TestCase):
         child = helper.Child({})
         child.pid = 900
         child.hard_deadline = 123
+        limit, lifetime = helper.now() + helper.PHASE, helper.now() + 300000000000
         with self.assertRaises(ValueError):
-            child.prepare(helper.now() + helper.PHASE, helper.now() + 300000000000)
+            child.prepare(limit, lifetime)
         self.assertEqual(child.hard_deadline, 123)
 
     def test_expired_setup_deadline_does_not_read_or_release_gate(self):
         child = helper.Child({})
         with patch.object(child, "pump_exec") as pump:
+            limit = helper.now() - 1
             with self.assertRaises(TimeoutError):
-                child.await_ready(helper.now() - 1)
+                child.await_ready(limit)
         pump.assert_not_called()
         self.assertFalse(child.state["gateReleased"])
+
+    def test_persistent_log_failure_cannot_prevent_original_child_signal_and_wait(self):
+        helper.runtime_check()
+        child = helper.Child({})
+        pid = os.fork()
+        if pid == 0:
+            signal.signal(signal.SIGTERM, signal.SIG_DFL)
+            while True:
+                time.sleep(1)
+        child.pid, child.pidfd = pid, os.pidfd_open(pid, 0)
+        child.state.update(childPid=pid, forked=True, pidfdOpened=True, preExecReady=True, gateReleased=True, admitted=True)
+        child.log_close_attempted = True
+        try:
+            with patch.object(child, "pump_log", side_effect=OSError(errno.ENOSPC, "persistent private-log failure")):
+                child.stop(helper.now() + helper.PHASE)
+            self.assertTrue(child.state["appReaped"])
+            self.assertTrue(child.state["aborted"])
+            self.assertEqual(child.state["wait"]["pid"], pid)
+            self.assertTrue(any(item["sent"] for item in child.state["attempts"]))
+        finally:
+            if not child.state["childReaped"]:
+                signal.pidfd_send_signal(child.pidfd, signal.SIGKILL)
+                os.waitpid(pid, 0)  # Test-owned fallback is never the assertion's wait evidence.
+            child.close()
+
+    def test_independent_exit_at_stop_dispatch_cannot_be_normal_success(self):
+        child = helper.Child({})
+        child.pid, child.pidfd = 900, 901
+        child.state.update(childPid=900, forked=True, pidfdOpened=True, preExecReady=True, gateReleased=True, admitted=True)
+        session = helper.Session(None, {})
+        session.child = child
+        def exited(*_args, **_kwargs):
+            child.state.update(exitObserved=True, childReaped=True, appReaped=True,
+                               wait={"source": "P_PIDFD", "pid": 900, "uid": 1000, "code": 1, "status": 0})
+        with patch.object(child, "poll", side_effect=exited), patch.object(child, "close"):
+            session.finish_command(False, helper.now() + helper.PHASE)
+        self.assertTrue(child.state["aborted"])
+        self.assertEqual(child.state["attempts"], [])
+        self.assertTrue(child.state["appReaped"])
+
+    def test_early_pipe_close_errors_remain_unconfirmed_without_retry(self):
+        for field, operation in (("gate", "close_gate"), ("output", "pump_log"), ("exec_error", "pump_exec")):
+            with self.subTest(field=field):
+                child = helper.Child({})
+                child.log_close_attempted = True
+                setattr(child, field, 900)
+                function = getattr(child, operation)
+                closed = []
+                def failing_close(fd):
+                    closed.append(fd)
+                    raise OSError(errno.EIO, "controlled early close failure")
+                with patch.object(helper.os, "read", return_value=b""), patch.object(helper.os, "close", side_effect=failing_close):
+                    with self.assertRaises(OSError):
+                        function()
+                    child.close()
+                self.assertEqual(closed, [900])
+                self.assertFalse(child.state["childPipesClosed"])
+
+    def test_ordinary_command_budget_cannot_consume_the_abort_reserve(self):
+        session = helper.Session(None, {})
+        stamp = helper.now()
+        session.lifetime = stamp + helper.RESERVE + 100000000
+        frame = {"seq": 2, "op": "observe", "deadlineNs": str(stamp + helper.PHASE)}
+        seen = []
+        with patch.object(session.child, "pump", side_effect=lambda **kw: seen.append(kw["limit"])), patch.object(session, "response"):
+            session.command(frame)
+        self.assertEqual(len(seen), 1)
+        self.assertLessEqual(seen[0], session.lifetime - helper.RESERVE)
+
+    def test_ordinary_and_clock_commands_after_cutoff_cannot_run_or_renew_time(self):
+        for operation in ("observe", "clock"):
+            with self.subTest(operation=operation):
+                session = helper.Session(None, {})
+                stamp = helper.now()
+                session.lifetime = stamp + helper.RESERVE - 1
+                frame = {"seq": 2, "op": operation}
+                if operation != "clock":
+                    frame["deadlineNs"] = str(stamp + helper.PHASE)
+                with patch.object(session.child, "pump") as pump, patch.object(session, "response") as response:
+                    with self.assertRaises(TimeoutError):
+                        session.command(frame)
+                pump.assert_not_called()
+                response.assert_not_called()
 
 
 if __name__ == "__main__":

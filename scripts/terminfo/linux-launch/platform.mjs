@@ -6,7 +6,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { linuxFileIdentity } from '../linux-process-core.mjs';
 import { launchLimits } from './core.mjs';
-export const helperSha256 = 'f34696da44bdab3ecf252a4ed9b4fe93ce8171cfc81e7a60b918d86b3bdd67b2';
+export const helperSha256 = 'f94daf00da6365397bcaa249b54a40a59867d6bca0adab03baaa28b7094bb20e';
 const sourcePath = fileURLToPath(new URL('./helper.py', import.meta.url));
 const stable = stat => Object.fromEntries(['dev', 'ino', 'uid', 'mode'].map(name => [name, stat[name].toString()]));
 
@@ -119,9 +119,9 @@ export function createLaunchResources(fs = nodeFs, architecture = process.arch) 
             elf(add(admitFile(pythonPath, 'python', 0, input.python.sha256, launchLimits.pythonBytes, phase, true)), phase);
             add(admitFile(sourcePath, 'source', input.fixture.uid, helperSha256, launchLimits.helperBytes, phase));
             createPrivate(input, resources, phase); check(resources, phase, true); return resources;
-        } catch (primary) {
-            const errors = [primary];
-            for (const item of resources.reverse()) { try { close(item); } catch (error) { errors.push(error); } }
+        } catch (error_) {
+            const errors = [error_];
+            for (const item of resources.toReversed()) { try { close(item); } catch (error) { errors.push(error); } }
             const failure = new AggregateError(errors, 'Launch resource preparation failed.');
             Object.defineProperty(failure, 'linuxLaunchResources', { value: resources.map(observation) }); throw failure;
         }
@@ -250,8 +250,8 @@ export function createLaunchChannelFactory({ spawnChild = spawn, setTimer = setT
             return { request, finish, check: (phase, initial_) => policy.check(resources, phase, initial_), snapshot,
                 resources: () => ({ helperPid: child.pid, helperArgv, python: by.python, app: by.app,
                     appArgv: [by.app.path, '--ntilde-terminfo-owner=' + input.fixture.runId, '--ntilde-terminfo-private-clipboard=' + input.fixture.runId] }) };
-        } catch (primary) {
-            const errors = [primary];
+        } catch (error_) {
+            const errors = [error_];
             try { if (child) await finish(initial); else for (const item of resources) policy.close(item); } catch (error) { errors.push(error); }
             const error = new AggregateError(errors, 'Pinned launch helper did not initialize.');
             Object.defineProperty(error, 'linuxLaunchChannel', { value: snapshot() }); throw error;

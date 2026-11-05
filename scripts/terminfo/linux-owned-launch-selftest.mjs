@@ -51,12 +51,14 @@ function prepare(root, name, mode, compiler) {
 /** Observe only the known fixture log until a bounded source-defined marker appears. */
 async function awaitLog(path, predicate) {
     const until = process.hrtime.bigint() + 3000000000n;
-    while (process.hrtime.bigint() < until) {
+    /** Poll only this known log; another sample cannot renew the original cutoff. */
+    function sample() {
+        if (process.hrtime.bigint() >= until) throw new Error('Private fixture did not publish its bounded expected log.');
         const data = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '';
         if (predicate(data)) return data;
-        await new Promise(resolve_ => setTimeout(resolve_, 5));
+        return new Promise(resolve_ => setTimeout(resolve_, 5)).then(sample);
     }
-    throw new Error('Private fixture did not publish its bounded expected log.');
+    return sample();
 }
 /** Use the public production boundary, or the explicit internal gate-observation seam for its real control. */
 function launch(input, python, internal = false) {
@@ -72,6 +74,34 @@ function launch(input, python, internal = false) {
     };
     return launchWithIo({ now: () => process.hrtime.bigint(), currentUid: () => process.getuid(), selfPid: () => process.pid,
         process: process_, open: openLaunchChannel }, input.artifact, input.fixture, python, options);
+}
+/** Observe an expected-fatal fixture until its original cutoff without renewing or retrying actions. */
+async function observeFailure(lease, until) {
+    if (process.hrtime.bigint() >= until) return null;
+    try { await lease.observe(phase()); }
+    catch (error) { return error; }
+    await new Promise(resolve_ => setTimeout(resolve_, 5));
+    return observeFailure(lease, until);
+}
+/** Retain genuine consuming wait and sticky refusal for early exit/output overflow. */
+async function rejectedFixture(input, python, mode) {
+    let lease, failure, snapshot;
+    try {
+        lease = await launch(input, python);
+        failure = await observeFailure(lease, process.hrtime.bigint() + 4000000000n);
+    } catch (error) { failure = error; snapshot = error.linuxLaunch; }
+    finally {
+        if (lease) {
+            const error = await lease.abortCleanup(phase()).catch(error => error);
+            snapshot = error.linuxLaunch ?? lease.snapshot();
+        }
+    }
+    assert.ok(failure, 'Expected the source-owned fixture to abort on early exit/overflow.');
+    assert.equal(snapshot.aborted, true);
+    assert.equal(snapshot.observation?.childReaped, true);
+    assert.ok(snapshot.observation.appLogBytes <= 1048576);
+    if (mode !== 4) assert.equal(snapshot.observation.wait.status, mode === 3 ? 7 : 0);
+    return snapshot;
 }
 /** Exercise owned ELF/PTY/kernel/EOF scenarios and an independent held sentinel; never launch Ntilde or a desktop. */
 export async function runLinuxLaunchSelfTest(parent = tmpdir()) {
@@ -118,31 +148,15 @@ export async function runLinuxLaunchSelfTest(parent = tmpdir()) {
         await live('ordinary-source-owned', 0, true);
         await live('term-resistant', 1);
         await live('private-pty-owner', 5);
-        for (const [name, mode] of [['instant-zero', 2], ['instant-seven', 3], ['log-overflow', 4]]) {
+        /** Keep fixed cases serial so private cleanup cannot hide another case's exit. */
+        async function refusal(name, mode) {
             const input = prepare(root, name, mode, compiler); fixtures.push(input);
-            let lease, failure, snapshot;
-            try {
-                lease = await launch(input, python);
-                const limit = process.hrtime.bigint() + 4000000000n;
-                while (process.hrtime.bigint() < limit) {
-                    try { await lease.observe(phase()); }
-                    catch (error) { failure = error; break; }
-                    await new Promise(resolve_ => setTimeout(resolve_, 5));
-                }
-            } catch (error) { failure = error; snapshot = error.linuxLaunch; }
-            finally {
-                if (lease) {
-                    const error = await lease.abortCleanup(phase()).catch(error => error);
-                    snapshot = error.linuxLaunch ?? lease.snapshot();
-                }
-            }
-            assert.ok(failure, 'Expected the source-owned fixture to abort on early exit/overflow.');
-            assert.equal(snapshot.aborted, true);
-            assert.equal(snapshot.observation?.childReaped, true);
-            assert.ok(snapshot.observation.appLogBytes <= 1048576);
-            if (mode !== 4) assert.equal(snapshot.observation.wait.status, mode === 3 ? 7 : 0);
+            const snapshot = await rejectedFixture(input, python, mode);
             results.push({ name, status: 'expected-refusal', snapshot }); retain();
         }
+        await refusal('instant-zero', 2);
+        await refusal('instant-seven', 3);
+        await refusal('log-overflow', 4);
         const blocked = prepare(root, 'eof-before-exec', 0, compiler); fixtures.push(blocked);
         const firstPhase = linuxOutputBudget(phase(), () => process.hrtime.bigint());
         const channel = await openLaunchChannel(copyLaunchInput(blocked.artifact, blocked.fixture, python, process.getuid()), firstPhase);
@@ -190,9 +204,9 @@ export async function runLinuxLaunchSelfTest(parent = tmpdir()) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const output = process.argv[2] ?? 'linux-launch-foundation.json';
     if (output !== 'linux-launch-foundation.json') throw new Error('Use the fixed private fixture report filename.');
-    /** Exercise owned ELF/PTY/kernel/EOF scenarios and an independent held sentinel; never launch Ntilde or a desktop. */
-    runLinuxLaunchSelfTest().then(value => {
+    try {
+        const value = await runLinuxLaunchSelfTest();
         fs.writeFileSync(output, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
         console.log(JSON.stringify({ qualification: value.qualification, scenarios: value.results.length, output }));
-    }, error => { console.error(error); process.exitCode = 1; });
+    } catch (error) { console.error(error); process.exitCode = 1; }
 }

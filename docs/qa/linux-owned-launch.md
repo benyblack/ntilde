@@ -48,7 +48,7 @@ with fd-exec. Post-exec provider facts must match the same original birth and
 parent plus the exact pinned App executable/argv before admission. CLOEXEC error
 pipe EOF is retained as a pipe fact; it cannot replace that process evidence.
 
-Before pidfd acquisition failure, the gate remains closed and only the original
+On first pidfd acquisition failure, the gate remains closed and only the original
 unexecuted direct child may be positively waitpid-reaped. That yields
 `preExecChildReaped`, never `appReaped`. After admission, `appReaped` can become
 true only after the helper's consuming `waitid(P_PIDFD)` for its original own
@@ -60,9 +60,15 @@ TERM then optional KILL uses only the original pidfd, at most once per signal.
 The source-owned child gives cleanup authority from fork, even if external
 admission fails. Identity drift, malformed/overlapping protocol, EOF, output
 bounds, interruption and expiry remain sticky aborts. Normal stop requires the
-original live App identity; best-effort abort cleanup may target only the held
+original live App identity and an actual successful original-pidfd signal attempt;
+independent exit observed at dispatch remains aborted even when genuinely reaped.
+Best-effort abort cleanup may target only the held
 original. No PID/group signaling, retargeting, reacquisition or release-live-App
 close exists. Repeated settlement returns its original result/error.
+Persistent log or pipe observation failures remain abort facts without preventing
+the original-reference signal/wait path. Every discarded pipe records any
+unconfirmed close. Invalid settlement deadlines still close coordinator input
+and resources under only the remaining preauthorized cleanup allowance.
 
 The helper watches coordinator EOF and lifetime continuously. Before exec,
 closing every duplicate gate writer prevents App launch. After admission, EOF
