@@ -311,8 +311,15 @@ namespace Ntilde.VT
             }
         }
 
-        public TerminalBuffer(int cols, int rows)
+        /// <summary>Immutable creation policy, selected before startup bytes; resets never change it.</summary>
+        public int SixelRasterPolicyVersion { get; }
+
+        public TerminalBuffer(int cols, int rows) : this(cols, rows, 0) { }
+
+        public TerminalBuffer(int cols, int rows, int sixelRasterPolicyVersion)
         {
+            SixelRasterPolicy.RequireSupported(sixelRasterPolicyVersion);
+            SixelRasterPolicyVersion = sixelRasterPolicyVersion;
             Cols = cols;
             Rows = rows;
             _tabStops = CreateDefaultTabStops(cols);

@@ -90,6 +90,7 @@ namespace Ntilde.VT
             // output timestamp or a null mode object still got the destination resized first.
             // Both ImportState methods still call them - deliberate belt-and-braces, since both
             // are public and independently callable, not redundancy to optimise away.
+            buffer.RequireSixelSessionPolicy(snapshot.RequiredSixelRasterPolicy);
             TerminalBuffer.ValidateBufferState(snapshot);
             if (snapshot.Parser is not null)
             {

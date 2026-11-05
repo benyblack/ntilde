@@ -165,7 +165,7 @@ namespace Ntilde.VT
         public System.Collections.Generic.Dictionary<int, TerminalUnderlineEntry>? Underlines { get; set; }
     }
 
-    [JsonSourceGenerationOptions(WriteIndented = false)]
+    [JsonSourceGenerationOptions(WriteIndented = false, AllowDuplicateProperties = false)]
     [JsonSerializable(typeof(ReplayHeader))]
     [JsonSerializable(typeof(ReplayEvent))]
     [JsonSerializable(typeof(ReplaySnapshot))]

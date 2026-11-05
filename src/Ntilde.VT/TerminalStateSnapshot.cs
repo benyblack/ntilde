@@ -42,6 +42,10 @@ namespace Ntilde.VT
         /// <summary>Bump when a field's meaning changes, not when one is added.</summary>
         public const int CurrentVersion = 1;
 
+        /// <summary>Absent/zero is legacy. Required semantics are checked before mutation.</summary>
+        [JsonPropertyName("required_sixel_raster"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int RequiredSixelRasterPolicy { get; set; }
+
         [JsonPropertyName("v")] public int Version { get; set; } = CurrentVersion;
         [JsonPropertyName("cols")] public int Cols { get; set; }
         [JsonPropertyName("rows")] public int Rows { get; set; }
@@ -303,7 +307,7 @@ namespace Ntilde.VT
         [JsonPropertyName("id")] public string? Id { get; set; }
     }
 
-    [JsonSourceGenerationOptions(WriteIndented = false)]
+    [JsonSourceGenerationOptions(WriteIndented = false, AllowDuplicateProperties = false)]
     [JsonSerializable(typeof(TerminalStateSnapshot))]
     public partial class TerminalStateJsonContext : JsonSerializerContext
     {

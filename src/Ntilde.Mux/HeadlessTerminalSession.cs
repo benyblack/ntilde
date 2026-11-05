@@ -126,6 +126,8 @@ public sealed class HeadlessTerminalSession : IDisposable
     /// <summary>Tests only: raised with the session id once the input writer thread has started.</summary>
     internal static event Action<Guid, Thread>? InputThreadStartedForTest;
 
+    internal int RequiredSixelRasterPolicy => _buffer.SixelRasterPolicyVersion;
+
     public HeadlessTerminalSession(Guid id, ITerminalSession session, HeadlessSessionOptions options)
     {
         ArgumentNullException.ThrowIfNull(session);
@@ -148,7 +150,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             throw new ArgumentOutOfRangeException(nameof(options), "Retention rows must be nonnegative and the cell-byte ceiling positive.");
         _maxHistoryLimit = options.MaxHistoryLimit;
         _historyRetentionRows = Math.Min(options.MaxHistory, _maxHistoryLimit);
-        _buffer = new TerminalBuffer(options.Cols, options.Rows)
+        _buffer = new TerminalBuffer(options.Cols, options.Rows, options.RequiredSixelRasterPolicy)
         {
             MaxScrollbackBytesLimit = options.MaxScrollbackBytes,
             MaxHistory = _historyRetentionRows,

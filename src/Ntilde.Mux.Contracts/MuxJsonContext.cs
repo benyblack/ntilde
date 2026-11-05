@@ -9,7 +9,8 @@ namespace Ntilde.Mux.Contracts;
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    WriteIndented = false)]
+    WriteIndented = false,
+    AllowDuplicateProperties = false)]
 [JsonSerializable(typeof(MuxRequest))]
 [JsonSerializable(typeof(MuxResponse))]
 [JsonSerializable(typeof(MuxNotification))]

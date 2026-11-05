@@ -49,9 +49,49 @@ This does not qualify arbitrary Pan/Pad, P2 transparency, animation or placehold
   Path replacement cannot switch the stream between validation/restoration/replay.
   Existing live append (`FileShare.ReadWrite`) remains supported. This is not a
   frozen-byte guarantee against arbitrary concurrent in-place file modification.
-  Future-version headers
-  without a required-policy marker remain outside this foundation's guarantee;
-  their legacy fallback/resume behavior needs a separate compatibility contract.
+  Current readers now also reject recognized recording headers with missing,
+  malformed, duplicate or unsupported versions before indexing, preparation,
+  seeks or data callbacks. Recognized v3/future headers cannot fall through to
+  the v1 event reader, even without a required-policy marker. A complete recognized
+  root type token in a valid JSON prefix also rejects later syntax errors before
+  byte resume/preparation; nested properties and quoted lookalike text are not
+  classified as headers. Historical v1
+  event streams and recognized v2 policy-zero recordings remain supported.
+  This does not repair old binaries: pre-foundation byte-offset resume readers
+  may bypass a v3 header. Native recordings will require upgraded readers.
+
+## Session policy admission
+
+The buffer's creation policy is immutable and selected before startup bytes.
+`TerminalBuffer(cols, rows)` remains legacy; the explicit policy constructor
+currently rejects every nonzero policy. RIS and DECSTR cannot change it. The
+omitted-default `required_sixel_raster` snapshot marker is validated before
+resize, import or native decode, and must match the destination generation.
+A historical recording selects legacy when its host buffer is created/replaced,
+never by downgrading an already-running native generation. No setter toggles
+policy from terminal input or presentation changes.
+
+Mux hello/welcome carries an omitted-zero maximum. Spawn/attach/readScreen carry
+an omitted-zero requirement; spawn replies and snapshots retain the requirement.
+Absent peer capability means zero. Explicit unsupported requests fail before
+factory creation, subscription, geometry changes, process probes or snapshots.
+The shared attach/readScreen client decoder checks the negotiated ceiling before
+delivery, including native entries a later source budget would discard; an opened client session retains its immutable required policy across
+reattach. Reconnect starts a fresh negotiation, not a silent policy downgrade.
+Current native ceilings remain zero. `SupportsSixelScrolling` and mux protocol 2
+are not native policy capability. Contracts remains a zero-reference leaf.
+
+Snapshot, replay and mux source-generated readers reject duplicate properties, preventing
+a requirement from being hidden by last-key-wins. Valid absent/default/null-intent
+legacy serialization stays byte-identical; no writer version or schema is bumped.
+No successful native session/state transfer is claimed by these negative gates.
+
+The finite remaining implementation path is: complete native admission/lifetime,
+persistent crop/culling/coverage and P/S transform together while public creation
+stays disabled; then enable the coherent path with upgraded mux parity and v3
+reading/writing only for native recordings. Both ordinary and flight recorders
+must retain v2 for legacy policy. New source/pixel evidence accompanies activation;
+the preserved historical negative is not rewritten.
 
 ## Gates before enabling version 1
 
