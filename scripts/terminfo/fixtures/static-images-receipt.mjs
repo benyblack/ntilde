@@ -19,8 +19,10 @@ export function staticImageReceiptFixture(action) {
         const { schemaVersion, ownershipProofSha256, contextSha256, rawSha256, fixtureRemoved, completedAt, ...evidence } = old;
         rmSync(join(output, 'cell-receipt.json'));
         const context = JSON.parse(archived.get('context.json')), proof = JSON.parse(archived.get('ownership-proof.json'));
+        const frozenSources = historicalArchive('2026-11-04-image-observations');
         for (const [key, file] of Object.entries(capturedV10SourceFiles)) {
-            const bytes = readFileSync(new URL(file === 'terminfo-owned-runner.mjs' ? '../../' + file : '../' + file, import.meta.url));
+            const bytes = frozenSources.get('sources/' + file);
+            if (!bytes) throw new Error('Missing frozen v10 source: ' + file);
             writeFileSync(join(output, 'sources', file), bytes); context[key] = pngHash(bytes);
         }
         const policy = 'readonly-owned-source-graph-v3', manifest = { schemaVersion: 1, policy,
