@@ -468,8 +468,8 @@ termless code over those observed screens, so the collector's criteria — not a
 re-implementation — produce the outcome. An independent contract grader must
 agree before any conclusion is published, and the parent replays the pinned
 grading a second time over the retained journal. Graded results carry the
-extension identity and are never stock CLI output; the untouched stock run and
-its 86 supported / 169 inconclusive baseline stay frozen.
+extension identity and are never stock CLI output; the untouched stock run
+keeps its own identity, grades and inconclusive four-case outcomes.
 
 `unsupported` requires a measured mismatch behind a valid control (the pinned
 notes, such as "Control already contained Hello", keep failures inconclusive).
@@ -480,6 +480,14 @@ verified cleanup. The bold/italic conclusions cover the stored cell flags the
 pinned scorer demands — the pin's own terminal path states "Cursor advance does
 not verify SGR styling" — and explicitly do not claim glyph appearance; that
 remains the separate pixel scope in [bold-glyphs.md](terminfo/bold-glyphs.md).
+
+The batch carries one explicitly attributed cherry-pick (`8ffc6d19`, the
+private-clipboard wide-column observer fix from
+`codex/terminfo-benchmark-refresh`): current main cannot complete the shared
+owned pipeline's cleanup receipt without it, while the four ASCII/SGR cases
+themselves do not depend on it. See the
+[measurement](terminfo/2026-11-05-ascii-sgr-qualification.md) for the
+retained failure evidence and the pristine-main discrimination run.
 
 Adapter tests use Node's built-in test runner:
 

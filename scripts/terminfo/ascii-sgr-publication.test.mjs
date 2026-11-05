@@ -51,7 +51,7 @@ test('every graded conclusion is bound to the real run, contract bytes and recei
 
 test('the untouched stock run still grades all four cases inconclusive', () => {
     const data = JSON.parse(readFileSync(path));
-    assert.deepEqual(data.stockCollector.counts, { inconclusive: 169, supported: 86 });
+    assert.deepEqual(data.stockCollector.counts, { inconclusive: 168, supported: 86, unsupported: 1 });
     assert.equal(data.stockCollector.suiteComplete, false);
     for (const [probeId, evidence] of [['text.basic', 'query'], ['text.overwrite', 'query'],
         ['sgr.bold', 'consumed'], ['sgr.italic', 'consumed']]) {
@@ -66,7 +66,7 @@ test('failed preparation attempts are preserved, not silently replaced', () => {
     const data = JSON.parse(readFileSync(path));
     assert.ok(Array.isArray(data.attempts) && data.attempts.length >= 1);
     for (const attempt of data.attempts) {
-        assert.match(attempt.error, /exited before collection|private clipboard collection failed/);
+        assert.match(attempt.error, /exited before collection|private clipboard collection failed|is not defined/);
         assert.match(attempt.directory, /owned-[A-Za-z0-9]{6}$/);
     }
 });

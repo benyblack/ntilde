@@ -1,0 +1,1181 @@
+{
+  "schemaVersion": 1,
+  "measuredAt": "2026-11-05T18:35:36.348Z",
+  "runId": "b31dae14c2025b7154f072627168cc48",
+  "context": {
+    "runId": "b31dae14c2025b7154f072627168cc48",
+    "appVersion": "0.13.0+21393245f58b7faeb980d3103a049f60f3cae79b",
+    "nodeVersion": "v24.22.1",
+    "startedAt": "2026-11-05T18:35:07.864Z",
+    "executable": "/Users/behnam/.local/share/ntilde-sidecar/Release/net10.0/Ntilde",
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "6f34136967a13b71c1b95da1f7fc5a70215545ff3aae5d826ed772a060991dbe",
+    "adapter": "ntilde-owned-macos-v1",
+    "adapterBundleSha256": "d5fd36ee1b04a65a1dd7c278eb823593d6f4155586f391d3648bebe29dce4dc4",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "gradingAdapterId": "ntilde-owned-ascii-sgr-grading-v1",
+    "asciiSgrSuiteId": "ntilde-owned-ascii-sgr-graded-v1",
+    "gradingBundleSha256": "f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c",
+    "gradingContractsVersion": 1,
+    "grading": "versioned collector extension; pinned termless criteria replayed on parent-observed cells; not stock output"
+  },
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-ascii-sgr-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-macos-v1",
+    "bundleSha256": "f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "gradingReport": {
+    "schemaVersion": 1,
+    "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
+    "runId": "b31dae14c2025b7154f072627168cc48",
+    "contractsVersion": 1,
+    "adapter": {
+      "id": "ntilde-owned-ascii-sgr-grading-v1",
+      "derivedFromAdapterId": "ntilde-owned-macos-v1",
+      "bundleSha256": "f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c",
+      "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+    },
+    "scope": "Pinned terminfo.dev@4.0.0 termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen cells/flags. SGR conclusions cover stored flags, never glyph appearance. Not stock collector output.",
+    "initialSnapshot": 0,
+    "restoredSnapshot": 8,
+    "cases": [
+      {
+        "caseId": "text.basic",
+        "pinnedPath": "termless",
+        "pinnedCriterion": "Hello appears after a measured empty control",
+        "terminalFixture": {
+          "writes": [
+            "\u001b[1;1H\u001b[2K",
+            "Hello"
+          ],
+          "demand": "rendered Hello text",
+          "minimum": {
+            "rows": 1,
+            "cols": 6
+          }
+        },
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "\u001b[2J\u001b[H",
+          "Hello"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            5
+          ]
+        ],
+        "observed": {
+          "before": "",
+          "after": "Hello",
+          "cursor": [
+            0,
+            5
+          ]
+        },
+        "pinned": {
+          "pass": true,
+          "response": "{\"before\":\"\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\",\"after\":\"Hello\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\"}",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Hello appears after a measured empty control",
+              "observed": "{\"before\":\"\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\",\"after\":\"Hello\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\"}"
+            }
+          ]
+        },
+        "contractResult": {
+          "outcome": "supported"
+        },
+        "conclusion": {
+          "outcome": "supported",
+          "evidence": "owned-cells",
+          "grading": "pinned-termless-plus-contract-v1"
+        }
+      },
+      {
+        "caseId": "text.overwrite",
+        "pinnedPath": "termless",
+        "pinnedCriterion": "C overwrites A while B remains",
+        "terminalFixture": {
+          "writes": [
+            "\u001b[1;1H\u001b[2K",
+            "AB",
+            "\u001b[1;2H",
+            "X"
+          ],
+          "demand": "overwritten B cell",
+          "minimum": {
+            "rows": 1,
+            "cols": 3
+          }
+        },
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "AB",
+          "\u001b[1GC"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "observed": {
+          "before": [
+            {
+              "char": "A",
+              "flags": 768,
+              "bold": false,
+              "italic": false
+            },
+            {
+              "char": "B",
+              "flags": 768,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "after": [
+            {
+              "char": "C",
+              "flags": 768,
+              "bold": false,
+              "italic": false
+            },
+            {
+              "char": "B",
+              "flags": 768,
+              "bold": false,
+              "italic": false
+            }
+          ]
+        },
+        "pinned": {
+          "pass": true,
+          "response": "{\"before\":[{\"char\":\"A\",\"flags\":768,\"bold\":false,\"italic\":false},{\"char\":\"B\",\"flags\":768,\"bold\":false,\"italic\":false}],\"first\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"italic\":false},\"second\":{\"char\":\"B\",\"flags\":768,\"bold\":false,\"italic\":false}}",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "C overwrites A while B remains",
+              "observed": "{\"before\":[{\"char\":\"A\",\"flags\":768,\"bold\":false,\"italic\":false},{\"char\":\"B\",\"flags\":768,\"bold\":false,\"italic\":false}],\"first\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"italic\":false},\"second\":{\"char\":\"B\",\"flags\":768,\"bold\":false,\"italic\":false}}"
+            }
+          ]
+        },
+        "contractResult": {
+          "outcome": "supported"
+        },
+        "conclusion": {
+          "outcome": "supported",
+          "evidence": "owned-cells",
+          "grading": "pinned-termless-plus-contract-v1"
+        }
+      },
+      {
+        "caseId": "sgr.bold",
+        "pinnedPath": "termless",
+        "pinnedCriterion": "attribute applied to the rendered X cell",
+        "terminalFixture": {
+          "writes": [
+            "\u001b[1;1H\u001b[2K",
+            "\u001b[1mX\u001b[0m"
+          ],
+          "demand": "consumed (cursor advance does not verify SGR styling)",
+          "minimum": {
+            "rows": 1,
+            "cols": 2
+          }
+        },
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "\u001b[1mX"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          [
+            0,
+            1
+          ]
+        ],
+        "observed": {
+          "char": "X",
+          "bold": true,
+          "flags": 769
+        },
+        "pinned": {
+          "pass": true,
+          "response": "{\"char\":\"X\",\"flags\":769,\"bold\":true,\"italic\":false}",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "sgr.bold: attribute applied to the rendered X cell",
+              "observed": "{\"char\":\"X\",\"flags\":769,\"bold\":true,\"italic\":false}"
+            }
+          ]
+        },
+        "contractResult": {
+          "outcome": "supported"
+        },
+        "conclusion": {
+          "outcome": "supported",
+          "evidence": "owned-cells",
+          "grading": "pinned-termless-plus-contract-v1",
+          "scope": "stored bold flag only; glyph appearance is a separate claim (see docs/qa/terminfo/bold-glyphs.md)"
+        }
+      },
+      {
+        "caseId": "sgr.italic",
+        "pinnedPath": "termless",
+        "pinnedCriterion": "attribute applied to the rendered X cell",
+        "terminalFixture": {
+          "writes": [
+            "\u001b[1;1H\u001b[2K",
+            "\u001b[3mX\u001b[0m"
+          ],
+          "demand": "consumed (cursor advance does not verify SGR styling)",
+          "minimum": {
+            "rows": 1,
+            "cols": 2
+          }
+        },
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "\u001b[3mX"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          [
+            0,
+            1
+          ]
+        ],
+        "observed": {
+          "char": "X",
+          "italic": true,
+          "flags": 772
+        },
+        "pinned": {
+          "pass": true,
+          "response": "{\"char\":\"X\",\"flags\":772,\"bold\":false,\"italic\":true}",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "sgr.italic: attribute applied to the rendered X cell",
+              "observed": "{\"char\":\"X\",\"flags\":772,\"bold\":false,\"italic\":true}"
+            }
+          ]
+        },
+        "contractResult": {
+          "outcome": "supported"
+        },
+        "conclusion": {
+          "outcome": "supported",
+          "evidence": "owned-cells",
+          "grading": "pinned-termless-plus-contract-v1",
+          "scope": "stored italic flag only; glyph appearance is a separate claim (see docs/qa/terminfo/bold-glyphs.md)"
+        }
+      }
+    ],
+    "snapshots": [
+      {
+        "index": 0,
+        "kind": "grading-start",
+        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "barrier": null,
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "d087d3d9b16a9a27eec53166d3ee353ef4419529beca29f4d7fa7d8f5463a0d6"
+      },
+      {
+        "index": 1,
+        "kind": "grading-bind",
+        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "NTILDE_AG_b31dae14c2025b7154f072627168cc48",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 42,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "637a20d0b70af515d54f98196cf79b383ece2bf3709d8ad43c6c7aa3f642178e"
+      },
+      {
+        "index": 2,
+        "kind": "grading-read",
+        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "d087d3d9b16a9a27eec53166d3ee353ef4419529beca29f4d7fa7d8f5463a0d6"
+      },
+      {
+        "index": 3,
+        "kind": "grading-read",
+        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "Hello",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 5,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "275a5e9dfc0d5f0e32f6d1b024636ee994fc36ed034c929c5544f94f36003112"
+      },
+      {
+        "index": 4,
+        "kind": "grading-read",
+        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "AB",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 2,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "0aa1b54fb182b0ae48038bb43dc05cab29bcc317523530137a67d35afd67815d"
+      },
+      {
+        "index": 5,
+        "kind": "grading-read",
+        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "CB",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "3bd723a724e134e7fa6aa7faf4074f992a27a0e259b4df3e3e7526f509338073"
+      },
+      {
+        "index": 6,
+        "kind": "grading-read",
+        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "X",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 769,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 5599,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "31e797723655cf5f6099e638fd2a6f8818558fe7668d9fa04f7ce79d93dd34da"
+      },
+      {
+        "index": 7,
+        "kind": "grading-read",
+        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "X",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 1,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 772,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 5599,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "0647d715893e32989288fd74b632c4e1d74065fe20224a432c95f7284aae3e8b"
+      },
+      {
+        "index": 8,
+        "kind": "grading-finish",
+        "paneId": "1424d3da-65d1-4cdd-9124-070873cac2ef",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "d087d3d9b16a9a27eec53166d3ee353ef4419529beca29f4d7fa7d8f5463a0d6"
+      }
+    ]
+  },
+  "gradingRun": {
+    "schemaVersion": 1,
+    "adapterId": "ntilde-owned-ascii-sgr-grading-v1",
+    "probeIds": [
+      "text.basic",
+      "text.overwrite",
+      "sgr.bold",
+      "sgr.italic"
+    ],
+    "cases": [
+      {
+        "caseId": "text.basic",
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "\u001b[2J\u001b[H",
+          "Hello"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          {
+            "kind": "text",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          {
+            "kind": "text",
+            "cursor": [
+              0,
+              5
+            ]
+          }
+        ],
+        "pinned": {
+          "probeId": "text.basic",
+          "pass": true,
+          "response": "{\"before\":\"\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\",\"after\":\"Hello\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\"}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Hello appears after a measured empty control",
+              "observed": "{\"before\":\"\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\",\"after\":\"Hello\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\"}"
+            }
+          ]
+        }
+      },
+      {
+        "caseId": "text.overwrite",
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "AB",
+          "\u001b[1GC"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          {
+            "kind": "cells",
+            "cursor": [
+              0,
+              2
+            ]
+          },
+          {
+            "kind": "cells",
+            "cursor": [
+              0,
+              1
+            ]
+          }
+        ],
+        "pinned": {
+          "probeId": "text.overwrite",
+          "pass": true,
+          "response": "{\"before\":[{\"char\":\"A\",\"flags\":768,\"bold\":false,\"italic\":false},{\"char\":\"B\",\"flags\":768,\"bold\":false,\"italic\":false}],\"first\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"italic\":false},\"second\":{\"char\":\"B\",\"flags\":768,\"bold\":false,\"italic\":false}}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "C overwrites A while B remains",
+              "observed": "{\"before\":[{\"char\":\"A\",\"flags\":768,\"bold\":false,\"italic\":false},{\"char\":\"B\",\"flags\":768,\"bold\":false,\"italic\":false}],\"first\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"italic\":false},\"second\":{\"char\":\"B\",\"flags\":768,\"bold\":false,\"italic\":false}}"
+            }
+          ]
+        }
+      },
+      {
+        "caseId": "sgr.bold",
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "\u001b[1mX"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          {
+            "kind": "cells",
+            "cursor": [
+              0,
+              1
+            ]
+          }
+        ],
+        "pinned": {
+          "probeId": "sgr.bold",
+          "pass": true,
+          "response": "{\"char\":\"X\",\"flags\":769,\"bold\":true,\"italic\":false}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "sgr.bold: attribute applied to the rendered X cell",
+              "observed": "{\"char\":\"X\",\"flags\":769,\"bold\":true,\"italic\":false}"
+            }
+          ]
+        }
+      },
+      {
+        "caseId": "sgr.italic",
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "\u001b[3mX"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          {
+            "kind": "cells",
+            "cursor": [
+              0,
+              1
+            ]
+          }
+        ],
+        "pinned": {
+          "probeId": "sgr.italic",
+          "pass": true,
+          "response": "{\"char\":\"X\",\"flags\":772,\"bold\":false,\"italic\":true}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "sgr.italic: attribute applied to the rendered X cell",
+              "observed": "{\"char\":\"X\",\"flags\":772,\"bold\":false,\"italic\":true}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "stockCollector": {
+    "counts": {
+      "inconclusive": 168,
+      "supported": 86,
+      "unsupported": 1
+    },
+    "suiteComplete": false,
+    "probeHash": "16a690f34c0e",
+    "rawSha256": "08dee0a1b1d8c0036dd6ddefb62e3d7754f053413b5ea1610159cf4461baf031",
+    "probes": {
+      "sgr.bold": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling"
+      },
+      "sgr.italic": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling"
+      },
+      "text.basic": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": null
+      },
+      "text.overwrite": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": null
+      }
+    }
+  },
+  "receipt": {
+    "schemaVersion": 13,
+    "gradingEvidence": {
+      "runId": "b31dae14c2025b7154f072627168cc48",
+      "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
+      "file": "grading-observations.json",
+      "sha256": "2664192c6d1f717348260fcfa9365ff7c1ac0df3a4dffdb33a09f8f5bf4cfdd1",
+      "runFile": "grading-run.json",
+      "runSha256": "eff452cfc4f44b8339d020780bcc9ae17962c4f110fb5d47e2d92edf6f6418cf",
+      "adapterBundleSha256": "f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c",
+      "contractsVersion": 1,
+      "counts": {
+        "supported": 4
+      },
+      "provisionalUntil": "cell-receipt.json"
+    },
+    "ownershipProofSha256": "87c84bb0b2e6842cf0c8f3909a45a63c11240a5880d02d13a46ffb9fa3471c27",
+    "contextSha256": "e01cf00492621bbc3262484c04386b68ce9ce218ad78dfa879207c08750804e9",
+    "rawSha256": "08dee0a1b1d8c0036dd6ddefb62e3d7754f053413b5ea1610159cf4461baf031",
+    "fixtureRemoved": true,
+    "completedAt": "2026-11-05T18:35:42.864Z"
+  },
+  "retained": {
+    "gradingObservationsSha256": "2664192c6d1f717348260fcfa9365ff7c1ac0df3a4dffdb33a09f8f5bf4cfdd1",
+    "gradingRunSha256": "eff452cfc4f44b8339d020780bcc9ae17962c4f110fb5d47e2d92edf6f6418cf",
+    "gradingJournalSha256": "7756cad0b9bcc7434fd72d8d7a7ff4fac9c0818e1dd74ec71ef63ef4fa9ce388",
+    "collectorGradingSha256": "f9558aa71b6c06b19a01d0883becbe536dc4e5ffb1ee843c5faa42b12559f90c"
+  },
+  "attempts": [
+    {
+      "directory": "owned-1LmU1c",
+      "error": "Owned app exited before collection (SIGABRT).",
+      "at": "2026-11-05T16:42:59.814Z"
+    },
+    {
+      "directory": "owned-1o579P",
+      "error": "gradingEvidence is not defined",
+      "at": "2026-11-05T18:34:34.004Z"
+    },
+    {
+      "directory": "owned-VOeDQQ",
+      "error": "Owned private clipboard collection failed; see bounded failure facts.",
+      "at": "2026-11-05T18:21:42.093Z"
+    },
+    {
+      "directory": "owned-Xssiax",
+      "error": "Owned private clipboard collection failed; see bounded failure facts.",
+      "at": "2026-11-05T18:29:29.637Z"
+    },
+    {
+      "directory": "owned-u4Y4G2",
+      "error": "Owned private clipboard collection failed; see bounded failure facts.",
+      "at": "2026-11-05T16:43:52.817Z"
+    }
+  ]
+}
