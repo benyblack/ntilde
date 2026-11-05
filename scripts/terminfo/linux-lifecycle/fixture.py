@@ -107,7 +107,8 @@ class ParentFixture:
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
             observation = os.waitid(os.P_PID, self.child, os.WEXITED | os.WNOHANG | os.WNOWAIT)
-            if observation is not None and observation.si_pid == self.child:
+            # WNOHANG returns None until this exact owned child has exited.
+            if observation and observation.si_pid == self.child:
                 return {"zombiePid": observation.si_pid, "parentWaitWasNowait": True}
             time.sleep(0.005)
         raise RuntimeError("Private zombie not observed")
