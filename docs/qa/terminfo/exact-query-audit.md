@@ -224,7 +224,8 @@ claims that this one live run exercised them. The existing cursor/text-pixel
 | Fresh owned replies/current provenance; historical observations unchanged | [#859][pr859] supplies the bounded driver; [#864][pr864] retains its genuine 630fe126 collection, all 16 receipt bindings and 74 source files. The [full report][measurement] distinguishes observed replies, silence, negative responses and v1 mismatches, and retains the older grades unchanged. |
 
 The fresh collection has 110 validated prior input/image challenge pairs followed
-by 44 distinct query pairs, healthy seals and verified cleanup/source removal.
+by 44 distinct action pairs (40 queries and four fixture controls), healthy seals
+and verified cleanup/source removal.
 The state API explicitly leaves reverse-video memory unobserved. Owner and pane
 checks are point-in-time facts, not a hardware identity, reconnect guarantee or
 atomic PTY lease. Operator version/source hashes are not binary-to-source

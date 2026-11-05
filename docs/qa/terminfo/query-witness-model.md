@@ -2,9 +2,11 @@
 
 This is a finite request plan and pure raw-byte comparison model, based on main
 `26d315644dedcced2578b182656a57560e0d6dee`. It does not launch an App, send a
-request, read a terminal, or issue a receipt. The later [owned integration](owned-query-model.md) and
+request, read a terminal, or issue a receipt. The later
+[owned integration](owned-query-model.md) and
 [dated v11 collection](2026-11-05-query-observations.md) are separate evidence;
-this pure module itself still does not measure a terminal. The frozen 78 supported / 0 unsupported / 177 inconclusive
+this pure module itself still does not measure a terminal. The frozen
+78 supported / 0 unsupported / 177 inconclusive
 observations and `suiteComplete=false` are unchanged.
 
 The [exact-query audit](exact-query-audit.md) records the source policies and
@@ -58,7 +60,8 @@ and duplicate case submissions, retain original bytes and complete paired
 before/after state, check no mutation and restoration, and verify cleanup before
 receipt completion. Supplying a correctly shaped fabricated object is not a
 measurement. Query input and fence bytes must share the existing ordered local
-writer; elapsed silence alone is insufficient. Historical source maps and v8/v9/v10 receipts remain fixed under the later
+writer; elapsed silence alone is insufficient. Historical source maps and
+v8/v9/v10 receipts remain fixed under the later
 versioned v11 graph. The actual run retains two new positive SGR/cursor-style
 responses as mismatches against the unchanged original v1 negative expectations;
 see the [current source/runtime evidence map](exact-query-audit.md).
