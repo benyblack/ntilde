@@ -14,9 +14,11 @@ public sealed class SixelPolicyClientTests
     [InlineData(1)]
     public async Task Unsupported_client_ceiling_is_rejected_before_hello(int policy)
     {
-        using var fake = FakeMuxServerEnd.Create();
-        await Assert.ThrowsAsync<MuxProtocolException>(() => MuxClient.ConnectAsync(fake.ClientEnd,
+        using var stream = new OwnedStreamProbe();
+        await Assert.ThrowsAsync<MuxProtocolException>(() => MuxClient.ConnectAsync(stream,
             new MuxClientOptions { MaxSixelRasterPolicy = policy }, Ct));
+        Assert.Equal(0, stream.Writes);
+        Assert.True(stream.WasDisposed);
     }
 
     [Theory]
@@ -96,4 +98,25 @@ public sealed class SixelPolicyClientTests
         Assert.Equal("{\"version\":2,\"forceConPtyFiltering\":false}", JsonSerializer.Serialize(zero, MuxJsonContext.Default.WelcomeResult));
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize("{\"version\":2,\"maxSixelRasterPolicy\":1,\"maxSixelRasterPolicy\":0}", MuxJsonContext.Default.WelcomeResult));
     }
+    private sealed class OwnedStreamProbe : MemoryStream
+    {
+        internal int Writes { get; private set; }
+        internal bool WasDisposed { get; private set; }
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            Writes++;
+            base.Write(buffer, offset, count);
+        }
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            Writes++;
+            base.Write(buffer);
+        }
+        protected override void Dispose(bool disposing)
+        {
+            WasDisposed = true;
+            base.Dispose(disposing);
+        }
+    }
+
 }

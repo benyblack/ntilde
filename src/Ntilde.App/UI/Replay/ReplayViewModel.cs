@@ -90,11 +90,12 @@ namespace Ntilde.UI.Replay
                         var ev = System.Text.Json.JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayEvent);
                         if (ev != null)
                         {
-                            lastTime = ev.TimeOffsetMs;
                             if (ev.Type == "snapshot" && ev.Snapshot != null)
                             {
+                                if (ev.Snapshot.State is { } state) SixelRasterPolicy.RequireSupportedState(state);
                                 snapshots.Add(new SnapshotIndexEntry { TimeMs = ev.TimeOffsetMs, Snapshot = ev.Snapshot, LineNumber = lineNumber });
                             }
+                            lastTime = ev.TimeOffsetMs;
                         }
                     }
                     catch { /* skip malformed lines */ }

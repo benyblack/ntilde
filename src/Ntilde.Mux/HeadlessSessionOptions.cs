@@ -4,6 +4,7 @@ namespace Ntilde.Mux;
 
 public sealed class HeadlessSessionOptions
 {
+    /// <summary>Immutable buffer creation policy, installed before startup output is parsed.</summary>
     public int RequiredSixelRasterPolicy { get; init; }
     public string Title { get; init; } = string.Empty;
     public string Command { get; init; } = string.Empty;

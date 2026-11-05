@@ -107,6 +107,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
     /// <summary>The mode <see cref="AttachAsync(int, MuxPresentation, CancellationToken)"/> uses (chosen by whoever opened the session).</summary>
     public MuxAttachMode AttachMode { get; }
+    /// <summary>The policy this opened session requires across every attach attempt.</summary>
     public int RequiredSixelRasterPolicy { get; }
 
     /// <summary>True when the connection negotiated v2 sharing and kill events; explicit keyboard capability updates also work on v1.</summary>

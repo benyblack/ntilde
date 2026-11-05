@@ -95,6 +95,7 @@ public sealed class MuxClient : IDisposable
     }
 
     public int ProtocolVersion { get; private set; }
+    /// <summary>Negotiated stream-policy ceiling; zero for absent or legacy peer capability.</summary>
     public int MaxSixelRasterPolicy { get; private set; }
 
     /// <summary>From Welcome. Construct the pane's parser with this so both halves of a snapshot parse identically.</summary>
@@ -134,10 +135,11 @@ public sealed class MuxClient : IDisposable
     {
         ArgumentNullException.ThrowIfNull(stream);
         options ??= new MuxClientOptions();
-        SixelPolicyAdmission.RequireClient(options.MaxSixelRasterPolicy, SixelRasterPolicy.EnabledVersion);
-        var client = new MuxClient(stream, options);
+        MuxClient? client = null;
         try
         {
+            SixelPolicyAdmission.RequireClient(options.MaxSixelRasterPolicy, SixelRasterPolicy.EnabledVersion);
+            client = new MuxClient(stream, options);
             WelcomeResult welcome = await client.RequestAsync(
                 MuxMethods.Hello,
                 new HelloParams { MinVersion = options.MinProtocolVersion, MaxVersion = options.MaxProtocolVersion, ClientKind = options.ClientKind, ClientInstanceId = options.ClientInstanceId, ByteInput = true, MaxSixelRasterPolicy = options.MaxSixelRasterPolicy },
@@ -164,7 +166,8 @@ public sealed class MuxClient : IDisposable
         }
         catch
         {
-            client.Dispose();
+            if (client is null) stream.Dispose();
+            else client.Dispose();
             throw;
         }
     }

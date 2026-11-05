@@ -482,6 +482,7 @@ namespace Ntilde.Replay
         /// <summary>Validates optional cell metrics and layout metadata before a snapshot is used.</summary>
         public static void ValidateSnapshotCellLayout(ReplaySnapshot snapshot)
         {
+            if (snapshot.State is { } state) SixelRasterPolicy.RequireSupportedState(state);
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
             bool hasAnyLayoutMetadata = snapshot.CellsSizeOf.HasValue || snapshot.CellsLayoutId != null;
             if (!hasAnyLayoutMetadata)

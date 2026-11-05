@@ -1,4 +1,5 @@
 using System.Text;
+using Ntilde.Replay;
 using Ntilde.VT;
 
 namespace Ntilde.VT.Tests;
@@ -13,14 +14,16 @@ public sealed class SixelSessionPolicyTests
         => Assert.Throws<InvalidOperationException>(() => new TerminalBuffer(10, 3, policy));
 
     [Theory]
-    [InlineData("\x1bc")]
-    [InlineData("\x1b[!p")]
-    [InlineData("\x1b[?1049h\x1bc")]
-    public void Legacy_creation_policy_is_immutable_across_resets_and_restore(string reset)
+    [InlineData("\u001bc", true)]
+    [InlineData("\x1b[!p", false)]
+    [InlineData("\x1b[?1049h\u001bc", true)]
+    public void Legacy_creation_policy_is_immutable_across_resets_and_restore(string reset, bool clearsScreen)
     {
         var buffer = new TerminalBuffer(10, 3, 0);
         var parser = new AnsiParser(buffer);
-        parser.Process("before" + reset);
+        parser.Process("before\u001b[?25l" + reset);
+        Assert.Equal(clearsScreen ? "" : "before", BufferSnapshot.Capture(buffer).Lines[0]);
+        Assert.True(buffer.Modes.IsCursorVisible);
         Assert.Equal(0, buffer.SixelRasterPolicyVersion);
         Assert.False(typeof(TerminalBuffer).GetProperty(nameof(TerminalBuffer.SixelRasterPolicyVersion))!.CanWrite);
         var state = buffer.ExportState(0);

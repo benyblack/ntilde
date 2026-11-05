@@ -78,7 +78,7 @@ reattach. Reconnect starts a fresh negotiation, not a silent policy downgrade.
 Current native ceilings remain zero. `SupportsSixelScrolling` and mux protocol 2
 are not native policy capability. Contracts remains a zero-reference leaf.
 
-Snapshot and mux source-generated readers reject duplicate properties, preventing
+Snapshot, replay and mux source-generated readers reject duplicate properties, preventing
 a requirement from being hidden by last-key-wins. Valid absent/default/null-intent
 legacy serialization stays byte-identical; no writer version or schema is bumped.
 No successful native session/state transfer is claimed by these negative gates.
