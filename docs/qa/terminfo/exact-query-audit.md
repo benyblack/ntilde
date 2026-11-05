@@ -53,9 +53,11 @@ and fresh runtime evidence.
 rejection. `QueryVariantAuditTests` enumerates the unavailable settings below and
 checks their complete rejection at every split in the input. The narrow positive
 `r` contract is covered separately by `DecrqssMarginQueryTests`, and the `m` and
-`SP q` reports by `DecrqssSettingReportTests`. It also caps retained
-query text in a tiny fixture and verifies a constant-length rejection and parser
-recovery after overlong payloads. No request payload is reflected into a reply.
+`SP q` reports by `DecrqssSettingReportTests`, and XTGETTCAP answers by
+`TerminalCapabilityTests`. It also caps retained query text in a tiny fixture and
+verifies a constant-length rejection and parser recovery after overlong payloads.
+Apart from an XTGETTCAP name that has already been checked to be hex, no request
+payload is reflected into a reply.
 
 | Family | Requested setting/name | Disposition and exact reply |
 |---|---|---|
@@ -63,8 +65,9 @@ recovery after overlong payloads. No request payload is reflected into a reply.
 | DECRQSS | Exact `r` (top/bottom margins), complete DCS and standard ST only | Current absolute one-based margins as `DCS 1 $ r top ; bottom r ST`, using xterm status polarity. Truncation, unknown legacy completeness, BEL recovery and invalid VT margins retain bounded failure. Source/scripted-transport evidence only; no fresh owned measurement or historical regrade. |
 | DECRQSS | Exact `m` (SGR) and `SP q` (cursor style), complete DCS and standard ST only | `DCS 1 $ r 0;… m ST` for the active pen and `DCS 1 $ r Ps SP q ST` for DECSCUSR (#844); see below. Same failure rules as `r`. Source/scripted-transport evidence only; no fresh owned measurement or historical regrade. |
 | DECRQSS | Unknown and empty setting | Same bounded `DCS 0 $ r ST` rejection. |
-| XTGETTCAP | `TN`, `Co`, `colors`, `RGB`, `kcuu1`, and the `TN;Co` list (each name hex-encoded) | Each receives `DCS 0 + r ST`. A valid failure is preserved as negative query evidence, not a successful terminal-name/color/key claim. |
-| XTGETTCAP | Unknown name, odd-length or invalid hex, empty list | Same bounded `DCS 0 + r ST` rejection. |
+| XTGETTCAP | Names in the capability table, such as `Co`, `colors`, `RGB` (#844) | One `DCS 1 + r name=value ST` per name, or `DCS 1 + r name ST` for a flag; see below. Source/scripted-transport evidence only; no fresh owned measurement or historical regrade. |
+| XTGETTCAP | `TN`, `co`, `kcuu1` and other names outside the table (each hex-encoded) | `DCS 0 + r ST` for that name. A valid failure is preserved as negative query evidence, not a terminal-name or key claim. |
+| XTGETTCAP | Odd-length or invalid hex, empty name or list, a name decoding to anything but printable ASCII, more than 16 names | One bounded `DCS 0 + r ST` for the whole request, even when it also holds valid names. |
 
 No terminal database or key string is synthesized from a guessed `$TERM`.
 
@@ -171,3 +174,27 @@ Added for #844 under the same exact-request, standard-ST and completeness rules 
 Neither query changes terminal state. The daemon parser answers them for
 persistent sessions. This is source and scripted-transport evidence only; frozen
 observations and grades are unchanged until a fresh owned run.
+
+## XTGETTCAP capability reports
+
+XTGETTCAP (#844) answers from `TerminalCapabilities` in `Ntilde.VT`, the one table of
+what Ntilde advertises beyond `xterm-256color`. The opt-in `xterm-ntilde` terminfo
+entry is to be built from the same table, so the two cannot disagree. The table holds
+`Co`/`colors` (256), the `RGB`, `Tc` and `Su` flags, and the strings `setrgbf`,
+`setrgbb`, `Smulx`, `Setulc`, `Sync`, `Ss`, `Se`, `Ms`, `tsl` and `fsl`.
+`TerminalCapabilityTests` expands every string value the way curses does and runs it
+through the parser, checking the pen, mode, cursor style, clipboard write or title
+it claims to produce; each entry also lists the owning tests for that feature.
+
+Replies follow kitty and foot: one per name, in request order. A string or number
+is reported as `DCS 1 + r name=value ST` with the value as uppercase hex of its
+compiled bytes (real ESC and BEL, `%` parameters left unexpanded); a flag as
+`DCS 1 + r name ST`; a name not in the table as xterm's bare `DCS 0 + r ST`. The
+name is echoed as the request spelled it, which is safe because the whole list is
+checked first. `TN` is deliberately not answered: its honest value is the TERM the
+session uses, which VT does not know. `Ms` is answered only while
+`AnsiParser.ClipboardWriteAvailable` says the host accepts OSC 52 writes; headless
+and mux parsers leave it unset, so persistent sessions never advertise it. Every
+input split, complete JSON parser-state restore, the four DCS framings and the
+daemon parser are covered. Source/scripted-transport evidence only; no application
+has been checked against these replies yet.

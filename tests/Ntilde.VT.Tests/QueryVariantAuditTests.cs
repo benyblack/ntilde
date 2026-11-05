@@ -58,15 +58,13 @@ public sealed class QueryVariantAuditTests
     }
 
     [Theory]
-    [InlineData("544e")] // TN
-    [InlineData("436f")] // Co
-    [InlineData("636f6c6f7273")] // colors
-    [InlineData("524742")] // RGB
-    [InlineData("6b63757531")] // kcuu1
-    [InlineData("544e;436f")] // list
+    [InlineData("544e")] // TN: depends on the session's TERM
+    [InlineData("636f")] // co: names are case-sensitive; Co is answered
+    [InlineData("6b63757531")] // kcuu1: inherited from xterm-256color, not in the capability table
     [InlineData("6e6f742d612d6361706162696c697479")] // unknown
     [InlineData("5")] // odd-length hex
     [InlineData("zz")] // invalid hex
+    [InlineData("436f;zz")] // a valid name cannot rescue a malformed list
     [InlineData("")]
     public void Each_unimplemented_XTGETTCAP_name_or_malformed_list_has_a_bounded_negative_reply(string names)
     {

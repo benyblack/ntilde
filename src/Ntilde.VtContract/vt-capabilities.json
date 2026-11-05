@@ -179,6 +179,15 @@
       "matrixFeature": "DECRQSS cursor style query",
       "evidencePath": "tests/Ntilde.VT.Tests/DecrqssSettingReportTests.cs",
       "contractCase": "decrqss-cursor-style"
+    },
+    {
+      "key": "DCS:+q",
+      "mnemonic": "XTGETTCAP capability report",
+      "support": "supported",
+      "description": "Report terminfo capabilities from Ntilde's shared capability table, one reply per hex-encoded name: DCS 1+r name=value ST for strings and numbers, DCS 1+r name ST for flags, DCS 0+r ST for names not in the table. An invalid, truncated, BEL-terminated or oversized list gets a single DCS 0+r ST. Ms is answered only while the host accepts OSC 52 writes, never from a persistent session's daemon.",
+      "matrixFeature": "XTGETTCAP capability query",
+      "evidencePath": "tests/Ntilde.VT.Tests/TerminalCapabilityTests.cs",
+      "contractCase": "xtgettcap"
     }
   ]
 }
