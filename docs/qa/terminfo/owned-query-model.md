@@ -3,8 +3,10 @@
 The optional owned driver adds a sixteenth suite under receipt schema 11,
 `readonly-owned-source-graph-v4` and the fixed 74-file `capturedV11SourceFiles`
 map. The query experiment is `owned-exact-query-paired-raw-state-v1`.
-This implementation has portable synthetic tests; it adds no actual runtime
-qualification until a separately announced, source-pinned collection is retained.
+The separately announced, source-pinned [v11 collection](2026-11-05-query-observations.md)
+now retains actual runtime evidence from source `630fe126`. Its 38 matched and two
+mismatched contracts preserve the original v1 expectations and all prefix negatives;
+portable synthetic tests remain a distinct source of evidence.
 Frozen v8/v9/v10 maps, published bytes and receipts remain independently reproducible.
 
 ## Exact transactions and exposed state
@@ -108,5 +110,6 @@ They cover exact packets, independent contract mismatches, margins, both cursor
 baselines, transport envelopes, state mutation, nonce reuse, reader handoff,
 malformed/partial/failure journals, coherent result promotion/downgrade, initial
 refusal boundaries, source closure and complete 16-suite finalization. Frozen
-publication guards also rederive real v8/v9/v10 archives under current and future
-active policies. Synthetic execution is separate from actual runtime evidence.
+publication guards also rederive real v8/v9/v10/v11 archives under current and future
+active policies. The v11 guards run in separate required Ubuntu/Windows jobs with
+the same bounded CI budget. Synthetic execution is separate from actual runtime evidence.

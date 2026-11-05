@@ -2,8 +2,9 @@
 
 This is a finite request plan and pure raw-byte comparison model, based on main
 `26d315644dedcced2578b182656a57560e0d6dee`. It does not launch an App, send a
-request, read a terminal, or issue a receipt. Fresh owned query qualification
-remains open in #771. The frozen 78 supported / 0 unsupported / 177 inconclusive
+request, read a terminal, or issue a receipt. The later [owned integration](owned-query-model.md) and
+[dated v11 collection](2026-11-05-query-observations.md) are separate evidence;
+this pure module itself still does not measure a terminal. The frozen 78 supported / 0 unsupported / 177 inconclusive
 observations and `suiteComplete=false` are unchanged.
 
 The [exact-query audit](exact-query-audit.md) records the source policies and
@@ -14,7 +15,7 @@ regressions. The model contains exactly 40 independently named contracts:
 | Q07 DA3 and character geometry | 2 | Exact positive reply |
 | Remaining frozen Q07 spellings | 16 | Completed framed silence |
 | DECRQSS absolute vertical margins | 1 | Exact positive reply |
-| Individual unavailable/unknown/empty DECRQSS settings | 11 | Exact bounded negative reply |
+| Original v1 DECRQSS negative expectations, including SGR/cursor style | 11 | Exact bounded negative reply |
 | Individual unavailable/unknown/malformed/empty XTGETTCAP names/lists | 10 | Exact bounded negative reply |
 
 Requests, case identifiers and expectations are frozen in each returned plan.
@@ -50,15 +51,17 @@ positive bytes are observed silence with a mismatched contract. Unexpected bytes
 remain `unexpected-bytes`, without guessing their protocol or availability.
 There is no generated support score, `supported` flag or completed receipt.
 
-This pure comparison **does not authenticate capture facts**. The future parent
+This pure comparison **does not authenticate capture facts**. The separate parent
 and raw-reader integration must independently prove process/pane/parser/worker/
 PTY ownership, choose challenges after writing each query, reject reused pairs
 and duplicate case submissions, retain original bytes and complete paired
 before/after state, check no mutation and restoration, and verify cleanup before
 receipt completion. Supplying a correctly shaped fabricated object is not a
 measurement. Query input and fence bytes must share the existing ordered local
-writer; elapsed silence alone is insufficient. Historical source maps and v8/v9
-receipts must remain fixed when that future phase versions the live graph.
+writer; elapsed silence alone is insufficient. Historical source maps and v8/v9/v10 receipts remain fixed under the later
+versioned v11 graph. The actual run retains two new positive SGR/cursor-style
+responses as mismatches against the unchanged original v1 negative expectations;
+see the [current source/runtime evidence map](exact-query-audit.md).
 
 ## Deterministic verification
 
