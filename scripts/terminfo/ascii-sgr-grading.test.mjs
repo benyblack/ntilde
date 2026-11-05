@@ -172,7 +172,7 @@ test('divergence between the pinned grading and the contract grader is refused',
     const diverged = structuredClone(base.evidence);
     diverged.run.cases[0].pinned.observation.outcome = 'unsupported';
     assert.throws(() => buildAsciiSgrGradingReport(diverged.frames, diverged.run, diverged.runId, diverged.adapter),
-        /Pinned and contract text.basic grading disagree/);
+        /Pinned and contract text.basic grading disagree|does not match its observed evidence/);
 
     const missingPinned = structuredClone(base.evidence);
     delete missingPinned.run.cases[1].pinned;
@@ -188,11 +188,14 @@ test('fabricated pinned assertions, notes and responses are refused', () => {
         ['added note', pinned => { pinned.note = 'made up note'; }],
         ['wrong pass flag', pinned => { pinned.pass = false; }],
         ['wrong response', pinned => { pinned.response = '{"fabricated":true}'; }],
+        ['fabricated observation note on a supported result', pinned => { pinned.observation.note = 'made up note'; }],
+        ['fabricated observation reason on a supported result', pinned => { pinned.observation.reason = 'insufficient-evidence'; }],
+        ['dropped observation evidence', pinned => { delete pinned.observation.evidence; }],
     ]) {
         const tampered = structuredClone(base.evidence);
         mutate(tampered.run.cases[2].pinned);
         assert.throws(() => buildAsciiSgrGradingReport(tampered.frames, tampered.run, tampered.runId, tampered.adapter),
-            /does not match its observed evidence/, name);
+            /does not match its observed evidence|Missing pinned/, name);
     }
 });
 

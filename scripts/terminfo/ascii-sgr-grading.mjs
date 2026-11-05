@@ -32,7 +32,10 @@ export function replayPinnedFromScreens(contract, screens) {
     return { pass: graded.outcome === 'supported', response,
         note: inconclusive ? graded.note : undefined,
         assertions: inconclusive ? []
-            : [{ kind: graded.outcome === 'supported' ? 'positive' : 'negative', expected, observed: response }] };
+            : [{ kind: graded.outcome === 'supported' ? 'positive' : 'negative', expected, observed: response }],
+        observation: inconclusive
+            ? { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'parser-state', note: graded.note }
+            : { outcome: graded.outcome, evidence: 'parser-state' } };
 }
 
 const readCount = asciiSgrContracts.reduce((sum, contract) => sum + contractReads(contract), 0);
@@ -111,11 +114,13 @@ export function buildAsciiSgrGradingReport(frames, run, runId, adapter, replayMo
             throw new Error(`Missing pinned ${contract.caseId} grading result.`);
         }
         // The pinned result is a pure function of the observed screens; the
-        // retained run-log values must match that derivation.
+        // retained run-log values must match that derivation, including the
+        // exact observation object shape.
         const replayedPair = replayPinnedFromScreens(contract, screens);
         if (pinned.pass !== replayedPair.pass || pinned.response !== replayedPair.response
             || (pinned.note ?? null) !== (replayedPair.note ?? null)
-            || JSON.stringify(pinned.assertions ?? null) !== JSON.stringify(replayedPair.assertions.length ? replayedPair.assertions : null)) {
+            || JSON.stringify(pinned.assertions ?? null) !== JSON.stringify(replayedPair.assertions.length ? replayedPair.assertions : null)
+            || JSON.stringify(pinned.observation) !== JSON.stringify(replayedPair.observation)) {
             throw new Error(`Pinned ${contract.caseId} grading does not match its observed evidence.`);
         }
         if (pinned.observation.outcome !== contractResult.outcome
