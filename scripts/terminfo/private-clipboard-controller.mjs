@@ -30,7 +30,7 @@ export function clipboardControlPromise(promise, consume) {
     return result;
 }
 
-/** Prototype only: caller-supplied binding verification must independently prove process/PTY/source identity.
+/** Caller-supplied binding verification must independently prove process/PTY/source identity.
  * Its stable digest is an equality witness, never proof supplied by this helper or by App results.
  */
 export class PrivateClipboardController {
@@ -47,7 +47,7 @@ export class PrivateClipboardController {
 
     /** Defensive evidence copies contain source-known fixture data only, never arbitrary response values. */
     evidence() {
-        return structuredClone({ profile: 'ntilde-private-app-prototype', boundary: 'App-private storage only; no native interchange or child-delivery attestation',
+        return structuredClone({ profile: 'ntilde-private-app-v1', boundary: 'App-private storage only; no native interchange or child-delivery attestation',
             runId: this.#runId, paneId: this.#paneId, fixtureId: this.#fixtureId ?? null, fatal: this.#fatal,
             complete: this.#finished && !this.#fatal, completedProbes: this.#completed, events: this.#events });
     }

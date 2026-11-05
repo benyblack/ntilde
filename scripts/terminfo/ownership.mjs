@@ -11,6 +11,23 @@ export function processRecord(pid, timeout = 2000) {
     return parseProcessRecord(text, pid);
 }
 
+/** UTC/C-locale, second-resolution corroboration only; not immutable PID identity or a held lease. */
+export function processBirth(pid, timeout = 2000, run = execFileSync) {
+    if (!Number.isSafeInteger(pid) || pid < 2) throw new Error('Invalid process ID.');
+    const value = run('/bin/ps', ['-p', String(pid), '-o', 'lstart='], {
+        encoding: 'utf8', timeout, maxBuffer: 256,
+        env: { ...process.env, LC_ALL: 'C', LANG: 'C', TZ: 'UTC' },
+    }).trim();
+    if (!/^[A-Za-z]{3} [A-Za-z]{3} +\d{1,2} \d{2}:\d{2}:\d{2} \d{4}$/.test(value)) throw new Error('Could not corroborate process start time.');
+    return value;
+}
+export function outputDevice(tty) {
+    if (typeof tty !== 'string' || !/^\/dev\/ttys\d+$/.test(tty)) throw new Error('Invalid private PTY.');
+    const stat = statSync(tty, { bigint: true });
+    if (!stat.isCharacterDevice()) throw new Error('Private PTY is not a device.');
+    return device(stat);
+}
+
 export function parseProcessRecord(text, pid = '?') {
     const fields = [];
     let offset = 0;
@@ -185,5 +202,7 @@ export async function verifyNtildeOutput(config, out) {
     assertProcessOwnership({ app: { ...app, executable: realpathSync(app.executable) }, worker,
         ownerPid: receipt.ownerPid, executable: config.executable, uid: process.getuid(),
         runId: config.runId, appCommand: command, tty });
-    return { ...binding, ownerPid: app.pid, workerPid: worker.pid, launchRunId: config.runId };
+    if (config.privateClipboard === true && (receipt.privateClipboard !== true || typeof receipt.originalTerminalState !== 'string')) throw new Error('Missing original private terminal state.');
+    return { ...binding, ownerPid: app.pid, workerPid: worker.pid, launchRunId: config.runId,
+        ...(config.privateClipboard === true ? { originalTerminalState: receipt.originalTerminalState } : {}) };
 }

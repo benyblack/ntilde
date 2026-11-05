@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v4';
+export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v5';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -91,7 +92,63 @@ export const capturedV11SourceFiles = Object.freeze({
     queryWitnessCasesSourceSha256: 'query-witness-cases.mjs', queryWitnessFrameSourceSha256: 'query-witness-frame.mjs',
     sourceImportsSourceSha256: 'source-imports.mjs',
 });
-export const ownedSourcePath = (root, file) => join(root, 'scripts', file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file);
+// Selected observational App/VT reference inputs, not a complete App closure or binary-source attestation.
+export const privateClipboardReferencePaths = Object.freeze({
+    "clipboard-app-program.cs": "src/Ntilde.App/Program.cs",
+    "clipboard-app.cs": "src/Ntilde.App/App.axaml.cs",
+    "clipboard-private-mode.cs": "src/Ntilde.App/Shell/Clipboard/PrivateClipboardQaMode.cs",
+    "clipboard-disposable-fixture.cs": "src/Ntilde.App/Shell/Clipboard/DisposableClipboardFixture.cs",
+    "clipboard-main-window.cs": "src/Ntilde.App/MainWindow.ClipboardFixture.cs",
+    "clipboard-main-window-resize.cs": "src/Ntilde.App/MainWindow.AgentResize.cs",
+    "clipboard-pane.cs": "src/Ntilde.App/Controls/TerminalPane.Clipboard.cs",
+    "clipboard-pane-session.cs": "src/Ntilde.App/Controls/TerminalPane.Session.cs",
+    "clipboard-pane-lifecycle.cs": "src/Ntilde.App/Controls/TerminalPane.Lifecycle.cs",
+    "clipboard-pane-settings.cs": "src/Ntilde.App/Controls/TerminalPane.axaml.cs",
+    "clipboard-settings.cs": "src/Ntilde.App/Shell/TerminalSettings.cs",
+    "clipboard-agent-service.cs": "src/Ntilde.App/AgentHost/AgentHostService.cs",
+    "clipboard-agent-fixture.cs": "src/Ntilde.App/AgentHost/AgentHostService.ClipboardFixture.cs",
+    "clipboard-agent-executor.cs": "src/Ntilde.App/AgentHost/IAgentActionExecutor.cs",
+    "clipboard-contract.cs": "src/Ntilde.AgentHost.Contracts/ClipboardFixture.cs",
+    "clipboard-session-contract.cs": "src/Ntilde.AgentHost.Contracts/SessionContracts.cs",
+    "clipboard-agent-registration.cs": "src/Ntilde.App/AgentHost/AgentSessionRegistration.cs",
+    "clipboard-vt-osc.cs": "src/Ntilde.VT/AnsiParser.Osc.cs",
+    "clipboard-vt-csi.cs": "src/Ntilde.VT/AnsiParser.Csi.cs",
+    "clipboard-agent-registry.cs": "src/Ntilde.App/AgentHost/AgentSessionRegistry.cs",
+    "clipboard-agent-protocol.cs": "src/Ntilde.AgentHost.Contracts/AgentHostProtocol.cs"
+});
+export const capturedV12SourceFiles = Object.freeze({
+    ...capturedV11SourceFiles,
+    privateClipboardSourceSha256: "private-clipboard.mjs",
+    privateClipboardCaptureSourceSha256: "private-clipboard-capture.mjs",
+    privateClipboardReceiptSourceSha256: "private-clipboard-receipt.mjs",
+    privateClipboardWorkerSourceSha256: "private-clipboard-worker.mjs",
+    privateClipboardRequestSourceSha256: "private-clipboard-request.mjs",
+    privateClipboardControllerSourceSha256: "private-clipboard-controller.mjs",
+    privateClipboardSourceSourceSha256: "private-clipboard-source.mjs",
+    privateClipboardBridgeSourceSha256: "private-clipboard-bridge.mjs",
+    privateClipboardInput1SourceSha256: "clipboard-app-program.cs",
+    privateClipboardInput2SourceSha256: "clipboard-app.cs",
+    privateClipboardInput3SourceSha256: "clipboard-private-mode.cs",
+    privateClipboardInput4SourceSha256: "clipboard-disposable-fixture.cs",
+    privateClipboardInput5SourceSha256: "clipboard-main-window.cs",
+    privateClipboardInput6SourceSha256: "clipboard-main-window-resize.cs",
+    privateClipboardInput7SourceSha256: "clipboard-pane.cs",
+    privateClipboardInput8SourceSha256: "clipboard-pane-session.cs",
+    privateClipboardInput9SourceSha256: "clipboard-pane-lifecycle.cs",
+    privateClipboardInput10SourceSha256: "clipboard-pane-settings.cs",
+    privateClipboardInput11SourceSha256: "clipboard-settings.cs",
+    privateClipboardInput12SourceSha256: "clipboard-agent-service.cs",
+    privateClipboardInput13SourceSha256: "clipboard-agent-fixture.cs",
+    privateClipboardInput14SourceSha256: "clipboard-agent-executor.cs",
+    privateClipboardInput15SourceSha256: "clipboard-contract.cs",
+    privateClipboardInput16SourceSha256: "clipboard-session-contract.cs",
+    privateClipboardInput17SourceSha256: "clipboard-agent-registration.cs",
+    privateClipboardInput18SourceSha256: "clipboard-vt-osc.cs",
+    privateClipboardInput19SourceSha256: "clipboard-vt-csi.cs",
+    privateClipboardInput20SourceSha256: "clipboard-agent-registry.cs",
+    privateClipboardInput21SourceSha256: "clipboard-agent-protocol.cs",
+});
+export const ownedSourcePath = (root, file) => Object.hasOwn(privateClipboardReferencePaths, file) ? join(root, privateClipboardReferencePaths[file]) : join(root, 'scripts', file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Literal relative imports must close over the retained fixed scope; never fall back to live sources. */
 export function assertRetainedSourceClosure(directory, inventory) {
@@ -115,7 +172,7 @@ export function assertOwnedSourcesUnchanged(root, context) {
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV11SourceFiles)) throw new Error('Invalid current v11 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV12SourceFiles)) throw new Error('Invalid current v12 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

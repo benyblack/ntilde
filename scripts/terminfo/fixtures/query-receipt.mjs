@@ -31,7 +31,7 @@ export async function queryReceiptFixture(action, worldOptions = {}) {
             processFacts: original, atStart: Date.parse(image.seal.ownership.at) + 1, priorChallenges, ...worldOptions });
         await world.collect(); const report = world.observer.report;
         for (const [key, file] of Object.entries(capturedV11SourceFiles)) {
-            const bytes = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
+            const bytes = historicalArchive('2026-11-05-query-observations').get('sources/' + file);
             writeFileSync(join(output, 'sources', file), bytes); context[key] = hash(bytes);
         }
         const policy = 'readonly-owned-source-graph-v4', manifest = { schemaVersion: 1, policy,

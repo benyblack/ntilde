@@ -228,6 +228,23 @@ jobs:
         shell: bash
         run: node --test scripts/terminfo/query-publication.test.mjs
 
+  private_clipboard_owned:
+    name: Owned private clipboard controls (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Source-pinned callbacks, parent controls and complete schema12 receipt
+        shell: bash
+        run: node --test scripts/terminfo/private-clipboard-request.test.mjs scripts/terminfo/private-clipboard-source.test.mjs scripts/terminfo/private-clipboard-controller.test.mjs scripts/terminfo/private-clipboard-bridge.test.mjs scripts/terminfo/private-clipboard-worker.test.mjs scripts/terminfo/private-clipboard-collector.test.mjs scripts/terminfo/private-clipboard-capture.test.mjs scripts/terminfo/private-clipboard-receipt.test.mjs
+
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -952,7 +969,7 @@ jobs:
   # failure here, not as the pass a skipped required check would otherwise report.
   unit_tests:
     name: Unit Tests (${{ matrix.os }})
-    needs: [build_and_unit_tests, script_self_tests, query_publication_guards, analyzers]
+    needs: [build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned, analyzers]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -966,6 +983,7 @@ jobs:
         env:
           result: ${{ needs.build_and_unit_tests.result }}
           scripts: ${{ needs.script_self_tests.result }}
+          clipboard: ${{ needs.private_clipboard_owned.result }}
           publication: ${{ needs.query_publication_guards.result }}
           analyzers: ${{ needs.analyzers.result }}
         run: |
@@ -973,6 +991,7 @@ jobs:
           [ "$result" = success ] || { echo "::error::A Unit Tests shard did not succeed ($result); see the 'Unit Tests (<os>, <shard>)' jobs."; exit 1; }
           [ "$scripts" = success ] || { echo "::error::The CI script self-tests did not succeed ($scripts); see the 'Script self-tests (<os>)' jobs."; exit 1; }
           [ "$publication" = success ] || { echo "::error::The frozen query publication guards did not succeed ($publication); see the 'Query publication guards (<os>)' jobs."; exit 1; }
+          [ "$clipboard" = success ] || { echo "::error::The owned private clipboard controls did not succeed ($clipboard)."; exit 1; }
           [ "$analyzers" = success ] || { echo "::error::The analyzer and code-style build did not succeed ($analyzers); see the 'Analyzers' job."; exit 1; }
 
   # Native SSH end-to-end against a real sshd in a container.

@@ -119,3 +119,14 @@ test('pending, fatal or disposed fences cannot transfer input ownership', async 
     assert.throws(() => fence.detachInput(), /healthy|failed/);
     fence.dispose(); assert.throws(() => fence.detachInput(), /active|disposed/);
 });
+
+for (const detached of [false, true]) test('private stock handoff retires the fence without restoring modes, detached=' + detached, async () => {
+    const input = new Input(), fence = terminalFence(input, { write() { throw Error('retired writer'); } });
+    if (detached) fence.detachInput();
+    fence.retireInput();
+    assert.equal(input.isRaw, true); assert.equal(input.paused, false);
+    assert.equal(input.listenerCount('data'), 0); assert.equal(input.listenerCount('error'), 0);
+    await assert.rejects(fence.write('forbidden'), /active|disposed|detached/);
+    assert.throws(() => fence.detachInput()); assert.throws(() => fence.retireInput());
+    fence.dispose(); assert.equal(input.isRaw, false); assert.equal(input.paused, true);
+});

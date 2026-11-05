@@ -173,21 +173,21 @@ test('pixel-start typed refusal writes no fixture input, and later refusals rema
     assert.equal(writes.at(-1), '\x1b[?1049l\x1b[!p');
 });
 
-test('portable worker execution proves ownership before all sixteen suites and disposes the fence before collection completion', async () => {
+for (const privateClipboard of [false, true]) test('portable worker orchestration retains private-close transport=' + privateClipboard, async () => {
     const { spawnSync } = await import('node:child_process');
     const { createHash } = await import('node:crypto');
     const { fileURLToPath } = await import('node:url');
     const output = mkdtempSync(join(tmpdir(), 'nt-worker-order-'));
     try {
         const bundle = join(output, 'bundle.mjs'), config = join(output, 'worker.json'), log = join(output, 'calls.txt');
-        const source = 'export async function collectNtildeRun() { return { testOnly: true }; }';
+        const source = 'import {appendFileSync} from \"node:fs\"; export async function collectNtildeRun() { appendFileSync(process.env.NTILDE_WORKER_TEST_LOG, \"stock-close\\n\"); return { testOnly: true }; }';
         writeFileSync(bundle, source);
-        writeFileSync(config, JSON.stringify({ output, bundle, adapterBundleSha256: createHash('sha256').update(source).digest('hex') }));
+        writeFileSync(config, JSON.stringify({ privateClipboard, output, bundle, adapterBundleSha256: createHash('sha256').update(source).digest('hex') }));
         const result = spawnSync(process.execPath, ['--import', new URL('./fixtures/worker-collection-hooks.mjs', import.meta.url).href,
             fileURLToPath(new URL('./worker.mjs', import.meta.url)), config], { encoding: 'utf8', timeout: 5000,
             env: { ...process.env, NTILDE_WORKER_TEST_LOG: log } });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Input', 'StaticImages', 'Queries', 'output-restore', 'dispose', 'done']);
+        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Input', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);
         assert.equal(JSON.parse(readFileSync(join(output, 'raw.json'))).testOnly, true);
     } finally { rmSync(output, { recursive: true, force: true }); }
 });

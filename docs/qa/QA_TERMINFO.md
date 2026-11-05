@@ -628,3 +628,7 @@ retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
 Its complete 266-file archive preserves the original SGR/cursor-style expectation
 mismatches and cursor/pixel negatives. Matched negative replies and silence do
 not qualify support; stock 85/0/170 remains incomplete. Earlier grades stay frozen.
+
+The [owned App-private clipboard collection](owned-private-clipboard.md) adds a
+separate schema 12 private-storage suffix under fixed policy v5. It preserves
+original Q11 grades and denied reads; fresh runtime evidence remains required.

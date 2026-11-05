@@ -36,7 +36,7 @@ function fixture() {
             try { await bridge.abort(reason); } catch (error) { if (error !== reason) throw error; }
             return null;
         }
-        const result = await bridge.handle(frame);
+        const result = await bridge.handle(frame.kind === 'complete' ? { kind: 'complete' } : frame);
         if (frame.kind === 'finish') return api.response ?? { runId, suiteId: ownedPrivateClipboardSuiteId,
             file: 'private-clipboard-observations.json', sha256: hash(JSON.stringify(result)),
             counts: { completedProbes: 3, acceptedWrites: 2 }, complete: true };

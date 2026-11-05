@@ -73,7 +73,7 @@ export function createPrivateClipboardWorker(owner, runId) {
             if (lease.pending || lease.controls.some(control => !control.consumed))
                 throw new Error('Private clipboard callback did not consume its controls.');
             refuse();
-            const restored = await call({ kind: 'complete' }); exact(restored, ['completedProbes']);
+            const restored = await call({ kind: 'complete', callbackResult: structuredClone(result) }); exact(restored, ['completedProbes']);
             if (JSON.stringify(restored.completedProbes) !== JSON.stringify(PRIVATE_CLIPBOARD_PROBES.slice(0, completed + 1)))
                 throw new Error('Missing private clipboard restoration acknowledgment.');
             completed++;
