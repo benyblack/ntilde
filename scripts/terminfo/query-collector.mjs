@@ -33,6 +33,7 @@ export async function collectQueries({ runId, owner, expectedOwnerPid, outputDir
     if (initial.status === 'unavailable') { check(initial.reason === 'queryPrerequisiteUnavailable'); return initial; }
     check(typeof initial.cursorVisible === 'boolean');
     const prior = new Set(queryPrior(initial.priorChallenges));
+    check(prior.size === 110);
     const choose = used => {
         for (let attempt = 0; attempt < 8; attempt++) {
             const pair = nextNonces ? structuredClone(nextNonces(new Set(used))) : [randomInt(32768, 65536), randomInt(32768, 65536)];

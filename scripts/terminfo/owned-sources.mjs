@@ -1,3 +1,4 @@
+import { literalImports } from './source-imports.mjs';
 import { chmodSync, lstatSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
@@ -88,44 +89,10 @@ export const capturedV11SourceFiles = Object.freeze({
     querySuiteSourceSha256: 'queries.mjs', queryCaptureSourceSha256: 'query-capture.mjs',
     queryCollectorSourceSha256: 'query-collector.mjs', queryReceiptSourceSha256: 'query-receipt.mjs',
     queryWitnessCasesSourceSha256: 'query-witness-cases.mjs', queryWitnessFrameSourceSha256: 'query-witness-frame.mjs',
+    sourceImportsSourceSha256: 'source-imports.mjs',
 });
 export const ownedSourcePath = (root, file) => join(root, 'scripts', file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-// Comments are lexical trivia, including inside literal dynamic-import parentheses.
-function importTriviaEnd(source, offset) {
-    while (offset < source.length) {
-        if (/\s/u.test(source[offset])) { offset++; continue; }
-        if (source.startsWith('/*', offset)) {
-            const end = source.indexOf('*/', offset + 2);
-            if (end < 0) throw new Error('Unterminated comment in captured import.');
-            offset = end + 2; continue;
-        }
-        if (source.startsWith('//', offset)) {
-            const end = source.slice(offset + 2).search(/[\r\n\u2028\u2029]/u);
-            if (end < 0) return source.length;
-            offset += end + 2; continue;
-        }
-        return offset;
-    }
-    return offset;
-}
-function literalImports(source) {
-    const keywords = /\b(?:(?<from>from)|(?<imported>import))\b/g, targets = [];
-    let match = keywords.exec(source);
-    while (match) {
-        let offset = importTriviaEnd(source, keywords.lastIndex);
-        if (match.groups.imported !== undefined && source[offset] === '(') offset = importTriviaEnd(source, offset + 1);
-        keywords.lastIndex = offset;
-        const quote = source[offset];
-        if (quote === '"' || quote === "'") {
-            const end = source.indexOf(quote, offset + 1), target = source.slice(offset + 1, end);
-            if (end < 0 || target.includes('\\')) throw new Error('Unsupported captured import specifier.');
-            targets.push(target); keywords.lastIndex = end + 1;
-        }
-        match = keywords.exec(source);
-    }
-    return targets;
-}
 /** Literal relative imports must close over the retained fixed scope; never fall back to live sources. */
 export function assertRetainedSourceClosure(directory, inventory) {
     const paths = new Set(Object.values(inventory));

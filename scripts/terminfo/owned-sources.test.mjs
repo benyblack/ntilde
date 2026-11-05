@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 73 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 73); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 74 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 74); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -29,6 +29,7 @@ test('future measured inputs cannot change the historical published v8 source sc
     const root = mkdtempSync(join(tmpdir(), 'nt-legacy-source-unit-'));
     try {
         writeFileSync(join(root, 'owned-sources.mjs'), readFileSync(new URL('./owned-sources.mjs', import.meta.url)));
+        writeFileSync(join(root, 'source-imports.mjs'), readFileSync(new URL('./source-imports.mjs', import.meta.url)));
         const inventory = { ...ownedSourceFiles, futureSourceSha256: 'future.mjs' };
         writeFileSync(join(root, 'owned-source-inventory.json'), JSON.stringify(inventory));
         const module = await import(pathToFileURL(join(root, 'owned-sources.mjs')).href);

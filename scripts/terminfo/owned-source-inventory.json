@@ -71,5 +71,6 @@
   "queryCollectorSourceSha256": "query-collector.mjs",
   "queryReceiptSourceSha256": "query-receipt.mjs",
   "queryWitnessCasesSourceSha256": "query-witness-cases.mjs",
-  "queryWitnessFrameSourceSha256": "query-witness-frame.mjs"
+  "queryWitnessFrameSourceSha256": "query-witness-frame.mjs",
+  "sourceImportsSourceSha256": "source-imports.mjs"
 }

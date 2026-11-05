@@ -10,7 +10,7 @@ export class OwnedQueryObserver {
     constructor(options) {
         const { binding, attest, rpc, endpoint, appData, priorChallenges = [] } = options;
         this.#binding = queryBinding(binding); this.#prior = queryPrior(priorChallenges);
-        check(typeof attest === 'function'); this.#attest = attest; this.#used = new Set(this.#prior);
+        check(this.#prior.length === 110 && typeof attest === 'function'); this.#attest = attest; this.#used = new Set(this.#prior);
         const facts = { appData, ownerPid: this.#binding.ownerPid, profileName: this.#binding.profileName,
             expectedPaneId: this.#binding.paneId, includeAttributes: true, includeCellDetails: true,
             includeCursorMode: true, includeOverline: true, includeBufferState: true };

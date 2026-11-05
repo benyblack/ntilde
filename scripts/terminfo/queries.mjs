@@ -104,7 +104,7 @@ function inspectCapture(capture, context, id, used) {
 export function buildQueryReport(input) {
     const { binding: supplied, priorChallenges, initial, actions, frames, seal } = structuredClone(input);
     const binding = queryBinding(supplied), prior = queryPrior(priorChallenges), clock = { time: -Infinity };
-    check(actions?.length === 44 && frames?.length === 44);
+    check(prior.length === 110 && actions?.length === 44 && frames?.length === 44);
     const baseline = validateSample(initial.before, binding, null, clock), original = initial.before.beforeOwnership;
     check(snapshotHash(validateSample(initial.after, binding, original, clock)) === snapshotHash(baseline));
     check(pristineQuery(baseline) && baseline.rows >= 8);

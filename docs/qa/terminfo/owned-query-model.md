@@ -1,7 +1,7 @@
 # Bounded owned exact-query observations (#771)
 
 The optional owned driver adds a sixteenth suite under receipt schema 11,
-`readonly-owned-source-graph-v4` and the fixed 73-file `capturedV11SourceFiles`
+`readonly-owned-source-graph-v4` and the fixed 74-file `capturedV11SourceFiles`
 map. The query experiment is `owned-exact-query-paired-raw-state-v1`.
 This implementation has portable synthetic tests; it adds no actual runtime
 qualification until a separately announced, source-pinned collection is retained.
@@ -41,7 +41,9 @@ The real coordinator freshly verifies the recorded App/worker UID, executable,
 lineage, unique command markers, private profile, singleton local pane/parser,
 PTY and kernel `stty -opost` facts around each state capture. Those reads share
 the existing 4-second request budget. A shaped callback alone is not attestation;
-the synthetic fixture is never real process or terminal evidence.
+the synthetic fixture is never real process or terminal evidence. Read RPCs and
+ownership checks are point-in-time observations, not a reconnect guarantee or
+an atomic PTY lease.
 
 Query collection follows both healthy, sealed and disposed input/image raw
 readers. The parent derives all 110 prior challenge pairs from the exact retained
@@ -81,9 +83,14 @@ exit, fixture removal and captured-source removal have been verified.
 
 The complete finalizer rederives the query report from the original journals,
 exact source plan, validated prefix challenges and parent process facts. All
-six executed query dependencies are captured and checked in the fixed source
-closure before measured imports. Both checks treat comment-separated import
-specifiers as lexical trivia and reject escaped or out-of-scope literal targets. Any retained query declaration, file or import
+six executed query dependencies plus the shared pure source scanner are captured
+and checked in the fixed source closure before measured imports. Both checks treat comment-separated import
+specifiers as lexical trivia and reject escaped, template or out-of-scope literal targets.
+The trusted BCL launcher verifies a reviewed hard SHA-256 pin over the captured,
+dependency-free scanner before importing those exact bytes through a data URL;
+retained validation shares the captured helper. This is no JavaScript sandbox
+or general computed-dependency proof. Reviewed computed bundle loading remains
+a separate locked-input/hash boundary. Any retained query declaration, file or import
 requires the v11 suffix; coherent stripping cannot acquire an older receipt.
 Historical receipts keep their original 51/52, 60 and 67-file scopes. Active
 inventory growth never changes a frozen map or regrades a published observation.

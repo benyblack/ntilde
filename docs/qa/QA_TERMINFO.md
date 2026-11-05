@@ -1,7 +1,7 @@
 # Optional terminfo.dev desktop baseline
 
 The current owned driver adds a sixteenth, bounded exact-query suite under
-schema 11/fixed 73-source policy v4. Its packet/state/ownership contract is
+schema 11/fixed 74-source policy v4. Its packet/state/ownership contract is
 [the owned query model](terminfo/owned-query-model.md). The preceding calibrated
 static-image suite and frozen v10 publication retain their original 67-source
 scope; published v9 input and v8 observations likewise keep their original bytes.

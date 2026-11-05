@@ -19,43 +19,12 @@ function removeSnapshot(root) {
     setDirectoryModes(root, 0o700);
     rmSync(root, { recursive: true, force: true });
 }
-// Comments are lexical trivia, including inside literal dynamic-import parentheses.
-function importTriviaEnd(source, offset) {
-    while (offset < source.length) {
-        if (/\s/u.test(source[offset])) { offset++; continue; }
-        if (source.startsWith('/*', offset)) {
-            const end = source.indexOf('*/', offset + 2);
-            if (end < 0) throw new Error('Unterminated comment in captured import.');
-            offset = end + 2; continue;
-        }
-        if (source.startsWith('//', offset)) {
-            const end = source.slice(offset + 2).search(/[\r\n\u2028\u2029]/u);
-            if (end < 0) return source.length;
-            offset += end + 2; continue;
-        }
-        return offset;
-    }
-    return offset;
-}
-function literalImports(source) {
-    const keywords = /\b(?:(?<from>from)|(?<imported>import))\b/g, targets = [];
-    let match = keywords.exec(source);
-    while (match) {
-        let offset = importTriviaEnd(source, keywords.lastIndex);
-        if (match.groups.imported !== undefined && source[offset] === '(') offset = importTriviaEnd(source, offset + 1);
-        keywords.lastIndex = offset;
-        const quote = source[offset];
-        if (quote === '"' || quote === "'") {
-            const end = source.indexOf(quote, offset + 1), target = source.slice(offset + 1, end);
-            if (end < 0 || target.includes('\\')) throw new Error('Unsupported captured import specifier.');
-            targets.push(target); keywords.lastIndex = end + 1;
-        }
-        match = keywords.exec(source);
-    }
-    return targets;
-}
-function checkCapturedImports(sources) {
-    // Check every literal runtime dependency before importing any measured module.
+// The scanner is the sole reviewed pure bootstrap dependency; import only these verified captured bytes.
+const sourceScannerSha256 = 'f60f89b9273a727e5550ece87ff852656c7090d7dce580ffc88ad8ab22918cbd';
+async function checkCapturedImports(sources) {
+    const scanner = sources.get('source-imports.mjs');
+    if (!scanner || digest(scanner) !== sourceScannerSha256) throw new Error('Missing or changed trusted source scanner.');
+    const { literalImports } = await import('data:text/javascript;base64,' + scanner.toString('base64'));
     for (const [file, bytes] of sources) {
         if (!file.endsWith('.mjs')) continue;
         for (const target of literalImports(bytes.toString())) {
@@ -65,7 +34,7 @@ function checkCapturedImports(sources) {
         }
     }
 }
-function capture(root) {
+async function capture(root) {
     const input = readFileSync(join(repo, 'scripts/terminfo/owned-source-inventory.json'));
     const inventory = JSON.parse(input), hashes = {}, sources = new Map();
     if (inventory.runnerSourceSha256 !== 'terminfo-owned-runner.mjs' || inventory.sourceInventorySha256 !== 'owned-source-inventory.json') throw new Error('Invalid source inventory.');
@@ -77,10 +46,11 @@ function capture(root) {
         const target = pathFor(root, file); mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
         writeFileSync(target, bytes, { flag: 'wx', mode: 0o400 }); hashes[key] = digest(bytes); sources.set(file, bytes);
     }
-    checkCapturedImports(sources);
     const manifest = Buffer.from(JSON.stringify({ schemaVersion: 1, policy, hashes }, null, 2) + '\n');
     writeFileSync(join(root, 'source-snapshot.json'), manifest, { flag: 'wx', mode: 0o400 });
-    setDirectoryModes(root, 0o500); return digest(manifest);
+    setDirectoryModes(root, 0o500);
+    await checkCapturedImports(sources);
+    return digest(manifest);
 }
 async function launch() {
     let root, interrupted;
@@ -91,7 +61,7 @@ async function launch() {
     const previous = names.map(name => [name, process.env[name]]);
     try {
         root = realpathSync(mkdtempSync(join(tmpdir(), 'ntilde-owned-sources-')));
-        const sha256 = capture(root);
+        const sha256 = await capture(root);
         if (interrupted) throw new Error('Interrupted by ' + interrupted + '.');
         process.env.NTILDE_TERMINFO_ORIGINAL_REPO = repo;
         process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT = root;

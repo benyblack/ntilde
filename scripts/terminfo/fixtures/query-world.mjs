@@ -12,7 +12,7 @@ export class QueryInput extends EventEmitter {
     resume() { this.paused = false; }
     pause() { this.paused = true; }
 }
-export function queryWorld({ priorChallenges = [], mutateReply, mutateState, mutateOwnership, mutateRpc, mutateAction, nextNonces, cursorVisible = true, binding: suppliedBinding, initialScreen, processFacts, transport = false, atStart = Date.UTC(2026, 10, 4, 12) } = {}) {
+export function queryWorld({ priorChallenges = Array.from({ length: 110 }, (_, index) => [32768 + index * 2, 32769 + index * 2].join(',')), mutateReply, mutateState, mutateOwnership, mutateRpc, mutateAction, nextNonces, cursorVisible = true, binding: suppliedBinding, initialScreen, processFacts, transport = false, atStart = Date.UTC(2026, 10, 4, 12) } = {}) {
     const binding = suppliedBinding ?? { runId: 'a'.repeat(32), ownerPid: 42, workerPid: 43, uid: 1000, appExecutable: '/owned/app',
         workerExecutable: '/node', tty: '/dev/ttys100', profileName: 'fixture', paneId: '11111111-1111-1111-1111-111111111111' };
     const initial = initialScreen ? structuredClone(initialScreen) : initialInputScreen(10, 60); initial.cursorVisible = cursorVisible;

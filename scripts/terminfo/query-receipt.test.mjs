@@ -34,10 +34,10 @@ test('coherent mismatched-result promotion cannot replace independently derived 
 }, { mutateReply: (id, value) => id === 'q07.device.xtwinops-18' ? '' : value }));
 
 test('coherent query stripping cannot downgrade the retained importing graph into schema10', () => queryReceiptFixture(f => {
-    delete f.evidence.queryEvidence; delete f.context.querySuiteId; delete f.context.ownedQueryPolicy; delete f.proof.proofs[0].queries;
+    delete f.evidence.queryEvidence; delete f.context.sourceImportsSourceSha256; delete f.context.querySuiteId; delete f.context.ownedQueryPolicy; delete f.proof.proofs[0].queries;
     for (const key of Object.keys(f.context)) if (key.startsWith('query') && key.endsWith('SourceSha256')) delete f.context[key];
     for (const file of ['query-observations.json', 'query-initial.json', 'query-snapshots.jsonl', 'query-actions.jsonl']) rmSync(join(f.output, file));
-    for (const file of ['queries.mjs', 'query-capture.mjs', 'query-collector.mjs', 'query-receipt.mjs', 'query-witness-cases.mjs', 'query-witness-frame.mjs']) rmSync(join(f.output, 'sources', file));
+    for (const file of ['queries.mjs', 'query-capture.mjs', 'query-collector.mjs', 'query-receipt.mjs', 'query-witness-cases.mjs', 'query-witness-frame.mjs', 'source-imports.mjs']) rmSync(join(f.output, 'sources', file));
     const bytes = JSON.stringify(capturedV10SourceFiles, null, 2) + '\n'; writeFileSync(join(f.output, 'sources', 'owned-source-inventory.json'), bytes);
     f.context.sourceInventorySha256 = hash(bytes); f.context.sourceSnapshotPolicy = 'readonly-owned-source-graph-v3';
     f.proof.sourceSnapshot.policy = f.context.sourceSnapshotPolicy;

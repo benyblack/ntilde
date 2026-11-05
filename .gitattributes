@@ -46,3 +46,4 @@ assets/shell-integration/**   text eol=lf
 *.rs        text eol=lf
 *.toml      text eol=lf
 docs/qa/terminfo/2026-11-04-image-observations.json text eol=lf
+scripts/terminfo/source-imports.mjs text eol=lf

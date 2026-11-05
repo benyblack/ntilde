@@ -202,6 +202,7 @@ function assertRetainedCollector(output) {
         ['querySuiteSourceSha256', 'terminfo/queries.mjs'], ['queryCaptureSourceSha256', 'terminfo/query-capture.mjs'],
         ['queryCollectorSourceSha256', 'terminfo/query-collector.mjs'], ['queryReceiptSourceSha256', 'terminfo/query-receipt.mjs'],
         ['queryWitnessCasesSourceSha256', 'terminfo/query-witness-cases.mjs'], ['queryWitnessFrameSourceSha256', 'terminfo/query-witness-frame.mjs'],
+        ['sourceImportsSourceSha256', 'terminfo/source-imports.mjs'],
         ['receiptSourceSha256', 'terminfo/receipt.mjs'],
         ['collectorManifestSha256', 'terminfo/collector-package.json'],
         ['collectorLockSha256', 'terminfo/collector-package-lock.json'],

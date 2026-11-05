@@ -44,7 +44,7 @@ test('a source response that relativizes the prepared absolute margins remains a
     await world.collect(); assert.equal(world.observer.report.observations.find(item => item.id === 'q12.decrqss.vertical-margins').contractMatched, false);
 });
 test('new phase rejects a prior global nonce pair even when the local reader has never used it', async () => {
-    const world = queryWorld({ priorChallenges: ['42000,42001'], nextNonces: () => [42000, 42001] });
+    const world = queryWorld({ priorChallenges: ['42000,42001', ...Array.from({ length: 109 }, (_, index) => [32768 + index * 2, 32769 + index * 2].join(','))], nextNonces: () => [42000, 42001] });
     await assert.rejects(world.collect(), error => error.queryFailure.attempts === 1);
     assert.equal(world.observer.restored, false); assert.equal(world.observer.journal.actions.length, 1);
     assert.equal(world.observer.journal.frames.length, 0); assert.equal(world.input.listenerCount('data'), 0);
@@ -188,4 +188,12 @@ test('actual owner transport envelope is independently checked and removed befor
     assert.equal(world.observer.report.observations.length, 40); assert.deepEqual(world.observer.report.readerCounts, [48, 42]);
     const wrong = queryWorld({ transport: true, mutateAction: (kind, value) => kind === 'queries-admit' ? { ...value, ownerPid: 999 } : value });
     await assert.rejects(wrong.collect()); assert.equal(wrong.packets.length, 0);
+});
+
+for (const count of [0, 109]) test('collector rejects initial owner reply with only ' + count + ' prior challenges before attaching a reader or writing', async () => {
+    const world = queryWorld({ transport: true, mutateAction: (kind, reply) => kind === 'queries-start'
+        ? { ...reply, priorChallenges: reply.priorChallenges.slice(0, count) } : reply });
+    await assert.rejects(world.collect());
+    assert.equal(world.packets.length, 0); assert.equal(world.observer.journal.actions.length, 0); assert.equal(world.observer.journal.frames.length, 0);
+    assert.equal(world.input.listenerCount('data'), 0); assert.equal(world.input.isRaw, false); assert.equal(world.input.isPaused(), true);
 });

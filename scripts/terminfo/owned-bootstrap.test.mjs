@@ -12,8 +12,9 @@ function fixture(action) {
         mkdirSync(join(root, 'scripts/terminfo'), { recursive: true });
         copyFileSync(new URL('../terminfo-owned.mjs', import.meta.url), join(root, 'scripts/terminfo-owned.mjs'));
         const inventory = { runnerSourceSha256: 'terminfo-owned-runner.mjs', workerSourceSha256: 'worker.mjs',
-            fixtureSourceSha256: 'fixture.mjs', sourceInventorySha256: 'owned-source-inventory.json' };
+            fixtureSourceSha256: 'fixture.mjs', sourceInventorySha256: 'owned-source-inventory.json', sourceImportsSourceSha256: 'source-imports.mjs' };
         writeFileSync(join(root, 'scripts/terminfo/owned-source-inventory.json'), JSON.stringify(inventory));
+        copyFileSync(new URL('./source-imports.mjs', import.meta.url), join(root, 'scripts/terminfo/source-imports.mjs'));
         writeFileSync(join(root, 'scripts/terminfo/fixture.mjs'), "export default 'CAPTURED';");
         writeFileSync(join(root, 'scripts/terminfo/worker.mjs'), "import value from './fixture.mjs'; console.log(value);");
         const parent = `import value from './terminfo/fixture.mjs';
@@ -80,4 +81,18 @@ for (const spelling of ['side-effect', 'dynamic', 'from', 'line-comment']) test(
     writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), commands[spelling]);
     const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
     assert.equal(existsSync(marker), false);
+}));
+
+test('unsupported template dynamic import is rejected before an unretained module executes', () => fixture(f => {
+    const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+    writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED');");
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), 'await import(`' + pathToFileURL(outside).href + '`);');
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /Unsupported template import/);
+    assert.equal(existsSync(marker), false);
+}));
+
+test('modified scanner bytes never execute before the trusted bootstrap pin check', () => fixture(f => {
+    writeFileSync(join(f.root, 'scripts/terminfo/source-imports.mjs'), "console.log('UNREVIEWED SCANNER EXECUTED'); export const literalImports = () => [];");
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /changed trusted source scanner/);
+    assert.equal(result.stdout.includes('UNREVIEWED SCANNER EXECUTED'), false);
 }));

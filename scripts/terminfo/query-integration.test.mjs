@@ -10,10 +10,10 @@ import { ownedSourceFiles, sourceSnapshotPolicy } from './owned-sources.mjs';
 import { historicalArchive } from './fixtures/captured-sources.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
 
-test('live query graph includes all six executed query dependencies under its next fixed policy', () => {
+test('live query graph includes all query and shared-scanner dependencies under its next fixed policy', () => {
     assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v4');
-    assert.equal(Object.keys(ownedSourceFiles).length, 73);
-    for (const file of ['queries.mjs', 'query-capture.mjs', 'query-collector.mjs', 'query-receipt.mjs', 'query-witness-cases.mjs', 'query-witness-frame.mjs'])
+    assert.equal(Object.keys(ownedSourceFiles).length, 74);
+    for (const file of ['queries.mjs', 'query-capture.mjs', 'query-collector.mjs', 'query-receipt.mjs', 'query-witness-cases.mjs', 'query-witness-frame.mjs', 'source-imports.mjs'])
         assert.ok(Object.values(ownedSourceFiles).includes(file), file);
 });
 test('retained query artifact cannot silently acquire an otherwise complete frozen schema10 receipt', () => {
@@ -30,7 +30,7 @@ test('retained query artifact cannot silently acquire an otherwise complete froz
 });
 
 for (const [label, grow, policy] of [['inventory', true, false], ['policy', false, true], ['inventory and policy', true, true]])
-    test('future active ' + label + ' preserves the fixed73-source complete query receipt', () => queryReceiptFixture(async f => {
+    test('future active ' + label + ' preserves the fixed74-source complete query receipt', () => queryReceiptFixture(async f => {
         const root = mkdtempSync(join(tmpdir(), 'nt-query-future-'));
         try {
             const modules = join(root, 'modules'); cpSync(new URL('./', import.meta.url), modules, { recursive: true });
@@ -43,14 +43,14 @@ for (const [label, grow, policy] of [['inventory', true, false], ['policy', fals
                     "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v5';"));
             }
             const sources = await import(pathToFileURL(join(modules, 'owned-sources.mjs')).href);
-            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 74 : 73); assert.equal(Object.keys(sources.capturedV11SourceFiles).length, 73);
+            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 75 : 74); assert.equal(Object.keys(sources.capturedV11SourceFiles).length, 74);
             assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v5' : 'readonly-owned-source-graph-v4');
             const next = await import(pathToFileURL(join(modules, 'receipt.mjs')).href);
             const receipt = next.completeOwnedReceipt(f.output, join(f.output, 'removed-fixture'), f.evidence);
             assert.equal(receipt.schemaVersion, 11); assert.deepEqual(receipt.queryEvidence.counts, { matched: 40 });
         } finally { rmSync(root, { recursive: true, force: true }); }
     }));
-test('a coherently expanded74-source graph cannot acquire the frozen query policy', () => queryReceiptFixture(f => {
+test('a coherently expanded75-source graph cannot acquire the frozen query policy', () => queryReceiptFixture(f => {
     const hash = bytes => createHash('sha256').update(bytes).digest('hex'), file = join(f.output, 'sources', 'owned-source-inventory.json');
     const inventory = JSON.parse(readFileSync(file)); inventory.futureSourceSha256 = 'future.mjs';
     const future = Buffer.from('// Never executed synthetic extra source.\n'); writeFileSync(join(f.output, 'sources', 'future.mjs'), future);
