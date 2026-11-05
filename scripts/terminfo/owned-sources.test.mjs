@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged } from './owned-sources.mjs';
+import { ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -41,3 +41,15 @@ test('future measured inputs cannot change the historical published v8 source sc
         assert.ok(Object.keys(module.legacyV8SourceFiles).every(key => typeof published.context[key] === 'string'));
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+for (const statement of ["import/* a */'./dependency.mjs';", "import value from/* a */'./dependency.mjs';", "await import/* a */(/* b */'./dependency.mjs');", "import// a\n'./dependency.mjs';"])
+    test('retained closure accepts only inventoried comment-separated dependency: ' + statement, () => {
+        const root = mkdtempSync(join(tmpdir(), 'nt-comment-closure-'));
+        try {
+            writeFileSync(join(root, 'entry.mjs'), statement); writeFileSync(join(root, 'dependency.mjs'), 'export default 1;');
+            const inventory = { entrySourceSha256: 'entry.mjs', dependencySourceSha256: 'dependency.mjs' };
+            assert.doesNotThrow(() => assertRetainedSourceClosure(root, inventory));
+            writeFileSync(join(root, 'entry.mjs'), statement.replace('./dependency.mjs', './unlisted.mjs'));
+            assert.throws(() => assertRetainedSourceClosure(root, inventory), /outside its versioned scope/);
+        } finally { rmSync(root, { recursive: true, force: true }); }
+    });

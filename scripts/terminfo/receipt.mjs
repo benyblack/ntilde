@@ -112,7 +112,7 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
     if (report.snapshots) validateOutputGeometry(mode.description, report.snapshots[0].screen.rows, report.snapshots[0].screen.cols);
 }
 
-function ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries) {
+function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries }) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -161,7 +161,7 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (includesInput) checkInputEvidence(output, evidence.inputEvidence, runId, context, proof);
     if (includesImages) checkStaticImageEvidence(output, evidence.staticImageEvidence, runId, context, proof);
     if (includesQueries) checkQueryEvidence(output, evidence.queryEvidence, runId, context, proof, evidence);
-    const schemaVersion = ownedReceiptVersion(context, includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries);
+    const schemaVersion = ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries });
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

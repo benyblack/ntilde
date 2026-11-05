@@ -79,3 +79,9 @@ for (const mode of ['forged prerequisite', 'started initial']) test('query unava
     else { report.prerequisites[0].sha256 = 'a'.repeat(64); f.write('query-unavailable.json', report); f.evidence.queryEvidence.sha256 = hash(readFileSync(join(f.output, 'query-unavailable.json'))); }
     assert.throws(f.finish);
 }));
+
+test('schema11 independently refuses a coherently rehashed partial prior challenge list', () => queryReceiptFixture(f => {
+    f.report.priorChallenges.pop(); const bytes = JSON.stringify(f.report, null, 2) + '\n';
+    writeFileSync(join(f.output, 'query-observations.json'), bytes); f.evidence.queryEvidence.sha256 = hash(bytes);
+    assert.throws(f.finish);
+}));

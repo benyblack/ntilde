@@ -70,3 +70,14 @@ for (const spelling of ['compact-side-effect', 'literal-dynamic']) test('pre-imp
     const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
     assert.equal(existsSync(marker), false);
 }));
+
+for (const spelling of ['side-effect', 'dynamic', 'from', 'line-comment']) test('comment-separated ' + spelling + ' import is rejected before source execution', () => fixture(f => {
+    const outside = join(f.root, 'outside.mjs'), marker = join(f.root, 'side-effect');
+    writeFileSync(outside, "import { writeFileSync } from 'node:fs'; writeFileSync(" + JSON.stringify(marker) + ", 'EXECUTED'); export default 1;");
+    const target = JSON.stringify(pathToFileURL(outside).href);
+    const commands = { 'side-effect': 'import/* gap */' + target + ';', dynamic: 'await import/* gap */(/* inner */' + target + ');',
+        from: 'import value from/* gap */' + target + ';', 'line-comment': 'import// gap\n' + target + ';' };
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), commands[spelling]);
+    const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /outside captured scope before import/);
+    assert.equal(existsSync(marker), false);
+}));

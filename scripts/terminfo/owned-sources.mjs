@@ -91,15 +91,50 @@ export const capturedV11SourceFiles = Object.freeze({
 });
 export const ownedSourcePath = (root, file) => join(root, 'scripts', file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+// Comments are lexical trivia, including inside literal dynamic-import parentheses.
+function importTriviaEnd(source, offset) {
+    while (offset < source.length) {
+        if (/\s/u.test(source[offset])) { offset++; continue; }
+        if (source.startsWith('/*', offset)) {
+            const end = source.indexOf('*/', offset + 2);
+            if (end < 0) throw new Error('Unterminated comment in captured import.');
+            offset = end + 2; continue;
+        }
+        if (source.startsWith('//', offset)) {
+            const end = source.slice(offset + 2).search(/[\r\n\u2028\u2029]/u);
+            if (end < 0) return source.length;
+            offset += end + 2; continue;
+        }
+        return offset;
+    }
+    return offset;
+}
+function literalImports(source) {
+    const keywords = /\b(?:(?<from>from)|(?<imported>import))\b/g, targets = [];
+    let match = keywords.exec(source);
+    while (match) {
+        let offset = importTriviaEnd(source, keywords.lastIndex);
+        if (match.groups.imported !== undefined && source[offset] === '(') offset = importTriviaEnd(source, offset + 1);
+        keywords.lastIndex = offset;
+        const quote = source[offset];
+        if (quote === '"' || quote === "'") {
+            const end = source.indexOf(quote, offset + 1), target = source.slice(offset + 1, end);
+            if (end < 0 || target.includes('\\')) throw new Error('Unsupported captured import specifier.');
+            targets.push(target); keywords.lastIndex = end + 1;
+        }
+        match = keywords.exec(source);
+    }
+    return targets;
+}
 /** Literal relative imports must close over the retained fixed scope; never fall back to live sources. */
 export function assertRetainedSourceClosure(directory, inventory) {
     const paths = new Set(Object.values(inventory));
     for (const file of paths) {
         if (!file.endsWith('.mjs')) continue;
         const source = readFileSync(join(directory, file), 'utf8');
-        const imports = source.matchAll(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['"]([^'"]+)['"]/g);
-        for (const [, target] of imports) {
-            if (target.startsWith('node:')) continue;
+        const imports = literalImports(source);
+        for (const target of imports) {
+            if (/^node:[a-z][a-z0-9_/-]*$/.test(target)) continue;
             if (!/^\.\/(?:terminfo\/)?[a-z][a-z0-9-]*\.mjs$/.test(target)
                 || !paths.has(target.split('/').at(-1))) throw new Error('Retained source dependency is outside its versioned scope: ' + target);
         }

@@ -82,7 +82,8 @@ exit, fixture removal and captured-source removal have been verified.
 The complete finalizer rederives the query report from the original journals,
 exact source plan, validated prefix challenges and parent process facts. All
 six executed query dependencies are captured and checked in the fixed source
-closure before measured imports. Any retained query declaration, file or import
+closure before measured imports. Both checks treat comment-separated import
+specifiers as lexical trivia and reject escaped or out-of-scope literal targets. Any retained query declaration, file or import
 requires the v11 suffix; coherent stripping cannot acquire an older receipt.
 Historical receipts keep their original 51/52, 60 and 67-file scopes. Active
 inventory growth never changes a frozen map or regrades a published observation.
