@@ -25,6 +25,7 @@ function rewriteReport(f) {
     f.raw.rawReplies['collector.ntildePrivateClipboard'] = JSON.stringify(summary); f.write('raw.json', f.raw);
 }
 for (const [label, mutate] of [
+    ['foreign raw target', f => { f.raw.target.id = 'unrelated'; f.write('raw.json', f.raw); }],
     ['lost raw ACK', f => { const trace = JSON.parse(f.raw.rawReplies['extensions.osc52-write']); trace.queries[0].raw = ''; f.raw.rawReplies['extensions.osc52-write'] = JSON.stringify(trace); f.write('raw.json', f.raw); }],
     ['read permission promotion', f => { f.raw.target.permissions = { clipboard: 'allow' }; f.write('raw.json', f.raw); }],
     ['nonempty read reply', f => { f.raw.rawReplies['extensions.osc52-read.callbackResponse'] = '\x1b]52;c;cGVyc29uYWw=\x1b\\'; f.write('raw.json', f.raw); }],
@@ -56,4 +57,12 @@ test('coherent private suffix stripping cannot downgrade the importing graph to 
     f.write('source-snapshot.json', f.manifest); f.context.sourceSnapshotManifestSha256 = hash(readFileSync(join(f.output, 'source-snapshot.json')));
     f.write('context.json', f.context); f.write('ownership-proof.json', f.proof);
     assert.throws(f.finish, /Invalid|outside its versioned scope/);
+}));
+
+test('raw JSON object-key order is not confused with a changed original packet or grader', () => privateClipboardReceiptFixture(f => {
+    const reorder = value => value && typeof value === 'object' ? Array.isArray(value) ? value.map(reorder)
+        : Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, reorder(item)])) : value;
+    for (const id of ['extensions.osc52-clipboard', 'extensions.osc52-write', 'extensions.osc52-read', 'collector.ntildePrivateClipboard'])
+        f.raw.rawReplies[id] = JSON.stringify(reorder(JSON.parse(f.raw.rawReplies[id])));
+    f.write('raw.json', reorder(f.raw)); assert.equal(f.finish().schemaVersion, 12);
 }));

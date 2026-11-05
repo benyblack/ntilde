@@ -26,7 +26,7 @@ export function adaptCollector(source, ownerModulePath, options) {
     const digest = createHash('sha256').update(source).digest('hex');
     if (digest !== upstreamBundleSha256) throw new Error('Unsupported collector bundle: expected terminfo.dev 4.0.0 pinned digest.');
     const privateMode = options !== undefined;
-    if (privateMode && (!options || Object.keys(options).length !== 1
+    if (privateMode && (!options || Array.isArray(options) || !Object.hasOwn(options, 'privateClipboardModulePath') || Object.keys(options).length !== 1
         || typeof options.privateClipboardModulePath !== 'string' || !options.privateClipboardModulePath))
         throw new Error('Invalid private collector options.');
     if (privateMode) source = preparePrivateClipboardSource(source).source;

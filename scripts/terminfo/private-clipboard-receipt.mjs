@@ -3,7 +3,7 @@ import { isDeepStrictEqual as same } from 'node:util';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { snapshotHash } from './agent-observer.mjs';
-import { adaptCollector } from './collector.mjs';
+import { adapterId, upstreamReceipt, adaptCollector } from './collector.mjs';
 import { PRIVATE_CLIPBOARD_UPSTREAM_SHA256 } from './private-clipboard-source.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from './private-clipboard-controller.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './private-clipboard-worker.mjs';
@@ -34,7 +34,11 @@ function rawQuery(sequence, raw, captures) {
     return { sequence, match: [raw, ...captures], reason: 'reply', raw, rawBase64: Buffer.from(raw).toString('base64') };
 }
 /** Original packets and grader projection, independently cross-checked against the admitted App journal. */
-function checkRaw(raw, report, binding) {
+function checkRaw(raw, report, binding, context) {
+    check(raw.schemaVersion === 2 && raw.target?.kind === 'app' && raw.target.id === 'ntilde' && raw.target.version === context.appVersion
+        && raw.probeHash === upstreamReceipt.probeHash && raw.suiteId === upstreamReceipt.probeHash && raw.sourceRevision === upstreamReceipt.collectorRevision
+        && raw.collectorAdapter?.id === adapterId && raw.collectorAdapter.bundleSha256 === context.adapterBundleSha256
+        && raw.collectorAdapter.upstreamBundleSha256 === PRIVATE_CLIPBOARD_UPSTREAM_SHA256);
     check(raw.target?.permissions === null && raw.rawReplies?.['collector.clipboardFixture'] === undefined);
     const expectedSummary = { policy: ownedPrivateClipboardPolicy, profile: 'ntilde-private-app-v1',
         boundary: 'App-private storage only; no native interchange or clipboard-read permission',
@@ -105,5 +109,5 @@ export function checkPrivateClipboardEvidence(output, binding, runId, context, p
     const adapted = adaptCollector(upstream, join(context.sourceSnapshotRoot, 'scripts', 'terminfo', 'ownership.mjs'),
         { privateClipboardModulePath: join(context.sourceSnapshotRoot, 'scripts', 'terminfo', 'private-clipboard-worker.mjs') });
     check(bytes(output, 'collector-adapter.mjs', 2 * 1024 * 1024).equals(Buffer.from(adapted)));
-    checkRaw(json(output, 'raw.json'), derived, binding);
+    checkRaw(json(output, 'raw.json'), derived, binding, context);
 }
