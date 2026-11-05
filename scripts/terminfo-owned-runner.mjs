@@ -8,7 +8,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { basename, dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
 import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
@@ -47,8 +47,9 @@ import { OwnedHistoryObserver } from './terminfo/history-capture.mjs';
 import { historySuiteId } from './terminfo/history-cases.mjs';
 import { buildHistoryReport } from './terminfo/history.mjs';
 import { completeOwnedReceipt } from './terminfo/receipt.mjs';
-import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMode, ownedOutputPolicy } from './terminfo/terminal-output.mjs';
+import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMode } from './terminfo/terminal-output.mjs';
 
+import { abortPrivateClipboardWithFacts, privateClipboardFailureFacts } from './terminfo/private-clipboard.mjs';
 import { OwnedPrivateClipboardObserver } from './terminfo/private-clipboard-capture.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './terminfo/private-clipboard-worker.mjs';
 
@@ -58,8 +59,15 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writeJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
 const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 
+async function retainPrivateClipboardAbort(state, error, phase, retain) {
+    if (!state?.observer) return;
+    await abortPrivateClipboardWithFacts(state, error, phase, createProcessBudget(4000));
+    retain();
+}
+
 /** Preserve only source-known initial App/geometry-budget refusal codes. */
-function ownerFailure(error) {
+function ownerFailure(error, privateFailure = false) {
+    if (privateFailure) return { ok: false, error: 'Owned private clipboard owner refused; see bounded parent failure facts.' };
     return { ok: false, error: error.message,
         ...(['screenDetailsUnavailable', 'resizeGeometryUnavailable', 'savedGeometryUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable', 'inputGeometryUnavailable', 'imageGeometryUnavailable'].includes(error.code) ? { code: error.code } : {}) };
 }
@@ -762,7 +770,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const retainPrivateClipboardJournal = () => {
             if (!privateClipboardState?.observer) return;
             // The expected-only journal contains synthetic seed/nonce values, never arbitrary clipboard data.
-            writeFileSync(join(output, 'private-clipboard-journal.json'), JSON.stringify(privateClipboardState.observer.journal, null, 2) + '\n', { mode: 0o600 });
+            writeFileSync(join(output, 'private-clipboard-journal.json'), JSON.stringify({ ...privateClipboardState.observer.journal, ...(privateClipboardState.failures?.length ? { failures: privateClipboardState.failures, failureFactsTruncated: privateClipboardState.failureFactsTruncated === true } : {}) }, null, 2) + '\n', { mode: 0o600 });
         };
         const attestPrivateClipboard = (state, budget) => {
             const fact = attestQuery(state, budget);
@@ -851,6 +859,49 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 terminalOutput: readOwnedOutputMode(request.tty, budget()) };
             return observeImages(request, budget, ownership);
         };
+        const routeOwnedObservation = async (request, queryTimeout, owner, worker) => {
+            if (request.kind === 'private-clipboard') {
+                const result = await observePrivateClipboard(request, queryTimeout, owner, worker);
+                return { ok: true, ownerPid: app.pid, result };
+            }
+            if (request.kind?.startsWith('queries-')) {
+                const result = await observeQueries(request, queryTimeout, owner, worker);
+                return { ok: true, ownerPid: app.pid, ...result };
+            }
+            if (/^images-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
+                const result = await observeImageRequest(request, queryTimeout, owner, worker);
+                return { ok: true, ownerPid: app.pid, ...result };
+            }
+            if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+                || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
+                || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
+                const result = await observeUntranslatedCells(request, queryTimeout);
+                return { ok: true, ownerPid: app.pid, ...result };
+            }
+            return null;
+        };
+        const controlOwnedWorker = (request, queryTimeout, owner, worker) => {
+            if (request.kind === 'prove') {
+                // Retain the measured proof, never the capability token.
+                retainFirstProof(owner, worker, request.tty, queryTimeout);
+            } else if (request.kind === 'raw-output') {
+                attestOutputMode(request, queryTimeout);
+            } else if (request.kind === 'done') {
+                requireInputCompletion(inputState);
+                requireStaticImageCompletion(staticImageState);
+                requireQueryCompletion(queryState);
+                if (!privateClipboardState?.observer.complete || !privateClipboardEvidence) throw new Error('Private clipboard did not close.');
+                const original = proofs[0].privateClipboard.originalTerminalState;
+                if (readOwnedTerminalState(request.tty, queryTimeout()) !== original) throw new Error('Original private kernel mode was not restored.');
+                proofs[0].privateClipboard.restoredTerminalState = original;
+                proofs[0].privateClipboard.restoredAt = new Date().toISOString();
+                completed = true;
+                resolveDone();
+            } else if (request.kind === 'failed') {
+                rejectDone(new Error(request.error ?? 'Worker failed.'));
+            } else throw new Error('Unknown owner request.');
+            return { ok: true, ownerPid: app.pid, ...(request.kind === 'prove' ? { privateClipboard: true, originalTerminalState: proofs[0].privateClipboard.originalTerminalState } : {}) };
+        };
         const server = createServer(socket => {
             let buffer = '';
             socket.setTimeout(5000, () => socket.destroy());
@@ -879,55 +930,16 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (request.kind === 'private-clipboard') {
-                        const result = await observePrivateClipboard(request, queryTimeout, owner, worker);
-                        socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, result }) + '\n'); return;
-                    }
-                    if (request.kind?.startsWith('queries-')) {
-                        const result = await observeQueries(request, queryTimeout, owner, worker);
-                        socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
-                        return;
-                    }
-                    if (/^images-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
-                        const result = await observeImageRequest(request, queryTimeout, owner, worker);
-                        socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
-                        return;
-                    }
-                    if (/^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
-                        || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
-                        || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
-                        const result = await observeUntranslatedCells(request, queryTimeout);
-                        socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
-                        return;
-                    }
-                    if (request.kind === 'prove') {
-                        // Retain the measured proof, never the capability token.
-                        retainFirstProof(owner, worker, request.tty, queryTimeout);
-                    } else if (request.kind === 'raw-output') {
-                        attestOutputMode(request, queryTimeout);
-                    } else if (request.kind === 'done') {
-                        requireInputCompletion(inputState);
-                        requireStaticImageCompletion(staticImageState);
-                        requireQueryCompletion(queryState);
-                        if (!privateClipboardState?.observer.complete || !privateClipboardEvidence) throw new Error('Private clipboard did not close.');
-                        const original = proofs[0].privateClipboard.originalTerminalState;
-                        if (readOwnedTerminalState(request.tty, queryTimeout()) !== original) throw new Error('Original private kernel mode was not restored.');
-                        proofs[0].privateClipboard.restoredTerminalState = original;
-                        proofs[0].privateClipboard.restoredAt = new Date().toISOString();
-                        completed = true;
-                        resolveDone();
-                    } else if (request.kind === 'failed') {
-                        rejectDone(new Error(request.error ?? 'Worker failed.'));
-                    } else throw new Error('Unknown owner request.');
-                    socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...(request.kind === 'prove' ? { privateClipboard: true, originalTerminalState: proofs[0].privateClipboard.originalTerminalState } : {}) }) + '\n');
+                    const observation = await routeOwnedObservation(request, queryTimeout, owner, worker);
+                    if (observation) { socket.end(JSON.stringify(observation) + '\n'); return; }
+                    socket.end(JSON.stringify(controlOwnedWorker(request, queryTimeout, owner, worker)) + '\n');
                 } catch (error) {
                     if (authenticated && privateClipboardState?.observer) {
                         rejectDone(error);
-                        try { await privateClipboardState.observer.abort(error, createProcessBudget(4000)); } catch {}
-                        retainPrivateClipboardJournal();
+                        await retainPrivateClipboardAbort(privateClipboardState, error, 'authenticatedOwnerDispatch', retainPrivateClipboardJournal);
                     }
                     rejectQueryOwnerRequest({ authenticated, observer: queryState?.observer, error, request, reject: rejectDone });
-                    socket.end(JSON.stringify(ownerFailure(error)) + '\n');
+                    socket.end(JSON.stringify(ownerFailure(error, Boolean(privateClipboardState))) + '\n');
                 }
             });
         });
@@ -996,14 +1008,13 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
-            if (privateClipboardState?.observer && !privateClipboardState.observer.complete) {
-                try { await privateClipboardState.observer.abort(error, createProcessBudget(4000)); } catch {}
-                retainPrivateClipboardJournal();
-            }
+            await retainPrivateClipboardAbort(privateClipboardState, error, 'runFailure', retainPrivateClipboardJournal);
             queryState?.observer?.abort(error);
             retainQueryJournal();
-            writeJson(join(output, 'failure.json'), { error: error.message, at: new Date().toISOString() });
-            throw new Error(`${error.message} Evidence retained in ${output}`);
+            writeJson(join(output, 'failure.json'), { error: privateClipboardState ? 'Owned private clipboard collection failed; see bounded failure facts.' : error.message,
+                ...(privateClipboardState ? { primary: privateClipboardFailureFacts(error), privateClipboardFailures: privateClipboardState.failures ?? [], failureFactsTruncated: privateClipboardState.failureFactsTruncated === true } : {}), at: new Date().toISOString() });
+            const message = privateClipboardState ? 'Owned private clipboard collection failed.' : String(error?.message ?? error);
+            throw new Error(`${message} Evidence retained in ${output}`, { cause: error });
         } finally {
             clearTimeout(deadline);
             preserveScratch = true;

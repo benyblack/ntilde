@@ -148,7 +148,11 @@ export const capturedV12SourceFiles = Object.freeze({
     privateClipboardInput20SourceSha256: "clipboard-agent-registry.cs",
     privateClipboardInput21SourceSha256: "clipboard-agent-protocol.cs",
 });
-export const ownedSourcePath = (root, file) => Object.hasOwn(privateClipboardReferencePaths, file) ? join(root, privateClipboardReferencePaths[file]) : join(root, 'scripts', file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file);
+export function ownedSourcePath(root, file) {
+    if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
+    const relative = file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file;
+    return join(root, 'scripts', relative);
+}
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Literal relative imports must close over the retained fixed scope; never fall back to live sources. */
 export function assertRetainedSourceClosure(directory, inventory) {

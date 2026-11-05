@@ -38,7 +38,7 @@ try {
     let restoreOutput;
     const restore = ownedTerminalRestorer([() => restoreOutput?.(), () => fence.dispose(),
         () => { if (config.privateClipboard === true) restoreOwnedTerminalState(binding.tabTty, binding.originalTerminalState); }]);
-    let run, primary, failed = false;
+    let run, primary, failed = false, restoreFailure, restoreFailed = false;
     try {
         restoreOutput = prepareOwnedOutput(binding.tabTty);
         await requestOwner(config, 'raw-output', { tty: binding.tabTty });
@@ -69,8 +69,10 @@ try {
     } catch (error) { primary = error; failed = true; }
     finally {
         try { restore(); }
-        catch (error) { if (failed) throw new AggregateError([primary, error], 'Owned collection and terminal restoration failed.'); throw error; }
+        catch (error) { restoreFailure = error; restoreFailed = true; }
     }
+    if (failed && restoreFailed) throw new AggregateError([primary, restoreFailure], 'Owned collection and terminal restoration failed.');
+    if (restoreFailed) throw restoreFailure;
     if (failed) throw primary;
     run.collectorAdapter = { id: adapterId, bundleSha256: config.adapterBundleSha256, upstreamBundleSha256: config.upstreamBundleSha256 };
     writeFileSync(join(config.output, 'raw.json'), JSON.stringify(run) + '\n', { flag: 'wx', mode: 0o600 });

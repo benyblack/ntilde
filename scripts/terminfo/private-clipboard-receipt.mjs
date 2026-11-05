@@ -2,7 +2,6 @@ import { lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { isDeepStrictEqual as same } from 'node:util';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { snapshotHash } from './agent-observer.mjs';
 import { adapterId, upstreamReceipt, adaptCollector } from './collector.mjs';
 import { PRIVATE_CLIPBOARD_UPSTREAM_SHA256 } from './private-clipboard-source.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from './private-clipboard-controller.mjs';
@@ -10,7 +9,10 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './pri
 import { buildPrivateClipboardReport, checkPrivateClipboard as check, emptyPrivateClipboardReply } from './private-clipboard.mjs';
 import { privateClipboardOutputPolicy } from './terminal-output.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-function present(path) { try { lstatSync(path); return true; } catch (error) { if (error.code !== 'ENOENT') throw error; return false; } }
+function present(path) { try { lstatSync(path); return true; } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return false;
+} }
 function bytes(output, file, max = 16 * 1024 * 1024) {
     const path = join(output, file), stat = lstatSync(path); check(stat.isFile() && !stat.isSymbolicLink() && stat.size <= max);
     const data = readFileSync(path); check(data.length <= max); return data;

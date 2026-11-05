@@ -100,6 +100,16 @@ const operations = [
     ['read', 1], ['armWrite', 1], ['read', 1], ['restore', 1], ['read', 1],
     ['read', 2], ['seed', 2], ['read', 2], ['restore', 2], ['read', 2], ['read', null], ['close', null],
 ];
+function advancePrivateExpectedState(state, request, runId) {
+    const operation = request.operation;
+    if (operation === 'armWrite' || operation === 'seed') {
+        check(!state.nonces.has(request.value)); state.nonces.add(request.value);
+    }
+    if (operation === 'armWrite') state.pending = request.value;
+    if (operation === 'seed') { state.current = request.value; state.restored = false; }
+    if (operation === 'read' && state.pending) { state.current = state.pending; state.pending = undefined; state.count++; state.restored = false; }
+    if (operation === 'restore') { state.current = 'terminfo-private-seed-' + runId; state.pending = undefined; state.restored = true; }
+}
 function validateController(controller, binding) {
     exact(controller, ['profile', 'boundary', 'runId', 'paneId', 'fixtureId', 'fatal', 'complete', 'completedProbes', 'events', 'bridgeFailed', 'bridgeFinished', 'qualification']);
     check(controller.profile === 'ntilde-private-app-v1' && controller.qualification === 'caller-verifies-binding'
@@ -107,8 +117,7 @@ function validateController(controller, binding) {
     check(controller.runId === binding.runId && controller.paneId === binding.paneId && controller.complete === true
         && controller.fatal === false && controller.bridgeFailed === false && controller.bridgeFinished === true
         && equalData(controller.completedProbes, [...PRIVATE_CLIPBOARD_PROBES]) && controller.events?.length === operations.length);
-    let current = 'terminfo-private-seed-' + binding.runId, count = 0, restored = false, pending;
-    const nonces = new Set();
+    const state = { current: 'terminfo-private-seed-' + binding.runId, count: 0, restored: false, pending: undefined, nonces: new Set() };
     for (const [index, [operation, probe]] of operations.entries()) {
         const event = controller.events[index], request = event.request;
         exact(event, ['index', 'probeId', 'request', 'rpcStarted', 'postVerified', 'result']);
@@ -117,20 +126,14 @@ function validateController(controller, binding) {
             && request.runId === binding.runId && request.paneId === binding.paneId);
         validatePrivateClipboardRequest(request);
         if (operation !== 'begin') check(request.fixtureId === controller.fixtureId);
-        if (operation === 'armWrite' || operation === 'seed') {
-            check(!nonces.has(request.value)); nonces.add(request.value);
-            if (operation === 'armWrite') pending = request.value;
-            else { current = request.value; restored = false; }
-        }
-        if (operation === 'read' && pending) { current = pending; pending = undefined; count++; restored = false; }
-        if (operation === 'restore') { current = 'terminfo-private-seed-' + binding.runId; pending = undefined; restored = true; }
+        advancePrivateExpectedState(state, request, binding.runId);
         const result = validatePrivateClipboardResult(event.result, request);
         check(result.fixtureId === controller.fixtureId && result.state === (operation === 'close' ? 'closed' : 'active')
-            && result.complete === (operation === 'close') && result.acceptedWrites === count
-            && result.restored === restored && result.valueSha256 === hash(current));
-        if (operation === 'read') check(result.value === current);
+            && result.complete === (operation === 'close') && result.acceptedWrites === state.count
+            && result.restored === state.restored && result.valueSha256 === hash(state.current));
+        if (operation === 'read') check(result.value === state.current);
     }
-    check(count === 2 && nonces.size === 4 && restored && !pending);
+    check(state.count === 2 && state.nonces.size === 4 && state.restored && !state.pending);
 }
 function validateSample(sample, binding, original, clock) {
     exact(sample, ['beforeOwnership', 'screen', 'sha256', 'afterOwnership']);
@@ -164,4 +167,66 @@ export function buildPrivateClipboardReport(input) {
     return { schemaVersion: 1, suiteId: ownedPrivateClipboardSuiteId, policy: ownedPrivateClipboardPolicy, runId: binding.runId, binding,
         scope: 'App-private synthetic storage only. Original callback results remain provisional until final raw-trace verification; no OS clipboard interchange or read permission. Exposed state and point-in-time ownership only; ps lstart UTC second-resolution birth is corroboration, not a held PID identity/lease. Reverse-video and hidden session/parser state are unobserved.',
         unobservedState: ['reverseVideo'], observations, controller, frames, callbackResults };
+}
+
+const privateFailureReasons = new Set([
+    'Private clipboard response timed out; do not retry.', 'Private clipboard transport failed; do not retry.',
+    'Invalid private clipboard response; do not retry.', 'Private clipboard state/hash/count mismatch.',
+    'Missing private clipboard readback.', 'Private clipboard binding changed.',
+    'Private clipboard event deadline exhausted.', 'Private clipboard lifecycle cannot resume.',
+]);
+function failureText(value) {
+    const prefix = value.slice(0, 8192);
+    const fact = { messageSha256: hash(prefix), messageCodeUnits: value.length, messageTruncated: value.length > 8192 };
+    if (value.length <= 256 && privateFailureReasons.has(value)) fact.reason = value;
+    return fact;
+}
+function ownFailureValue(value, key) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor && Object.hasOwn(descriptor, 'value')) return { present: true, value: descriptor.value };
+    return { present: false };
+}
+function failureChildren(values, inspect, depth) {
+    const length = ownFailureValue(values, 'length').value, errors = [];
+    for (let index = 0; index < Math.min(length, 8); index++) {
+        const child = ownFailureValue(values, String(index));
+        errors.push(child.present ? inspect(child.value, depth + 1) : { kind: 'unavailable' });
+    }
+    return { errors, errorsTruncated: length > 8 };
+}
+/** Privacy-safe failure correlation only. Never call arbitrary getters or stringify opaque values. */
+export function privateClipboardFailureFacts(error) {
+    let nodes = 0;
+    const inspect = (value, depth) => {
+        if (++nodes > 32 || depth > 6) return { kind: 'limit' };
+        if (typeof value === 'string') return { kind: 'rejection', type: 'string', ...failureText(value) };
+        if (value === null) return { kind: 'rejection', type: 'null' };
+        if (typeof value !== 'object') return { kind: 'rejection', type: typeof value };
+        const message = ownFailureValue(value, 'message'), children = ownFailureValue(value, 'errors');
+        const fact = { kind: 'error' };
+        if (message.present && typeof message.value === 'string') Object.assign(fact, failureText(message.value));
+        else fact.messageUnavailable = true;
+        if (children.present && Array.isArray(children.value)) {
+            fact.kind = 'aggregate';
+            Object.assign(fact, failureChildren(children.value, inspect, depth));
+        }
+        const cause = ownFailureValue(value, 'cause');
+        if (cause.present) fact.cause = inspect(cause.value, depth + 1);
+        return fact;
+    };
+    try { return inspect(error, 0); }
+    catch { return { kind: 'opaque', inspectionFailed: true }; }
+}
+/** Record original and distinct abort outcomes even if cleanup rejects. No outcome is replaced by formatting. */
+export async function abortPrivateClipboardWithFacts(state, error, phase, budget) {
+    const failure = { phase, primary: privateClipboardFailureFacts(error), abort: 'settled' };
+    try { await state.observer.abort(error, budget); }
+    catch (error_) {
+        failure.abort = 'rejected';
+        if (error_ !== error) failure.cleanup = privateClipboardFailureFacts(error_);
+        else failure.samePrimary = true;
+    }
+    state.failures ??= [];
+    if (state.failures.length < 8) state.failures.push(failure);
+    else state.failureFactsTruncated = true;
 }

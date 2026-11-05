@@ -7,7 +7,7 @@ WORKFLOW = Path(__file__).resolve().parents[2] / '.github/workflows/ci.yml'
 TESTS = ['ownership', 'private-clipboard-request', 'private-clipboard-source',
          'private-clipboard-controller', 'private-clipboard-bridge',
          'private-clipboard-worker', 'private-clipboard-collector',
-         'private-clipboard-capture', 'private-clipboard-receipt']
+         'private-clipboard-capture', 'private-clipboard-errors', 'private-clipboard-receipt']
 
 
 def jobs(text):

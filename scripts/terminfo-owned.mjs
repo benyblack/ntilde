@@ -30,7 +30,11 @@ const privateClipboardReferencePaths = Object.freeze({
     "clipboard-agent-registry.cs": "src/Ntilde.App/AgentHost/AgentSessionRegistry.cs",
     "clipboard-agent-protocol.cs": "src/Ntilde.AgentHost.Contracts/AgentHostProtocol.cs"
 });
-const pathFor = (root, file) => Object.hasOwn(privateClipboardReferencePaths, file) ? join(root, privateClipboardReferencePaths[file]) : join(root, 'scripts', file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file);
+function pathFor(root, file) {
+    if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
+    const relative = file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file;
+    return join(root, 'scripts', relative);
+}
 const policy = 'readonly-owned-source-graph-v5';
 function setDirectoryModes(root, mode) {
     for (const entry of readdirSync(root, { withFileTypes: true })) if (entry.isDirectory()) setDirectoryModes(join(root, entry.name), mode);

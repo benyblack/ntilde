@@ -55,6 +55,10 @@ The private endpoint and singleton visible pane/profile are independently read
 before and after each action. Lost/changed facts, partial controls, unconsumed
 promises, duplicate callbacks, stale leases, restore failures and incomplete
 close remain fatal rather than becoming an unavailable marker or a retry.
+Original and separate abort/restoration failures remain in the failed journal.
+Bounded type, message-prefix digest/length and aggregate/cause facts preserve
+failure correlation without invoking exception getters or retaining arbitrary
+exception text, clipboard values or input bytes. Truncation is explicit.
 
 Only the fixed seed and source-known fresh nonce values enter the journal.
 Callback results are admitted as provisional expected-only objects; the original

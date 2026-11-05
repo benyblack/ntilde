@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { upstreamBundleSha256 } from '../collector.mjs';
 import { historicalArchive } from './captured-sources.mjs';
 export const archived = historicalArchive('2026-11-05-query-observations').get('collector-adapter.mjs').toString();
+function recoverOriginal(archived) {
 let original = archived.slice(archived.indexOf('\n') + 1, archived.lastIndexOf('\n// This capability is registered'));
 original = original.replace('// Upstream CLI shebang removed for module import.', '#!/usr/bin/env bun')
     .replace('// CLI dispatch is disabled in the local adapter module.', 'program.parse();')
@@ -11,4 +12,6 @@ original = original.replace('// Upstream CLI shebang removed for module import.'
         '  let ownedTerminal;\n  if (clipboardReceipt && options.terminalAppOwner)');
 original = original.slice(0, -1); // The adapter adds one separator newline before its owner suffix.
 assert.equal(createHash('sha256').update(original).digest('hex'), upstreamBundleSha256);
-export { original };
+return original;
+}
+export const original = recoverOriginal(archived);

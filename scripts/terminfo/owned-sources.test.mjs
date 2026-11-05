@@ -84,7 +84,7 @@ test('private v12 fixed103 source scope includes all selected nonexecuted refere
     assert.equal(Object.keys(capturedV11SourceFiles).length, 74);
     assert.equal(Object.keys(privateClipboardReferencePaths).length, 21);
     const bootstrap = readFileSync(new URL('../terminfo-owned.mjs', import.meta.url), 'utf8');
-    const literal = bootstrap.slice(bootstrap.indexOf('Object.freeze(') + 'Object.freeze('.length, bootstrap.indexOf(');\nconst pathFor'));
+    const literal = bootstrap.slice(bootstrap.indexOf('Object.freeze(') + 'Object.freeze('.length, bootstrap.indexOf(');\nfunction pathFor'));
     assert.deepEqual(JSON.parse(literal), privateClipboardReferencePaths);
     assert.ok(Object.values(privateClipboardReferencePaths).every(path => path.startsWith('src/') && path.endsWith('.cs')));
 });

@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import * as model from './private-clipboard.mjs';
+const hash = value => createHash('sha256').update(value).digest('hex');
+const source = readFileSync(new URL('../terminfo-owned-runner.mjs', import.meta.url), 'utf8');
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+for (const phase of ['authenticatedOwnerDispatch', 'runFailure']) test('actual parent ' + phase + ' catch retains primary plus abort/restoration failure', async () => {
+    const primary = new Error('operation failed'), restore = new Error('restore failed');
+    const combined = new AggregateError([primary, restore], 'operation and restoration failed');
+    const state = { observer: { complete: false, abort: async () => { throw combined; } } };
+    const helperStart = source.indexOf('async function retainPrivateClipboardAbort(');
+    const helperEnd = source.indexOf('/** Preserve only', helperStart);
+    assert.ok(helperStart > 0 && helperEnd > helperStart);
+    const call = "await retainPrivateClipboardAbort(privateClipboardState, error, '" + phase + "', retainPrivateClipboardJournal);";
+    assert.ok(source.includes(call), 'actual parent catch must invoke the tested retention path');
+    let retained;
+    const run = new AsyncFunction('privateClipboardState', 'error', 'createProcessBudget', 'retainPrivateClipboardJournal',
+        'abortPrivateClipboardWithFacts', source.slice(helperStart, helperEnd) + call);
+    await run(state, primary, () => () => 4000, () => { retained = structuredClone(state.failures); }, model.abortPrivateClipboardWithFacts);
+    assert.equal(retained?.[0]?.phase, phase);
+    assert.equal(retained[0].primary.messageSha256, hash(primary.message));
+    assert.equal(retained[0].cleanup.kind, 'aggregate');
+    assert.equal(retained[0].cleanup.errors[1].messageSha256, hash(restore.message));
+});
+
+test('bounded parent facts preserve falsy/undefined children without invoking arbitrary error getters or retaining their text', () => {
+    const secret = 'PERSONAL CLIPBOARD OR INPUT VALUE'; let invoked = false;
+    const accessor = {};
+    for (const key of ['message', 'cause', 'errors']) Object.defineProperty(accessor, key, { get() { invoked = true; throw Error(secret); } });
+    const opaque = model.privateClipboardFailureFacts(accessor);
+    assert.equal(invoked, false); assert.equal(opaque.messageUnavailable, true);
+    const aggregate = new AggregateError([undefined, null, false, 0, '', new Error(secret)], 'combined');
+    aggregate.cause = undefined;
+    const fact = model.privateClipboardFailureFacts(aggregate);
+    assert.deepEqual(fact.errors.slice(0, 4).map(value => value.type), ['undefined', 'null', 'boolean', 'number']);
+    assert.equal(fact.cause.type, 'undefined'); assert.equal(fact.errors[5].messageSha256, hash(secret));
+    assert.equal(JSON.stringify(fact).includes(secret), false);
+    const cyclic = new AggregateError([], 'cycle'); cyclic.errors.push(cyclic);
+    assert.ok(JSON.stringify(model.privateClipboardFailureFacts(cyclic)).length < 10000);
+    const huge = model.privateClipboardFailureFacts(new Error('x'.repeat(50000)));
+    assert.equal(huge.messageTruncated, true); assert.equal(huge.messageCodeUnits, 50000);
+    assert.equal(huge.messageSha256, hash('x'.repeat(8192)));
+});
+test('a rejection identical to the primary remains explicit and failure-fact retention is bounded', async () => {
+    const state = { observer: { abort: async error => { throw error; } } };
+    for (let index = 0; index < 20; index++) await model.abortPrivateClipboardWithFacts(state, undefined, 'runFailure', () => 4000);
+    assert.equal(state.failures.length, 8); assert.equal(state.failureFactsTruncated, true); assert.equal(state.failures[0].primary.type, 'undefined');
+    assert.equal(state.failures[0].samePrimary, true); assert.equal(state.failures[0].abort, 'rejected');
+});

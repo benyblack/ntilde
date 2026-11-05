@@ -4,7 +4,7 @@ import { privateClipboardNonce, privateClipboardRequest } from './private-clipbo
 import { observerEndpoint, snapshotHash } from './agent-observer.mjs';
 import { createProcessBudget } from './runtime.mjs';
 import { buildPrivateClipboardReport, checkPrivateClipboard, privateClipboardBinding, privateClipboardCallbackResult,
-    privateClipboardData, validatePrivateClipboardOwnership } from './private-clipboard.mjs';
+    privateClipboardData, privateClipboardFailureFacts, validatePrivateClipboardOwnership } from './private-clipboard.mjs';
 import { queryScreen } from './queries.mjs';
 const check = checkPrivateClipboard;
 
@@ -58,49 +58,55 @@ export class OwnedPrivateClipboardObserver {
     #validateFrame(input) {
         const frame = privateClipboardData(input), fields = { start: ['kind', 'probeId'], arm: ['kind', 'value'],
             seed: ['kind', 'value'], read: ['kind'], complete: ['kind', 'callbackResult'], finish: ['kind'], abort: ['kind'] }[frame?.kind];
-        check(fields && Object.keys(frame).length === fields.length && fields.every(key => Object.hasOwn(frame, key)));
+        check(fields?.length && Object.keys(frame).length === fields.length && fields.every(key => Object.hasOwn(frame, key)));
         if (frame.kind === 'start') check(frame.probeId === PRIVATE_CLIPBOARD_PROBES[this.#callbacks.length]);
         if (frame.kind === 'arm' || frame.kind === 'seed') check(privateClipboardNonce(frame.value));
         return frame;
     }
 
-    #fail(error) { if (!this.#failed) this.#failure = error; this.#failed = true; }
+    #fail(error) {
+        if (!this.#failed) this.#failure = error;
+        this.#failed = true;
+    }
 
-    async handle(input, budget) {
-        if (this.#busy) {
-            const error = new Error('Overlapping owned private clipboard owner frame.');
-            this.#fail(error);
-            try { await this.#bridge.abort(error); } catch {}
-            throw error;
+    async #rejectOverlap() {
+        const error = new Error('Overlapping owned private clipboard owner frame.');
+        this.#fail(error);
+        try { await this.#bridge.abort(error); } catch {}
+        throw error;
+    }
+    async #requestedAbort() {
+        const requested = new Error('Private clipboard callback requested abort.');
+        this.#fail(requested);
+        try { await this.#bridge.abort(requested); }
+        catch (error) { if (error !== requested) throw error; }
+        return null; // Only the exact original requested-abort reason can be suppressed.
+    }
+    async #dispatchFrame(frame) {
+        if (frame.kind === 'abort') return this.#requestedAbort();
+        let callback;
+        if (frame.kind === 'complete') {
+            const probeId = PRIVATE_CLIPBOARD_PROBES[this.#callbacks.length];
+            callback = { probeId, result: privateClipboardCallbackResult(frame.callbackResult, probeId, this.#bridge.evidence().events) };
         }
+        const result = await this.#bridge.handle(frame.kind === 'complete' ? { kind: 'complete' } : frame);
+        if (callback) this.#callbacks.push(callback); // Independent restoration has already completed.
+        if (frame.kind === 'finish') {
+            this.#report = buildPrivateClipboardReport({ binding: this.#binding, controller: result,
+                frames: this.#frames, callbackResults: this.#callbacks });
+            this.#finished = true;
+        }
+        return result;
+    }
+    async handle(input, budget) {
+        if (this.#busy) return this.#rejectOverlap();
         check(!this.#finished && !this.#failed && typeof budget === 'function');
         this.#busy = true; this.#activeBudget = budget;
-        try {
-            const frame = this.#validateFrame(input);
-            if (frame.kind === 'abort') {
-                const requested = new Error('Private clipboard callback requested abort.');
-                this.#fail(requested);
-                try { await this.#bridge.abort(requested); }
-                catch (error) { if (error !== requested) throw error; }
-                return null; // Only the exact original requested-abort reason can be suppressed.
-            }
-            let callback;
-            if (frame.kind === 'complete') {
-                const probeId = PRIVATE_CLIPBOARD_PROBES[this.#callbacks.length];
-                callback = { probeId, result: privateClipboardCallbackResult(frame.callbackResult, probeId, this.#bridge.evidence().events) };
-            }
-            const result = await this.#bridge.handle(frame.kind === 'complete' ? { kind: 'complete' } : frame);
-            if (callback) this.#callbacks.push(callback); // Independent restoration has already completed.
-            if (frame.kind === 'finish') {
-                this.#report = buildPrivateClipboardReport({ binding: this.#binding, controller: result,
-                    frames: this.#frames, callbackResults: this.#callbacks });
-                this.#finished = true;
-            }
-            return result;
-        } catch (error) {
+        try { return await this.#dispatchFrame(this.#validateFrame(input)); }
+        catch (error) {
             this.#fail(error);
             try { await this.#bridge.abort(error); }
-            catch (cleanup) { if (cleanup !== error) throw new AggregateError([error, cleanup], 'Private clipboard operation and cleanup failed.'); }
+            catch (error_) { if (error_ !== error) throw new AggregateError([error, error_], 'Private clipboard operation and cleanup failed.'); }
             throw error;
         } finally { this.#busy = false; }
     }
@@ -116,7 +122,8 @@ export class OwnedPrivateClipboardObserver {
     get complete() { return this.#finished && !this.#failed; }
     get journal() {
         return privateClipboardData({ binding: this.#binding, controller: this.#bridge.evidence(),
-            frames: this.#frames, callbackResults: this.#callbacks, failed: this.#failed, complete: this.complete });
+            frames: this.#frames, callbackResults: this.#callbacks, failed: this.#failed, complete: this.complete,
+            ...(this.#failed ? { failure: privateClipboardFailureFacts(this.#failure) } : {}) });
     }
     get report() { check(this.complete); return privateClipboardData(this.#report); }
 }

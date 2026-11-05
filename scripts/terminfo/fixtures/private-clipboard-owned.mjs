@@ -60,8 +60,7 @@ export async function privateClipboardFixture(options = {}) {
         + String.raw`const osc52Reply = /\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/;` + '\n';
     const { liveClipboardProbe } = await import('data:text/javascript;base64,'
         + Buffer.from('// fixture '+(++fixtureSerial)+'\n'+controls + preparePrivateClipboardCallback(stockClipboardCallback) + '\nexport { liveClipboardProbe };').toString('base64'));
-    api.run = async () => {
-        for (const [index, kind] of ['roundtrip', 'write', 'read'].entries()) {
+    const runProbe = async (index, kind) => {
             const result = await liveClipboardProbe({ withClipboardFixture: work => api.worker.withClipboardFixture(PRIVATE_CLIPBOARD_PROBES[index], work),
                 write: packet => {
                     api.packets.push(packet);
@@ -72,11 +71,15 @@ export async function privateClipboardFixture(options = {}) {
                 queryCursorPosition: async () => ({ row: api.screen.cursorRow + 1, col: api.screen.cursorCol + 1 }),
                 queryOutcome: async packet => {
                     api.queryTraces.push(packet);
-                    const raw = '\x1b]52;c;\x1b\\'; return { raw, reason: 'reply', match: raw.match(/\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/) };
+                    const raw = '\x1b]52;c;\x1b\\'; return { raw, reason: 'reply', match: new RegExp(String.raw`\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)`).exec(raw) };
                 },
             }, kind);
             api.callbackResults.push(result);
-        }
+    };
+    api.run = async () => {
+        await runProbe(0, 'roundtrip');
+        await runProbe(1, 'write');
+        await runProbe(2, 'read');
         await api.worker.finish();
         return api.observer.report;
     };

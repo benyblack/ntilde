@@ -62,7 +62,10 @@ export function restoreOwnedTerminalState(tty, original, timeoutMs = 1000, run =
 export function ownedTerminalRestorer(restores) {
     let called = false, failure;
     return () => {
-        if (called) { if (failure) throw failure; return; }
+        if (called) {
+            if (failure) throw failure;
+            return;
+        }
         called = true; const errors = [];
         for (const restore of restores) { try { restore(); } catch (error) { errors.push(error); } }
         if (errors.length) { failure = new AggregateError(errors, 'Private PTY restoration failed.'); throw failure; }
@@ -90,6 +93,9 @@ function settlePendingInput(tty) {
         } catch (error) { if (error?.code !== 'EAGAIN' && error?.code !== 'EWOULDBLOCK') throw error; }
     } catch (error) { primary = error; failed = true; }
     try { closeSync(fd); }
-    catch (error) { if (failed) throw new AggregateError([primary, error], 'Private PTY input settlement and close failed.'); throw error; }
+    catch (error) {
+        if (failed) throw new AggregateError([primary, error], 'Private PTY input settlement and close failed.');
+        throw error;
+    }
     if (failed) throw primary;
 }
