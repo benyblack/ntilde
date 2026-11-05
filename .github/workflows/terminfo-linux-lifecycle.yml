@@ -1,0 +1,38 @@
+name: Linux pidfd lifecycle foundation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/terminfo-linux-lifecycle.yml'
+      - 'scripts/terminfo/linux-lifecycle/**'
+      - 'scripts/terminfo/linux-owned-lifecycle*.mjs'
+      - 'scripts/terminfo/linux-process-provider.mjs'
+      - 'scripts/terminfo/linux-process-core.mjs'
+      - 'scripts/terminfo/linux-owned-output-core.mjs'
+      - 'docs/qa/linux-owned-lifecycle.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Deterministic identity, deadline and bounded transport regressions
+        run: node --test scripts/terminfo/linux-owned-lifecycle.test.mjs scripts/terminfo/linux-owned-lifecycle-platform.test.mjs
+      - name: Own private-PTY children, resistant signals and zombie distinction
+        run: node scripts/terminfo/linux-owned-lifecycle-selftest.mjs linux-pidfd-lifecycle-foundation.json
+      - name: Fixed helper kernel and expiry controls
+        run: python3 -I -S -B scripts/terminfo/linux-lifecycle/helper_tests.py
+      - name: Retain explicitly limited lifecycle evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-pidfd-lifecycle-foundation-only
+          path: linux-pidfd-lifecycle-foundation.json
+          if-no-files-found: error
