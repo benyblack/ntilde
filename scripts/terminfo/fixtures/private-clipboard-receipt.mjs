@@ -15,6 +15,7 @@ import { privateClipboardOutputPolicy } from '../terminal-output.mjs';
 import { emptyPrivateClipboardReply } from '../private-clipboard.mjs';
 import { completeOwnedReceipt } from '../receipt.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+/** Clone immutable v11 data into a private temporary directory, add a synthetic 17th suffix and always remove the copy. */
 export async function privateClipboardReceiptFixture(action) {
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     const write = (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');

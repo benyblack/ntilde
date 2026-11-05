@@ -15,6 +15,7 @@ const baseBindingKeys = ['runId', 'ownerPid', 'workerPid', 'uid', 'appExecutable
 /** Copy only bounded plain data; accessors, prototypes and unbounded strings cannot enter a retained journal. */
 export function privateClipboardData(input) {
     let nodes = 0, bytes = 0;
+    /** Copy a dense/plain subtree within the shared depth 32, node 250k and 16 MiB budgets; reject accessors. */
     const copy = (value, depth) => {
         check(++nodes <= 250000 && depth <= 32);
         if (value === null || typeof value === 'boolean') return value;
@@ -42,15 +43,18 @@ export function privateClipboardData(input) {
     };
     return copy(input, 0);
 }
+/** Require the complete own-key shape after plain-data admission; unknown fields never disappear. */
 function exact(value, keys) {
     check(value && !Array.isArray(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key)));
 }
+/** Compare admitted plain data structurally without mistaking JSON object-key order for a value change. */
 function equalData(actual, expected) {
     if (actual === null || typeof actual !== 'object' || expected === null || typeof expected !== 'object') return actual === expected;
     if (Array.isArray(actual) !== Array.isArray(expected)) return false;
     const keys = Object.keys(expected);
     return Object.keys(actual).length === keys.length && keys.every(key => Object.hasOwn(actual, key) && equalData(actual[key], expected[key]));
 }
+/** Copy exactly 15 static run/process/PTY/source facts. Birth strings corroborate identity; they grant no lease. */
 export function privateClipboardBinding(input) {
     const b = privateClipboardData(input);
     exact(b, [...baseBindingKeys, 'sourceSnapshotManifestSha256', 'executableSha256', 'assemblySha256', 'appBirth', 'workerBirth', 'outputDevice']);
@@ -63,6 +67,7 @@ export function privateClipboardBinding(input) {
     return Object.freeze({ ...process, sourceSnapshotManifestSha256: b.sourceSnapshotManifestSha256, executableSha256: b.executableSha256,
         assemblySha256: b.assemblySha256, appBirth: b.appBirth, workerBirth: b.workerBirth, outputDevice: b.outputDevice });
 }
+/** Validate fresh parent-read lineage, markers, hashes, device and untranslated geometry; perform no OS reads. */
 export function validatePrivateClipboardOwnership(input, binding, screen) {
     exact(input, ['app', 'worker', 'tty', 'at', 'appCommand', 'workerCommand', 'terminalOutput', 'executableSha256', 'assemblySha256', 'sourceSnapshotManifestSha256', 'outputDevice']);
     const fact = validateQueryOwnership(input, binding, screen), words = fact.appCommand.split(/\s+/);
@@ -100,6 +105,7 @@ const operations = [
     ['read', 1], ['armWrite', 1], ['read', 1], ['restore', 1], ['read', 1],
     ['read', 2], ['seed', 2], ['read', 2], ['restore', 2], ['read', 2], ['read', null], ['close', null],
 ];
+/** Replay only fixed seed/fresh nonce transitions from the journal; this never writes a clipboard. */
 function advancePrivateExpectedState(state, request, runId) {
     const operation = request.operation;
     if (operation === 'armWrite' || operation === 'seed') {
@@ -110,6 +116,7 @@ function advancePrivateExpectedState(state, request, runId) {
     if (operation === 'read' && state.pending) { state.current = state.pending; state.pending = undefined; state.count++; state.restored = false; }
     if (operation === 'restore') { state.current = 'terminfo-private-seed-' + runId; state.pending = undefined; state.restored = true; }
 }
+/** Require the exact 22-operation trajectory, four distinct nonces, two accepted writes and restored final close. */
 function validateController(controller, binding) {
     exact(controller, ['profile', 'boundary', 'runId', 'paneId', 'fixtureId', 'fatal', 'complete', 'completedProbes', 'events', 'bridgeFailed', 'bridgeFinished', 'qualification']);
     check(controller.profile === 'ntilde-private-app-v1' && controller.qualification === 'caller-verifies-binding'
@@ -135,6 +142,7 @@ function validateController(controller, binding) {
     }
     check(state.count === 2 && state.nonces.size === 4 && state.restored && !state.pending);
 }
+/** Check complete exposed state/hash plus chronological paired ownership against the original processes. */
 function validateSample(sample, binding, original, clock) {
     exact(sample, ['beforeOwnership', 'screen', 'sha256', 'afterOwnership']);
     const screen = queryScreen(sample.screen); check(equalData(sample.screen, screen) && sample.sha256 === snapshotHash(screen));
@@ -145,6 +153,7 @@ function validateSample(sample, binding, original, clock) {
     }
     return screen;
 }
+/** Derive the scoped report only after all 44 state captures, original callback results and final close agree. */
 export function buildPrivateClipboardReport(input) {
     const data = privateClipboardData(input); exact(data, ['binding', 'controller', 'frames', 'callbackResults']);
     const { binding: supplied, controller, frames, callbackResults } = data, binding = privateClipboardBinding(supplied);
@@ -175,17 +184,20 @@ const privateFailureReasons = new Set([
     'Missing private clipboard readback.', 'Private clipboard binding changed.',
     'Private clipboard event deadline exhausted.', 'Private clipboard lifecycle cannot resume.',
 ]);
+/** Hash at most 8192 code units, preserve length/truncation, and expose plaintext only for closed generic reasons. */
 function failureText(value) {
     const prefix = value.slice(0, 8192);
     const fact = { messageSha256: hash(prefix), messageCodeUnits: value.length, messageTruncated: value.length > 8192 };
     if (value.length <= 256 && privateFailureReasons.has(value)) fact.reason = value;
     return fact;
 }
+/** Inspect an own data descriptor only; an exception getter is never invoked. */
 function ownFailureValue(value, key) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (descriptor && Object.hasOwn(descriptor, 'value')) return { present: true, value: descriptor.value };
     return { present: false };
 }
+/** Retain at most eight indexed reasons; the supplied inspector enforces the shared depth/node budget. */
 function failureChildren(values, inspect, depth) {
     const length = ownFailureValue(values, 'length').value, errors = [];
     for (let index = 0; index < Math.min(length, 8); index++) {
@@ -197,6 +209,7 @@ function failureChildren(values, inspect, depth) {
 /** Privacy-safe failure correlation only. Never call arbitrary getters or stringify opaque values. */
 export function privateClipboardFailureFacts(error) {
     let nodes = 0;
+    /** Preserve rejection presence and bounded error/cause facts without coercing opaque objects. */
     const inspect = (value, depth) => {
         if (++nodes > 32 || depth > 6) return { kind: 'limit' };
         if (typeof value === 'string') return { kind: 'rejection', type: 'string', ...failureText(value) };

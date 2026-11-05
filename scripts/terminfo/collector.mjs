@@ -22,6 +22,7 @@ export function validateCollectorReceipt(source, receipt) {
     }
 }
 
+/** Derive the pinned bundle without executing it. Default bytes stay stable; explicit private mode adds scoped controls. */
 export function adaptCollector(source, ownerModulePath, options) {
     const digest = createHash('sha256').update(source).digest('hex');
     if (digest !== upstreamBundleSha256) throw new Error('Unsupported collector bundle: expected terminfo.dev 4.0.0 pinned digest.');
@@ -81,13 +82,26 @@ export async function collectNtildeRun(assertion) {
         + '  const owner = {\n    clipboard,\n    geometryAtGrant,');
     replacePrivate('    async dispose() { verifiedTerminalOwners.delete(owner); }',
         '    async dispose() { try { await clipboard.finish(); } finally { verifiedTerminalOwners.delete(owner); } }');
+    replacePrivate('  const clipboard = ownedTerminal?.clipboard;',
+        '  const clipboard = options.ntildeOwner ? undefined : ownedTerminal?.clipboard;');
+    replacePrivate('  let batch;\n  try {',
+        '  let batch, ntildeCollectionError, ntildeFinalizeError;\n  let ntildeCollectionFailed = false, ntildeFinalizeFailed = false;\n  try {');
+    replacePrivate('  } finally {\n    await ownedTerminal?.dispose();\n  }',
+        '  } catch (error) { ntildeCollectionError = error; ntildeCollectionFailed = true; } finally {\n'
+        + '    try { await ownedTerminal?.dispose(); } catch (error) { ntildeFinalizeError = error; ntildeFinalizeFailed = true; }\n'
+        + '  }\n'
+        + '  if (ntildeCollectionFailed && ntildeFinalizeFailed) throw new AggregateError([ntildeCollectionError, ntildeFinalizeError], "Ntilde collection and private finalization failed.");\n'
+        + '  if (ntildeCollectionFailed) throw ntildeCollectionError;\n'
+        + '  if (ntildeFinalizeFailed) throw ntildeFinalizeError;');
     replacePrivate('    if (options.ownedTerminal?.clipboard && options.ownedTerminal.clipboard.profile !== "default") {',
         '    if (options.ownedTerminal?.clipboard && options.ownedTerminal.clipboard.profile !== "default"\n'
-        + '        && ["extensions.osc52-clipboard", "extensions.osc52-write", "extensions.osc52-read"].includes(probe.id)) {');
+        + '        && (options.ownedTerminal.clipboard.profile !== "ntilde-private-app-v1" || ["extensions.osc52-clipboard", "extensions.osc52-write", "extensions.osc52-read"].includes(probe.id))) {');
     replacePrivate('context.withClipboardFixture = (work) => clipboard.withClipboardFixture(work, (event) => clipboardEvents.push(event));',
-        'context.withClipboardFixture = (work) => clipboard.withClipboardFixture(probe.id, work, (event) => clipboardEvents.push(event));');
+        'context.withClipboardFixture = (work) => clipboard.profile === "ntilde-private-app-v1"\n'
+        + '        ? clipboard.withClipboardFixture(probe.id, work, (event) => clipboardEvents.push(event))\n'
+        + '        : clipboard.withClipboardFixture(work, (event) => clipboardEvents.push(event));');
     replacePrivate('    batch.rawReplies["collector.terminalOwnership"] = ownedTerminal.summary;',
         '    batch.rawReplies["collector.terminalOwnership"] = ownedTerminal.summary;\n'
-        + '  if (ownedTerminal?.clipboard) batch.rawReplies["collector.ntildePrivateClipboard"] = ownedTerminal.clipboard.summary;');
+        + '  if (options.ntildeOwner && ownedTerminal?.clipboard) batch.rawReplies["collector.ntildePrivateClipboard"] = ownedTerminal.clipboard.summary;');
     return adapted;
 }

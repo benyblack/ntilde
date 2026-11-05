@@ -31,6 +31,10 @@ awaited parent preparation before the original callback's synchronous OSC 52
 write. Original UUID nonces, packets, cursor query and grader are preserved.
 The finalizer reproduces the complete derived bundle from that pinned original
 and retained source-root paths rather than trusting a derived digest alone.
+The explicit Ntilde-owned branch keeps upstream's native clipboard/provenance
+variable separate, leaving native permissions null. Private finalization and
+process cleanup aggregate failures with the original collection/run cause;
+teardown still runs when collection fails.
 
 ## Parent transaction and independent controls
 

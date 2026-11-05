@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { upstreamBundleSha256 } from '../collector.mjs';
 import { historicalArchive } from './captured-sources.mjs';
 export const archived = historicalArchive('2026-11-05-query-observations').get('collector-adapter.mjs').toString();
+/** Recover data-only original bytes, reversing only known adapter seams; the independent AA5f digest is authority. */
 function recoverOriginal(archived) {
 let original = archived.slice(archived.indexOf('\n') + 1, archived.lastIndexOf('\n// This capability is registered'));
 original = original.replace('// Upstream CLI shebang removed for module import.', '#!/usr/bin/env bun')

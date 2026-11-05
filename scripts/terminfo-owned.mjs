@@ -30,6 +30,7 @@ const privateClipboardReferencePaths = Object.freeze({
     "clipboard-agent-registry.cs": "src/Ntilde.App/AgentHost/AgentSessionRegistry.cs",
     "clipboard-agent-protocol.cs": "src/Ntilde.AgentHost.Contracts/AgentHostProtocol.cs"
 });
+/** Map admitted reference aliases or established script basenames without reading or executing them. */
 function pathFor(root, file) {
     if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
     const relative = file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file;

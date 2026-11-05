@@ -22,6 +22,7 @@ import { collectHistory } from './history-cases.mjs';
 import { collectColors } from './color-cases.mjs';
 import { collectPixels } from './pixels-cases.mjs';
 
+/** Bound failed worker evidence to eight nested/aggregate reasons and a caller-side 64 KiB cap; keep falsy causes. */
 function retainedFailure(error, depth = 0) {
     if (depth >= 8) return '[nested failure limit]';
     const text = String(error?.stack ?? error).slice(0, 8192);

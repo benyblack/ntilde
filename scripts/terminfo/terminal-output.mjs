@@ -46,11 +46,13 @@ export function prepareOwnedOutput(tty, run = execFileSync) {
 
 // New transport contract; historical receipts retain ownedOutputPolicy verbatim.
 export const privateClipboardOutputPolicy = 'parent-verified -opost through owned suites and private stock close; exact original kernel mode restored before done';
+/** Read a bounded canonical Darwin mode token from the already proved private PTY. */
 export function readOwnedTerminalState(tty, timeoutMs = 1000, run = execFileSync) {
     const saved = query(tty, ['-g'], run, timeoutMs);
     if (!saved || saved.length > 4096 || !/^gfmt1:(?:[a-z][a-z0-9]*=[a-f0-9]+)(?::[a-z][a-z0-9]*=[a-f0-9]+)*$/.test(saved)) throw new Error('Invalid private PTY saved mode.');
     return saved;
 }
+/** Restore the original token, permit only the precise PENDIN settlement, then require exact kernel equality. */
 export function restoreOwnedTerminalState(tty, original, timeoutMs = 1000, run = execFileSync) {
     if (typeof original !== 'string' || !original.length || original.length > 4096 || !/^gfmt1:(?:[a-z][a-z0-9]*=[a-f0-9]+)(?::[a-z][a-z0-9]*=[a-f0-9]+)*$/.test(original)) throw new Error('Invalid original private PTY mode.');
     query(tty, [original], run, timeoutMs);
@@ -74,6 +76,7 @@ export function ownedTerminalRestorer(restores) {
 
 // Darwin canonical-mode transition sets PENDIN until the next kernel read. This
 // is an explicit bounded input operation, never a normalization of final proof.
+/** Recognize only a previously-clear Darwin PENDIN bit difference; do not normalize accepted state. */
 function pendingInputOnly(original, observed) {
     if (process.platform !== 'darwin') return false;
     const a = /(?:^|:)lflag=([0-9a-f]+)(?=:|$)/.exec(original), b = /(?:^|:)lflag=([0-9a-f]+)(?=:|$)/.exec(observed);
@@ -81,6 +84,7 @@ function pendingInputOnly(original, observed) {
         || (BigInt('0x' + b[1]) ^ BigInt('0x' + a[1])) !== 0x20000000n) return false;
     return observed.replace(b[0], a[0]) === original;
 }
+/** Read at most one byte via a fresh same-device nonblocking descriptor; reject data and preserve read/close failures. */
 function settlePendingInput(tty) {
     const fd = openSync(tty, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOCTTY | constants.O_NOFOLLOW);
     let primary, failed = false;

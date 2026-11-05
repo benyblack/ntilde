@@ -62,3 +62,20 @@ test('actual parent failure file preserves the original cause without reading ex
     assert.equal(invoked, false); assert.equal(result.cause, primary); assert.equal(retained.primary.messageUnavailable, true);
     assert.equal(retained.privateClipboardFailures[0].phase, 'runFailure'); assert.equal(retained.error.includes('foreign value'), false);
 });
+
+for (const primary of [new Error('original run failed'), undefined]) test('actual parent lifecycle preserves run cause when process cleanup also fails, primary=' + typeof primary, async () => {
+    const cleanup = new Error('process cleanup failed'), wrapped = new Error('retained run failure', { cause: primary });
+    const start = source.indexOf('        let deadline;'), end = source.indexOf('\n    } catch (error) {\n        retainPreparationFailure', start);
+    assert.ok(start > 0 && end > start);
+    const dependencies = {
+        done: Promise.reject(primary), server: { once() {}, listen(_socket, resolve) { resolve(); } }, config: { socket: '/synthetic' },
+        privateClipboardState: undefined, queryState: undefined, retainPrivateClipboardJournal() {}, retainQueryJournal() {},
+        retainPrivateClipboardAbort: async () => {}, retainOwnedFailure: () => wrapped,
+        cleanupOwnedRun: async () => { throw cleanup; }, output: '/synthetic', workerIdentity: undefined, runId: 'a'.repeat(32),
+        app: undefined, proofs: [], completed: false, scratch: '/synthetic', preserveScratch: false,
+    };
+    const helperStart = source.indexOf('async function captureOwnedCleanup('), helperEnd = source.indexOf('/** Preserve only', helperStart);
+    const run = new AsyncFunction(...Object.keys(dependencies), source.slice(helperStart, helperEnd) + source.slice(start, end));
+    await assert.rejects(run(...Object.values(dependencies)), error => error instanceof AggregateError && error.errors[0] === wrapped
+        && error.errors[0].cause === primary && error.errors[1] === cleanup);
+});

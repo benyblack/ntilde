@@ -148,6 +148,7 @@ export const capturedV12SourceFiles = Object.freeze({
     privateClipboardInput20SourceSha256: "clipboard-agent-registry.cs",
     privateClipboardInput21SourceSha256: "clipboard-agent-protocol.cs",
 });
+/** Resolve paths from the caller's fixed inventory; selected C# inputs remain nonexecuted reference bytes. */
 export function ownedSourcePath(root, file) {
     if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
     const relative = file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file;

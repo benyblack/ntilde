@@ -59,12 +59,14 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writeJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
 const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 
+/** Attempt parent-owned abort, then retain bounded primary/cleanup facts before independent process shutdown. */
 async function retainPrivateClipboardAbort(state, error, phase, retain) {
     if (!state?.observer) return;
     await abortPrivateClipboardWithFacts(state, error, phase, createProcessBudget(4000));
     retain();
 }
 
+/** Retain privacy-safe private failure facts and return an Error preserving the original cause. */
 function retainOwnedFailure(output, error, privateState) {
     let message = 'Owned private clipboard collection failed; see bounded failure facts.';
     if (!privateState) message = String(error?.message ?? error);
@@ -76,6 +78,18 @@ function retainOwnedFailure(output, error, privateState) {
     }
     writeJson(join(output, 'failure.json'), failure);
     return new Error(`${message} Evidence retained in ${output}`, { cause: error });
+}
+
+/** Await one shutdown attempt and retain rejection presence independently of its value. */
+async function captureOwnedCleanup(action) {
+    try { await action(); return { failed: false }; }
+    catch (error) { return { failed: true, error }; }
+}
+/** Run after finally: aggregate the original run/cause and shutdown failure without truthiness tests. */
+function throwOwnedRunFailures(run, cleanup) {
+    if (run.failed && cleanup.failed) throw new AggregateError([run.error, cleanup.error], 'Owned run and process cleanup failed.');
+    if (run.failed) throw run.error;
+    if (cleanup.failed) throw cleanup.error;
 }
 
 /** Preserve only source-known initial App/geometry-budget refusal codes. */
@@ -780,11 +794,13 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             } catch (error) { queryState?.observer?.abort(error); throw error; }
             finally { retainQueryJournal(); }
         };
+        /** Persist expected-only controller/state facts and bounded failures, without the owner capability. */
         const retainPrivateClipboardJournal = () => {
             if (!privateClipboardState?.observer) return;
             // The expected-only journal contains synthetic seed/nonce values, never arbitrary clipboard data.
             writeFileSync(join(output, 'private-clipboard-journal.json'), JSON.stringify({ ...privateClipboardState.observer.journal, ...(privateClipboardState.failures?.length ? { failures: privateClipboardState.failures, failureFactsTruncated: privateClipboardState.failureFactsTruncated === true } : {}) }, null, 2) + '\n', { mode: 0o600 });
         };
+        /** Independently reread live process, source, binary, PTY and birth facts inside one shared event budget. */
         const attestPrivateClipboard = (state, budget) => {
             const fact = attestQuery(state, budget);
             assertExecutableUnchanged(executable, image);
@@ -795,6 +811,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 worker: { ...fact.worker, birth: processBirth(fact.worker.pid, budget()) },
                 executableSha256, assemblySha256, sourceSnapshotManifestSha256: snapshot.sha256, outputDevice: outputDevice(state.tty) };
         };
+        /** Lazily admit Q11 only after the query seal; route the fixed parent API and retain only a closed full report. */
         const observePrivateClipboard = async (request, budget, owner, worker) => {
             try {
                 if (Object.keys(request).length !== 6 || !Object.hasOwn(request, 'frame')) throw new Error('Invalid private clipboard owner envelope.');
@@ -872,6 +889,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 terminalOutput: readOwnedOutputMode(request.tty, budget()) };
             return observeImages(request, budget, ownership);
         };
+        /** Route already authenticated requests serially; preserve each suite's existing response shape and budget. */
         const routeOwnedObservation = async (request, queryTimeout, owner, worker) => {
             if (request.kind === 'private-clipboard') {
                 const result = await observePrivateClipboard(request, queryTimeout, owner, worker);
@@ -893,6 +911,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             }
             return null;
         };
+        /** Handle proof/done/failure only after lineage verification; done additionally requires close and exact termios. */
         const controlOwnedWorker = (request, queryTimeout, owner, worker) => {
             if (request.kind === 'prove') {
                 // Retain the measured proof, never the capability token.
@@ -958,6 +977,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         });
         let deadline;
         let logFd;
+        let runOutcome = { failed: false }, cleanupOutcome;
         try {
             await Promise.race([done, new Promise((resolve, reject) => {
                 server.once('error', reject);
@@ -1024,13 +1044,14 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             await retainPrivateClipboardAbort(privateClipboardState, error, 'runFailure', retainPrivateClipboardJournal);
             queryState?.observer?.abort(error);
             retainQueryJournal();
-            throw retainOwnedFailure(output, error, privateClipboardState);
+            runOutcome = { failed: true, error: retainOwnedFailure(output, error, privateClipboardState) };
         } finally {
             clearTimeout(deadline);
             preserveScratch = true;
-            await cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch });
-            preserveScratch = false;
+            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }));
+            preserveScratch = cleanupOutcome.failed;
         }
+        throwOwnedRunFailures(runOutcome, cleanupOutcome);
     } catch (error) {
         retainPreparationFailure(output, error);
         throw error;

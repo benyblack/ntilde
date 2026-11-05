@@ -30,6 +30,7 @@ export class OwnedPrivateClipboardObserver {
             rpc: (request, remaining) => rpc(endpoint(appData, binding.ownerPid), request, remaining) });
     }
 
+    /** Read one bracketed App snapshot inside the frozen event budget; require baseline equality before authority. */
     async #verify(milliseconds) {
         const budget = createProcessBudget(milliseconds, this.#clock);
         const event = this.#bridge.evidence().events.at(-1);
@@ -55,6 +56,7 @@ export class OwnedPrivateClipboardObserver {
         return snapshotHash(this.#binding);
     }
 
+    /** Admit only the fixed callback/control shapes and source-known nonce grammar before retaining any fields. */
     #validateFrame(input) {
         const frame = privateClipboardData(input), fields = { start: ['kind', 'probeId'], arm: ['kind', 'value'],
             seed: ['kind', 'value'], read: ['kind'], complete: ['kind', 'callbackResult'], finish: ['kind'], abort: ['kind'] }[frame?.kind];
@@ -64,17 +66,20 @@ export class OwnedPrivateClipboardObserver {
         return frame;
     }
 
+    /** Poison permanently and preserve the first reason even when it is undefined or falsy. */
     #fail(error) {
         if (!this.#failed) this.#failure = error;
         this.#failed = true;
     }
 
+    /** Reject overlap without replacing the active event budget; parent retention records abort failures. */
     async #rejectOverlap() {
         const error = new Error('Overlapping owned private clipboard owner frame.');
         this.#fail(error);
         try { await this.#bridge.abort(error); } catch {}
         throw error;
     }
+    /** Attempt bounded restoration and suppress only the identical source-known requested-abort reason. */
     async #requestedAbort() {
         const requested = new Error('Private clipboard callback requested abort.');
         this.#fail(requested);
@@ -82,6 +87,7 @@ export class OwnedPrivateClipboardObserver {
         catch (error) { if (error !== requested) throw error; }
         return null; // Only the exact original requested-abort reason can be suppressed.
     }
+    /** Route one admitted frame serially; only final close can build a complete report. */
     async #dispatchFrame(frame) {
         if (frame.kind === 'abort') return this.#requestedAbort();
         let callback;
@@ -98,6 +104,7 @@ export class OwnedPrivateClipboardObserver {
         }
         return result;
     }
+    /** Serialize authenticated owner frames; malformed data or any operation/cleanup failure permanently refuses completion. */
     async handle(input, budget) {
         if (this.#busy) return this.#rejectOverlap();
         check(!this.#finished && !this.#failed && typeof budget === 'function');

@@ -21,6 +21,7 @@ export function processBirth(pid, timeout = 2000, run = execFileSync) {
     if (!/^[A-Za-z]{3} [A-Za-z]{3} +\d{1,2} \d{2}:\d{2}:\d{2} \d{4}$/.test(value)) throw new Error('Could not corroborate process start time.');
     return value;
 }
+/** Read the canonical private macOS character-device identity; this is not a held descriptor or PTY lease. */
 export function outputDevice(tty) {
     if (typeof tty !== 'string' || !/^\/dev\/ttys\d+$/.test(tty)) throw new Error('Invalid private PTY.');
     const stat = statSync(tty, { bigint: true });

@@ -13,6 +13,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const baseline = JSON.parse(historicalArchive('2026-11-05-query-observations').get('query-initial.json')).before.screen;
 const uuids = [1, 2, 3, 4].map(value => '33333333-3333-3333-3333-' + value.toString().padStart(12, '0'));
 let fixtureSerial = 0;
+/** Build synthetic App/process/PTY facts and execute the pinned callback with fake dependencies; no desktop or OS clipboard. */
 export async function privateClipboardFixture(options = {}) {
     const selectedRun = options.binding?.runId ?? privateRunId, selectedSeed = 'terminfo-private-seed-' + selectedRun;
     let value = selectedSeed, count = 0, restored = false, armed, closed = false, ticks = 0;

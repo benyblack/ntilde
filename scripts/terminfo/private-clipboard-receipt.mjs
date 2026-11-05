@@ -14,10 +14,12 @@ import { buildRgbReport, rgbCases, rgbSuiteId } from './rgb.mjs';
 import { buildRenditionReport, renditionCases, renditionSuiteId } from './rendition.mjs';
 import { buildCursorReport, cursorCases, cursorSuiteId } from './cursor.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+/** Distinguish absence from other filesystem errors; dangling links remain present evidence. */
 function present(path) { try { lstatSync(path); return true; } catch (error) {
     if (error.code !== 'ENOENT') throw error;
     return false;
 } }
+/** Read only a regular retained file within its byte cap; never follow an evidence symlink. */
 function bytes(output, file, max = 16 * 1024 * 1024) {
     const path = join(output, file), stat = lstatSync(path); check(stat.isFile() && !stat.isSymbolicLink() && stat.size <= max);
     const data = readFileSync(path); check(data.length <= max); return data;
@@ -30,12 +32,14 @@ const prefixModels = [
     { prefix: 'rendition', suiteId: renditionSuiteId, cases: renditionCases, build: buildRenditionReport, optional: true },
     { prefix: 'cursor', suiteId: cursorSuiteId, cases: cursorCases, build: buildCursorReport, optional: true },
 ];
+/** Read the original complete JSONL journal; partial final lines and blank records cannot qualify. */
 function prefixFrames(output, prefix) {
     const text = bytes(output, prefix + '-snapshots.jsonl').toString();
     if (!text) return [];
     check(text.endsWith('\n'));
     return text.slice(0, -1).split('\n').map(line => { check(line.length > 0); return JSON.parse(line); });
 }
+/** Accept only an allowed pre-start typed refusal with exact planned count and no captured frames. */
 function checkPrefixUnavailable(report, binding, frames, spec, runId) {
     check(spec.optional && binding.status === 'unavailable' && binding.reason === 'screenDetailsUnavailable' && same(binding.counts, {}) && !frames.length);
     check(same(report, { schemaVersion: 1, runId, suiteId: spec.suiteId, status: 'unavailable',
@@ -115,6 +119,7 @@ function checkRaw(raw, report, binding, context) {
             clipboard: [{ profile: 'ntilde-private-app-v1', probeId, restored: true }] }));
     }
 }
+/** Rederive all scoped private facts and five original prefixes, exact raw graders and pinned adapter after cleanup. */
 export function checkPrivateClipboardEvidence(output, binding, runId, context, proof, prefixes) {
     const original = proof.proofs?.[0], marker = original?.privateClipboard;
     check(context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v5' && context.privateClipboardSuiteId === ownedPrivateClipboardSuiteId
