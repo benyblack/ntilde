@@ -239,8 +239,8 @@ terminated by standard ST. VT returns absolute one-based margin values with xter
 1-success/0-failure polarity, preserving its existing failures despite the VT510
 manual's opposite documented status. The parser's batch lock protects the owned
 state read; invalid margins, lost/unknown input and BEL recovery stay negative.
-This query changes no terminal state. Other DECRQSS settings and XTGETTCAP remain
-negative; no family-wide or fresh runtime support is inferred.
+This query changes no terminal state. DECRQSS settings other than `r`, `m` and
+`SP q` remain negative; no family-wide or fresh runtime support is inferred.
 
 DECRQSS `m` and `SP q` (#844) use the same exact-request, standard-ST and
 completeness rules. `m` reports the active pen xterm style, starting with `0` so
@@ -248,6 +248,21 @@ replaying the report reproduces the pen; underline styles use `4:n` and extended
 colors use semicolon forms. `SP q` reports `0` while the host's configured cursor
 is shown and xterm's 1-6 code for an application override. DECSCUSR 0 restores the
 host's configured cursor, so a saved report restores exactly what was shown.
+
+XTGETTCAP (#844) answers from `TerminalCapabilities`, the one table of what Ntilde
+advertises beyond `xterm-256color`; the opt-in `xterm-ntilde` terminfo entry is to be
+built from the same table. Each entry names the tests that pin its behaviour, and a
+VT test expands every string value as curses would and runs it through the parser.
+Each hex-encoded name gets its own reply in request order (`DCS 1 + r name=value ST`,
+`DCS 1 + r name ST` for a flag, `DCS 0 + r ST` for a name not in the table). Names
+are case-sensitive; `TN` and capabilities inherited from `xterm-256color` are not
+answered. A list that is truncated, BEL-terminated, has more than 16 names, or holds
+a name that is not even-length hex decoding to printable ASCII (at most 32
+characters) gets one `DCS 0 + r ST` and nothing else, and only validated hex is ever
+echoed. `Ms` (OSC 52 write) is answered only while the host's
+`AnsiParser.ClipboardWriteAvailable` says writes are accepted: a direct App pane
+follows `AllowOsc52ClipboardWrite`, and headless or mux parsers leave it unset
+because a daemon cannot reach the desktop clipboard.
 
 Tertiary DA accepts only a default or single numeric-zero parameter with the `=`
 leader and no intermediates. Its DECRPTUI reply contains the fixed eight zero hex

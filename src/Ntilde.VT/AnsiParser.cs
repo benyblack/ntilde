@@ -237,6 +237,14 @@ namespace Ntilde.VT
         /// </summary>
         public Action<string, byte[]>? OnClipboardWrite { get; set; }
 
+        /// <summary>
+        /// Host opt-in for advertising OSC 52 clipboard writes (XTGETTCAP <c>Ms</c>), read when a
+        /// query arrives so a live settings change applies at once. Null, the default for headless
+        /// and mux parsers, means writes are not advertised: a daemon cannot reach the desktop
+        /// clipboard or know whether an attached client accepts writes.
+        /// </summary>
+        public Func<bool>? ClipboardWriteAvailable { get; set; }
+
         /// <summary>OSC 5522 packets. The presenting host owns permissions, transfers and clipboard I/O.</summary>
         public Action<string>? OnKittyClipboardPacket { get; set; }
         /// <summary>Host opt-in; headless and mux parsers must not advertise unavailable clipboard services.</summary>

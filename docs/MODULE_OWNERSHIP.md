@@ -159,6 +159,12 @@ invariant changes.
   active pen and starts with `0`; the cursor report says `0` for the host default
   (VT never guesses the host's configured shape) and 1-6 for an override. Same
   exact-request, standard-ST and completeness rules as `r`.
+- **The capability table belongs to VT; the clipboard gate belongs to the host.**
+  `TerminalCapabilities` lists what Ntilde advertises beyond `xterm-256color`, each
+  entry with the tests that pin it, and XTGETTCAP answers only from it. VT validates
+  the whole name list before replying and echoes only checked hex. `Ms` depends on
+  `AnsiParser.ClipboardWriteAvailable`, which the App sets for direct panes from
+  `AllowOsc52ClipboardWrite`; headless and mux parsers leave it unset.
 - **DA3 returns an unassigned compatibility identifier.** VT accepts the `=`
   leader with default/single numeric-zero Ps and no intermediates, and returns
   DECRPTUI with eight zero hex digits. It is nonunique, not a host or hardware

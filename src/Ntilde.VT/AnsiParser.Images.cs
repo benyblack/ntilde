@@ -18,8 +18,7 @@ namespace Ntilde.VT
             }
             else if (dcs.StartsWith("+q", StringComparison.Ordinal))
             {
-                // XTGETTCAP: report failure for the requested capabilities (DCS 0 + r ST).
-                OnResponse?.Invoke("\x1bP0+r\x1b\\");
+                HandleXtgettcap(dcs, standardTerminator);
             }
             else if (IsSixel(dcs))
             {
