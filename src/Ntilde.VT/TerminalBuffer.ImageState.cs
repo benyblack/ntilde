@@ -80,15 +80,16 @@ public partial class TerminalBuffer
     }
 
     /// <summary>
-    /// The placement's row in exported coordinates and the rows the export clips from it; false when
-    /// nothing of it is left, as for SIXEL.
+    /// The placement's row in exported coordinates and its clipping; false when nothing of it is left.
+    /// Rows above the exported history are gone, so they are clipped. Rows below the screen are not:
+    /// a Kitty image placed with <c>C=1</c> on the last row runs past it and shows again if the screen
+    /// grows, so only the placement's own bottom clipping is carried.
     /// </summary>
     private static bool TryExportedRows(TerminalImage image, TerminalStateSnapshot snapshot, out int y, out int top, out int bottom)
     {
         y = image.IsAltScreenImage ? image.CellY : image.CellY - snapshot.ScrollbackRowsDropped;
-        int end = image.IsAltScreenImage ? snapshot.Rows : snapshot.ScrollbackRowCount + snapshot.Rows;
         top = Math.Max(image.ClipTopRows, Math.Max(0, -y));
-        bottom = Math.Max(image.ClipBottomRows, Math.Max(0, y + image.CellHeight - end));
+        bottom = image.ClipBottomRows;
         return top + bottom < image.CellHeight && image.CellX < snapshot.Cols;
     }
 
