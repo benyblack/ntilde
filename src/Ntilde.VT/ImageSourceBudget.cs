@@ -3,8 +3,8 @@ namespace Ntilde.VT;
 /// <summary>
 /// Bounds the encoded Kitty and iTerm2 image bytes one pane or session keeps so snapshots can carry
 /// them (#838), the counterpart of <see cref="SixelSourceBudget"/>. Retired sources (whose image is
-/// gone) are evicted before the oldest live ones. An evicted source keeps its image on screen; only
-/// snapshots lose it. Besides bytes, it bounds what validating the retained compressed sources inflates
+/// gone) are evicted before the oldest live ones. An evicted source keeps its image on screen, and
+/// snapshots carry the image without its bytes: it holds its cells and draws nothing. Besides bytes, it bounds what validating the retained compressed sources inflates
 /// to the limit a restore enforces (<see cref="TerminalBuffer.MaxSnapshotInflatedBytes"/>), so every
 /// snapshot it exports can be restored. Every call happens under the owning buffer's write lock; the
 /// gate below only keeps the counters consistent for readers.
@@ -94,6 +94,9 @@ public sealed class ImageSourceBudget
         ArgumentNullException.ThrowIfNull(data);
         return data.Length > _maxBytes || inflationCost > MaxInflationCost ? new ImageSource(this) : Retain(data.ToArray(), inflationCost);
     }
+
+    /// <summary>A source whose bytes are gone, for an image restored without them.</summary>
+    internal ImageSource Evicted() => new(this);
 
     internal void Retire(ImageSource source)
     {

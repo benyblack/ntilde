@@ -173,6 +173,10 @@ namespace Ntilde.VT
         /// <summary>Pixel size from the header (or <c>s=</c>/<c>v=</c>); checked again on import.</summary>
         [JsonPropertyName("w")] public int Width { get; set; }
         [JsonPropertyName("h")] public int Height { get; set; }
+        /// <summary>
+        /// The bytes as sent; empty when the source budget evicted them. The image still exists, holding its cells and
+        /// drawing nothing, so it is carried anyway: a later placement must find it on every side.
+        /// </summary>
         [JsonPropertyName("data")] public byte[] Data { get; set; } = [];
         /// <summary>Position in the source budget's eviction order (oldest first); absent when unknown.</summary>
         [JsonPropertyName("src"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -205,6 +209,7 @@ namespace Ntilde.VT
     /// <summary>A retained iTerm2 inline image and its placement.</summary>
     public sealed class TerminalITermImageState
     {
+        /// <summary>The bytes as sent; empty when the source budget evicted them (the placement still holds its cells).</summary>
         [JsonPropertyName("data")] public byte[] Data { get; set; } = [];
         /// <summary>Position in the source budget's eviction order (oldest first); absent when unknown.</summary>
         [JsonPropertyName("src"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

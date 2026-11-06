@@ -55,7 +55,9 @@ public partial class TerminalBuffer
         var exported = new Dictionary<KittyImageAsset, int>();
         foreach (KittyImageAsset asset in _kittyImageAssets)
         {
-            if (asset.Source is not { Data: { } data } source || asset.Encoding is not { } encoding) continue;
+            // An asset whose bytes were evicted is carried without them: it still holds its id and size, which a later
+            // placement needs on every side. Without an encoding the parser retains no sources, and nothing is carried.
+            if (asset.Source is not { } source || asset.Encoding is not { } encoding) continue;
             exported[asset] = (snapshot.KittyImages ??= []).Count;
             snapshot.KittyImages.Add(new TerminalKittyImageState
             {
@@ -68,7 +70,7 @@ public partial class TerminalBuffer
                 RawHeight = encoding.RawHeight,
                 Width = asset.PixelWidth,
                 Height = asset.PixelHeight,
-                Data = data.ToArray(), // a copy: the snapshot must not alias live retained bytes
+                Data = source.Data?.ToArray() ?? [], // a copy: the snapshot must not alias live retained bytes
                 SourceOrder = OrderOf(evictionOrder, source),
             });
         }
@@ -96,10 +98,10 @@ public partial class TerminalBuffer
     private static void ExportITermImage(TerminalStateSnapshot snapshot, TerminalImage image, PlacementGeometry geometry, int order,
         Dictionary<ImageSource, int> evictionOrder)
     {
-        if (image.EncodedSource is not { Data: { } data } source || PixelSize(image) is not (int pixelWidth, int pixelHeight)) return;
+        if (image.EncodedSource is not { } source || PixelSize(image) is not (int pixelWidth, int pixelHeight)) return;
         (snapshot.ITermImages ??= []).Add(new TerminalITermImageState
         {
-            Data = data.ToArray(),
+            Data = source.Data?.ToArray() ?? [], // empty once evicted: the placement still holds its cells
             SourceOrder = OrderOf(evictionOrder, source),
             PixelWidth = pixelWidth,
             PixelHeight = pixelHeight,
@@ -183,6 +185,12 @@ public partial class TerminalBuffer
         var state = StateTransferValidation.RequirePresent(image, KittyImageWhat);
         byte[] data = StateTransferValidation.RequirePresent(state.Data, "Kitty image data");
         if (state.Format is not (0 or 24 or 32 or 100)) throw StateTransferValidation.Reject(KittyImageWhat, "unknown format");
+        if (data.Length == 0)
+        {
+            // Evicted bytes: nothing to measure, so the stated size must be one live transmission could have produced.
+            RequirePixelSize(state.Width, state.Height, KittyImageWhat);
+            return;
+        }
         var encoding = new KittyImageEncoding(state.Format, state.Compressed, state.RawWidth, state.RawHeight);
         if (DeclaredKittySize(data, encoding, ref inflated) != (state.Width, state.Height))
             throw StateTransferValidation.Reject(KittyImageWhat, "data does not declare the stated size");
@@ -209,11 +217,21 @@ public partial class TerminalBuffer
     {
         var state = StateTransferValidation.RequirePresent(image, ITermImageWhat);
         byte[] data = StateTransferValidation.RequirePresent(state.Data, "iTerm2 image data");
+        RequireCellRectangle(state.Width, state.Height, ITermImageWhat);
+        if (data.Length == 0)
+        {
+            RequirePixelSize(state.PixelWidth, state.PixelHeight, ITermImageWhat); // evicted bytes
+            return;
+        }
         if (!ImageHeaderProbe.TryGetSize(data, out _, out int w, out int h) || (w, h) != (state.PixelWidth, state.PixelHeight))
             throw StateTransferValidation.Reject(ITermImageWhat, "data does not declare the stated size");
         // The live parser refuses these before decoding; a snapshot must not hand them to a decoder.
         if (w > 2000 || h > 2000) throw StateTransferValidation.Reject(ITermImageWhat, "pixel size over the 2000-pixel limit");
-        RequireCellRectangle(state.Width, state.Height, ITermImageWhat);
+    }
+
+    private static void RequirePixelSize(int width, int height, string what)
+    {
+        if (width is < 1 or > 2000 || height is < 1 or > 2000) throw StateTransferValidation.Reject(what, "pixel size out of range");
     }
 
     private static void RequireCellRectangle(int width, int height, string what)
@@ -372,8 +390,8 @@ public partial class TerminalBuffer
     /// Restores retained Kitty assets, their placements and iTerm2 images, undecoded, at their
     /// transferred positions. Like <see cref="ImportSixelState"/> it never replays placement or moves
     /// the cursor. Runs after the old images were cleared. An image whose bytes do not fit this buffer's
-    /// budget is still restored, with its id and cells, only without bytes: it stays undecoded and a
-    /// later snapshot cannot carry it.
+    /// budget, or that arrive without bytes (evicted at the source), is still restored, with its id and
+    /// cells: it stays undecoded, and a later snapshot carries it without bytes too.
     /// </summary>
     private void ImportImageState(TerminalStateSnapshot snapshot, Dictionary<TerminalImage, int> order, int expiredRows)
     {
@@ -408,8 +426,11 @@ public partial class TerminalBuffer
             .OrderBy(entry => entry.Order ?? int.MaxValue).ThenBy(entry => entry.Sequence);
         foreach (var entry in retention)
         {
-            if (entry.Kitty) kitty[entry.Index] = ImageSources.RetainCopy(kittyStates[entry.Index].Data, ImportedInflationCost(kittyStates[entry.Index]));
-            else iterm[entry.Index] = ImageSources.RetainCopy(itermStates[entry.Index].Data);
+            byte[] data = entry.Kitty ? kittyStates[entry.Index].Data : itermStates[entry.Index].Data;
+            ImageSource source = data.Length == 0 ? ImageSources.Evicted()
+                : ImageSources.RetainCopy(data, entry.Kitty ? ImportedInflationCost(kittyStates[entry.Index]) : 0);
+            if (entry.Kitty) kitty[entry.Index] = source;
+            else iterm[entry.Index] = source;
         }
         return (kitty, iterm);
     }
