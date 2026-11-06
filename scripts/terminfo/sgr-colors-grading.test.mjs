@@ -16,7 +16,7 @@ const report = () => {
 test('rebuilds a complete graded report with five supported conclusions', () => {
     const { evidence, report: value } = report();
     assert.equal(value.suiteId, sgrColorsSuiteId);
-    assert.equal(value.contractsVersion, 1);
+    assert.equal(value.contractsVersion, 2);
     assert.equal(value.snapshots.length, 8);
     assert.deepEqual(value.cases.map(item => [item.caseId, item.conclusion.outcome, item.pinned.observation.outcome]),
         [['sgr.selective-reset.bold', 'supported', 'supported'],
@@ -183,12 +183,12 @@ test('the replay module must reproduce the live pinned grading exactly', () => {
         contract.plan.filter(step => step.feed).slice(1).forEach(() => ctx.feed(''));
         return { probeId, ...live };
     } };
-    const replayed = buildSgrColorsGradingReport(base.evidence.frames, base.evidence.run, base.evidence.runId, base.evidence.adapter, faithful);
+    const replayed = buildSgrColorsGradingReport(base.evidence.frames, base.evidence.run, base.evidence.runId, base.evidence.adapter, { replayModule: faithful });
     assert.equal(replayed.cases[0].conclusion.outcome, 'supported');
 
     const unfaithful = { ntildeRunSgrColorsTermless: () => ({ pass: false, response: 'x',
         observation: { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'parser-state', note: 'x' } }) };
-    assert.throws(() => buildSgrColorsGradingReport(base.evidence.frames, base.evidence.run, base.evidence.runId, base.evidence.adapter, unfaithful),
+    assert.throws(() => buildSgrColorsGradingReport(base.evidence.frames, base.evidence.run, base.evidence.runId, base.evidence.adapter, { replayModule: unfaithful }),
         /replay does not reproduce the live grading/);
 });
 

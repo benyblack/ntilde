@@ -98,7 +98,7 @@ function validateCaptureRecord(contract, recorded) {
 }
 
 /** Re-derive and cross-check every case; throw on any disagreement. */
-export function buildSgrColorsGradingReport(frames, run, runId, adapter, replayModule = null) {
+export function buildSgrColorsGradingReport(frames, run, runId, adapter, { contractsVersion = sgrColorsContractsVersion, replayModule = null } = {}) {
     validateSgrColorsEvidence(frames, run, runId, adapter);
     let frameIndex = 2;
     const caseResults = [];
@@ -110,7 +110,7 @@ export function buildSgrColorsGradingReport(frames, run, runId, adapter, replayM
         crossCheckGradedCapture(contract, recorded, readFrames, 'SGR-colors');
         const screens = readFrames.map(frame => frame.screen);
         const projected = [0, 1, 2].map(col => sgrColorsCellAt(screens[0], 0, col));
-        const contractResult = gradeSgrColorsCase(contract, projected);
+        const contractResult = gradeSgrColorsCase(contract, projected, contractsVersion);
         const pinned = recorded.pinned;
         if (pinned?.probeId !== contract.caseId || pinned.observation?.evidence !== 'parser-state') {
             throw new Error(`Missing pinned ${contract.caseId} grading result.`);
@@ -118,13 +118,16 @@ export function buildSgrColorsGradingReport(frames, run, runId, adapter, replayM
         // The complete pinned result is a pure function of the observed
         // screens; the retained run-log values must match that derivation.
         requirePinnedAgreement(contract, pinned, replaySgrColorsPinned(contract, screens), 'SGR-colors');
-        // The contract grader is stricter than the pinned criterion (it also
-        // demands untouched default colors); a divergence is recorded with
-        // both verdicts instead of discarding the measurement, and the
-        // published conclusion follows the stricter grader.
-        const divergence = contract.pinnedExpectation === 'measured'
+        // Contracts v2 record a pinned-versus-contract divergence with both
+        // verdicts instead of discarding the measurement; v1 evidence keeps
+        // its measured throw-on-disagreement semantics.
+        const divergence = contractsVersion >= 2 && contract.pinnedExpectation === 'measured'
             && pinned.observation.outcome !== contractResult.outcome
             ? { pinnedOutcome: pinned.observation.outcome, contractOutcome: contractResult.outcome } : null;
+        if (contractsVersion < 2 && contract.pinnedExpectation === 'measured'
+            && pinned.observation.outcome !== contractResult.outcome) {
+            throw new Error(`Pinned and contract ${contract.caseId} grading disagree.`);
+        }
         if (contract.pinnedExpectation !== 'measured'
             && (pinned.observation.outcome !== 'inconclusive'
             || pinned.observation.note !== contract.pinnedControlNote)) {
@@ -143,12 +146,12 @@ export function buildSgrColorsGradingReport(frames, run, runId, adapter, replayM
                 observation: pinned.observation, assertions: pinned.assertions ?? null },
             contractResult, ...(divergence ? { divergence } : {}),
             conclusion: { outcome: contractResult.outcome, evidence: 'owned-cells',
-                grading: 'pinned-termless-plus-contract-v' + sgrColorsContractsVersion,
+                grading: 'pinned-termless-plus-contract-v' + contractsVersion,
                 ...(contractResult.note ? { note: contractResult.note } : {}),
                 ...(contract.appearanceScope ? { scope: contract.appearanceScope }
                     : { scope: 'stored style flags and default color markers; no glyph appearance or theme RGB' }) } });
     }
-    return { schemaVersion: 1, suiteId: sgrColorsSuiteId, runId, contractsVersion: sgrColorsContractsVersion,
+    return { schemaVersion: 1, suiteId: sgrColorsSuiteId, runId, contractsVersion,
         adapter, scope: 'Pinned terminfo.dev@4.0.0 termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored attributes and palette indices. '
             + 'Named-color conclusions cover stored indices and markers, never theme-resolved RGB. Not stock collector output.',
         initialSnapshot: 0, restoredSnapshot: frames.length - 1, cases: caseResults, snapshots: frames };

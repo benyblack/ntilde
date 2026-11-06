@@ -101,7 +101,7 @@ declarations.
 | Geometry | 40 rows × 140 columns |
 | Local evidence | `artifacts/terminfo/owned-qibNZN` (machine-readable copy with digests in the [JSON](2026-11-06-sgr-colors-qualification.json)) |
 
-The stock run's single `unsupported` remains `extensions.osc5522-clipboard`
+The collector run's single `unsupported` remains `extensions.osc5522-clipboard`
 ("Mode 5522 not supported", evidence `query`) — outside this batch and
 unchanged by it.
 
@@ -120,7 +120,7 @@ node --test scripts/terminfo/sgr-colors-*.test.mjs scripts/terminfo/sgr-colors-g
 
 The publication test re-derives the whole graded report from the committed
 journal and run log, re-checks the contract-grader agreement and observed
-values, cross-references the untouched stock outcomes and verifies older
+values, cross-references the collector run's unchanged five-case outcomes and verifies older
 publications byte-for-byte. The full live measurement rerun requires macOS,
 Node 24+, the pinned collector prepared from the checked-in lockfile, an
 awake display and a disposable sidecar build ([QA_TERMINFO.md](../QA_TERMINFO.md)).

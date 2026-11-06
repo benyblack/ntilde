@@ -41,8 +41,8 @@ export function checkSgrColorsEvidence(output, evidence, runId, context) {
         || binding.provisionalUntil !== 'cell-receipt.json'
         || !/^[a-f\d]{64}$/.test(binding.sha256 ?? '') || !/^[a-f\d]{64}$/.test(binding.runSha256 ?? '')
         || !/^[a-f\d]{64}$/.test(binding.adapterBundleSha256 ?? '')
-        || binding.contractsVersion !== sgrColorsContractsVersion
-        || context.sgrColorsContractsVersion !== sgrColorsContractsVersion) {
+        || ![1, 2].includes(binding.contractsVersion)
+        || context.sgrColorsContractsVersion !== binding.contractsVersion) {
         throw new Error('Invalid SGR-colors suite receipt binding.');
     }
     const bytes = readFileSync(join(output, binding.file));
@@ -63,13 +63,14 @@ export function checkSgrColorsEvidence(output, evidence, runId, context) {
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
     if (report.adapter.bundleSha256 !== binding.adapterBundleSha256
         || report.adapter.upstreamBundleSha256 !== context.upstreamBundleSha256
-        || report.contractsVersion !== sgrColorsContractsVersion) {
+        || ![1, 2].includes(report.contractsVersion)) {
         throw new Error('SGR-colors report adapter or contract identity differs from the receipt.');
     }
     const journalText = readFileSync(join(output, 'sgcolors-snapshots.jsonl'), 'utf8').trim();
     if (!journalText) throw new Error('SGR-colors journal is empty.');
     const frames = journalText.split('\n').map(line => JSON.parse(line));
-    const derived = buildSgrColorsGradingReport(frames, run, runId, report.adapter);
+    const derived = buildSgrColorsGradingReport(frames, run, runId, report.adapter,
+        { contractsVersion: report.contractsVersion });
     if (JSON.stringify(report) !== JSON.stringify(derived)) throw new Error('SGR-colors observations do not match retained evidence.');
     if (JSON.stringify(frames) !== JSON.stringify(report.snapshots)) throw new Error('SGR-colors journal does not match the report.');
     const counts = {};

@@ -273,7 +273,7 @@ async function retainSgrColorsEvidence(output, runId, sgrColorsBundle, upstream)
     const adapter = { id: sgrColorsAdapterId, derivedFromAdapterId: 'ntilde-owned-ascii-sgr-grading-v1',
         bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
     const replayModule = await import(pathToFileURL(sgrColorsBundle).href);
-    const report = buildSgrColorsGradingReport(frames, run, runId, adapter, replayModule);
+    const report = buildSgrColorsGradingReport(frames, run, runId, adapter, { replayModule });
     writeJson(join(output, 'sgcolors-observations.json'), report);
     const counts = {};
     for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;

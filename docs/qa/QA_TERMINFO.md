@@ -468,7 +468,7 @@ termless code over those observed screens, so the collector's criteria — not a
 re-implementation — produce the outcome. An independent contract grader must
 agree before any conclusion is published, and the parent replays the pinned
 grading a second time over the retained journal. Graded results carry the
-extension identity and are never stock CLI output; the untouched stock run
+extension identity and are never stock CLI output; the owned-adapter collector run
 keeps its own identity, grades and inconclusive four-case outcomes.
 
 `unsupported` requires a measured mismatch behind a valid control (the pinned
@@ -500,6 +500,12 @@ stored projection deliberately exposes no theme-resolved RGB — no index is
 inferred from appearance. Receipt schema 14 binds the layered report, run log
 and adapter bytes after verified cleanup; source policy v7 carries the
 113-file inventory with every earlier policy mapping frozen.
+
+The measured SGR-colors run recorded contracts v1; the current contracts are
+v2 (setup-cell color drift invalidates selective-reset controls), and v1
+evidence rederives with its own revision. The collector run beside the graded
+suites is owned-adapter output with unchanged SGR scoring, not unmodified
+stock CLI bytes.
 
 The batch carries one explicitly attributed cherry-pick (`8ffc6d19`, the
 private-clipboard wide-column observer fix from

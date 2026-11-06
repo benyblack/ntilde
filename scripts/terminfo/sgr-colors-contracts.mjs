@@ -12,7 +12,11 @@
 import { planFeed, planRead, planReads, validateExactFeeds } from './graded-plan.mjs';
 import { expandScreenFlags, asciiSgrReset } from './ascii-sgr-contracts.mjs';
 
-export const sgrColorsContractsVersion = 1;
+// Contracts v1 is the measured semantics: the setup cell's colors were not
+// part of the control. Contracts v2 additionally invalidates the control when
+// the setup cell's colors drift off the default markers; older v1 evidence
+// rederives with its own revision.
+export const sgrColorsContractsVersion = 2;
 export const sgrColorsSuiteId = 'ntilde-owned-sgr-colors-graded-v1';
 export const sgrColorsNoncePrefix = 'NTILDE_SC_';
 const sgrColorsReset = asciiSgrReset;
@@ -67,11 +71,13 @@ export const defaultColors = cell => fgDefaultMarker(cell) && bgDefaultMarker(ce
 /** No style flag set on the cell. */
 const plainStyles = cell => !cell.bold && !cell.dim && !cell.italic && !cell.underline;
 
-/** A measuredReset-style control: chars exposed, baseline unset, setup active,
- * and the setup cell's colors still on their default markers — the pinned
- * fixtures set no colors, so any color drift invalidates the control. */
-function resetControl(baseline, before, active, untouched) {
-    return plainStyles(baseline) && defaultColors(baseline) && defaultColors(before)
+/** A measuredReset-style control: chars exposed, baseline unset, setup active.
+ * Revision 2 also requires the setup cell's colors to remain on their default
+ * markers — the pinned fixtures set no colors, so any drift invalidates the
+ * control there. */
+function resetControl(baseline, before, active, untouched, revision) {
+    return plainStyles(baseline) && defaultColors(baseline)
+        && (revision < 2 || defaultColors(before))
         && active.every(name => before[name] === true)
         && untouched.every(name => before[name] === false);
 }
@@ -91,14 +97,14 @@ export const sgrColorsContracts = Object.freeze([
         fixture: 'C\x1b[1;2;3mX\x1b[22mY',
         set: ['bold', 'dim'], preserve: ['italic'],
         terminalFixture: { writes: ['\x1b[1;2;3mX\x1b[22mY'], demand: 'consumed', minimum: { rows: 1, cols: 3 } },
-        grade(cells) {
+        grade(cells, revision) {
             const [baseline, before, after] = cells;
             if (baseline.char !== 'C' || before.char !== 'X' || after.char !== 'Y') {
                 return { outcome: 'inconclusive', note: 'Baseline, styled, or reset cell was not exposed' };
             }
             // Initially-unset control; bold, dim and italic proven active on X
             // (italic is the attribute SGR 22 must preserve).
-            if (!resetControl(baseline, before, ['bold', 'dim', 'italic'], ['underline'])) {
+            if (!resetControl(baseline, before, ['bold', 'dim', 'italic'], ['underline'], revision)) {
                 return { outcome: 'inconclusive', note: 'Neutral baseline, styled setup, or reset readback was not measured' };
             }
             const cleared = after.bold === false && after.dim === false;
@@ -117,13 +123,13 @@ export const sgrColorsContracts = Object.freeze([
         fixture: 'C\x1b[1;3mX\x1b[23mY',
         set: ['italic'], preserve: ['bold'],
         terminalFixture: { writes: ['\x1b[1;3mX\x1b[23mY'], demand: 'consumed', minimum: { rows: 1, cols: 3 } },
-        grade(cells) {
+        grade(cells, revision) {
             const [baseline, before, after] = cells;
             if (baseline.char !== 'C' || before.char !== 'X' || after.char !== 'Y') {
                 return { outcome: 'inconclusive', note: 'Baseline, styled, or reset cell was not exposed' };
             }
             // Bold is the attribute SGR 23 must preserve here.
-            if (!resetControl(baseline, before, ['bold', 'italic'], ['dim', 'underline'])) {
+            if (!resetControl(baseline, before, ['bold', 'italic'], ['dim', 'underline'], revision)) {
                 return { outcome: 'inconclusive', note: 'Neutral baseline, styled setup, or reset readback was not measured' };
             }
             const cleared = after.italic === false;
@@ -142,12 +148,12 @@ export const sgrColorsContracts = Object.freeze([
         fixture: 'C\x1b[1;3;4mX\x1b[0mY',
         set: ['bold', 'italic', 'underline'], preserve: [],
         terminalFixture: { writes: ['\x1b[1;3;4mX\x1b[0mY'], demand: 'consumed', minimum: { rows: 1, cols: 3 } },
-        grade(cells) {
+        grade(cells, revision) {
             const [baseline, before, after] = cells;
             if (baseline.char !== 'C' || before.char !== 'X' || after.char !== 'Y') {
                 return { outcome: 'inconclusive', note: 'Baseline, styled, or reset cell was not exposed' };
             }
-            if (!resetControl(baseline, before, ['bold', 'italic', 'underline'], ['dim'])) {
+            if (!resetControl(baseline, before, ['bold', 'italic', 'underline'], ['dim'], revision)) {
                 return { outcome: 'inconclusive', note: 'Neutral baseline, styled setup, or reset readback was not measured' };
             }
             // SGR 0 must clear every contracted attribute while the colors
@@ -178,7 +184,7 @@ export const sgrColorsContracts = Object.freeze([
         // inconclusive, never an unsupported.
         pinnedExpectation: 'inapplicable',
         grade(cells) {
-            return gradeNamedColor(cells, 'fg', 'fgIndex', 1, 4, bgDefaultMarker);
+            return gradeNamedColor(cells, 'fgIndex', 1, 4, bgDefaultMarker);
         },
         observed(cells) {
             const brief = cell => ({ char: cell.char, fgIndex: cell.fgIndex, bgDefault: bgDefaultMarker(cell), flags: cell.flags });
@@ -194,7 +200,7 @@ export const sgrColorsContracts = Object.freeze([
         terminalFixture: { writes: ['\x1b[41mX'], demand: 'consumed', minimum: { rows: 1, cols: 2 } },
         pinnedExpectation: 'inapplicable',
         grade(cells) {
-            return gradeNamedColor(cells, 'bg', 'bgIndex', 1, 4, fgDefaultMarker);
+            return gradeNamedColor(cells, 'bgIndex', 1, 4, fgDefaultMarker);
         },
         observed(cells) {
             const brief = cell => ({ char: cell.char, bgIndex: cell.bgIndex, fgDefault: fgDefaultMarker(cell), flags: cell.flags });
@@ -206,7 +212,7 @@ export const sgrColorsContracts = Object.freeze([
 
 /** Named-color grading shared by the fg and bg variants: exact stored palette
  * indices, the other channel's default marker preserved, no style flag moved. */
-function gradeNamedColor(cells, channel, indexField, firstIndex, secondIndex, otherDefault) {
+function gradeNamedColor(cells, indexField, firstIndex, secondIndex, otherDefault) {
     const [baseline, first, second] = cells;
     if (baseline.char !== 'C' || first.char !== 'X' || second.char !== 'Y') {
         return { outcome: 'inconclusive', note: 'Neutral control or named-color cells were not exposed' };
@@ -232,10 +238,12 @@ export function validateSgrColorsFeeds(contract, feeds) {
 }
 
 /** Independent contract grader: mirrors the pinned criteria without the bundle.
- * Every case reads one screen group; the grader receives its three cells. */
-export function gradeSgrColorsCase(contract, cells) {
+ * Every case reads one screen group; the grader receives its three cells and
+ * the contracts revision (v1 keeps the measured control semantics). */
+export function gradeSgrColorsCase(contract, cells, revision = sgrColorsContractsVersion) {
     if (!Array.isArray(cells) || cells.length !== 3 * planReads(contract)) {
         throw new Error(`Missing ${contract.caseId} read captures.`);
     }
-    return contract.grade(cells);
+    if (![1, 2].includes(revision)) throw new Error(`Unknown SGR-colors contracts revision ${revision}.`);
+    return contract.grade(cells, revision);
 }

@@ -13,7 +13,8 @@ const path = new URL('../../docs/qa/terminfo/2026-11-06-sgr-colors-qualification
 test('the published SGR-colors grading evidence re-derives exactly from its retained journal and run log', () => {
     const data = JSON.parse(readFileSync(path));
     const report = data.sgrColorsReport;
-    const derived = buildSgrColorsGradingReport(report.snapshots, data.sgrColorsRun, data.context.runId, report.adapter);
+    const derived = buildSgrColorsGradingReport(report.snapshots, data.sgrColorsRun, data.context.runId, report.adapter,
+        { contractsVersion: report.contractsVersion });
     assert.equal(JSON.stringify(report), JSON.stringify(derived));
     assert.equal(report.suiteId, sgrColorsSuiteId);
     assert.equal(report.adapter.id, sgrColorsAdapterId);

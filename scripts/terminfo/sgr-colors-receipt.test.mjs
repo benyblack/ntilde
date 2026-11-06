@@ -128,8 +128,8 @@ for (const [name, mutate] of [
     ['changed conclusion counts', f => { f.binding.counts = { supported: 4 }; }],
     ['dropped run binding digest', f => { delete f.binding.runSha256; }],
     ['wrong run identity', f => { f.binding.runId = 'f'.repeat(32); }],
-    ['wrong contracts version', f => { f.binding.contractsVersion = 2; }],
-    ['declared contracts drift', f => { f.context.sgrColorsContractsVersion = 2; f.write('context.json', f.context); }],
+    ['wrong contracts version', f => { f.binding.contractsVersion = 3; }],
+    ['declared contracts drift', f => { f.context.sgrColorsContractsVersion = 3; f.write('context.json', f.context); }],
     ['missing adapter declaration', f => { delete f.context.sgrColorsAdapterId; f.write('context.json', f.context); }],
     ['report adapter digest drift', f => {
         f.report.adapter.bundleSha256 = 'a'.repeat(64);

@@ -7,7 +7,7 @@ import { expandScreenFlags } from './ascii-sgr-contracts.mjs';
 import { syntheticSgrColorsScreen, syntheticSgrColorsCells, syntheticSgrColorsGrade } from './fixtures/sgr-colors-evidence.mjs';
 
 test('the batch covers exactly the five contracted terminfo.dev cases in a fixed order', () => {
-    assert.equal(sgrColorsContractsVersion, 1);
+    assert.equal(sgrColorsContractsVersion, 2);
     assert.equal(sgrColorsSuiteId, 'ntilde-owned-sgr-colors-graded-v1');
     assert.deepEqual([...sgrColorsCaseIds], ['sgr.selective-reset.bold', 'sgr.selective-reset.italic',
         'sgr.reset', 'sgr.fg.standard', 'sgr.bg.standard']);
@@ -120,6 +120,24 @@ test('full reset leaving palette-zero colors instead of default markers is unsup
     const surviving = gradeOf(contract, screenWith('sgr.reset',
         rebuild({ count: 1, flags: 768 | 0x01, fg: -1, bg: -1 })));
     assert.equal(surviving.outcome, 'unsupported');
+});
+
+test('contracts v1 keeps its measured control semantics for older evidence', () => {
+    const contract = sgrColorsContracts.find(item => item.caseId === 'sgr.selective-reset.bold');
+    const screen = screenWith('sgr.selective-reset.bold', value => {
+        value.attributeRuns = [
+            { count: 1, flags: 768, fg: -1, bg: -1 },
+            { count: 1, flags: (768 | 0x01 | 0x40 | 0x04) | 0x4000, fg: 2, bg: -1 },
+            { count: 1, flags: 768 | 0x04, fg: -1, bg: -1 },
+            { count: 357, flags: 768, fg: -1, bg: -1 },
+        ];
+    });
+    const cells = cellsOf(screen);
+    // v1 (as measured): the colored setup cell does not invalidate the control.
+    assert.equal(gradeSgrColorsCase(contract, cells, 1).outcome, 'supported');
+    // v2 (current): color drift on the setup cell keeps the control invalid.
+    assert.equal(gradeSgrColorsCase(contract, cells, 2).outcome, 'inconclusive');
+    assert.throws(() => gradeSgrColorsCase(contract, cells, 3), /Unknown SGR-colors contracts revision/);
 });
 
 test('wrong palette indices are unsupported while exact indices pass', () => {
