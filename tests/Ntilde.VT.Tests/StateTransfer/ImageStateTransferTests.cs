@@ -131,6 +131,19 @@ public sealed class ImageStateTransferTests
         Assert.Equal(Json(fromSource), Json(Export(restored, restoredParser)));
     }
 
+    [Fact]
+    public void Replacing_an_image_frees_its_old_bytes_before_making_room()
+    {
+        // Two 33-byte images fill a 70-byte budget. Sending id 2 again must replace its bytes, not
+        // evict id 1 to make room for a moment.
+        var buffer = new TerminalBuffer(40, 20) { ImageSources = new ImageSourceBudget(maxBytes: 70) };
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { RetainImageSources = true };
+        string png = TestImages.PngBase64(4, 4);
+        parser.Process(Kitty("a=t,i=1,f=100,q=2", png) + Kitty("a=t,i=2,f=100,q=2", png) + Kitty("a=t,i=2,f=100,q=2", png));
+        Assert.Equal([1u, 2u], buffer.ExportState(int.MaxValue).KittyImages!.Select(image => image.Id));
+        Assert.Equal(66, buffer.ImageSources.RetainedBytes);
+    }
+
     private static string Kinds(TerminalBuffer buffer) =>
         string.Join(",", buffer.Images.Select(i => i.IsSixelImage ? "sixel" : i.KittyImageId is not null ? "kitty" : "iterm"));
 

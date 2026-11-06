@@ -195,6 +195,9 @@ public partial class TerminalBuffer
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
     }
 
+    /// <summary>Releases the retained bytes of the image <paramref name="id"/> on this screen, about to be replaced.</summary>
+    internal void ReleaseKittySource(uint id) => FindKittyImage(id, 0)?.Source?.Release();
+
     private void ClearRetainedKittyImages()
     {
         foreach (KittyImageAsset asset in _kittyImageAssets.ToArray()) FreeKittyImage(asset);
