@@ -671,6 +671,31 @@ public sealed class ImageStateTransferTests
         Assert.Equal(Json(Export(buffer, parser)), Json(Export(restored, restoredParser)));
     }
 
+    [Fact]
+    public void An_export_without_images_copies_none_of_their_bytes()
+    {
+        // A mux readScreen exports text only (#838): it runs on the session's parse thread, so the image sections are
+        // left out before their bytes are copied, not stripped after.
+        var (buffer, parser) = Create(retain: true, decoder: null);
+        byte[] png = new byte[4 * 1024 * 1024];
+        TestImages.PngHeader(4, 4).CopyTo(png, 0);
+        parser.Process(Kitty("a=T,i=1,f=100", Convert.ToBase64String(png)));
+        Assert.Single(buffer.Images);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        TerminalStateSnapshot text = buffer.ExportState(0, includeImages: false);
+        long withoutImages = GC.GetAllocatedBytesForCurrentThread() - before;
+        before = GC.GetAllocatedBytesForCurrentThread();
+        TerminalStateSnapshot full = buffer.ExportState(0);
+        long withImages = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Null(text.KittyImages);
+        Assert.Null(text.KittyPlacements);
+        Assert.Single(full.KittyImages!);
+        Assert.True(withImages >= png.Length, $"the full export allocated {withImages:N0} bytes");
+        Assert.True(withoutImages < png.Length / 4, $"the text export allocated {withoutImages:N0} bytes");
+    }
+
     /// <summary>Each placement's screen row and visible part; rows above the first history row are clipped.</summary>
     private static string OnScreen(TerminalBuffer buffer)
     {

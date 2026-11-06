@@ -605,28 +605,14 @@ public sealed class HeadlessTerminalSession : IDisposable
         TryEnqueue(_data, WorkItem.ForExit(null, terminal: true));
     }
 
-    /// <summary>
-    /// A read of the screen carries no Kitty or iTerm2 images: its readers (the agent host, the CLI) read text and
-    /// have no renderer for them, and their bytes would only push the read toward its size limit. SIXEL stays, as
-    /// before #838.
-    /// </summary>
-    private static TerminalStateSnapshot WithoutImages(TerminalStateSnapshot snapshot)
-    {
-        snapshot.KittyImages = null;
-        snapshot.KittyPlacements = null;
-        snapshot.ITermImages = null;
-        snapshot.KittyNextImageId = 0;
-        return snapshot;
-    }
-
-    internal TerminalStateSnapshot CaptureSnapshot(int maxScrollbackRows)
+    internal TerminalStateSnapshot CaptureSnapshot(int maxScrollbackRows, bool includeImages = true)
     {
         if (Thread.CurrentThread != _parseThread)
         {
             throw new InvalidOperationException("CaptureSnapshot must run on the session's parse thread; post it with InvokeAsync.");
         }
 
-        TerminalStateSnapshot snapshot = _buffer.ExportState(maxScrollbackRows);
+        TerminalStateSnapshot snapshot = _buffer.ExportState(maxScrollbackRows, includeImages);
         snapshot.Parser = _parser.ExportState();
         snapshot.DecoderTail = _decoder.PendingTail.ToArray();
         snapshot.StreamSeq = _decoder.ConsumedBytes;
@@ -1152,7 +1138,10 @@ public sealed class HeadlessTerminalSession : IDisposable
         byte[] json;
         try
         {
-            json = TerminalStateSerializer.ToBytes(WithoutImages(CaptureSnapshot(maxScrollbackRows)));
+            // No Kitty or iTerm2 images: readScreen's readers (the agent host, the CLI) read text and have no renderer for
+            // them. Left out of the export, their bytes are never copied on this thread, and cannot push the read toward its
+            // size limit. SIXEL stays, as before #838.
+            json = TerminalStateSerializer.ToBytes(CaptureSnapshot(maxScrollbackRows, includeImages: false));
         }
         catch (Exception ex)
         {

@@ -18,7 +18,14 @@ namespace Ntilde.VT
         /// <see cref="TerminalStateSnapshot.StreamSeq"/> are left for the caller to fill - the
         /// buffer does not own a parser or a decoder.
         /// </summary>
-        public TerminalStateSnapshot ExportState(int maxScrollbackRows)
+        public TerminalStateSnapshot ExportState(int maxScrollbackRows) => ExportState(maxScrollbackRows, includeImages: true);
+
+        /// <param name="maxScrollbackRows">As in <see cref="ExportState(int)"/>.</param>
+        /// <param name="includeImages">
+        /// False leaves the Kitty and iTerm2 image sections out without copying their bytes, for a reader of text
+        /// (a mux <c>readScreen</c>) that has no use for them (#838). SIXEL is exported either way.
+        /// </param>
+        public TerminalStateSnapshot ExportState(int maxScrollbackRows, bool includeImages)
         {
             bool lockTaken = EnterReadLockIfNeeded();
             try
@@ -89,7 +96,7 @@ namespace Ntilde.VT
                 snapshot.Hyperlinks = links.Entries;
                 snapshot.Underlines = underlines.Entries;
                 ExportSixelState(snapshot);
-                ExportImageState(snapshot);
+                if (includeImages) ExportImageState(snapshot);
                 ExportTextSizingState(snapshot, mainRows, exportedAltRows);
                 return snapshot;
             }
