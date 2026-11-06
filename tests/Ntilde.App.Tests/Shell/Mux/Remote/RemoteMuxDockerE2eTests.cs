@@ -533,11 +533,13 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
         private async Task<double[]> MeasureAttachesAsync(MuxClient client, Guid sessionId, string label, int minimumScrollbackRows)
         {
             var samples = new double[LatencySamples];
+            // An attach names the session's image policy (#838), as a window reattaching does: from the session list.
+            int imagePolicy = (await client.ListSessionsAsync(Ct)).Single(s => s.SessionId == sessionId).RequiredImagePolicy;
             for (int i = 0; i < samples.Length; i++)
             {
                 TerminalStateSnapshot? snapshot = null;
                 long start = Stopwatch.GetTimestamp();
-                MuxClientSession session = client.OpenSession(sessionId, string.Empty, null, MuxAttachMode.Shared);
+                MuxClientSession session = client.OpenSession(sessionId, string.Empty, null, MuxAttachMode.Shared, requiredImagePolicy: imagePolicy);
                 try
                 {
                     session.SnapshotReceived += received => snapshot = received;
