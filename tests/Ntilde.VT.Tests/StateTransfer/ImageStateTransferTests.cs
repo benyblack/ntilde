@@ -282,6 +282,27 @@ public sealed class ImageStateTransferTests
         Assert.All(decoded[..^fit], Assert.False);
     }
 
+    [Fact]
+    public void A_compressed_jpeg_with_its_frame_after_large_metadata_transfers()
+    {
+        // Five 64 KiB APP1 segments put the JPEG frame header past the 256 KiB start validation keeps.
+        // Live transmission accepts it, so a snapshot of it must restore.
+        var jpeg = new List<byte> { 0xFF, 0xD8 };
+        for (int i = 0; i < 5; i++)
+        {
+            jpeg.AddRange([0xFF, 0xE1, 0xFF, 0xFF]);
+            jpeg.AddRange(new byte[0xFFFD]);
+        }
+        jpeg.AddRange([0xFF, 0xC0, 0x00, 0x11, 8, 0x00, 0x18, 0x00, 0x20, 3, 1, 0x11, 0, 2, 0x11, 1, 3, 0x11, 1]); // 32 x 24
+        jpeg.AddRange([0xFF, 0xD9]);
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process(Kitty("a=T,i=1,f=100,o=z,q=2", Convert.ToBase64String(Deflate(jpeg.ToArray()))));
+        Assert.Single(source.Images);
+
+        var (restored, _) = Restore(Export(source, sourceParser), decoder: null);
+        Assert.Equal(Placements(source), Placements(restored));
+    }
+
     private static string Kinds(TerminalBuffer buffer) =>
         string.Join(",", buffer.Images.Select(i => i.IsSixelImage ? "sixel" : i.KittyImageId is not null ? "kitty" : "iterm"));
 

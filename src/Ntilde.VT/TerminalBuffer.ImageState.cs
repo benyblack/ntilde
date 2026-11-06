@@ -243,8 +243,17 @@ public partial class TerminalBuffer
             inflated += length;
         }
         if (IsRaw(encoding)) return length == rawLength ? (encoding.RawWidth, encoding.RawHeight) : null;
-        if (ImageHeaderProbe.TryGetSize(header, out _, out int w, out int h) && w <= 2000 && h <= 2000) return (w, h);
-        return null;
+        if (!ImageHeaderProbe.TryGetSize(header, out _, out int w, out int h) && encoding.Compressed && length > header.Length)
+        {
+            // The kept start did not hold the header (a JPEG frame after large metadata). Live
+            // transmission reads all of it, so do the same, within the same bounds; this inflation counts
+            // toward the snapshot limit too.
+            if (RetainedKittyPixels(data, encoding) is not { } all) return null;
+            inflated += all.LongLength;
+            if (!ImageHeaderProbe.TryGetSize(all, out _, out w, out h)) return null;
+        }
+        else if (w == 0) return null;
+        return w <= 2000 && h <= 2000 ? (w, h) : null;
     }
 
     /// <summary>Inflates a zlib stream, counting up to <paramref name="bound"/> bytes and keeping only the start.</summary>
