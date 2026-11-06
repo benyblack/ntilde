@@ -54,6 +54,17 @@ public sealed class ImageSourceBudget
         return source;
     }
 
+    /// <summary>Each retained source's position in eviction order, oldest (next to go) first.</summary>
+    internal Dictionary<ImageSource, int> EvictionOrder()
+    {
+        lock (_gate)
+        {
+            var order = new Dictionary<ImageSource, int>();
+            foreach (ImageSource source in _retiredSources.Concat(_sources)) order[source] = order.Count;
+            return order;
+        }
+    }
+
     internal void Retire(ImageSource source)
     {
         lock (_gate)

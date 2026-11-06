@@ -145,6 +145,13 @@ namespace Ntilde.VT
         [JsonPropertyName("kitty_placements"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<TerminalKittyPlacementState>? KittyPlacements { get; set; }
 
+        /// <summary>
+        /// The Kitty image-id allocator (the last id handed to an <c>I=</c>-only transmission), so ids
+        /// allocated after a restore match the ones the source would have allocated.
+        /// </summary>
+        [JsonPropertyName("kitty_next_id"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public uint KittyNextImageId { get; set; }
+
         /// <summary>Retained iTerm2 inline images (#838) and their placements.</summary>
         [JsonPropertyName("iterm_images"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<TerminalITermImageState>? ITermImages { get; set; }
@@ -167,6 +174,9 @@ namespace Ntilde.VT
         [JsonPropertyName("w")] public int Width { get; set; }
         [JsonPropertyName("h")] public int Height { get; set; }
         [JsonPropertyName("data")] public byte[] Data { get; set; } = [];
+        /// <summary>Position in the source budget's eviction order (oldest first); absent when unknown.</summary>
+        [JsonPropertyName("src"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? SourceOrder { get; set; }
     }
 
     /// <summary>A placement of a retained Kitty image, in the same coordinates as SIXEL placements.</summary>
@@ -196,6 +206,10 @@ namespace Ntilde.VT
     public sealed class TerminalITermImageState
     {
         [JsonPropertyName("data")] public byte[] Data { get; set; } = [];
+        /// <summary>Position in the source budget's eviction order (oldest first); absent when unknown.</summary>
+        [JsonPropertyName("src"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? SourceOrder { get; set; }
+
         /// <summary>Pixel size from the header; checked again on import.</summary>
         [JsonPropertyName("w")] public int PixelWidth { get; set; }
         [JsonPropertyName("h")] public int PixelHeight { get; set; }

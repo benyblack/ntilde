@@ -11,6 +11,8 @@ public partial class TerminalBuffer
 {
     private void ExportImageState(TerminalStateSnapshot snapshot)
     {
+        snapshot.KittyNextImageId = _nextKittyImageId;
+        Dictionary<ImageSource, int> evictionOrder = ImageSources.EvictionOrder();
         var exported = new Dictionary<KittyImageAsset, int>();
         foreach (KittyImageAsset asset in _kittyImageAssets)
         {
@@ -28,6 +30,7 @@ public partial class TerminalBuffer
                 Width = asset.PixelWidth,
                 Height = asset.PixelHeight,
                 Data = data,
+                SourceOrder = evictionOrder.TryGetValue(asset.Source, out int kittyOrder) ? kittyOrder : null,
             });
         }
 
@@ -58,6 +61,7 @@ public partial class TerminalBuffer
                 (snapshot.ITermImages ??= []).Add(new TerminalITermImageState
                 {
                     Data = data,
+                    SourceOrder = evictionOrder.TryGetValue(image.EncodedSource, out int itermOrder) ? itermOrder : null,
                     PixelWidth = pixelWidth,
                     PixelHeight = pixelHeight,
                     X = image.CellX,
@@ -168,9 +172,14 @@ public partial class TerminalBuffer
         return ImageHeaderProbe.TryGetSize(pixels, out _, out int w, out int h) && w <= 2000 && h <= 2000 ? (w, h) : null;
     }
 
-    /// <summary>The bytes after <c>o=z</c> inflation, bounded as live transmission bounds them.</summary>
+    /// <summary>
+    /// The bytes after <c>o=z</c> inflation, bounded as live transmission bounds them. A raw size is
+    /// checked against the 2000-pixel limit first, as live transmission checks it before inflating, so a
+    /// crafted snapshot cannot license a huge inflation.
+    /// </summary>
     private static byte[]? RetainedKittyPixels(byte[] data, KittyImageEncoding encoding)
     {
+        if (encoding.Format is 24 or 32 && (encoding.RawWidth is < 1 or > 2000 || encoding.RawHeight is < 1 or > 2000)) return null;
         if (!encoding.Compressed) return data;
         long bound = encoding.Format is 24 or 32
             ? (long)encoding.RawWidth * encoding.RawHeight * (encoding.Format == 24 ? 3 : 4)
@@ -185,10 +194,28 @@ public partial class TerminalBuffer
     /// </summary>
     private void ImportImageState(TerminalStateSnapshot snapshot, Dictionary<TerminalImage, int> order)
     {
-        var assets = new List<KittyImageAsset?>();
-        foreach (TerminalKittyImageState state in snapshot.KittyImages ?? [])
+        _nextKittyImageId = snapshot.KittyNextImageId;
+        var kittyStates = snapshot.KittyImages ?? [];
+        var itermStates = snapshot.ITermImages ?? [];
+
+        // Retain the bytes in the exported eviction order, not grouped by protocol, so the budget
+        // evicts the same image next as the source would. Entries without an order keep theirs.
+        var kittySources = new ImageSource?[kittyStates.Count];
+        var itermSources = new ImageSource?[itermStates.Count];
+        var retention = kittyStates.Select((state, i) => (Order: state.SourceOrder, Sequence: i, Kitty: true, Index: i))
+            .Concat(itermStates.Select((state, i) => (Order: state.SourceOrder, Sequence: kittyStates.Count + i, Kitty: false, Index: i)))
+            .OrderBy(entry => entry.Order ?? int.MaxValue).ThenBy(entry => entry.Sequence);
+        foreach (var entry in retention)
         {
-            ImageSource source = ImageSources.Retain(state.Data);
+            if (entry.Kitty) kittySources[entry.Index] = ImageSources.Retain(kittyStates[entry.Index].Data);
+            else itermSources[entry.Index] = ImageSources.Retain(itermStates[entry.Index].Data);
+        }
+
+        var assets = new List<KittyImageAsset?>();
+        for (int i = 0; i < kittyStates.Count; i++)
+        {
+            TerminalKittyImageState state = kittyStates[i];
+            ImageSource source = kittySources[i]!;
             if (source.Data is null) { assets.Add(null); continue; }
             var asset = new KittyImageAsset(state.Id, state.Number, state.Alt, new UndecodedImage(state.Width, state.Height), state.Width, state.Height)
             {
@@ -210,12 +237,16 @@ public partial class TerminalBuffer
             _images.Add(image);
             if (state.Order is int z) order[image] = z;
         }
-        foreach (TerminalITermImageState state in snapshot.ITermImages ?? [])
+        for (int i = 0; i < itermStates.Count; i++)
         {
-            if (ImportedPlacement(new UndecodedImage(state.PixelWidth, state.PixelHeight), state.X, state.Y, state.Width, state.Height,
-                    state.Alt, state.ClipTop, state.ClipBottom, state.ClipRight) is not { } image) continue;
-            ImageSource source = ImageSources.Retain(state.Data);
-            if (source.Data is null) continue;
+            TerminalITermImageState state = itermStates[i];
+            ImageSource source = itermSources[i]!;
+            if (source.Data is null || ImportedPlacement(new UndecodedImage(state.PixelWidth, state.PixelHeight), state.X, state.Y, state.Width, state.Height,
+                    state.Alt, state.ClipTop, state.ClipBottom, state.ClipRight) is not { } image)
+            {
+                source.Release();
+                continue;
+            }
             image.EncodedSource = source;
             image.PreserveAspectRatio = state.PreserveAspectRatio;
             _images.Add(image);

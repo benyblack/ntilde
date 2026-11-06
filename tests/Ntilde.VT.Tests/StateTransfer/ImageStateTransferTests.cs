@@ -69,6 +69,68 @@ public sealed class ImageStateTransferTests
         Assert.Equal(buffer.Images.Select(i => (i.CellX, i.CellY, i.CellWidth, i.CellHeight)), restored.Images.Select(i => (i.CellX, i.CellY, i.CellWidth, i.CellHeight)));
     }
 
+    [Fact]
+    public void A_crafted_raw_size_is_refused_before_any_inflation()
+    {
+        // A compressed raw image declaring 4000 x 2000 inflates to 32 MB of zeros from ~31 KB. Live
+        // transmission refuses that size before inflating; a snapshot must not license it either.
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process(Traffic);
+        TerminalStateSnapshot snapshot = TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(Export(source, sourceParser)));
+        TerminalKittyImageState raw = snapshot.KittyImages!.First(i => i.Format == 32);
+        (raw.RawWidth, raw.RawHeight, raw.Width, raw.Height, raw.Compressed) = (4000, 2000, 4000, 2000, true);
+        raw.Data = Deflate(new byte[4000 * 2000 * 4]);
+
+        var (target, targetParser) = Create(retain: true, decoder: null);
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        Assert.ThrowsAny<Exception>(() => TerminalStateTransfer.Restore(target, targetParser, snapshot));
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.True(allocated < 8 * 1024 * 1024, $"Validation allocated {allocated:N0} bytes.");
+    }
+
+    [Fact]
+    public void Kitty_ids_allocated_after_a_restore_match_the_source()
+    {
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        string png = TestImages.PngBase64(4, 4);
+        sourceParser.Process(Kitty("a=t,I=1,f=100,q=1", png) + Kitty("a=t,I=2,f=100,q=1", png) + Kitty("a=d,d=I,i=1"));
+        var (restored, restoredParser) = Restore(Export(source, sourceParser), decoder: null);
+
+        var sourceReplies = new List<string>();
+        var restoredReplies = new List<string>();
+        sourceParser.OnResponse = sourceReplies.Add;
+        restoredParser.OnResponse = restoredReplies.Add;
+        string next = Kitty("a=t,I=3,f=100", png);
+        sourceParser.Process(next);
+        restoredParser.Process(next);
+        Assert.Equal(sourceReplies, restoredReplies);
+        Assert.Equal("\x1b_Gi=3,I=3;OK\x1b\\", Assert.Single(restoredReplies));
+    }
+
+    [Fact]
+    public void The_restored_budget_evicts_the_same_image_next()
+    {
+        // The budget evicts oldest first across protocols: iTerm2 then Kitty means iTerm2 goes first.
+        static (TerminalBuffer, AnsiParser) Small()
+        {
+            var buffer = new TerminalBuffer(40, 20) { ImageSources = new ImageSourceBudget(maxSources: 2) };
+            return (buffer, new AnsiParser(buffer, forceConPtyFiltering: false) { RetainImageSources = true });
+        }
+        var (source, sourceParser) = Small();
+        sourceParser.Process(ITerm("", TestImages.PngBase64(4, 4)) + Kitty("a=T,i=1,f=100,q=2", TestImages.PngBase64(5, 5)));
+        TerminalStateSnapshot exported = Export(source, sourceParser);
+
+        var (restored, restoredParser) = Small();
+        TerminalStateTransfer.Restore(restored, restoredParser, TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(exported)));
+
+        string next = Kitty("a=T,i=2,f=100,q=2", TestImages.PngBase64(6, 6));
+        sourceParser.Process(next);
+        restoredParser.Process(next);
+        TerminalStateSnapshot fromSource = Export(source, sourceParser);
+        Assert.Null(fromSource.ITermImages); // the iTerm2 bytes were the oldest
+        Assert.Equal(Json(fromSource), Json(Export(restored, restoredParser)));
+    }
+
     private static string Kinds(TerminalBuffer buffer) =>
         string.Join(",", buffer.Images.Select(i => i.IsSixelImage ? "sixel" : i.KittyImageId is not null ? "kitty" : "iterm"));
 
