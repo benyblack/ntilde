@@ -509,7 +509,9 @@ raster policy and fixed per session: every attach must name it, so a peer that d
 not support it is refused, never downgraded. The daemon, each GUI pane and the text
 client configure their parsers with `PersistentImagePolicy.Apply`, so all of them
 place every image alike; native Kitty APC is trusted under it, since a per-window
-setting cannot apply to a shared stream. `readScreen` leaves Kitty and iTerm2 images
+setting cannot apply to a shared stream. Policy 2 adds iTerm2's multipart form
+(`MultipartFile`/`FilePart`/`FileEnd`), which policy-1 peers ignore; a policy-1
+session therefore ignores it on every side (`AllowITerm2Multipart`). `readScreen` leaves Kitty and iTerm2 images
 out of its reply, and Kitty `t=f` stays unavailable in persistent panes. Visible
 consequences: a valid header with a corrupt body reserves its cells and gets `OK`,
 and a format the probe cannot size is refused even where Skia could decode it.

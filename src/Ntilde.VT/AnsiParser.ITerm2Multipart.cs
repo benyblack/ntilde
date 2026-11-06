@@ -29,7 +29,8 @@ namespace Ntilde.VT
     /// payload undecodable, and <c>FileEnd</c> places nothing.</item>
     /// <item>A header that is not <c>inline=1</c> (iTerm2 would offer a download) or has a dimension
     /// longer than <see cref="ITerm2MaxDimensionChars"/> starts no transfer.</item>
-    /// <item>RIS ends the transfer, as does turning images off (nothing is accumulated without them).</item>
+    /// <item>RIS ends the transfer, as does turning images or <see cref="AllowITerm2Multipart"/> off
+    /// (nothing is accumulated without them).</item>
     /// </list>
     /// </para>
     /// </remarks>
@@ -44,6 +45,14 @@ namespace Ntilde.VT
         /// transfer small and lets an import refuse what no stream could have produced.
         /// </summary>
         internal const int ITerm2MaxDimensionChars = 64;
+
+        /// <summary>
+        /// Whether the multipart form is assembled (with <see cref="AllowNonSixelImages"/>); when false it
+        /// is ignored, as before it was supported. On by default. A persistent session sets it from its
+        /// image policy (<see cref="PersistentImagePolicy.Apply"/>), so the daemon and every client agree,
+        /// including a session whose peers predate the multipart form.
+        /// </summary>
+        public bool AllowITerm2Multipart { get; set; } = true;
 
         private ITerm2ImageArguments? _iTerm2Multipart;
         private StringBuilder _iTerm2MultipartPayload = new();
@@ -69,7 +78,7 @@ namespace Ntilde.VT
         private void BeginITerm2Multipart(string header)
         {
             ClearITerm2Multipart();
-            if (!AllowNonSixelImages) return;
+            if (!AllowNonSixelImages || !AllowITerm2Multipart) return;
             ITerm2ImageArguments arguments = ITerm2ImageArguments.Parse(header);
             if (!arguments.Inline || arguments.Width.Length > ITerm2MaxDimensionChars || arguments.Height.Length > ITerm2MaxDimensionChars) return;
             _iTerm2Multipart = arguments;
@@ -78,7 +87,7 @@ namespace Ntilde.VT
         private void AppendITerm2Part(ReadOnlySpan<char> part)
         {
             if (_iTerm2Multipart is null || _iTerm2MultipartOverflow) return;
-            if (!AllowNonSixelImages)
+            if (!AllowNonSixelImages || !AllowITerm2Multipart)
             {
                 ClearITerm2Multipart();
                 return;
@@ -96,7 +105,7 @@ namespace Ntilde.VT
         private void EndITerm2Multipart()
         {
             if (_iTerm2Multipart is not { } arguments) return;
-            bool complete = !_iTerm2MultipartOverflow && AllowNonSixelImages;
+            bool complete = !_iTerm2MultipartOverflow && AllowNonSixelImages && AllowITerm2Multipart;
             string payload = complete ? _iTerm2MultipartPayload.ToString() : string.Empty;
             ClearITerm2Multipart();
             if (complete) PlaceITerm2Image(arguments, payload);

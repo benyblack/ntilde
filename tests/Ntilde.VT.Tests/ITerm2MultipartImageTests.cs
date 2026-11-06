@@ -209,6 +209,32 @@ public sealed class ITerm2MultipartImageTests
     }
 
     [Fact]
+    public void Under_image_policy_1_the_form_is_ignored_as_it_was_before_it_was_supported()
+    {
+        // Policy 1 is what a persistent-session peer from before the multipart form negotiates, and that peer
+        // ignores the form: every parser of such a session must do the same. Policy 2 assembles it.
+        string png = Png(30, 40);
+        string multipart = Multipart(";width=6", png);
+        string input = "a" + multipart + "\nb" + Single(";width=2", TestImages.PngBase64(8, 8)) + "c";
+
+        var (legacy, legacyParser) = Create();
+        PersistentImagePolicy.Apply(legacyParser, PersistentImagePolicy.RetainedImagesVersion);
+        Assert.False(legacyParser.AllowITerm2Multipart);
+        legacyParser.Process(input);
+        var (stripped, strippedParser) = Create();
+        PersistentImagePolicy.Apply(strippedParser, PersistentImagePolicy.RetainedImagesVersion);
+        strippedParser.Process(input.Replace(multipart, string.Empty, StringComparison.Ordinal));
+        Assert.Equal(Describe(stripped), Describe(legacy));
+        Assert.Null(legacyParser.ExportState().ITerm2Multipart);
+
+        var (current, currentParser) = Create();
+        PersistentImagePolicy.Apply(currentParser, PersistentImagePolicy.MultipartImagesVersion);
+        Assert.True(currentParser.AllowITerm2Multipart);
+        currentParser.Process(input);
+        Assert.Equal([6, 2], current.Images.Select(i => i.CellWidth));
+    }
+
+    [Fact]
     public void A_snapshot_taken_between_any_two_sequences_resumes_the_transfer()
     {
         string png = Png(30, 40);

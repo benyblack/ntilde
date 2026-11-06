@@ -48,7 +48,9 @@ Persistent panes ([What runs](persistent-sessions.md#what-runs)) show all three,
 when you reattach. A few differences:
 
 - **Sessions from an earlier version.** A persistent session started by an earlier version of
-  Ntilde shows only Sixel until it ends. New tabs get all three.
+  Ntilde shows only Sixel until it ends. New tabs get all three. In a session started by the
+  version before plain `imgcat` worked, or one shared with that version's multiplexer, run
+  `imgcat -l`.
 - **Kitty file transfer** (`t=f`) is not available in persistent panes. Programs fall back to
   sending the image itself.
 - **`AllowNativeKittyGraphics`** does not apply there: persistent panes always accept Kitty graphics.

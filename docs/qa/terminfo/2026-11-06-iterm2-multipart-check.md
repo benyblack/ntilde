@@ -28,13 +28,15 @@ It is a manual QA run. It does not change any published terminfo.dev observation
 
 | Run | Pane | `imgcat` (multipart) | `imgcat -l` (`File=`) |
 |---|---|---|---|
-| `persistent` | persistent (`KeepOnClose`, `NTILDE_MUX_SESSION` set) | drawn, rows 1 to 4 | drawn, rows 6 to 9 |
+| `persistent` | persistent (`KeepOnClose`, `NTILDE_MUX_SESSION` set, image policy 2) | drawn, rows 1 to 4 | drawn, rows 6 to 9 |
 | `reattached` | the same pane, after the app was quit and started again | still drawn | still drawn |
 | `direct` | direct (`SessionPersistence` `Off`) | drawn, rows 1 to 4 | drawn, rows 6 to 9 |
 
 - The two forms put the same image in the same number of cells (eight columns, four rows), and the
   text after each resumed at column 0 of the next row.
 - The three captures were byte-identical (2388x1518 px, 63,308 bytes).
+- The persistent and direct runs were repeated on the final build, which puts multipart behind image
+  policy 2, with the same captures.
 
 ## Limits
 
