@@ -261,6 +261,7 @@ public sealed class MuxServer : IDisposable
     internal Guid Spawn(SpawnParams p)
     {
         SixelPolicyAdmission.Require(p.RequiredSixelRasterPolicy, Ntilde.VT.SixelRasterPolicy.EnabledVersion);
+        ImagePolicyAdmission.Policy.Require(p.RequiredImagePolicy, Ntilde.VT.PersistentImagePolicy.EnabledVersion);
         RequireGeometry(p.Cols, p.Rows);
         RequireInitialCellMetrics(p.CellWidthPx, p.CellHeightPx);
         RequireHistoryRequest(p.MaxHistory);
@@ -334,6 +335,7 @@ public sealed class MuxServer : IDisposable
                 MaxScrollbackBytes = Options.MaxSessionScrollbackBytes,
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,
                 RequiredSixelRasterPolicy = p.RequiredSixelRasterPolicy,
+                RequiredImagePolicy = p.RequiredImagePolicy,
                 Log = Options.Log,
                 MaxQueuedInputBytes = Options.MaxQueuedInputBytes,
                 SessionChangedInterval = Options.SessionChangedInterval,
@@ -401,6 +403,7 @@ public sealed class MuxServer : IDisposable
             Faulted = s.IsFaulted,
             DetachedByUser = s.DetachedByUser,
             Cwd = s.Cwd,
+            RequiredImagePolicy = s.RequiredImagePolicy,
         }).ToArray();
 
     internal void Kill(Guid id, IMuxFrameSink? by = null, string? byClientKind = null)

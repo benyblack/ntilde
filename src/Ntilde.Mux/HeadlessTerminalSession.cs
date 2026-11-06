@@ -128,6 +128,9 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     internal int RequiredSixelRasterPolicy => _buffer.SixelRasterPolicyVersion;
 
+    /// <summary>The session's <see cref="PersistentImagePolicy"/> (#838), fixed when it was spawned.</summary>
+    internal int RequiredImagePolicy { get; }
+
     public HeadlessTerminalSession(Guid id, ITerminalSession session, HeadlessSessionOptions options)
     {
         ArgumentNullException.ThrowIfNull(session);
@@ -170,6 +173,10 @@ public sealed class HeadlessTerminalSession : IDisposable
             KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
             DefaultBackground = options.DefaultBg is uint background ? TermColor.FromUint(background) : null,
         };
+        // Kitty and iTerm2 images, placed from their headers with no decoder and retained for snapshots, as
+        // every client of the session places them (#838); SIXEL only otherwise.
+        RequiredImagePolicy = options.RequiredImagePolicy;
+        PersistentImagePolicy.Apply(_parser, RequiredImagePolicy);
         ApplyHostColors(options.DefaultFg, options.DefaultBg, options.CursorColor,
             options.SelectionFg, options.SelectionBg, options.AnsiPalette);
         (_session as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
@@ -598,14 +605,14 @@ public sealed class HeadlessTerminalSession : IDisposable
         TryEnqueue(_data, WorkItem.ForExit(null, terminal: true));
     }
 
-    internal TerminalStateSnapshot CaptureSnapshot(int maxScrollbackRows)
+    internal TerminalStateSnapshot CaptureSnapshot(int maxScrollbackRows, bool includeImages = true)
     {
         if (Thread.CurrentThread != _parseThread)
         {
             throw new InvalidOperationException("CaptureSnapshot must run on the session's parse thread; post it with InvokeAsync.");
         }
 
-        TerminalStateSnapshot snapshot = _buffer.ExportState(maxScrollbackRows);
+        TerminalStateSnapshot snapshot = _buffer.ExportState(maxScrollbackRows, includeImages);
         snapshot.Parser = _parser.ExportState();
         snapshot.DecoderTail = _decoder.PendingTail.ToArray();
         snapshot.StreamSeq = _decoder.ConsumedBytes;
@@ -1131,7 +1138,10 @@ public sealed class HeadlessTerminalSession : IDisposable
         byte[] json;
         try
         {
-            json = TerminalStateSerializer.ToBytes(CaptureSnapshot(maxScrollbackRows));
+            // No Kitty or iTerm2 images: readScreen's readers (the agent host, the CLI) read text and have no renderer for
+            // them. Left out of the export, their bytes are never copied on this thread, and cannot push the read toward its
+            // size limit. SIXEL stays, as before #838.
+            json = TerminalStateSerializer.ToBytes(CaptureSnapshot(maxScrollbackRows, includeImages: false));
         }
         catch (Exception ex)
         {

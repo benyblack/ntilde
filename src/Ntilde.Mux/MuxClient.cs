@@ -97,6 +97,8 @@ public sealed class MuxClient : IDisposable
     public int ProtocolVersion { get; private set; }
     /// <summary>Negotiated stream-policy ceiling; zero for absent or legacy peer capability.</summary>
     public int MaxSixelRasterPolicy { get; private set; }
+    /// <summary>Negotiated image-policy ceiling (#838); zero when either peer offers none: SIXEL only.</summary>
+    public int MaxImagePolicy { get; private set; }
 
     /// <summary>From Welcome. Construct the pane's parser with this so both halves of a snapshot parse identically.</summary>
     public bool ForceConPtyFiltering { get; private set; }
@@ -139,10 +141,11 @@ public sealed class MuxClient : IDisposable
         try
         {
             SixelPolicyAdmission.RequireClient(options.MaxSixelRasterPolicy, SixelRasterPolicy.EnabledVersion);
+            ImagePolicyAdmission.Policy.RequireClient(options.MaxImagePolicy, PersistentImagePolicy.EnabledVersion);
             client = new MuxClient(stream, options);
             WelcomeResult welcome = await client.RequestAsync(
                 MuxMethods.Hello,
-                new HelloParams { MinVersion = options.MinProtocolVersion, MaxVersion = options.MaxProtocolVersion, ClientKind = options.ClientKind, ClientInstanceId = options.ClientInstanceId, ByteInput = true, MaxSixelRasterPolicy = options.MaxSixelRasterPolicy },
+                new HelloParams { MinVersion = options.MinProtocolVersion, MaxVersion = options.MaxProtocolVersion, ClientKind = options.ClientKind, ClientInstanceId = options.ClientInstanceId, ByteInput = true, MaxSixelRasterPolicy = options.MaxSixelRasterPolicy, MaxImagePolicy = options.MaxImagePolicy },
                 MuxJsonContext.Default.HelloParams,
                 MuxJsonContext.Default.WelcomeResult,
                 cancellationToken).ConfigureAwait(false);
@@ -154,6 +157,8 @@ public sealed class MuxClient : IDisposable
 
             SixelPolicyAdmission.RequireClient(welcome.MaxSixelRasterPolicy, options.MaxSixelRasterPolicy);
             client.MaxSixelRasterPolicy = welcome.MaxSixelRasterPolicy;
+            ImagePolicyAdmission.Policy.RequireClient(welcome.MaxImagePolicy, options.MaxImagePolicy);
+            client.MaxImagePolicy = welcome.MaxImagePolicy;
             client.ProtocolVersion = welcome.Version;
             client.ForceConPtyFiltering = welcome.ForceConPtyFiltering;
             if (welcome.HistoryLimits is { } limits && (limits.MaxRows < 0 || limits.MaxBytes <= 0 || limits.MaxAttachRows < 0))
@@ -192,9 +197,11 @@ public sealed class MuxClient : IDisposable
         ArgumentNullException.ThrowIfNull(request);
         SpawnParams p = sessionId is Guid id ? request with { SessionId = id.ToString("D") } : request;
         SixelPolicyAdmission.RequireClient(p.RequiredSixelRasterPolicy, MaxSixelRasterPolicy);
+        ImagePolicyAdmission.Policy.RequireClient(p.RequiredImagePolicy, MaxImagePolicy);
         SpawnResult result = await RequestAsync(MuxMethods.Spawn, p, MuxJsonContext.Default.SpawnParams,
             MuxJsonContext.Default.SpawnResult, cancellationToken).ConfigureAwait(false);
         SixelPolicyAdmission.RequireClientSession(result.RequiredSixelRasterPolicy, p.RequiredSixelRasterPolicy, MaxSixelRasterPolicy);
+        ImagePolicyAdmission.Policy.RequireClientSession(result.RequiredImagePolicy, p.RequiredImagePolicy, MaxImagePolicy);
         return result.SessionId;
     }
 
@@ -274,9 +281,14 @@ public sealed class MuxClient : IDisposable
     /// An unattached session. Wire its events, then call <see cref="MuxClientSession.AttachAsync(int, MuxPresentation, CancellationToken)"/>:
     /// nothing is raised before a handler can exist, so nothing needs buffering (spec §9.6).
     /// </summary>
-    public MuxClientSession OpenSession(Guid sessionId, string shellCommand = "", string? shellArguments = null, MuxAttachMode attachMode = MuxAttachMode.Shared, int requiredSixelRasterPolicy = 0)
+    /// <param name="requiredImagePolicy">
+    /// The session's image policy (#838): its <see cref="SessionSummary.RequiredImagePolicy"/>, or what it was spawned
+    /// with. Every attach names it, and the daemon refuses one that does not match.
+    /// </param>
+    public MuxClientSession OpenSession(Guid sessionId, string shellCommand = "", string? shellArguments = null, MuxAttachMode attachMode = MuxAttachMode.Shared,
+        int requiredSixelRasterPolicy = 0, int requiredImagePolicy = 0)
     {
-        var session = new MuxClientSession(this, sessionId, shellCommand, shellArguments, attachMode, requiredSixelRasterPolicy);
+        var session = new MuxClientSession(this, sessionId, shellCommand, shellArguments, attachMode, requiredSixelRasterPolicy, requiredImagePolicy);
         if (!_sessions.TryAdd(sessionId, session))
         {
             throw new InvalidOperationException($"Session {sessionId} is already open on this client; dispose it first.");
@@ -313,7 +325,7 @@ public sealed class MuxClient : IDisposable
 
         long id = Interlocked.Increment(ref _nextId);
         JsonElement p = MuxFrames.ToElement(
-            new AttachParams { SessionId = session.Id, MaxScrollbackRows = maxScrollbackRows, Presentation = presentation, Mode = MuxAttachModes.ToWire(mode), RequiredSixelRasterPolicy = session.RequiredSixelRasterPolicy },
+            new AttachParams { SessionId = session.Id, MaxScrollbackRows = maxScrollbackRows, Presentation = presentation, Mode = MuxAttachModes.ToWire(mode), RequiredSixelRasterPolicy = session.RequiredSixelRasterPolicy, RequiredImagePolicy = session.RequiredImagePolicy },
             MuxJsonContext.Default.AttachParams);
         var tcs = new TaskCompletionSource<MuxResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[id] = tcs;
@@ -753,6 +765,7 @@ public sealed class MuxClient : IDisposable
         try
         {
             snapshot = DecodeSnapshot(json);
+            ImagePolicyAdmission.RequireClientSnapshot(snapshot, session.RequiredImagePolicy); // before any callback sees it
         }
         catch (MuxProtocolException ex)
         {

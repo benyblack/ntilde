@@ -127,7 +127,7 @@ public sealed class ImageStateTransferTests
         sourceParser.Process(next);
         restoredParser.Process(next);
         TerminalStateSnapshot fromSource = Export(source, sourceParser);
-        Assert.Null(fromSource.ITermImages); // the iTerm2 bytes were the oldest
+        Assert.Empty(Assert.Single(fromSource.ITermImages!).Data); // the iTerm2 bytes were the oldest; the placement stays
         Assert.Equal(Json(fromSource), Json(Export(restored, restoredParser)));
     }
 
@@ -466,8 +466,10 @@ public sealed class ImageStateTransferTests
         for (int id = 1; id <= 5; id++) parser.Process(Kitty($"a=T,i={id},f=100,C=1", png));
         Assert.Equal(5, buffer.Images.Count);
         TerminalStateSnapshot exported = buffer.ExportState(int.MaxValue);
-        Assert.Equal([3u, 4u, 5u], exported.KittyImages!.Select(image => image.Id));
-        Assert.Equal(3, exported.KittyPlacements!.Count);
+        // Every image is carried, but only the newest three with bytes: the evicted ones keep their identity and cells.
+        Assert.Equal([1u, 2u, 3u, 4u, 5u], exported.KittyImages!.Select(image => image.Id));
+        Assert.Equal([3u, 4u, 5u], exported.KittyImages!.Where(image => image.Data.Length > 0).Select(image => image.Id));
+        Assert.Equal(5, exported.KittyPlacements!.Count);
     }
 
     [Fact]
@@ -505,6 +507,8 @@ public sealed class ImageStateTransferTests
         { "iterm data", s => s.ITermImages![0].Data = [1, 2, 3] },
         { "duplicate id", s => s.KittyImages!.Add(s.KittyImages[0]) },
         { "iterm too large", s => (s.ITermImages![0].Data, s.ITermImages[0].PixelWidth, s.ITermImages[0].PixelHeight) = (TestImages.PngHeader(3000, 1), 3000, 1) },
+        { "evicted with no size", s => (s.KittyImages![0].Data, s.KittyImages[0].Width) = ([], 0) },
+        { "evicted iterm too large", s => (s.ITermImages![0].Data, s.ITermImages[0].PixelWidth) = ([], 3000) },
         { "too many images", s => s.KittyImages!.AddRange(Enumerable.Range(0, 130).Select(_ => s.KittyImages![0])) },
     };
 
@@ -568,12 +572,12 @@ public sealed class ImageStateTransferTests
         for (int id = 1; id <= 5; id++) parser.Process(Kitty($"a=t,i={id},f=100,o=z", payload));
 
         TerminalStateSnapshot snapshot = Export(buffer, parser);
-        Assert.Equal(new uint[] { 2, 3, 4, 5 }, snapshot.KittyImages!.Select(image => image.Id));
+        Assert.Equal(new uint[] { 2, 3, 4, 5 }, snapshot.KittyImages!.Where(image => image.Data.Length > 0).Select(image => image.Id));
         var (restored, restoredParser) = Restore(snapshot, decoder: null);
 
         restoredParser.Process(Kitty("a=t,i=6,f=100,o=z", payload));
         TerminalStateSnapshot next = Export(restored, restoredParser);
-        Assert.Equal(new uint[] { 3, 4, 5, 6 }, next.KittyImages!.Select(image => image.Id));
+        Assert.Equal(new uint[] { 3, 4, 5, 6 }, next.KittyImages!.Where(image => image.Data.Length > 0).Select(image => image.Id));
         Restore(next, decoder: null);
     }
 
@@ -639,6 +643,57 @@ public sealed class ImageStateTransferTests
         TerminalStateSnapshot next = Export(restored, restoredParser);
         Assert.Equal(1u, Assert.Single(next.KittyImages!).Id);
         Assert.Equal(1, restored.ImageSources.Count);
+    }
+
+    [Fact]
+    public void Images_whose_bytes_were_evicted_keep_their_identity_and_cells_across_a_restore()
+    {
+        // The source budget can evict an image's bytes while the image lives on, holding its cells and drawing nothing.
+        // A snapshot still carries it, without bytes: a side restored without it would not find it when the program
+        // places it later, and its cursor would not move where the other sides' does.
+        var buffer = new TerminalBuffer(40, 20) { ImageSources = new ImageSourceBudget(maxBytes: 40) }; // one 33-byte PNG
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { RetainImageSources = true };
+        parser.Process(Kitty("a=t,i=1,f=100", TestImages.PngBase64(20, 40)) + ITerm(";width=4", TestImages.PngBase64(10, 10))
+            + "\r\n" + Kitty("a=t,i=2,f=100", TestImages.PngBase64(8, 8)));
+        TerminalStateSnapshot snapshot = Export(buffer, parser);
+        Assert.Equal(new uint[] { 1, 2 }, snapshot.KittyImages!.Select(image => image.Id));
+        Assert.Empty(snapshot.KittyImages![0].Data);
+        Assert.Empty(Assert.Single(snapshot.ITermImages!).Data);
+
+        var (restored, restoredParser) = Restore(snapshot, decoder: null);
+        Assert.Equal(Placements(buffer), Placements(restored));
+
+        string place = Kitty("a=p,i=1,c=2,r=2") + "after";
+        parser.Process(place);
+        restoredParser.Process(place);
+        Assert.Equal((buffer.CursorRow, buffer.CursorCol), (restored.CursorRow, restored.CursorCol));
+        Assert.Equal(Placements(buffer), Placements(restored));
+        Assert.Equal(Json(Export(buffer, parser)), Json(Export(restored, restoredParser)));
+    }
+
+    [Fact]
+    public void An_export_without_images_copies_none_of_their_bytes()
+    {
+        // A mux readScreen exports text only (#838): it runs on the session's parse thread, so the image sections are
+        // left out before their bytes are copied, not stripped after.
+        var (buffer, parser) = Create(retain: true, decoder: null);
+        byte[] png = new byte[4 * 1024 * 1024];
+        TestImages.PngHeader(4, 4).CopyTo(png, 0);
+        parser.Process(Kitty("a=T,i=1,f=100", Convert.ToBase64String(png)));
+        Assert.Single(buffer.Images);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        TerminalStateSnapshot text = buffer.ExportState(0, includeImages: false);
+        long withoutImages = GC.GetAllocatedBytesForCurrentThread() - before;
+        before = GC.GetAllocatedBytesForCurrentThread();
+        TerminalStateSnapshot full = buffer.ExportState(0);
+        long withImages = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Null(text.KittyImages);
+        Assert.Null(text.KittyPlacements);
+        Assert.Single(full.KittyImages!);
+        Assert.True(withImages >= png.Length, $"the full export allocated {withImages:N0} bytes");
+        Assert.True(withoutImages < png.Length / 4, $"the text export allocated {withoutImages:N0} bytes");
     }
 
     /// <summary>Each placement's screen row and visible part; rows above the first history row are clipped.</summary>

@@ -94,10 +94,13 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     /// </summary>
     public bool ModifyOtherKeysSupported => Volatile.Read(ref _modifyOtherKeysSupported) != 0;
 
-    internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared, int requiredSixelRasterPolicy = 0)
+    internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared,
+        int requiredSixelRasterPolicy = 0, int requiredImagePolicy = 0)
     {
         SixelPolicyAdmission.RequireClient(requiredSixelRasterPolicy, client.MaxSixelRasterPolicy);
+        ImagePolicyAdmission.Policy.RequireClient(requiredImagePolicy, client.MaxImagePolicy);
         RequiredSixelRasterPolicy = requiredSixelRasterPolicy;
+        RequiredImagePolicy = requiredImagePolicy;
         _client = client;
         Id = sessionId;
         ShellCommand = shellCommand;
@@ -109,6 +112,11 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     public MuxAttachMode AttachMode { get; }
     /// <summary>The policy this opened session requires across every attach attempt.</summary>
     public int RequiredSixelRasterPolicy { get; }
+    /// <summary>
+    /// The session's image policy (#838), required on every attach. Each parser of this session's output is
+    /// configured with it (<see cref="PersistentImagePolicy.Apply"/>), as the daemon's is.
+    /// </summary>
+    public int RequiredImagePolicy { get; }
 
     /// <summary>True when the connection negotiated v2 sharing and kill events; explicit keyboard capability updates also work on v1.</summary>
     public bool SupportsSessionEvents => _client.ProtocolVersion >= MuxProtocol.SessionEventsVersion;

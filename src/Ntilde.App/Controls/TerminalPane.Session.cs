@@ -134,17 +134,20 @@ namespace Ntilde.Controls
         /// anywhere to fall back on. Split into its own method so that invariant can be asserted
         /// without spinning up a shell; see <c>PaneParserWiringTests</c>.
         /// </remarks>
-        internal void CreateAndWireParser(bool? forceConPtyFiltering = null, bool muxBacked = false)
+        /// <param name="imagePolicy">
+        /// A mux-backed pane's session image policy (#838): with it, Kitty and iTerm2 images are placed from their
+        /// headers exactly as the daemon places them, and the GUI decodes them for display only.
+        /// </param>
+        internal void CreateAndWireParser(bool? forceConPtyFiltering = null, bool muxBacked = false, int imagePolicy = PersistentImagePolicy.Legacy)
         {
             if (Buffer == null) return;
 
-            // A mux-backed pane shares the daemon's SIXEL geometry even though only the GUI
-            // decodes the bitmap. Other image protocols keep their existing mux restriction.
+            // A mux-backed pane shares the daemon's image geometry even though only the GUI
+            // decodes the bitmaps: SIXEL always, Kitty and iTerm2 where the session's policy carries them.
             Parser = new AnsiParser(Buffer, forceConPtyFiltering);
             WireKittyClipboard(muxBacked);
 
-            // The GUI decodes SIXEL pixels while the headless parser applies the same geometry.
-            // Other bitmap protocols retain their existing mux restriction.
+            // The GUI decodes the pixels while the headless parser applies the same geometry.
             Parser.ImageDecoder = CreateImageDecoder(muxBacked);
             Parser.RetainSixelSources = muxBacked;
             Parser.AllowNonSixelImages = !muxBacked;
@@ -186,6 +189,7 @@ namespace Ntilde.Controls
             // Native kitty graphics on Windows (ConPTY pass-through opt-in): a freshly-created
             // parser must match what ApplySettings will set, same reasoning as above.
             Parser.AllowNativeKittyGraphics = AllowsNativeKittyGraphics(muxBacked);
+            if (muxBacked) PersistentImagePolicy.Apply(Parser, imagePolicy); // every parser of the session decides alike
 
             // Kitty t=f (file transport) reads happen through this delegate so the VT layer
             // never touches disk itself. Confinement: absolute paths only, must resolve under

@@ -45,9 +45,9 @@ internal sealed class MuxTestHost : IDisposable
         client.SpawnAsync(new SpawnParams { Command = "scripted", Cols = cols, Rows = rows, Title = "test" }, TestContext.Current.CancellationToken);
 
     public static async Task<ClientPaneModel> AttachPaneAsync(
-        MuxClient client, Guid sessionId, MuxPresentation? presentation = null, int maxScrollbackRows = 10_000)
+        MuxClient client, Guid sessionId, MuxPresentation? presentation = null, int maxScrollbackRows = 10_000, int imagePolicy = 0)
     {
-        MuxClientSession session = client.OpenSession(sessionId, "scripted");
+        MuxClientSession session = client.OpenSession(sessionId, "scripted", requiredImagePolicy: imagePolicy);
         var pane = new ClientPaneModel(session);
         await session.AttachAsync(maxScrollbackRows, presentation ?? DefaultPresentation, TestContext.Current.CancellationToken);
         return pane;

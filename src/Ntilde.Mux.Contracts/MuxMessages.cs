@@ -35,6 +35,10 @@ public sealed record MuxEmpty;
 
 public sealed record HelloParams
 {
+    /// <summary>Maximum understood image policy (<c>PersistentImagePolicy</c>, #838); absent/zero means SIXEL only.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int MaxImagePolicy { get; init; }
+
     /// <summary>Maximum understood SIXEL raster policy; absent/zero means legacy only.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int MaxSixelRasterPolicy { get; init; }
@@ -58,6 +62,10 @@ public sealed record HelloParams
 
 public sealed record WelcomeResult
 {
+    /// <summary>Maximum understood image policy (<c>PersistentImagePolicy</c>, #838); absent/zero means SIXEL only.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int MaxImagePolicy { get; init; }
+
     /// <summary>Maximum understood SIXEL raster policy; absent/zero means legacy only.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int MaxSixelRasterPolicy { get; init; }
@@ -126,6 +134,10 @@ public sealed record MuxPresentation
 /// <summary>The local fields of <c>TerminalSessionRequest</c>; SSH is not spawnable through the mux (spec §9.2).</summary>
 public sealed record SpawnParams
 {
+    /// <summary>The session's image policy (<c>PersistentImagePolicy</c>, #838); absent/zero means SIXEL only. Never silently downgraded.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int RequiredImagePolicy { get; init; }
+
     /// <summary>Required stream semantics; unsupported requirements must never silently downgrade.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int RequiredSixelRasterPolicy { get; init; }
@@ -184,6 +196,10 @@ public sealed record SpawnResult
     public Guid SessionId { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int RequiredSixelRasterPolicy { get; init; }
+
+    /// <summary>The session's image policy (<c>PersistentImagePolicy</c>, #838); absent/zero means SIXEL only. Never silently downgraded.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int RequiredImagePolicy { get; init; }
 }
 
 public sealed record SessionSummary
@@ -213,12 +229,20 @@ public sealed record SessionSummary
     /// <summary>The detach that left the session with no subscribers was a user detach; cleared by the next attach. Startup adoption skips these.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // only when true: a v1 peer sees exactly the v1 shape
     public bool DetachedByUser { get; init; }
+
+    /// <summary>The session's image policy (#838), which an attach must name exactly; omitted when 0 (SIXEL only).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int RequiredImagePolicy { get; init; }
 }
 
 public sealed record ListSessionsResult { public IReadOnlyList<SessionSummary> Sessions { get; init; } = []; }
 
 public sealed record AttachParams
 {
+    /// <summary>The session's image policy (<c>PersistentImagePolicy</c>, #838); absent/zero means SIXEL only. Never silently downgraded.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int RequiredImagePolicy { get; init; }
+
     /// <summary>Required stream semantics; unsupported requirements must never silently downgrade.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int RequiredSixelRasterPolicy { get; init; }

@@ -16,6 +16,7 @@ using Ntilde.Shell.Mux;
 using Ntilde.Shell;
 using Ntilde.Tests.Shell.Mux;
 using Ntilde.VT;
+using Ntilde.VT.Tests;
 using Ntilde.VT.Tests.StateTransfer;
 using Xunit;
 
@@ -32,6 +33,7 @@ public sealed class MuxPaneTests : IDisposable
     private readonly MuxTerminalSessionFactory _factory;
     private TerminalPane? _pane;
     private Avalonia.Controls.Window? _window;
+    private MuxConnectionHost? _imageHost;
 
     public MuxPaneTests()
     {
@@ -48,6 +50,7 @@ public sealed class MuxPaneTests : IDisposable
         }
 
         _pane?.Dispose();
+        _imageHost?.Dispose();
         _host.Dispose();
         _mux.Dispose();
     }
@@ -63,7 +66,7 @@ public sealed class MuxPaneTests : IDisposable
         }
     }
 
-    private MuxClientSession StartPane(TerminalSettings? settings = null)
+    private MuxClientSession StartPane(TerminalSettings? settings = null, ITerminalSessionFactory? factory = null)
     {
         _pane = new TerminalPane();
         PaneSpawnTestHelpers.DisableShellIntegration(_pane);
@@ -72,7 +75,7 @@ public sealed class MuxPaneTests : IDisposable
             settings.CommandAssistShellIntegrationEnabled = false;
             _pane.ApplySettings(settings);
         }
-        _pane.SessionFactory = _factory;
+        _pane.SessionFactory = factory ?? _factory;
         _pane.CreateAndWireParser();
         _pane.InitializeSessionCore("scripted", string.Empty, profile: null, cols: 80, rows: 24);
         var session = Assert.IsType<MuxClientSession>(_pane.Session);
@@ -112,7 +115,7 @@ public sealed class MuxPaneTests : IDisposable
 
     private void Settle(Guid id)
     {
-        MuxClient client = _host.CurrentClient!;
+        MuxClient client = (_imageHost ?? _host).CurrentClient!; // the host the pane uses
         Task.Run(() => _mux.SettleAsync(id, client)).GetAwaiter().GetResult();
         Dispatcher.UIThread.RunJobs();
     }
@@ -245,6 +248,28 @@ public sealed class MuxPaneTests : IDisposable
         Assert.False(_pane.Parser.AllowNativeKittyGraphics);
         Assert.Null(_pane.Parser.ReadFileBytes);
         Assert.True(_pane.TermView.DefersBufferResizeToSession);
+    }
+
+    [AvaloniaFact]
+    public void A_pane_whose_daemon_carries_images_places_Kitty_and_iTerm2_images_as_the_daemon_does()
+    {
+        // #838: the GUI offers the image policy, so its new sessions carry Kitty and iTerm2 images. The pane's parser
+        // decides every image as the daemon's does, from the image headers, and the GUI decodes only for display.
+        _imageHost = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(),
+            new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, ct), "test", null);
+        MuxClientSession s = StartPane(factory: new MuxTerminalSessionFactory(_imageHost, new RecordingSessionFactory(new FakeTerminalSession()), null));
+
+        Assert.Equal(PersistentImagePolicy.RetainedImagesVersion, s.RequiredImagePolicy);
+        Assert.Equal(s.RequiredImagePolicy, _mux.Mux(s.Id).RequiredImagePolicy);
+        Assert.True(_pane!.Parser!.AllowNonSixelImages);
+        Assert.True(_pane.Parser.RetainImageSources);
+        Assert.True(_pane.Parser.AllowNativeKittyGraphics);
+        Assert.Null(_pane.Parser.ReadFileBytes); // t=f stays unavailable in persistent panes
+
+        _mux.Fake(s.Id).Emit("\x1b_Ga=T,i=1,f=100;" + TestImages.PngBase64(20, 20) + "\x1b\\\r\n"
+            + "\x1b]1337;File=inline=1;width=4:" + TestImages.PngBase64(10, 10) + "\a");
+        SettleAndAssertEqual(s.Id, "after Kitty and iTerm2 images");
+        Assert.Equal(2, _pane.Buffer!.Images.Count);
     }
 
     [AvaloniaFact]

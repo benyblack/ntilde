@@ -6,6 +6,8 @@ public sealed class MuxClientOptions
 {
     /// <summary>Maximum implemented stream policy offered to the daemon; legacy-only by default.</summary>
     public int MaxSixelRasterPolicy { get; init; }
+    /// <summary>Highest <see cref="Ntilde.VT.PersistentImagePolicy"/> offered to the daemon (#838); SIXEL only by default.</summary>
+    public int MaxImagePolicy { get; init; }
     public int MinProtocolVersion { get; init; } = MuxProtocol.MinSupportedVersion;
     public int MaxProtocolVersion { get; init; } = MuxProtocol.MaxSupportedVersion;
     public string ClientKind { get; init; } = "ntilde";

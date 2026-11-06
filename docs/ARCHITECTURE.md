@@ -503,8 +503,14 @@ throws or returns a retired handle, the image is kept as an `UndecodedImage` tha
 holds the same cells and draws nothing. Because placement never depends on the
 decoder, a parser without one places exactly what a parser with one places; that is
 the prerequisite for enabling these images in persistent sessions, whose daemon has
-no decoder (#838, later PRs). Until then persistent-session parsers still keep Kitty
-and iTerm2 images disabled. Visible
+no decoder (#838). A persistent session carries them when it is spawned with the
+image policy (`PersistentImagePolicy`), negotiated in Hello/Welcome like the SIXEL
+raster policy and fixed per session: every attach must name it, so a peer that does
+not support it is refused, never downgraded. The daemon, each GUI pane and the text
+client configure their parsers with `PersistentImagePolicy.Apply`, so all of them
+place every image alike; native Kitty APC is trusted under it, since a per-window
+setting cannot apply to a shared stream. `readScreen` leaves Kitty and iTerm2 images
+out of its reply, and Kitty `t=f` stays unavailable in persistent panes. Visible
 consequences: a valid header with a corrupt body reserves its cells and gets `OK`,
 and a format the probe cannot size is refused even where Skia could decode it.
 
@@ -524,7 +530,7 @@ capture pins within 8 MiB per pane/session. Capture refuses an exhausted allowan
 live row-diff baseline, and releases retry a pending render. Source leases last through the final draw. Attach
 snapshots carry retained source, placement and irreversible clipping for both screens; clients restore
 images without replaying placement or cursor movement. The daemon retains no bitmap resources;
-other image protocols remain disabled for persistent sessions. Page-origin frames retire older,
+Kitty and iTerm2 images follow the session's image policy (above). Page-origin frames retire older,
 fully covered SIXELs through the existing snapshot-session disposal gate. Recording headers, ordered cell-size events and replay snapshots preserve SIXEL metrics; raw PTY writers receive only primitive values from the parser host. Flight exports retain the metric pair at the start of their bounded window. Parser snapshots preserve
 that override; legacy raw-only
 recordings still rely on the replay host's configured cell metrics.
@@ -1543,7 +1549,7 @@ These are tracked in follow-up plans under `docs/plans/`:
 - **Buffer-snapshot recording.** Phase 5 removed `ITerminalSession.AttachBuffer` / `TakeSnapshot`. The byte-stream is still recorded; buffer snapshots at recording start/stop are gone. Re-introducing them as an orchestration helper (likely in `Replay` or `Platform`) is a small follow-up.
 - **`MainWindow.axaml.cs` is 8,755 LOC, `TerminalPane.axaml.cs` 5,029 LOC, `SettingsWindow.axaml.cs` 3,312 LOC** (measured 2026-09-03; each has grown 60-95% since this item was written, so the trend is the finding as much as the number). These code-behinds contain business logic that should live in services and view-models.
 - **`TerminalBuffer` is split across 10 partial files (~5K LOC).** Several of the partials (`WritePath`, `ReflowEngine`, `ThreadingAndInvalidation`, `TabStops`) want to be collaborators rather than partials.
-- **Mux snapshot capture holds the buffer read lock (~27 ms at 10k rows).** The daemon retains bounded SIXEL source and placement without a bitmap decoder; attach snapshots restore these sources in GUI panes for deferred decoding. Other image transports remain disabled in persistent sessions.
+- **Mux snapshot capture holds the buffer read lock (~27 ms at 10k rows).** The daemon retains bounded SIXEL source and placement without a bitmap decoder; attach snapshots restore these sources in GUI panes for deferred decoding. Kitty and iTerm2 images follow the session's image policy (#838).
 
 The 2026-05-28 architecture review (`docs/plans/2026-05-28-architecture-module-boundaries-review.md`) catalogs all of the above and ranks them by leverage.
 
