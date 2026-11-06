@@ -166,11 +166,11 @@ public sealed class ImageStateTransferTests
         // Placed on the last row with C=1, a two-row image runs one row past the screen. Growing the
         // screen shows that row again, so a restore must not clip it away for good.
         var (source, sourceParser) = Create(retain: true, decoder: null);
-        sourceParser.Process("\x1b[20;1H" + Kitty("a=T,i=1,f=100,c=2,r=2,C=1,q=2", TestImages.PngBase64(8, 8))
-            + "\x1b[20;10H" + ITerm(";width=2;height=2", TestImages.PngBase64(8, 8)));
+        // (iTerm2 reserves its rows by writing newlines, which scroll, so it never runs past the end.)
+        sourceParser.Process("\x1b[20;1H" + Kitty("a=T,i=1,f=100,c=2,r=2,C=1,q=2", TestImages.PngBase64(8, 8)));
         var (restored, _) = Restore(Export(source, sourceParser), decoder: null);
         Assert.Equal(Placements(source), Placements(restored));
-        Assert.All(restored.Images, image => Assert.Equal(0, image.ClipBottomRows));
+        Assert.Equal(0, Assert.Single(restored.Images).ClipBottomRows);
         source.Resize(40, 25);
         restored.Resize(40, 25);
         Assert.Equal(Placements(source), Placements(restored));
