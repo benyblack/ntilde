@@ -3,6 +3,7 @@ import { includesMetadataEvidence, checkMetadataEvidence } from './metadata-rece
 import { includesInputEvidence, checkInputEvidence } from './input-receipt.mjs';
 import { includesQueryEvidence, checkQueryEvidence } from './query-receipt.mjs';
 import { includesAsciiSgrEvidence, checkAsciiSgrEvidence } from './ascii-sgr-receipt.mjs';
+import { includesSgrColorsEvidence, checkSgrColorsEvidence } from './sgr-colors-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
@@ -115,7 +116,7 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
 }
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
-function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr }) {
+function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors }) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -129,6 +130,7 @@ function ownedReceiptVersion(context, { includesEditing, includesHistory, includ
     if (includesQueries) schemaVersion = 11;
     if (includesPrivateClipboard) schemaVersion = 12;
     if (includesAsciiSgr) schemaVersion = 13;
+    if (includesSgrColors) schemaVersion = 14;
     return schemaVersion;
 }
 
@@ -154,6 +156,7 @@ export function completeOwnedReceipt(output, scratch, evidence) {
         || proof.proofs?.some(entry => entry.terminalOutput !== undefined) === true;
     const includesPrivateClipboard = includesPrivateClipboardEvidence(output, evidence, context, proof);
     const includesAsciiSgr = includesAsciiSgrEvidence(output, evidence, context);
+    const includesSgrColors = includesSgrColorsEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
     const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
@@ -170,7 +173,8 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     if (includesQueries) checkQueryEvidence(output, evidence.queryEvidence, runId, context, proof, evidence);
     if (includesPrivateClipboard) checkPrivateClipboardEvidence(output, evidence.privateClipboardEvidence, runId, context, proof, evidence);
     if (includesAsciiSgr) checkAsciiSgrEvidence(output, evidence, runId, context);
-    const schemaVersion = ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr });
+    if (includesSgrColors) checkSgrColorsEvidence(output, evidence, runId, context);
+    const schemaVersion = ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors });
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

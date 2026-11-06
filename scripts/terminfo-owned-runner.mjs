@@ -12,6 +12,9 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { adapterId, adaptCollector, upstreamBundleSha256, upstreamReceipt, validateCollectorReceipt } from './terminfo/collector.mjs';
 import { adaptGradingCollector, gradingAdapterId } from './terminfo/grading-collector.mjs';
+import { adaptSgrColorsCollector, sgrColorsAdapterId } from './terminfo/sgr-colors-grading-collector.mjs';
+import { sgrColorsContractsVersion, sgrColorsSuiteId } from './terminfo/sgr-colors-contracts.mjs';
+import { buildSgrColorsGradingReport } from './terminfo/sgr-colors-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
 import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
@@ -202,6 +205,17 @@ function prepareGradingCollector(tool, ownedBundle, output) {
     return { bundle, gradingBundleSha256 };
 }
 
+/** Derive and lock the layered SGR-colors grading extension over the first. */
+function prepareSgrColorsCollector(tool, gradingBundle, output) {
+    const adapted = adaptSgrColorsCollector(readFileSync(gradingBundle));
+    const sgrColorsBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-sgrcolors-${sgrColorsBundleSha256}.mjs`);
+    if (!existsSync(bundle)) writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== sgrColorsBundleSha256) throw new Error('Derived SGR-colors bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-sgcolors.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, sgrColorsBundleSha256 };
+}
+
 function collectionSummary(output, appVersion) {
     const rawPath = join(output, 'raw.json');
     const raw = JSON.parse(readFileSync(rawPath));
@@ -248,6 +262,25 @@ function retainCellReport(output, observer, runId, buildReport = buildCellReport
     for (const item of report.observations) counts[item.result] = (counts[item.result] ?? 0) + 1;
     return { runId, suiteId: report.suiteId, file, sha256: hash(readFileSync(join(output, file))), counts,
         provisionalUntil: 'cell-receipt.json' };
+}
+
+/** Re-derive the SGR-colors report parent-side with the layered pinned replay. */
+async function retainSgrColorsEvidence(output, runId, sgrColorsBundle, upstream) {
+    const runBytes = readFileSync(join(output, 'sgcolors-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'sgcolors-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-sgcolors.mjs'));
+    const adapter = { id: sgrColorsAdapterId, derivedFromAdapterId: 'ntilde-owned-ascii-sgr-grading-v1',
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(sgrColorsBundle).href);
+    const report = buildSgrColorsGradingReport(frames, run, runId, adapter, replayModule);
+    writeJson(join(output, 'sgcolors-observations.json'), report);
+    const counts = {};
+    for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;
+    return { runId, suiteId: sgrColorsSuiteId, file: 'sgcolors-observations.json',
+        sha256: hash(readFileSync(join(output, 'sgcolors-observations.json'))),
+        runFile: 'sgcolors-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: sgrColorsContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
 }
 
 /** Re-derive the graded report parent-side, replaying the pinned probes over
@@ -374,6 +407,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         installLockedCollector(privateTool, input.manifestBytes, input.lockBytes);
         const { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes, originalBundle } = prepareCollector(privateTool);
         const { bundle: gradingBundle, gradingBundleSha256 } = prepareGradingCollector(privateTool, bundle, output);
+        const { bundle: sgrColorsBundle, sgrColorsBundleSha256 } = prepareSgrColorsCollector(privateTool, gradingBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = randomBytes(16).toString('hex');
@@ -382,7 +416,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const workerScript = join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs');
         const profileName = `terminfo disposable worker ${runId}`;
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
-            profileName, cellNonce: `NTILDE_QA_${runId}`,
+            sgrColorsBundle, sgrColorsBundleSha256, profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
         const command = join(scratch, 'worker.sh');
@@ -451,6 +485,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             retainedOriginalCollector: 'collector-original.mjs', terminalOutput: privateClipboardOutputPolicy, querySuiteId, ownedQueryPolicy, staticImageSuiteId, ownedStaticImagePolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             gradingAdapterId, asciiSgrSuiteId, gradingBundleSha256, gradingContractsVersion: asciiSgrContractsVersion,
             grading: 'versioned collector extension; pinned termless criteria replayed on parent-observed cells; not stock output',
+            sgrColorsAdapterId, sgrColorsSuiteId, sgrColorsBundleSha256, sgrColorsContractsVersion,
+            sgrColors: 'layered versioned collector extension; pinned reset/standard-color termless criteria replayed on parent-observed stored attributes and palette indices; not stock output',
             cells: 'private AgentHost readScreen; nonce-bound pane; separate ASCII cell-state suite',
             attributes: 'separate ASCII SGR flags and palette-index suite',
             cellDetails: 'separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels',
@@ -460,6 +496,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'cell-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'grading-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'sgcolors-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -925,6 +962,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'grading-snapshots.jsonl'), JSON.stringify(gradingObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'sgcolors') {
+                // The layered suite runs after the first graded suite.
+                if (!gradingObserver?.restored) throw new Error('Grading suite must restore before SGR-colors observations.');
+                sgrColorsObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_SC_${runId}`, includeAttributes: true, prefix: 'sgcolors', expectedPaneId: cellObserver.paneId });
+                const result = await sgrColorsObserver.handle(request.kind, budget, request.barrier);
+                appendFileSync(join(output, 'sgcolors-snapshots.jsonl'), JSON.stringify(sgrColorsObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             const attributes = request.kind.startsWith('sgr-');
             if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
             if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
@@ -976,7 +1022,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeImageRequest(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^(?:cell|sgr|grading|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+            if (/^(?:cell|sgr|grading|sgcolors|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
@@ -1079,6 +1125,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             cellEvidence = retainCellReport(output, cellObserver, runId);
             sgrEvidence = retainCellReport(output, sgrObserver, runId, buildSgrReport, 'sgr-observations.json');
             gradingEvidence = await retainGradingEvidence(output, runId, gradingBundle, upstreamBundleSha256);
+            sgrColorsEvidence = await retainSgrColorsEvidence(output, runId, sgrColorsBundle, upstreamBundleSha256);
             rgbEvidence = retainDetails('rgb');
             renditionEvidence = retainDetails('rendition');
             cursorEvidence = retainDetails('cursor');
@@ -1116,6 +1163,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.cellEvidence = cellEvidence;
             summary.sgrEvidence = sgrEvidence;
             summary.gradingEvidence = gradingEvidence;
+            summary.sgrColorsEvidence = sgrColorsEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
@@ -1155,7 +1203,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

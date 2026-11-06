@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 108 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 108); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 113 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 113); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -79,9 +79,9 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('private v13 fixed108 source scope includes all selected nonexecuted references while v12 remains fixed103', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV13SourceFiles);
-    assert.equal(Object.keys(capturedV12SourceFiles).length, 103);
+test('private v14 fixed113 source scope includes all selected nonexecuted references while v13 remains fixed108', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV14SourceFiles);
+    assert.equal(Object.keys(capturedV13SourceFiles).length, 108);
     assert.equal(Object.keys(capturedV11SourceFiles).length, 74);
     assert.equal(Object.keys(privateClipboardReferencePaths).length, 21);
     const bootstrap = readFileSync(new URL('../terminfo-owned.mjs', import.meta.url), 'utf8');

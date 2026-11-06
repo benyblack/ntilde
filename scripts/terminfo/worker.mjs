@@ -8,6 +8,7 @@ import { collectCells } from './cells.mjs';
 import { terminalFence } from './terminal-fence.mjs';
 import { ownedTerminalRestorer, restoreOwnedTerminalState, prepareOwnedOutput } from './terminal-output.mjs';
 import { collectAsciiSgrGrading } from './ascii-sgr-collector.mjs';
+import { collectSgrColorsGrading } from './sgr-colors-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -73,6 +74,15 @@ try {
         const gradingModule = await import(pathToFileURL(config.gradingBundle).href);
         const gradingRun = await collectAsciiSgrGrading({ config, fence, owner, gradingModule });
         writeFileSync(join(config.output, 'grading-run.json'), JSON.stringify(gradingRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered SGR reset/standard-color qualification follows the first
+        // graded suite on the same exclusively owned fence.
+        const sgrColorsSource = readFileSync(config.sgrColorsBundle);
+        if (createHash('sha256').update(sgrColorsSource).digest('hex') !== config.sgrColorsBundleSha256) {
+            throw new Error('Local SGR-colors adapter bundle changed.');
+        }
+        const sgrColorsModule = await import(pathToFileURL(config.sgrColorsBundle).href);
+        const sgrColorsRun = await collectSgrColorsGrading({ config, fence, owner, gradingModule: sgrColorsModule });
+        writeFileSync(join(config.output, 'sgcolors-run.json'), JSON.stringify(sgrColorsRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
