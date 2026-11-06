@@ -5,10 +5,11 @@ namespace Ntilde.VT
     public partial class AnsiParser
     {
         /// <summary>
-        /// Sixel color registers an image may define: 0 to 4095, as the Sixel decoder accepts. The count
-        /// is fixed; XTSMGRAPHICS reports it and refuses to change it.
+        /// Sixel color registers an image may define: 0 to <see cref="SixelGeometry.DefaultMaxPaletteRegister"/>,
+        /// the range both Sixel decoders accept. The count is fixed; XTSMGRAPHICS reports it and refuses
+        /// to change it.
         /// </summary>
-        public const int SixelColorRegisterCount = 4096;
+        public const int SixelColorRegisterCount = SixelGeometry.DefaultMaxPaletteRegister + 1;
 
         /// <summary>
         /// XTSMGRAPHICS, <c>CSI ? Pi ; Pa ; Pv S</c> (#872), following xterm's handler
