@@ -31,8 +31,9 @@ public partial class TerminalBuffer
             });
         }
 
-        foreach (TerminalImage image in _images)
+        for (int order = 0; order < _images.Count; order++)
         {
+            TerminalImage image = _images[order];
             if (image.IsSixelImage || !TryExportedRows(image, snapshot, out int y, out int top, out int bottom)) continue;
             if (image.KittyAsset is { } asset)
             {
@@ -49,6 +50,7 @@ public partial class TerminalBuffer
                     ClipBottom = bottom,
                     ClipRight = image.ClipRightColumns,
                     PreserveAspectRatio = image.PreserveAspectRatio,
+                    Order = order,
                 });
             }
             else if (image.EncodedSource?.Data is { } data && PixelSize(image) is (int pixelWidth, int pixelHeight))
@@ -67,6 +69,7 @@ public partial class TerminalBuffer
                     ClipBottom = bottom,
                     ClipRight = image.ClipRightColumns,
                     PreserveAspectRatio = image.PreserveAspectRatio,
+                    Order = order,
                 });
             }
         }
@@ -180,7 +183,7 @@ public partial class TerminalBuffer
     /// transferred positions. Like <see cref="ImportSixelState"/> it never replays placement or moves
     /// the cursor. Runs after the old images were cleared.
     /// </summary>
-    private void ImportImageState(TerminalStateSnapshot snapshot)
+    private void ImportImageState(TerminalStateSnapshot snapshot, Dictionary<TerminalImage, int> order)
     {
         var assets = new List<KittyImageAsset?>();
         foreach (TerminalKittyImageState state in snapshot.KittyImages ?? [])
@@ -205,6 +208,7 @@ public partial class TerminalBuffer
             image.KittyPlacementId = state.Placement == 0 ? null : state.Placement;
             image.PreserveAspectRatio = state.PreserveAspectRatio;
             _images.Add(image);
+            if (state.Order is int z) order[image] = z;
         }
         foreach (TerminalITermImageState state in snapshot.ITermImages ?? [])
         {
@@ -215,7 +219,25 @@ public partial class TerminalBuffer
             image.EncodedSource = source;
             image.PreserveAspectRatio = state.PreserveAspectRatio;
             _images.Add(image);
+            if (state.Order is int z) order[image] = z;
         }
+    }
+
+    /// <summary>
+    /// Puts imported placements back in their exported order, which is the order they are drawn in,
+    /// so an image covered by another before the transfer is still covered after it. Placements from
+    /// older snapshots without an order keep the order they were imported in, after the ordered ones.
+    /// </summary>
+    private void RestorePlacementOrder(Dictionary<TerminalImage, int> order)
+    {
+        if (order.Count == 0) return;
+        var sorted = _images.Select((image, index) => (image, index))
+            .OrderBy(entry => order.TryGetValue(entry.image, out int z) ? z : int.MaxValue)
+            .ThenBy(entry => entry.index)
+            .Select(entry => entry.image)
+            .ToList();
+        _images.Clear();
+        _images.AddRange(sorted);
     }
 
     /// <summary>A placement clamped to this buffer as SIXEL imports are; null when nothing of it is left.</summary>

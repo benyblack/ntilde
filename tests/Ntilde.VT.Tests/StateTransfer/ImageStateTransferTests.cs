@@ -51,6 +51,28 @@ public sealed class ImageStateTransferTests
     }
 
     [Fact]
+    public void Overlapping_images_keep_their_drawing_order_across_protocols()
+    {
+        // Placements are drawn in list order, so the later one covers the earlier. A restore must not
+        // regroup them by protocol: an iTerm2 image under a Kitty image stays under it.
+        var buffer = new TerminalBuffer(40, 20);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { RetainImageSources = true, RetainSixelSources = true };
+        parser.Process("\x1b[H" + ITerm(";width=4", TestImages.PngBase64(8, 8))
+            + "\x1b[H\x1bPq#0;2;100;0;0#0!16~\x1b\\"
+            + "\x1b[H" + Kitty("a=T,i=1,f=100,c=4,r=2,C=1", TestImages.PngBase64(20, 20))
+            + "\x1b[H" + ITerm(";width=2", TestImages.PngBase64(6, 6)));
+        Assert.Equal("iterm,sixel,kitty,iterm", Kinds(buffer));
+
+        var (restored, _) = Restore(Export(buffer, parser), decoder: null);
+
+        Assert.Equal("iterm,sixel,kitty,iterm", Kinds(restored));
+        Assert.Equal(buffer.Images.Select(i => (i.CellX, i.CellY, i.CellWidth, i.CellHeight)), restored.Images.Select(i => (i.CellX, i.CellY, i.CellWidth, i.CellHeight)));
+    }
+
+    private static string Kinds(TerminalBuffer buffer) =>
+        string.Join(",", buffer.Images.Select(i => i.IsSixelImage ? "sixel" : i.KittyImageId is not null ? "kitty" : "iterm"));
+
+    [Fact]
     public void Without_a_decoder_the_restored_images_hold_their_cells_undecoded()
     {
         var (source, sourceParser) = Create(retain: true, decoder: null);

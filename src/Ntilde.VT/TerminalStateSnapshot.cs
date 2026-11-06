@@ -184,6 +184,12 @@ namespace Ntilde.VT
         [JsonPropertyName("bottom")] public int ClipBottom { get; set; }
         [JsonPropertyName("right")] public int ClipRight { get; set; }
         [JsonPropertyName("preserve")] public bool PreserveAspectRatio { get; set; }
+        /// <summary>
+        /// Position among all exported placements (SIXEL, Kitty, iTerm2), so a restore keeps which image
+        /// is drawn over which; absent on older snapshots.
+        /// </summary>
+        [JsonPropertyName("z"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Order { get; set; }
     }
 
     /// <summary>A retained iTerm2 inline image and its placement.</summary>
@@ -202,6 +208,12 @@ namespace Ntilde.VT
         [JsonPropertyName("bottom")] public int ClipBottom { get; set; }
         [JsonPropertyName("right")] public int ClipRight { get; set; }
         [JsonPropertyName("preserve")] public bool PreserveAspectRatio { get; set; }
+        /// <summary>
+        /// Position among all exported placements (SIXEL, Kitty, iTerm2), so a restore keeps which image
+        /// is drawn over which; absent on older snapshots.
+        /// </summary>
+        [JsonPropertyName("z"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Order { get; set; }
     }
 
     public sealed class TerminalSixelImageState
@@ -219,6 +231,12 @@ namespace Ntilde.VT
         [JsonPropertyName("top")] public int ClipTop { get; set; }
         [JsonPropertyName("bottom")] public int ClipBottom { get; set; }
         [JsonPropertyName("right")] public int ClipRight { get; set; }
+        /// <summary>
+        /// Position among all exported placements (SIXEL, Kitty, iTerm2), so a restore keeps which image
+        /// is drawn over which; absent on older snapshots.
+        /// </summary>
+        [JsonPropertyName("z"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Order { get; set; }
     }
 
     /// <summary>One screen's (or the scrollback's) cells and per-row side tables.</summary>

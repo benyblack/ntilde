@@ -228,8 +228,10 @@ namespace Ntilde.VT
                 // positions below, undecoded; TerminalStateTransfer.Restore decodes them.
                 ClearImagePlacements();
                 ClearRetainedKittyImages();
-                ImportSixelState(snapshot);
-                ImportImageState(snapshot);
+                var placementOrder = new Dictionary<TerminalImage, int>();
+                ImportSixelState(snapshot, placementOrder);
+                ImportImageState(snapshot, placementOrder);
+                RestorePlacementOrder(placementOrder);
 
                 // Derived, never carried: the packed style cache is rebuilt from the SGR fields
                 // above on the next write, and the render-diff cache stays cold so the first

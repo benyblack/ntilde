@@ -4,8 +4,9 @@ public partial class TerminalBuffer
 {
     private void ExportSixelState(TerminalStateSnapshot snapshot)
     {
-        foreach (var image in _images)
+        for (int order = 0; order < _images.Count; order++)
         {
+            TerminalImage image = _images[order];
             if (!image.IsSixelImage || image.SixelSource is not { } source) continue;
             int y = image.IsAltScreenImage ? image.CellY : image.CellY - snapshot.ScrollbackRowsDropped;
             int end = image.IsAltScreenImage ? snapshot.Rows : snapshot.ScrollbackRowCount + snapshot.Rows;
@@ -24,6 +25,7 @@ public partial class TerminalBuffer
                 ClipTop = top,
                 ClipBottom = bottom,
                 ClipRight = image.ClipRightColumns,
+                Order = order,
             });
         }
     }
@@ -65,7 +67,7 @@ public partial class TerminalBuffer
         return kept;
     }
 
-    private void ImportSixelState(TerminalStateSnapshot snapshot)
+    private void ImportSixelState(TerminalStateSnapshot snapshot, Dictionary<TerminalImage, int> order)
     {
         foreach (var state in BoundedSixelStates(snapshot))
         {
@@ -78,7 +80,7 @@ public partial class TerminalBuffer
             var source = SixelSources.Retain(state.Source);
             if (source.Data is null) continue;
             int lastRow = state.Alt ? Rows - 1 : _scrollback.Count + Rows - 1;
-            _images.Add(new TerminalImage(source, Math.Clamp(state.X, 0, Cols - 1), Math.Clamp(state.Y, 1 - height, lastRow), width, height)
+            var image = new TerminalImage(source, Math.Clamp(state.X, 0, Cols - 1), Math.Clamp(state.Y, 1 - height, lastRow), width, height)
             {
                 IsSixelImage = true,
                 SixelSource = source,
@@ -86,7 +88,9 @@ public partial class TerminalBuffer
                 ClipTopRows = top,
                 ClipBottomRows = bottom,
                 ClipRightColumns = right,
-            });
+            };
+            _images.Add(image);
+            if (state.Order is int z) order[image] = z;
         }
         PruneExpiredSixelSources();
     }
