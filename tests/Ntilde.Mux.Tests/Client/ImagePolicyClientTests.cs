@@ -36,7 +36,7 @@ public sealed class ImagePolicyClientTests
         using var fake = FakeMuxServerEnd.Create();
         Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, Ct);
         MuxRequest hello = await fake.ReadRequestAsync();
-        Assert.Contains("\"maxImagePolicy\":1", hello.Params!.Value.GetRawText(), StringComparison.Ordinal);
+        Assert.Contains($"\"maxImagePolicy\":{PersistentImagePolicy.EnabledVersion}", hello.Params!.Value.GetRawText(), StringComparison.Ordinal);
         fake.Reply(hello.Id, new WelcomeResult { Version = 2 }, MuxJsonContext.Default.WelcomeResult);
         using var client = await connect;
 
@@ -44,6 +44,22 @@ public sealed class ImagePolicyClientTests
         await Assert.ThrowsAsync<MuxProtocolException>(() => client.SpawnAsync(new SpawnParams { Command = "scripted", RequiredImagePolicy = 1 }, Ct));
         Assert.Throws<MuxProtocolException>(() => client.OpenSession(Guid.NewGuid(), requiredImagePolicy: 1));
         Assert.Equal(0, client.PendingRequestCount);
+    }
+
+    [Fact]
+    public async Task A_daemon_from_before_the_multipart_form_gets_policy_1_sessions()
+    {
+        // Such a daemon offers policy 1. Sessions spawned against it name policy 1, under which this client's
+        // parsers ignore iTerm2's multipart form as the daemon does, and a policy-2 attach is refused there.
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, Ct);
+        MuxRequest hello = await fake.ReadRequestAsync();
+        fake.Reply(hello.Id, new WelcomeResult { Version = 2, MaxImagePolicy = PersistentImagePolicy.RetainedImagesVersion }, MuxJsonContext.Default.WelcomeResult);
+        using var client = await connect;
+
+        Assert.Equal(PersistentImagePolicy.RetainedImagesVersion, client.MaxImagePolicy);
+        Assert.False(PersistentImagePolicy.AllowsITerm2Multipart(client.MaxImagePolicy));
+        Assert.Throws<MuxProtocolException>(() => client.OpenSession(Guid.NewGuid(), requiredImagePolicy: PersistentImagePolicy.MultipartImagesVersion));
     }
 
     [Fact]

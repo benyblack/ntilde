@@ -96,6 +96,66 @@ public sealed class HeadlessImagePolicyTests
         TerminalStateAssert.AssertEquivalent("[text client]", host.Mux(id).Buffer, host.Mux(id).Parser, model.Buffer, model.Parser);
     }
 
+    [Fact]
+    public async Task Every_client_places_the_same_image_when_one_attaches_between_multipart_parts()
+    {
+        // imgcat's default form: the transfer is parser state, so a client attaching between FileParts
+        // gets the parts so far in its snapshot and assembles the same image as the daemon.
+        using var host = new MuxTestHost();
+        var options = new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion };
+        MuxClient first = await host.ConnectClientAsync(options);
+        Guid id = await first.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = "t", RequiredImagePolicy = PersistentImagePolicy.MultipartImagesVersion }, Ct);
+        ClientPaneModel firstPane = await MuxTestHost.AttachPaneAsync(first, id, imagePolicy: PersistentImagePolicy.MultipartImagesVersion);
+
+        string png = Convert.ToBase64String([.. TestImages.PngHeader(30, 40), .. new byte[500]]);
+        static string Part(string chunk) => $"\x1b]1337;FilePart={chunk}\x07";
+        host.Fake(id).Emit("start \x1b]1337;MultipartFile=inline=1;size=533;width=6\x07" + Part(png[..200]) + Part(png[200..400]));
+        await host.SettleAsync(id, first);
+        MuxClient second = await host.ConnectClientAsync(options);
+        ClientPaneModel secondPane = await MuxTestHost.AttachPaneAsync(second, id, imagePolicy: PersistentImagePolicy.MultipartImagesVersion);
+        host.Fake(id).Emit(Part(png[400..600]) + Part(png[600..]) + "\x1b]1337;FileEnd\x07\ntail");
+        await host.SettleAsync(id, first, second);
+
+        TerminalImage image = Assert.Single(host.Mux(id).Buffer.Images);
+        Assert.Equal(6, image.CellWidth);
+        host.AssertPaneMatchesMux(id, firstPane, "attached throughout");
+        host.AssertPaneMatchesMux(id, secondPane, "attached between the parts");
+
+        // A later client gets the image from the snapshot alone, and so does the text client.
+        MuxClient third = await host.ConnectClientAsync(options);
+        ClientPaneModel thirdPane = await MuxTestHost.AttachPaneAsync(third, id, imagePolicy: PersistentImagePolicy.MultipartImagesVersion);
+        MuxClient text = await host.ConnectClientAsync(options);
+        MuxClientSession textSession = text.OpenSession(id, requiredImagePolicy: PersistentImagePolicy.MultipartImagesVersion);
+        using var model = new TextClientModel(textSession);
+        await textSession.AttachAsync(10_000, MuxTestHost.DefaultPresentation, Ct);
+        await host.SettleAsync(id, third, text);
+
+        host.AssertPaneMatchesMux(id, thirdPane, "reattached");
+        Assert.Single(thirdPane.Buffer.Images);
+        TerminalStateAssert.AssertEquivalent("[text client]", host.Mux(id).Buffer, host.Mux(id).Parser, model.Buffer, model.Parser);
+    }
+
+    [Fact]
+    public async Task A_version_1_session_ignores_the_multipart_form_on_the_daemon_and_every_client()
+    {
+        // A peer from before the multipart form ignores it, and policy 1 is what such a peer negotiates: an updated
+        // daemon or client in a version-1 session must ignore it too, or one side would place the image alone.
+        using var host = new MuxTestHost();
+        var options = new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion };
+        MuxClient first = await host.ConnectClientAsync(options);
+        Guid id = await first.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = "t", RequiredImagePolicy = PersistentImagePolicy.RetainedImagesVersion }, Ct);
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(first, id, imagePolicy: PersistentImagePolicy.RetainedImagesVersion);
+
+        string png = TestImages.PngBase64(30, 40);
+        host.Fake(id).Emit("a\x1b]1337;MultipartFile=inline=1;width=6\x07\x1b]1337;FilePart=" + png + "\x07\x1b]1337;FileEnd\x07b"
+            + ITerm(";width=2", TestImages.PngBase64(8, 8)));
+        await host.SettleAsync(id, first);
+
+        TerminalImage image = Assert.Single(host.Mux(id).Buffer.Images); // only the single-sequence image
+        Assert.Equal(2, image.CellWidth);
+        host.AssertPaneMatchesMux(id, pane, "version 1");
+    }
+
     /// <summary>What a direct pane without a decoder replies to <paramref name="input"/>, configured as the policy configures one.</summary>
     private static List<string> DirectPaneReplies(string input)
     {

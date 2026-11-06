@@ -256,7 +256,8 @@ invariant changes.
   (`PersistentImagePolicy`, VT-owned) is negotiated like the SIXEL raster policy
   and fixed at spawn; the daemon, GUI panes and the text client all configure
   their parsers with `PersistentImagePolicy.Apply`, so they place every image
-  alike. Mux owns admission (`ImagePolicyAdmission`) and refuses, never
+  alike; a feature that changes placement, such as iTerm2's multipart form
+  (policy 2), takes a new version rather than changing an old one's. Mux owns admission (`ImagePolicyAdmission`) and refuses, never
   downgrades, a peer or attach that does not match.
 - **Kitty image assets own handles; placements borrow them.** VT separates transmit,
   transmit/display and retained placement, including uint ids, terminal-allocated

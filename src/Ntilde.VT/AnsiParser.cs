@@ -635,6 +635,7 @@ namespace Ntilde.VT
                                 {
                                     _buffer.Reset();
                                     OnKittyClipboardReset?.Invoke();
+                                    ClearITerm2Multipart();
                                     ResetCharsets();
                                     _verticalOffset = 0;
                                     // Parser-local mode state does not live in the buffer, so RIS

@@ -27,6 +27,7 @@ namespace Ntilde.VT
                 KittyPayload = _kittyPayloadBuffer.ToString(),
                 KittyPayloadOverflow = _kittyPayloadOverflow,
                 KittyPendingParams = new Dictionary<string, string>(_kittyPendingParams),
+                ITerm2Multipart = ExportITerm2Multipart(),
                 Charsets = new int[4],
                 Gl = _gl,
                 PendingCharsetSlot = _pendingCharsetSlot,
@@ -101,6 +102,7 @@ namespace Ntilde.VT
 
             _kittyPayloadOverflow = kittyOverflow;
             _kittyPendingParams = new Dictionary<string, string>(state.KittyPendingParams);
+            ImportITerm2Multipart(state.ITerm2Multipart);
 
             for (int i = 0; i < _charsets.Length; i++)
             {
@@ -208,6 +210,7 @@ namespace Ntilde.VT
                     throw StateTransferValidation.Reject("parser kitty parameters", "keys and values exceed protocol bounds");
             }
 
+            ValidateITerm2Multipart(state.ITerm2Multipart);
             StateTransferValidation.RequirePresent(state.Charsets, "parser charset designations");
             if (state.TitleStack is { } titleStack)
             {

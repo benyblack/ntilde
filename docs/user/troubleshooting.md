@@ -102,8 +102,9 @@ history to show. Rebind *Command Assist History* in Settings → Shortcuts, or t
 report it. Ntilde has no switch for software rendering.
 
 **Images do not show.** A persistent session started by an earlier version of Ntilde shows only
-Sixel images: open a new tab. iTerm2's `imgcat` needs `-l`, because its default multipart form is
-not supported yet ([Inline images](terminal.md#inline-images)).
+Sixel images: open a new tab. If `imgcat -l` draws but plain `imgcat` does not, the session was
+started by a version before plain `imgcat` worked: open a new tab
+([Inline images](terminal.md#inline-images)).
 
 ## Persistent sessions
 

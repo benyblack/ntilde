@@ -19,11 +19,21 @@ public static class PersistentImagePolicy
     /// </summary>
     public const int RetainedImagesVersion = 1;
 
+    /// <summary>
+    /// <see cref="RetainedImagesVersion"/> plus iTerm2's multipart form (<c>MultipartFile</c>, <c>FilePart</c>,
+    /// <c>FileEnd</c>), which <c>imgcat</c> sends by default. A version of its own because a version-1 peer
+    /// ignores that form: under one policy, one side would place the image and the other would not.
+    /// </summary>
+    public const int MultipartImagesVersion = 2;
+
     /// <summary>The highest policy this build supports.</summary>
-    public const int EnabledVersion = RetainedImagesVersion;
+    public const int EnabledVersion = MultipartImagesVersion;
 
     /// <summary>Whether <paramref name="version"/> carries Kitty graphics and iTerm2 inline images.</summary>
     public static bool AllowsImages(int version) => version >= RetainedImagesVersion;
+
+    /// <summary>Whether <paramref name="version"/> assembles iTerm2's multipart inline images.</summary>
+    public static bool AllowsITerm2Multipart(int version) => version >= MultipartImagesVersion;
 
     /// <summary>Configures a persistent-session parser (daemon or client) for <paramref name="version"/>.</summary>
     public static void Apply(AnsiParser parser, int version)
@@ -33,5 +43,6 @@ public static class PersistentImagePolicy
         parser.AllowNonSixelImages = images;
         parser.RetainImageSources = images;
         parser.AllowNativeKittyGraphics = images;
+        parser.AllowITerm2Multipart = AllowsITerm2Multipart(version);
     }
 }

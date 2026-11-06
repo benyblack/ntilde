@@ -259,17 +259,20 @@ public sealed class MuxPaneTests : IDisposable
             new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, ct), "test", null);
         MuxClientSession s = StartPane(factory: new MuxTerminalSessionFactory(_imageHost, new RecordingSessionFactory(new FakeTerminalSession()), null));
 
-        Assert.Equal(PersistentImagePolicy.RetainedImagesVersion, s.RequiredImagePolicy);
+        Assert.Equal(PersistentImagePolicy.MultipartImagesVersion, s.RequiredImagePolicy);
         Assert.Equal(s.RequiredImagePolicy, _mux.Mux(s.Id).RequiredImagePolicy);
         Assert.True(_pane!.Parser!.AllowNonSixelImages);
         Assert.True(_pane.Parser.RetainImageSources);
         Assert.True(_pane.Parser.AllowNativeKittyGraphics);
+        Assert.True(_pane.Parser.AllowITerm2Multipart);
         Assert.Null(_pane.Parser.ReadFileBytes); // t=f stays unavailable in persistent panes
 
+        string png = TestImages.PngBase64(12, 12);
         _mux.Fake(s.Id).Emit("\x1b_Ga=T,i=1,f=100;" + TestImages.PngBase64(20, 20) + "\x1b\\\r\n"
-            + "\x1b]1337;File=inline=1;width=4:" + TestImages.PngBase64(10, 10) + "\a");
+            + "\x1b]1337;File=inline=1;width=4:" + TestImages.PngBase64(10, 10) + "\a"
+            + "\x1b]1337;MultipartFile=inline=1;width=3\a\x1b]1337;FilePart=" + png[..20] + "\a\x1b]1337;FilePart=" + png[20..] + "\a\x1b]1337;FileEnd\a");
         SettleAndAssertEqual(s.Id, "after Kitty and iTerm2 images");
-        Assert.Equal(2, _pane.Buffer!.Images.Count);
+        Assert.Equal(3, _pane.Buffer!.Images.Count);
     }
 
     [AvaloniaFact]

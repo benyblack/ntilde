@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "3f488d4d0fdb4a89b5513970eda02d26e359af8ee3eb3d2d4211ce93867de242",
+  "matrixSha256": "6b06d6861f05a0b4f493813f29c76f9e60978919f8c772286693cf4cfd4d3288",
   "summary": {
     "totalRows": 101,
     "supportedCount": 53,
@@ -2617,7 +2617,7 @@
       "feature": "OSC 1337",
       "status": "\u2705 Supported",
       "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/DecoderIndependentImagePlacementTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ImageHeaderProbeTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/ImageHeaderProbeSkiaTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ITermAspectIntentTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/ITermAspectRenderTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ImageCellPixelGeometryTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessImagePolicyTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Controls/MuxPaneTests.cs\u0060; Manual: \u0060docs/qa/QA_GRAPHICS.md\u0060, \u0060docs/qa/terminfo/2026-11-06-persistent-images-check.md\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/DecoderIndependentImagePlacementTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ITerm2MultipartImageTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ImageHeaderProbeTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/ImageHeaderProbeSkiaTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ITermAspectIntentTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/ITermAspectRenderTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ImageCellPixelGeometryTests.cs\u0060, \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessImagePolicyTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Controls/MuxPaneTests.cs\u0060; Manual: \u0060docs/qa/QA_GRAPHICS.md\u0060, \u0060docs/qa/terminfo/2026-11-06-persistent-images-check.md\u0060",
       "evidenceKinds": [
         "manual",
         "unit"
@@ -2656,6 +2656,10 @@
           "exists": true
         },
         {
+          "path": "tests/Ntilde.VT.Tests/ITerm2MultipartImageTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.VT.Tests/ITermAspectIntentTests.cs",
           "exists": true
         },
@@ -2671,7 +2675,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
-      "knownDeviations": "Requires \u0060inline=1\u0060 and the \u0060File=\u0060 arg shape; no \u0060name=\u0060/\u0060size=\u0060 enforcement. Image pixels and \u0060Npx\u0060 sizes map to cells in the \u0060CSI 16 t\u0060 unit (device pixels on a scaled display, not iTerm2\u0027s points). Default/explicit aspect preservation and explicit-zero stretch have real parser/Skia/offscreen pixel controls across wide/tall sources and DPI, including clipping, history and snapshot-pinned clear. Legacy/SIXEL policy and complete snapshots carry retained iTerm2 images where the parser retains image sources, and persistent sessions spawned with the image policy show them (#838). Native-pixel/default sizing, other OSC 1337 variants (including the \u0060MultipartFile\u0060/\u0060FilePart\u0060/\u0060FileEnd\u0060 form recent \u0060imgcat\u0060 sends by default) and owned runtime image pixels remain unqualified. See \u0060docs/qa/terminfo/iterm-aspect-fit.md\u0060. Placement follows the image header (\u0060ImageHeaderProbe\u0060), never the decoder: an undecodable body with a valid header keeps its cells, and a format the probe cannot size is ignored (#838).",
+      "knownDeviations": "Requires \u0060inline=1\u0060, in the single \u0060File=args:payload\u0060 form or the multipart form (\u0060MultipartFile=args\u0060, \u0060FilePart=\u0060 chunks, \u0060FileEnd\u0060) that \u0060imgcat\u0060 sends by default; no \u0060name=\u0060/\u0060size=\u0060 enforcement. The multipart payload is capped at the single-sequence limit and placed at the cursor at \u0060FileEnd\u0060; output between parts leaves the transfer pending, a new \u0060MultipartFile\u0060 drops an unfinished one, RIS ends it, and complete snapshots carry it, so a client attaching between parts places the same image. Persistent sessions assemble the multipart form only under image policy 2; policy-1 sessions (and peers from before it) ignore it on every side. Image pixels and \u0060Npx\u0060 sizes map to cells in the \u0060CSI 16 t\u0060 unit (device pixels on a scaled display, not iTerm2\u0027s points). Default/explicit aspect preservation and explicit-zero stretch have real parser/Skia/offscreen pixel controls across wide/tall sources and DPI, including clipping, history and snapshot-pinned clear. Legacy/SIXEL policy and complete snapshots carry retained iTerm2 images where the parser retains image sources, and persistent sessions spawned with the image policy show them (#838). Native-pixel/default sizing, other OSC 1337 variants (file downloads, \u0060inline=0\u0060) and owned runtime image pixels remain unqualified. See \u0060docs/qa/terminfo/iterm-aspect-fit.md\u0060. Placement follows the image header (\u0060ImageHeaderProbe\u0060), never the decoder: an undecodable body with a valid header keeps its cells, and a format the probe cannot size is ignored (#838).",
       "sourceLine": 197
     },
     {

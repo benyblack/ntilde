@@ -280,34 +280,53 @@ namespace Ntilde.VT
                 return;
             }
 
-            var argsPart = header.Substring("1337;File=".Length);
-            ReadOnlySpan<char> base64Data = osc.AsSpan(colon + 1);
+            ITerm2ImageArguments arguments = ITerm2ImageArguments.Parse(header.Substring("1337;File=".Length));
+            if (!arguments.Inline) return;
+            PlaceITerm2Image(arguments, osc.AsSpan(colon + 1));
+        }
 
-            var args = argsPart.Split(';');
-            int width = 0;
-            int height = 0;
-            bool inline = false;
-            bool preserveAspectRatio = true;
-
-            foreach (var arg in args)
+        /// <summary>
+        /// The arguments of an iTerm2 <c>File=</c> or <c>MultipartFile=</c> header that placement uses,
+        /// kept as sent: the dimensions are converted to cells when the image is placed.
+        /// </summary>
+        private readonly record struct ITerm2ImageArguments(string Width, string Height, bool Inline, bool PreserveAspectRatio)
+        {
+            public static ITerm2ImageArguments Parse(string arguments)
             {
-                var kv = arg.Split('=');
-                if (kv.Length != 2) continue;
-                string key = kv[0].ToLowerInvariant();
-                string val = kv[1];
+                string width = string.Empty, height = string.Empty;
+                bool inline = false, preserveAspectRatio = true;
+                foreach (var arg in arguments.Split(';'))
+                {
+                    var kv = arg.Split('=');
+                    if (kv.Length != 2) continue;
+                    string key = kv[0].ToLowerInvariant();
+                    string val = kv[1];
 
-                if (key == "width") width = ParseDimension(val, isHeight: false);
-                else if (key == "height") height = ParseDimension(val, isHeight: true);
-                else if (key == "inline") inline = (val == "1");
-                else if (key == "preserveaspectratio") preserveAspectRatio = val != "0";
+                    // A repeated key: the last one wins, as it always has.
+                    if (key == "width") width = val;
+                    else if (key == "height") height = val;
+                    else if (key == "inline") inline = (val == "1");
+                    else if (key == "preserveaspectratio") preserveAspectRatio = val != "0";
+                }
+                return new ITerm2ImageArguments(width, height, inline, preserveAspectRatio);
             }
+        }
 
-            if (!inline) return;
+        /// <summary>
+        /// Places an inline image from its base64 payload: sized from the image header
+        /// (<see cref="ImageHeaderProbe"/>), never the decoder, and reserved in cells at the cursor.
+        /// Shared by the single-sequence form and the assembled multipart form.
+        /// </summary>
+        private void PlaceITerm2Image(ITerm2ImageArguments arguments, ReadOnlySpan<char> base64Data)
+        {
+            int width = ParseDimension(arguments.Width, isHeight: false);
+            int height = ParseDimension(arguments.Height, isHeight: true);
+            bool preserveAspectRatio = arguments.PreserveAspectRatio;
 
             try
             {
                 // Guardrail: Limit base64 length to avoid excessive memory usage before decoding
-                if (base64Data.Length > 10 * 1024 * 1024) // 10MB limit
+                if (base64Data.Length > ITerm2MaxPayloadChars)
                 {
                     return;
                 }

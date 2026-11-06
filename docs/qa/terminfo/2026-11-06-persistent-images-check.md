@@ -49,6 +49,7 @@ It is a manual QA run. It does not change any published terminfo.dev observation
 - **The multipart form is not supported in any pane.** Recent `imgcat` sends it by default, so a
   plain `imgcat` shows nothing in Ntilde, persistent or not. The coverage matrix already lists other
   OSC 1337 variants as unqualified; this is the one users meet first.
+  It is supported since; see the [multipart check](2026-11-06-iterm2-multipart-check.md).
 
 ## Limits
 

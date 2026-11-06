@@ -13,7 +13,7 @@ namespace Ntilde.VT
     /// </summary>
     /// <remarks>
     /// Read-only configuration is deliberately absent: the image decoder, general cell metrics, default
-    /// colours, the image-protocol policy, the kitty kill switch, the string-sequence cap, and the ConPTY-filtering flag are
+    /// colours, the image-protocol policy (including <c>AllowITerm2Multipart</c>), the kitty kill switch, the string-sequence cap, and the ConPTY-filtering flag are
     /// host settings, not stream position. Two parsers exchanging state must be constructed with
     /// the same <c>forceConPtyFiltering</c>, because that one changes how a sequence is
     /// interpreted rather than what has been seen.
@@ -61,6 +61,13 @@ namespace Ntilde.VT
         /// <summary>Control parameters of the in-flight chunked kitty transmission.</summary>
         [JsonPropertyName("kitty_params")]
         public Dictionary<string, string> KittyPendingParams { get; set; } = new();
+
+        /// <summary>
+        /// The iTerm2 multipart image transfer between <c>OSC 1337 ; MultipartFile</c> and
+        /// <c>OSC 1337 ; FileEnd</c>, or null when none is in progress (and in legacy snapshots).
+        /// </summary>
+        [JsonPropertyName("iterm_multipart"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public ITerm2MultipartState? ITerm2Multipart { get; set; }
 
         /// <summary>G0..G3 designations, as ordinals of <c>AnsiParser.Charset</c>. Length 4.</summary>
         [JsonPropertyName("charsets")] public int[] Charsets { get; set; } = new int[4];
@@ -132,6 +139,18 @@ namespace Ntilde.VT
                 sb.Append(key).Append('=').Append(KittyPendingParams[key]).Append(',');
             }
 
+            sb.Append(" iterm_multipart=");
+            if (ITerm2Multipart is { } multipart)
+            {
+                sb.Append("(w=").Append(Quote(multipart.Width)).Append(",h=").Append(Quote(multipart.Height))
+                    .Append(",aspect=").Append(multipart.PreserveAspectRatio).Append(",ovf=").Append(multipart.Overflow)
+                    .Append(",payload=").Append(Quote(multipart.Payload)).Append(')');
+            }
+            else
+            {
+                sb.Append("<none>");
+            }
+
             sb.Append(" charsets=");
             foreach (int c in Charsets)
             {
@@ -158,6 +177,28 @@ namespace Ntilde.VT
         }
 
         private static string Quote(string? value) => value is null ? "<null>" : "\"" + value + "\"";
+    }
+
+    /// <summary>
+    /// An iTerm2 multipart image transfer in progress: the image arguments its <c>MultipartFile</c>
+    /// header gave, and the base64 its <c>FilePart</c>s have delivered so far.
+    /// </summary>
+    public sealed class ITerm2MultipartState
+    {
+        /// <summary>The header's <c>width</c> as sent (cells, <c>Npx</c>, <c>N%</c> or <c>auto</c>); empty when absent.</summary>
+        [JsonPropertyName("width")] public string Width { get; set; } = string.Empty;
+
+        /// <summary>The header's <c>height</c>, as <see cref="Width"/>.</summary>
+        [JsonPropertyName("height")] public string Height { get; set; } = string.Empty;
+
+        /// <summary>The header's <c>preserveAspectRatio</c>; true unless it was <c>0</c>.</summary>
+        [JsonPropertyName("aspect")] public bool PreserveAspectRatio { get; set; } = true;
+
+        /// <summary>The base64 the parts have delivered, concatenated. Empty once <see cref="Overflow"/> is set.</summary>
+        [JsonPropertyName("payload")] public string Payload { get; set; } = string.Empty;
+
+        /// <summary>The parts passed the payload limit, so <c>FileEnd</c> places nothing.</summary>
+        [JsonPropertyName("overflow")] public bool Overflow { get; set; }
     }
 
     /// <summary>One XTWINOPS title-stack entry. A null half was not saved and has nothing to restore.</summary>
