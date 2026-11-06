@@ -212,6 +212,76 @@ public sealed class ImageStateTransferTests
         Assert.Equal(Placements(source), Placements(restored));
     }
 
+    [Fact]
+    public void Compressed_images_cannot_make_validation_inflate_without_limit()
+    {
+        // Five compressed PNGs that each inflate to almost 32 MiB: each is within the live bound, but
+        // together they ask for 160 MiB of inflation. Validation counts as it streams and refuses the
+        // snapshot past 128 MiB, without allocating what it inflates.
+        byte[] padded = new byte[(int)(32 * 1024 * 1024) - 64];
+        TestImages.PngHeader(4, 4).CopyTo(padded, 0);
+        byte[] compressed = Deflate(padded);
+        var snapshot = new TerminalBuffer(40, 20).ExportState(int.MaxValue);
+        snapshot.KittyImages = Enumerable.Range(1, 5).Select(id => new TerminalKittyImageState
+        {
+            Id = (uint)id,
+            Format = 100,
+            Compressed = true,
+            Width = 4,
+            Height = 4,
+            Data = compressed,
+        }).ToList();
+
+        var (target, targetParser) = Create(retain: true, decoder: null);
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        var error = Assert.ThrowsAny<Exception>(() => TerminalStateTransfer.Restore(target, targetParser, snapshot));
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.Contains("inflate", error.Message, StringComparison.Ordinal);
+        Assert.True(allocated < 16 * 1024 * 1024, $"Validation allocated {allocated:N0} bytes.");
+
+        snapshot.KittyImages.RemoveRange(4, 1); // four fit: 128 MiB of inflation is allowed
+        TerminalStateTransfer.Restore(target, targetParser, snapshot);
+        Assert.Equal(4, target.ExportState(int.MaxValue).KittyImages!.Count);
+    }
+
+    [Fact]
+    public void Images_whose_bytes_do_not_fit_are_restored_without_them()
+    {
+        // The importer's budget holds one source. The others still come back with their ids and cells,
+        // undecoded, and stay placeable; only a later snapshot cannot carry them.
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process(Kitty("a=T,i=1,f=100,C=1", TestImages.PngBase64(8, 8)) + Kitty("a=t,i=2,f=100", TestImages.PngBase64(9, 9))
+            + ITerm("", TestImages.PngBase64(10, 10)));
+        TerminalStateSnapshot exported = Export(source, sourceParser);
+
+        var restored = new TerminalBuffer(40, 20) { ImageSources = new ImageSourceBudget(maxSources: 1) };
+        var restoredParser = new AnsiParser(restored, forceConPtyFiltering: false) { RetainImageSources = true, ImageDecoder = new FixedSizeAwareDecoder() };
+        TerminalStateTransfer.Restore(restored, restoredParser, TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(exported)));
+
+        Assert.Equal(Placements(source), Placements(restored));
+        var replies = new List<string>();
+        restoredParser.OnResponse = replies.Add;
+        restoredParser.Process(Kitty("a=p,i=2,C=1"));
+        Assert.Equal(["\x1b_Gi=2;OK\x1b\\"], replies);
+        Assert.Equal(1, restored.ImageSources.Count);
+    }
+
+    [Fact]
+    public void Restore_decodes_iterm2_images_only_up_to_the_pixel_cap_newest_first()
+    {
+        // 2000 x 1000 images are 8 MB of pixels each, so 16 fit under the 128 MiB cap.
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        for (int i = 0; i < 20; i++) sourceParser.Process(ITerm(";width=1;height=1", TestImages.PngBase64(2000, 1000)));
+        var (restored, _) = Restore(Export(source, sourceParser), new FixedSizeAwareDecoder());
+
+        bool[] decoded = restored.Images.Select(image => image.ImageHandle is not UndecodedImage).ToArray();
+        int fit = (int)(TerminalBuffer.MaxTransferredITermPixelBytes / (2000L * 1000 * 4));
+        Assert.Equal(20, decoded.Length);
+        Assert.Equal(fit, decoded.Count(d => d));
+        Assert.All(decoded[^fit..], Assert.True); // the newest
+        Assert.All(decoded[..^fit], Assert.False);
+    }
+
     private static string Kinds(TerminalBuffer buffer) =>
         string.Join(",", buffer.Images.Select(i => i.IsSixelImage ? "sixel" : i.KittyImageId is not null ? "kitty" : "iterm"));
 
@@ -255,7 +325,11 @@ public sealed class ImageStateTransferTests
         var (source, sourceParser) = Create(retain: true, decoder: null);
         sourceParser.Process(Traffic);
         Assert.True(source.ImageSources.RetainedBytes > 0);
-        sourceParser.Process(Kitty("a=d,d=A") + Kitty("a=d,d=I,i=2") + "\x1b[2J\x1b[3J");
+        sourceParser.Process(Kitty("a=d,d=A") + Kitty("a=d,d=I,i=2"));
+        // Hard deletion alone gives every Kitty image's bytes back; only the iTerm2 image's remain.
+        Assert.Equal(1, source.ImageSources.Count);
+        Assert.Equal(TestImages.PngHeader(10, 10).Length, source.ImageSources.RetainedBytes);
+        sourceParser.Process("\x1b[2J\x1b[3J");
         source.ClearImages();
         Assert.Equal(0, source.ImageSources.RetainedBytes);
         Assert.Equal(0, source.ImageSources.Count);
@@ -307,6 +381,7 @@ public sealed class ImageStateTransferTests
         { "placement cell size", s => s.KittyPlacements![0].Width = 0 },
         { "iterm size", s => s.ITermImages![0].PixelHeight = 99 },
         { "iterm data", s => s.ITermImages![0].Data = [1, 2, 3] },
+        { "duplicate id", s => s.KittyImages!.Add(s.KittyImages[0]) },
         { "iterm too large", s => (s.ITermImages![0].Data, s.ITermImages[0].PixelWidth, s.ITermImages[0].PixelHeight) = (TestImages.PngHeader(3000, 1), 3000, 1) },
         { "too many images", s => s.KittyImages!.AddRange(Enumerable.Range(0, 130).Select(_ => s.KittyImages![0])) },
     };

@@ -102,6 +102,7 @@ internal static class TerminalStateAssert
             System.Text.Json.JsonSerializer.Serialize(ec.KittyPlacements));
         AssertEqual($"{where} iterm2 images", System.Text.Json.JsonSerializer.Serialize(ea.ITermImages),
             System.Text.Json.JsonSerializer.Serialize(ec.ITermImages));
+        AssertEqual($"{where} kitty id allocator", ea.KittyNextImageId, ec.KittyNextImageId);
 
         AssertEqual($"{where} parser state", expectedParser.ExportState().ToDebugString(),
             actualParser.ExportState().ToDebugString());

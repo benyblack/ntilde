@@ -9,14 +9,52 @@ namespace Ntilde.VT;
 /// </summary>
 public partial class TerminalBuffer
 {
+    private const string KittyImageWhat = "Kitty image";
+    private const string ITermImageWhat = "iTerm2 image";
+
+    /// <summary>Most bytes all compressed Kitty images in one snapshot may inflate to while validating.</summary>
+    internal const long MaxSnapshotInflatedBytes = 128L * 1024 * 1024;
+
+    /// <summary>
+    /// Most decoded iTerm2 pixel bytes a restore materializes. Live iTerm2 images have no retained-pixel
+    /// quota, so a snapshot is never refused for them; past this, older ones stay undecoded.
+    /// </summary>
+    internal const long MaxTransferredITermPixelBytes = 128L * 1024 * 1024;
+
+    /// <summary>Furthest a transferred Kitty or iTerm2 placement may lie past the right or bottom edge.</summary>
+    private const int MaxImportedOffscreenCells = 4096;
+
+    /// <summary>How much of an inflated container is kept to read its header while validating.</summary>
+    private const int InflatedHeaderPrefixBytes = 256 * 1024;
+
+    // ---- Export ----------------------------------------------------------------------------
+
     private void ExportImageState(TerminalStateSnapshot snapshot)
     {
         snapshot.KittyNextImageId = _nextKittyImageId;
         Dictionary<ImageSource, int> evictionOrder = ImageSources.EvictionOrder();
+        Dictionary<KittyImageAsset, int> exported = ExportKittyAssets(snapshot, evictionOrder);
+        for (int order = 0; order < _images.Count; order++)
+        {
+            TerminalImage image = _images[order];
+            if (image.IsSixelImage || !TryExportedRows(image, snapshot, out PlacementGeometry geometry)) continue;
+            if (image.KittyAsset is { } asset)
+            {
+                if (exported.TryGetValue(asset, out int index)) ExportKittyPlacement(snapshot, image, index, geometry, order);
+            }
+            else
+            {
+                ExportITermImage(snapshot, image, geometry, order, evictionOrder);
+            }
+        }
+    }
+
+    private Dictionary<KittyImageAsset, int> ExportKittyAssets(TerminalStateSnapshot snapshot, Dictionary<ImageSource, int> evictionOrder)
+    {
         var exported = new Dictionary<KittyImageAsset, int>();
         foreach (KittyImageAsset asset in _kittyImageAssets)
         {
-            if (asset.Source?.Data is not { } data || asset.Encoding is not { } encoding) continue;
+            if (asset.Source is not { Data: { } data } source || asset.Encoding is not { } encoding) continue;
             exported[asset] = (snapshot.KittyImages ??= []).Count;
             snapshot.KittyImages.Add(new TerminalKittyImageState
             {
@@ -30,87 +68,100 @@ public partial class TerminalBuffer
                 Width = asset.PixelWidth,
                 Height = asset.PixelHeight,
                 Data = data.ToArray(), // a copy: the snapshot must not alias live retained bytes
-                SourceOrder = evictionOrder.TryGetValue(asset.Source, out int kittyOrder) ? kittyOrder : null,
+                SourceOrder = OrderOf(evictionOrder, source),
             });
         }
-
-        for (int order = 0; order < _images.Count; order++)
-        {
-            TerminalImage image = _images[order];
-            if (image.IsSixelImage || !TryExportedRows(image, snapshot, out int y, out int top, out int bottom)) continue;
-            if (image.KittyAsset is { } asset)
-            {
-                if (!exported.TryGetValue(asset, out int index)) continue;
-                (snapshot.KittyPlacements ??= []).Add(new TerminalKittyPlacementState
-                {
-                    Image = index,
-                    Placement = image.KittyPlacementId ?? 0,
-                    X = image.CellX,
-                    Y = y,
-                    Width = image.CellWidth,
-                    Height = image.CellHeight,
-                    ClipTop = top,
-                    ClipBottom = bottom,
-                    ClipRight = image.ClipRightColumns,
-                    PreserveAspectRatio = image.PreserveAspectRatio,
-                    Order = order,
-                });
-            }
-            else if (image.EncodedSource?.Data is { } data && PixelSize(image) is (int pixelWidth, int pixelHeight))
-            {
-                (snapshot.ITermImages ??= []).Add(new TerminalITermImageState
-                {
-                    Data = data.ToArray(),
-                    SourceOrder = evictionOrder.TryGetValue(image.EncodedSource, out int itermOrder) ? itermOrder : null,
-                    PixelWidth = pixelWidth,
-                    PixelHeight = pixelHeight,
-                    X = image.CellX,
-                    Y = y,
-                    Width = image.CellWidth,
-                    Height = image.CellHeight,
-                    Alt = image.IsAltScreenImage,
-                    ClipTop = top,
-                    ClipBottom = bottom,
-                    ClipRight = image.ClipRightColumns,
-                    PreserveAspectRatio = image.PreserveAspectRatio,
-                    Order = order,
-                });
-            }
-        }
+        return exported;
     }
 
-    /// <summary>
-    /// The placement's row in exported coordinates and its clipping; false when nothing of it is left.
-    /// Rows above the exported history are gone, so they are clipped. What lies past the screen's right
-    /// or bottom edge is not: a Kitty image placed with <c>C=1</c> on the last row, or left of a column
-    /// a narrowed alternate screen no longer has, shows again when the screen grows, so it is carried
-    /// as it is.
-    /// </summary>
-    private static bool TryExportedRows(TerminalImage image, TerminalStateSnapshot snapshot, out int y, out int top, out int bottom)
+    private static void ExportKittyPlacement(TerminalStateSnapshot snapshot, TerminalImage image, int index, PlacementGeometry geometry, int order)
     {
-        y = image.IsAltScreenImage ? image.CellY : image.CellY - snapshot.ScrollbackRowsDropped;
-        top = Math.Max(image.ClipTopRows, Math.Max(0, -y));
-        bottom = image.ClipBottomRows;
-        return top + bottom < image.CellHeight;
+        (snapshot.KittyPlacements ??= []).Add(new TerminalKittyPlacementState
+        {
+            Image = index,
+            Placement = image.KittyPlacementId ?? 0,
+            X = geometry.X,
+            Y = geometry.Y,
+            Width = geometry.Width,
+            Height = geometry.Height,
+            ClipTop = geometry.ClipTop,
+            ClipBottom = geometry.ClipBottom,
+            ClipRight = geometry.ClipRight,
+            PreserveAspectRatio = image.PreserveAspectRatio,
+            Order = order,
+        });
+    }
+
+    private static void ExportITermImage(TerminalStateSnapshot snapshot, TerminalImage image, PlacementGeometry geometry, int order,
+        Dictionary<ImageSource, int> evictionOrder)
+    {
+        if (image.EncodedSource is not { Data: { } data } source || PixelSize(image) is not (int pixelWidth, int pixelHeight)) return;
+        (snapshot.ITermImages ??= []).Add(new TerminalITermImageState
+        {
+            Data = data.ToArray(),
+            SourceOrder = OrderOf(evictionOrder, source),
+            PixelWidth = pixelWidth,
+            PixelHeight = pixelHeight,
+            X = geometry.X,
+            Y = geometry.Y,
+            Width = geometry.Width,
+            Height = geometry.Height,
+            Alt = geometry.Alt,
+            ClipTop = geometry.ClipTop,
+            ClipBottom = geometry.ClipBottom,
+            ClipRight = geometry.ClipRight,
+            PreserveAspectRatio = image.PreserveAspectRatio,
+            Order = order,
+        });
+    }
+
+    private static int? OrderOf(Dictionary<ImageSource, int> evictionOrder, ImageSource source) =>
+        evictionOrder.TryGetValue(source, out int order) ? order : null;
+
+    /// <summary>
+    /// The placement in exported coordinates; false when nothing of it is left. Rows above the
+    /// exported history are gone, so they are clipped. What lies past the screen's right or bottom edge
+    /// is not: a Kitty image placed with <c>C=1</c> on the last row, or right of a column a narrowed
+    /// alternate screen no longer has, shows again when the screen grows, so it is carried as it is.
+    /// </summary>
+    private static bool TryExportedRows(TerminalImage image, TerminalStateSnapshot snapshot, out PlacementGeometry geometry)
+    {
+        int y = image.IsAltScreenImage ? image.CellY : image.CellY - snapshot.ScrollbackRowsDropped;
+        int top = Math.Max(image.ClipTopRows, Math.Max(0, -y));
+        geometry = new PlacementGeometry(image.CellX, y, image.CellWidth, image.CellHeight, image.IsAltScreenImage,
+            top, image.ClipBottomRows, image.ClipRightColumns);
+        return top + image.ClipBottomRows < image.CellHeight;
     }
 
     /// <summary>The header size an iTerm2 placement was made from, whether or not it was decoded.</summary>
     private static (int, int)? PixelSize(TerminalImage image)
     {
         if (image.ImageHandle is UndecodedImage undecoded) return (undecoded.PixelWidth, undecoded.PixelHeight);
-        return image.EncodedSource?.Data is { } data && ImageHeaderProbe.TryGetSize(data, out _, out int w, out int h) ? (w, h) : null;
+        if (image.EncodedSource?.Data is { } data && ImageHeaderProbe.TryGetSize(data, out _, out int w, out int h)) return (w, h);
+        return null;
     }
+
+    // ---- Validation ------------------------------------------------------------------------
 
     /// <summary>
     /// Refuses an image section a correct exporter could not have produced, before anything is
-    /// imported: wrong encodings, bytes that do not declare the stated size, placements naming no
-    /// image, or more than the per-screen quotas and the source budget allow.
+    /// imported: wrong encodings, bytes that do not declare the stated size, duplicate ids, placements
+    /// naming no image, more than the per-screen quotas allow, or more inflation work than any real
+    /// state needs. How many bytes the importer can retain is not checked: what does not fit its
+    /// budget is restored without bytes.
     /// </summary>
     private static void ValidateImageState(TerminalStateSnapshot snapshot)
     {
-        long bytes = 0;
-        int sources = 0;
         var images = snapshot.KittyImages ?? [];
+        ValidateKittyQuotas(images);
+        long inflated = 0;
+        foreach (TerminalKittyImageState? image in images) ValidateKittyImage(image, ref inflated);
+        ValidateKittyPlacements(images, snapshot.KittyPlacements ?? []);
+        foreach (TerminalITermImageState? image in snapshot.ITermImages ?? []) ValidateITermImage(image);
+    }
+
+    private static void ValidateKittyQuotas(List<TerminalKittyImageState> images)
+    {
         foreach (bool alt in new[] { false, true })
         {
             var screen = images.Where(state => state?.Alt == alt).ToList();
@@ -118,19 +169,26 @@ public partial class TerminalBuffer
                 throw StateTransferValidation.Reject("Kitty images", $"more than {MaxKittyImageAssets} on one screen");
             if (screen.Sum(state => (long)state.Width * state.Height * 4) > MaxKittyImagePixelBytes)
                 throw StateTransferValidation.Reject("Kitty images", "pixel charge over the per-screen quota");
+            var ids = screen.Where(state => state.Id != 0).Select(state => state.Id).ToList();
+            if (ids.Count != ids.Distinct().Count())
+                throw StateTransferValidation.Reject("Kitty images", "one id names two images on one screen");
         }
-        foreach (TerminalKittyImageState? image in images)
-        {
-            var state = StateTransferValidation.RequirePresent(image, "Kitty image");
-            byte[] data = StateTransferValidation.RequirePresent(state.Data, "Kitty image data");
-            if (state.Format is not (0 or 24 or 32 or 100)) throw StateTransferValidation.Reject("Kitty image", "unknown format");
-            var encoding = new KittyImageEncoding(state.Format, state.Compressed, state.RawWidth, state.RawHeight);
-            if (DeclaredKittySize(data, encoding) != (state.Width, state.Height))
-                throw StateTransferValidation.Reject("Kitty image", "data does not declare the stated size");
-            bytes += data.Length;
-            sources++;
-        }
-        var placements = snapshot.KittyPlacements ?? [];
+    }
+
+    private static void ValidateKittyImage(TerminalKittyImageState? image, ref long inflated)
+    {
+        var state = StateTransferValidation.RequirePresent(image, KittyImageWhat);
+        byte[] data = StateTransferValidation.RequirePresent(state.Data, "Kitty image data");
+        if (state.Format is not (0 or 24 or 32 or 100)) throw StateTransferValidation.Reject(KittyImageWhat, "unknown format");
+        var encoding = new KittyImageEncoding(state.Format, state.Compressed, state.RawWidth, state.RawHeight);
+        if (DeclaredKittySize(data, encoding, ref inflated) != (state.Width, state.Height))
+            throw StateTransferValidation.Reject(KittyImageWhat, "data does not declare the stated size");
+        if (inflated > MaxSnapshotInflatedBytes)
+            throw StateTransferValidation.Reject("Kitty images", "compressed images inflate past the snapshot limit");
+    }
+
+    private static void ValidateKittyPlacements(List<TerminalKittyImageState> images, List<TerminalKittyPlacementState> placements)
+    {
         foreach (bool alt in new[] { false, true })
         {
             if (placements.Count(p => p is not null && p.Image >= 0 && p.Image < images.Count && images[p.Image].Alt == alt) > MaxKittyImagePlacements)
@@ -142,20 +200,17 @@ public partial class TerminalBuffer
             if (state.Image < 0 || state.Image >= images.Count) throw StateTransferValidation.Reject("Kitty placement", "names no image");
             RequireCellRectangle(state.Width, state.Height, "Kitty placement");
         }
-        foreach (TerminalITermImageState? image in snapshot.ITermImages ?? [])
-        {
-            var state = StateTransferValidation.RequirePresent(image, "iTerm2 image");
-            byte[] data = StateTransferValidation.RequirePresent(state.Data, "iTerm2 image data");
-            if (!ImageHeaderProbe.TryGetSize(data, out _, out int w, out int h) || (w, h) != (state.PixelWidth, state.PixelHeight))
-                throw StateTransferValidation.Reject("iTerm2 image", "data does not declare the stated size");
-            // The live parser refuses these before decoding; a snapshot must not hand them to a decoder.
-            if (w > 2000 || h > 2000) throw StateTransferValidation.Reject("iTerm2 image", "pixel size over the 2000-pixel limit");
-            RequireCellRectangle(state.Width, state.Height, "iTerm2 image");
-            bytes += data.Length;
-            sources++;
-        }
-        if (sources > ImageSourceBudget.DefaultMaxSources || bytes > ImageSourceBudget.DefaultMaxBytes)
-            throw StateTransferValidation.Reject("image sources", "over the retained-source budget");
+    }
+
+    private static void ValidateITermImage(TerminalITermImageState? image)
+    {
+        var state = StateTransferValidation.RequirePresent(image, ITermImageWhat);
+        byte[] data = StateTransferValidation.RequirePresent(state.Data, "iTerm2 image data");
+        if (!ImageHeaderProbe.TryGetSize(data, out _, out int w, out int h) || (w, h) != (state.PixelWidth, state.PixelHeight))
+            throw StateTransferValidation.Reject(ITermImageWhat, "data does not declare the stated size");
+        // The live parser refuses these before decoding; a snapshot must not hand them to a decoder.
+        if (w > 2000 || h > 2000) throw StateTransferValidation.Reject(ITermImageWhat, "pixel size over the 2000-pixel limit");
+        RequireCellRectangle(state.Width, state.Height, ITermImageWhat);
     }
 
     private static void RequireCellRectangle(int width, int height, string what)
@@ -163,78 +218,138 @@ public partial class TerminalBuffer
         if (width is < 1 or > 200 || height is < 1 or > 200) throw StateTransferValidation.Reject(what, "cell size out of range");
     }
 
-    /// <summary>The pixel size Kitty bytes declare, as live transmission measures it; null if none.</summary>
-    private static (int, int)? DeclaredKittySize(byte[] data, KittyImageEncoding encoding)
-    {
-        if (RetainedKittyPixels(data, encoding) is not { } pixels) return null;
-        if (encoding.Format is 24 or 32)
-        {
-            if (encoding.RawWidth is < 1 or > 2000 || encoding.RawHeight is < 1 or > 2000) return null;
-            return pixels.LongLength == (long)encoding.RawWidth * encoding.RawHeight * (encoding.Format == 24 ? 3 : 4)
-                ? (encoding.RawWidth, encoding.RawHeight) : null;
-        }
-        return ImageHeaderProbe.TryGetSize(pixels, out _, out int w, out int h) && w <= 2000 && h <= 2000 ? (w, h) : null;
-    }
+    private static bool IsRaw(KittyImageEncoding encoding) => encoding.Format is 24 or 32;
+
+    private static int RawBytesPerPixel(KittyImageEncoding encoding) => encoding.Format == 24 ? 3 : 4;
+
+    private static bool RawSizeInRange(KittyImageEncoding encoding) =>
+        encoding.RawWidth is >= 1 and <= 2000 && encoding.RawHeight is >= 1 and <= 2000;
 
     /// <summary>
-    /// The bytes after <c>o=z</c> inflation, bounded as live transmission bounds them. A raw size is
-    /// checked against the 2000-pixel limit first, as live transmission checks it before inflating, so a
-    /// crafted snapshot cannot license a huge inflation.
+    /// The pixel size Kitty bytes declare, as live transmission measures it; null if none. A compressed
+    /// image is inflated as a stream that only counts and keeps the header, so validating costs no large
+    /// allocation, and the bytes it inflates are added to <paramref name="inflated"/>.
     /// </summary>
+    private static (int, int)? DeclaredKittySize(byte[] data, KittyImageEncoding encoding, ref long inflated)
+    {
+        if (IsRaw(encoding) && !RawSizeInRange(encoding)) return null;
+        long rawLength = (long)encoding.RawWidth * encoding.RawHeight * RawBytesPerPixel(encoding);
+        long length = data.LongLength;
+        byte[] header = data;
+        if (encoding.Compressed)
+        {
+            long bound = IsRaw(encoding) ? rawLength : AnsiParser.KittyMaxInflatedContainerBytes;
+            if (!InflatedLength(data, bound, out length, out header)) return null;
+            inflated += length;
+        }
+        if (IsRaw(encoding)) return length == rawLength ? (encoding.RawWidth, encoding.RawHeight) : null;
+        if (ImageHeaderProbe.TryGetSize(header, out _, out int w, out int h) && w <= 2000 && h <= 2000) return (w, h);
+        return null;
+    }
+
+    /// <summary>Inflates a zlib stream, counting up to <paramref name="bound"/> bytes and keeping only the start.</summary>
+    private static bool InflatedLength(byte[] compressed, long bound, out long length, out byte[] prefix)
+    {
+        length = 0;
+        prefix = [];
+        try
+        {
+            using var source = new MemoryStream(compressed);
+            using var zlib = new System.IO.Compression.ZLibStream(source, System.IO.Compression.CompressionMode.Decompress);
+            var start = new byte[(int)Math.Min(bound, InflatedHeaderPrefixBytes)];
+            var buffer = new byte[81920];
+            int n;
+            while ((n = zlib.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                if (length < start.Length) buffer.AsSpan(0, (int)Math.Min(n, start.Length - length)).CopyTo(start.AsSpan((int)length));
+                length += n;
+                if (length > bound) return false;
+            }
+            prefix = length < start.Length ? start[..(int)length] : start;
+            return true;
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The bytes after <c>o=z</c> inflation, bounded as live transmission bounds them.</summary>
     private static byte[]? RetainedKittyPixels(byte[] data, KittyImageEncoding encoding)
     {
-        if (encoding.Format is 24 or 32 && (encoding.RawWidth is < 1 or > 2000 || encoding.RawHeight is < 1 or > 2000)) return null;
+        if (IsRaw(encoding) && !RawSizeInRange(encoding)) return null;
         if (!encoding.Compressed) return data;
-        long bound = encoding.Format is 24 or 32
-            ? (long)encoding.RawWidth * encoding.RawHeight * (encoding.Format == 24 ? 3 : 4)
+        long bound = IsRaw(encoding)
+            ? (long)encoding.RawWidth * encoding.RawHeight * RawBytesPerPixel(encoding)
             : AnsiParser.KittyMaxInflatedContainerBytes;
-        return bound is > 0 and <= int.MaxValue ? AnsiParser.InflateZlib(data, (int)bound) : null;
+        return AnsiParser.InflateZlib(data, (int)bound);
     }
+
+    // ---- Import ----------------------------------------------------------------------------
 
     /// <summary>
     /// Restores retained Kitty assets, their placements and iTerm2 images, undecoded, at their
     /// transferred positions. Like <see cref="ImportSixelState"/> it never replays placement or moves
-    /// the cursor. Runs after the old images were cleared.
+    /// the cursor. Runs after the old images were cleared. An image whose bytes do not fit this buffer's
+    /// budget is still restored, with its id and cells, only without bytes: it stays undecoded and a
+    /// later snapshot cannot carry it.
     /// </summary>
     private void ImportImageState(TerminalStateSnapshot snapshot, Dictionary<TerminalImage, int> order)
     {
         _nextKittyImageId = snapshot.KittyNextImageId;
         var kittyStates = snapshot.KittyImages ?? [];
         var itermStates = snapshot.ITermImages ?? [];
+        (ImageSource[] kittySources, ImageSource[] itermSources) = RetainImportedSources(kittyStates, itermStates);
+        List<KittyImageAsset> assets = ImportKittyAssets(kittyStates, kittySources);
+        ImportKittyPlacements(snapshot.KittyPlacements ?? [], assets, order);
+        ImportITermImages(itermStates, itermSources, order);
+    }
 
-        // Retain the bytes in the exported eviction order, not grouped by protocol, so the budget
-        // evicts the same image next as the source would. Entries without an order keep theirs.
-        var kittySources = new ImageSource?[kittyStates.Count];
-        var itermSources = new ImageSource?[itermStates.Count];
+    /// <summary>
+    /// Retains the bytes in the exported eviction order, not grouped by protocol, so the budget evicts
+    /// the same image next as the source would; entries without an order keep theirs. The bytes are
+    /// copies, so later edits to the snapshot object cannot change what this buffer retains.
+    /// </summary>
+    private (ImageSource[] Kitty, ImageSource[] ITerm) RetainImportedSources(List<TerminalKittyImageState> kittyStates, List<TerminalITermImageState> itermStates)
+    {
+        var kitty = new ImageSource[kittyStates.Count];
+        var iterm = new ImageSource[itermStates.Count];
         var retention = kittyStates.Select((state, i) => (Order: state.SourceOrder, Sequence: i, Kitty: true, Index: i))
             .Concat(itermStates.Select((state, i) => (Order: state.SourceOrder, Sequence: kittyStates.Count + i, Kitty: false, Index: i)))
             .OrderBy(entry => entry.Order ?? int.MaxValue).ThenBy(entry => entry.Sequence);
         foreach (var entry in retention)
         {
-            // Copies, so later edits to the snapshot object cannot change what this buffer retains.
-            if (entry.Kitty) kittySources[entry.Index] = ImageSources.Retain(kittyStates[entry.Index].Data.ToArray());
-            else itermSources[entry.Index] = ImageSources.Retain(itermStates[entry.Index].Data.ToArray());
+            if (entry.Kitty) kitty[entry.Index] = ImageSources.Retain(kittyStates[entry.Index].Data.ToArray());
+            else iterm[entry.Index] = ImageSources.Retain(itermStates[entry.Index].Data.ToArray());
         }
+        return (kitty, iterm);
+    }
 
-        var assets = new List<KittyImageAsset?>();
-        for (int i = 0; i < kittyStates.Count; i++)
+    private List<KittyImageAsset> ImportKittyAssets(List<TerminalKittyImageState> states, ImageSource[] sources)
+    {
+        var assets = new List<KittyImageAsset>(states.Count);
+        for (int i = 0; i < states.Count; i++)
         {
-            TerminalKittyImageState state = kittyStates[i];
-            ImageSource source = kittySources[i]!;
-            if (source.Data is null) { assets.Add(null); continue; }
+            TerminalKittyImageState state = states[i];
             var asset = new KittyImageAsset(state.Id, state.Number, state.Alt, new UndecodedImage(state.Width, state.Height), state.Width, state.Height)
             {
-                Source = source,
+                Source = sources[i],
                 Encoding = new KittyImageEncoding(state.Format, state.Compressed, state.RawWidth, state.RawHeight),
             };
             _kittyImageAssets.Add(asset);
             assets.Add(asset);
         }
-        foreach (TerminalKittyPlacementState state in snapshot.KittyPlacements ?? [])
+        return assets;
+    }
+
+    private void ImportKittyPlacements(List<TerminalKittyPlacementState> states, List<KittyImageAsset> assets, Dictionary<TerminalImage, int> order)
+    {
+        foreach (TerminalKittyPlacementState state in states)
         {
-            if (assets[state.Image] is not { } asset) continue;
-            if (ImportedPlacement(asset.Handle, state.X, state.Y, state.Width, state.Height, asset.IsAltScreen,
-                    state.ClipTop, state.ClipBottom, state.ClipRight) is not { } image) continue;
+            KittyImageAsset asset = assets[state.Image];
+            var geometry = new PlacementGeometry(state.X, state.Y, state.Width, state.Height, asset.IsAltScreen,
+                state.ClipTop, state.ClipBottom, state.ClipRight);
+            if (ImportedPlacement(asset.Handle, geometry) is not { } image) continue;
             image.KittyImageId = asset.Id;
             image.KittyAsset = asset;
             image.KittyPlacementId = state.Placement == 0 ? null : state.Placement;
@@ -242,17 +357,21 @@ public partial class TerminalBuffer
             _images.Add(image);
             if (state.Order is int z) order[image] = z;
         }
-        for (int i = 0; i < itermStates.Count; i++)
+    }
+
+    private void ImportITermImages(List<TerminalITermImageState> states, ImageSource[] sources, Dictionary<TerminalImage, int> order)
+    {
+        for (int i = 0; i < states.Count; i++)
         {
-            TerminalITermImageState state = itermStates[i];
-            ImageSource source = itermSources[i]!;
-            if (source.Data is null || ImportedPlacement(new UndecodedImage(state.PixelWidth, state.PixelHeight), state.X, state.Y, state.Width, state.Height,
-                    state.Alt, state.ClipTop, state.ClipBottom, state.ClipRight) is not { } image)
+            TerminalITermImageState state = states[i];
+            var geometry = new PlacementGeometry(state.X, state.Y, state.Width, state.Height, state.Alt,
+                state.ClipTop, state.ClipBottom, state.ClipRight);
+            if (ImportedPlacement(new UndecodedImage(state.PixelWidth, state.PixelHeight), geometry) is not { } image)
             {
-                source.Release();
+                sources[i].Release();
                 continue;
             }
-            image.EncodedSource = source;
+            image.EncodedSource = sources[i];
             image.PreserveAspectRatio = state.PreserveAspectRatio;
             _images.Add(image);
             if (state.Order is int z) order[image] = z;
@@ -276,34 +395,38 @@ public partial class TerminalBuffer
         _images.AddRange(sorted);
     }
 
-    /// <summary>Furthest a transferred Kitty or iTerm2 placement may lie past the right or bottom edge.</summary>
-    private const int MaxImportedOffscreenCells = 4096;
+    /// <summary>A placement's cell rectangle, screen and clipping as a snapshot carries it.</summary>
+    private readonly record struct PlacementGeometry(int X, int Y, int Width, int Height, bool Alt, int ClipTop, int ClipBottom, int ClipRight);
 
     /// <summary>
     /// A transferred placement; null when nothing of it is left. Unlike SIXEL, it keeps a position past
     /// the right or bottom edge (within <see cref="MaxImportedOffscreenCells"/>), where the live buffer
     /// keeps it too, so it shows again when the screen grows.
     /// </summary>
-    private TerminalImage? ImportedPlacement(object handle, int x, int y, int width, int height, bool alt, int clipTop, int clipBottom, int clipRight)
+    private TerminalImage? ImportedPlacement(object handle, PlacementGeometry geometry)
     {
-        int top = Math.Clamp(clipTop, 0, height);
-        int bottom = Math.Clamp(clipBottom, 0, height - top);
-        int right = Math.Clamp(clipRight, 0, width);
-        if (top + bottom >= height || right >= width) return null;
-        int lastRow = alt ? Rows - 1 : _scrollback.Count + Rows - 1;
-        return new TerminalImage(handle, Math.Clamp(x, 0, Cols - 1 + MaxImportedOffscreenCells),
-            Math.Clamp(y, 1 - height, lastRow + MaxImportedOffscreenCells), width, height)
+        int top = Math.Clamp(geometry.ClipTop, 0, geometry.Height);
+        int bottom = Math.Clamp(geometry.ClipBottom, 0, geometry.Height - top);
+        int right = Math.Clamp(geometry.ClipRight, 0, geometry.Width);
+        if (top + bottom >= geometry.Height || right >= geometry.Width) return null;
+        int lastRow = geometry.Alt ? Rows - 1 : _scrollback.Count + Rows - 1;
+        return new TerminalImage(handle, Math.Clamp(geometry.X, 0, Cols - 1 + MaxImportedOffscreenCells),
+            Math.Clamp(geometry.Y, 1 - geometry.Height, lastRow + MaxImportedOffscreenCells), geometry.Width, geometry.Height)
         {
-            IsAltScreenImage = alt,
+            IsAltScreenImage = geometry.Alt,
             ClipTopRows = top,
             ClipBottomRows = bottom,
             ClipRightColumns = right,
         };
     }
 
+    // ---- Decoding --------------------------------------------------------------------------
+
     /// <summary>
     /// Decodes transferred Kitty and iTerm2 images with the host's decoder. Pixels are kept only at
-    /// the size the bytes declare, as in live placement; anything else stays undecoded.
+    /// the size the bytes declare, as in live placement; anything else stays undecoded. Kitty pixels are
+    /// bounded by the per-screen quotas; iTerm2 pixels by <see cref="MaxTransferredITermPixelBytes"/>,
+    /// newest first.
     /// </summary>
     internal void DecodeTransferredImages(IImageDecoder? decoder)
     {
@@ -311,29 +434,38 @@ public partial class TerminalBuffer
         Lock.EnterWriteLock();
         try
         {
-            foreach (KittyImageAsset asset in _kittyImageAssets)
-            {
-                if (asset.Handle is not UndecodedImage || asset.Source?.Data is not { } data || asset.Encoding is not { } encoding) continue;
-                if (RetainedKittyPixels(data, encoding) is not { } pixels) continue;
-                object? handle = DecodeTransferred(asset.PixelWidth, asset.PixelHeight, (out int w, out int h) => encoding.Format is 24 or 32
-                    ? decoder.DecodeRawImage(pixels, encoding.Format == 24 ? 3 : 4, encoding.RawWidth, encoding.RawHeight, out w, out h)
-                    : decoder.DecodeImageBytes(pixels, out w, out h));
-                if (handle is null) continue;
-                asset.Handle = handle;
-                foreach (TerminalImage image in _images)
-                {
-                    if (ReferenceEquals(image.KittyAsset, asset)) image.ImageHandle = handle;
-                }
-            }
-            foreach (TerminalImage image in _images)
-            {
-                if (image.KittyAsset is not null || image.ImageHandle is not UndecodedImage undecoded || image.EncodedSource?.Data is not { } data) continue;
-                if (DecodeTransferred(undecoded.PixelWidth, undecoded.PixelHeight, (out int w, out int h) => decoder.DecodeImageBytes(data, out w, out h)) is { } handle)
-                    image.ImageHandle = handle;
-            }
+            foreach (KittyImageAsset asset in _kittyImageAssets.Where(asset => asset.Handle is UndecodedImage)) DecodeTransferredKitty(asset, decoder);
+            DecodeTransferredITerm(decoder);
         }
         finally { Lock.ExitWriteLock(); }
         Invalidate();
+    }
+
+    private void DecodeTransferredKitty(KittyImageAsset asset, IImageDecoder decoder)
+    {
+        if (asset.Source?.Data is not { } data || asset.Encoding is not { } encoding) return;
+        if (RetainedKittyPixels(data, encoding) is not { } pixels) return;
+        TransferredDecode decode = IsRaw(encoding)
+            ? (out int w, out int h) => decoder.DecodeRawImage(pixels, RawBytesPerPixel(encoding), encoding.RawWidth, encoding.RawHeight, out w, out h)
+            : (out int w, out int h) => decoder.DecodeImageBytes(pixels, out w, out h);
+        if (DecodeTransferred(asset.PixelWidth, asset.PixelHeight, decode) is not { } handle) return;
+        asset.Handle = handle;
+        foreach (TerminalImage image in _images.Where(image => ReferenceEquals(image.KittyAsset, asset))) image.ImageHandle = handle;
+    }
+
+    private void DecodeTransferredITerm(IImageDecoder decoder)
+    {
+        long budget = MaxTransferredITermPixelBytes;
+        for (int i = _images.Count - 1; i >= 0; i--)
+        {
+            TerminalImage image = _images[i];
+            if (image.KittyAsset is not null || image.ImageHandle is not UndecodedImage undecoded || image.EncodedSource?.Data is not { } data) continue;
+            long charge = (long)undecoded.PixelWidth * undecoded.PixelHeight * 4;
+            if (charge > budget) continue;
+            if (DecodeTransferred(undecoded.PixelWidth, undecoded.PixelHeight, (out int w, out int h) => decoder.DecodeImageBytes(data, out w, out h)) is not { } handle) continue;
+            image.ImageHandle = handle;
+            budget -= charge;
+        }
     }
 
     private delegate object? TransferredDecode(out int pixelWidth, out int pixelHeight);
