@@ -75,6 +75,38 @@ public class AgentSessionStatusMachineTests
         Assert.Equal(1, finished.ExitCode);
     }
 
+    /// <summary>
+    /// The snapshot forgets the command the moment it finishes, so the event is the only place an agent can pair the
+    /// exit code with what ran - and it must never pair it with a command that did not run.
+    /// </summary>
+    [Fact]
+    public void CommandFinished_carries_the_command_it_finishes_and_never_a_stale_one()
+    {
+        var (machine, _, events) = Make();
+
+        machine.NotifyCommandAccepted("  scripts/build.sh test  ");
+        machine.NotifyCommandStarted();
+        machine.NotifyCommandFinished(exitCode: 0);
+
+        var first = Assert.Single(events, e => e.Type == AgentSessionEventType.CommandFinished);
+        Assert.Equal("scripts/build.sh test", first.Command);
+
+        // A D with no C before it (a bare D, or one written by the command's own output) names nothing.
+        machine.NotifyCommandFinished(exitCode: 0);
+        Assert.Null(events.Last(e => e.Type == AgentSessionEventType.CommandFinished).Command);
+
+        // A bare 133;C carries no text: the finish reports none rather than the previous command.
+        machine.NotifyCommandAccepted(null);
+        machine.NotifyCommandStarted();
+        machine.NotifyCommandFinished(exitCode: 2);
+        var bare = events.Last(e => e.Type == AgentSessionEventType.CommandFinished);
+        Assert.Equal(2, bare.ExitCode);
+        Assert.Null(bare.Command);
+
+        // Other events never carry a command.
+        Assert.All(events.Where(e => e.Type != AgentSessionEventType.CommandFinished), e => Assert.Null(e.Command));
+    }
+
     [Fact]
     public void Heuristic_tier_uses_child_processes_from_the_sweep()
     {
