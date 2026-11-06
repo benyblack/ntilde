@@ -88,12 +88,29 @@ public sealed class DecoderIndependentImagePlacementTests
     [Fact]
     public void The_decoder_still_supplies_the_pixels_when_it_can()
     {
-        var decoder = new FixedSizeImageDecoder(7, 3);
-        var (buffer, parser, _) = Create(decoder);
+        var (buffer, parser, _) = Create(new FixedSizeImageDecoder(50, 70));
         parser.Process(Kitty("a=T,i=1,f=100", TestImages.PngBase64(50, 70)));
         TerminalImage image = Assert.Single(buffer.Images);
         Assert.IsNotType<UndecodedImage>(image.ImageHandle);
-        Assert.Equal((5, 4), (image.CellWidth, image.CellHeight)); // from the 50 x 70 header, not the decoder's 7 x 3
+        Assert.Equal((5, 4), (image.CellWidth, image.CellHeight));
+    }
+
+    [Theory]
+    [InlineData("kitty")]
+    [InlineData("iterm")]
+    public void Pixels_of_another_size_than_the_header_are_discarded(string protocol)
+    {
+        // A GIF whose first frame overflows its 1 x 1 logical screen decodes to 2000 x 2000. Keeping
+        // those pixels would hold 16 MB against a 4-byte quota charge, so they are retired and the
+        // image is kept undecoded at the size the header declared.
+        var (buffer, parser, replies) = Create(new FixedSizeImageDecoder(2000, 2000));
+        parser.Process(protocol == "kitty" ? Kitty("a=T,i=1,f=100", TestImages.PngBase64(1, 1)) : ITerm("", TestImages.PngBase64(1, 1)));
+        TerminalImage image = Assert.Single(buffer.Images);
+        Assert.IsType<UndecodedImage>(image.ImageHandle);
+        if (protocol == "kitty") Assert.Equal(["\x1b_Gi=1;OK\x1b\\"], replies);
+        var retired = new List<object>();
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.IsNotType<UndecodedImage>(Assert.Single(retired)); // the oversized decoded handle
     }
 
     [Fact]

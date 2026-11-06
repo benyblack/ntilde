@@ -317,7 +317,8 @@ namespace Ntilde.VT
                     return;
                 }
 
-                object imageHandle = DecodeOrPlaceholder(decoder => decoder.DecodeImageBytes(data, out _, out _), pixelWidth, pixelHeight);
+                object imageHandle = DecodeOrPlaceholder((IImageDecoder decoder, out int w, out int h) => decoder.DecodeImageBytes(data, out w, out h),
+                    pixelWidth, pixelHeight);
 
                 // Image pixels map to cells in the unit CSI 16 t reports (ImageCellPixels).
                 var (cellWidthPx, cellHeightPx) = ImageCellPixels();
@@ -419,18 +420,29 @@ namespace Ntilde.VT
             }
         }
 
+        private delegate object? ImageDecode(IImageDecoder decoder, out int pixelWidth, out int pixelHeight);
+
         /// <summary>
         /// Pixels for an image already sized and accepted from its header: the decoder's handle, or an
-        /// <see cref="UndecodedImage"/> when there is no decoder or it cannot decode the body (failing or
-        /// throwing). Whether the image is placed never depends on this.
+        /// <see cref="UndecodedImage"/> when there is no decoder, it cannot decode the body (failing or
+        /// throwing), or its pixels are not the size the header declared. Whether the image is placed
+        /// never depends on this.
         /// </summary>
-        private object DecodeOrPlaceholder(Func<IImageDecoder, object?> decode, int pixelWidth, int pixelHeight)
+        private object DecodeOrPlaceholder(ImageDecode decode, int pixelWidth, int pixelHeight)
         {
             if (ImageDecoder is { } decoder)
             {
                 try
                 {
-                    if (decode(decoder) is { } handle) return handle;
+                    if (decode(decoder, out int decodedWidth, out int decodedHeight) is { } handle)
+                    {
+                        if (decodedWidth == pixelWidth && decodedHeight == pixelHeight) return handle;
+                        // Pixels of another size would be retained and drawn at a size the header did not
+                        // declare, outside the quota charged for it: a GIF whose first frame overflows its
+                        // logical screen decodes larger than its header says. Keep the image undecoded.
+                        TerminalLogger.Debug($"[ANSI_PARSER] Decoded {decodedWidth}x{decodedHeight} for a {pixelWidth}x{pixelHeight} header; placing it undecoded.");
+                        _buffer.RetireUnstoredKittyHandle(handle);
+                    }
                 }
                 catch (Exception ex)
                 {

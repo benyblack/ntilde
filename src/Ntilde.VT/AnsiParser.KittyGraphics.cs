@@ -267,7 +267,7 @@ namespace Ntilde.VT
 
             // The decoder only supplies pixels. Without it, or when the body does not decode, the image
             // still holds its cells and draws nothing there.
-            object imageHandle = DecodeOrPlaceholder(decoder => DecodeKittyImage(decoder, data, format, rawWidth, rawHeight, out _, out _),
+            object imageHandle = DecodeOrPlaceholder((IImageDecoder decoder, out int w, out int h) => DecodeKittyImage(decoder, data, format, rawWidth, rawHeight, out w, out h),
                 pixelWidth, pixelHeight);
             TerminalLogger.Debug($"[ANSI_PARSER] Kitty image {pixelWidth}x{pixelHeight}, {(imageHandle is UndecodedImage ? "not decoded" : "decoded")}");
 
