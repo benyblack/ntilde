@@ -378,6 +378,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let cellEvidence;
     let sgrEvidence;
     let gradingEvidence;
+    let sgrColorsEvidence;
     let rgbEvidence;
     let renditionEvidence;
     let cursorEvidence;
@@ -443,6 +444,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let cellObserver;
         let sgrObserver;
         let gradingObserver;
+        let sgrColorsObserver;
         let pixelObserver;
         let pixelUnavailable;
         let colorObserver;
