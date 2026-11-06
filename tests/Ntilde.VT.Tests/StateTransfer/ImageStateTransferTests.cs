@@ -144,6 +144,22 @@ public sealed class ImageStateTransferTests
         Assert.Equal(66, buffer.ImageSources.RetainedBytes);
     }
 
+    [Fact]
+    public void Quota_victims_give_up_their_bytes_before_the_new_image_is_charged()
+    {
+        // Four 2000 x 2000 images fill the 64 MiB pixel quota and a four-source byte budget. Id 1 is on
+        // screen, 2-4 are only transmitted. A fifth image evicts unplaced id 2 from the quota; its bytes
+        // must go first, so the budget never drops the visible id 1 to make room.
+        byte[] image = [.. TestImages.PngHeader(2000, 2000), .. new byte[967]]; // 1000 bytes
+        string payload = Convert.ToBase64String(image);
+        var buffer = new TerminalBuffer(40, 20) { ImageSources = new ImageSourceBudget(maxBytes: 4000) };
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { RetainImageSources = true };
+        parser.Process(Kitty("a=T,i=1,f=100,q=2,C=1", payload));
+        for (int id = 2; id <= 5; id++) parser.Process(Kitty($"a=t,i={id},f=100,q=2", payload));
+        Assert.Equal([1u, 3u, 4u, 5u], buffer.ExportState(int.MaxValue).KittyImages!.Select(state => state.Id));
+        Assert.Single(buffer.ExportState(int.MaxValue).KittyPlacements!);
+    }
+
     private static string Kinds(TerminalBuffer buffer) =>
         string.Join(",", buffer.Images.Select(i => i.IsSixelImage ? "sixel" : i.KittyImageId is not null ? "kitty" : "iterm"));
 

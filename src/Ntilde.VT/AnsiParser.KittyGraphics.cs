@@ -275,20 +275,12 @@ namespace Ntilde.VT
             // A decoder that hands back an already retired handle cannot change the outcome either: the
             // image is kept undecoded, as a parser without a decoder keeps it.
             // Where snapshots carry images, the bytes are kept as sent (before o=z inflation) with how
-            // they were sent, so a restore decodes them exactly as this transmission did (#838).
-            // An image replacing one with the same id gives up the old bytes first, so the budget only
-            // evicts something else when the replacement itself does not fit. Storing cannot fail from
-            // here: an undecoded placeholder is always admitted.
-            if (RetainImageSources && identity.Id != 0) _buffer.ReleaseKittySource(identity.Id);
-            ImageSource? source = RetainImageSources ? _buffer.ImageSources.Retain(sent) : null;
-            var encoding = source is null ? null : new KittyImageEncoding(format, _kittyPendingParams.ContainsKey("o"), rawWidth, rawHeight);
-            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number, source, encoding)
-                ?? _buffer.StoreKittyImage(new UndecodedImage(pixelWidth, pixelHeight), pixelWidth, pixelHeight, identity.Id, identity.Number, source, encoding);
-            if (asset is null)
-            {
-                source?.Release();
-                return "EINVAL:Image could not be stored";
-            }
+            // they were sent; the store charges them only after freeing what this image replaces or evicts.
+            byte[]? retained = RetainImageSources ? sent : null;
+            var encoding = retained is null ? null : new KittyImageEncoding(format, _kittyPendingParams.ContainsKey("o"), rawWidth, rawHeight);
+            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number, retained, encoding)
+                ?? _buffer.StoreKittyImage(new UndecodedImage(pixelWidth, pixelHeight), pixelWidth, pixelHeight, identity.Id, identity.Number, retained, encoding);
+            if (asset is null) return "EINVAL:Image could not be stored";
             id = asset.Id;
             if (display) PlaceKittyImage(asset, identity.HasIdentity ? identity.Placement : 0);
             return "OK";
