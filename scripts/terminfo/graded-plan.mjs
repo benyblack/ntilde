@@ -2,8 +2,7 @@
 // batch and the layered SGR-colors batch drive identical plan/feed/read
 // schedules over the owned fence and validate identical journal shapes; the
 // common logic lives here once so the layered suite adds no duplicated code.
-import { snapshotHash } from './agent-observer.mjs';
-import { screenSnapshot } from './agent-observer.mjs';
+import { screenSnapshot, snapshotHash } from './agent-observer.mjs';
 
 /** One plan step: write exact bytes through the owned fence. */
 export const planFeed = bytes => ({ feed: bytes });
@@ -116,9 +115,9 @@ export async function collectGradedPlans({ contracts, prefix, reset, nonce, fenc
             for (const step of contract.plan) {
                 if (step.feed) {
                     feeds.push(step.feed);
-                    barriers.push(await fence.write(step.feed));
+                    barriers.push(await fence.write(step.feed)); // serial by design: each write must settle before the next (NOSONAR)
                 } else {
-                    const observed = await owner(`${prefix}-read`, barriers.at(-1));
+                    const observed = await owner(`${prefix}-read`, barriers.at(-1)); // serial by design: reads journal between writes (NOSONAR)
                     reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol] });
                     screens.push(observed.screen);
                 }

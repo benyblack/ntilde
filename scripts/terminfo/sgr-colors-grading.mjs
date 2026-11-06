@@ -37,33 +37,43 @@ function pinnedResponse(contract, cells) {
     return JSON.stringify({ baseline: cells[0], first: cells[1], second: cells[2] });
 }
 
+/** measuredAttribute semantics: undefined -> null, boolean -> value. */
+const attrValue = (cell, name) => {
+    const value = cell[name];
+    if (value === undefined) return null;
+    return typeof value === 'boolean' ? value : null;
+};
+
+/** Re-derive the pinned measuredReset verdict over the three reset cells. */
+function replayMeasuredReset(contract, cells, response) {
+    const expected = `${contract.caseId}: ${contract.pinnedCriterion}`;
+    if (cells[0].char !== 'C' || cells[1].char !== 'X' || cells[2].char !== 'Y') {
+        return incomplete(response, 'Baseline, styled, or reset cell was not exposed');
+    }
+    const attributes = [...new Set([...contract.set, ...contract.preserve])];
+    const measured = attributes.every(name => typeof cells[2][name] === 'boolean');
+    const baselineOk = attributes.every(name => attrValue(cells[0], name) === false);
+    const beforeOk = attributes.every(name => attrValue(cells[1], name) === true);
+    if (!measured || !baselineOk || !beforeOk) return incomplete(response, contract.pinnedControlNote);
+    const cleared = contract.set.every(name => attrValue(cells[2], name) === false);
+    const retained = contract.preserve.every(name => attrValue(cells[2], name) === true);
+    const pass = cleared && retained;
+    return { pass, response,
+        observation: { outcome: pass ? 'supported' : 'unsupported', evidence: 'parser-state' },
+        assertions: [{ kind: pass ? 'positive' : 'negative', expected, observed: response }] };
+}
+
 /** Re-derive the complete pinned termless result from observed screens,
  * mirroring the pinned parserStateResult shapes exactly. */
 export function replaySgrColorsPinned(contract, screens) {
     const cells = [0, 1, 2].map(col => sgrColorsCellAt(screens[0], 0, col));
     const response = pinnedResponse(contract, cells);
-    const charsExposed = cells[0].char === 'C' && cells[1].char === 'X' && cells[2].char === 'Y';
     if (contract.pinnedExpectation === 'measured') {
-        const expected = `${contract.caseId}: ${contract.pinnedCriterion}`;
-        if (!charsExposed) return incomplete(response, 'Baseline, styled, or reset cell was not exposed');
-        // measuredAttribute semantics: undefined -> null, boolean -> value.
-        const attrValue = (cell, name) => {
-            const value = cell[name];
-            return value === undefined ? null : typeof value === 'boolean' ? value : null;
-        };
-        const attributes = [...new Set([...contract.set, ...contract.preserve])];
-        const measured = attributes.every(name => typeof cells[2][name] === 'boolean');
-        const baselineOk = attributes.every(name => attrValue(cells[0], name) === false);
-        const beforeOk = attributes.every(name => attrValue(cells[1], name) === true);
-        if (!measured || !baselineOk || !beforeOk) return incomplete(response, contract.pinnedControlNote);
-        const cleared = contract.set.every(name => attrValue(cells[2], name) === false);
-        const retained = contract.preserve.every(name => attrValue(cells[2], name) === true);
-        const pass = cleared && retained;
-        return { pass, response,
-            observation: { outcome: pass ? 'supported' : 'unsupported', evidence: 'parser-state' },
-            assertions: [{ kind: pass ? 'positive' : 'negative', expected, observed: response }] };
+        return replayMeasuredReset(contract, cells, response);
     }
-    if (!charsExposed) return incomplete(response, 'Neutral control or named-color cells were not exposed');
+    if (cells[0].char !== 'C' || cells[1].char !== 'X' || cells[2].char !== 'Y') {
+        return incomplete(response, 'Neutral control or named-color cells were not exposed');
+    }
     // Stored observations expose no RGB for palette colors, so the pinned
     // criterion's own indistinguishable verdict applies deterministically.
     return incomplete(response, contract.pinnedControlNote);

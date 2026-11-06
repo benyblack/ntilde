@@ -9,7 +9,7 @@
 // Flag bits of the App readScreen attribute projection (TerminalCellFlags):
 // bold 1, italic 4, underline 8, faint 64, default-fg 256, default-bg 512,
 // palette-fg 16384, palette-bg 32768.
-import { planFeed, planRead, planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
+import { planFeed, planRead, planReads, validateExactFeeds } from './graded-plan.mjs';
 import { expandScreenFlags, asciiSgrReset } from './ascii-sgr-contracts.mjs';
 
 export const sgrColorsContractsVersion = 1;
@@ -204,8 +204,7 @@ export const sgrColorsContracts = Object.freeze([
  * indices, the other channel's default marker preserved, no style flag moved. */
 function gradeNamedColor(cells, channel, indexField, firstIndex, secondIndex, otherDefault) {
     const [baseline, first, second] = cells;
-    const exposed = channel === 'fg' ? ['C', 'X', 'Y'] : ['C', 'X', 'Y'];
-    if (![baseline, first, second].every((cell, index) => cell.char === exposed[index])) {
+    if (baseline.char !== 'C' || first.char !== 'X' || second.char !== 'Y') {
         return { outcome: 'inconclusive', note: 'Neutral control or named-color cells were not exposed' };
     }
     if (!(defaultColors(baseline) && plainStyles(baseline))) {
@@ -221,7 +220,7 @@ function gradeNamedColor(cells, channel, indexField, firstIndex, secondIndex, ot
 
 export const sgrColorsCaseIds = Object.freeze(sgrColorsContracts.map(contract => contract.caseId));
 
-export { planFeeds as sgrColorsFeeds, planReads as sgrColorsReads };
+export { planFeeds as sgrColorsFeeds, planReads as sgrColorsReads } from './graded-plan.mjs';
 
 /** Reject any recorded feed list that is not byte-identical to the contract. */
 export function validateSgrColorsFeeds(contract, feeds) {

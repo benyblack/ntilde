@@ -47,9 +47,8 @@ export async function collectSgrColorsGrading({ config, fence, owner, gradingMod
         const contract = sgrColorsContracts.find(entry => entry.caseId === item.caseId);
         const pinned = gradingModule.ntildeRunSgrColorsTermless(contract.caseId,
             sgrColorsRecordingContext(contract, item.screens));
-        const { screens, ...recorded } = item;
-        void screens;
-        run.cases.push({ ...recorded, pinned });
+        const { caseId, feeds, barriers, reads } = item;
+        run.cases.push({ caseId, feeds, barriers, reads, pinned });
     }
     return run;
 }
