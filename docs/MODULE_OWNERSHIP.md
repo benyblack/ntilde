@@ -168,7 +168,8 @@ invariant changes.
   `AnsiParser.ClipboardWriteAvailable`, which the App sets for direct panes from
   `AllowOsc52ClipboardWrite`; headless and mux parsers leave it unset.
 - **XTSMGRAPHICS reports the Sixel decoder's limits, owned by VT and Rendering.**
-  VT answers from `AnsiParser.SixelColorRegisterCount` and
+  VT answers from `AnsiParser.SixelColorRegisterCount` (defined as
+  `SixelGeometry.DefaultMaxPaletteRegister + 1`, the limit both decoders use) and
   `SixelGeometry.DefaultMaxPixelDimension`; a Rendering test fails if the decoder
   accepts a different register range. The geometry read uses the cell size Sixel
   placement uses (the host's `SixelCellSizeOverride`), so a reported width fills the pane.
