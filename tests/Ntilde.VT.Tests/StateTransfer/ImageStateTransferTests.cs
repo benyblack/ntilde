@@ -339,6 +339,31 @@ public sealed class ImageStateTransferTests
     }
 
     [Fact]
+    public void One_array_named_with_equivalent_container_formats_is_measured_once()
+    {
+        // f=0 and f=100 are both containers. Four images sharing one array and alternating between them
+        // are measured once across both validation passes, then each is inflated once to decode.
+        byte[] padded = new byte[8 * 1024 * 1024];
+        TestImages.PngHeader(4, 4).CopyTo(padded, 0);
+        byte[] compressed = Deflate(padded);
+        var snapshot = new TerminalBuffer(40, 20).ExportState(int.MaxValue);
+        snapshot.KittyImages = Enumerable.Range(1, 4).Select(id => new TerminalKittyImageState
+        {
+            Id = (uint)id,
+            Format = id % 2 == 0 ? 0 : 100,
+            Compressed = true,
+            Width = 4,
+            Height = 4,
+            Data = compressed,
+        }).ToList();
+
+        var (target, targetParser) = Create(retain: true, new FixedSizeAwareDecoder());
+        long before = InflationMeter.Bytes;
+        TerminalStateTransfer.Restore(target, targetParser, snapshot);
+        Assert.Equal(5L * padded.Length, InflationMeter.Bytes - before); // one measurement, four decodes
+    }
+
+    [Fact]
     public void Bytes_larger_than_the_whole_budget_are_not_copied_on_import()
     {
         byte[] large = new byte[4 * 1024 * 1024];

@@ -234,8 +234,11 @@ public partial class TerminalBuffer
     private static (int, int)? DeclaredKittySize(byte[] data, KittyImageEncoding encoding, ref long inflated)
     {
         if (IsRaw(encoding) && !RawSizeInRange(encoding)) return null;
-        if (encoding.Compressed && CompressedSizeCache.TryGetValue(data, out CompressedSize? known)
-            && known.Encoding == encoding && known.Hash == ContentHash(data))
+        if (!encoding.Compressed) return MeasureKittySize(data, encoding, ref inflated);
+        var measured = CompressedSizeCache.GetValue(data, static _ => new());
+        KittyImageEncoding key = CacheKey(encoding);
+        int hash = ContentHash(data);
+        if (measured.TryGetValue(key, out CompressedSize? known) && known.Hash == hash)
         {
             // Measured already (an earlier validation pass of this restore, or the same array named
             // twice): no inflation now, but its size still counts toward the snapshot limit.
@@ -244,7 +247,7 @@ public partial class TerminalBuffer
         }
         long before = inflated;
         (int, int)? size = MeasureKittySize(data, encoding, ref inflated);
-        if (encoding.Compressed) CompressedSizeCache.AddOrUpdate(data, new CompressedSize(ContentHash(data), encoding, size, inflated - before));
+        measured[key] = new CompressedSize(hash, size, inflated - before);
         return size;
     }
 
@@ -253,9 +256,18 @@ public partial class TerminalBuffer
     /// so the two validation passes of a restore (<see cref="TerminalStateTransfer.Restore"/> and then
     /// <see cref="ImportState"/>) inflate each image only once.
     /// </summary>
-    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<byte[], CompressedSize> CompressedSizeCache = new();
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<byte[],
+        System.Collections.Concurrent.ConcurrentDictionary<KittyImageEncoding, CompressedSize>> CompressedSizeCache = new();
 
-    private sealed record CompressedSize(int Hash, KittyImageEncoding Encoding, (int, int)? Size, long Inflated);
+    private sealed record CompressedSize(int Hash, (int, int)? Size, long Inflated);
+
+    /// <summary>
+    /// What sizing compressed bytes depends on: a raw image's format and size, or only that it is a
+    /// container (<c>f=0</c> and <c>f=100</c> are measured the same way), so equivalent entries share
+    /// one measurement.
+    /// </summary>
+    private static KittyImageEncoding CacheKey(KittyImageEncoding encoding) =>
+        IsRaw(encoding) ? encoding : encoding with { Format = 100, RawWidth = 0, RawHeight = 0 };
 
     private static int ContentHash(byte[] data)
     {
