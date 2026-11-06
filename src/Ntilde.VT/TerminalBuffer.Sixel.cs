@@ -7,6 +7,9 @@ public partial class TerminalBuffer
     private bool _retrySixelSourcePrune;
     public SixelSourceBudget SixelSources { get; init; } = new();
 
+    /// <summary>Bounds the encoded Kitty and iTerm2 bytes kept for snapshots (#838).</summary>
+    public ImageSourceBudget ImageSources { get; init; } = new();
+
     /// <summary>Applies SIXEL geometry even on headless hosts. Never writes placeholder text or wraps an image horizontally.</summary>
     internal bool PlaceSixelImage(object? handle, int widthCells, int heightCells, SixelSource? source = null,
         SixelPlacementProvenance? provenance = null)

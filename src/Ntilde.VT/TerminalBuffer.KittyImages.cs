@@ -9,10 +9,15 @@ internal sealed class KittyImageAsset(uint id, uint number, bool isAltScreen, ob
     internal uint Id { get; } = id;
     internal uint Number { get; } = number;
     internal bool IsAltScreen { get; } = isAltScreen;
-    internal object Handle { get; } = handle;
+    /// <summary>The pixels; a snapshot restore swaps its undecoded placeholder for the decoded handle.</summary>
+    internal object Handle { get; set; } = handle;
     internal int PixelWidth { get; } = pixelWidth;
     internal int PixelHeight { get; } = pixelHeight;
     internal long PixelCharge => (long)PixelWidth * PixelHeight * 4;
+    /// <summary>The bytes as sent, kept for snapshots when the parser retains image sources (#838).</summary>
+    internal ImageSource? Source { get; init; }
+    /// <summary>How <see cref="Source"/> was sent, so it can be decoded again on restore.</summary>
+    internal KittyImageEncoding? Encoding { get; init; }
 }
 
 public partial class TerminalBuffer
@@ -25,7 +30,8 @@ public partial class TerminalBuffer
     private readonly List<KittyImageAsset> _kittyImageAssets = new();
     private uint _nextKittyImageId;
 
-    internal KittyImageAsset? StoreKittyImage(object handle, int pixelWidth, int pixelHeight, uint id, uint number)
+    internal KittyImageAsset? StoreKittyImage(object handle, int pixelWidth, int pixelHeight, uint id, uint number,
+        ImageSource? source = null, KittyImageEncoding? encoding = null)
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         int placementsBefore = _images.Count;
@@ -34,7 +40,7 @@ public partial class TerminalBuffer
             if (!TryAdmitImageHandle(handle)) return null;
             KittyImageAsset? old = id == 0 ? null : FindKittyImage(id, 0);
             if (id == 0 && number != 0) id = AllocateKittyImageId();
-            var asset = new KittyImageAsset(id, number, _isAltScreen, handle, pixelWidth, pixelHeight);
+            var asset = new KittyImageAsset(id, number, _isAltScreen, handle, pixelWidth, pixelHeight) { Source = source, Encoding = encoding };
             // Publish the new ownership before retiring the old one: even a host decoder
             // sharing an opaque handle cannot retire that handle while the new asset owns it.
             _kittyImageAssets.Add(asset);
@@ -168,6 +174,7 @@ public partial class TerminalBuffer
             _images.RemoveAt(i);
         }
         _kittyImageAssets.Remove(asset);
+        asset.Source?.Release();
         RetireUnstoredKittyHandle(asset.Handle);
     }
 

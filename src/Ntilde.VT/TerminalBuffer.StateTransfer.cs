@@ -89,6 +89,7 @@ namespace Ntilde.VT
                 snapshot.Hyperlinks = links.Entries;
                 snapshot.Underlines = underlines.Entries;
                 ExportSixelState(snapshot);
+                ExportImageState(snapshot);
                 ExportTextSizingState(snapshot, mainRows, exportedAltRows);
                 return snapshot;
             }
@@ -223,10 +224,12 @@ namespace Ntilde.VT
                 _isAfterZwj = snapshot.Grapheme.IsAfterZwj;
 
                 // Replace old decoder handles through the snapshot-session retirement gate.
-                // Retained SIXEL sources are restored at their transferred positions below.
+                // Retained SIXEL, Kitty and iTerm2 sources are restored at their transferred
+                // positions below, undecoded; TerminalStateTransfer.Restore decodes them.
                 ClearImagePlacements();
                 ClearRetainedKittyImages();
                 ImportSixelState(snapshot);
+                ImportImageState(snapshot);
 
                 // Derived, never carried: the packed style cache is rebuilt from the SGR fields
                 // above on the next write, and the render-diff cache stays cold so the first
@@ -903,6 +906,7 @@ namespace Ntilde.VT
             ValidateVersionAndCellLayout(snapshot);
             ValidateRequiredStructure(snapshot);
             ValidateSixelState(snapshot);
+            ValidateImageState(snapshot);
             TerminalRuntimeColors.Validate(snapshot.Colors);
 
             // Ordered after the structure pass on purpose: the three CellsBase64 reads below

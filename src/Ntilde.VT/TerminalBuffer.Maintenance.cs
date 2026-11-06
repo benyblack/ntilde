@@ -100,6 +100,8 @@ namespace Ntilde.VT
         /// </summary>
         private void RetireImage(TerminalImage image, bool disposeImmediately = false)
         {
+            // An iTerm2 image's retained bytes go with it; nothing else references them.
+            image.EncodedSource?.Release();
             bool shared = IsRetainedKittyHandle(image.ImageHandle) || HasOtherImageReference(image);
             // Native aliases depend on the same deferred source. Keep it live until the
             // final reference retires; otherwise retired-source pressure can erase a survivor.

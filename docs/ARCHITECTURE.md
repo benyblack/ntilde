@@ -482,10 +482,16 @@ Render snapshots copy protocol aspect-preservation intent by value: Kitty includ
 anonymous ids; iTerm2 placements preserve by default and explicit one, while explicit
 zero stretches. App fits the decoded bitmap inside its original cell envelope before
 existing clipping. Source size, cell reservation, legacy constructors and SIXEL policy
-remain separate. Opaque iTerm2 images remain outside complete state transfer; pending
-OSC arguments resume through the existing parser state without a new wire field.
-Kitty assets remain outside complete mux/replay snapshots, as before; import clears
-old resources. Animation, Unicode placeholders, extended crop/layout/delete actions
+remain separate. Pending OSC arguments resume through the existing parser state
+without a new wire field. Where the parser retains image sources
+(`AnsiParser.RetainImageSources`, #838), complete snapshots carry Kitty assets (the
+bytes as sent, with format, compression and raw size), their placements, and iTerm2
+images, bounded by `ImageSourceBudget` (32 MiB, 512 sources, evicting retired then
+oldest; an evicted source keeps its image on screen). Import validates every entry
+against its header size and the per-screen quotas before mutating, restores them
+undecoded without moving the cursor, and `TerminalStateTransfer.Restore` decodes them
+with the importer's decoder under the same exact-size rule as live placement.
+Without retention, snapshots omit them as before; import always clears old resources. Animation, Unicode placeholders, extended crop/layout/delete actions
 and live owned image qualification remain separate from this basic lifecycle.
 
 Kitty and iTerm2 images are placed from their header, not from the decoder (#838).

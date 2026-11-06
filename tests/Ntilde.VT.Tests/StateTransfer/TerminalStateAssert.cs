@@ -95,6 +95,14 @@ internal static class TerminalStateAssert
         AssertEqual($"{where} hyperlink table", Describe(ea.Hyperlinks), Describe(ec.Hyperlinks));
         AssertEqual($"{where} current hyperlink", ea.CurrentHyperlinkId, ec.CurrentHyperlinkId);
 
+        // Retained Kitty and iTerm2 images (#838), by value: their bytes, sizes and placements.
+        AssertEqual($"{where} kitty images", System.Text.Json.JsonSerializer.Serialize(ea.KittyImages),
+            System.Text.Json.JsonSerializer.Serialize(ec.KittyImages));
+        AssertEqual($"{where} kitty placements", System.Text.Json.JsonSerializer.Serialize(ea.KittyPlacements),
+            System.Text.Json.JsonSerializer.Serialize(ec.KittyPlacements));
+        AssertEqual($"{where} iterm2 images", System.Text.Json.JsonSerializer.Serialize(ea.ITermImages),
+            System.Text.Json.JsonSerializer.Serialize(ec.ITermImages));
+
         AssertEqual($"{where} parser state", expectedParser.ExportState().ToDebugString(),
             actualParser.ExportState().ToDebugString());
     }
