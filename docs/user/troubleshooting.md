@@ -101,8 +101,9 @@ history to show. Rebind *Command Assist History* in Settings → Shortcuts, or t
 **Drawing is slow.** *Pane: Toggle Render HUD* shows frame times; include a screenshot when you
 report it. Ntilde has no switch for software rendering.
 
-**Images do not show.** Inline images are not shown in persistent panes: use a tab with persistent
-sessions off ([Inline images](terminal.md#inline-images)).
+**Images do not show.** Persistent panes show only Sixel images for now, not Kitty graphics or
+iTerm2 inline images: use a tab with persistent sessions off for those
+([Inline images](terminal.md#inline-images)).
 
 ## Persistent sessions
 

@@ -35,8 +35,9 @@ updates included. SSH tabs keep running on their host only for the connections y
   never opens a network port.
 - **Environment:** a shell inherits the multiplexer's environment, not the window's: the one Ntilde
   had when it first started the multiplexer.
-- **Limits:** inline images (sixel, kitty graphics) are not shown in persistent panes. If the
-  multiplexer crashes or is killed, its shells are gone.
+- **Limits:** of the inline image protocols, only Sixel is shown in persistent panes. Kitty
+  graphics and iTerm2 inline images are not yet ([Inline images](terminal.md#inline-images)). If
+  the multiplexer crashes or is killed, its shells are gone.
 
 ### When the multiplexer cannot be reached
 

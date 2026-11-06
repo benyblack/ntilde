@@ -44,8 +44,11 @@ Ntilde shows images that programs draw inline:
 | iTerm2 inline images (OSC 1337) | `imgcat` | Supported | Supported |
 | Kitty graphics protocol | `kitty +kitten icat`, `chafa`, `timg`, `yazi` | Supported (`AllowNativeKittyGraphics`, on by default) | Supported |
 
-Images are not shown in persistent panes ([What runs](persistent-sessions.md#what-runs)): turn
-persistent sessions off, or open a profile that does not use them, to view them.
+In persistent panes ([What runs](persistent-sessions.md#what-runs)) only Sixel is shown for now.
+Kitty graphics and iTerm2 inline images are refused there: a program that asks Ntilde first gets a
+"not supported" answer and usually falls back to Sixel or text. To see them, turn persistent
+sessions off or open a profile that does not use them. Support is
+[planned](https://github.com/benyblack/ntilde/issues/838).
 
 ## Fonts, ligatures and text
 
