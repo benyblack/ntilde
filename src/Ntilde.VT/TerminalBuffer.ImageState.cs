@@ -276,16 +276,23 @@ public partial class TerminalBuffer
             inflated += length;
         }
         if (IsRaw(encoding)) return length == rawLength ? (encoding.RawWidth, encoding.RawHeight) : null;
-        if (!ImageHeaderProbe.TryGetSize(header, out _, out int w, out int h) && encoding.Compressed && length > header.Length)
+        return ContainerSize(data, encoding, header, length, ref inflated);
+    }
+
+    /// <summary>
+    /// A container's size from its header. When only the kept start of a compressed container was
+    /// read and it did not hold the header (a JPEG frame after large metadata), the whole container is
+    /// inflated, as live transmission reads all of it, within the same bounds; that inflation counts
+    /// toward the snapshot limit too.
+    /// </summary>
+    private static (int, int)? ContainerSize(byte[] data, KittyImageEncoding encoding, byte[] header, long length, ref long inflated)
+    {
+        if (!ImageHeaderProbe.TryGetSize(header, out _, out int w, out int h))
         {
-            // The kept start did not hold the header (a JPEG frame after large metadata). Live
-            // transmission reads all of it, so do the same, within the same bounds; this inflation counts
-            // toward the snapshot limit too.
-            if (RetainedKittyPixels(data, encoding) is not { } all) return null;
+            if (!encoding.Compressed || length <= header.Length || RetainedKittyPixels(data, encoding) is not { } all) return null;
             inflated += all.LongLength;
             if (!ImageHeaderProbe.TryGetSize(all, out _, out w, out h)) return null;
         }
-        else if (w == 0) return null;
         return w <= 2000 && h <= 2000 ? (w, h) : null;
     }
 
