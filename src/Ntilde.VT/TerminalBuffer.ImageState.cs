@@ -120,21 +120,20 @@ public partial class TerminalBuffer
         evictionOrder.TryGetValue(source, out int order) ? order : null;
 
     /// <summary>
-    /// The placement in exported coordinates; false when nothing of it is left. Main-screen rows above
-    /// the exported history are gone, so they are clipped. Alternate-screen rows scrolled above the
-    /// first row are not: the live buffer only moves them, and scrolling back down shows them again, so
-    /// they are carried as they are; an image wholly above the first row never moves again and is not
-    /// carried. What lies past the screen's right or bottom edge is not clipped either: a Kitty image
-    /// placed with <c>C=1</c> on the last row, or right of a column a narrowed alternate screen no longer
-    /// has, shows again when the screen grows.
+    /// The placement in exported coordinates; false when nothing of it is left. Rows above the first
+    /// row (above the exported history, or scrolled above the alternate screen) are not clipped: the live
+    /// buffer only moves Kitty and iTerm2 images there, as eviction does, and scrolling back down shows
+    /// them whole again, so they are carried as they are. An image wholly above the first row never moves
+    /// again, and eviction drops it; it is not carried. What lies past the screen's right or bottom edge
+    /// is carried too: a Kitty image placed with <c>C=1</c> on the last row, or right of a column a
+    /// narrowed alternate screen no longer has, shows again when the screen grows.
     /// </summary>
     private static bool TryExportedRows(TerminalImage image, TerminalStateSnapshot snapshot, out PlacementGeometry geometry)
     {
         int y = image.IsAltScreenImage ? image.CellY : image.CellY - snapshot.ScrollbackRowsDropped;
-        int top = image.IsAltScreenImage ? image.ClipTopRows : Math.Max(image.ClipTopRows, Math.Max(0, -y));
         geometry = new PlacementGeometry(image.CellX, y, image.CellWidth, image.CellHeight, image.IsAltScreenImage,
-            top, image.ClipBottomRows, image.ClipRightColumns);
-        return y + image.CellHeight > 0 && top + image.ClipBottomRows < image.CellHeight;
+            image.ClipTopRows, image.ClipBottomRows, image.ClipRightColumns);
+        return y + image.CellHeight > 0 && image.ClipTopRows + image.ClipBottomRows < image.CellHeight;
     }
 
     /// <summary>The header size an iTerm2 placement was made from, whether or not it was decoded.</summary>
@@ -499,12 +498,12 @@ public partial class TerminalBuffer
     /// the right or bottom edge (within <see cref="MaxImportedOffscreenCells"/>), where the live buffer
     /// keeps it too, so it shows again when the screen grows, and a start left of column 0, where
     /// deleting characters can shift it, partly or wholly off the screen. A main-screen placement moves
-    /// up by <paramref name="expiredRows"/>, the history rows this buffer could not keep, and what moves
-    /// above the first row is clipped, as on export.
+    /// up by <paramref name="expiredRows"/>, the history rows this buffer could not keep, as eviction
+    /// moves it: unclipped, and dropped once wholly above the first row.
     /// </summary>
     private TerminalImage? ImportedPlacement(object handle, PlacementGeometry geometry, int expiredRows)
     {
-        if (!geometry.Alt) geometry = geometry with { Y = geometry.Y - expiredRows, ClipTop = Math.Max(geometry.ClipTop, expiredRows - geometry.Y) };
+        if (!geometry.Alt) geometry = geometry with { Y = geometry.Y - expiredRows };
         int top = Math.Clamp(geometry.ClipTop, 0, geometry.Height);
         int bottom = Math.Clamp(geometry.ClipBottom, 0, geometry.Height - top);
         int right = Math.Clamp(geometry.ClipRight, 0, geometry.Width);

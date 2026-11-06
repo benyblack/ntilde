@@ -529,7 +529,7 @@ public sealed class ImageStateTransferTests
     {
         // The importer's scrollback budget can keep fewer history rows than the snapshot carries. Main-screen
         // placements then move up by the rows it dropped, as live eviction moves them: each stays on the
-        // screen row it was on, one partly in dropped history is clipped, and one wholly in it is gone.
+        // screen row it was on, one partly in dropped history keeps its hidden rows, and one wholly in it is gone.
         var buffer = new TerminalBuffer(40, 20);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { RetainImageSources = true, RetainSixelSources = true };
         parser.Process(string.Concat(Enumerable.Range(0, 300).Select(i => $"line {i}\r\n")));
@@ -550,7 +550,7 @@ public sealed class ImageStateTransferTests
         Assert.Equal(OnScreen(buffer), OnScreen(restored));
         int partlyGone = buffer.Images.Single(image => image.KittyImageId == 1).CellY - (buffer.TotalLines - buffer.Rows);
         Assert.True(partlyGone < 0);
-        Assert.Contains(restored.Images, image => image.KittyImageId == 1 && image.CellY == partlyGone && image.ClipTopRows == -partlyGone);
+        Assert.Contains(restored.Images, image => image.KittyImageId == 1 && image.CellY == partlyGone && image.ClipTopRows == 0);
         Assert.DoesNotContain(restored.Images, image => image.KittyImageId == 2);
     }
 
@@ -594,6 +594,27 @@ public sealed class ImageStateTransferTests
         sourceParser.Process("\x1b[2T");
         restoredParser.Process("\x1b[2T");
         Assert.Equal(Placements(source), Placements(restored));
+        Assert.All(restored.Images, image => Assert.Equal((0, 0), (image.CellY, image.ClipTopRows)));
+    }
+
+    [Fact]
+    public void Main_screen_rows_above_the_exported_history_come_back_after_a_restore()
+    {
+        // Scrolling the main screen up moves an image's top rows into history without clipping them, and
+        // scrolling back down shows the image whole again. A snapshot that carries less history leaves
+        // those rows above its first row: they are hidden, not gone, and must come back the same way.
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process("\x1b[H" + Kitty("a=T,i=1,f=100,c=4,r=4,C=1", TestImages.PngBase64(20, 20))
+            + "\x1b[1;10H" + ITerm(";width=4;height=4;preserveAspectRatio=0", TestImages.PngBase64(10, 10)) + "\x1b[2S");
+        TerminalStateSnapshot snapshot = source.ExportState(0);
+        snapshot.Parser = sourceParser.ExportState();
+
+        var (restored, restoredParser) = Restore(snapshot, decoder: null);
+        Assert.Equal(OnScreen(source), OnScreen(restored));
+
+        sourceParser.Process("\x1b[2T");
+        restoredParser.Process("\x1b[2T");
+        Assert.Equal(OnScreen(source), OnScreen(restored));
         Assert.All(restored.Images, image => Assert.Equal((0, 0), (image.CellY, image.ClipTopRows)));
     }
 

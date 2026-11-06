@@ -274,8 +274,9 @@ invariant changes.
   in bytes and in what a restore inflates to validate them, so every export
   restores; import validates them, restores them undecoded and
   `TerminalStateTransfer` decodes them. Main-screen placements (SIXEL too) move
-  up by the history rows the importer's scrollback budget cannot keep, clipped
-  or dropped as eviction would. Imported state always clears old resources.
+  up by the history rows the importer's scrollback budget cannot keep, as
+  eviction moves them; Kitty and iTerm2 rows above the first row are carried
+  unclipped, since scrolling back down shows them again. Imported state always clears old resources.
   Basic lifecycle evidence does not qualify animation, Unicode placeholders or
   extended crop/layout/delete actions.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no
