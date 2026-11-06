@@ -29,7 +29,7 @@ public partial class TerminalBuffer
                 RawHeight = encoding.RawHeight,
                 Width = asset.PixelWidth,
                 Height = asset.PixelHeight,
-                Data = data,
+                Data = data.ToArray(), // a copy: the snapshot must not alias live retained bytes
                 SourceOrder = evictionOrder.TryGetValue(asset.Source, out int kittyOrder) ? kittyOrder : null,
             });
         }
@@ -60,7 +60,7 @@ public partial class TerminalBuffer
             {
                 (snapshot.ITermImages ??= []).Add(new TerminalITermImageState
                 {
-                    Data = data,
+                    Data = data.ToArray(),
                     SourceOrder = evictionOrder.TryGetValue(image.EncodedSource, out int itermOrder) ? itermOrder : null,
                     PixelWidth = pixelWidth,
                     PixelHeight = pixelHeight,
@@ -210,8 +210,9 @@ public partial class TerminalBuffer
             .OrderBy(entry => entry.Order ?? int.MaxValue).ThenBy(entry => entry.Sequence);
         foreach (var entry in retention)
         {
-            if (entry.Kitty) kittySources[entry.Index] = ImageSources.Retain(kittyStates[entry.Index].Data);
-            else itermSources[entry.Index] = ImageSources.Retain(itermStates[entry.Index].Data);
+            // Copies, so later edits to the snapshot object cannot change what this buffer retains.
+            if (entry.Kitty) kittySources[entry.Index] = ImageSources.Retain(kittyStates[entry.Index].Data.ToArray());
+            else itermSources[entry.Index] = ImageSources.Retain(itermStates[entry.Index].Data.ToArray());
         }
 
         var assets = new List<KittyImageAsset?>();

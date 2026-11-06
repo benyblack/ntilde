@@ -176,6 +176,25 @@ public sealed class ImageStateTransferTests
         Assert.Equal(Placements(source), Placements(restored));
     }
 
+    [Fact]
+    public void A_snapshot_object_shares_no_bytes_with_either_buffer()
+    {
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process(Traffic);
+        TerminalStateSnapshot first = Export(source, sourceParser);
+        string before = Json(first);
+        foreach (var image in first.KittyImages!) Array.Clear(image.Data);
+        foreach (var image in first.ITermImages!) Array.Clear(image.Data);
+        Assert.Equal(before, Json(Export(source, sourceParser))); // the source is untouched
+
+        TerminalStateSnapshot second = Export(source, sourceParser);
+        var (restored, restoredParser) = Create(retain: true, decoder: null);
+        TerminalStateTransfer.Restore(restored, restoredParser, second);
+        foreach (var image in second.KittyImages!) Array.Clear(image.Data);
+        foreach (var image in second.ITermImages!) Array.Clear(image.Data);
+        Assert.Equal(before, Json(Export(restored, restoredParser))); // so is the destination
+    }
+
     private static string Kinds(TerminalBuffer buffer) =>
         string.Join(",", buffer.Images.Select(i => i.IsSixelImage ? "sixel" : i.KittyImageId is not null ? "kitty" : "iterm"));
 
