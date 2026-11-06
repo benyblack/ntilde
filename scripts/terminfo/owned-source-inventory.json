@@ -107,6 +107,7 @@
   "asciiSgrCollectorSourceSha256": "ascii-sgr-collector.mjs",
   "asciiSgrGradingSourceSha256": "ascii-sgr-grading.mjs",
   "asciiSgrReceiptSourceSha256": "ascii-sgr-receipt.mjs",
+  "gradedPlanSourceSha256": "graded-plan.mjs",
   "sgrColorsGradingCollectorSourceSha256": "sgr-colors-grading-collector.mjs",
   "sgrColorsContractsSourceSha256": "sgr-colors-contracts.mjs",
   "sgrColorsCollectorSourceSha256": "sgr-colors-collector.mjs",

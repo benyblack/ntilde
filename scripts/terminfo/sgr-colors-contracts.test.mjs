@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { sgrColorsContracts, sgrColorsCaseIds, sgrColorsContractsVersion, sgrColorsSuiteId,
     sgrColorsFeeds, sgrColorsReads, validateSgrColorsFeeds, gradeSgrColorsCase,
-    sgrColorsCellAt, expandSgrColorsFlags, defaultColors, fgDefaultMarker, bgDefaultMarker } from './sgr-colors-contracts.mjs';
+    sgrColorsCellAt, defaultColors, fgDefaultMarker, bgDefaultMarker } from './sgr-colors-contracts.mjs';
+import { expandScreenFlags } from './ascii-sgr-contracts.mjs';
 import { syntheticSgrColorsScreen, syntheticSgrColorsCells, syntheticSgrColorsGrade } from './fixtures/sgr-colors-evidence.mjs';
 
 test('the batch covers exactly the five contracted terminfo.dev cases in a fixed order', () => {
@@ -134,11 +135,11 @@ test('the v2 cell projection distinguishes markers, indices and unexposed RGB', 
     assert.equal(syntheticSgrColorsCells('sgr.selective-reset.bold')[1].dim, true);
 });
 
-test('attribute flag expansion rejects incomplete or invalid runs', () => {
+test('the shared attribute flag expansion rejects incomplete or invalid runs', () => {
     const base = syntheticSgrColorsScreen('sgr.fg.standard');
-    assert.equal(expandSgrColorsFlags(base).length, 360);
+    assert.equal(expandScreenFlags(base).length, 360);
     const short = structuredClone(base); short.attributeRuns = [{ count: 10, flags: 768, fg: -1, bg: -1 }];
-    assert.throws(() => expandSgrColorsFlags(short), /Incomplete SGR-colors attribute runs/);
+    assert.throws(() => expandScreenFlags(short), /Incomplete graded attribute runs/);
     const invalid = structuredClone(base); invalid.attributeRuns = [{ count: 360, flags: 0x1ffff, fg: -1, bg: -1 }];
-    assert.throws(() => expandSgrColorsFlags(invalid), /Invalid SGR-colors attribute runs/);
+    assert.throws(() => expandScreenFlags(invalid), /Invalid graded attribute runs/);
 });

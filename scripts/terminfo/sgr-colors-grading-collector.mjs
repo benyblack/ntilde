@@ -18,9 +18,9 @@ export const sgrColorsAdapterId = 'ntilde-owned-sgr-colors-grading-v1';
 const pinnedColorSeams = Object.freeze([
     'namedColorProbe("sgr.fg.standard", "fg", 31, 34)',
     'namedColorProbe("sgr.bg.standard", "bg", 41, 44)',
-    'resetProbe("sgr.selective-reset.bold", "\\x1B[1;2;3m", "\\x1B[22m", ["bold", "dim"], ["italic"])',
-    'resetProbe("sgr.selective-reset.italic", "\\x1B[1;3m", "\\x1B[23m", ["italic"], ["bold"])',
-    'resetProbe("sgr.reset", "\\x1B[1;3;4m", "\\x1B[0m", ["bold", "italic", "underline"])',
+    String.raw`resetProbe("sgr.selective-reset.bold", "\x1B[1;2;3m", "\x1B[22m", ["bold", "dim"], ["italic"])`,
+    String.raw`resetProbe("sgr.selective-reset.italic", "\x1B[1;3m", "\x1B[23m", ["italic"], ["bold"])`,
+    String.raw`resetProbe("sgr.reset", "\x1B[1;3;4m", "\x1B[0m", ["bold", "italic", "underline"])`,
     'function measuredReset(ctx, id, setup, reset, set, preserve) {',
     'function namedColorProbe(id, channel, firstCode, secondCode) {',
     'the two named colors select distinct exposed ',

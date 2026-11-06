@@ -160,6 +160,7 @@ export const capturedV13SourceFiles = Object.freeze({
 // Frozen v14 SGR-colors grading scope; future experiments must create a distinct policy and map.
 export const capturedV14SourceFiles = Object.freeze({
     ...capturedV13SourceFiles,
+    gradedPlanSourceSha256: "graded-plan.mjs",
     sgrColorsGradingCollectorSourceSha256: "sgr-colors-grading-collector.mjs",
     sgrColorsContractsSourceSha256: "sgr-colors-contracts.mjs",
     sgrColorsCollectorSourceSha256: "sgr-colors-collector.mjs",

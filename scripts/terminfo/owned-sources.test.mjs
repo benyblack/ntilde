@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 113 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 113); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 114 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 114); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -79,7 +79,7 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('private v14 fixed113 source scope includes all selected nonexecuted references while v13 remains fixed108', () => {
+test('private v14 fixed114 source scope includes all selected nonexecuted references while v13 remains fixed108', () => {
     assert.deepEqual(ownedSourceFiles, capturedV14SourceFiles);
     assert.equal(Object.keys(capturedV13SourceFiles).length, 108);
     assert.equal(Object.keys(capturedV11SourceFiles).length, 74);

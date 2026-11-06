@@ -128,5 +128,5 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v7' }), capturedV14SourceFiles);
     assert.equal(Object.keys(capturedV12SourceFiles).length, 103);
     assert.equal(Object.keys(capturedV13SourceFiles).length, 108);
-    assert.equal(Object.keys(capturedV14SourceFiles).length, 113);
+    assert.equal(Object.keys(capturedV14SourceFiles).length, 114);
 });
