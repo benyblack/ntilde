@@ -6,6 +6,9 @@ public sealed class HeadlessSessionOptions
 {
     /// <summary>Immutable buffer creation policy, installed before startup output is parsed.</summary>
     public int RequiredSixelRasterPolicy { get; init; }
+
+    /// <summary>The session's <see cref="Ntilde.VT.PersistentImagePolicy"/> (#838), fixed for its lifetime.</summary>
+    public int RequiredImagePolicy { get; init; }
     public string Title { get; init; } = string.Empty;
     public string Command { get; init; } = string.Empty;
     public string? Arguments { get; init; }

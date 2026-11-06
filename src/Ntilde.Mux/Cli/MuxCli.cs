@@ -3,6 +3,7 @@ using System.Text.Json;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Daemon;
 using Ntilde.Mux.TextClient;
+using Ntilde.VT;
 
 namespace Ntilde.Mux.Cli;
 
@@ -504,7 +505,7 @@ public static class MuxCli
         MuxClient? client;
         try
         {
-            var launcher = new MuxDaemonLauncher(descriptorPath, new NoSpawn(), new MuxClientOptions { ClientKind = "ntilde-attach" },
+            var launcher = new MuxDaemonLauncher(descriptorPath, new NoSpawn(), new MuxClientOptions { ClientKind = "ntilde-attach", MaxImagePolicy = PersistentImagePolicy.EnabledVersion },
                 killServerCommand: KillServerCommand(host));
             client = launcher.TryConnectExistingAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
@@ -523,13 +524,18 @@ public static class MuxCli
         using (client)
         {
             Guid id;
+            int imagePolicy;
             try
             {
-                if (!TryResolveSession(target, client.ListSessionsAsync().GetAwaiter().GetResult(), out id, out string? why))
+                IReadOnlyList<SessionSummary> sessions = client.ListSessionsAsync().GetAwaiter().GetResult();
+                if (!TryResolveSession(target, sessions, out id, out string? why))
                 {
                     stderr.WriteLine($"mux: {why}");
                     return 2;
                 }
+
+                Guid resolved = id;
+                imagePolicy = sessions.First(s => s.SessionId == resolved).RequiredImagePolicy; // the attach must name it (#838)
             }
             catch (Exception ex) when (IsReportableFailure(ex))
             {
@@ -564,7 +570,7 @@ public static class MuxCli
 
             using (console)
             using (var textClient = new TextClientSession(client, id, console,
-                new TextClientOptions { ReadOnly = readOnly, HandleSignals = ConsoleFactoryForTest is null }))
+                new TextClientOptions { ReadOnly = readOnly, HandleSignals = ConsoleFactoryForTest is null, RequiredImagePolicy = imagePolicy }))
             {
                 return textClient.Run(stderr);
             }

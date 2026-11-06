@@ -139,7 +139,9 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
     {
         RemoteMuxConnector other = Own(new RemoteMuxConnector(_profile, remote, "another-window", log: null));
         MuxClient client = Own(await other.ConnectAsync(Ct));
-        await MuxTestHost.AttachPaneAsync(client, id);
+        // Like a real window, it names the session's image policy (#838), which the session list reports.
+        int imagePolicy = (await client.ListSessionsAsync(Ct)).Single(s => s.SessionId == id).RequiredImagePolicy;
+        await MuxTestHost.AttachPaneAsync(client, id, imagePolicy: imagePolicy);
     }
 
     [Fact]

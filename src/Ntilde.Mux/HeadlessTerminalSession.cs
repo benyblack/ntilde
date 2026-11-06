@@ -128,6 +128,9 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     internal int RequiredSixelRasterPolicy => _buffer.SixelRasterPolicyVersion;
 
+    /// <summary>The session's <see cref="PersistentImagePolicy"/> (#838), fixed when it was spawned.</summary>
+    internal int RequiredImagePolicy { get; }
+
     public HeadlessTerminalSession(Guid id, ITerminalSession session, HeadlessSessionOptions options)
     {
         ArgumentNullException.ThrowIfNull(session);
@@ -170,6 +173,10 @@ public sealed class HeadlessTerminalSession : IDisposable
             KittyKeyboardEnabled = _buffer.Modes.KittyKeyboard.SupportedFlagMask != 0,
             DefaultBackground = options.DefaultBg is uint background ? TermColor.FromUint(background) : null,
         };
+        // Kitty and iTerm2 images, placed from their headers with no decoder and retained for snapshots, as
+        // every client of the session places them (#838); SIXEL only otherwise.
+        RequiredImagePolicy = options.RequiredImagePolicy;
+        PersistentImagePolicy.Apply(_parser, RequiredImagePolicy);
         ApplyHostColors(options.DefaultFg, options.DefaultBg, options.CursorColor,
             options.SelectionFg, options.SelectionBg, options.AnsiPalette);
         (_session as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
@@ -596,6 +603,20 @@ public sealed class HeadlessTerminalSession : IDisposable
         try { _session.Dispose(); }
         catch (Exception ex) { Log($"[Mux] session {Id}: disposing the child failed: {ex.Message}"); }
         TryEnqueue(_data, WorkItem.ForExit(null, terminal: true));
+    }
+
+    /// <summary>
+    /// A read of the screen carries no Kitty or iTerm2 images: its readers (the agent host, the CLI) read text and
+    /// have no renderer for them, and their bytes would only push the read toward its size limit. SIXEL stays, as
+    /// before #838.
+    /// </summary>
+    private static TerminalStateSnapshot WithoutImages(TerminalStateSnapshot snapshot)
+    {
+        snapshot.KittyImages = null;
+        snapshot.KittyPlacements = null;
+        snapshot.ITermImages = null;
+        snapshot.KittyNextImageId = 0;
+        return snapshot;
     }
 
     internal TerminalStateSnapshot CaptureSnapshot(int maxScrollbackRows)
@@ -1131,7 +1152,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         byte[] json;
         try
         {
-            json = TerminalStateSerializer.ToBytes(CaptureSnapshot(maxScrollbackRows));
+            json = TerminalStateSerializer.ToBytes(WithoutImages(CaptureSnapshot(maxScrollbackRows)));
         }
         catch (Exception ex)
         {

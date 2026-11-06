@@ -14,6 +14,9 @@ public sealed class TextClientOptions
 
     /// <summary>The CLI registers SIGINT/SIGTERM/SIGHUP/SIGQUIT and a ProcessExit backstop; tests do not.</summary>
     public bool HandleSignals { get; init; }
+
+    /// <summary>The session's image policy (#838), from its <see cref="Contracts.SessionSummary"/>; the attach must name it.</summary>
+    public int RequiredImagePolicy { get; init; }
 }
 
 public enum TextClientExit
@@ -97,7 +100,7 @@ public sealed class TextClientSession : IDisposable
         var registrations = new List<IDisposable>();
         try
         {
-            session = _client.OpenSession(_sessionId, string.Empty, null, mode);
+            session = _client.OpenSession(_sessionId, string.Empty, null, mode, requiredImagePolicy: _options.RequiredImagePolicy);
             model = new TextClientModel(session);
             var renderer = new TextClientRenderer(model.Buffer) { ReadOnly = _options.ReadOnly };
             model.Changed += Wake;

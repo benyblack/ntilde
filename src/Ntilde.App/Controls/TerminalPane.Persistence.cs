@@ -442,7 +442,7 @@ namespace Ntilde.Controls
         private void WireMuxSession(MuxClientSession mux, bool previousLost)
         {
             ApplyMuxSharing(null);
-            CreateAndWireParser(mux.ForceConPtyFiltering, muxBacked: true);
+            CreateAndWireParser(mux.ForceConPtyFiltering, muxBacked: true, mux.RequiredImagePolicy);
             float cw = TermView.Metrics.CellWidth, ch = TermView.Metrics.CellHeight;
             if (cw > 0) Parser!.CellWidth = cw;
             if (ch > 0) Parser!.CellHeight = ch;

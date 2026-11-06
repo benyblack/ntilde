@@ -295,7 +295,7 @@ internal sealed class RemoteMuxConnector : IDisposable
                 StdioMuxConnection proxy = await StdioMuxTransport.ConnectAsync(started.Stdout, started.Stdin, PreambleTimeout, ct).ConfigureAwait(false);
                 // The remote command runs, so SSH auth succeeded: whatever answered its prompts was right.
                 prompts.Succeeded();
-                client = await MuxClient.ConnectAsync(proxy.Stream, new MuxClientOptions { ClientInstanceId = ClientInstanceId, Log = _log }, ct)
+                client = await MuxClient.ConnectAsync(proxy.Stream, new MuxClientOptions { ClientInstanceId = ClientInstanceId, Log = _log, MaxImagePolicy = Ntilde.VT.PersistentImagePolicy.EnabledVersion }, ct)
                     .ConfigureAwait(false);
                 _log?.Invoke($"[RemoteMux] {host}: connected (daemon pid {proxy.DaemonPid}, protocol {client.ProtocolVersion}, {(interactive ? "user request" : "automatic")})");
             }

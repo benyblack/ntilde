@@ -1155,8 +1155,11 @@ namespace Ntilde.Controls
 
                 // Native kitty graphics on Windows (ConPTY pass-through opt-in): same live-sync
                 // reasoning as the kill switch above.
-                // Never for a mux-backed parser: it must not decode what the daemon's parser does not.
-                Parser.AllowNativeKittyGraphics = Session is not MuxClientSession && effectiveSettings.AllowNativeKittyGraphics;
+                // A mux-backed parser follows its session's image policy instead: it must decide every
+                // image as the daemon's parser does (#838).
+                Parser.AllowNativeKittyGraphics = Session is MuxClientSession mux
+                    ? PersistentImagePolicy.AllowsImages(mux.RequiredImagePolicy)
+                    : effectiveSettings.AllowNativeKittyGraphics;
             }
 
             // Theme colours, cell metrics and the kitty-keyboard gate live in the daemon's parser too.

@@ -17,6 +17,7 @@ internal sealed class ClientPaneModel
         Session = session;
         Buffer = new TerminalBuffer(80, 24);
         Parser = new AnsiParser(Buffer, session.ForceConPtyFiltering) { ImageDecoder = null, RetainSixelSources = true, AllowNonSixelImages = false, AllowNativeKittyGraphics = false };
+        PersistentImagePolicy.Apply(Parser, session.RequiredImagePolicy); // as every real client of the session does (#838)
         Parser.OnResponse = reply => { lock (_gate) _responses.Add(reply); }; // parsed, never sent
         session.SixelCellSizeChanged += (width, height) =>
         {

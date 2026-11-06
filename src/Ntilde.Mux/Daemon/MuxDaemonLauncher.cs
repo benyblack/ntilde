@@ -51,7 +51,8 @@ public sealed class MuxDaemonLauncher
         // <root>/mux/mux-endpoint.json (MuxDiscovery.GetDescriptorPath).
         _root = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(descriptorPath))!)!;
         _spawner = spawner;
-        _clientOptions = clientOptions ?? new MuxClientOptions { Log = log };
+        // The GUI's default: it shows Kitty and iTerm2 images, so it offers the image policy (#838).
+        _clientOptions = clientOptions ?? new MuxClientOptions { Log = log, MaxImagePolicy = Ntilde.VT.PersistentImagePolicy.EnabledVersion };
         _log = log;
     }
 
