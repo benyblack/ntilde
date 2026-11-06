@@ -106,5 +106,11 @@
   "asciiSgrContractsSourceSha256": "ascii-sgr-contracts.mjs",
   "asciiSgrCollectorSourceSha256": "ascii-sgr-collector.mjs",
   "asciiSgrGradingSourceSha256": "ascii-sgr-grading.mjs",
-  "asciiSgrReceiptSourceSha256": "ascii-sgr-receipt.mjs"
+  "asciiSgrReceiptSourceSha256": "ascii-sgr-receipt.mjs",
+  "sgrColorsGradingCollectorSourceSha256": "sgr-colors-grading-collector.mjs",
+  "sgrColorsContractsSourceSha256": "sgr-colors-contracts.mjs",
+  "sgrColorsCollectorSourceSha256": "sgr-colors-collector.mjs",
+  "sgrColorsGradingSourceSha256": "sgr-colors-grading.mjs",
+  "sgrColorsReceiptSourceSha256": "sgr-colors-receipt.mjs",
+  "gradedPlanSourceSha256": "graded-plan.mjs"
 }

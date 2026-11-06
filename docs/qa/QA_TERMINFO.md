@@ -468,7 +468,7 @@ termless code over those observed screens, so the collector's criteria — not a
 re-implementation — produce the outcome. An independent contract grader must
 agree before any conclusion is published, and the parent replays the pinned
 grading a second time over the retained journal. Graded results carry the
-extension identity and are never stock CLI output; the untouched stock run
+extension identity and are never stock CLI output; the owned-adapter collector run
 keeps its own identity, grades and inconclusive four-case outcomes.
 
 `unsupported` requires a measured mismatch behind a valid control (the pinned
@@ -480,6 +480,32 @@ verified cleanup. The bold/italic conclusions cover the stored cell flags the
 pinned scorer demands — the pin's own terminal path states "Cursor advance does
 not verify SGR styling" — and explicitly do not claim glyph appearance; that
 remains the separate pixel scope in [bold-glyphs.md](terminfo/bold-glyphs.md).
+
+### SGR reset and standard-color qualification grading
+
+The [SGR reset/standard-color batch](terminfo/2026-11-06-sgr-colors-qualification.md)
+grades exactly five more pinned cases — `sgr.selective-reset.bold`,
+`sgr.selective-reset.italic`, `sgr.reset`, `sgr.fg.standard` and
+`sgr.bg.standard` — through a second layered, explicitly versioned collector
+extension (`ntilde-owned-sgr-colors-grading-v1`) derived digest-checked over
+the first grading extension. The three reset cases replay the pinned
+`C${setup}X${reset}Y` fixtures byte-exactly and require the pinned
+`measuredReset` code, the independent contract grader and the parent-side
+replay to agree on every field; where the stricter contract grader measures a
+mismatch the pinned criterion cannot see (for example color drift), both
+verdicts are recorded and the conclusion follows the stricter grader. The two standard-color cases verify the exact
+stored palette indices and unaffected default markers; the pinned RGB
+criterion stays at its own indistinguishable-inconclusive verdict because the
+stored projection deliberately exposes no theme-resolved RGB — no index is
+inferred from appearance. Receipt schema 14 binds the layered report, run log
+and adapter bytes after verified cleanup; source policy v7 carries the
+113-file inventory with every earlier policy mapping frozen.
+
+The measured SGR-colors run recorded contracts v1; the current contracts are
+v2 (setup-cell color drift invalidates selective-reset controls), and v1
+evidence rederives with its own revision. The collector run beside the graded
+suites is owned-adapter output with unchanged SGR scoring, not unmodified
+stock CLI bytes.
 
 The batch carries one explicitly attributed cherry-pick (`8ffc6d19`, the
 private-clipboard wide-column observer fix from

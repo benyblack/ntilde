@@ -14,7 +14,7 @@ export function readCollectorLockfile(tool) {
 }
 
 // Update these pins together with the checked-in inputs and collector receipt.
-const collectorManifestSha256 = '56fa0890a5c1b304e351b1cdac19ed0bf3f7ed0ce82db5c1f22c91c3d6956c1e';
+const collectorManifestSha256 = '12d2c63928053187c91dcb2c1ea00268a28bd48ed0ccc600938c180e9a44ab86';
 const collectorLockSha256 = '837e8d2efc15e544a3a3e900ec0617854d9cceae0887ad4081bf3b8bfedb0508';
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 
@@ -49,9 +49,14 @@ export function installLockedCollector(directory, manifestBytes, lockBytes, npmC
     mkdirSync(directory, { mode: 0o700 });
     writeFileSync(join(directory, 'package.json'), manifestBytes, { flag: 'wx', mode: 0o600 });
     writeFileSync(join(directory, 'package-lock.json'), lockBytes, { flag: 'wx', mode: 0o600 });
-    const result = spawnSync(process.execPath, [npmCli, 'ci', '--prefix', directory,
+    // npm 11 resolves the project from the working directory and rejects
+    // --prefix installs whose directory name differs from the lock root, so
+    // the locked install runs inside the target directory itself; npm 10
+    // resolves the same project from cwd.
+    const result = spawnSync(process.execPath, [npmCli, 'ci',
         '--ignore-scripts', '--no-audit', '--no-fund', '--include=prod', '--include=dev', '--include=optional'], {
         encoding: 'utf8', timeout: 120000, maxBuffer: 1024 * 1024,
+        cwd: directory,
     });
     if (result.error) throw result.error;
     if (result.status !== 0) throw new Error(`Locked collector installation failed (${result.status ?? result.signal}): ${result.stderr ?? ''}`);

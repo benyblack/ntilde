@@ -191,7 +191,7 @@ test('failed locked installs stop collection and lockfile rewriting is refused',
     assert.throws(() => installLockedCollector(join(root, 'failed'), manifestBytes, lockBytes, cli), /installation failed \(42\)/);
     writeFileSync(cli, `import { writeFileSync } from 'node:fs';
         import { join } from 'node:path';
-        writeFileSync(join(process.argv[4], 'package-lock.json'), '{}');`);
+        writeFileSync(join(process.cwd(), 'package-lock.json'), '{}');`);
     assert.throws(() => installLockedCollector(join(root, 'rewritten'), manifestBytes, lockBytes, cli), /lockfile changed/);
 }));
 

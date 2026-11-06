@@ -1,0 +1,1300 @@
+{
+  "schemaVersion": 1,
+  "measuredAt": "2026-11-06T07:36:03.081Z",
+  "runId": "cac0d29b9972473f8121500581b07ffb",
+  "context": {
+    "runId": "cac0d29b9972473f8121500581b07ffb",
+    "appVersion": "0.13.0+1e96d5f5c48f036f0d3c5386cb03069275e59140",
+    "nodeVersion": "v24.22.1",
+    "startedAt": "2026-11-06T07:35:32.696Z",
+    "executable": "/Users/behnam/.local/share/ntilde-sidecar/Release/net10.0/Ntilde",
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "a66907bbb49a6ec1045cd527fbba4b4717675492204c01a938330643ea5d0be3",
+    "adapter": "ntilde-owned-macos-v1",
+    "adapterBundleSha256": "5a5c92452a10da3613652291283108839f88d15a4cab1dd4de05205856711bfe",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "sourceSnapshotPolicy": "readonly-owned-source-graph-v7",
+    "gradingAdapterId": "ntilde-owned-ascii-sgr-grading-v1",
+    "asciiSgrSuiteId": "ntilde-owned-ascii-sgr-graded-v1",
+    "gradingBundleSha256": "d5277b9fb3cfb5557d7b6ab4f27fae8b9abc39d7010435f3dd0e697e779a0a6b",
+    "gradingContractsVersion": 1,
+    "sgrColorsAdapterId": "ntilde-owned-sgr-colors-grading-v1",
+    "sgrColorsSuiteId": "ntilde-owned-sgr-colors-graded-v1",
+    "sgrColorsBundleSha256": "7dae2a660ef3819b5f3f1fd642564193f00b7d2a10ad4c8172c996fb73dc2698",
+    "sgrColorsContractsVersion": 1,
+    "sgrColors": "layered versioned collector extension; pinned reset/standard-color termless criteria replayed on parent-observed stored attributes and palette indices; not stock output"
+  },
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-sgr-colors-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-ascii-sgr-grading-v1",
+    "bundleSha256": "7dae2a660ef3819b5f3f1fd642564193f00b7d2a10ad4c8172c996fb73dc2698",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "sgrColorsReport": {
+    "schemaVersion": 1,
+    "suiteId": "ntilde-owned-sgr-colors-graded-v1",
+    "runId": "cac0d29b9972473f8121500581b07ffb",
+    "contractsVersion": 1,
+    "adapter": {
+      "id": "ntilde-owned-sgr-colors-grading-v1",
+      "derivedFromAdapterId": "ntilde-owned-ascii-sgr-grading-v1",
+      "bundleSha256": "7dae2a660ef3819b5f3f1fd642564193f00b7d2a10ad4c8172c996fb73dc2698",
+      "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+    },
+    "scope": "Pinned terminfo.dev@4.0.0 termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored attributes and palette indices. Named-color conclusions cover stored indices and markers, never theme-resolved RGB. Not stock collector output.",
+    "initialSnapshot": 0,
+    "restoredSnapshot": 7,
+    "cases": [
+      {
+        "caseId": "sgr.selective-reset.bold",
+        "pinnedCriterion": "measured setup attributes clear on Y and unrelated attributes remain set",
+        "pinnedExpectation": "measured",
+        "terminalFixture": {
+          "writes": [
+            "\u001b[1;2;3mX\u001b[22mY"
+          ],
+          "demand": "consumed",
+          "minimum": {
+            "rows": 1,
+            "cols": 3
+          }
+        },
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "C\u001b[1;2;3mX\u001b[22mY"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          [
+            0,
+            3
+          ]
+        ],
+        "observed": {
+          "baseline": {
+            "char": "C",
+            "bold": false,
+            "dim": false,
+            "italic": false,
+            "flags": 768
+          },
+          "before": {
+            "char": "X",
+            "bold": true,
+            "dim": true,
+            "italic": true,
+            "flags": 837
+          },
+          "after": {
+            "char": "Y",
+            "bold": false,
+            "dim": false,
+            "italic": true,
+            "flags": 772
+          }
+        },
+        "pinned": {
+          "pass": true,
+          "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":837,\"bold\":true,\"dim\":true,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":772,\"bold\":false,\"dim\":false,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "sgr.selective-reset.bold: measured setup attributes clear on Y and unrelated attributes remain set",
+              "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":837,\"bold\":true,\"dim\":true,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":772,\"bold\":false,\"dim\":false,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}"
+            }
+          ]
+        },
+        "contractResult": {
+          "outcome": "supported"
+        },
+        "conclusion": {
+          "outcome": "supported",
+          "evidence": "owned-cells",
+          "grading": "pinned-termless-plus-contract-v1",
+          "scope": "stored style flags and default color markers; no glyph appearance or theme RGB"
+        }
+      },
+      {
+        "caseId": "sgr.selective-reset.italic",
+        "pinnedCriterion": "measured setup attributes clear on Y and unrelated attributes remain set",
+        "pinnedExpectation": "measured",
+        "terminalFixture": {
+          "writes": [
+            "\u001b[1;3mX\u001b[23mY"
+          ],
+          "demand": "consumed",
+          "minimum": {
+            "rows": 1,
+            "cols": 3
+          }
+        },
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "C\u001b[1;3mX\u001b[23mY"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          [
+            0,
+            3
+          ]
+        ],
+        "observed": {
+          "baseline": {
+            "char": "C",
+            "bold": false,
+            "italic": false,
+            "flags": 768
+          },
+          "before": {
+            "char": "X",
+            "bold": true,
+            "italic": true,
+            "flags": 773
+          },
+          "after": {
+            "char": "Y",
+            "bold": true,
+            "italic": false,
+            "flags": 769
+          }
+        },
+        "pinned": {
+          "pass": true,
+          "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":773,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":769,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "sgr.selective-reset.italic: measured setup attributes clear on Y and unrelated attributes remain set",
+              "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":773,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":769,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}"
+            }
+          ]
+        },
+        "contractResult": {
+          "outcome": "supported"
+        },
+        "conclusion": {
+          "outcome": "supported",
+          "evidence": "owned-cells",
+          "grading": "pinned-termless-plus-contract-v1",
+          "scope": "stored style flags and default color markers; no glyph appearance or theme RGB"
+        }
+      },
+      {
+        "caseId": "sgr.reset",
+        "pinnedCriterion": "measured setup attributes clear on Y and unrelated attributes remain set",
+        "pinnedExpectation": "measured",
+        "terminalFixture": {
+          "writes": [
+            "\u001b[1;3;4mX\u001b[0mY"
+          ],
+          "demand": "consumed",
+          "minimum": {
+            "rows": 1,
+            "cols": 3
+          }
+        },
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "C\u001b[1;3;4mX\u001b[0mY"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          [
+            0,
+            3
+          ]
+        ],
+        "observed": {
+          "baseline": {
+            "char": "C",
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "dim": false,
+            "defaultColors": true,
+            "flags": 768
+          },
+          "before": {
+            "char": "X",
+            "bold": true,
+            "italic": true,
+            "underline": true,
+            "dim": false,
+            "defaultColors": true,
+            "flags": 781
+          },
+          "after": {
+            "char": "Y",
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "dim": false,
+            "defaultColors": true,
+            "flags": 768
+          }
+        },
+        "pinned": {
+          "pass": true,
+          "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":781,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":true,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "sgr.reset: measured setup attributes clear on Y and unrelated attributes remain set",
+              "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":781,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":true,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}"
+            }
+          ]
+        },
+        "contractResult": {
+          "outcome": "supported"
+        },
+        "conclusion": {
+          "outcome": "supported",
+          "evidence": "owned-cells",
+          "grading": "pinned-termless-plus-contract-v1",
+          "scope": "stored style flags and default color markers; no glyph appearance or theme RGB"
+        }
+      },
+      {
+        "caseId": "sgr.fg.standard",
+        "pinnedCriterion": "the two named colors select distinct exposed fg RGB values",
+        "pinnedExpectation": "inapplicable",
+        "terminalFixture": {
+          "writes": [
+            "\u001b[31mX"
+          ],
+          "demand": "consumed",
+          "minimum": {
+            "rows": 1,
+            "cols": 2
+          }
+        },
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "C\u001b[31mX\u001b[34mY"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          [
+            0,
+            3
+          ]
+        ],
+        "observed": {
+          "baseline": {
+            "char": "C",
+            "fgIndex": -1,
+            "bgDefault": true,
+            "flags": 768
+          },
+          "first": {
+            "char": "X",
+            "fgIndex": 1,
+            "bgDefault": true,
+            "flags": 16896
+          },
+          "second": {
+            "char": "Y",
+            "fgIndex": 4,
+            "bgDefault": true,
+            "flags": 16896
+          }
+        },
+        "pinned": {
+          "pass": false,
+          "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"first\":{\"char\":\"X\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"bg\":null,\"fgIndex\":1,\"bgIndex\":-1},\"second\":{\"char\":\"Y\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"bg\":null,\"fgIndex\":4,\"bgIndex\":-1}}",
+          "note": "Baseline, theme colors, or color readback were indistinguishable",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "parser-state",
+            "note": "Baseline, theme colors, or color readback were indistinguishable"
+          },
+          "assertions": null
+        },
+        "contractResult": {
+          "outcome": "supported"
+        },
+        "conclusion": {
+          "outcome": "supported",
+          "evidence": "owned-cells",
+          "grading": "pinned-termless-plus-contract-v1",
+          "scope": "stored palette indices and default markers only; the pinned RGB-appearance criterion is not observable from storage and stays inconclusive"
+        }
+      },
+      {
+        "caseId": "sgr.bg.standard",
+        "pinnedCriterion": "the two named colors select distinct exposed bg RGB values",
+        "pinnedExpectation": "inapplicable",
+        "terminalFixture": {
+          "writes": [
+            "\u001b[41mX"
+          ],
+          "demand": "consumed",
+          "minimum": {
+            "rows": 1,
+            "cols": 2
+          }
+        },
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "C\u001b[41mX\u001b[44mY"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          [
+            0,
+            3
+          ]
+        ],
+        "observed": {
+          "baseline": {
+            "char": "C",
+            "bgIndex": -1,
+            "fgDefault": true,
+            "flags": 768
+          },
+          "first": {
+            "char": "X",
+            "bgIndex": 1,
+            "fgDefault": true,
+            "flags": 33024
+          },
+          "second": {
+            "char": "Y",
+            "bgIndex": 4,
+            "fgDefault": true,
+            "flags": 33024
+          }
+        },
+        "pinned": {
+          "pass": false,
+          "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"first\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"fgIndex\":-1,\"bgIndex\":1},\"second\":{\"char\":\"Y\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"fgIndex\":-1,\"bgIndex\":4}}",
+          "note": "Baseline, theme colors, or color readback were indistinguishable",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "parser-state",
+            "note": "Baseline, theme colors, or color readback were indistinguishable"
+          },
+          "assertions": null
+        },
+        "contractResult": {
+          "outcome": "supported"
+        },
+        "conclusion": {
+          "outcome": "supported",
+          "evidence": "owned-cells",
+          "grading": "pinned-termless-plus-contract-v1",
+          "scope": "stored palette indices and default markers only; the pinned RGB-appearance criterion is not observable from storage and stays inconclusive"
+        }
+      }
+    ],
+    "snapshots": [
+      {
+        "index": 0,
+        "kind": "sgcolors-start",
+        "paneId": "d8b960b3-a18a-4f32-9f15-8a1a2938abfa",
+        "barrier": null,
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "d087d3d9b16a9a27eec53166d3ee353ef4419529beca29f4d7fa7d8f5463a0d6"
+      },
+      {
+        "index": 1,
+        "kind": "sgcolors-bind",
+        "paneId": "d8b960b3-a18a-4f32-9f15-8a1a2938abfa",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "NTILDE_SC_cac0d29b9972473f8121500581b07ffb",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 42,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "75f7045b41e259c8d0d987de6271efa055d955ba0a095615ab817b58c09bbe75"
+      },
+      {
+        "index": 2,
+        "kind": "sgcolors-read",
+        "paneId": "d8b960b3-a18a-4f32-9f15-8a1a2938abfa",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "CXY",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 3,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 837,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 772,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 5597,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "bfa7f14ce51a4a428cc77f41e76f41aa95ed829d065272c36251864bbfdbcb9b"
+      },
+      {
+        "index": 3,
+        "kind": "sgcolors-read",
+        "paneId": "d8b960b3-a18a-4f32-9f15-8a1a2938abfa",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "CXY",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 3,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 773,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 769,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 5597,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "4fe95caadeb11d9ff7c08c30fd23977f57d6856a98055342422f0c2d3e20c51b"
+      },
+      {
+        "index": 4,
+        "kind": "sgcolors-read",
+        "paneId": "d8b960b3-a18a-4f32-9f15-8a1a2938abfa",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "CXY",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 3,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 781,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 5598,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "0b76ccd10bb3c1085cb07332168233b8c495d91e281c352ae9768a85d6fc2d58"
+      },
+      {
+        "index": 5,
+        "kind": "sgcolors-read",
+        "paneId": "d8b960b3-a18a-4f32-9f15-8a1a2938abfa",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "CXY",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 3,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 1,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 4,
+              "bg": -1
+            },
+            {
+              "count": 5597,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "bf1d3f6b342adaaa33e00e699e01a9d3793669c7fc57796b1867855d980b6dd1"
+      },
+      {
+        "index": 6,
+        "kind": "sgcolors-read",
+        "paneId": "d8b960b3-a18a-4f32-9f15-8a1a2938abfa",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "CXY",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 3,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 1,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 1
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 4
+            },
+            {
+              "count": 5597,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "82c814b6b33a56da8c9e168fa79a79ebe6d93919f5913cf7aa5f8248dac5bcb6"
+      },
+      {
+        "index": 7,
+        "kind": "sgcolors-finish",
+        "paneId": "d8b960b3-a18a-4f32-9f15-8a1a2938abfa",
+        "barrier": "\u001b[?62;4;22c",
+        "screen": {
+          "rows": 40,
+          "cols": 140,
+          "lines": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursorRow": 0,
+          "cursorCol": 0,
+          "cursorVisible": true,
+          "attributeRuns": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1
+            }
+          ]
+        },
+        "sha256": "d087d3d9b16a9a27eec53166d3ee353ef4419529beca29f4d7fa7d8f5463a0d6"
+      }
+    ]
+  },
+  "sgrColorsRun": {
+    "schemaVersion": 1,
+    "adapterId": "ntilde-owned-sgr-colors-grading-v1",
+    "probeIds": [
+      "sgr.selective-reset.bold",
+      "sgr.selective-reset.italic",
+      "sgr.reset",
+      "sgr.fg.standard",
+      "sgr.bg.standard"
+    ],
+    "cases": [
+      {
+        "caseId": "sgr.selective-reset.bold",
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "C\u001b[1;2;3mX\u001b[22mY"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          {
+            "kind": "cells",
+            "cursor": [
+              0,
+              3
+            ]
+          }
+        ],
+        "pinned": {
+          "probeId": "sgr.selective-reset.bold",
+          "pass": true,
+          "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":837,\"bold\":true,\"dim\":true,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":772,\"bold\":false,\"dim\":false,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "sgr.selective-reset.bold: measured setup attributes clear on Y and unrelated attributes remain set",
+              "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":837,\"bold\":true,\"dim\":true,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":772,\"bold\":false,\"dim\":false,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}"
+            }
+          ]
+        }
+      },
+      {
+        "caseId": "sgr.selective-reset.italic",
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "C\u001b[1;3mX\u001b[23mY"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          {
+            "kind": "cells",
+            "cursor": [
+              0,
+              3
+            ]
+          }
+        ],
+        "pinned": {
+          "probeId": "sgr.selective-reset.italic",
+          "pass": true,
+          "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":773,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":769,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "sgr.selective-reset.italic: measured setup attributes clear on Y and unrelated attributes remain set",
+              "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":773,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":769,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}"
+            }
+          ]
+        }
+      },
+      {
+        "caseId": "sgr.reset",
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "C\u001b[1;3;4mX\u001b[0mY"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          {
+            "kind": "cells",
+            "cursor": [
+              0,
+              3
+            ]
+          }
+        ],
+        "pinned": {
+          "probeId": "sgr.reset",
+          "pass": true,
+          "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":781,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":true,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "sgr.reset: measured setup attributes clear on Y and unrelated attributes remain set",
+              "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"before\":{\"char\":\"X\",\"flags\":781,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":true,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"after\":{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1}}"
+            }
+          ]
+        }
+      },
+      {
+        "caseId": "sgr.fg.standard",
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "C\u001b[31mX\u001b[34mY"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          {
+            "kind": "cells",
+            "cursor": [
+              0,
+              3
+            ]
+          }
+        ],
+        "pinned": {
+          "probeId": "sgr.fg.standard",
+          "pass": false,
+          "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"first\":{\"char\":\"X\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"bg\":null,\"fgIndex\":1,\"bgIndex\":-1},\"second\":{\"char\":\"Y\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"bg\":null,\"fgIndex\":4,\"bgIndex\":-1}}",
+          "note": "Baseline, theme colors, or color readback were indistinguishable",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "parser-state",
+            "note": "Baseline, theme colors, or color readback were indistinguishable"
+          }
+        }
+      },
+      {
+        "caseId": "sgr.bg.standard",
+        "feeds": [
+          "\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+          "C\u001b[41mX\u001b[44mY"
+        ],
+        "barriers": [
+          "\u001b[?62;4;22c",
+          "\u001b[?62;4;22c"
+        ],
+        "reads": [
+          {
+            "kind": "cells",
+            "cursor": [
+              0,
+              3
+            ]
+          }
+        ],
+        "pinned": {
+          "probeId": "sgr.bg.standard",
+          "pass": false,
+          "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"bg\":null,\"fgIndex\":-1,\"bgIndex\":-1},\"first\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"fgIndex\":-1,\"bgIndex\":1},\"second\":{\"char\":\"Y\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"fg\":null,\"fgIndex\":-1,\"bgIndex\":4}}",
+          "note": "Baseline, theme colors, or color readback were indistinguishable",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "parser-state",
+            "note": "Baseline, theme colors, or color readback were indistinguishable"
+          }
+        }
+      }
+    ]
+  },
+  "stockCollector": {
+    "counts": {
+      "inconclusive": 168,
+      "supported": 86,
+      "unsupported": 1
+    },
+    "suiteComplete": false,
+    "probeHash": "16a690f34c0e",
+    "rawSha256": "2d3e0209f92cf1b618998f092f7483c6a127106d556828b9362a303acf5846e3",
+    "probes": {
+      "sgr.fg.standard": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling"
+      },
+      "sgr.bg.standard": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR styling"
+      },
+      "sgr.selective-reset.bold": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR reset"
+      },
+      "sgr.selective-reset.italic": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR reset"
+      },
+      "sgr.reset": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor advance does not verify SGR reset"
+      }
+    }
+  },
+  "receipt": {
+    "schemaVersion": 14,
+    "sgrColorsEvidence": {
+      "runId": "cac0d29b9972473f8121500581b07ffb",
+      "suiteId": "ntilde-owned-sgr-colors-graded-v1",
+      "file": "sgcolors-observations.json",
+      "sha256": "94b92478fb895aca468d304f4c6de34f89a749c1f7de7613fe801ba399d6b372",
+      "runFile": "sgcolors-run.json",
+      "runSha256": "71b4bb63f8ad984bac39fe9f1c91c9e1432b39b2bce5c1e3c2f45a3076a3b916",
+      "adapterBundleSha256": "7dae2a660ef3819b5f3f1fd642564193f00b7d2a10ad4c8172c996fb73dc2698",
+      "contractsVersion": 1,
+      "counts": {
+        "supported": 5
+      },
+      "provisionalUntil": "cell-receipt.json"
+    },
+    "gradingEvidence": {
+      "runId": "cac0d29b9972473f8121500581b07ffb",
+      "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
+      "file": "grading-observations.json",
+      "sha256": "065df60c1323366fd7dc9e3f7d4886c01c731b5d98e2ebffe208ab424e155e09",
+      "runFile": "grading-run.json",
+      "runSha256": "eff452cfc4f44b8339d020780bcc9ae17962c4f110fb5d47e2d92edf6f6418cf",
+      "adapterBundleSha256": "d5277b9fb3cfb5557d7b6ab4f27fae8b9abc39d7010435f3dd0e697e779a0a6b",
+      "contractsVersion": 1,
+      "counts": {
+        "supported": 4
+      },
+      "provisionalUntil": "cell-receipt.json"
+    },
+    "ownershipProofSha256": "ef6f7a004fb12b94a095bbc43d8fd76a0e08ad193dcc51f74bd0692bb964d029",
+    "contextSha256": "dc1beff61d958fabb8353db5c9bb2a5c76ffe41c1c8e667299bb4266b431fa59",
+    "rawSha256": "2d3e0209f92cf1b618998f092f7483c6a127106d556828b9362a303acf5846e3",
+    "fixtureRemoved": true,
+    "completedAt": "2026-11-06T07:36:09.956Z"
+  },
+  "retained": {
+    "sgrColorsObservationsSha256": "94b92478fb895aca468d304f4c6de34f89a749c1f7de7613fe801ba399d6b372",
+    "sgrColorsRunSha256": "71b4bb63f8ad984bac39fe9f1c91c9e1432b39b2bce5c1e3c2f45a3076a3b916",
+    "sgrColorsJournalSha256": "eb7b2f01590649a471537b1ef0e2fa5f96864f4094b4f73e196780b26c509806",
+    "collectorSgrColorsSha256": "7dae2a660ef3819b5f3f1fd642564193f00b7d2a10ad4c8172c996fb73dc2698",
+    "gradingObservationsSha256": "065df60c1323366fd7dc9e3f7d4886c01c731b5d98e2ebffe208ab424e155e09"
+  },
+  "attempts": [
+    {
+      "directory": "owned-RxHqe4",
+      "error": "sgrColorsObserver is not defined",
+      "at": "2026-11-06T07:34:49.911Z"
+    }
+  ]
+}

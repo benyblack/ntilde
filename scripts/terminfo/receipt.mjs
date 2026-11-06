@@ -3,6 +3,7 @@ import { includesMetadataEvidence, checkMetadataEvidence } from './metadata-rece
 import { includesInputEvidence, checkInputEvidence } from './input-receipt.mjs';
 import { includesQueryEvidence, checkQueryEvidence } from './query-receipt.mjs';
 import { includesAsciiSgrEvidence, checkAsciiSgrEvidence } from './ascii-sgr-receipt.mjs';
+import { includesSgrColorsEvidence, checkSgrColorsEvidence } from './sgr-colors-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
@@ -115,7 +116,7 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
 }
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
-function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr }) {
+function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors }) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -129,7 +130,43 @@ function ownedReceiptVersion(context, { includesEditing, includesHistory, includ
     if (includesQueries) schemaVersion = 11;
     if (includesPrivateClipboard) schemaVersion = 12;
     if (includesAsciiSgr) schemaVersion = 13;
+    if (includesSgrColors) schemaVersion = 14;
     return schemaVersion;
+}
+
+/** Which optional evidence suffixes a run declares, newest last. */
+function admittedSuffixes(output, evidence, context, proof) {
+    const includesEditing = context.eraseSuiteId !== undefined || context.editingSuiteId !== undefined
+        || evidence.eraseEvidence !== undefined || evidence.editingEvidence !== undefined;
+    const historyMarkers = ['historySuiteId', 'terminalOutput', 'historyCasesSourceSha256', 'historyCaptureSourceSha256', 'historySuiteSourceSha256', 'terminalOutputSourceSha256'];
+    const includesHistory = evidence.historyEvidence !== undefined || historyMarkers.some(key => context[key] !== undefined)
+        || proof.proofs?.some(entry => entry.terminalOutput !== undefined) === true;
+    const includesPrivateClipboard = includesPrivateClipboardEvidence(output, evidence, context, proof);
+    const includesAsciiSgr = includesAsciiSgrEvidence(output, evidence, context);
+    const includesSgrColors = includesSgrColorsEvidence(output, evidence, context);
+    const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
+    const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
+    const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
+    const includesMetadata = includesMetadataEvidence(output, evidence, context, proof) || includesInput;
+    const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
+    const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
+    return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors };
+}
+
+/** Validate every admitted optional suffix after the mandatory core suites. */
+function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes) {
+    if (suffixes.includesEditing || suffixes.includesHistory || suffixes.includesResize) checkEditingSuites(output, evidence, runId, context);
+    if (suffixes.includesHistory || suffixes.includesResize) checkHistoryProof(output, evidence, runId, context, proof);
+    if (suffixes.includesResize) checkResizeEvidence(output, evidence.resizeEvidence, runId, context, proof);
+    if (suffixes.includesSaved) checkSavedEvidence(output, evidence.savedEvidence, runId, context, proof);
+    if (suffixes.includesMetadata) checkMetadataEvidence(output, evidence.metadataEvidence, runId, context, proof);
+    if (suffixes.includesInput) checkInputEvidence(output, evidence.inputEvidence, runId, context, proof);
+    if (suffixes.includesImages) checkStaticImageEvidence(output, evidence.staticImageEvidence, runId, context, proof);
+    if (suffixes.includesQueries) checkQueryEvidence(output, evidence.queryEvidence, runId, context, proof, evidence);
+    if (suffixes.includesPrivateClipboard) checkPrivateClipboardEvidence(output, evidence.privateClipboardEvidence, runId, context, proof, evidence);
+    if (suffixes.includesAsciiSgr) checkAsciiSgrEvidence(output, evidence, runId, context);
+    if (suffixes.includesSgrColors) checkSgrColorsEvidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
@@ -147,30 +184,9 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     for (const prefix of suites) checkEvidence(output, evidence[prefix + 'Evidence'], prefix, runId);
     if (context.pixelSuiteId !== undefined) checkPixelEvidence(output, evidence.pixelEvidence, runId, context.pixelSuiteId);
     if (context.colorSuiteId !== undefined) checkColorEvidence(output, evidence.colorEvidence, runId, context.colorSuiteId);
-    const includesEditing = context.eraseSuiteId !== undefined || context.editingSuiteId !== undefined
-        || evidence.eraseEvidence !== undefined || evidence.editingEvidence !== undefined;
-    const historyMarkers = ['historySuiteId', 'terminalOutput', 'historyCasesSourceSha256', 'historyCaptureSourceSha256', 'historySuiteSourceSha256', 'terminalOutputSourceSha256'];
-    const includesHistory = evidence.historyEvidence !== undefined || historyMarkers.some(key => context[key] !== undefined)
-        || proof.proofs?.some(entry => entry.terminalOutput !== undefined) === true;
-    const includesPrivateClipboard = includesPrivateClipboardEvidence(output, evidence, context, proof);
-    const includesAsciiSgr = includesAsciiSgrEvidence(output, evidence, context);
-    const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
-    const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
-    const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
-    const includesMetadata = includesMetadataEvidence(output, evidence, context, proof) || includesInput;
-    const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
-    const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
-    if (includesEditing || includesHistory || includesResize) checkEditingSuites(output, evidence, runId, context);
-    if (includesHistory || includesResize) checkHistoryProof(output, evidence, runId, context, proof);
-    if (includesResize) checkResizeEvidence(output, evidence.resizeEvidence, runId, context, proof);
-    if (includesSaved) checkSavedEvidence(output, evidence.savedEvidence, runId, context, proof);
-    if (includesMetadata) checkMetadataEvidence(output, evidence.metadataEvidence, runId, context, proof);
-    if (includesInput) checkInputEvidence(output, evidence.inputEvidence, runId, context, proof);
-    if (includesImages) checkStaticImageEvidence(output, evidence.staticImageEvidence, runId, context, proof);
-    if (includesQueries) checkQueryEvidence(output, evidence.queryEvidence, runId, context, proof, evidence);
-    if (includesPrivateClipboard) checkPrivateClipboardEvidence(output, evidence.privateClipboardEvidence, runId, context, proof, evidence);
-    if (includesAsciiSgr) checkAsciiSgrEvidence(output, evidence, runId, context);
-    const schemaVersion = ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr });
+    const suffixes = admittedSuffixes(output, evidence, context, proof);
+    checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes);
+    const schemaVersion = ownedReceiptVersion(context, suffixes);
     const receipt = { schemaVersion, ...evidence, ownershipProofSha256: digest(proofBytes),
         contextSha256: digest(contextBytes), rawSha256: digest(readFileSync(join(output, 'raw.json'))),
         fixtureRemoved: true, completedAt: new Date().toISOString() };

@@ -23,7 +23,7 @@ function present(path) {
  * collects grading unconditionally. The shared source graph retains the
  * modules in every run, so their presence in sources/ alone says nothing. */
 export function includesAsciiSgrEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v6'
+    return ['readonly-owned-source-graph-v6', 'readonly-owned-source-graph-v7', 'readonly-owned-source-graph-v8'].includes(context.sourceSnapshotPolicy)
         || context.gradingAdapterId !== undefined || context.asciiSgrSuiteId !== undefined
         || context.gradingBundleSha256 !== undefined || evidence.gradingEvidence !== undefined
         || files.some(file => present(join(output, file)));
