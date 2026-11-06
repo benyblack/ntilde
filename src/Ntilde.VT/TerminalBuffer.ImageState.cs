@@ -81,16 +81,17 @@ public partial class TerminalBuffer
 
     /// <summary>
     /// The placement's row in exported coordinates and its clipping; false when nothing of it is left.
-    /// Rows above the exported history are gone, so they are clipped. Rows below the screen are not:
-    /// a Kitty image placed with <c>C=1</c> on the last row runs past it and shows again if the screen
-    /// grows, so only the placement's own bottom clipping is carried.
+    /// Rows above the exported history are gone, so they are clipped. What lies past the screen's right
+    /// or bottom edge is not: a Kitty image placed with <c>C=1</c> on the last row, or left of a column
+    /// a narrowed alternate screen no longer has, shows again when the screen grows, so it is carried
+    /// as it is.
     /// </summary>
     private static bool TryExportedRows(TerminalImage image, TerminalStateSnapshot snapshot, out int y, out int top, out int bottom)
     {
         y = image.IsAltScreenImage ? image.CellY : image.CellY - snapshot.ScrollbackRowsDropped;
         top = Math.Max(image.ClipTopRows, Math.Max(0, -y));
         bottom = image.ClipBottomRows;
-        return top + bottom < image.CellHeight && image.CellX < snapshot.Cols;
+        return top + bottom < image.CellHeight;
     }
 
     /// <summary>The header size an iTerm2 placement was made from, whether or not it was decoded.</summary>
@@ -275,7 +276,14 @@ public partial class TerminalBuffer
         _images.AddRange(sorted);
     }
 
-    /// <summary>A placement clamped to this buffer as SIXEL imports are; null when nothing of it is left.</summary>
+    /// <summary>Furthest a transferred Kitty or iTerm2 placement may lie past the right or bottom edge.</summary>
+    private const int MaxImportedOffscreenCells = 4096;
+
+    /// <summary>
+    /// A transferred placement; null when nothing of it is left. Unlike SIXEL, it keeps a position past
+    /// the right or bottom edge (within <see cref="MaxImportedOffscreenCells"/>), where the live buffer
+    /// keeps it too, so it shows again when the screen grows.
+    /// </summary>
     private TerminalImage? ImportedPlacement(object handle, int x, int y, int width, int height, bool alt, int clipTop, int clipBottom, int clipRight)
     {
         int top = Math.Clamp(clipTop, 0, height);
@@ -283,7 +291,8 @@ public partial class TerminalBuffer
         int right = Math.Clamp(clipRight, 0, width);
         if (top + bottom >= height || right >= width) return null;
         int lastRow = alt ? Rows - 1 : _scrollback.Count + Rows - 1;
-        return new TerminalImage(handle, Math.Clamp(x, 0, Cols - 1), Math.Clamp(y, 1 - height, lastRow), width, height)
+        return new TerminalImage(handle, Math.Clamp(x, 0, Cols - 1 + MaxImportedOffscreenCells),
+            Math.Clamp(y, 1 - height, lastRow + MaxImportedOffscreenCells), width, height)
         {
             IsAltScreenImage = alt,
             ClipTopRows = top,

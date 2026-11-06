@@ -195,6 +195,23 @@ public sealed class ImageStateTransferTests
         Assert.Equal(before, Json(Export(restored, restoredParser))); // so is the destination
     }
 
+    [Fact]
+    public void A_placement_past_a_narrowed_screen_comes_back_when_it_widens()
+    {
+        // The alternate screen keeps a Kitty image at column 30 after narrowing to 10 columns, and shows
+        // it again when widened. A snapshot taken while narrow must not drop or move it.
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process("\x1b[?1049h\x1b[3;31H" + Kitty("a=T,i=1,f=100,c=3,r=2,C=1,q=2", TestImages.PngBase64(8, 8)));
+        source.Resize(10, 20);
+        Assert.Equal(30, Assert.Single(source.Images).CellX);
+
+        var (restored, _) = Restore(Export(source, sourceParser), decoder: null);
+        Assert.Equal(Placements(source), Placements(restored));
+        source.Resize(40, 20);
+        restored.Resize(40, 20);
+        Assert.Equal(Placements(source), Placements(restored));
+    }
+
     private static string Kinds(TerminalBuffer buffer) =>
         string.Join(",", buffer.Images.Select(i => i.IsSixelImage ? "sixel" : i.KittyImageId is not null ? "kitty" : "iterm"));
 
