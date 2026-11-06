@@ -40,7 +40,8 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     private static readonly MuxEndpointDescriptor OldDaemon = new() { Endpoint = "test", Pid = 4242, ProcessName = "Ntilde", MinVersion = 1, MaxVersion = 2 };
     private static readonly MuxEndpointId Local = MuxEndpointId.Local;
 
-    private readonly MuxTestHost _old = new(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = PreviousBuild });
+    /// <summary>Replaced, before the test's window exists, by <see cref="OldDaemonOfThisBuildThatOutlivedItsLogin"/>.</summary>
+    private MuxTestHost _old = new(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = PreviousBuild });
     private readonly MuxTestHost _current;
     private readonly TaskCompletionSource<bool> _oldExited = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly List<MuxConnectionHost> _hosts = [];
@@ -52,6 +53,9 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
 
     /// <summary>What <see cref="_current"/> reports in its welcome as <c>LoginSessionEnded</c>.</summary>
     private volatile bool _currentLoginSessionEnded;
+
+    /// <summary>What <see cref="_old"/> reports as <c>LoginSessionEnded</c>, once <see cref="OldDaemonOfThisBuildThatOutlivedItsLogin"/> made it.</summary>
+    private volatile bool _oldLoginSessionEnded;
     private int _connects;
     private int _oldShutdowns;
 
@@ -68,7 +72,25 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     {
         _current = new(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = ThisBuild, LoginSessionEnded = () => _currentLoginSessionEnded });
         if (File.Exists(AppPaths.SessionFilePath)) File.Delete(AppPaths.SessionFilePath);
-        _old.Server.ShutdownRequested += () =>
+        StopOldAsTheRealDaemonDoes();
+    }
+
+    /// <summary>
+    /// Makes <see cref="_old"/> a daemon of this very build that has outlived its login session (until the test clears
+    /// <see cref="_oldLoginSessionEnded"/>). Before anything has connected to it.
+    /// </summary>
+    private void OldDaemonOfThisBuildThatOutlivedItsLogin()
+    {
+        _old.Dispose();
+        _oldLoginSessionEnded = true;
+        _old = new(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = ThisBuild, LoginSessionEnded = () => _oldLoginSessionEnded });
+        StopOldAsTheRealDaemonDoes();
+    }
+
+    private void StopOldAsTheRealDaemonDoes()
+    {
+        MuxTestHost old = _old;
+        old.Server.ShutdownRequested += () =>
         {
             Interlocked.Increment(ref _oldShutdowns);
             if (!_oldStopsOnShutdown) return;
@@ -77,8 +99,8 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
                 if (_beforeOldStops is { } before) await before();
                 _oldStopped = true;
                 // MuxDaemonHost.RequestStop's order: every shell is killed, then the server closes every connection.
-                _old.Server.KillAllSessions();
-                _old.Server.Dispose();
+                old.Server.KillAllSessions();
+                old.Server.Dispose();
                 _oldExited.TrySetResult(true);
             });
         };
@@ -259,6 +281,58 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
 
         Assert.Equal([(null, 1)], asked);
         Assert.Single(_notices); // declined: no outcome
+    }
+
+    /// <summary>
+    /// A daemon of this build that outlived its login session, restarted: the restart's last look still finds it so, so it
+    /// is stopped and the host comes back on a daemon whose login is live, with no outcome to report.
+    /// </summary>
+    [AvaloniaFact]
+    public void Restarting_a_daemon_that_outlived_its_login_session_replaces_it()
+    {
+        OldDaemonOfThisBuildThatOutlivedItsLogin();
+        ThreePanesOnTheOldDaemon();
+        MainWindow window = CreateWindow();
+        MuxConnectionHost host = _hosts.Single();
+        PumpUntil(() => Attached(window).Count == 3, "the three panes reattached");
+        PumpUntil(() => LocalOffers.Count == 1, "the notice is raised");
+        MuxPreviousBuildNotice.Raised offer = LocalOffers[0];
+        Assert.Equal(MuxPreviousBuildNotice.LoginSessionEndedMessage(3), offer.Message);
+        window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
+        window.MuxTerminateDaemon = _ => true;
+
+        offer.Action!.Run();
+        PumpUntil(() => _oldStopped && host.CurrentClient is { IsConnected: true, LoginSessionEnded: false }, "the host connected to a daemon whose login is live");
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
+
+        Assert.Equal(1, Volatile.Read(ref _oldShutdowns));
+        Assert.Single(_notices); // the offer: no outcome
+    }
+
+    /// <summary>
+    /// The restart's last look: when the daemon it is about to stop no longer reports an ended login (and is this build's),
+    /// it is left alone, and the outcome says there was nothing to restart.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_restart_leaves_alone_a_daemon_whose_login_is_live_at_the_last_look()
+    {
+        OldDaemonOfThisBuildThatOutlivedItsLogin();
+        ThreePanesOnTheOldDaemon();
+        MainWindow window = CreateWindow();
+        PumpUntil(() => LocalOffers.Count == 1, "the notice is raised");
+        window.ConfirmMuxRestart = (_, _) =>
+        {
+            _oldLoginSessionEnded = false; // between the question and the last look
+            return Task.FromResult(true);
+        };
+
+        LocalOffers[0].Action!.Run();
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
+
+        Assert.Equal(0, Volatile.Read(ref _oldShutdowns));
+        Assert.False(_oldStopped);
+        MuxPreviousBuildNotice.Raised outcome = Assert.Single(_notices, n => n.Outcome is not null);
+        Assert.Equal(MuxPreviousBuildNotice.RestartOutcome.AlreadyThisBuild, outcome.Outcome);
     }
 
     /// <summary>With SessionPersistence Off nothing new appears, whatever the daemon the window's panes still use reports.</summary>

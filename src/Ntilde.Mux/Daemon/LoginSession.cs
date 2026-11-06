@@ -12,9 +12,10 @@ namespace Ntilde.Mux.Daemon;
 /// </summary>
 /// <remarks>
 /// The probe asks the bootstrap server for opendirectoryd's libinfo service, which is what <c>getpwuid</c> talks to. Only
-/// a Mach IPC failure - nobody at the other end of the port, or no port at all - counts as ended: a live bootstrap server
-/// that does not know the name (a future macOS renaming it) answers with a <c>BOOTSTRAP_*</c> code and is not reported.
-/// Every other platform, and a macOS whose symbols cannot be found, reports false.
+/// proof that nobody is at the other end counts as ended: no bootstrap port at all (what a shell of such a daemon has), or
+/// <c>MACH_SEND_INVALID_DEST</c> (a dead one). A transient failure (a timeout, no buffer) proves nothing and is not reported,
+/// nor is a live bootstrap server's answer that it does not know the name (a future macOS renaming it): a restart offered
+/// by mistake would close the user's shells. Every other platform, and a macOS whose symbols cannot be found, reports false.
 /// </remarks>
 public static class LoginSession
 {
@@ -26,26 +27,27 @@ public static class LoginSession
 
     private const string LibSystem = "/usr/lib/libSystem.B.dylib";
 
-    /// <summary>The error "system" of Mach IPC send/receive failures (<c>err_mach_ipc</c>, <c>mach/error.h</c>).</summary>
-    private const int MachIpcSystem = 4;
+    /// <summary><c>MACH_SEND_INVALID_DEST</c> (<c>mach/message.h</c>): the destination port is dead or not a send right.</summary>
+    internal const int MachSendInvalidDest = 0x10000003;
 
-    /// <summary>True when the probe found the bootstrap port dead (macOS only); false when it answered or could not be asked.</summary>
+    /// <summary>
+    /// Where libSystem keeps <c>bootstrap_port</c> and <c>mach_task_self_</c>, looked up once (the library stays loaded for
+    /// the process's life, as libSystem always does); null off macOS or when either cannot be found. The values are read on
+    /// each probe.
+    /// </summary>
+    private static readonly Lazy<(IntPtr BootstrapPort, IntPtr TaskSelf)?> s_globals = new(FindGlobals);
+
+    /// <summary>True when the probe found no live bootstrap port (macOS only); false when it answered or proved nothing.</summary>
     public static bool HasEnded()
     {
-        if (!OperatingSystem.IsMacOS()) return false;
+        if (!OperatingSystem.IsMacOS() || s_globals.Value is not { } globals) return false;
         try
         {
-            if (!NativeLibrary.TryLoad(LibSystem, out IntPtr lib)) return false;
-            if (!NativeLibrary.TryGetExport(lib, "bootstrap_port", out IntPtr bootstrapPortAddress)
-                || !NativeLibrary.TryGetExport(lib, "mach_task_self_", out IntPtr taskSelfAddress))
-            {
-                return false;
-            }
-
-            uint bootstrapPort = (uint)Marshal.ReadInt32(bootstrapPortAddress);
+            uint bootstrapPort = (uint)Marshal.ReadInt32(globals.BootstrapPort);
+            if (bootstrapPort == 0) return true; // MACH_PORT_NULL: there is no bootstrap server to ask
             int kr = bootstrap_look_up(bootstrapPort, s_probeServiceName, out uint service);
-            if (service != 0) _ = mach_port_deallocate((uint)Marshal.ReadInt32(taskSelfAddress), service);
-            return IsIpcFailure(kr);
+            if (service != 0) _ = mach_port_deallocate((uint)Marshal.ReadInt32(globals.TaskSelf), service);
+            return IsDeadDestination(kr);
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
         {
@@ -54,10 +56,19 @@ public static class LoginSession
     }
 
     /// <summary>
-    /// Whether <paramref name="kernReturn"/> is a Mach IPC failure (<c>MACH_SEND_*</c>/<c>MACH_RCV_*</c>): the message never
-    /// reached a bootstrap server, or none answered. <c>KERN_SUCCESS</c> and <c>BOOTSTRAP_*</c> codes are answers.
+    /// Whether <paramref name="kernReturn"/> proves the bootstrap port dead: <c>MACH_SEND_INVALID_DEST</c> only. Success, a
+    /// <c>BOOTSTRAP_*</c> answer and transient IPC failures do not.
     /// </summary>
-    internal static bool IsIpcFailure(int kernReturn) => kernReturn != 0 && ((kernReturn >> 26) & 0x3f) == MachIpcSystem;
+    internal static bool IsDeadDestination(int kernReturn) => kernReturn == MachSendInvalidDest;
+
+    private static (IntPtr BootstrapPort, IntPtr TaskSelf)? FindGlobals()
+    {
+        if (!OperatingSystem.IsMacOS() || !NativeLibrary.TryLoad(LibSystem, out IntPtr lib)) return null;
+        return NativeLibrary.TryGetExport(lib, "bootstrap_port", out IntPtr bootstrapPort)
+            && NativeLibrary.TryGetExport(lib, "mach_task_self_", out IntPtr taskSelf)
+            ? (bootstrapPort, taskSelf)
+            : null;
+    }
 
     [DllImport(LibSystem, EntryPoint = "bootstrap_look_up")]
     private static extern int bootstrap_look_up(uint bootstrapPort, byte[] serviceName, out uint servicePort);
