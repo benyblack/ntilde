@@ -276,15 +276,25 @@ namespace Ntilde.VT
             // image is kept undecoded, as a parser without a decoder keeps it.
             // Where snapshots carry images, the bytes are kept as sent (before o=z inflation) with how
             // they were sent; the store charges them only after freeing what this image replaces or evicts.
-            byte[]? retained = RetainImageSources ? sent : null;
-            var encoding = retained is null ? null : new KittyImageEncoding(format, _kittyPendingParams.ContainsKey("o"), rawWidth, rawHeight);
-            long inflationCost = encoding is null ? 0 : TerminalBuffer.SnapshotInflationCost(data, encoding);
-            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number, retained, encoding, inflationCost)
-                ?? _buffer.StoreKittyImage(new UndecodedImage(pixelWidth, pixelHeight), pixelWidth, pixelHeight, identity.Id, identity.Number, retained, encoding, inflationCost);
+            KittySentSource? retained = RetainedKittySource(sent, data, format, rawWidth, rawHeight);
+            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number, retained)
+                ?? _buffer.StoreKittyImage(new UndecodedImage(pixelWidth, pixelHeight), pixelWidth, pixelHeight, identity.Id, identity.Number, retained);
             if (asset is null) return "EINVAL:Image could not be stored";
             id = asset.Id;
             if (display) PlaceKittyImage(asset, identity.HasIdentity ? identity.Placement : 0);
             return "OK";
+        }
+
+        /// <summary>
+        /// What a transmitted image keeps for snapshots: null unless the parser retains image sources,
+        /// else the bytes as sent, how they were sent and what validating them inflates, measured from
+        /// <paramref name="inflated"/>, the bytes after <c>o=z</c> inflation.
+        /// </summary>
+        private KittySentSource? RetainedKittySource(byte[] sent, byte[] inflated, int format, int rawWidth, int rawHeight)
+        {
+            if (!RetainImageSources) return null;
+            var encoding = new KittyImageEncoding(format, _kittyPendingParams.ContainsKey("o"), rawWidth, rawHeight);
+            return new KittySentSource(sent, encoding, TerminalBuffer.SnapshotInflationCost(inflated, encoding));
         }
 
         private string? ValidateKittyPayloadEncoding()

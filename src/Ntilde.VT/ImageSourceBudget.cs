@@ -147,3 +147,9 @@ public sealed class ImageSource
 /// <param name="RawWidth">Kitty <c>s=</c> for raw pixels, else 0.</param>
 /// <param name="RawHeight">Kitty <c>v=</c> for raw pixels, else 0.</param>
 internal sealed record KittyImageEncoding(int Format, bool Compressed, int RawWidth, int RawHeight);
+
+/// <summary>The bytes a Kitty image was sent as, kept for snapshots where the parser retains image sources.</summary>
+/// <param name="Bytes">The bytes as sent, before <c>o=z</c> inflation.</param>
+/// <param name="Encoding">How they were sent, so they can be decoded again on restore.</param>
+/// <param name="InflationCost">What validating them in a snapshot inflates (<see cref="TerminalBuffer.SnapshotInflationCost"/>).</param>
+internal sealed record KittySentSource(byte[] Bytes, KittyImageEncoding Encoding, long InflationCost);
