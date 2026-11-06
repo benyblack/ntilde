@@ -92,7 +92,7 @@ public class StringSequenceCapTests
         Assert.Equal(0, decoder.DecodeImageBytesCallCount);
 
         // State is reset, so a subsequent well-formed image decodes normally.
-        parser.Process("\x1b_Ga=T,f=100,m=0;QUJD\x07");
+        parser.Process("\x1b_Ga=T,f=100,m=0;" + TestImages.PngBase64(1, 1) + "\x07");
         Assert.Equal(1, decoder.DecodeImageBytesCallCount);
     }
 

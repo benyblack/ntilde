@@ -307,16 +307,17 @@ namespace Ntilde.VT
                 byte[]? data = DecodeBase64(base64Data);
                 if (data == null) return;
 
-                if (ImageDecoder == null) return;
-
-                object? imageHandle = ImageDecoder.DecodeImageBytes(data, out int pixelWidth, out int pixelHeight);
-                if (imageHandle == null) return;
+                // Placement follows the header, never the decoder, so a parser without one (the
+                // persistent-session daemon) reserves the same cells as a window with one (#838).
+                if (!ImageHeaderProbe.TryGetSize(data, out _, out int pixelWidth, out int pixelHeight)) return;
 
                 // Guardrail: Limit pixel dimensions
                 if (pixelWidth > 2000 || pixelHeight > 2000)
                 {
                     return;
                 }
+
+                object imageHandle = DecodeOrPlaceholder(decoder => decoder.DecodeImageBytes(data, out _, out _), pixelWidth, pixelHeight);
 
                 // Image pixels map to cells in the unit CSI 16 t reports (ImageCellPixels).
                 var (cellWidthPx, cellHeightPx) = ImageCellPixels();
@@ -348,7 +349,14 @@ namespace Ntilde.VT
 
                 var img = new TerminalImage(imageHandle, _buffer.CursorCol, absRow, width, height);
                 img.PreserveAspectRatio = preserveAspectRatio;
-                _buffer.AddImage(img);
+                if (!_buffer.TryAddImage(img))
+                {
+                    // A decoder that hands back an already retired handle cannot change the outcome:
+                    // the image is placed undecoded, as a parser without a decoder places it.
+                    img = new TerminalImage(new UndecodedImage(pixelWidth, pixelHeight), _buffer.CursorCol, absRow, width, height);
+                    img.PreserveAspectRatio = preserveAspectRatio;
+                    _buffer.AddImage(img);
+                }
 
                 // Finalize placement
                 bool oldHidden = _buffer.IsHidden;
@@ -409,6 +417,27 @@ namespace Ntilde.VT
             {
                 TerminalLogger.Debug($"[ANSI_PARSER] Failed to decode iTerm2 image: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Pixels for an image already sized and accepted from its header: the decoder's handle, or an
+        /// <see cref="UndecodedImage"/> when there is no decoder or it cannot decode the body (failing or
+        /// throwing). Whether the image is placed never depends on this.
+        /// </summary>
+        private object DecodeOrPlaceholder(Func<IImageDecoder, object?> decode, int pixelWidth, int pixelHeight)
+        {
+            if (ImageDecoder is { } decoder)
+            {
+                try
+                {
+                    if (decode(decoder) is { } handle) return handle;
+                }
+                catch (Exception ex)
+                {
+                    TerminalLogger.Debug($"[ANSI_PARSER] Image decoder failed; placing it undecoded: {ex.Message}");
+                }
+            }
+            return new UndecodedImage(pixelWidth, pixelHeight);
         }
 
         private int ParseDimension(string val, bool isHeight = false)

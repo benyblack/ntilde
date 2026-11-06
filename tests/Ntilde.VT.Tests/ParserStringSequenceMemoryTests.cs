@@ -38,7 +38,7 @@ public class ParserStringSequenceMemoryTests
         // forceConPtyFiltering: false - a parser that believes ConPTY is filtering drops non-tunneled
         // Kitty sequences before they reach the payload buffer, so on Windows this would test nothing.
         var parser = new AnsiParser(new TerminalBuffer(80, 24), forceConPtyFiltering: false) { ImageDecoder = decoder };
-        string base64 = Convert.ToBase64String(new byte[LargeSequenceChars * 3 / 4]);
+        string base64 = Convert.ToBase64String(WithPngHeader(new byte[LargeSequenceChars * 3 / 4]));
 
         parser.Process($"\x1b_Ga=T,f=100;{base64}\x1b\\");
 
@@ -54,7 +54,7 @@ public class ParserStringSequenceMemoryTests
     {
         var decoder = new RecordingImageDecoder();
         var parser = new AnsiParser(new TerminalBuffer(80, 24)) { ImageDecoder = decoder };
-        string base64 = Convert.ToBase64String(new byte[LargeSequenceChars * 3 / 4]);
+        string base64 = Convert.ToBase64String(WithPngHeader(new byte[LargeSequenceChars * 3 / 4]));
         string sequence = $"\x1b]1337;File=inline=1:{base64}\x07";
 
         long before = GC.GetAllocatedBytesForCurrentThread();
@@ -77,8 +77,9 @@ public class ParserStringSequenceMemoryTests
     {
         var decoder = new RecordingImageDecoder();
         var parser = new AnsiParser(new TerminalBuffer(80, 24)) { ImageDecoder = decoder };
-        byte[] original = new byte[length];
-        for (int i = 0; i < length; i++) original[i] = (byte)(i * 37 + 11);
+        byte[] body = new byte[length];
+        for (int i = 0; i < length; i++) body[i] = (byte)(i * 37 + 11);
+        byte[] original = WithPngHeader(body, replace: false);
 
         parser.Process($"\x1b]1337;File=inline=1:{Convert.ToBase64String(original)}\x07");
 
@@ -90,8 +91,9 @@ public class ParserStringSequenceMemoryTests
     {
         var decoder = new RecordingImageDecoder();
         var parser = new AnsiParser(new TerminalBuffer(80, 24)) { ImageDecoder = decoder };
-        byte[] original = new byte[200];
-        for (int i = 0; i < original.Length; i++) original[i] = (byte)i;
+        byte[] body = new byte[200];
+        for (int i = 0; i < body.Length; i++) body[i] = (byte)i;
+        byte[] original = WithPngHeader(body, replace: false);
 
         string wrapped = Convert.ToBase64String(original, Base64FormattingOptions.InsertLineBreaks);
         parser.Process($"\x1b]1337;File=inline=1:{wrapped}\x07");
@@ -108,6 +110,18 @@ public class ParserStringSequenceMemoryTests
         parser.Process("\x1b]1337;File=inline=1:not*base64\x07");
 
         Assert.Null(decoder.LastImageBytes);
+    }
+
+    /// <summary>
+    /// Image bytes the parser accepts: iTerm2 and Kitty images are placed from their header (#838), so
+    /// a payload must start with one to reach the decoder. <paramref name="replace"/> overwrites the
+    /// start of <paramref name="data"/> (keeping its length); otherwise the header is prepended.
+    /// </summary>
+    private static byte[] WithPngHeader(byte[] data, bool replace = true)
+    {
+        byte[] header = TestImages.PngHeader(1, 1);
+        if (replace) { header.CopyTo(data, 0); return data; }
+        return [.. header, .. data];
     }
 
     private static int BufferCapacity(AnsiParser parser, string field)

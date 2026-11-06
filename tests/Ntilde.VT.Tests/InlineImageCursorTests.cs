@@ -134,10 +134,10 @@ public class InlineImageCursorTests
     }
 
     /// <summary>
-    /// Any non-empty base64 body. <see cref="FixedSizeImageDecoder"/> ignores the bytes and reports a
-    /// fixed size, so the payload only has to survive <c>Convert.FromBase64String</c>.
+    /// A PNG header declaring the test size: Kitty and iTerm2 images are placed from their header,
+    /// not from the decoder (#838).
     /// </summary>
-    private static string FakePayload() => Convert.ToBase64String(new byte[] { 1, 2, 3, 4 });
+    private static string FakePayload() => TestImages.PngBase64(PixelWidth, PixelHeight);
 
     private static int CursorViewRow(TerminalBuffer buffer)
     {

@@ -25,10 +25,19 @@ namespace Ntilde.VT
 
         public void AddImage(TerminalImage image)
         {
+            if (!TryAddImage(image)) throw new InvalidOperationException("The image handle cannot be admitted to this buffer.");
+        }
+
+        /// <summary>
+        /// Adds a placement, or returns false without changing anything when its handle cannot be
+        /// admitted (it was already retired).
+        /// </summary>
+        internal bool TryAddImage(TerminalImage image)
+        {
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
-                RequireImageHandleAdmission(image.ImageHandle);
+                if (!TryAdmitImageHandle(image.ImageHandle)) return false;
                 // Tag ownership: alt-screen images use viewport-relative CellY, main-screen
                 // images absolute rows. Lets erase/rebase paths tell the two apart even
                 // though both live in the same list.
@@ -40,6 +49,7 @@ namespace Ntilde.VT
                 ExitWriteLockIfNeeded(Lock, lockTaken);
             }
             Invalidate();
+            return true;
         }
 
         /// <summary>

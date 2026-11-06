@@ -28,7 +28,7 @@ public class KittyImageCellSizeTests
         var buffer = new TerminalBuffer(80, 24);
         // forceConPtyFiltering: false, so a native APC image is placed on every platform.
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = new FixedSizeImageDecoder(PixelWidth, PixelHeight) };
-        string payload = Convert.ToBase64String(new byte[] { 1, 2, 3, 4 });
+        string payload = TestImages.PngBase64(PixelWidth, PixelHeight); // placed from its header (#838)
 
         parser.Process($"\x1b_G{sizeParams}a=T,f=100;{payload}\x1b\\");
 

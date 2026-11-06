@@ -257,30 +257,25 @@ namespace Ntilde.VT
             data = InflateKittyPayload(data, format, rawWidth, rawHeight);
             if (data == null) return "EINVAL:Invalid compressed image payload";
 
-            if (ImageDecoder == null)
-            {
-                TerminalLogger.Debug("[ANSI_PARSER] IImageDecoder is null, cannot decode Kitty image.");
-                return "ENOTSUP:Image decoder unavailable";
-            }
-
-            object? imageHandle = DecodeKittyImage(ImageDecoder, data, format, rawWidth, rawHeight, out int pixelWidth, out int pixelHeight);
-            if (imageHandle == null)
-            {
-                TerminalLogger.Debug("[ANSI_PARSER] IImageDecoder failed to decode Kitty image data.");
+            // The size, and so every decision below, comes from the data itself (s=/v= or the
+            // container header), never from the decoder: a parser without one (the persistent-session
+            // daemon) must reserve the same cells and give the same reply as a window with one (#838).
+            if (!TryKittyImageSize(data, format, rawWidth, rawHeight, out int pixelWidth, out int pixelHeight))
                 return "EINVAL:Image decode failed";
-            }
-
-            TerminalLogger.Debug($"[ANSI_PARSER] Kitty image decoded successfully: {pixelWidth}x{pixelHeight}");
-
-            // Guardrail: Limit pixel dimensions
-            if (pixelWidth <= 0 || pixelHeight <= 0 || pixelWidth > 2000 || pixelHeight > 2000)
-            {
-                _buffer.RetireUnstoredKittyHandle(imageHandle);
+            if (pixelWidth > KittyMaxRawPixelDimension || pixelHeight > KittyMaxRawPixelDimension)
                 return "EINVAL:Decoded image dimensions exceed bounds";
-            }
 
-            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number);
-            if (asset is null) return "EINVAL:Decoder returned a retired image handle";
+            // The decoder only supplies pixels. Without it, or when the body does not decode, the image
+            // still holds its cells and draws nothing there.
+            object imageHandle = DecodeOrPlaceholder(decoder => DecodeKittyImage(decoder, data, format, rawWidth, rawHeight, out _, out _),
+                pixelWidth, pixelHeight);
+            TerminalLogger.Debug($"[ANSI_PARSER] Kitty image {pixelWidth}x{pixelHeight}, {(imageHandle is UndecodedImage ? "not decoded" : "decoded")}");
+
+            // A decoder that hands back an already retired handle cannot change the outcome either: the
+            // image is kept undecoded, as a parser without a decoder keeps it.
+            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number)
+                ?? _buffer.StoreKittyImage(new UndecodedImage(pixelWidth, pixelHeight), pixelWidth, pixelHeight, identity.Id, identity.Number);
+            if (asset is null) return "EINVAL:Image could not be stored";
             id = asset.Id;
             if (display) PlaceKittyImage(asset, identity.HasIdentity ? identity.Placement : 0);
             return "OK";
@@ -309,6 +304,20 @@ namespace Ntilde.VT
                 ? (long)rawWidth * rawHeight * bytesPerPixel
                 : KittyMaxInflatedContainerBytes;
             return InflateZlib(data, (int)Math.Min(expected, int.MaxValue));
+        }
+
+        /// <summary>
+        /// The pixel size of a transmitted image: <c>s=</c>/<c>v=</c> for raw data, which must then be
+        /// exactly that many pixels, else the container header (<see cref="ImageHeaderProbe"/>).
+        /// </summary>
+        private static bool TryKittyImageSize(byte[] data, int format, int rawWidth, int rawHeight, out int pixelWidth, out int pixelHeight)
+        {
+            if (format is 24 or 32)
+            {
+                (pixelWidth, pixelHeight) = (rawWidth, rawHeight);
+                return data.LongLength == (long)rawWidth * rawHeight * (format == 24 ? 3 : 4);
+            }
+            return ImageHeaderProbe.TryGetSize(data, out _, out pixelWidth, out pixelHeight);
         }
 
         private static object? DecodeKittyImage(IImageDecoder decoder, byte[] data, int format, int width, int height,

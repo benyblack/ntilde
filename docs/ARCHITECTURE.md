@@ -488,6 +488,17 @@ Kitty assets remain outside complete mux/replay snapshots, as before; import cle
 old resources. Animation, Unicode placeholders, extended crop/layout/delete actions
 and live owned image qualification remain separate from this basic lifecycle.
 
+Kitty and iTerm2 images are placed from their header, not from the decoder (#838).
+`ImageHeaderProbe` reads the pixel size of PNG, JPEG, GIF and WebP (Kitty raw data
+uses `s`/`v` and must be exactly that long), and that size alone decides whether the
+image is accepted, how many cells it covers, its quota charge and the Kitty reply.
+The host's `IImageDecoder` only supplies pixels; with no decoder, or one that fails,
+throws or returns a retired handle, the image is kept as an `UndecodedImage` that
+holds the same cells and draws nothing. This is what lets a persistent session's
+daemon, which has no decoder, place images exactly as each window does. Visible
+consequences: a valid header with a corrupt body reserves its cells and gets `OK`,
+and a format the probe cannot size is refused even where Skia could decode it.
+
 SIXEL cursor advancement and clipping belong to VT and run without a bitmap decoder. `SixelGeometry`
 measures bounded raster extents for headless parsing; `TerminalBuffer` owns placement, scroll-region
 clipping and image retirement. The renderer applies the snapshot's clipping metadata without deciding

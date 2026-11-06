@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "a5e91a85c0f7a01fd06ed25e9e5fb8888a5e05e76fb23d325a583207370c98f9",
+  "matrixSha256": "565a5652be64ebdf1bbe9a02b31f51c63e80c7614b1b91c8783e22df1f6e025d",
   "summary": {
     "totalRows": 101,
     "supportedCount": 53,
@@ -2617,7 +2617,7 @@
       "feature": "OSC 1337",
       "status": "\u2705 Supported",
       "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ITermAspectIntentTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/ITermAspectRenderTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ImageCellPixelGeometryTests.cs\u0060; Manual: \u0060docs/qa/QA_GRAPHICS.md\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/DecoderIndependentImagePlacementTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ImageHeaderProbeTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/ImageHeaderProbeSkiaTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ITermAspectIntentTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/ITermAspectRenderTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ImageCellPixelGeometryTests.cs\u0060; Manual: \u0060docs/qa/QA_GRAPHICS.md\u0060",
       "evidenceKinds": [
         "manual",
         "unit"
@@ -2632,7 +2632,15 @@
           "exists": true
         },
         {
+          "path": "tests/Ntilde.Rendering.Tests/ImageHeaderProbeSkiaTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/DecoderIndependentImagePlacementTests.cs",
           "exists": true
         },
         {
@@ -2642,12 +2650,16 @@
         {
           "path": "tests/Ntilde.VT.Tests/ImageCellPixelGeometryTests.cs",
           "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/ImageHeaderProbeTests.cs",
+          "exists": true
         }
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
-      "knownDeviations": "Requires \u0060inline=1\u0060 and the \u0060File=\u0060 arg shape; no \u0060name=\u0060/\u0060size=\u0060 enforcement. Image pixels and \u0060Npx\u0060 sizes map to cells in the \u0060CSI 16 t\u0060 unit (device pixels on a scaled display, not iTerm2\u0027s points). Default/explicit aspect preservation and explicit-zero stretch have real parser/Skia/offscreen pixel controls across wide/tall sources and DPI, including clipping, history and snapshot-pinned clear. Legacy/SIXEL policy and complete opaque-image state-transfer exclusions remain unchanged. Native-pixel/default sizing, other OSC 1337 variants and owned runtime image pixels remain unqualified. See \u0060docs/qa/terminfo/iterm-aspect-fit.md\u0060.",
+      "knownDeviations": "Requires \u0060inline=1\u0060 and the \u0060File=\u0060 arg shape; no \u0060name=\u0060/\u0060size=\u0060 enforcement. Image pixels and \u0060Npx\u0060 sizes map to cells in the \u0060CSI 16 t\u0060 unit (device pixels on a scaled display, not iTerm2\u0027s points). Default/explicit aspect preservation and explicit-zero stretch have real parser/Skia/offscreen pixel controls across wide/tall sources and DPI, including clipping, history and snapshot-pinned clear. Legacy/SIXEL policy and complete opaque-image state-transfer exclusions remain unchanged. Native-pixel/default sizing, other OSC 1337 variants and owned runtime image pixels remain unqualified. See \u0060docs/qa/terminfo/iterm-aspect-fit.md\u0060. Placement follows the image header (\u0060ImageHeaderProbe\u0060), never the decoder: an undecodable body with a valid header keeps its cells, and a format the probe cannot size is ignored (#838).",
       "sourceLine": 197
     },
     {
@@ -2671,7 +2683,7 @@
       "feature": "Kitty graphics protocol",
       "status": "\u26A0 Partial",
       "specOrNotes": "APC / OSC forms",
-      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/GraphicsTests.cs\u0060, \u0060tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyImageLifecycleTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyBase64PayloadTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/KittyImageLifecyclePixelTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/KittyImageLifecycleRenderTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyAspectSnapshotTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/KittyAspectRenderTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ImageCellPixelGeometryTests.cs\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/DecoderIndependentImagePlacementTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ImageHeaderProbeTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/ImageHeaderProbeSkiaTests.cs\u0060, \u0060tests/Ntilde.App.Tests/GraphicsTests.cs\u0060, \u0060tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyImageLifecycleTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyBase64PayloadTests.cs\u0060, \u0060tests/Ntilde.Rendering.Tests/KittyImageLifecyclePixelTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/KittyImageLifecycleRenderTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/KittyAspectSnapshotTests.cs\u0060, \u0060tests/Ntilde.App.Tests/RenderTests/KittyAspectRenderTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ImageCellPixelGeometryTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
@@ -2693,6 +2705,10 @@
           "exists": true
         },
         {
+          "path": "tests/Ntilde.Rendering.Tests/ImageHeaderProbeSkiaTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.Rendering.Tests/InlineImageEndToEndTests.cs",
           "exists": true
         },
@@ -2701,7 +2717,15 @@
           "exists": true
         },
         {
+          "path": "tests/Ntilde.VT.Tests/DecoderIndependentImagePlacementTests.cs",
+          "exists": true
+        },
+        {
           "path": "tests/Ntilde.VT.Tests/ImageCellPixelGeometryTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/ImageHeaderProbeTests.cs",
           "exists": true
         },
         {
@@ -2720,7 +2744,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
-      "knownDeviations": "Native APC (non-tunneled) on Windows decodes behind \u0060TerminalSettings.AllowNativeKittyGraphics\u0060 (default on) \u2014 historically probes got \u0060ERR\u0060/images skipped; modern ConPTY passes APC through intact (live-verified 2026-09). Payload formats: container (PNG/...) plus raw \u0060f=24\u0060/\u0060f=32\u0060 sized by \u0060s=\u0060/\u0060v=\u0060, \u0060o=z\u0060 zlib inflation, and \u0060t=f\u0060 file transport read through the host-injected \u0060ReadFileBytes\u0060 delegate (App-side reader confined to \u0060%TEMP%\u0060, 64 MB cap). \u0060t=s\u0060 (shm) skips gracefully. Basic lifecycle separates transmit-only \u0060a=t\u0060, transmit/display \u0060a=T\u0060 and retained display \u0060a=p\u0060. Unsigned ids, terminal-allocated \u0060I\u0060 numbers, placement ids, quiet policy and basic \u0060a/A/i/I/n/N\u0060 deletion have exact regression coverage, bounded storage and snapshot-safe handle retirement. Offscreen rendered pixels pin cursor-anchored aspect fit inside the existing cell envelope, including DPI snapping, snapshot clipping, history translation and cache-safe replacement; source dimensions remain distinct from reserved cells. Without \u0060c=\u0060/\u0060r=\u0060, image pixels and \u0060w=\u0060/\u0060h=\u0060 map to cells in the \u0060CSI 16 t\u0060 unit (device pixels on a scaled display, as in kitty), so a client that sized its image from that reply fills the cells it meant; rendered native-pixel fidelity stays unqualified. Legacy extra layout keys (including \u0060U=1\u0060) still do not qualify Unicode placeholders, animation or extended crop/layout/delete actions. Complete Kitty mux/replay asset transfer and live owned end-to-end image evidence remain unqualified. Valid leading-G base64 bytes are preserved across native/tunneled and chunked payloads; malformed extra prefixes remain rejected. See \u0060docs/qa/terminfo/kitty-image-lifecycle.md\u0060 and \u0060docs/qa/terminfo/kitty-payload-base64.md\u0060 and \u0060docs/qa/terminfo/kitty-aspect-fit.md\u0060.",
+      "knownDeviations": "Native APC (non-tunneled) on Windows decodes behind \u0060TerminalSettings.AllowNativeKittyGraphics\u0060 (default on) \u2014 historically probes got \u0060ERR\u0060/images skipped; modern ConPTY passes APC through intact (live-verified 2026-09). Payload formats: container (PNG/...) plus raw \u0060f=24\u0060/\u0060f=32\u0060 sized by \u0060s=\u0060/\u0060v=\u0060, \u0060o=z\u0060 zlib inflation, and \u0060t=f\u0060 file transport read through the host-injected \u0060ReadFileBytes\u0060 delegate (App-side reader confined to \u0060%TEMP%\u0060, 64 MB cap). \u0060t=s\u0060 (shm) skips gracefully. Basic lifecycle separates transmit-only \u0060a=t\u0060, transmit/display \u0060a=T\u0060 and retained display \u0060a=p\u0060. Unsigned ids, terminal-allocated \u0060I\u0060 numbers, placement ids, quiet policy and basic \u0060a/A/i/I/n/N\u0060 deletion have exact regression coverage, bounded storage and snapshot-safe handle retirement. Offscreen rendered pixels pin cursor-anchored aspect fit inside the existing cell envelope, including DPI snapping, snapshot clipping, history translation and cache-safe replacement; source dimensions remain distinct from reserved cells. Without \u0060c=\u0060/\u0060r=\u0060, image pixels and \u0060w=\u0060/\u0060h=\u0060 map to cells in the \u0060CSI 16 t\u0060 unit (device pixels on a scaled display, as in kitty), so a client that sized its image from that reply fills the cells it meant; rendered native-pixel fidelity stays unqualified. Legacy extra layout keys (including \u0060U=1\u0060) still do not qualify Unicode placeholders, animation or extended crop/layout/delete actions. Complete Kitty mux/replay asset transfer and live owned end-to-end image evidence remain unqualified. Valid leading-G base64 bytes are preserved across native/tunneled and chunked payloads; malformed extra prefixes remain rejected. See \u0060docs/qa/terminfo/kitty-image-lifecycle.md\u0060 and \u0060docs/qa/terminfo/kitty-payload-base64.md\u0060 and \u0060docs/qa/terminfo/kitty-aspect-fit.md\u0060. Placement, cell span and replies follow the image header (\u0060ImageHeaderProbe\u0060: PNG, JPEG, GIF, WebP; raw \u0060s\u0060/\u0060v\u0060), never the decoder: an undecodable body with a valid header keeps its cells and gets \u0060OK\u0060, and an unsizable format gets \u0060EINVAL:Image decode failed\u0060 (#838).",
       "sourceLine": 206
     },
     {
