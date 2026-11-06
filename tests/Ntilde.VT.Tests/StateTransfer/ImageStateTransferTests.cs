@@ -577,6 +577,49 @@ public sealed class ImageStateTransferTests
         Restore(next, decoder: null);
     }
 
+    [Fact]
+    public void Alternate_screen_rows_scrolled_above_the_first_row_come_back_after_a_restore()
+    {
+        // Scrolling the alternate screen up moves an image partly above the first row without clipping it,
+        // and scrolling back down shows it whole again. Those rows are not history that was dropped: a
+        // restore in between must not clip them.
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process("\x1b[?1049h\x1b[H" + Kitty("a=T,i=1,f=100,c=4,r=4,C=1", TestImages.PngBase64(20, 20))
+            + "\x1b[1;10H" + ITerm(";width=4;height=4;preserveAspectRatio=0", TestImages.PngBase64(10, 10)) + "\x1b[2S");
+        Assert.All(source.Images, image => Assert.Equal(-2, image.CellY));
+
+        var (restored, restoredParser) = Restore(Export(source, sourceParser), decoder: null);
+        Assert.Equal(Placements(source), Placements(restored));
+
+        sourceParser.Process("\x1b[2T");
+        restoredParser.Process("\x1b[2T");
+        Assert.Equal(Placements(source), Placements(restored));
+        Assert.All(restored.Images, image => Assert.Equal((0, 0), (image.CellY, image.ClipTopRows)));
+    }
+
+    [Fact]
+    public void An_iterm_image_left_in_dropped_history_does_not_evict_a_surviving_image()
+    {
+        // The importer keeps no history and one source. The newer iTerm2 image's rows are all in history
+        // it cannot keep, so it is not restored, and charging its bytes first would evict the older
+        // Kitty image's bytes for nothing, losing them from every later snapshot.
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process(Kitty("a=t,i=1,f=100", TestImages.PngBase64(20, 20))
+            + "\x1b[H" + ITerm(";width=4;height=1", TestImages.PngBase64(10, 10))
+            + string.Concat(Enumerable.Repeat("\r\n", 25)));
+        TerminalStateSnapshot snapshot = Export(source, sourceParser);
+        Assert.Single(snapshot.ITermImages!);
+
+        var restored = new TerminalBuffer(40, 20) { ImageSources = new ImageSourceBudget(maxSources: 1), MaxScrollbackBytes = 1 };
+        var restoredParser = new AnsiParser(restored, forceConPtyFiltering: false) { RetainImageSources = true };
+        TerminalStateTransfer.Restore(restored, restoredParser, TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(snapshot)));
+
+        Assert.Empty(restored.Images);
+        TerminalStateSnapshot next = Export(restored, restoredParser);
+        Assert.Equal(1u, Assert.Single(next.KittyImages!).Id);
+        Assert.Equal(1, restored.ImageSources.Count);
+    }
+
     /// <summary>Each placement's screen row and visible part; rows above the first history row are clipped.</summary>
     private static string OnScreen(TerminalBuffer buffer)
     {

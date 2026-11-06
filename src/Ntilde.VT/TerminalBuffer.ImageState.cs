@@ -120,18 +120,21 @@ public partial class TerminalBuffer
         evictionOrder.TryGetValue(source, out int order) ? order : null;
 
     /// <summary>
-    /// The placement in exported coordinates; false when nothing of it is left. Rows above the
-    /// exported history are gone, so they are clipped. What lies past the screen's right or bottom edge
-    /// is not: a Kitty image placed with <c>C=1</c> on the last row, or right of a column a narrowed
-    /// alternate screen no longer has, shows again when the screen grows, so it is carried as it is.
+    /// The placement in exported coordinates; false when nothing of it is left. Main-screen rows above
+    /// the exported history are gone, so they are clipped. Alternate-screen rows scrolled above the
+    /// first row are not: the live buffer only moves them, and scrolling back down shows them again, so
+    /// they are carried as they are; an image wholly above the first row never moves again and is not
+    /// carried. What lies past the screen's right or bottom edge is not clipped either: a Kitty image
+    /// placed with <c>C=1</c> on the last row, or right of a column a narrowed alternate screen no longer
+    /// has, shows again when the screen grows.
     /// </summary>
     private static bool TryExportedRows(TerminalImage image, TerminalStateSnapshot snapshot, out PlacementGeometry geometry)
     {
         int y = image.IsAltScreenImage ? image.CellY : image.CellY - snapshot.ScrollbackRowsDropped;
-        int top = Math.Max(image.ClipTopRows, Math.Max(0, -y));
+        int top = image.IsAltScreenImage ? image.ClipTopRows : Math.Max(image.ClipTopRows, Math.Max(0, -y));
         geometry = new PlacementGeometry(image.CellX, y, image.CellWidth, image.CellHeight, image.IsAltScreenImage,
             top, image.ClipBottomRows, image.ClipRightColumns);
-        return top + image.ClipBottomRows < image.CellHeight;
+        return y + image.CellHeight > 0 && top + image.ClipBottomRows < image.CellHeight;
     }
 
     /// <summary>The header size an iTerm2 placement was made from, whether or not it was decoded.</summary>
@@ -378,23 +381,31 @@ public partial class TerminalBuffer
         _nextKittyImageId = snapshot.KittyNextImageId;
         var kittyStates = snapshot.KittyImages ?? [];
         var itermStates = snapshot.ITermImages ?? [];
-        (ImageSource[] kittySources, ImageSource[] itermSources) = RetainImportedSources(kittyStates, itermStates);
+        // iTerm2 images exist only as placements: one that does not survive (its rows were in history
+        // this buffer could not keep) is left out before its bytes are charged, so it evicts nothing.
+        TerminalImage?[] itermImages = itermStates.Select(state => ImportedPlacement(new UndecodedImage(state.PixelWidth, state.PixelHeight),
+            new PlacementGeometry(state.X, state.Y, state.Width, state.Height, state.Alt, state.ClipTop, state.ClipBottom, state.ClipRight),
+            expiredRows)).ToArray();
+        (ImageSource[] kittySources, ImageSource?[] itermSources) = RetainImportedSources(kittyStates, itermStates, itermImages);
         List<KittyImageAsset> assets = ImportKittyAssets(kittyStates, kittySources);
         ImportKittyPlacements(snapshot.KittyPlacements ?? [], assets, order, expiredRows);
-        ImportITermImages(itermStates, itermSources, order, expiredRows);
+        ImportITermImages(itermStates, itermImages, itermSources, order);
     }
 
     /// <summary>
     /// Retains the bytes in the exported eviction order, not grouped by protocol, so the budget evicts
     /// the same image next as the source would; entries without an order keep theirs. The bytes are
-    /// copies, so later edits to the snapshot object cannot change what this buffer retains.
+    /// copies, so later edits to the snapshot object cannot change what this buffer retains. iTerm2
+    /// images without a surviving placement in <paramref name="itermImages"/> are not retained.
     /// </summary>
-    private (ImageSource[] Kitty, ImageSource[] ITerm) RetainImportedSources(List<TerminalKittyImageState> kittyStates, List<TerminalITermImageState> itermStates)
+    private (ImageSource[] Kitty, ImageSource?[] ITerm) RetainImportedSources(List<TerminalKittyImageState> kittyStates,
+        List<TerminalITermImageState> itermStates, TerminalImage?[] itermImages)
     {
         var kitty = new ImageSource[kittyStates.Count];
-        var iterm = new ImageSource[itermStates.Count];
+        var iterm = new ImageSource?[itermStates.Count];
         var retention = kittyStates.Select((state, i) => (Order: state.SourceOrder, Sequence: i, Kitty: true, Index: i))
-            .Concat(itermStates.Select((state, i) => (Order: state.SourceOrder, Sequence: kittyStates.Count + i, Kitty: false, Index: i)))
+            .Concat(itermStates.Select((state, i) => (Order: state.SourceOrder, Sequence: kittyStates.Count + i, Kitty: false, Index: i))
+                .Where(entry => itermImages[entry.Index] is not null))
             .OrderBy(entry => entry.Order ?? int.MaxValue).ThenBy(entry => entry.Sequence);
         foreach (var entry in retention)
         {
@@ -450,23 +461,16 @@ public partial class TerminalBuffer
         }
     }
 
-    private void ImportITermImages(List<TerminalITermImageState> states, ImageSource[] sources, Dictionary<TerminalImage, int> order,
-        int expiredRows)
+    private void ImportITermImages(List<TerminalITermImageState> states, TerminalImage?[] images, ImageSource?[] sources,
+        Dictionary<TerminalImage, int> order)
     {
         for (int i = 0; i < states.Count; i++)
         {
-            TerminalITermImageState state = states[i];
-            var geometry = new PlacementGeometry(state.X, state.Y, state.Width, state.Height, state.Alt,
-                state.ClipTop, state.ClipBottom, state.ClipRight);
-            if (ImportedPlacement(new UndecodedImage(state.PixelWidth, state.PixelHeight), geometry, expiredRows) is not { } image)
-            {
-                sources[i].Release();
-                continue;
-            }
+            if (images[i] is not { } image) continue;
             image.EncodedSource = sources[i];
-            image.PreserveAspectRatio = state.PreserveAspectRatio;
+            image.PreserveAspectRatio = states[i].PreserveAspectRatio;
             _images.Add(image);
-            if (state.Order is int z) order[image] = z;
+            if (states[i].Order is int z) order[image] = z;
         }
     }
 
@@ -505,6 +509,9 @@ public partial class TerminalBuffer
         int bottom = Math.Clamp(geometry.ClipBottom, 0, geometry.Height - top);
         int right = Math.Clamp(geometry.ClipRight, 0, geometry.Width);
         if (top + bottom >= geometry.Height || right >= geometry.Width) return null;
+        // Wholly above the first row, a placement never moves back (scrolling down moves only what
+        // overlaps the region), so nothing of it is left; export does not carry one either.
+        if (geometry.Y + geometry.Height <= 0) return null;
         int lastRow = geometry.Alt ? Rows - 1 : _scrollback.Count + Rows - 1;
         // Deleting characters (CSI P) can shift a placement left of column 0, even all the way off the
         // screen, where the live buffer keeps it invisible; it stays there, within the same bound.
