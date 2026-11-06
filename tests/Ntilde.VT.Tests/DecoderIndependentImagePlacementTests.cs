@@ -96,6 +96,22 @@ public sealed class DecoderIndependentImagePlacementTests
         Assert.Equal((5, 4), (image.CellWidth, image.CellHeight)); // from the 50 x 70 header, not the decoder's 7 x 3
     }
 
+    [Fact]
+    public void Undecoded_images_are_released_without_waiting_for_a_renderer()
+    {
+        // A parser with no renderer (the daemon, headless replay) never drains retired handles, so an
+        // undecoded image must not be queued there on replacement, deletion, eviction or clearing.
+        var (buffer, parser, _) = Create(decoder: null);
+        string png = TestImages.PngBase64(1, 1);
+        for (int i = 0; i < 300; i++)
+            parser.Process(Kitty($"a=T,i={i % 3 + 1},f=100,q=2,C=1", png) + Kitty($"a=t,i={i + 10},f=100,q=2", png) + ITerm("", png));
+        parser.Process(Kitty("a=d,d=A") + "\x1b[2J");
+        buffer.ClearImages();
+        var retired = new List<object>();
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Empty(retired);
+    }
+
     private static IEnumerable<(string, IImageDecoder)> Decoders() =>
     [
         ("working", new FixedSizeImageDecoder(50, 70)),

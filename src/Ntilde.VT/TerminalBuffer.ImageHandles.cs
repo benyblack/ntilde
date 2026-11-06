@@ -85,6 +85,10 @@ public partial class TerminalBuffer
     /// </summary>
     private void QueueImageHandleRetirement(object handle, bool disposeImmediately)
     {
+        // An undecoded image (#838) owns nothing to dispose and is never shared, so it is simply
+        // dropped. Queuing it would grow without bound where no renderer drains the queue: the
+        // persistent-session daemon, headless replay.
+        if (handle is UndecodedImage) return;
         lock (_imageHandleGate)
         {
             ImageHandleLifetime lifetime = _imageHandleLifetimes.GetValue(handle, static _ => new ImageHandleLifetime());
