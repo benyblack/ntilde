@@ -268,8 +268,15 @@ invariant changes.
   existing grace; fresh handles avoid history scans and bulk unlink is linear.
   Weak lifetime records and a short private admission/drain gate preserve ordering
   without retaining disposed wrappers or blocking frame drain on the parser lock.
-  Transmit-only removal invalidates the view. Complete mux/replay
-  state does not serialize Kitty assets; imported state clears old resources.
+  Transmit-only removal invalidates the view. Where the parser retains image
+  sources (#838), complete state carries Kitty assets with their placements and
+  iTerm2 images as the bytes they were sent as, bounded by `ImageSourceBudget`
+  in bytes and in what a restore inflates to validate them, so every export
+  restores; import validates them, restores them undecoded and
+  `TerminalStateTransfer` decodes them. Main-screen placements (SIXEL too) move
+  up by the history rows the importer's scrollback budget cannot keep, as
+  eviction moves them; Kitty and iTerm2 rows above the first row are carried
+  unclipped, since scrolling back down shows them again. Imported state always clears old resources.
   Basic lifecycle evidence does not qualify animation, Unicode placeholders or
   extended crop/layout/delete actions.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no

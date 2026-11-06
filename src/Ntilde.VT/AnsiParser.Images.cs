@@ -132,6 +132,14 @@ namespace Ntilde.VT
         public bool RetainSixelSources { get; set; }
 
         /// <summary>
+        /// Keep the encoded bytes of Kitty and iTerm2 images (bounded by
+        /// <see cref="TerminalBuffer.ImageSources"/>) so <see cref="TerminalBuffer.ExportState"/> can
+        /// carry them, as <see cref="RetainSixelSources"/> does for Sixel (#838). Set where snapshots
+        /// move between processes: the multiplexer daemon and its clients.
+        /// </summary>
+        public bool RetainImageSources { get; set; }
+
+        /// <summary>
         /// Routes internal native sessions through bounded admission; public legacy sessions retain their decoder path.
         /// </summary>
         private void HandleSixel(string dcs)
@@ -348,14 +356,22 @@ namespace Ntilde.VT
 
                 int absRow = ImageAnchorRow();
 
-                var img = new TerminalImage(imageHandle, _buffer.CursorCol, absRow, width, height);
-                img.PreserveAspectRatio = preserveAspectRatio;
+                // Where snapshots carry images, the bytes are kept with the placement (#838).
+                ImageSource? source = RetainImageSources ? _buffer.ImageSources.Retain(data) : null;
+                var img = new TerminalImage(imageHandle, _buffer.CursorCol, absRow, width, height)
+                {
+                    PreserveAspectRatio = preserveAspectRatio,
+                    EncodedSource = source,
+                };
                 if (!_buffer.TryAddImage(img))
                 {
                     // A decoder that hands back an already retired handle cannot change the outcome:
                     // the image is placed undecoded, as a parser without a decoder places it.
-                    img = new TerminalImage(new UndecodedImage(pixelWidth, pixelHeight), _buffer.CursorCol, absRow, width, height);
-                    img.PreserveAspectRatio = preserveAspectRatio;
+                    img = new TerminalImage(new UndecodedImage(pixelWidth, pixelHeight), _buffer.CursorCol, absRow, width, height)
+                    {
+                        PreserveAspectRatio = preserveAspectRatio,
+                        EncodedSource = source,
+                    };
                     _buffer.AddImage(img);
                 }
 

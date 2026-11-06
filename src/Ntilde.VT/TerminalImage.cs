@@ -47,6 +47,9 @@ namespace Ntilde.VT
 
         internal KittyImageAsset? KittyAsset { get; set; }
 
+        /// <summary>An iTerm2 image's bytes as sent, kept for snapshots when the parser retains image sources (#838).</summary>
+        internal ImageSource? EncodedSource { get; set; }
+
         public TerminalImage(object imageHandle, int cellX, int cellY, int cellWidth, int cellHeight)
         {
             ImageId = Guid.NewGuid();

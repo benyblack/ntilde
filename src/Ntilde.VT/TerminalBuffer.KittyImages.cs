@@ -9,10 +9,15 @@ internal sealed class KittyImageAsset(uint id, uint number, bool isAltScreen, ob
     internal uint Id { get; } = id;
     internal uint Number { get; } = number;
     internal bool IsAltScreen { get; } = isAltScreen;
-    internal object Handle { get; } = handle;
+    /// <summary>The pixels; a snapshot restore swaps its undecoded placeholder for the decoded handle.</summary>
+    internal object Handle { get; set; } = handle;
     internal int PixelWidth { get; } = pixelWidth;
     internal int PixelHeight { get; } = pixelHeight;
     internal long PixelCharge => (long)PixelWidth * PixelHeight * 4;
+    /// <summary>The bytes as sent, kept for snapshots when the parser retains image sources (#838).</summary>
+    internal ImageSource? Source { get; init; }
+    /// <summary>How <see cref="Source"/> was sent, so it can be decoded again on restore.</summary>
+    internal KittyImageEncoding? Encoding { get; init; }
 }
 
 public partial class TerminalBuffer
@@ -25,7 +30,13 @@ public partial class TerminalBuffer
     private readonly List<KittyImageAsset> _kittyImageAssets = new();
     private uint _nextKittyImageId;
 
-    internal KittyImageAsset? StoreKittyImage(object handle, int pixelWidth, int pixelHeight, uint id, uint number)
+    /// <param name="sent">
+    /// The bytes as sent, retained for snapshots (#838) when not null. They are charged to
+    /// <see cref="ImageSources"/> only after the replaced asset's and every quota victim's bytes are
+    /// released, so the source budget never evicts a surviving image's bytes to make room for a moment.
+    /// </param>
+    internal KittyImageAsset? StoreKittyImage(object handle, int pixelWidth, int pixelHeight, uint id, uint number,
+        KittySentSource? sent = null)
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         int placementsBefore = _images.Count;
@@ -34,19 +45,16 @@ public partial class TerminalBuffer
             if (!TryAdmitImageHandle(handle)) return null;
             KittyImageAsset? old = id == 0 ? null : FindKittyImage(id, 0);
             if (id == 0 && number != 0) id = AllocateKittyImageId();
-            var asset = new KittyImageAsset(id, number, _isAltScreen, handle, pixelWidth, pixelHeight);
+            List<KittyImageAsset> victims = KittyQuotaVictims(old, (long)pixelWidth * pixelHeight * 4);
+            old?.Source?.Release();
+            foreach (KittyImageAsset victim in victims) victim.Source?.Release();
+            ImageSource? source = sent is null ? null : ImageSources.Retain(sent.Bytes, sent.InflationCost);
+            var asset = new KittyImageAsset(id, number, _isAltScreen, handle, pixelWidth, pixelHeight) { Source = source, Encoding = sent?.Encoding };
             // Publish the new ownership before retiring the old one: even a host decoder
             // sharing an opaque handle cannot retire that handle while the new asset owns it.
             _kittyImageAssets.Add(asset);
             if (old is not null) FreeKittyImage(old);
-            while (_kittyImageAssets.Count(item => item.IsAltScreen == _isAltScreen) > MaxKittyImageAssets
-                || _kittyImageAssets.Where(item => item.IsAltScreen == _isAltScreen).Sum(item => item.PixelCharge) > MaxKittyImagePixelBytes)
-            {
-                KittyImageAsset oldest = _kittyImageAssets.FirstOrDefault(item => item.IsAltScreen == _isAltScreen
-                    && !ReferenceEquals(item, asset) && !HasKittyPlacement(item))
-                    ?? _kittyImageAssets.First(item => item.IsAltScreen == _isAltScreen && !ReferenceEquals(item, asset));
-                FreeKittyImage(oldest);
-            }
+            foreach (KittyImageAsset victim in victims) FreeKittyImage(victim);
             return asset;
         }
         finally
@@ -55,6 +63,24 @@ public partial class TerminalBuffer
             ExitWriteLockIfNeeded(Lock, lockTaken);
             if (removedPlacements) Invalidate();
         }
+    }
+
+    /// <summary>
+    /// The assets the per-screen quotas evict to make room for a new one of <paramref name="charge"/>
+    /// pixel bytes, in eviction order: unplaced assets first, then the oldest. <paramref name="replaced"/>
+    /// is freed anyway and is not counted.
+    /// </summary>
+    private List<KittyImageAsset> KittyQuotaVictims(KittyImageAsset? replaced, long charge)
+    {
+        var remaining = _kittyImageAssets.Where(item => item.IsAltScreen == _isAltScreen && !ReferenceEquals(item, replaced)).ToList();
+        var victims = new List<KittyImageAsset>();
+        while (remaining.Count > 0 && (remaining.Count + 1 > MaxKittyImageAssets || remaining.Sum(item => item.PixelCharge) + charge > MaxKittyImagePixelBytes))
+        {
+            KittyImageAsset victim = remaining.FirstOrDefault(item => !HasKittyPlacement(item)) ?? remaining[0];
+            remaining.Remove(victim);
+            victims.Add(victim);
+        }
+        return victims;
     }
 
     private uint AllocateKittyImageId()
@@ -168,6 +194,7 @@ public partial class TerminalBuffer
             _images.RemoveAt(i);
         }
         _kittyImageAssets.Remove(asset);
+        asset.Source?.Release();
         RetireUnstoredKittyHandle(asset.Handle);
     }
 

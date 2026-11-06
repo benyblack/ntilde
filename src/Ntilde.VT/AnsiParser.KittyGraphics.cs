@@ -21,7 +21,7 @@ namespace Ntilde.VT
         /// legitimate encoded container of that geometry approaches 32 MiB. Raw payloads
         /// (f=24/32) bypass this constant — they are bounded by their exact declared size.
         /// </summary>
-        private const long KittyMaxInflatedContainerBytes = 32L * 1024 * 1024;
+        internal const long KittyMaxInflatedContainerBytes = 32L * 1024 * 1024;
 
         /// <summary>
         /// Pixel-dimension guardrail for raw kitty payloads (f=24/32), enforced BEFORE
@@ -254,6 +254,7 @@ namespace Ntilde.VT
 
             if (!TryReadKittyDimensions(format, out int rawWidth, out int rawHeight)) return "EINVAL:Invalid raw image dimensions";
 
+            byte[] sent = data;
             data = InflateKittyPayload(data, format, rawWidth, rawHeight);
             if (data == null) return "EINVAL:Invalid compressed image payload";
 
@@ -273,12 +274,27 @@ namespace Ntilde.VT
 
             // A decoder that hands back an already retired handle cannot change the outcome either: the
             // image is kept undecoded, as a parser without a decoder keeps it.
-            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number)
-                ?? _buffer.StoreKittyImage(new UndecodedImage(pixelWidth, pixelHeight), pixelWidth, pixelHeight, identity.Id, identity.Number);
+            // Where snapshots carry images, the bytes are kept as sent (before o=z inflation) with how
+            // they were sent; the store charges them only after freeing what this image replaces or evicts.
+            KittySentSource? retained = RetainedKittySource(sent, data, format, rawWidth, rawHeight);
+            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number, retained)
+                ?? _buffer.StoreKittyImage(new UndecodedImage(pixelWidth, pixelHeight), pixelWidth, pixelHeight, identity.Id, identity.Number, retained);
             if (asset is null) return "EINVAL:Image could not be stored";
             id = asset.Id;
             if (display) PlaceKittyImage(asset, identity.HasIdentity ? identity.Placement : 0);
             return "OK";
+        }
+
+        /// <summary>
+        /// What a transmitted image keeps for snapshots: null unless the parser retains image sources,
+        /// else the bytes as sent, how they were sent and what validating them inflates, measured from
+        /// <paramref name="inflated"/>, the bytes after <c>o=z</c> inflation.
+        /// </summary>
+        private KittySentSource? RetainedKittySource(byte[] sent, byte[] inflated, int format, int rawWidth, int rawHeight)
+        {
+            if (!RetainImageSources) return null;
+            var encoding = new KittyImageEncoding(format, _kittyPendingParams.ContainsKey("o"), rawWidth, rawHeight);
+            return new KittySentSource(sent, encoding, TerminalBuffer.SnapshotInflationCost(inflated, encoding));
         }
 
         private string? ValidateKittyPayloadEncoding()
@@ -488,7 +504,7 @@ namespace Ntilde.VT
         /// returns null for the caller to reject, rather than an exception mid-parse.
         /// Pure CPU work — no I/O, keeping VT a leaf.
         /// </summary>
-        private static byte[]? InflateZlib(byte[] compressed, int maxBytes)
+        internal static byte[]? InflateZlib(byte[] compressed, int maxBytes)
         {
             try
             {
@@ -505,6 +521,7 @@ namespace Ntilde.VT
                     if (n <= 0) break;
                     output.Write(buffer, 0, n);
                     total += n;
+                    InflationMeter.Bytes += n;
                     if (total > maxBytes)
                     {
                         TerminalLogger.Debug($"[ANSI_PARSER] Kitty o=z inflate exceeded its {maxBytes} byte bound; discarding.");

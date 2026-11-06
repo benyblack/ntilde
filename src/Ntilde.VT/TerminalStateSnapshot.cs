@@ -21,8 +21,9 @@ namespace Ntilde.VT
     /// Two things are deliberately excluded, and a reader who finds them missing should read
     /// this rather than assume an oversight.
     ///
-    /// <b>Bitmap handles and non-SIXEL images</b>: handles are decoder-owned and not transferable.
-    /// Opted-in persistent sessions carry bounded SIXEL source and placement instead of pixels.
+    /// <b>Bitmap handles</b>: handles are decoder-owned and not transferable. Opted-in persistent
+    /// sessions carry bounded SIXEL source and placement, and the bytes Kitty and iTerm2 images were
+    /// sent as (#838), instead of pixels; the importer decodes them again.
     ///
     /// <b>The OSC 133 shell-integration marks</b> (<c>TerminalBuffer</c>'s tracked command-start
     /// and command-output-start marks, and the accepting-input flag). A mark is anchored by a
@@ -133,6 +134,100 @@ namespace Ntilde.VT
         [JsonPropertyName("sixels"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<TerminalSixelImageState>? Sixels { get; set; }
 
+        /// <summary>
+        /// Retained Kitty images (#838): the bytes as sent and how, on either screen, whether placed or
+        /// only transmitted. Absent where the exporter does not retain image sources.
+        /// </summary>
+        [JsonPropertyName("kitty_images"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<TerminalKittyImageState>? KittyImages { get; set; }
+
+        /// <summary>Placements of <see cref="KittyImages"/>, each naming its image by index.</summary>
+        [JsonPropertyName("kitty_placements"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<TerminalKittyPlacementState>? KittyPlacements { get; set; }
+
+        /// <summary>
+        /// The Kitty image-id allocator (the last id handed to an <c>I=</c>-only transmission), so ids
+        /// allocated after a restore match the ones the source would have allocated.
+        /// </summary>
+        [JsonPropertyName("kitty_next_id"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public uint KittyNextImageId { get; set; }
+
+        /// <summary>Retained iTerm2 inline images (#838) and their placements.</summary>
+        [JsonPropertyName("iterm_images"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<TerminalITermImageState>? ITermImages { get; set; }
+
+    }
+
+    /// <summary>A retained Kitty image: what was sent, and the size its header declared.</summary>
+    public sealed class TerminalKittyImageState
+    {
+        [JsonPropertyName("id")] public uint Id { get; set; }
+        [JsonPropertyName("number")] public uint Number { get; set; }
+        [JsonPropertyName("alt")] public bool Alt { get; set; }
+        /// <summary>Kitty <c>f=</c>: 24 or 32 for raw pixels, 0 or 100 for a container.</summary>
+        [JsonPropertyName("format")] public int Format { get; set; }
+        /// <summary>Kitty <c>o=z</c>: <see cref="Data"/> is a zlib stream.</summary>
+        [JsonPropertyName("compressed")] public bool Compressed { get; set; }
+        [JsonPropertyName("raw_w")] public int RawWidth { get; set; }
+        [JsonPropertyName("raw_h")] public int RawHeight { get; set; }
+        /// <summary>Pixel size from the header (or <c>s=</c>/<c>v=</c>); checked again on import.</summary>
+        [JsonPropertyName("w")] public int Width { get; set; }
+        [JsonPropertyName("h")] public int Height { get; set; }
+        [JsonPropertyName("data")] public byte[] Data { get; set; } = [];
+        /// <summary>Position in the source budget's eviction order (oldest first); absent when unknown.</summary>
+        [JsonPropertyName("src"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? SourceOrder { get; set; }
+    }
+
+    /// <summary>A placement of a retained Kitty image, in the same coordinates as SIXEL placements.</summary>
+    public sealed class TerminalKittyPlacementState
+    {
+        /// <summary>Index into <see cref="TerminalStateSnapshot.KittyImages"/>.</summary>
+        [JsonPropertyName("image")] public int Image { get; set; }
+        /// <summary>Kitty <c>p=</c>; 0 when the placement has none.</summary>
+        [JsonPropertyName("placement")] public uint Placement { get; set; }
+        [JsonPropertyName("x")] public int X { get; set; }
+        [JsonPropertyName("y")] public int Y { get; set; }
+        [JsonPropertyName("cw")] public int Width { get; set; }
+        [JsonPropertyName("ch")] public int Height { get; set; }
+        [JsonPropertyName("top")] public int ClipTop { get; set; }
+        [JsonPropertyName("bottom")] public int ClipBottom { get; set; }
+        [JsonPropertyName("right")] public int ClipRight { get; set; }
+        [JsonPropertyName("preserve")] public bool PreserveAspectRatio { get; set; }
+        /// <summary>
+        /// Position among all exported placements (SIXEL, Kitty, iTerm2), so a restore keeps which image
+        /// is drawn over which; absent on older snapshots.
+        /// </summary>
+        [JsonPropertyName("z"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Order { get; set; }
+    }
+
+    /// <summary>A retained iTerm2 inline image and its placement.</summary>
+    public sealed class TerminalITermImageState
+    {
+        [JsonPropertyName("data")] public byte[] Data { get; set; } = [];
+        /// <summary>Position in the source budget's eviction order (oldest first); absent when unknown.</summary>
+        [JsonPropertyName("src"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? SourceOrder { get; set; }
+
+        /// <summary>Pixel size from the header; checked again on import.</summary>
+        [JsonPropertyName("w")] public int PixelWidth { get; set; }
+        [JsonPropertyName("h")] public int PixelHeight { get; set; }
+        [JsonPropertyName("x")] public int X { get; set; }
+        [JsonPropertyName("y")] public int Y { get; set; }
+        [JsonPropertyName("cw")] public int Width { get; set; }
+        [JsonPropertyName("ch")] public int Height { get; set; }
+        [JsonPropertyName("alt")] public bool Alt { get; set; }
+        [JsonPropertyName("top")] public int ClipTop { get; set; }
+        [JsonPropertyName("bottom")] public int ClipBottom { get; set; }
+        [JsonPropertyName("right")] public int ClipRight { get; set; }
+        [JsonPropertyName("preserve")] public bool PreserveAspectRatio { get; set; }
+        /// <summary>
+        /// Position among all exported placements (SIXEL, Kitty, iTerm2), so a restore keeps which image
+        /// is drawn over which; absent on older snapshots.
+        /// </summary>
+        [JsonPropertyName("z"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Order { get; set; }
     }
 
     public sealed class TerminalSixelImageState
@@ -150,6 +245,12 @@ namespace Ntilde.VT
         [JsonPropertyName("top")] public int ClipTop { get; set; }
         [JsonPropertyName("bottom")] public int ClipBottom { get; set; }
         [JsonPropertyName("right")] public int ClipRight { get; set; }
+        /// <summary>
+        /// Position among all exported placements (SIXEL, Kitty, iTerm2), so a restore keeps which image
+        /// is drawn over which; absent on older snapshots.
+        /// </summary>
+        [JsonPropertyName("z"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Order { get; set; }
     }
 
     /// <summary>One screen's (or the scrollback's) cells and per-row side tables.</summary>

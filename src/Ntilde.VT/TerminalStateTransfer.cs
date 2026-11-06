@@ -109,6 +109,7 @@ namespace Ntilde.VT
 
             IReadOnlyList<Hyperlink> links = buffer.ImportState(snapshot);
             buffer.DecodeTransferredSixels(parser.ImageDecoder);
+            buffer.DecodeTransferredImages(parser.ImageDecoder);
 
             if (snapshot.Parser is not null)
             {
