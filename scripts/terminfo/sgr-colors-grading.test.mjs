@@ -192,6 +192,23 @@ test('the replay module must reproduce the live pinned grading exactly', () => {
         /replay does not reproduce the live grading/);
 });
 
+test('a stricter contract mismatch is published as unsupported with the divergence recorded', () => {
+    const evidence = syntheticSgrColorsEvidence();
+    // SGR 22 cleared bold and dim but left a palette color on Y: the pinned
+    // criterion still passes (it only reads style flags) while the contract
+    // grader measures the color corruption.
+    const screen = structuredClone(syntheticSgrColorsScreen('sgr.selective-reset.bold'));
+    screen.attributeRuns[2] = { count: 1, flags: 768 | 0x04 | 0x4000, fg: 3, bg: -1 };
+    evidence.frames[2].screen = screen;
+    evidence.frames[2].sha256 = snapshotHash(screen);
+    const contract = sgrColorsContracts.find(item => item.caseId === 'sgr.selective-reset.bold');
+    evidence.run.cases[0].pinned = { probeId: contract.caseId, ...replaySgrColorsPinned(contract, [screen]) };
+    const value = buildSgrColorsGradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter);
+    assert.equal(value.cases[0].conclusion.outcome, 'unsupported');
+    assert.equal(value.cases[0].pinned.observation.outcome, 'supported');
+    assert.deepEqual(value.cases[0].divergence, { pinnedOutcome: 'supported', contractOutcome: 'unsupported' });
+});
+
 test('the recording context serves the pinned probe reads in plan order', () => {
     const contract = sgrColorsContracts.find(item => item.caseId === 'sgr.reset');
     const screen = syntheticSgrColorsScreen('sgr.reset');

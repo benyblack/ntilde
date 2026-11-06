@@ -67,9 +67,11 @@ export const defaultColors = cell => fgDefaultMarker(cell) && bgDefaultMarker(ce
 /** No style flag set on the cell. */
 const plainStyles = cell => !cell.bold && !cell.dim && !cell.italic && !cell.underline;
 
-/** A measuredReset-style control: chars exposed, baseline unset, setup active. */
+/** A measuredReset-style control: chars exposed, baseline unset, setup active,
+ * and the setup cell's colors still on their default markers — the pinned
+ * fixtures set no colors, so any color drift invalidates the control. */
 function resetControl(baseline, before, active, untouched) {
-    return plainStyles(baseline) && defaultColors(baseline)
+    return plainStyles(baseline) && defaultColors(baseline) && defaultColors(before)
         && active.every(name => before[name] === true)
         && untouched.every(name => before[name] === false);
 }
@@ -148,10 +150,12 @@ export const sgrColorsContracts = Object.freeze([
             if (!resetControl(baseline, before, ['bold', 'italic', 'underline'], ['dim'])) {
                 return { outcome: 'inconclusive', note: 'Neutral baseline, styled setup, or reset readback was not measured' };
             }
-            // SGR 0 must clear every contracted attribute and restore the
-            // default color markers — not palette index 0 and not literal RGB:
-            // default markers, palette indices and literal RGB are distinct
-            // storage states.
+            // SGR 0 must clear every contracted attribute while the colors
+            // REMAIN on their default markers — the pinned fixture sets no
+            // colors, so this proves no color corruption (no palette-index-0
+            // or literal storage appears), not a restoration of changed
+            // colors. Default markers, palette indices and literal RGB are
+            // distinct storage states.
             const cleared = !after.bold && !after.italic && !after.underline && !after.dim;
             const colorsDefault = defaultColors(after);
             return { outcome: cleared && colorsDefault ? 'supported' : 'unsupported' };

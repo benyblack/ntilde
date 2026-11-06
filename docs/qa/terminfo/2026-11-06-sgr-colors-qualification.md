@@ -9,10 +9,12 @@ attributes and palette indices, bound to a completed schema-14 cleanup
 receipt.
 
 This is a **local collector-extension measurement**, not stock CLI output. The
-unchanged stock run of the same instance retains its identity (86 supported /
-1 unsupported / 168 inconclusive, `suiteComplete=false`) and grades all five
-cases inconclusive with `consumed` evidence — the pin's own terminal path
-states "Cursor advance does not verify SGR styling".
+same instance's owned-adapter collector run (the derived
+`ntilde-owned-macos-v1` adapter, not the unmodified stock CLI) retains its
+recorded identity (86 supported / 1 unsupported / 168 inconclusive,
+`suiteComplete=false`) with SGR scoring unchanged from stock definitions, and
+grades all five cases inconclusive with `consumed` evidence — the pin's own
+terminal path states "Cursor advance does not verify SGR styling".
 
 ## What each conclusion establishes
 
@@ -20,7 +22,7 @@ states "Cursor advance does not verify SGR styling".
 |---|---|---|
 | `sgr.selective-reset.bold` | Control `C` plain; `X` (SGR 1;2;3) bold+dim+italic all initially **active**; `Y` (after SGR 22) bold and dim **cleared**, italic **preserved**, colors untouched | **supported** |
 | `sgr.selective-reset.italic` | Control `C` plain; `X` (SGR 1;3) bold+italic active; `Y` (after SGR 23) italic cleared, bold preserved, no other flag moved | **supported** |
-| `sgr.reset` | Control `C` plain; `X` (SGR 1;3;4) bold+italic+underline active; `Y` (after SGR 0) all three cleared **and** colors back on the default markers — not palette index 0, not literal RGB | **supported** |
+| `sgr.reset` | Control `C` plain; `X` (SGR 1;3;4) bold+italic+underline active; `Y` (after SGR 0) all three cleared **and** colors still on their default markers — the fixture sets no colors, so this proves SGR 0 introduces no palette-index-0 or literal color, not a restoration of changed colors | **supported** |
 | `sgr.fg.standard` | Control `C` on default markers; `X` (SGR 31) stores exact **palette index 1**; `Y` (SGR 34) stores exact **index 4**; backgrounds keep default markers, no style flag moves | **supported** (stored indices) |
 | `sgr.bg.standard` | Control `C` on default markers; `X` (SGR 41) stores exact **palette index 1**; `Y` (SGR 44) stores exact **index 4**; foregrounds keep default markers | **supported** (stored indices) |
 
@@ -61,7 +63,9 @@ groups, finish — are retained with hashes; the start and finish frames must
 match exactly (alternate-screen restoration).
 
 `unsupported` requires a measured mismatch **behind a valid control**
-(initially-unset baseline, proven-active setup). Wrong input bytes, missing
+(initially-unset baseline, proven-active setup, and setup-cell colors still on
+their default markers — the pinned fixtures set no colors, so color drift
+invalidates the control). Wrong input bytes, missing
 captures, changed observations, mismatched run identities, fabricated pinned
 fields and incomplete restoration each prevent any conclusive grade (covered
 by CI regressions, including default-versus-palette-index confusion and
@@ -91,8 +95,8 @@ declarations.
 | App informational version | `0.13.0+1e96d5f5c48f036f0d3c5386cb03069275e59140` |
 | App source | `1e96d5f5…` (= main at the #877 merge; this branch changes scripts/docs only) |
 | Adapter/scripts source | `4fe59935…` (this branch; recorded separately because it differs from the App source) |
-| Stock run (untouched) | 86 supported / 1 unsupported / 168 inconclusive; `suiteComplete=false` |
-| Stock five-case outcomes | inconclusive (`consumed`) |
+| Owned-adapter collector run | 86 supported / 1 unsupported / 168 inconclusive; `suiteComplete=false`; SGR scoring unchanged from stock definitions (derived adapter output, not unmodified stock CLI bytes) |
+| Five-case collector outcomes | inconclusive (`consumed`) |
 | First-batch grading suite | still 4/4 supported in the same run (independent rederivation preserved) |
 | Geometry | 40 rows × 140 columns |
 | Local evidence | `artifacts/terminfo/owned-qibNZN` (machine-readable copy with digests in the [JSON](2026-11-06-sgr-colors-qualification.json)) |

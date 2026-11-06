@@ -87,6 +87,26 @@ test('failed preparation attempts are preserved, not silently replaced', () => {
     }
 });
 
+test('published digest declarations match the reconstructed retained bytes', async () => {
+    const data = JSON.parse(readFileSync(path));
+    // The report was written with indent 2; the run log compact; the journal
+    // one compact frame per line. Reconstruct each and compare digests.
+    assert.equal(hash(JSON.stringify(data.sgrColorsReport, null, 2) + '\n'),
+        data.retained.sgrColorsObservationsSha256);
+    assert.equal(hash(JSON.stringify(data.sgrColorsRun) + '\n'), data.retained.sgrColorsRunSha256);
+    assert.equal(hash(data.sgrColorsReport.snapshots.map(frame => JSON.stringify(frame)).join('\n') + '\n'),
+        data.retained.sgrColorsJournalSha256);
+    assert.equal(data.retained.collectorSgrColorsSha256, data.receipt.sgrColorsEvidence.adapterBundleSha256);
+    assert.equal(data.retained.sgrColorsObservationsSha256, data.receipt.sgrColorsEvidence.sha256);
+    assert.equal(data.retained.sgrColorsRunSha256, data.receipt.sgrColorsEvidence.runSha256);
+    // The measured run used the frozen 113-file v7 inventory.
+    assert.equal(data.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v7');
+    const { capturedV14SourceFiles, capturedV15SourceFiles } = await import('./owned-sources.mjs');
+    assert.equal(Object.keys(capturedV14SourceFiles).length, 113);
+    assert.equal(Object.keys(capturedV14SourceFiles).includes('gradedPlanSourceSha256'), false);
+    assert.equal(Object.keys(capturedV15SourceFiles).includes('gradedPlanSourceSha256'), true);
+});
+
 test('older publications remain byte-for-byte unchanged beside this batch', () => {
     const asciiSgr = readFileSync(new URL('../../docs/qa/terminfo/2026-11-05-ascii-sgr-qualification.json', import.meta.url));
     assert.equal(asciiSgr.includes('sgrColorsReport'), false);

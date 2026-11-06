@@ -491,7 +491,9 @@ extension (`ntilde-owned-sgr-colors-grading-v1`) derived digest-checked over
 the first grading extension. The three reset cases replay the pinned
 `C${setup}X${reset}Y` fixtures byte-exactly and require the pinned
 `measuredReset` code, the independent contract grader and the parent-side
-replay to agree on every field. The two standard-color cases verify the exact
+replay to agree on every field; where the stricter contract grader measures a
+mismatch the pinned criterion cannot see (for example color drift), both
+verdicts are recorded and the conclusion follows the stricter grader. The two standard-color cases verify the exact
 stored palette indices and unaffected default markers; the pinned RGB
 criterion stays at its own indistinguishable-inconclusive verdict because the
 stored projection deliberately exposes no theme-resolved RGB — no index is

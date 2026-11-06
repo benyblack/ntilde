@@ -75,6 +75,27 @@ test('accidental clearing of an unrelated attribute is unsupported, not inconclu
     assert.equal(stale.outcome, 'inconclusive');
 });
 
+test('a setup cell with color drift keeps the control inconclusive', () => {
+    const setupStyles = {
+        'sgr.selective-reset.bold': 768 | 0x01 | 0x40 | 0x04,
+        'sgr.selective-reset.italic': 768 | 0x01 | 0x04,
+        'sgr.reset': 768 | 0x01 | 0x04 | 0x08,
+    };
+    for (const [caseId, styledFlags] of Object.entries(setupStyles)) {
+        const contract = sgrColorsContracts.find(item => item.caseId === caseId);
+        // X carries a palette foreground color the pinned fixture never set.
+        const graded = gradeOf(contract, screenWith(caseId, screen => {
+            screen.attributeRuns = [
+                { count: 1, flags: 768, fg: -1, bg: -1 },
+                { count: 1, flags: styledFlags | 0x4000, fg: 2, bg: -1 },
+                { count: 358, flags: 768, fg: -1, bg: -1 },
+            ];
+        }));
+        assert.equal(graded.outcome, 'inconclusive', caseId);
+        assert.equal(graded.note, 'Neutral baseline, styled setup, or reset readback was not measured', caseId);
+    }
+});
+
 test('selective-reset.italic clearing the preserved bold is unsupported', () => {
     const contract = sgrColorsContracts.find(item => item.caseId === 'sgr.selective-reset.italic');
     const graded = gradeOf(contract, screenWith('sgr.selective-reset.italic', screen => {

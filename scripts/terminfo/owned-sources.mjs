@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v7';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v8';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -157,15 +157,19 @@ export const capturedV13SourceFiles = Object.freeze({
     asciiSgrGradingSourceSha256: "ascii-sgr-grading.mjs",
     asciiSgrReceiptSourceSha256: "ascii-sgr-receipt.mjs",
 });
-// Frozen v14 SGR-colors grading scope; future experiments must create a distinct policy and map.
+// Frozen v14 SGR-colors grading scope (113 files, as measured under policy v7).
 export const capturedV14SourceFiles = Object.freeze({
     ...capturedV13SourceFiles,
-    gradedPlanSourceSha256: "graded-plan.mjs",
     sgrColorsGradingCollectorSourceSha256: "sgr-colors-grading-collector.mjs",
     sgrColorsContractsSourceSha256: "sgr-colors-contracts.mjs",
     sgrColorsCollectorSourceSha256: "sgr-colors-collector.mjs",
     sgrColorsGradingSourceSha256: "sgr-colors-grading.mjs",
     sgrColorsReceiptSourceSha256: "sgr-colors-receipt.mjs",
+});
+// Frozen v15 shared graded-plan scope; future experiments must create a distinct policy and map.
+export const capturedV15SourceFiles = Object.freeze({
+    ...capturedV14SourceFiles,
+    gradedPlanSourceSha256: "graded-plan.mjs",
 });
 /** Resolve paths from the caller's fixed inventory; selected C# inputs remain nonexecuted reference bytes. */
 export function ownedSourcePath(root, file) {
@@ -194,11 +198,11 @@ export function assertOwnedSourcesUnchanged(root, context) {
         if (digest(readFileSync(ownedSourcePath(root, file))) !== context[key]) throw new Error('Owned source changed before completion: ' + file);
     }
 }
-/** Bind the private temporary root, exact v14 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v15 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV14SourceFiles)) throw new Error('Invalid current v14 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV15SourceFiles)) throw new Error('Invalid current v15 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

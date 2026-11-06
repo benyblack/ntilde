@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -79,8 +79,9 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('private v14 fixed114 source scope includes all selected nonexecuted references while v13 remains fixed108', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV14SourceFiles);
+test('private v15 fixed114 source scope includes all selected nonexecuted references while v14 remains fixed113', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV15SourceFiles);
+    assert.equal(Object.keys(capturedV14SourceFiles).length, 113);
     assert.equal(Object.keys(capturedV13SourceFiles).length, 108);
     assert.equal(Object.keys(capturedV11SourceFiles).length, 74);
     assert.equal(Object.keys(privateClipboardReferencePaths).length, 21);

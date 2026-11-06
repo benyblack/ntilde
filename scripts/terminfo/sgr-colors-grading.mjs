@@ -118,12 +118,16 @@ export function buildSgrColorsGradingReport(frames, run, runId, adapter, replayM
         // The complete pinned result is a pure function of the observed
         // screens; the retained run-log values must match that derivation.
         requirePinnedAgreement(contract, pinned, replaySgrColorsPinned(contract, screens), 'SGR-colors');
-        if (contract.pinnedExpectation === 'measured') {
-            if (pinned.observation.outcome !== contractResult.outcome) {
-                throw new Error(`Pinned and contract ${contract.caseId} grading disagree.`);
-            }
-        } else if (pinned.observation.outcome !== 'inconclusive'
-            || pinned.observation.note !== contract.pinnedControlNote) {
+        // The contract grader is stricter than the pinned criterion (it also
+        // demands untouched default colors); a divergence is recorded with
+        // both verdicts instead of discarding the measurement, and the
+        // published conclusion follows the stricter grader.
+        const divergence = contract.pinnedExpectation === 'measured'
+            && pinned.observation.outcome !== contractResult.outcome
+            ? { pinnedOutcome: pinned.observation.outcome, contractOutcome: contractResult.outcome } : null;
+        if (contract.pinnedExpectation !== 'measured'
+            && (pinned.observation.outcome !== 'inconclusive'
+            || pinned.observation.note !== contract.pinnedControlNote)) {
             throw new Error(`Pinned ${contract.caseId} verdict is not the expected inapplicable-inconclusive.`);
         }
         if (replayModule) {
@@ -137,7 +141,8 @@ export function buildSgrColorsGradingReport(frames, run, runId, adapter, replayM
             reads: recorded.reads.map(read => read.cursor), observed: contract.observed(projected),
             pinned: { pass: pinned.pass, response: pinned.response, note: pinned.note ?? null,
                 observation: pinned.observation, assertions: pinned.assertions ?? null },
-            contractResult, conclusion: { outcome: contractResult.outcome, evidence: 'owned-cells',
+            contractResult, ...(divergence ? { divergence } : {}),
+            conclusion: { outcome: contractResult.outcome, evidence: 'owned-cells',
                 grading: 'pinned-termless-plus-contract-v' + sgrColorsContractsVersion,
                 ...(contractResult.note ? { note: contractResult.note } : {}),
                 ...(contract.appearanceScope ? { scope: contract.appearanceScope }
