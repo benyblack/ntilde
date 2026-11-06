@@ -146,6 +146,8 @@ public partial class TerminalBuffer
             byte[] data = StateTransferValidation.RequirePresent(state.Data, "iTerm2 image data");
             if (!ImageHeaderProbe.TryGetSize(data, out _, out int w, out int h) || (w, h) != (state.PixelWidth, state.PixelHeight))
                 throw StateTransferValidation.Reject("iTerm2 image", "data does not declare the stated size");
+            // The live parser refuses these before decoding; a snapshot must not hand them to a decoder.
+            if (w > 2000 || h > 2000) throw StateTransferValidation.Reject("iTerm2 image", "pixel size over the 2000-pixel limit");
             RequireCellRectangle(state.Width, state.Height, "iTerm2 image");
             bytes += data.Length;
             sources++;

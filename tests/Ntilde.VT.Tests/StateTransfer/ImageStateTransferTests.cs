@@ -255,6 +255,7 @@ public sealed class ImageStateTransferTests
         { "placement cell size", s => s.KittyPlacements![0].Width = 0 },
         { "iterm size", s => s.ITermImages![0].PixelHeight = 99 },
         { "iterm data", s => s.ITermImages![0].Data = [1, 2, 3] },
+        { "iterm too large", s => (s.ITermImages![0].Data, s.ITermImages[0].PixelWidth, s.ITermImages[0].PixelHeight) = (TestImages.PngHeader(3000, 1), 3000, 1) },
         { "too many images", s => s.KittyImages!.AddRange(Enumerable.Range(0, 130).Select(_ => s.KittyImages![0])) },
     };
 
