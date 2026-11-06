@@ -229,7 +229,7 @@ public sealed class ImageStateTransferTests
             Compressed = true,
             Width = 4,
             Height = 4,
-            Data = compressed,
+            Data = compressed.ToArray(), // separate arrays, as deserialization produces
         }).ToList();
 
         var (target, targetParser) = Create(retain: true, decoder: null);
@@ -238,6 +238,11 @@ public sealed class ImageStateTransferTests
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         Assert.Contains("inflate", error.Message, StringComparison.Ordinal);
         Assert.True(allocated < 16 * 1024 * 1024, $"Validation allocated {allocated:N0} bytes.");
+
+        // The limit is on what the images inflate to, not on the work: one array named five times
+        // is measured once but still counts five times.
+        foreach (var image in snapshot.KittyImages) image.Data = compressed;
+        Assert.Contains("inflate", Assert.ThrowsAny<Exception>(() => TerminalStateTransfer.Restore(target, targetParser, snapshot)).Message, StringComparison.Ordinal);
 
         snapshot.KittyImages.RemoveRange(4, 1); // four fit: 128 MiB of inflation is allowed
         TerminalStateTransfer.Restore(target, targetParser, snapshot);
@@ -299,6 +304,67 @@ public sealed class ImageStateTransferTests
         sourceParser.Process(Kitty("a=T,i=1,f=100,o=z,q=2", Convert.ToBase64String(Deflate(jpeg.ToArray()))));
         Assert.Single(source.Images);
 
+        var (restored, _) = Restore(Export(source, sourceParser), decoder: null);
+        Assert.Equal(Placements(source), Placements(restored));
+    }
+
+    [Fact]
+    public void A_restore_with_a_decoder_inflates_each_compressed_image_at_most_twice()
+    {
+        // Restore validates, ImportState validates again, then the decoder needs the pixels: measured
+        // naively that is three inflations per image. The second validation reuses the first, so four
+        // images of almost 32 MiB inflate twice each and stay within the restore-wide bound.
+        byte[] padded = new byte[(int)(32 * 1024 * 1024) - 64];
+        TestImages.PngHeader(4, 4).CopyTo(padded, 0);
+        byte[] compressed = Deflate(padded);
+        var snapshot = new TerminalBuffer(40, 20).ExportState(int.MaxValue);
+        snapshot.KittyImages = Enumerable.Range(1, 4).Select(id => new TerminalKittyImageState
+        {
+            Id = (uint)id,
+            Format = 100,
+            Compressed = true,
+            Width = 4,
+            Height = 4,
+            Data = compressed.ToArray(), // separate arrays, as deserialization produces
+        }).ToList();
+
+        var (target, targetParser) = Create(retain: true, new FixedSizeAwareDecoder());
+        long before = InflationMeter.Bytes;
+        TerminalStateTransfer.Restore(target, targetParser, snapshot);
+        long inflated = InflationMeter.Bytes - before;
+
+        Assert.Equal(8L * padded.Length, inflated); // once to validate, once to decode
+        Assert.True(inflated <= 2 * TerminalBuffer.MaxSnapshotInflatedBytes);
+        Assert.Equal(4, target.ExportState(int.MaxValue).KittyImages!.Count);
+    }
+
+    [Fact]
+    public void Bytes_larger_than_the_whole_budget_are_not_copied_on_import()
+    {
+        byte[] large = new byte[4 * 1024 * 1024];
+        TestImages.PngHeader(10, 10).CopyTo(large, 0);
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process(ITerm("", Convert.ToBase64String(large)));
+        TerminalStateSnapshot snapshot = TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(Export(source, sourceParser)));
+
+        var restored = new TerminalBuffer(40, 20) { ImageSources = new ImageSourceBudget(maxBytes: 1024 * 1024) };
+        var restoredParser = new AnsiParser(restored, forceConPtyFiltering: false) { RetainImageSources = true };
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        TerminalStateTransfer.Restore(restored, restoredParser, snapshot);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(allocated < large.Length, $"Import allocated {allocated:N0} bytes for a {large.Length:N0}-byte image it cannot keep.");
+        Assert.IsType<UndecodedImage>(Assert.Single(restored.Images).ImageHandle);
+        Assert.Equal(0, restored.ImageSources.RetainedBytes);
+    }
+
+    [Fact]
+    public void A_placement_shifted_left_of_column_zero_keeps_its_column()
+    {
+        // Deleting characters shifts a placement left with its row, past column 0 if need be.
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process("\x1b[1;3H" + Kitty("a=T,i=1,f=100,c=4,r=1,C=1,q=2", TestImages.PngBase64(8, 8)) + "\x1b[1;2H\x1b[3P");
+        Assert.True(Assert.Single(source.Images).CellX < 0);
         var (restored, _) = Restore(Export(source, sourceParser), decoder: null);
         Assert.Equal(Placements(source), Placements(restored));
     }

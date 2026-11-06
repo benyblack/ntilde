@@ -510,6 +510,7 @@ namespace Ntilde.VT
                     if (n <= 0) break;
                     output.Write(buffer, 0, n);
                     total += n;
+                    InflationMeter.Bytes += n;
                     if (total > maxBytes)
                     {
                         TerminalLogger.Debug($"[ANSI_PARSER] Kitty o=z inflate exceeded its {maxBytes} byte bound; discarding.");

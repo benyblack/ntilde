@@ -65,6 +65,16 @@ public sealed class ImageSourceBudget
         }
     }
 
+    /// <summary>
+    /// Keeps a copy of <paramref name="data"/>, checking the size first so bytes that could never fit
+    /// are not copied at all: the source then exists with no data.
+    /// </summary>
+    internal ImageSource RetainCopy(byte[] data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        return data.Length > _maxBytes ? new ImageSource(this) : Retain(data.ToArray());
+    }
+
     internal void Retire(ImageSource source)
     {
         lock (_gate)

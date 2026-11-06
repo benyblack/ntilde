@@ -11,6 +11,7 @@ public partial class TerminalBuffer
 {
     private const string KittyImageWhat = "Kitty image";
     private const string ITermImageWhat = "iTerm2 image";
+    private const string KittyImagesWhat = "Kitty images";
 
     /// <summary>Most bytes all compressed Kitty images in one snapshot may inflate to while validating.</summary>
     internal const long MaxSnapshotInflatedBytes = 128L * 1024 * 1024;
@@ -166,12 +167,12 @@ public partial class TerminalBuffer
         {
             var screen = images.Where(state => state?.Alt == alt).ToList();
             if (screen.Count > MaxKittyImageAssets)
-                throw StateTransferValidation.Reject("Kitty images", $"more than {MaxKittyImageAssets} on one screen");
+                throw StateTransferValidation.Reject(KittyImagesWhat, $"more than {MaxKittyImageAssets} on one screen");
             if (screen.Sum(state => (long)state.Width * state.Height * 4) > MaxKittyImagePixelBytes)
-                throw StateTransferValidation.Reject("Kitty images", "pixel charge over the per-screen quota");
+                throw StateTransferValidation.Reject(KittyImagesWhat, "pixel charge over the per-screen quota");
             var ids = screen.Where(state => state.Id != 0).Select(state => state.Id).ToList();
             if (ids.Count != ids.Distinct().Count())
-                throw StateTransferValidation.Reject("Kitty images", "one id names two images on one screen");
+                throw StateTransferValidation.Reject(KittyImagesWhat, "one id names two images on one screen");
         }
     }
 
@@ -184,16 +185,16 @@ public partial class TerminalBuffer
         if (DeclaredKittySize(data, encoding, ref inflated) != (state.Width, state.Height))
             throw StateTransferValidation.Reject(KittyImageWhat, "data does not declare the stated size");
         if (inflated > MaxSnapshotInflatedBytes)
-            throw StateTransferValidation.Reject("Kitty images", "compressed images inflate past the snapshot limit");
+            throw StateTransferValidation.Reject(KittyImagesWhat, "compressed images inflate past the snapshot limit");
     }
 
     private static void ValidateKittyPlacements(List<TerminalKittyImageState> images, List<TerminalKittyPlacementState> placements)
     {
-        foreach (bool alt in new[] { false, true })
-        {
-            if (placements.Count(p => p is not null && p.Image >= 0 && p.Image < images.Count && images[p.Image].Alt == alt) > MaxKittyImagePlacements)
-                throw StateTransferValidation.Reject("Kitty placements", $"more than {MaxKittyImagePlacements} on one screen");
-        }
+        int[] perScreen = [0, 0];
+        foreach (TerminalKittyPlacementState p in placements.Where(p => p is not null && p.Image >= 0 && p.Image < images.Count))
+            perScreen[images[p.Image].Alt ? 1 : 0]++;
+        if (perScreen.Max() > MaxKittyImagePlacements)
+            throw StateTransferValidation.Reject("Kitty placements", $"more than {MaxKittyImagePlacements} on one screen");
         foreach (TerminalKittyPlacementState? placement in placements)
         {
             var state = StateTransferValidation.RequirePresent(placement, "Kitty placement");
@@ -233,6 +234,38 @@ public partial class TerminalBuffer
     private static (int, int)? DeclaredKittySize(byte[] data, KittyImageEncoding encoding, ref long inflated)
     {
         if (IsRaw(encoding) && !RawSizeInRange(encoding)) return null;
+        if (encoding.Compressed && CompressedSizeCache.TryGetValue(data, out CompressedSize? known)
+            && known.Encoding == encoding && known.Hash == ContentHash(data))
+        {
+            // Measured already (an earlier validation pass of this restore, or the same array named
+            // twice): no inflation now, but its size still counts toward the snapshot limit.
+            inflated += known.Inflated;
+            return known.Size;
+        }
+        long before = inflated;
+        (int, int)? size = MeasureKittySize(data, encoding, ref inflated);
+        if (encoding.Compressed) CompressedSizeCache.AddOrUpdate(data, new CompressedSize(ContentHash(data), encoding, size, inflated - before));
+        return size;
+    }
+
+    /// <summary>
+    /// Sizes measured from compressed Kitty bytes, keyed by the array (and checked against its content),
+    /// so the two validation passes of a restore (<see cref="TerminalStateTransfer.Restore"/> and then
+    /// <see cref="ImportState"/>) inflate each image only once.
+    /// </summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<byte[], CompressedSize> CompressedSizeCache = new();
+
+    private sealed record CompressedSize(int Hash, KittyImageEncoding Encoding, (int, int)? Size, long Inflated);
+
+    private static int ContentHash(byte[] data)
+    {
+        var hash = new HashCode();
+        hash.AddBytes(data);
+        return hash.ToHashCode();
+    }
+
+    private static (int, int)? MeasureKittySize(byte[] data, KittyImageEncoding encoding, ref long inflated)
+    {
         long rawLength = (long)encoding.RawWidth * encoding.RawHeight * RawBytesPerPixel(encoding);
         long length = data.LongLength;
         byte[] header = data;
@@ -272,6 +305,7 @@ public partial class TerminalBuffer
             {
                 if (length < start.Length) buffer.AsSpan(0, (int)Math.Min(n, start.Length - length)).CopyTo(start.AsSpan((int)length));
                 length += n;
+                InflationMeter.Bytes += n;
                 if (length > bound) return false;
             }
             prefix = length < start.Length ? start[..(int)length] : start;
@@ -328,8 +362,8 @@ public partial class TerminalBuffer
             .OrderBy(entry => entry.Order ?? int.MaxValue).ThenBy(entry => entry.Sequence);
         foreach (var entry in retention)
         {
-            if (entry.Kitty) kitty[entry.Index] = ImageSources.Retain(kittyStates[entry.Index].Data.ToArray());
-            else iterm[entry.Index] = ImageSources.Retain(itermStates[entry.Index].Data.ToArray());
+            if (entry.Kitty) kitty[entry.Index] = ImageSources.RetainCopy(kittyStates[entry.Index].Data);
+            else iterm[entry.Index] = ImageSources.RetainCopy(itermStates[entry.Index].Data);
         }
         return (kitty, iterm);
     }
@@ -410,7 +444,8 @@ public partial class TerminalBuffer
     /// <summary>
     /// A transferred placement; null when nothing of it is left. Unlike SIXEL, it keeps a position past
     /// the right or bottom edge (within <see cref="MaxImportedOffscreenCells"/>), where the live buffer
-    /// keeps it too, so it shows again when the screen grows.
+    /// keeps it too, so it shows again when the screen grows, and a partly visible start left of
+    /// column 0, where deleting characters can shift it.
     /// </summary>
     private TerminalImage? ImportedPlacement(object handle, PlacementGeometry geometry)
     {
@@ -419,7 +454,8 @@ public partial class TerminalBuffer
         int right = Math.Clamp(geometry.ClipRight, 0, geometry.Width);
         if (top + bottom >= geometry.Height || right >= geometry.Width) return null;
         int lastRow = geometry.Alt ? Rows - 1 : _scrollback.Count + Rows - 1;
-        return new TerminalImage(handle, Math.Clamp(geometry.X, 0, Cols - 1 + MaxImportedOffscreenCells),
+        // A partly visible placement may start left of column 0 (CSI P shifts it there), as above row 0.
+        return new TerminalImage(handle, Math.Clamp(geometry.X, 1 - geometry.Width, Cols - 1 + MaxImportedOffscreenCells),
             Math.Clamp(geometry.Y, 1 - geometry.Height, lastRow + MaxImportedOffscreenCells), geometry.Width, geometry.Height)
         {
             IsAltScreenImage = geometry.Alt,
@@ -443,17 +479,26 @@ public partial class TerminalBuffer
         Lock.EnterWriteLock();
         try
         {
-            foreach (KittyImageAsset asset in _kittyImageAssets.Where(asset => asset.Handle is UndecodedImage)) DecodeTransferredKitty(asset, decoder);
+            long inflationBudget = MaxSnapshotInflatedBytes;
+            foreach (KittyImageAsset asset in _kittyImageAssets.Where(asset => asset.Handle is UndecodedImage))
+                DecodeTransferredKitty(asset, decoder, ref inflationBudget);
             DecodeTransferredITerm(decoder);
         }
         finally { Lock.ExitWriteLock(); }
         Invalidate();
     }
 
-    private void DecodeTransferredKitty(KittyImageAsset asset, IImageDecoder decoder)
+    /// <remarks>
+    /// Compressed images draw on <paramref name="inflationBudget"/>: once it is spent they stay
+    /// undecoded. With validation measured once (see <see cref="CompressedSizeCache"/>), a whole restore
+    /// inflates at most twice <see cref="MaxSnapshotInflatedBytes"/> plus one image.
+    /// </remarks>
+    private void DecodeTransferredKitty(KittyImageAsset asset, IImageDecoder decoder, ref long inflationBudget)
     {
         if (asset.Source?.Data is not { } data || asset.Encoding is not { } encoding) return;
+        if (encoding.Compressed && inflationBudget <= 0) return;
         if (RetainedKittyPixels(data, encoding) is not { } pixels) return;
+        if (encoding.Compressed) inflationBudget -= pixels.LongLength;
         TransferredDecode decode = IsRaw(encoding)
             ? (out int w, out int h) => decoder.DecodeRawImage(pixels, RawBytesPerPixel(encoding), encoding.RawWidth, encoding.RawHeight, out w, out h)
             : (out int w, out int h) => decoder.DecodeImageBytes(pixels, out w, out h);
