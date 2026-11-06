@@ -131,6 +131,22 @@ for (const [name, mutate] of [
     ['wrong contracts version', f => { f.binding.contractsVersion = 3; }],
     ['declared contracts drift', f => { f.context.sgrColorsContractsVersion = 3; f.write('context.json', f.context); }],
     ['missing adapter declaration', f => { delete f.context.sgrColorsAdapterId; f.write('context.json', f.context); }],
+    ['report contract version below the binding', f => {
+        f.report.contractsVersion = 1;
+        f.binding.contractsVersion = 2;
+        f.context.sgrColorsContractsVersion = 2;
+        f.write('sgcolors-observations.json', f.report);
+        f.binding.sha256 = hash(readFileSync(join(f.output, 'sgcolors-observations.json')));
+        f.write('context.json', f.context);
+    }],
+    ['report contract version above the binding', f => {
+        f.report.contractsVersion = 2;
+        f.binding.contractsVersion = 1;
+        f.context.sgrColorsContractsVersion = 1;
+        f.write('sgcolors-observations.json', f.report);
+        f.binding.sha256 = hash(readFileSync(join(f.output, 'sgcolors-observations.json')));
+        f.write('context.json', f.context);
+    }],
     ['report adapter digest drift', f => {
         f.report.adapter.bundleSha256 = 'a'.repeat(64);
         f.write('sgcolors-observations.json', f.report);

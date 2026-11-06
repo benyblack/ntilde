@@ -62,10 +62,13 @@ before any outcome is published. Eight frames — start, nonce bind, five read
 groups, finish — are retained with hashes; the start and finish frames must
 match exactly (alternate-screen restoration).
 
-`unsupported` requires a measured mismatch **behind a valid control**
-(initially-unset baseline, proven-active setup, and setup-cell colors still on
-their default markers — the pinned fixtures set no colors, so color drift
-invalidates the control). Wrong input bytes, missing
+`unsupported` requires a measured mismatch **behind a valid control**. Under
+the measured **v1** contracts the control is the initially-unset baseline plus
+the proven-active setup (the selective resets also require their unrelated
+setup attributes unset; the full reset did not check unrelated setup
+attributes). The current **v2** contracts additionally invalidate the control
+when the setup cell's colors drift off the default markers — the pinned
+fixtures set no colors. Wrong input bytes, missing
 captures, changed observations, mismatched run identities, fabricated pinned
 fields and incomplete restoration each prevent any conclusive grade (covered
 by CI regressions, including default-versus-palette-index confusion and

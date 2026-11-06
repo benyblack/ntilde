@@ -153,7 +153,10 @@ export const sgrColorsContracts = Object.freeze([
             if (baseline.char !== 'C' || before.char !== 'X' || after.char !== 'Y') {
                 return { outcome: 'inconclusive', note: 'Baseline, styled, or reset cell was not exposed' };
             }
-            if (!resetControl(baseline, before, ['bold', 'italic', 'underline'], ['dim'], revision)) {
+            // The measured v1 contract did not check any unrelated setup
+            // attribute for the full reset; v2 additionally requires dim unset.
+            if (!resetControl(baseline, before, ['bold', 'italic', 'underline'],
+                revision < 2 ? [] : ['dim'], revision)) {
                 return { outcome: 'inconclusive', note: 'Neutral baseline, styled setup, or reset readback was not measured' };
             }
             // SGR 0 must clear every contracted attribute while the colors

@@ -140,6 +140,23 @@ test('contracts v1 keeps its measured control semantics for older evidence', () 
     assert.throws(() => gradeSgrColorsCase(contract, cells, 3), /Unknown SGR-colors contracts revision/);
 });
 
+test('contracts v1 keeps the measured full-reset control for setup-cell dim', () => {
+    const contract = sgrColorsContracts.find(item => item.caseId === 'sgr.reset');
+    // The setup cell also carries faint: the measured v1 contract did not
+    // check unrelated setup attributes for the full reset; v2 does.
+    const screen = screenWith('sgr.reset', value => {
+        value.attributeRuns = [
+            { count: 1, flags: 768, fg: -1, bg: -1 },
+            { count: 1, flags: 768 | 0x01 | 0x04 | 0x08 | 0x40, fg: -1, bg: -1 },
+            { count: 1, flags: 768, fg: -1, bg: -1 },
+            { count: 357, flags: 768, fg: -1, bg: -1 },
+        ];
+    });
+    const cells = cellsOf(screen);
+    assert.equal(gradeSgrColorsCase(contract, cells, 1).outcome, 'supported');
+    assert.equal(gradeSgrColorsCase(contract, cells, 2).outcome, 'inconclusive');
+});
+
 test('wrong palette indices are unsupported while exact indices pass', () => {
     const fg = sgrColorsContracts.find(item => item.caseId === 'sgr.fg.standard');
     const wrongIndex = gradeOf(fg, screenWith('sgr.fg.standard', screen => {

@@ -63,7 +63,8 @@ export function checkSgrColorsEvidence(output, evidence, runId, context) {
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
     if (report.adapter.bundleSha256 !== binding.adapterBundleSha256
         || report.adapter.upstreamBundleSha256 !== context.upstreamBundleSha256
-        || ![1, 2].includes(report.contractsVersion)) {
+        || ![1, 2].includes(report.contractsVersion)
+        || report.contractsVersion !== binding.contractsVersion) {
         throw new Error('SGR-colors report adapter or contract identity differs from the receipt.');
     }
     const journalText = readFileSync(join(output, 'sgcolors-snapshots.jsonl'), 'utf8').trim();
