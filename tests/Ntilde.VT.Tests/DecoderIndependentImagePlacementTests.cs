@@ -116,6 +116,26 @@ public sealed class DecoderIndependentImagePlacementTests
     }
 
     [Fact]
+    public void A_refused_and_disposed_handle_returned_again_is_never_admitted_or_disposed_twice()
+    {
+        // The decoder hands back one 2 x 2 handle every time. Against a 1 x 1 header it is refused and
+        // disposed; when it comes back for a 2 x 2 header it must not become a live image.
+        var decoder = new SingleDisposableDecoder(2, 2);
+        var (buffer, parser, replies) = Create(decoder);
+        parser.Process(Kitty("a=T,i=1,f=100", TestImages.PngBase64(1, 1)));
+        Assert.Equal(1, decoder.Handle.DisposeCount);
+        parser.Process(Kitty("a=T,i=2,f=100", TestImages.PngBase64(2, 2)) + ITerm("", TestImages.PngBase64(2, 2)) + Kitty("a=T,i=3,f=100", TestImages.PngBase64(1, 1)));
+        Assert.Equal(["\x1b_Gi=1;OK\x1b\\", "\x1b_Gi=2;OK\x1b\\", "\x1b_Gi=3;OK\x1b\\"], replies);
+        Assert.All(buffer.Images, image => Assert.IsType<UndecodedImage>(image.ImageHandle));
+        Assert.Equal(4, buffer.Images.Count);
+        buffer.ClearImages();
+        var retired = new List<object>();
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.DoesNotContain(decoder.Handle, retired);
+        Assert.Equal(1, decoder.Handle.DisposeCount);
+    }
+
+    [Fact]
     public void Raw_data_shorter_than_its_declared_size_is_refused()
     {
         var (buffer, parser, replies) = Create(decoder: null);
@@ -241,6 +261,22 @@ public sealed class DecoderIndependentImagePlacementTests
         public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) => Next(out pixelWidth, out pixelHeight);
         public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) => Next(out pixelWidth, out pixelHeight);
         public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight) => Next(out pixelWidth, out pixelHeight);
+    }
+
+    private sealed class CountingHandle : IDisposable
+    {
+        public int DisposeCount { get; private set; }
+        public void Dispose() => DisposeCount++;
+    }
+
+    /// <summary>Hands back one disposable handle of a fixed size for every image.</summary>
+    private sealed class SingleDisposableDecoder(int width, int height) : IImageDecoder
+    {
+        public CountingHandle Handle { get; } = new();
+        private CountingHandle Same(out int pixelWidth, out int pixelHeight) { (pixelWidth, pixelHeight) = (width, height); return Handle; }
+        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) => Same(out pixelWidth, out pixelHeight);
+        public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) => Same(out pixelWidth, out pixelHeight);
+        public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight) => Same(out pixelWidth, out pixelHeight);
     }
 
     /// <summary>Hands back the same handle every time, so later images find it already owned or retired.</summary>
