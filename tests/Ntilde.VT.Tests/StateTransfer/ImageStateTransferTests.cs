@@ -369,6 +369,16 @@ public sealed class ImageStateTransferTests
         Assert.Equal(Placements(source), Placements(restored));
     }
 
+    [Fact]
+    public void A_placement_shifted_wholly_off_the_left_edge_stays_invisible()
+    {
+        var (source, sourceParser) = Create(retain: true, decoder: null);
+        sourceParser.Process("\x1b[1;3H" + Kitty("a=T,i=1,f=100,c=2,r=1,C=1,q=2", TestImages.PngBase64(8, 8)) + "\x1b[1;1H\x1b[10P");
+        Assert.True(Assert.Single(source.Images).CellX + 2 <= 0);
+        var (restored, _) = Restore(Export(source, sourceParser), decoder: null);
+        Assert.Equal(Placements(source), Placements(restored));
+    }
+
     private static string Kinds(TerminalBuffer buffer) =>
         string.Join(",", buffer.Images.Select(i => i.IsSixelImage ? "sixel" : i.KittyImageId is not null ? "kitty" : "iterm"));
 

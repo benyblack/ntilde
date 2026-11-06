@@ -451,8 +451,8 @@ public partial class TerminalBuffer
     /// <summary>
     /// A transferred placement; null when nothing of it is left. Unlike SIXEL, it keeps a position past
     /// the right or bottom edge (within <see cref="MaxImportedOffscreenCells"/>), where the live buffer
-    /// keeps it too, so it shows again when the screen grows, and a partly visible start left of
-    /// column 0, where deleting characters can shift it.
+    /// keeps it too, so it shows again when the screen grows, and a start left of column 0, where
+    /// deleting characters can shift it, partly or wholly off the screen.
     /// </summary>
     private TerminalImage? ImportedPlacement(object handle, PlacementGeometry geometry)
     {
@@ -461,8 +461,9 @@ public partial class TerminalBuffer
         int right = Math.Clamp(geometry.ClipRight, 0, geometry.Width);
         if (top + bottom >= geometry.Height || right >= geometry.Width) return null;
         int lastRow = geometry.Alt ? Rows - 1 : _scrollback.Count + Rows - 1;
-        // A partly visible placement may start left of column 0 (CSI P shifts it there), as above row 0.
-        return new TerminalImage(handle, Math.Clamp(geometry.X, 1 - geometry.Width, Cols - 1 + MaxImportedOffscreenCells),
+        // Deleting characters (CSI P) can shift a placement left of column 0, even all the way off the
+        // screen, where the live buffer keeps it invisible; it stays there, within the same bound.
+        return new TerminalImage(handle, Math.Clamp(geometry.X, -MaxImportedOffscreenCells, Cols - 1 + MaxImportedOffscreenCells),
             Math.Clamp(geometry.Y, 1 - geometry.Height, lastRow + MaxImportedOffscreenCells), geometry.Width, geometry.Height)
         {
             IsAltScreenImage = geometry.Alt,
