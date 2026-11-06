@@ -251,8 +251,12 @@ invariant changes.
   handle, the image is kept as an `UndecodedImage` holding the same cells. A
   parser without a decoder therefore places exactly what one with a decoder
   places; `DecoderIndependentImagePlacementTests` pins it. This is the
-  prerequisite for persistent sessions (#838); their parsers keep Kitty and
-  iTerm2 images disabled until a later PR enables them.
+  prerequisite for persistent sessions (#838). A session's image policy
+  (`PersistentImagePolicy`, VT-owned) is negotiated like the SIXEL raster policy
+  and fixed at spawn; the daemon, GUI panes and the text client all configure
+  their parsers with `PersistentImagePolicy.Apply`, so they place every image
+  alike. Mux owns admission (`ImagePolicyAdmission`) and refuses, never
+  downgrades, a peer or attach that does not match.
 - **Kitty image assets own handles; placements borrow them.** VT separates transmit,
   transmit/display and retained placement, including uint ids, terminal-allocated
   image numbers, newest-number lookup and exact quiet/correlated responses. Each
