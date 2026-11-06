@@ -10,6 +10,9 @@ namespace Ntilde.VT.Tests;
 public sealed class KittyImageLifecycleTests
 {
     private const string Pixel = "/wAA/w==";
+    // iTerm2 and f=100 images are placed from their header (#838), so they need a real one.
+    private static readonly string PngPixel = TestImages.PngBase64(1, 1);
+    private static readonly string Png2000 = TestImages.PngBase64(2000, 2000);
     private static string Command(string controls, string payload = "") => $"\x1b_G{controls};{payload}\x1b\\";
     private static (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies) Create()
     {
@@ -211,7 +214,7 @@ public sealed class KittyImageLifecycleTests
     {
         var (buffer, parser, replies) = Create(); parser.ImageDecoder = new FixedSizeImageDecoder(2000, 2000);
         for (int id = 1; id <= 5; id++)
-            parser.Process(Command($"a=T,f=100,i={id},C=1", "AQIDBA=="));
+            parser.Process(Command($"a=T,f=100,i={id},C=1", Png2000));
         Assert.Equal(4, buffer.Images.Count);
         parser.Process(Command("a=p,i=1,C=1")); Assert.Contains(";ENOENT:", replies[^1], StringComparison.Ordinal);
         var retired = new List<object>(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
@@ -335,9 +338,9 @@ public sealed class KittyImageLifecycleTests
     public void Transmit_only_quota_eviction_notifies_the_live_view_that_old_placements_disappeared()
     {
         var (buffer, parser, _) = Create(); parser.ImageDecoder = new FixedSizeImageDecoder(2000, 2000);
-        for (int i = 1; i <= 4; i++) parser.Process(Command($"a=T,f=100,i={i},C=1", "AQIDBA=="));
+        for (int i = 1; i <= 4; i++) parser.Process(Command($"a=T,f=100,i={i},C=1", Png2000));
         int notifications = 0; buffer.OnInvalidate += () => notifications++;
-        parser.Process(Command("a=t,f=100,i=5", "AQIDBA=="));
+        parser.Process(Command("a=t,f=100,i=5", Png2000));
         Assert.Equal(3, buffer.Images.Count); Assert.Equal(1, notifications);
     }
 
@@ -381,19 +384,22 @@ public sealed class KittyImageLifecycleTests
     }
 
     [Fact]
-    public void A_handle_handed_to_the_disposer_cannot_be_readmitted_or_retired_twice()
+    public void A_handle_handed_to_the_disposer_is_not_readmitted_or_retired_twice()
     {
         var (buffer, parser, replies) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
         parser.Process(Command("a=T,f=32,s=1,v=1,i=1,C=1", Pixel));
         parser.Process(Command("a=d,d=I,i=1"));
         var retired = new List<object>(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+        object handedOff = Assert.Single(retired);
         parser.Process(Command("a=T,f=32,s=1,v=1,i=2,C=1", Pixel));
-        Assert.Empty(buffer.Images); Assert.Contains(";EINVAL:", replies[^1], StringComparison.Ordinal);
-        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+        Assert.IsType<UndecodedImage>(Assert.Single(buffer.Images).ImageHandle); // kept undecoded, not readmitted
+        Assert.EndsWith(";OK\x1b\\", replies[^1], StringComparison.Ordinal);
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Single(retired, h => ReferenceEquals(h, handedOff));
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task Disposal_handoff_does_not_wait_for_a_blocked_parser_and_late_readmission_is_refused()
+    public async System.Threading.Tasks.Task Disposal_handoff_does_not_wait_for_a_blocked_parser_and_late_readmission_is_kept_undecoded()
     {
         var (buffer, parser, replies) = Create(); var decoder = new SharedHandleDecoder(); parser.ImageDecoder = decoder;
         parser.Process(Command("a=T,f=32,s=1,v=1,i=1,C=1", Pixel));
@@ -423,8 +429,10 @@ public sealed class KittyImageLifecycleTests
             await writing.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
             if (draining is not null) await draining.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         }
-        Assert.Empty(buffer.Images); Assert.Contains(";EINVAL:", replies[^1], StringComparison.Ordinal);
-        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+        Assert.IsType<UndecodedImage>(Assert.Single(buffer.Images).ImageHandle); // kept undecoded, not readmitted
+        Assert.EndsWith(";OK\x1b\\", replies[^1], StringComparison.Ordinal);
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Single(retired, h => ReferenceEquals(h, handle));
     }
 
     [Theory]
@@ -433,7 +441,7 @@ public sealed class KittyImageLifecycleTests
     public void Prior_non_Kitty_retirement_is_cancelled_when_its_handle_is_admitted_to_Kitty(string protocol)
     {
         var (buffer, parser, _) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
-        parser.Process(protocol == "iterm" ? "\x1b]1337;File=inline=1:/wAA/w==\x07" : "\x1bPq~\x1b\\");
+        parser.Process(protocol == "iterm" ? $"\x1b]1337;File=inline=1:{PngPixel}\x07" : "\x1bPq~\x1b\\");
         object handle = Assert.Single(buffer.Images).ImageHandle;
         buffer.ClearImages(); Assert.Empty(buffer.Images);
         parser.Process(Command("a=T,f=32,s=1,v=1,I=13,C=1", Pixel));
@@ -445,22 +453,26 @@ public sealed class KittyImageLifecycleTests
     }
 
     [Fact]
-    public void A_handle_handed_off_by_non_Kitty_retirement_cannot_be_admitted_to_Kitty()
+    public void A_handle_handed_off_by_non_Kitty_retirement_is_not_readmitted_and_the_image_is_kept_undecoded()
     {
+        // The decoder cannot change the outcome (#838): the image is placed as a parser without a
+        // decoder would place it, and the handed-off handle is still never readmitted.
         var (buffer, parser, replies) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
-        parser.Process("\x1b]1337;File=inline=1:/wAA/w==\x07");
+        parser.Process($"\x1b]1337;File=inline=1:{PngPixel}\x07");
         buffer.ClearImages(); var retired = new List<object>();
-        buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+        buffer.DrainRetiredImageHandles(retired, long.MaxValue); object handedOff = Assert.Single(retired);
         parser.Process(Command("a=T,f=32,s=1,v=1,I=13,C=1", Pixel));
-        Assert.Empty(buffer.Images); Assert.Contains(";EINVAL:", replies[^1], StringComparison.Ordinal);
-        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Single(retired);
+        Assert.IsType<UndecodedImage>(Assert.Single(buffer.Images).ImageHandle);
+        Assert.EndsWith(";OK\x1b\\", replies[^1], StringComparison.Ordinal);
+        buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Single(retired, h => ReferenceEquals(h, handedOff));
     }
 
     [Fact]
     public void Releasing_Kitty_storage_does_not_dispose_a_handle_still_used_by_a_non_Kitty_placement()
     {
         var (buffer, parser, _) = Create(); parser.ImageDecoder = new SharedHandleDecoder();
-        parser.Process("\x1b]1337;File=inline=1:/wAA/w==\x07");
+        parser.Process($"\x1b]1337;File=inline=1:{PngPixel}\x07");
         object handle = Assert.Single(buffer.Images).ImageHandle;
         parser.Process(Command("a=T,f=32,s=1,v=1,I=13,C=1", Pixel));
         parser.Process(Command("a=d,d=N,I=13")); Assert.Same(handle, Assert.Single(buffer.Images).ImageHandle);
@@ -548,7 +560,7 @@ public sealed class KittyImageLifecycleTests
         var buffer = new TerminalBuffer(80, 24) { SixelSources = new SixelSourceBudget(fullCharBudget ? 4 : 100, fullSourceCount ? 1 : 2) };
         var decoder = new SharedHandleDecoder();
         var parser = new AnsiParser(buffer) { ImageDecoder = decoder, CellWidth = 8, CellHeight = 16 };
-        parser.Process("\x1b]1337;File=inline=1:/wAA/w==\x07");
+        parser.Process($"\x1b]1337;File=inline=1:{PngPixel}\x07");
         object handedOff = Assert.Single(buffer.Images).ImageHandle;
         buffer.ClearImages(); var retired = new List<object>();
         buffer.DrainRetiredImageHandles(retired, long.MaxValue); Assert.Same(handedOff, Assert.Single(retired));

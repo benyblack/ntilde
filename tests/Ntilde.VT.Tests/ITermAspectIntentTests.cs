@@ -6,7 +6,7 @@ namespace Ntilde.VT.Tests;
 public sealed class ITermAspectIntentTests
 {
     private const string Prefix = "\x1b]1337;File=inline=1;width=4;height=2";
-    private static string Image(string option) => Prefix + option + ":AQIDBA==\x1b\\";
+    private static string Image(string option) => Prefix + option + ":" + TestImages.PngBase64(6, 2) + "\x1b\\";
     private static AnsiParser Parser(TerminalBuffer buffer) => new(buffer, forceConPtyFiltering: false)
     { ImageDecoder = new FixedSizeImageDecoder(6, 2) };
 
@@ -53,7 +53,7 @@ public sealed class ITermAspectIntentTests
         byte[] bytes = TerminalStateSerializer.ToBytes(snapshot);
         var restored = new TerminalBuffer(20, 10); var resumed = Parser(restored);
         TerminalStateTransfer.Restore(restored, resumed, TerminalStateSerializer.FromBytes(bytes));
-        resumed.Process("AQIDBA==\x1b\\");
+        resumed.Process(TestImages.PngBase64(6, 2) + "\x1b\\");
         TerminalImage image = Assert.Single(restored.Images);
         Assert.Equal(preserve, image.PreserveAspectRatio);
         Assert.Equal((3, 3, 4, 2), (image.CellX, image.CellY, image.CellWidth, image.CellHeight));

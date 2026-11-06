@@ -33,7 +33,7 @@ public class ImageArgumentCultureTests
         {
             var buffer = new TerminalBuffer(80, 24);
             var parser = new AnsiParser(buffer) { ImageDecoder = new FixedSizeImageDecoder(30, 40) };
-            parser.Process($"\x1b]1337;File={arguments}:{Convert.ToBase64String(new byte[] { 1, 2, 3, 4 })}\x07");
+            parser.Process($"\x1b]1337;File={arguments}:{TestImages.PngBase64(30, 40)}\x07");
             return Assert.Single(buffer.Images);
         }
         finally

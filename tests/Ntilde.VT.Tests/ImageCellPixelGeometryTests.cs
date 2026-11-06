@@ -139,7 +139,7 @@ public sealed class ImageCellPixelGeometryTests
         var (width, height) = ImagePixelsFromCsi16t(probe.Parser, probe.Responses);
         var (buffer, parser, _) = Create(new FixedSizeImageDecoder(width, height));
         parser.SixelCellSizeOverride = Device;
-        string payload = Convert.ToBase64String(new byte[] { 1, 2, 3, 4 });
+        string payload = TestImages.PngBase64(width, height); // placed from its header (#838)
 
         // No c= or r=: the cell count comes from the image's pixels. Measured against the logical
         // 8.5 px cell this was 40 columns, twice what the client asked for.
@@ -154,7 +154,7 @@ public sealed class ImageCellPixelGeometryTests
     {
         var (buffer, parser, _) = Create(new FixedSizeImageDecoder(50, 70));
         parser.SixelCellSizeOverride = Device;
-        string payload = Convert.ToBase64String(new byte[] { 1, 2, 3, 4 });
+        string payload = TestImages.PngBase64(50, 70);
 
         // w=170 is 170 / 17 = 10 columns; the height follows the aspect ratio: ceil(10 * 17/37 * 1.4) = 7.
         parser.Process($"\x1b_Gw=170,a=T,f=100;{payload}\x1b\\");
@@ -171,7 +171,7 @@ public sealed class ImageCellPixelGeometryTests
         var (width, height) = ImagePixelsFromCsi16t(probe.Parser, probe.Responses);
         var (buffer, parser, _) = Create(new FixedSizeImageDecoder(width, height));
         parser.SixelCellSizeOverride = Device;
-        string payload = Convert.ToBase64String(new byte[] { 1, 2, 3, 4 });
+        string payload = TestImages.PngBase64(width, height); // placed from its header (#838)
 
         parser.Process($"\x1b]1337;File=inline=1:{payload}\x07");
 

@@ -243,6 +243,16 @@ invariant changes.
   fits within the original snapped cell rectangle before clipping. Explicit iTerm2
   zero stretches. Bitmap dimensions, cell reservation, legacy/SIXEL policy and
   handle retirement retain their owners; complete state-transfer policy is unchanged.
+- **Kitty and iTerm2 placement follows the image header, not the decoder (#838).**
+  VT sizes an image with `ImageHeaderProbe` (PNG, JPEG, GIF, WebP; Kitty raw from
+  `s`/`v` with an exact length), and that size alone decides accept or refuse, the
+  cell span, quota charge and the Kitty reply. The host decoder only supplies
+  pixels: without one, or when it fails, throws or returns an already retired
+  handle, the image is kept as an `UndecodedImage` holding the same cells. A
+  parser without a decoder therefore places exactly what one with a decoder
+  places; `DecoderIndependentImagePlacementTests` pins it. This is the
+  prerequisite for persistent sessions (#838); their parsers keep Kitty and
+  iTerm2 images disabled until a later PR enables them.
 - **Kitty image assets own handles; placements borrow them.** VT separates transmit,
   transmit/display and retained placement, including uint ids, terminal-allocated
   image numbers, newest-number lookup and exact quiet/correlated responses. Each
