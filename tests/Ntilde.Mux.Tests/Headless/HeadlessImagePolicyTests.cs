@@ -96,6 +96,45 @@ public sealed class HeadlessImagePolicyTests
         TerminalStateAssert.AssertEquivalent("[text client]", host.Mux(id).Buffer, host.Mux(id).Parser, model.Buffer, model.Parser);
     }
 
+    [Fact]
+    public async Task Every_client_places_the_same_image_when_one_attaches_between_multipart_parts()
+    {
+        // imgcat's default form: the transfer is parser state, so a client attaching between FileParts
+        // gets the parts so far in its snapshot and assembles the same image as the daemon.
+        using var host = new MuxTestHost();
+        var options = new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion };
+        MuxClient first = await host.ConnectClientAsync(options);
+        Guid id = await first.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = "t", RequiredImagePolicy = 1 }, Ct);
+        ClientPaneModel firstPane = await MuxTestHost.AttachPaneAsync(first, id, imagePolicy: 1);
+
+        string png = Convert.ToBase64String([.. TestImages.PngHeader(30, 40), .. new byte[500]]);
+        static string Part(string chunk) => $"\x1b]1337;FilePart={chunk}\x07";
+        host.Fake(id).Emit("start \x1b]1337;MultipartFile=inline=1;size=533;width=6\x07" + Part(png[..200]) + Part(png[200..400]));
+        await host.SettleAsync(id, first);
+        MuxClient second = await host.ConnectClientAsync(options);
+        ClientPaneModel secondPane = await MuxTestHost.AttachPaneAsync(second, id, imagePolicy: 1);
+        host.Fake(id).Emit(Part(png[400..600]) + Part(png[600..]) + "\x1b]1337;FileEnd\x07\ntail");
+        await host.SettleAsync(id, first, second);
+
+        TerminalImage image = Assert.Single(host.Mux(id).Buffer.Images);
+        Assert.Equal(6, image.CellWidth);
+        host.AssertPaneMatchesMux(id, firstPane, "attached throughout");
+        host.AssertPaneMatchesMux(id, secondPane, "attached between the parts");
+
+        // A later client gets the image from the snapshot alone, and so does the text client.
+        MuxClient third = await host.ConnectClientAsync(options);
+        ClientPaneModel thirdPane = await MuxTestHost.AttachPaneAsync(third, id, imagePolicy: 1);
+        MuxClient text = await host.ConnectClientAsync(options);
+        MuxClientSession textSession = text.OpenSession(id, requiredImagePolicy: 1);
+        using var model = new TextClientModel(textSession);
+        await textSession.AttachAsync(10_000, MuxTestHost.DefaultPresentation, Ct);
+        await host.SettleAsync(id, third, text);
+
+        host.AssertPaneMatchesMux(id, thirdPane, "reattached");
+        Assert.Single(thirdPane.Buffer.Images);
+        TerminalStateAssert.AssertEquivalent("[text client]", host.Mux(id).Buffer, host.Mux(id).Parser, model.Buffer, model.Parser);
+    }
+
     /// <summary>What a direct pane without a decoder replies to <paramref name="input"/>, configured as the policy configures one.</summary>
     private static List<string> DirectPaneReplies(string input)
     {

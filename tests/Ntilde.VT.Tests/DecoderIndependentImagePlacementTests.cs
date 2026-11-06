@@ -38,6 +38,7 @@ public sealed class DecoderIndependentImagePlacementTests
         { "iterm2 corrupt body", ITerm("", Convert.ToBase64String([.. TestImages.PngHeader(30, 40), 9, 9])) },
         { "iterm2 unknown format", ITerm("", Convert.ToBase64String("GIF8 nope"u8.ToArray())) },
         { "iterm2 too large", ITerm("", TestImages.PngBase64(10, 3000)) },
+        { "iterm2 multipart", "\x1b]1337;MultipartFile=inline=1;width=6\x07" + string.Concat(TestImages.PngBase64(30, 40).Chunk(8).Select(p => $"\x1b]1337;FilePart={new string(p)}\x07")) + "\x1b]1337;FileEnd\x07after" },
         { "mixed", "a\r\n" + Kitty("a=T,i=20,f=100", TestImages.PngBase64(64, 32)) + ITerm(";width=3", TestImages.PngBase64(8, 8)) + "b\r\n" + Kitty("a=p,i=20,c=2,r=2") },
     };
 

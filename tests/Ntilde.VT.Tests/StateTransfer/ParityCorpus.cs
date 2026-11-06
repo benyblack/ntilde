@@ -155,6 +155,16 @@ internal static class ParityCorpus
             "\u001b_Gm=0;CCCCCCCC\u001b\\" +
             "after image"));
 
+        // imgcat's default form: the transfer spans sequences, so every cut inside it must resume it.
+        yield return ("osc-1337-multipart", Utf8(
+            "\u001b]1337;MultipartFile=inline=1;size=33;name=YS5wbmc=;width=4\u0007" +
+            "\u001b]1337;FilePart=iVBORw0KGgoAAAANSUhEUgAA\u0007" +
+            "between parts\r\n" +
+            "\u001b]1337;FilePart=AB4AAAAoCAYAAAAAAAAA\u001b\\" +
+            "\u001b]1337;FileEnd\u0007\n" +
+            "\u001b]1337;MultipartFile=inline=1\u0007\u001b]1337;FilePart=AAAA\u0007\u001bc" +
+            "after reset"));
+
         yield return ("alt-screen", Utf8(
             "main content here\r\n" +
             "\u001b[?1049h" + "\u001b[2J\u001b[Halt content\r\nsecond alt row" +

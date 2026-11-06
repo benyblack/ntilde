@@ -51,6 +51,8 @@ namespace Ntilde.VT
                 return;
             }
 
+            if (osc.StartsWith("1337;", StringComparison.Ordinal) && HandleITerm2Multipart(osc)) return;
+
             if (osc.StartsWith("1339;", StringComparison.Ordinal))
             {
                 HandleTunneledImage(osc.Substring(5));
