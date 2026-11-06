@@ -104,6 +104,12 @@ public sealed class MuxClient : IDisposable
     /// <summary>From Welcome: the daemon's build version; null for a server that reports none.</summary>
     public string? ServerVersion { get; private set; }
 
+    /// <summary>
+    /// From Welcome: the daemon has outlived the macOS login session it was started in, so the shells it starts cannot
+    /// look up the user. False when it reported nothing.
+    /// </summary>
+    public bool LoginSessionEnded { get; private set; }
+
     /// <summary>Null for an older daemon which does not accept a client retention policy.</summary>
     public MuxHistoryLimits? HistoryLimits { get; private set; }
     public bool SupportsPresentationOnly { get; private set; }
@@ -162,6 +168,7 @@ public sealed class MuxClient : IDisposable
             client.SupportsPresentationOnly = welcome.SupportsPresentationOnly;
             client.SupportsByteInput = welcome.SupportsByteInput;
             client.ServerVersion = welcome.ServerVersion;
+            client.LoginSessionEnded = welcome.LoginSessionEnded == true;
             return client;
         }
         catch

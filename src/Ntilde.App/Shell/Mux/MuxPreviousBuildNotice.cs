@@ -53,6 +53,18 @@ internal static class MuxPreviousBuildNotice
         return daemon.Length > 0 && app.Length > 0 && !string.Equals(daemon, app, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Whether the local daemon is worth restarting: it is another build's (<see cref="IsFromAnotherBuild"/>), or it has
+    /// outlived the macOS login session it was started in (<paramref name="loginSessionEnded"/>, from its welcome), so the
+    /// shells it starts cannot look up the user - and a daemon this window starts belongs to the current login.
+    /// </summary>
+    public static bool NeedsLocalRestart(string? daemonVersion, bool loginSessionEnded, string? thisBuild) =>
+        loginSessionEnded || IsFromAnotherBuild(daemonVersion, thisBuild);
+
+    /// <summary>The local daemon's notice when it has outlived its login session, and how many shells a restart closes.</summary>
+    public static string LoginSessionEndedMessage(int shells) =>
+        $"The multiplexer was started in a login session that has ended, so new shells cannot look up your user (whoami and ssh fail); restart it to fix them{Closes(shells)}.";
+
     /// <summary>What a connection to a daemon is offered (final review I1): nothing, a restart, or - remote only - an update.</summary>
     internal enum NoticeOffer
     {

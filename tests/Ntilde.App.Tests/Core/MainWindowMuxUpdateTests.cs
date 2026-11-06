@@ -41,7 +41,7 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     private static readonly MuxEndpointId Local = MuxEndpointId.Local;
 
     private readonly MuxTestHost _old = new(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = PreviousBuild });
-    private readonly MuxTestHost _current = new(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = ThisBuild });
+    private readonly MuxTestHost _current;
     private readonly TaskCompletionSource<bool> _oldExited = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly List<MuxConnectionHost> _hosts = [];
 
@@ -49,6 +49,9 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     private readonly List<MuxPreviousBuildNotice.Raised> _notices = [];
 
     private volatile bool _oldStopped;
+
+    /// <summary>What <see cref="_current"/> reports in its welcome as <c>LoginSessionEnded</c>.</summary>
+    private volatile bool _currentLoginSessionEnded;
     private int _connects;
     private int _oldShutdowns;
 
@@ -63,6 +66,7 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
 
     public MainWindowMuxUpdateTests()
     {
+        _current = new(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = ThisBuild, LoginSessionEnded = () => _currentLoginSessionEnded });
         if (File.Exists(AppPaths.SessionFilePath)) File.Delete(AppPaths.SessionFilePath);
         _old.Server.ShutdownRequested += () =>
         {
@@ -226,6 +230,35 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal(ThisBuild, host.CurrentClient!.ServerVersion);
         Assert.Empty(_notices);
         Assert.DoesNotContain(ToastLines(window), l => l.StartsWith("The multiplexer", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A daemon of this very build that has outlived its macOS login session: its new shells cannot look up the user, so it
+    /// is offered a restart all the same, worded for that reason, and the restart gets past its first look to the question.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_daemon_that_outlived_its_login_session_is_offered_a_restart()
+    {
+        _oldStopped = true; // the daemon is this build's from the start
+        _currentLoginSessionEnded = true;
+        MainWindow window = CreateWindow();
+        MuxConnectionHost host = _hosts.Single();
+
+        PumpUntil(() => LocalOffers.Count == 1, "the notice is raised");
+        MuxPreviousBuildNotice.Raised offer = LocalOffers[0];
+        Assert.Equal(MuxPreviousBuildNotice.LoginSessionEndedMessage(1), offer.Message); // the window's first pane runs there
+        Assert.Equal("Restart multiplexer now", offer.Action!.Label);
+        Assert.Equal(ThisBuild, host.CurrentClient!.ServerVersion);
+        Assert.True(host.CurrentClient.LoginSessionEnded);
+
+        var asked = new List<(string? Host, int Shells)>();
+        window.ConfirmMuxRestart = (where, shells) => { asked.Add((where, shells)); return Task.FromResult(false); };
+        offer.Action.Run();
+        PumpUntil(() => asked.Count == 1, "the restart asks");
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the declined restart finished");
+
+        Assert.Equal([(null, 1)], asked);
+        Assert.Single(_notices); // declined: no outcome
     }
 
     /// <summary>With SessionPersistence Off nothing new appears, whatever the daemon the window's panes still use reports.</summary>

@@ -26,6 +26,27 @@ public sealed class MuxClientHandshakeTests
         Assert.Equal("9.9.9", client.ServerVersion);
     }
 
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public async Task LoginSessionEnded_is_what_the_servers_probe_says(bool probe, bool expected)
+    {
+        using var host = new MuxTestHost(new MuxServerOptions { ForceConPtyFiltering = false, LoginSessionEnded = () => probe });
+        MuxClient client = await host.ConnectClientAsync();
+
+        Assert.Equal(expected, client.LoginSessionEnded);
+    }
+
+    [Fact]
+    public async Task LoginSessionEnded_is_false_without_a_probe_and_when_the_probe_throws()
+    {
+        using var none = new MuxTestHost(new MuxServerOptions { ForceConPtyFiltering = false });
+        using var throws = new MuxTestHost(new MuxServerOptions { ForceConPtyFiltering = false, LoginSessionEnded = () => throw new InvalidOperationException("probe") });
+
+        Assert.False((await none.ConnectClientAsync()).LoginSessionEnded);
+        Assert.False((await throws.ConnectClientAsync()).LoginSessionEnded);
+    }
+
     [Fact]
     public async Task ServerVersion_is_null_against_a_v1_server_built_without_one()
     {
