@@ -494,8 +494,11 @@ uses `s`/`v` and must be exactly that long), and that size alone decides whether
 image is accepted, how many cells it covers, its quota charge and the Kitty reply.
 The host's `IImageDecoder` only supplies pixels; with no decoder, or one that fails,
 throws or returns a retired handle, the image is kept as an `UndecodedImage` that
-holds the same cells and draws nothing. This is what lets a persistent session's
-daemon, which has no decoder, place images exactly as each window does. Visible
+holds the same cells and draws nothing. Because placement never depends on the
+decoder, a parser without one places exactly what a parser with one places; that is
+the prerequisite for enabling these images in persistent sessions, whose daemon has
+no decoder (#838, later PRs). Until then persistent-session parsers still keep Kitty
+and iTerm2 images disabled. Visible
 consequences: a valid header with a corrupt body reserves its cells and gets `OK`,
 and a format the probe cannot size is refused even where Skia could decode it.
 

@@ -97,6 +97,20 @@ public partial class TerminalBuffer
         }
     }
 
+    /// <summary>
+    /// Releases pixels VT refused before admitting them (#838: a decoded size that differs from the
+    /// header). A handle this buffer has never admitted cannot be in a placement, a render snapshot or
+    /// the retirement queue, so it is disposed now instead of waiting for a renderer drain that a hidden
+    /// pane may never run; a handle it has seen (a decoder sharing handles) is retired as usual.
+    /// </summary>
+    internal void ReleaseRejectedImageHandle(object handle)
+    {
+        bool seen;
+        lock (_imageHandleGate) seen = _imageHandleLifetimes.TryGetValue(handle, out _);
+        if (seen) RetireUnstoredKittyHandle(handle);
+        else (handle as IDisposable)?.Dispose();
+    }
+
     /// <summary>Requeues a failed native disposal without reopening image admission or returning its charge.</summary>
     public bool RetryRetiredImageDisposal(object handle)
     {

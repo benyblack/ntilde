@@ -64,11 +64,14 @@ public static class ImageHeaderProbe
         return ImageContainerFormat.Unknown;
     }
 
-    /// <summary>Signature, then the first chunk, which must be IHDR: length, type, width, height.</summary>
+    /// <summary>
+    /// Signature, then the first chunk, which must be a complete IHDR: a 13-byte length, the type,
+    /// width, height and the five remaining fields, then its CRC (33 bytes in all).
+    /// </summary>
     private static bool TryPngSize(ReadOnlySpan<byte> data, out long width, out long height)
     {
         width = height = 0;
-        if (data.Length < 24 || !data.Slice(12, 4).SequenceEqual("IHDR"u8)) return false;
+        if (data.Length < 33 || BinaryPrimitives.ReadUInt32BigEndian(data[8..]) != 13 || !data.Slice(12, 4).SequenceEqual("IHDR"u8)) return false;
         width = BinaryPrimitives.ReadUInt32BigEndian(data[16..]);
         height = BinaryPrimitives.ReadUInt32BigEndian(data[20..]);
         return true;

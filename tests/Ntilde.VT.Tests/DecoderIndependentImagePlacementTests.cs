@@ -98,19 +98,59 @@ public sealed class DecoderIndependentImagePlacementTests
     [Theory]
     [InlineData("kitty")]
     [InlineData("iterm")]
-    public void Pixels_of_another_size_than_the_header_are_discarded(string protocol)
+    public void Pixels_of_another_size_than_the_header_are_discarded_at_once(string protocol)
     {
         // A GIF whose first frame overflows its 1 x 1 logical screen decodes to 2000 x 2000. Keeping
-        // those pixels would hold 16 MB against a 4-byte quota charge, so they are retired and the
-        // image is kept undecoded at the size the header declared.
-        var (buffer, parser, replies) = Create(new FixedSizeImageDecoder(2000, 2000));
+        // those pixels would hold 16 MB against a 4-byte quota charge, so the image is kept undecoded
+        // at the size the header declared. The bitmap was never admitted, so it is disposed at once
+        // rather than queued for a renderer drain a hidden pane may never run.
+        var decoder = new DisposableImageDecoder(2000, 2000);
+        var (buffer, parser, replies) = Create(decoder);
         parser.Process(protocol == "kitty" ? Kitty("a=T,i=1,f=100", TestImages.PngBase64(1, 1)) : ITerm("", TestImages.PngBase64(1, 1)));
-        TerminalImage image = Assert.Single(buffer.Images);
-        Assert.IsType<UndecodedImage>(image.ImageHandle);
+        Assert.IsType<UndecodedImage>(Assert.Single(buffer.Images).ImageHandle);
         if (protocol == "kitty") Assert.Equal(["\x1b_Gi=1;OK\x1b\\"], replies);
+        Assert.True(Assert.Single(decoder.Handles).Disposed);
         var retired = new List<object>();
         buffer.DrainRetiredImageHandles(retired, long.MaxValue);
-        Assert.IsNotType<UndecodedImage>(Assert.Single(retired)); // the oversized decoded handle
+        Assert.Empty(retired);
+    }
+
+    [Fact]
+    public void Raw_data_shorter_than_its_declared_size_is_refused()
+    {
+        var (buffer, parser, replies) = Create(decoder: null);
+        parser.Process(Kitty("a=T,i=6,f=24,s=2,v=2", Convert.ToBase64String(new byte[11])));
+        Assert.Equal(["\x1b_Gi=6;EINVAL:Image decode failed\x1b\\"], replies);
+        Assert.Empty(buffer.Images);
+    }
+
+    [Fact]
+    public void An_iterm2_image_after_its_handle_was_handed_off_is_placed_as_without_a_decoder()
+    {
+        // The reused handle is retired with the first image; the second image gets the same handle back,
+        // which cannot be readmitted, so it is placed undecoded with the same geometry, aspect intent and
+        // cursor movement as a parser without a decoder.
+        string first = ITerm("", TestImages.PngBase64(1, 1));
+        string second = ITerm(";width=3;preserveAspectRatio=0", TestImages.PngBase64(1, 1)) + "x";
+
+        var (buffer, parser, _) = Create(new ReusedHandleDecoder());
+        parser.Process(first);
+        buffer.ClearImages();
+        buffer.DrainRetiredImageHandles([], long.MaxValue);
+        parser.Process(second);
+
+        var (expectedBuffer, expectedParser, _) = Create(decoder: null);
+        expectedParser.Process(first);
+        expectedBuffer.ClearImages();
+        expectedParser.Process(second);
+
+        TerminalImage image = Assert.Single(buffer.Images);
+        TerminalImage expected = Assert.Single(expectedBuffer.Images);
+        Assert.IsType<UndecodedImage>(image.ImageHandle);
+        Assert.Equal((expected.CellX, expected.CellY, expected.CellWidth, expected.CellHeight, expected.PreserveAspectRatio),
+            (image.CellX, image.CellY, image.CellWidth, image.CellHeight, image.PreserveAspectRatio));
+        Assert.False(image.PreserveAspectRatio);
+        Assert.Equal((expectedBuffer.CursorRow, expectedBuffer.CursorCol), (buffer.CursorRow, buffer.CursorCol));
     }
 
     [Fact]
@@ -179,6 +219,28 @@ public sealed class DecoderIndependentImagePlacementTests
         public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) => throw new InvalidOperationException("decoder exploded");
         public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) => throw new InvalidOperationException("decoder exploded");
         public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight) => throw new InvalidOperationException("decoder exploded");
+    }
+
+    private sealed class DisposableHandle : IDisposable
+    {
+        public bool Disposed { get; private set; }
+        public void Dispose() => Disposed = true;
+    }
+
+    /// <summary>Decodes everything to fresh disposable handles of one fixed size.</summary>
+    private sealed class DisposableImageDecoder(int width, int height) : IImageDecoder
+    {
+        public List<DisposableHandle> Handles { get; } = [];
+        private DisposableHandle Next(out int pixelWidth, out int pixelHeight)
+        {
+            (pixelWidth, pixelHeight) = (width, height);
+            var handle = new DisposableHandle();
+            Handles.Add(handle);
+            return handle;
+        }
+        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) => Next(out pixelWidth, out pixelHeight);
+        public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) => Next(out pixelWidth, out pixelHeight);
+        public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight) => Next(out pixelWidth, out pixelHeight);
     }
 
     /// <summary>Hands back the same handle every time, so later images find it already owned or retired.</summary>

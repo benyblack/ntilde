@@ -441,7 +441,7 @@ namespace Ntilde.VT
                         // declare, outside the quota charged for it: a GIF whose first frame overflows its
                         // logical screen decodes larger than its header says. Keep the image undecoded.
                         TerminalLogger.Debug($"[ANSI_PARSER] Decoded {decodedWidth}x{decodedHeight} for a {pixelWidth}x{pixelHeight} header; placing it undecoded.");
-                        _buffer.RetireUnstoredKittyHandle(handle);
+                        _buffer.ReleaseRejectedImageHandle(handle);
                     }
                 }
                 catch (Exception ex)

@@ -97,6 +97,9 @@ public sealed class ImageHeaderProbeTests
         { "empty", [] },
         { "png signature only", TestImages.PngHeader(1, 1)[..8] },
         { "png truncated in IHDR", TestImages.PngHeader(1, 1)[..20] },
+        { "png truncated after the dimensions", TestImages.PngHeader(1, 1)[..24] },
+        { "png IHDR without its CRC", TestImages.PngHeader(1, 1)[..29] },
+        { "png IHDR length not 13", PngWithIhdrLength(12) },
         { "png first chunk not IHDR", PngWithChunk("tEXt") },
         { "png zero width", TestImages.PngHeader(0, 5) },
         { "png width past int", PngPastInt() },
@@ -164,6 +167,13 @@ public sealed class ImageHeaderProbeTests
     {
         byte[] png = TestImages.PngHeader(1, 1);
         System.Text.Encoding.ASCII.GetBytes(type).CopyTo(png, 12);
+        return png;
+    }
+
+    private static byte[] PngWithIhdrLength(uint length)
+    {
+        byte[] png = TestImages.PngHeader(1, 1);
+        BinaryPrimitives.WriteUInt32BigEndian(png.AsSpan(8), length);
         return png;
     }
 
