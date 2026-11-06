@@ -13,6 +13,12 @@ public sealed class MuxServerOptions
     /// <summary>The host's build version, reported in Welcome (<c>ServerVersion</c>) and the endpoint descriptor. Null/empty: none reported.</summary>
     public string? AppVersion { get; init; }
 
+    /// <summary>
+    /// Asked at each hello: whether the host has outlived its login session (<see cref="Daemon.LoginSession.HasEnded"/>),
+    /// reported in Welcome (<c>LoginSessionEnded</c>) when true. Null: never reported (in-process servers, tests).
+    /// </summary>
+    public Func<bool>? LoginSessionEnded { get; init; }
+
     /// <summary>Server-side cap on an attach's <c>maxScrollbackRows</c> (spec §7).</summary>
     public int MaxAttachScrollbackRows { get; init; } = MuxHistoryLimits.DefaultMaxAttachRows;
 

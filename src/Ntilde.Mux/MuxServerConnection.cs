@@ -475,16 +475,39 @@ internal sealed class MuxServerConnection : IMuxFrameSink
 
         _byteInput = p.ByteInput;
         Volatile.Write(ref _version, chosen);
+        bool loginSessionEnded = LoginSessionEnded(o);
         Reply(request, new WelcomeResult
         {
             Version = chosen,
             MaxSixelRasterPolicy = _maxSixelRasterPolicy,
             ForceConPtyFiltering = o.ForceConPtyFiltering,
             ServerVersion = string.IsNullOrEmpty(o.AppVersion) ? null : o.AppVersion,
+            LoginSessionEnded = loginSessionEnded ? true : null,
             SupportsPresentationOnly = true,
             SupportsByteInput = _byteInput,
             HistoryLimits = new MuxHistoryLimits { MaxRows = o.MaxSessionHistoryRows, MaxBytes = o.MaxSessionScrollbackBytes, MaxAttachRows = o.MaxAttachScrollbackRows },
         }, MuxJsonContext.Default.WelcomeResult);
+    }
+
+    private static int s_loginSessionEndedLogged;
+
+    /// <summary>The options' login probe; a probe that throws reports nothing (logged).</summary>
+    private bool LoginSessionEnded(MuxServerOptions o)
+    {
+        if (o.LoginSessionEnded is not { } probe) return false;
+        try
+        {
+            if (!probe()) return false;
+            // Once per process: every hello asks again, and an agent's tools may connect often.
+            if (Interlocked.Exchange(ref s_loginSessionEndedLogged, 1) == 0)
+                SafeLog("[MuxServer] this daemon has outlived its login session: the shells it starts cannot look up the user. Reported in every welcome from now on.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            SafeLog($"[MuxServer] connection {ConnectionId}: the login session probe failed: {ex.Message}");
+            return false;
+        }
     }
 
     private void HandleRequest(MuxRequest request)

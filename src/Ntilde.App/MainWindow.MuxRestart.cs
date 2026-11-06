@@ -120,11 +120,16 @@ namespace Ntilde
             {
                 if (_teardownDone
                     || !client.IsConnected
-                    || client.ServerVersion is not { } daemonVersion
                     || !SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence))
                 {
                     return;
                 }
+
+                // A local daemon that outlived its login session is offered a restart whatever its version: its new shells
+                // cannot look up the user, and the daemon this window starts belongs to the current login.
+                string? daemonVersion = client.ServerVersion;
+                bool loginSessionEnded = id.IsLocal && client.LoginSessionEnded;
+                if (daemonVersion is null && !loginSessionEnded) return;
 
                 // What a restart would start: this build for the local daemon (its binary is this app's), the binary
                 // installed on the host for a remote one.
@@ -132,7 +137,7 @@ namespace Ntilde
                 NoticeOffer offer;
                 if (id.IsLocal)
                 {
-                    offer = MuxPreviousBuildNotice.IsFromAnotherBuild(daemonVersion, restartsAs) ? NoticeOffer.Restart : NoticeOffer.None;
+                    offer = MuxPreviousBuildNotice.NeedsLocalRestart(daemonVersion, loginSessionEnded, restartsAs) ? NoticeOffer.Restart : NoticeOffer.None;
                 }
                 else
                 {
@@ -146,7 +151,7 @@ namespace Ntilde
                 string key = $"{MuxPreviousBuildNotice.Title}\n{id}";
                 if (offer == NoticeOffer.Update)
                 {
-                    OfferRemoteMuxUpdate(id, where, daemonVersion, key);
+                    OfferRemoteMuxUpdate(id, where, daemonVersion!, key); // DecideRemote offers nothing for an unknown version
                     return;
                 }
 
@@ -157,13 +162,19 @@ namespace Ntilde
                     return;
                 }
 
-                string message = id.IsLocal
-                    ? MuxPreviousBuildNotice.LocalMessage(daemonVersion, MuxThisBuildVersion, count)
-                    : MuxPreviousBuildNotice.RemoteMessage(where, daemonVersion, count);
+                // daemonVersion is known on every path but the ended login's: NeedsLocalRestart and DecideRemote offer nothing
+                // for an unknown version.
+                string message = loginSessionEnded
+                    ? MuxPreviousBuildNotice.LoginSessionEndedMessage(count)
+                    : id.IsLocal
+                        ? MuxPreviousBuildNotice.LocalMessage(daemonVersion!, MuxThisBuildVersion, count)
+                        : MuxPreviousBuildNotice.RemoteMessage(where, daemonVersion!, count);
                 PersistenceNoticeAction action = id.IsLocal
                     ? new PersistenceNoticeAction(MuxPreviousBuildNotice.LocalActionLabel, () => _ = RestartLocalMuxAsync())
                     : new PersistenceNoticeAction(MuxPreviousBuildNotice.RemoteActionLabel(where), () => _ = RestartRemoteMuxAsync(id, where));
-                AppLogger.Log($"[MainWindow] the multiplexer on {where} is from another build ({RemoteOutputText.Quote(daemonVersion)}, a restart starts {RemoteOutputText.Quote(restartsAs)}); offering a restart");
+                AppLogger.Log(loginSessionEnded
+                    ? $"[MainWindow] the multiplexer on {where} has outlived its login session; offering a restart"
+                    : $"[MainWindow] the multiplexer on {where} is from another build ({RemoteOutputText.Quote(daemonVersion)}, a restart starts {RemoteOutputText.Quote(restartsAs)}); offering a restart");
                 MuxNoticeRaisedForTest?.Invoke(new MuxPreviousBuildNotice.Raised(id, null, key, message, action));
                 EnqueueNotice(MuxPreviousBuildNotice.Title, message, action, key);
             }
@@ -291,7 +302,7 @@ namespace Ntilde
             try
             {
                 MuxClient? old = host.CurrentClient;
-                if (old is not null && !MuxPreviousBuildNotice.IsFromAnotherBuild(old.ServerVersion, MuxThisBuildVersion))
+                if (old is not null && !MuxPreviousBuildNotice.NeedsLocalRestart(old.ServerVersion, old.LoginSessionEnded, MuxThisBuildVersion))
                 {
                     RaiseMuxRestartOutcome(local, MuxPreviousBuildNotice.NothingToRestart(old.ServerVersion), null);
                     return;
@@ -308,10 +319,11 @@ namespace Ntilde
                 RestartOutcome? leftAlone = null;
                 LocalDaemonStop stop = await ShutdownLocalDaemonAsync(TimeSpan.FromSeconds(5), "the restart", (daemon, found) =>
                 {
-                    // The last look (review item 3, round 2 M3): what is about to be stopped must still be another build's.
+                    // The last look (review item 3, round 2 M3): what is about to be stopped must still be another build's,
+                    // or still have outlived its login session.
                     leftAlone = found switch
                     {
-                        LocalDaemonProbe.Reached when !MuxPreviousBuildNotice.IsFromAnotherBuild(daemon!.ServerVersion, MuxThisBuildVersion)
+                        LocalDaemonProbe.Reached when !MuxPreviousBuildNotice.NeedsLocalRestart(daemon!.ServerVersion, daemon.LoginSessionEnded, MuxThisBuildVersion)
                             => MuxPreviousBuildNotice.NothingToRestart(daemon.ServerVersion),
                         LocalDaemonProbe.Reached or LocalDaemonProbe.VersionMismatch => null,
                         LocalDaemonProbe.NotRunning => RestartOutcome.NotRunning,
