@@ -276,6 +276,23 @@ public partial class TerminalBuffer
         return hash.ToHashCode();
     }
 
+    /// <summary>
+    /// What validating compressed Kitty bytes in a snapshot inflates, from what they inflated to live
+    /// (<paramref name="inflated"/>): the whole stream, and once more when the start kept to read a
+    /// container header does not hold it (see <see cref="MeasureKittySize"/> and
+    /// <see cref="ContainerSize"/>, which this must match). 0 for uncompressed bytes.
+    /// <see cref="ImageSourceBudget"/> keeps the total within the restore limit.
+    /// </summary>
+    internal static long SnapshotInflationCost(byte[] inflated, KittyImageEncoding encoding)
+    {
+        if (!encoding.Compressed) return 0;
+        long cost = inflated.LongLength;
+        if (!IsRaw(encoding) && inflated.Length > InflatedHeaderPrefixBytes
+            && !ImageHeaderProbe.TryGetSize(inflated.AsSpan(0, InflatedHeaderPrefixBytes), out _, out _, out _))
+            cost += inflated.LongLength;
+        return cost;
+    }
+
     private static (int, int)? MeasureKittySize(byte[] data, KittyImageEncoding encoding, ref long inflated)
     {
         long rawLength = (long)encoding.RawWidth * encoding.RawHeight * RawBytesPerPixel(encoding);
@@ -356,15 +373,15 @@ public partial class TerminalBuffer
     /// budget is still restored, with its id and cells, only without bytes: it stays undecoded and a
     /// later snapshot cannot carry it.
     /// </summary>
-    private void ImportImageState(TerminalStateSnapshot snapshot, Dictionary<TerminalImage, int> order)
+    private void ImportImageState(TerminalStateSnapshot snapshot, Dictionary<TerminalImage, int> order, int expiredRows)
     {
         _nextKittyImageId = snapshot.KittyNextImageId;
         var kittyStates = snapshot.KittyImages ?? [];
         var itermStates = snapshot.ITermImages ?? [];
         (ImageSource[] kittySources, ImageSource[] itermSources) = RetainImportedSources(kittyStates, itermStates);
         List<KittyImageAsset> assets = ImportKittyAssets(kittyStates, kittySources);
-        ImportKittyPlacements(snapshot.KittyPlacements ?? [], assets, order);
-        ImportITermImages(itermStates, itermSources, order);
+        ImportKittyPlacements(snapshot.KittyPlacements ?? [], assets, order, expiredRows);
+        ImportITermImages(itermStates, itermSources, order, expiredRows);
     }
 
     /// <summary>
@@ -381,10 +398,21 @@ public partial class TerminalBuffer
             .OrderBy(entry => entry.Order ?? int.MaxValue).ThenBy(entry => entry.Sequence);
         foreach (var entry in retention)
         {
-            if (entry.Kitty) kitty[entry.Index] = ImageSources.RetainCopy(kittyStates[entry.Index].Data);
+            if (entry.Kitty) kitty[entry.Index] = ImageSources.RetainCopy(kittyStates[entry.Index].Data, ImportedInflationCost(kittyStates[entry.Index]));
             else iterm[entry.Index] = ImageSources.RetainCopy(itermStates[entry.Index].Data);
         }
         return (kitty, iterm);
+    }
+
+    /// <summary>
+    /// What validating an imported Kitty image inflated, charged to <see cref="ImageSources"/> as live
+    /// transmission charges it. Validation measured it already, so this reads the cached measurement.
+    /// </summary>
+    private static long ImportedInflationCost(TerminalKittyImageState state)
+    {
+        long cost = 0;
+        if (state.Compressed) DeclaredKittySize(state.Data, new KittyImageEncoding(state.Format, state.Compressed, state.RawWidth, state.RawHeight), ref cost);
+        return cost;
     }
 
     private List<KittyImageAsset> ImportKittyAssets(List<TerminalKittyImageState> states, ImageSource[] sources)
@@ -404,14 +432,15 @@ public partial class TerminalBuffer
         return assets;
     }
 
-    private void ImportKittyPlacements(List<TerminalKittyPlacementState> states, List<KittyImageAsset> assets, Dictionary<TerminalImage, int> order)
+    private void ImportKittyPlacements(List<TerminalKittyPlacementState> states, List<KittyImageAsset> assets, Dictionary<TerminalImage, int> order,
+        int expiredRows)
     {
         foreach (TerminalKittyPlacementState state in states)
         {
             KittyImageAsset asset = assets[state.Image];
             var geometry = new PlacementGeometry(state.X, state.Y, state.Width, state.Height, asset.IsAltScreen,
                 state.ClipTop, state.ClipBottom, state.ClipRight);
-            if (ImportedPlacement(asset.Handle, geometry) is not { } image) continue;
+            if (ImportedPlacement(asset.Handle, geometry, expiredRows) is not { } image) continue;
             image.KittyImageId = asset.Id;
             image.KittyAsset = asset;
             image.KittyPlacementId = state.Placement == 0 ? null : state.Placement;
@@ -421,14 +450,15 @@ public partial class TerminalBuffer
         }
     }
 
-    private void ImportITermImages(List<TerminalITermImageState> states, ImageSource[] sources, Dictionary<TerminalImage, int> order)
+    private void ImportITermImages(List<TerminalITermImageState> states, ImageSource[] sources, Dictionary<TerminalImage, int> order,
+        int expiredRows)
     {
         for (int i = 0; i < states.Count; i++)
         {
             TerminalITermImageState state = states[i];
             var geometry = new PlacementGeometry(state.X, state.Y, state.Width, state.Height, state.Alt,
                 state.ClipTop, state.ClipBottom, state.ClipRight);
-            if (ImportedPlacement(new UndecodedImage(state.PixelWidth, state.PixelHeight), geometry) is not { } image)
+            if (ImportedPlacement(new UndecodedImage(state.PixelWidth, state.PixelHeight), geometry, expiredRows) is not { } image)
             {
                 sources[i].Release();
                 continue;
@@ -464,10 +494,13 @@ public partial class TerminalBuffer
     /// A transferred placement; null when nothing of it is left. Unlike SIXEL, it keeps a position past
     /// the right or bottom edge (within <see cref="MaxImportedOffscreenCells"/>), where the live buffer
     /// keeps it too, so it shows again when the screen grows, and a start left of column 0, where
-    /// deleting characters can shift it, partly or wholly off the screen.
+    /// deleting characters can shift it, partly or wholly off the screen. A main-screen placement moves
+    /// up by <paramref name="expiredRows"/>, the history rows this buffer could not keep, and what moves
+    /// above the first row is clipped, as on export.
     /// </summary>
-    private TerminalImage? ImportedPlacement(object handle, PlacementGeometry geometry)
+    private TerminalImage? ImportedPlacement(object handle, PlacementGeometry geometry, int expiredRows)
     {
+        if (!geometry.Alt) geometry = geometry with { Y = geometry.Y - expiredRows, ClipTop = Math.Max(geometry.ClipTop, expiredRows - geometry.Y) };
         int top = Math.Clamp(geometry.ClipTop, 0, geometry.Height);
         int bottom = Math.Clamp(geometry.ClipBottom, 0, geometry.Height - top);
         int right = Math.Clamp(geometry.ClipRight, 0, geometry.Width);

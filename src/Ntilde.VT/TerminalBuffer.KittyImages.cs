@@ -35,8 +35,9 @@ public partial class TerminalBuffer
     /// <see cref="ImageSources"/> only after the replaced asset's and every quota victim's bytes are
     /// released, so the source budget never evicts a surviving image's bytes to make room for a moment.
     /// </param>
+    /// <param name="inflationCost">What validating <paramref name="sentBytes"/> in a snapshot inflates.</param>
     internal KittyImageAsset? StoreKittyImage(object handle, int pixelWidth, int pixelHeight, uint id, uint number,
-        byte[]? sentBytes = null, KittyImageEncoding? encoding = null)
+        byte[]? sentBytes = null, KittyImageEncoding? encoding = null, long inflationCost = 0)
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         int placementsBefore = _images.Count;
@@ -48,7 +49,7 @@ public partial class TerminalBuffer
             List<KittyImageAsset> victims = KittyQuotaVictims(old, (long)pixelWidth * pixelHeight * 4);
             old?.Source?.Release();
             foreach (KittyImageAsset victim in victims) victim.Source?.Release();
-            ImageSource? source = sentBytes is null ? null : ImageSources.Retain(sentBytes);
+            ImageSource? source = sentBytes is null ? null : ImageSources.Retain(sentBytes, inflationCost);
             var asset = new KittyImageAsset(id, number, _isAltScreen, handle, pixelWidth, pixelHeight) { Source = source, Encoding = encoding };
             // Publish the new ownership before retiring the old one: even a host decoder
             // sharing an opaque handle cannot retire that handle while the new asset owns it.

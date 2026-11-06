@@ -524,6 +524,70 @@ public sealed class ImageStateTransferTests
         Assert.True(before.AsSpan().SequenceEqual(TerminalStateSerializer.ToBytes(target.ExportState(int.MaxValue))), name);
     }
 
+    [Fact]
+    public void Placements_keep_their_screen_rows_when_the_importer_keeps_less_history()
+    {
+        // The importer's scrollback budget can keep fewer history rows than the snapshot carries. Main-screen
+        // placements then move up by the rows it dropped, as live eviction moves them: each stays on the
+        // screen row it was on, one partly in dropped history is clipped, and one wholly in it is gone.
+        var buffer = new TerminalBuffer(40, 20);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { RetainImageSources = true, RetainSixelSources = true };
+        parser.Process(string.Concat(Enumerable.Range(0, 300).Select(i => $"line {i}\r\n")));
+        parser.Process("\x1b[1;1H" + Kitty("a=T,i=1,f=100,c=4,r=4,C=1", TestImages.PngBase64(20, 20))
+            + "\x1b[1;20H" + Kitty("a=T,i=2,f=100,c=2,r=1,C=1", TestImages.PngBase64(8, 8))
+            + "\x1b[8;3H" + ITerm(";width=4", TestImages.PngBase64(10, 10))
+            + "\x1b[14;3H\x1bPq#0;2;100;0;0#0!16~\x1b\\"
+            + "\x1b[18;10H" + Kitty("a=T,i=3,f=100,c=3,r=2,C=1", TestImages.PngBase64(12, 12))
+            + "\x1b[20;1H\r\n\r\n");
+        TerminalStateSnapshot snapshot = Export(buffer, parser);
+
+        var (restored, restoredParser) = Create(retain: true, decoder: null);
+        restoredParser.RetainSixelSources = true;
+        restored.MaxScrollbackBytes = 1;
+        TerminalStateTransfer.Restore(restored, restoredParser, TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(snapshot)));
+
+        Assert.Equal(0, restored.TotalLines - restored.Rows);
+        Assert.Equal(OnScreen(buffer), OnScreen(restored));
+        int partlyGone = buffer.Images.Single(image => image.KittyImageId == 1).CellY - (buffer.TotalLines - buffer.Rows);
+        Assert.True(partlyGone < 0);
+        Assert.Contains(restored.Images, image => image.KittyImageId == 1 && image.CellY == partlyGone && image.ClipTopRows == -partlyGone);
+        Assert.DoesNotContain(restored.Images, image => image.KittyImageId == 2);
+    }
+
+    [Fact]
+    public void The_source_budget_keeps_compressed_images_within_what_a_restore_inflates()
+    {
+        // Five compressed PNGs that each inflate to almost 32 MiB are each within the live bound, but a
+        // restore refuses a snapshot that inflates past 128 MiB. The source budget counts the same
+        // inflation and evicts the oldest, so the snapshot carries four and restores; the restored
+        // budget counts them too, so its next snapshot restores as well.
+        byte[] padded = new byte[(int)(32 * 1024 * 1024) - 64];
+        TestImages.PngHeader(4, 4).CopyTo(padded, 0);
+        string payload = Convert.ToBase64String(Deflate(padded));
+        var (buffer, parser) = Create(retain: true, decoder: null);
+        for (int id = 1; id <= 5; id++) parser.Process(Kitty($"a=t,i={id},f=100,o=z", payload));
+
+        TerminalStateSnapshot snapshot = Export(buffer, parser);
+        Assert.Equal(new uint[] { 2, 3, 4, 5 }, snapshot.KittyImages!.Select(image => image.Id));
+        var (restored, restoredParser) = Restore(snapshot, decoder: null);
+
+        restoredParser.Process(Kitty("a=t,i=6,f=100,o=z", payload));
+        TerminalStateSnapshot next = Export(restored, restoredParser);
+        Assert.Equal(new uint[] { 3, 4, 5, 6 }, next.KittyImages!.Select(image => image.Id));
+        Restore(next, decoder: null);
+    }
+
+    /// <summary>Each placement's screen row and visible part; rows above the first history row are clipped.</summary>
+    private static string OnScreen(TerminalBuffer buffer)
+    {
+        int history = buffer.TotalLines - buffer.Rows;
+        return string.Join(";", buffer.Images
+            .Select(i => (Image: i, Y: i.CellY - history, Top: Math.Max(i.ClipTopRows, history - i.CellY)))
+            .Where(e => e.Top + e.Image.ClipBottomRows < e.Image.CellHeight)
+            .OrderBy(e => e.Y).ThenBy(e => e.Image.CellX)
+            .Select(e => $"{e.Image.IsSixelImage},{e.Image.KittyImageId},{e.Image.CellX},{e.Y},{e.Image.CellWidth}x{e.Image.CellHeight},{e.Top},{e.Image.ClipBottomRows},{e.Image.ClipRightColumns}"));
+    }
+
     private static (TerminalBuffer Buffer, AnsiParser Parser) Create(bool retain, IImageDecoder? decoder)
     {
         var buffer = new TerminalBuffer(40, 20);

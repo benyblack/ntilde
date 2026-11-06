@@ -270,9 +270,12 @@ invariant changes.
   without retaining disposed wrappers or blocking frame drain on the parser lock.
   Transmit-only removal invalidates the view. Where the parser retains image
   sources (#838), complete state carries Kitty assets with their placements and
-  iTerm2 images as the bytes they were sent as, bounded by `ImageSourceBudget`;
-  import validates them, restores them undecoded and `TerminalStateTransfer`
-  decodes them. Imported state always clears old resources.
+  iTerm2 images as the bytes they were sent as, bounded by `ImageSourceBudget`
+  in bytes and in what a restore inflates to validate them, so every export
+  restores; import validates them, restores them undecoded and
+  `TerminalStateTransfer` decodes them. Main-screen placements (SIXEL too) move
+  up by the history rows the importer's scrollback budget cannot keep, clipped
+  or dropped as eviction would. Imported state always clears old resources.
   Basic lifecycle evidence does not qualify animation, Unicode placeholders or
   extended crop/layout/delete actions.
 - **SIXEL layout is independent of bitmap decoding.** VT measures bounded geometry even with no

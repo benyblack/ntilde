@@ -229,8 +229,11 @@ namespace Ntilde.VT
                 ClearImagePlacements();
                 ClearRetainedKittyImages();
                 var placementOrder = new Dictionary<TerminalImage, int>();
-                ImportSixelState(snapshot, placementOrder);
-                ImportImageState(snapshot, placementOrder);
+                // History rows this buffer's scrollback budget could not keep are gone, so main-screen
+                // placements move up by as many rows, the way scrollback eviction moves live ones.
+                int expiredRows = Math.Max(0, snapshot.ScrollbackRowCount - _scrollback.Count);
+                ImportSixelState(snapshot, placementOrder, expiredRows);
+                ImportImageState(snapshot, placementOrder, expiredRows);
                 RestorePlacementOrder(placementOrder);
 
                 // Derived, never carried: the packed style cache is rebuilt from the SGR fields

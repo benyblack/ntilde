@@ -67,20 +67,21 @@ public partial class TerminalBuffer
         return kept;
     }
 
-    private void ImportSixelState(TerminalStateSnapshot snapshot, Dictionary<TerminalImage, int> order)
+    private void ImportSixelState(TerminalStateSnapshot snapshot, Dictionary<TerminalImage, int> order, int expiredRows)
     {
         foreach (var state in BoundedSixelStates(snapshot))
         {
             int width = Math.Clamp(state.Width, 1, SixelGeometry.DefaultMaxPixelDimension);
             int height = Math.Clamp(state.Height, 1, SixelGeometry.DefaultMaxPixelDimension);
-            int top = Math.Clamp(state.ClipTop, 0, height);
+            int y = state.Alt ? state.Y : state.Y - expiredRows;
+            int top = Math.Clamp(Math.Max(state.ClipTop, -y), 0, height);
             int bottom = Math.Clamp(state.ClipBottom, 0, height - top);
             int right = Math.Clamp(state.ClipRight, 0, width);
             if (top + bottom >= height || right >= width) continue;
             var source = SixelSources.Retain(state.Source);
             if (source.Data is null) continue;
             int lastRow = state.Alt ? Rows - 1 : _scrollback.Count + Rows - 1;
-            var image = new TerminalImage(source, Math.Clamp(state.X, 0, Cols - 1), Math.Clamp(state.Y, 1 - height, lastRow), width, height)
+            var image = new TerminalImage(source, Math.Clamp(state.X, 0, Cols - 1), Math.Clamp(y, 1 - height, lastRow), width, height)
             {
                 IsSixelImage = true,
                 SixelSource = source,

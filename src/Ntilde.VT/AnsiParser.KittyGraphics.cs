@@ -278,8 +278,9 @@ namespace Ntilde.VT
             // they were sent; the store charges them only after freeing what this image replaces or evicts.
             byte[]? retained = RetainImageSources ? sent : null;
             var encoding = retained is null ? null : new KittyImageEncoding(format, _kittyPendingParams.ContainsKey("o"), rawWidth, rawHeight);
-            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number, retained, encoding)
-                ?? _buffer.StoreKittyImage(new UndecodedImage(pixelWidth, pixelHeight), pixelWidth, pixelHeight, identity.Id, identity.Number, retained, encoding);
+            long inflationCost = encoding is null ? 0 : TerminalBuffer.SnapshotInflationCost(data, encoding);
+            KittyImageAsset? asset = _buffer.StoreKittyImage(imageHandle, pixelWidth, pixelHeight, identity.Id, identity.Number, retained, encoding, inflationCost)
+                ?? _buffer.StoreKittyImage(new UndecodedImage(pixelWidth, pixelHeight), pixelWidth, pixelHeight, identity.Id, identity.Number, retained, encoding, inflationCost);
             if (asset is null) return "EINVAL:Image could not be stored";
             id = asset.Id;
             if (display) PlaceKittyImage(asset, identity.HasIdentity ? identity.Placement : 0);
