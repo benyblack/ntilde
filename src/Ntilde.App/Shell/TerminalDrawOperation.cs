@@ -3241,7 +3241,9 @@ namespace Ntilde.Shell
             return new SKColor(v, v, v, fg.Alpha);
         }
 
-        private static SKColor ResolveCellForeground(RenderCellSnapshot cell, SKColor themeFg, byte alpha, RenderThemeSnapshot themeSnapshot)
+        // Internal so the agent host's resolved-color projection resolves through the exact
+        // same precedence as the draw path rather than a copy of it.
+        internal static SKColor ResolveCellForeground(RenderCellSnapshot cell, SKColor themeFg, byte alpha, RenderThemeSnapshot themeSnapshot)
         {
             if (cell.IsDefaultForeground) return themeFg;
             if (cell.FgIndex >= 0)
@@ -3331,7 +3333,8 @@ namespace Ntilde.Shell
             canvas.DrawPath(path, _decoStrokePaint);
         }
 
-        private static SKColor ResolveCellBackground(RenderCellSnapshot cell, SKColor themeBg, byte alpha, RenderThemeSnapshot themeSnapshot)
+        // Internal for the same reason as ResolveCellForeground: one resolution precedence.
+        internal static SKColor ResolveCellBackground(RenderCellSnapshot cell, SKColor themeBg, byte alpha, RenderThemeSnapshot themeSnapshot)
         {
             if (cell.IsDefaultBackground) return themeBg;
 
