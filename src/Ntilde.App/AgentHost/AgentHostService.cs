@@ -1884,20 +1884,27 @@ namespace Ntilde.AgentHost
         private async Task<AgentHostResponse> WindowlessReadScreenAsync(
             AgentHostRequest request, IWindowlessSessionSource source, ReadScreenParams p, CancellationToken cancellationToken)
         {
-            if (p.IncludeResolvedColors)
+            var screen = await source.ReadScreenAsync(p.PaneId, 0, cancellationToken).ConfigureAwait(false);
+            AgentHostResponse failure;
+            if (screen.Outcome == WindowlessOutcome.Ok && p.IncludeResolvedColors)
             {
-                // The imported buffer has no theme of the session it came from; resolving
-                // against the import default would present colors the session never
-                // rendered. Refuse rather than answer a question this path cannot know.
-                return Error(request.Id, AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable,
+                // Only a session that actually resolved as windowless is refused the
+                // projection — an unknown paneId keeps its own typed error below. The
+                // imported buffer has no theme of the session it came from; resolving
+                // against the import default would present colors that session never
+                // rendered. Routed through WindowlessRead so the refusal is journaled.
+                failure = Error(request.Id, AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable,
                     "Resolved colors are unavailable for windowless sessions: the imported screen carries no theme of the session it came from.");
             }
-            var screen = await source.ReadScreenAsync(p.PaneId, 0, cancellationToken).ConfigureAwait(false);
-            var (buffer, failure) = ImportScreen(request.Id, p.PaneId, AgentHostProtocol.Methods.ReadScreen, screen);
-            if (failure == null)
+            else
             {
-                ArgumentNullException.ThrowIfNull(buffer);
-                failure = ScreenResult(request.Id, buffer, p, completeLocalHistory: false);
+                var (buffer, importFailure) = ImportScreen(request.Id, p.PaneId, AgentHostProtocol.Methods.ReadScreen, screen);
+                if (importFailure == null)
+                {
+                    ArgumentNullException.ThrowIfNull(buffer);
+                    importFailure = ScreenResult(request.Id, buffer, p, completeLocalHistory: false);
+                }
+                failure = importFailure;
             }
             return WindowlessRead(request, AgentHostProtocol.Methods.ReadScreen, p.PaneId, screen, failure);
         }
