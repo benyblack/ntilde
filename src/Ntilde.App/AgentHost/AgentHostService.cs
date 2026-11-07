@@ -1735,9 +1735,11 @@ namespace Ntilde.AgentHost
 
             // Resolved colors come from the coherent cells-plus-theme render snapshot, which
             // takes the buffer's read lock itself — hence outside the block above. A resize
-            // racing the two captures is refused, never projected torn.
+            // racing the two captures changes the dimensions this capture reads; refusing
+            // keeps the response from mixing two screens, never projecting a torn viewport.
             if (parameters.IncludeResolvedColors
-                && !ResolvedColorSnapshot.TryCapture(buffer, out resolvedColors, out colorBinding, minimumContrast))
+                && !ResolvedColorSnapshot.TryCapture(buffer, out resolvedColors, out colorBinding, minimumContrast,
+                    expectedRows: rows, expectedCols: cols))
             {
                 return Error(requestId, AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable,
                     $"Complete resolved colors require at most {AgentHostProtocol.MaxCellDetailCells} cells and {AgentHostProtocol.MaxCellDetailRuns} runs, captured without a concurrent resize.");

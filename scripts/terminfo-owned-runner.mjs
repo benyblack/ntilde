@@ -1019,8 +1019,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 // beside the stored-index ones, never replace them.
                 if (!sgrColorsObserver?.restored) throw new Error('SGR-colors suite must restore before SGR-RGB observations.');
                 sgrRgbObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
-                    nonce: `NTILDE_SR_${runId}`, includeAttributes: true, includeResolvedColors: true,
-                    prefix: 'sgrgb', expectedPaneId: cellObserver.paneId });
+                    nonce: `NTILDE_SR_${runId}`, includeAttributes: true, includeCellDetails: true,
+                    includeResolvedColors: true, prefix: 'sgrgb', expectedPaneId: cellObserver.paneId });
                 const result = await sgrRgbObserver.handle(request.kind, budget, request.barrier);
                 appendFileSync(join(output, 'sgrgb-snapshots.jsonl'), JSON.stringify(sgrRgbObserver.frames.at(-1)) + '\n');
                 return result;

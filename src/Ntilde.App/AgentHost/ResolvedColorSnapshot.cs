@@ -27,8 +27,14 @@ internal static class ResolvedColorSnapshot
         + "minimum-contrast adjustment, opacity compositing and glyph rasterisation, so rendered glyph "
         + "appearance may still differ from these values.";
 
-    /// <summary>Capture a complete resolved-color viewport with its binding, or refuse before any partial data.</summary>
-    internal static bool TryCapture(TerminalBuffer buffer, out ResolvedColorRunDto[]? runs, out ColorBindingDto? binding, double? minimumContrast = null)
+    /// <summary>
+    /// Capture a complete resolved-color viewport with its binding, or refuse before any partial data.
+    /// The caller passes the rows/cols it already read for the rest of the response: a resize that
+    /// lands between the two captures makes them differ, and the whole read is refused here rather
+    /// than answered with projections of two different screens.
+    /// </summary>
+    internal static bool TryCapture(TerminalBuffer buffer, out ResolvedColorRunDto[]? runs, out ColorBindingDto? binding, double? minimumContrast = null,
+        int expectedRows = -1, int expectedCols = -1)
     {
         runs = null;
         binding = null;
@@ -43,7 +49,8 @@ internal static class ResolvedColorSnapshot
         {
             buffer.Lock.ExitReadLock();
         }
-        if (rows <= 0 || cols <= 0 || (long)rows * cols > AgentHostProtocol.MaxCellDetailCells) return false;
+        if (rows <= 0 || cols <= 0 || (long)rows * cols > AgentHostProtocol.MaxCellDetailCells
+            || rows != expectedRows || cols != expectedCols) return false;
 
         using var snapshot = buffer.CaptureRenderSnapshot(
             new RenderSnapshotRequest { ViewportRows = rows, ViewportCols = cols, Isolated = true }, out _);

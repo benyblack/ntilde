@@ -109,9 +109,17 @@ test('binding identity changes with the palette and stays stable otherwise', () 
     assert.equal(colorBindingHash(base), colorBindingHash(structuredClone(base)));
     const overridden = syntheticColorBinding({ palette: syntheticPalette().map((value, index) => index === 7 ? rgb(1, 1, 1) : value) });
     assert.notEqual(colorBindingHash(base), colorBindingHash(overridden));
-    const reversed = syntheticColorBinding({ foreground: 0, background: rgb(211, 211, 211) });
+    const reversed = syntheticColorBinding({ foreground: rgb(0, 0, 1), background: rgb(211, 211, 211) });
     assert.notEqual(colorBindingHash(base), colorBindingHash(reversed));
     assert.throws(() => copyColorBinding({ ...base, stage: 'pixels' }), /Invalid resolved-color theme binding/);
+    // The resolution stage is opaque: transparent or partial alpha cannot validate.
+    const transparentFg = structuredClone(base);
+    transparentFg.foregroundArgb = 0x00d3d3d3;
+    assert.throws(() => copyColorBinding(transparentFg), /Invalid resolved-color theme binding/);
+    const translucentPalette = structuredClone(base);
+    translucentPalette.ansiPaletteArgb = [...base.ansiPaletteArgb];
+    translucentPalette.ansiPaletteArgb[4] = 0x7f0000ee;
+    assert.throws(() => copyColorBinding(translucentPalette), /Invalid resolved-color theme binding/);
     assert.throws(() => copyColorBinding({ ...base, ansiPaletteArgb: base.ansiPaletteArgb.slice(1) }), /Invalid/);
     assert.throws(() => copyColorBinding({ ...base, paletteOverrideIndices: [5, 5] }), /Invalid/);
     assert.throws(() => copyColorBinding({ ...base, minimumContrast: 0 }), /Invalid/);

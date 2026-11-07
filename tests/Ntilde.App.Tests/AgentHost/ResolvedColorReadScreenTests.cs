@@ -211,6 +211,24 @@ public class ResolvedColorReadScreenTests : IDisposable
     }
 
     [Fact]
+    public void ResolvedColors_refuse_a_resize_between_the_two_captures()
+    {
+        // A caller that read one geometry must never receive resolved runs of another:
+        // the expected-dimensions check fails closed instead of mixing two screens.
+        var buffer = new TerminalBuffer(20, 3);
+        new AnsiParser(buffer).Process("C\x1b[31mX");
+        Assert.False(ResolvedColorSnapshot.TryCapture(buffer, out var runs, out var binding, minimumContrast: 1,
+            expectedRows: 20, expectedCols: 4));
+        Assert.Null(runs);
+        Assert.Null(binding);
+        // The matching expectation still captures.
+        Assert.True(ResolvedColorSnapshot.TryCapture(buffer, out runs, out binding, minimumContrast: 1,
+            expectedRows: 20, expectedCols: 3));
+        Assert.NotNull(runs);
+        Assert.NotNull(binding);
+    }
+
+    [Fact]
     public void ResolvedColors_are_captured_with_stored_details_in_one_response()
     {
         // The projection composes with the stored opt-ins: flags/indices stay the stored

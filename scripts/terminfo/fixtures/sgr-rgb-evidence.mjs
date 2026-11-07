@@ -41,12 +41,19 @@ const channel = (source, index, argb) => ({ source, index, argb });
 const defaultFg = binding => channel('default', -1, binding.foregroundArgb);
 const defaultBg = binding => channel('default', -1, binding.backgroundArgb);
 
-/** Coalesce adjacent identical resolved runs so fixtures stay canonical. */
+/** Stored cell-detail runs matching one attribute/resolved pair; literal colors
+ * carry their stored ARGB bytes so literal coherence is fully exercisable. */
+const detailRun = (count, flags, fg, bg, foregroundArgb = null, backgroundArgb = null) =>
+    ({ count, flags, fg, bg, foregroundArgb, backgroundArgb,
+        underlineStyle: 0, underlineColorIndex: -1, underlineArgb: null });
+
+/** Coalesce adjacent identical runs (every field but count) so fixtures stay canonical. */
 function coalesceRuns(runs) {
+    const key = run => JSON.stringify(Object.entries(run).filter(([field]) => field !== 'count').sort(([a], [b]) => a.localeCompare(b)));
     const coalesced = [];
     for (const run of runs) {
         const previous = coalesced.at(-1);
-        if (previous && JSON.stringify([previous.fg, previous.bg]) === JSON.stringify([run.fg, run.bg])) previous.count += run.count;
+        if (previous && key(previous) === key(run)) previous.count += run.count;
         else coalesced.push(run);
     }
     return coalesced;
@@ -74,14 +81,40 @@ export function syntheticSgrRgbParts(caseId, binding = syntheticColorBinding()) 
         { count: 1, fg: second, bg: secondOther },
         { count: cells - 3, fg: defaultFg(binding), bg: defaultBg(binding) },
     ].map(run => ({ ...run })));
-    return { attributes, resolved };
+    const details = coalesceRuns([
+        detailRun(1, plain.flags, -1, -1),
+        detailRun(1, defaultFlag | indexFlag, paletteFg ? 1 : -1, paletteFg ? -1 : 1),
+        detailRun(1, defaultFlag | indexFlag, paletteFg ? 4 : -1, paletteFg ? -1 : 4),
+        detailRun(cells - 3, plain.flags, -1, -1),
+    ]);
+    return { attributes, resolved, details };
 }
 
 export function syntheticSgrRgbScreen(caseId, binding = syntheticColorBinding()) {
-    const { attributes, resolved } = syntheticSgrRgbParts(caseId, binding);
+    const { attributes, resolved, details } = syntheticSgrRgbParts(caseId, binding);
     return { rows: sgrRgbRows, cols: sgrRgbCols, lines: ['CXY', '', '', '', '', ''],
         cursorRow: 0, cursorCol: 3, cursorVisible: true,
-        attributeRuns: attributes, resolvedColors: resolved, colorBinding: binding };
+        attributeRuns: attributes, resolvedColors: resolved, cellDetails: details, colorBinding: binding };
+}
+
+/** A screen whose fourth cell stores a literal color (SGR 38;2;1;2;3 style),
+ * resolved to exactly its stored bytes; for literal-coherence assertions. */
+export function syntheticSgrRgbLiteralScreen() {
+    const binding = syntheticColorBinding();
+    const { attributes, resolved, details } = syntheticSgrRgbParts('sgr.fg.standard', binding);
+    const literalArgb = rgb(1, 2, 3);
+    return { rows: sgrRgbRows, cols: sgrRgbCols, lines: ['CXYZ', '', '', '', '', ''],
+        cursorRow: 0, cursorCol: 4, cursorVisible: true,
+        attributeRuns: coalesceRuns([...attributes.slice(0, 3),
+            { count: 1, flags: 0x0200, fg: -1, bg: -1 },
+            { count: cells - 4, flags: plain.flags, fg: -1, bg: -1 }]),
+        resolvedColors: coalesceRuns([...resolved.slice(0, 3),
+            { count: 1, fg: channel('literal', -1, literalArgb), bg: defaultBg(binding) },
+            { count: cells - 4, fg: defaultFg(binding), bg: defaultBg(binding) }]),
+        cellDetails: coalesceRuns([...details.slice(0, 3),
+            detailRun(1, 0x0200, -1, -1, literalArgb),
+            detailRun(cells - 4, plain.flags, -1, -1)]),
+        colorBinding: binding };
 }
 
 function frame(index, kind, screenValue, barrier) {
@@ -92,10 +125,12 @@ function frame(index, kind, screenValue, barrier) {
 export function syntheticSgrRgbEvidence(runId = 'a'.repeat(32), bundleSha256 = 'f'.repeat(64), binding = syntheticColorBinding()) {
     const nonce = 'NTILDE_SR_' + runId;
     const blankParts = { attributes: [{ count: cells, ...plain }],
-        resolved: [{ count: cells, fg: defaultFg(binding), bg: defaultBg(binding) }] };
+        resolved: [{ count: cells, fg: defaultFg(binding), bg: defaultBg(binding) }],
+        details: [detailRun(cells, plain.flags, -1, -1)] };
     const blank = { rows: sgrRgbRows, cols: sgrRgbCols, lines: ['', '', '', '', '', ''],
         cursorRow: 0, cursorCol: 0, cursorVisible: true,
-        attributeRuns: blankParts.attributes, resolvedColors: blankParts.resolved, colorBinding: binding };
+        attributeRuns: blankParts.attributes, resolvedColors: blankParts.resolved,
+        cellDetails: blankParts.details, colorBinding: binding };
     const bindScreen = { ...blank, lines: [nonce, '', '', '', '', ''], cursorCol: nonce.length };
     const frames = [frame(0, 'sgrgb-start', blank, null),
         frame(1, 'sgrgb-bind', bindScreen, deviceAttribute)];

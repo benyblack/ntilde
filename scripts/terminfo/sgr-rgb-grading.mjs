@@ -16,7 +16,7 @@ const frameCount = 3 + readCount;
 
 /** The RGB screens carry both projections; validation covers them together. */
 const rgbScreen = value => {
-    const screen = screenSnapshot(value, true, false, false, false, false, true);
+    const screen = screenSnapshot(value, true, true, false, false, false, true);
     validateSgrRgbScreen(screen);
     return screen;
 };

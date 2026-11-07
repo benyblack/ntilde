@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { copyColorBinding, copyResolvedColors, expandResolvedColors, exposedRgb,
     colorBindingHash, checkStoredColorCoherence, resolvedColorSources } from './resolved-colors.mjs';
-import { syntheticSgrRgbScreen, syntheticColorBinding, rgb, syntheticPalette } from './fixtures/sgr-rgb-evidence.mjs';
+import { syntheticSgrRgbScreen, syntheticSgrRgbLiteralScreen, syntheticColorBinding, rgb, syntheticPalette } from './fixtures/sgr-rgb-evidence.mjs';
 
 const cells = 360;
 
@@ -62,6 +62,25 @@ test('stored coherence binds resolved channels to attribute runs', () => {
     const bare = structuredClone(screen);
     delete bare.attributeRuns;
     assert.throws(() => checkStoredColorCoherence(bare), /Error/);
+    // Missing stored literal bytes: literal channels cannot be verified, so the
+    // screen is refused instead of accepting unverifiable values.
+    const noDetails = structuredClone(screen);
+    delete noDetails.cellDetails;
+    assert.throws(() => checkStoredColorCoherence(noDetails), /Error/);
+});
+
+test('literal channels resolve to exactly their stored ARGB bytes', () => {
+    const screen = syntheticSgrRgbLiteralScreen();
+    assert.doesNotThrow(() => checkStoredColorCoherence(screen));
+    // A literal resolved value that disagrees with its stored bytes is refused.
+    const liar = structuredClone(screen);
+    liar.resolvedColors[3].fg.argb = rgb(9, 9, 9);
+    assert.throws(() => checkStoredColorCoherence(liar), /disagrees with stored bytes/);
+    // Stored literal bytes dropped: fail closed — the stored projection itself
+    // refuses the literal-without-bytes shape before coherence even runs.
+    const dropped = structuredClone(screen);
+    dropped.cellDetails[3].foregroundArgb = null;
+    assert.throws(() => checkStoredColorCoherence(dropped), /no stored bytes|Invalid stored cell detail run/);
 });
 
 test('binding digests separate palettes, defaults and overrides', () => {

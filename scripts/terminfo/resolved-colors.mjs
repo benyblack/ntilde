@@ -6,9 +6,12 @@
 // supplied RGB cannot pass validation.
 import { createHash } from 'node:crypto';
 import { expandScreenFlags } from './ascii-sgr-contracts.mjs';
+import { expandCellDetails } from './cell-details.mjs';
 
 const uint = value => Number.isSafeInteger(value) && value >= 0 && value <= 0xffffffff;
 const index = value => Number.isSafeInteger(value) && value >= 0 && value <= 255;
+/** The resolution stage is opaque: every reported color must carry 0xFF alpha. */
+const opaque = value => uint(value) && (value >>> 24) === 0xff;
 export const resolvedColorSources = Object.freeze(['default', 'palette', 'literal']);
 
 /** Validate and normalize one complete palette/theme binding exactly as the App reports it. */
@@ -16,9 +19,9 @@ export function copyColorBinding(binding) {
     if (!binding || binding.stage !== 'theme-resolution' || typeof binding.stageNote !== 'string'
         || binding.stageNote.length < 64 || binding.stageNote.length > 2048
         || (binding.themeName !== null && typeof binding.themeName !== 'string')
-        || !uint(binding.foregroundArgb) || !uint(binding.backgroundArgb)
+        || !opaque(binding.foregroundArgb) || !opaque(binding.backgroundArgb)
         || !Array.isArray(binding.ansiPaletteArgb) || binding.ansiPaletteArgb.length !== 256
-        || !binding.ansiPaletteArgb.every(uint)
+        || !binding.ansiPaletteArgb.every(opaque)
         || typeof binding.reverseVideo !== 'boolean' || typeof binding.foregroundOverride !== 'boolean'
         || typeof binding.backgroundOverride !== 'boolean'
         || !Array.isArray(binding.paletteOverrideIndices)
@@ -42,7 +45,7 @@ export const colorBindingHash = binding => createHash('sha256')
     .update(JSON.stringify(copyColorBinding(binding))).digest('hex');
 
 const channelValid = (channel, field, binding) => {
-    if (!resolvedColorSources.includes(channel?.source) || !uint(channel.argb)) return false;
+    if (!resolvedColorSources.includes(channel?.source) || !opaque(channel.argb)) return false;
     if (channel.source === 'default') {
         return channel.index === -1 && channel.argb === binding[field];
     }
@@ -88,14 +91,16 @@ export function expandResolvedColors(runs, cells, binding) {
 export const exposedRgb = channel => channel.source === 'default'
     ? null : { r: (channel.argb >> 16) & 255, g: (channel.argb >> 8) & 255, b: channel.argb & 255 };
 
-/** Require the resolved channels to agree with the stored attribute runs cell by cell:
- * default markers, palette flags with exact indices, and literal storage may never be
- * confused with one another. This is the anti-substitution binding between the two
- * projections of the same coherent snapshot. */
+/** Require the resolved channels to agree with the stored projections of the same
+ * snapshot cell by cell: default markers, palette flags with exact indices, and —
+ * through the stored literal ARGB bytes carried by cellDetails — literal storage
+ * resolved to exactly its stored RGB. This is the anti-substitution binding between
+ * the projections; a screen without stored literal bytes cannot be validated. */
 export function checkStoredColorCoherence(screen) {
     const cells = screen.rows * screen.cols;
     const flags = expandScreenFlags(screen);
     const resolved = expandResolvedColors(screen.resolvedColors, cells, screen.colorBinding);
+    const stored = expandCellDetails(screen.cellDetails, cells);
     const runAt = (row, col) => {
         const target = row * screen.cols + col;
         let offset = 0;
@@ -109,7 +114,11 @@ export function checkStoredColorCoherence(screen) {
         const value = flags[position] ?? 0;
         const row = Math.floor(position / screen.cols), col = position % screen.cols;
         const run = runAt(row, col);
-        for (const [label, channel, defaultFlag, indexFlag, indexField] of [['fg', cell.fg, 256, 16384, 'fg'], ['bg', cell.bg, 512, 32768, 'bg']]) {
+        const detail = stored[position];
+        for (const [label, channel, defaultFlag, indexFlag, indexField, literalField] of [
+            ['fg', cell.fg, 256, 16384, 'fg', 'foregroundArgb'],
+            ['bg', cell.bg, 512, 32768, 'bg', 'backgroundArgb'],
+        ]) {
             const isDefault = (value & defaultFlag) !== 0 && (value & indexFlag) === 0;
             const isPalette = (value & indexFlag) !== 0;
             if (isDefault !== (channel.source === 'default') || isPalette !== (channel.source === 'palette')) {
@@ -117,6 +126,12 @@ export function checkStoredColorCoherence(screen) {
             }
             if (isPalette && channel.index !== (run?.[indexField] ?? -1)) {
                 throw new Error(`Resolved ${label} index disagrees with stored attributes at ${row},${col}.`);
+            }
+            if (channel.source === 'literal' && detail[literalField] == null) {
+                throw new Error(`Resolved literal ${label} has no stored bytes at ${row},${col}.`);
+            }
+            if (channel.source === 'literal' && (channel.argb & 0xffffff) !== (detail[literalField] & 0xffffff)) {
+                throw new Error(`Resolved literal ${label} disagrees with stored bytes at ${row},${col}.`);
             }
         }
     }
