@@ -8,21 +8,31 @@ import { sgrRgbContracts, sgrRgbReset, sgrRgbFeeds, sgrRgbCellAt,
 import { replaySgrRgbPinned } from '../sgr-rgb-grading.mjs';
 import { sgrRgbAdapterId } from '../sgr-rgb-grading-collector.mjs';
 
+/** Synthetic row count, comfortably above the observer's floor. */
 export const sgrRgbRows = 6;
+/** Synthetic column count, comfortably above the observer's floor. */
 export const sgrRgbCols = 60;
+/** Total synthetic cell count. */
 const cells = sgrRgbRows * sgrRgbCols;
+/** A fixed synthetic pane identity. */
 const paneId = '0f0e0d0c-0b0a-4009-8008-700600500400';
+/** The DA barrier every fenced operation records. */
 const deviceAttribute = '\x1b[?62;4;22c';
+/** Plain default-attribute run shape. */
 const plain = { flags: 768, fg: -1, bg: -1 };
 
 // A representative App-reported binding: light-gray on black defaults, an ANSI
 // palette whose entries 1 and 4 are the theme's red and blue.
 export const rgb = (r, g, b) => 0xff000000 + r * 65536 + g * 256 + b;
+/** Light-gray default foreground. */
 export const syntheticThemeFg = rgb(211, 211, 211);
+/** Black default background. */
 export const syntheticThemeBg = rgb(0, 0, 0);
+/** The 256-entry palette: theme red at 1, blue at 4, gray elsewhere. */
 export const syntheticPalette = () => Array.from({ length: 256 }, (_, index) =>
     index === 1 ? rgb(205, 0, 0) : index === 4 ? rgb(0, 0, 238) : rgb(136, 136, 136));
 
+/** A representative App-reported binding with optional palette/default overrides. */
 export function syntheticColorBinding(overrides = {}) {
     const palette = overrides.palette ?? syntheticPalette();
     return { stage: 'theme-resolution',
@@ -37,8 +47,11 @@ export function syntheticColorBinding(overrides = {}) {
         paletteOverrideIndices: [], minimumContrast: 1 };
 }
 
+/** One resolved channel value. */
 const channel = (source, index, argb) => ({ source, index, argb });
+/** The binding's default foreground as a channel. */
 const defaultFg = binding => channel('default', -1, binding.foregroundArgb);
+/** The binding's default background as a channel. */
 const defaultBg = binding => channel('default', -1, binding.backgroundArgb);
 
 /** Stored cell-detail runs matching one attribute/resolved pair; literal colors
@@ -90,6 +103,7 @@ export function syntheticSgrRgbParts(caseId, binding = syntheticColorBinding()) 
     return { attributes, resolved, details };
 }
 
+/** A complete valid RGB observation screen for one contracted case. */
 export function syntheticSgrRgbScreen(caseId, binding = syntheticColorBinding()) {
     const { attributes, resolved, details } = syntheticSgrRgbParts(caseId, binding);
     return { rows: sgrRgbRows, cols: sgrRgbCols, lines: ['CXY', '', '', '', '', ''],
@@ -117,6 +131,7 @@ export function syntheticSgrRgbLiteralScreen() {
         colorBinding: binding };
 }
 
+/** One journaled frame with its digest. */
 function frame(index, kind, screenValue, barrier) {
     return { index, kind, paneId, barrier, screen: screenValue, sha256: snapshotHash(screenValue) };
 }

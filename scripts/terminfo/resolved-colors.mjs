@@ -8,7 +8,9 @@ import { createHash } from 'node:crypto';
 import { expandScreenFlags } from './ascii-sgr-contracts.mjs';
 import { expandCellDetails } from './cell-details.mjs';
 
+/** An unsigned 32-bit ARGB integer. */
 const uint = value => Number.isSafeInteger(value) && value >= 0 && value <= 0xffffffff;
+/** A palette index 0..255. */
 const index = value => Number.isSafeInteger(value) && value >= 0 && value <= 255;
 /** The resolution stage is opaque: every reported color must carry 0xFF alpha. */
 const opaque = value => uint(value) && (value >>> 24) === 0xff;
@@ -44,6 +46,7 @@ export function copyColorBinding(binding) {
 export const colorBindingHash = binding => createHash('sha256')
     .update(JSON.stringify(copyColorBinding(binding))).digest('hex');
 
+/** One channel is valid only in its own source's shape and exactly at its binding value. */
 const channelValid = (channel, field, binding) => {
     if (!resolvedColorSources.includes(channel?.source) || !opaque(channel.argb)) return false;
     if (channel.source === 'default') {
@@ -55,6 +58,7 @@ const channelValid = (channel, field, binding) => {
     return channel.index === -1; // literal: exact stored bytes, opaque at this stage
 };
 
+/** Full-run equality (both channels, source, index and value). */
 const sameRun = (a, b) => a.fg.source === b.fg.source && a.fg.index === b.fg.index && a.fg.argb === b.fg.argb
     && a.bg.source === b.bg.source && a.bg.index === b.bg.index && a.bg.argb === b.bg.argb;
 

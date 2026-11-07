@@ -11,7 +11,9 @@ import { colorBindingHash } from './resolved-colors.mjs';
 import { screenSnapshot } from './agent-observer.mjs';
 import { sgrRgbAdapterId } from './sgr-rgb-grading-collector.mjs';
 
+/** Total read groups across the suite's contracts. */
 const readCount = sgrRgbContracts.reduce((sum, contract) => sum + planReads(contract), 0);
+/** Start, bind, every read group, finish. */
 const frameCount = 3 + readCount;
 
 /** The RGB screens carry both projections; validation covers them together. */
@@ -72,6 +74,7 @@ export function replaySgrRgbPinned(contract, screens) {
     return incomplete(response, contract.pinnedControlNote);
 }
 
+/** The pinned parserStateResult shape of a null verdict. */
 function incomplete(response, note) {
     return { pass: false, response, note, assertions: [],
         observation: { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'parser-state', note } };
