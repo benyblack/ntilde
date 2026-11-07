@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v8';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v9';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -171,9 +171,33 @@ export const capturedV15SourceFiles = Object.freeze({
     ...capturedV14SourceFiles,
     gradedPlanSourceSha256: "graded-plan.mjs",
 });
+// Selected App/VT render-resolution reference inputs for the SGR-RGB batch, not a
+// complete App closure or binary-source attestation. Inputs the clipboard scope
+// already captures (SessionContracts.cs, AgentHostService.cs,
+// AgentSessionRegistration.cs) are deliberately not duplicated here: one captured
+// byte set per file, under its established alias.
+export const sgrRgbReferencePaths = Object.freeze({
+    "sgr-rgb-resolved-color-snapshot.cs": "src/Ntilde.App/AgentHost/ResolvedColorSnapshot.cs",
+    "sgr-rgb-draw-operation.cs": "src/Ntilde.App/Shell/TerminalDrawOperation.cs",
+    "sgr-rgb-render-snapshots.cs": "src/Ntilde.VT/RenderSnapshots.cs",
+});
+// Frozen v16 SGR-RGB grading scope; future experiments must create a distinct policy and map.
+export const capturedV16SourceFiles = Object.freeze({
+    ...capturedV15SourceFiles,
+    resolvedColorsSourceSha256: "resolved-colors.mjs",
+    sgrRgbContractsSourceSha256: "sgr-rgb-contracts.mjs",
+    sgrRgbCollectorSourceSha256: "sgr-rgb-collector.mjs",
+    sgrRgbGradingSourceSha256: "sgr-rgb-grading.mjs",
+    sgrRgbGradingCollectorSourceSha256: "sgr-rgb-grading-collector.mjs",
+    sgrRgbReceiptSourceSha256: "sgr-rgb-receipt.mjs",
+    sgrRgbInput1SourceSha256: "sgr-rgb-resolved-color-snapshot.cs",
+    sgrRgbInput2SourceSha256: "sgr-rgb-draw-operation.cs",
+    sgrRgbInput3SourceSha256: "sgr-rgb-render-snapshots.cs",
+});
 /** Resolve paths from the caller's fixed inventory; selected C# inputs remain nonexecuted reference bytes. */
 export function ownedSourcePath(root, file) {
     if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
+    if (Object.hasOwn(sgrRgbReferencePaths, file)) return join(root, sgrRgbReferencePaths[file]);
     const relative = file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file;
     return join(root, 'scripts', relative);
 }
@@ -198,11 +222,11 @@ export function assertOwnedSourcesUnchanged(root, context) {
         if (digest(readFileSync(ownedSourcePath(root, file))) !== context[key]) throw new Error('Owned source changed before completion: ' + file);
     }
 }
-/** Bind the private temporary root, exact v15 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v16 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV15SourceFiles)) throw new Error('Invalid current v15 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV16SourceFiles)) throw new Error('Invalid current v16 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

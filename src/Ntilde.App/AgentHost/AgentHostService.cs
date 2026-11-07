@@ -1670,7 +1670,8 @@ namespace Ntilde.AgentHost
                 return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'.");
             }
 
-            var response = ScreenResult(request.Id, registration.Buffer, p);
+            var response = ScreenResult(request.Id, registration.Buffer, p,
+                minimumContrast: registration.RenderParameters?.MinimumContrast);
             if (response.Error == null) TryNoteRead(registration);
             return response;
         }
@@ -1680,10 +1681,13 @@ namespace Ntilde.AgentHost
         /// session's screen was imported into. Read under the buffer's read lock, through the deterministic
         /// <see cref="BufferSnapshot"/> path.
         /// </summary>
-        private static AgentHostResponse ScreenResult(long requestId, TerminalBuffer buffer, ReadScreenParams parameters, bool completeLocalHistory = true)
+        private static AgentHostResponse ScreenResult(long requestId, TerminalBuffer buffer, ReadScreenParams parameters, bool completeLocalHistory = true,
+            double? minimumContrast = null)
         {
             BufferSnapshot snapshot;
             CellDetailRunDto[]? details = null;
+            ResolvedColorRunDto[]? resolvedColors = null;
+            ColorBindingDto? colorBinding = null;
             CursorModeDto? cursorMode = null;
             BufferStateDto? bufferState = null;
             bool cursorVisible;
@@ -1729,11 +1733,23 @@ namespace Ntilde.AgentHost
                 buffer.Lock.ExitReadLock();
             }
 
+            // Resolved colors come from the coherent cells-plus-theme render snapshot, which
+            // takes the buffer's read lock itself — hence outside the block above. A resize
+            // racing the two captures is refused, never projected torn.
+            if (parameters.IncludeResolvedColors
+                && !ResolvedColorSnapshot.TryCapture(buffer, out resolvedColors, out colorBinding, minimumContrast))
+            {
+                return Error(requestId, AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable,
+                    $"Complete resolved colors require at most {AgentHostProtocol.MaxCellDetailCells} cells and {AgentHostProtocol.MaxCellDetailRuns} runs, captured without a concurrent resize.");
+            }
+
             var dto = new ScreenSnapshotDto
             {
                 Lines = snapshot.Lines,
                 AttributeLines = snapshot.AttributeLines,
                 CellDetails = details,
+                ResolvedColors = resolvedColors,
+                ColorBinding = colorBinding,
                 CursorMode = cursorMode,
                 BufferState = bufferState,
                 CursorRow = snapshot.CursorRow,

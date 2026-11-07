@@ -102,6 +102,18 @@ public sealed record ReadScreenParams
     [JsonPropertyName("includeCursorMode")]
     public bool IncludeCursorMode { get; init; }
 
+    /// <summary>
+    /// Include per-cell foreground/background RGB resolved through the pane's live render theme
+    /// (the storage-to-theme resolution the draw path performs), plus the theme binding those
+    /// values were resolved against. Captured from the same coherent render snapshot as the
+    /// resolved cells; a viewport exceeding the cell or run budget returns
+    /// <c>screenDetailsUnavailable</c>, never a partial projection. These are theme-resolved
+    /// channel colors, not stored attributes (<see cref="IncludeCellDetails"/>) and not rendered
+    /// pixels (contrast adjustment, opacity compositing and rasterisation are not applied).
+    /// </summary>
+    [JsonPropertyName("includeResolvedColors")]
+    public bool IncludeResolvedColors { get; init; }
+
     /// <summary>Include observed margins, editing modes, pending wrap, active screen and local history count.</summary>
     [JsonPropertyName("includeBufferState"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool IncludeBufferState { get; init; }
@@ -133,6 +145,18 @@ public sealed record ScreenSnapshotDto
     /// <summary>Stored cursor modes, captured under the same read lock; present only when requested.</summary>
     [JsonPropertyName("cursorMode")]
     public CursorModeDto? CursorMode { get; init; }
+
+    /// <summary>
+    /// Canonical runs of theme-resolved foreground/background colors covering every physical
+    /// viewport cell. Present only when requested; captured with its theme binding from one
+    /// coherent render snapshot (the same cells-plus-theme capture the renderer consumes).
+    /// </summary>
+    [JsonPropertyName("resolvedColors")]
+    public ResolvedColorRunDto[]? ResolvedColors { get; init; }
+
+    /// <summary>The palette/theme/render state the resolved colors were resolved against; present only with resolvedColors.</summary>
+    [JsonPropertyName("colorBinding")]
+    public ColorBindingDto? ColorBinding { get; init; }
 
     /// <summary>Stored editing state captured under the same lock; omitted unless explicitly requested.</summary>
     [JsonPropertyName("bufferState")]
@@ -211,6 +235,101 @@ public sealed record CellDetailRunDto
     /// <summary>Stored SGR 53 state, present only when includeOverline was requested.</summary>
     [JsonPropertyName("overline"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? Overline { get; init; }
+}
+
+/// <summary>
+/// How one cell channel's color was resolved and to which RGB value: the storage state
+/// (<c>default</c>, <c>palette</c>, or <c>literal</c>) plus the resolved ARGB. Alpha is always
+/// opaque at this stage — opacity compositing happens later in the render pipeline.
+/// </summary>
+public sealed record ResolvedChannelDto
+{
+    /// <summary>One of <c>default</c>, <c>palette</c>, <c>literal</c>.</summary>
+    [JsonPropertyName("source")]
+    public required string Source { get; init; }
+
+    /// <summary>Palette index 0..255 for <c>palette</c>; -1 otherwise.</summary>
+    [JsonPropertyName("index")]
+    public required short Index { get; init; }
+
+    /// <summary>The resolved color, packed ARGB (alpha in the high byte).</summary>
+    [JsonPropertyName("argb")]
+    public required uint Argb { get; init; }
+}
+
+/// <summary>
+/// One row-major run of identical theme-resolved foreground/background colors. Runs are
+/// canonical (adjacent runs differ) and cover every physical viewport cell, wide-character
+/// continuation cells included. Each channel names the storage state it was resolved from, so
+/// a resolved value can always be re-derived from the binding and the stored state.
+/// </summary>
+public sealed record ResolvedColorRunDto
+{
+    [JsonPropertyName("count")]
+    public required int Count { get; init; }
+
+    [JsonPropertyName("fg")]
+    public required ResolvedChannelDto Fg { get; init; }
+
+    [JsonPropertyName("bg")]
+    public required ResolvedChannelDto Bg { get; init; }
+}
+
+/// <summary>
+/// The palette/theme/render state the resolved colors were resolved against, recorded with them
+/// so a reader can re-derive every resolved value and knows exactly which stage of the render
+/// pipeline the values belong to. Under DECSCNM the default foreground/background here are the
+/// presented (swapped) colors, exactly as the renderer receives them.
+/// </summary>
+public sealed record ColorBindingDto
+{
+    /// <summary>Fixed marker for this projection's resolution stage: <c>theme-resolution</c>.</summary>
+    [JsonPropertyName("stage")]
+    public required string Stage { get; init; }
+
+    /// <summary>What the stage resolves and what it deliberately does not (contrast, compositing, rasterisation).</summary>
+    [JsonPropertyName("stageNote")]
+    public required string StageNote { get; init; }
+
+    /// <summary>The theme's name, when the render theme carries one.</summary>
+    [JsonPropertyName("themeName")]
+    public string? ThemeName { get; init; }
+
+    /// <summary>Resolved default foreground, packed ARGB (the presented color under DECSCNM).</summary>
+    [JsonPropertyName("foregroundArgb")]
+    public required uint ForegroundArgb { get; init; }
+
+    /// <summary>Resolved default background, packed ARGB (the presented color under DECSCNM).</summary>
+    [JsonPropertyName("backgroundArgb")]
+    public required uint BackgroundArgb { get; init; }
+
+    /// <summary>The 256-entry ANSI palette the palette indices resolve through, packed ARGB per entry.</summary>
+    [JsonPropertyName("ansiPaletteArgb")]
+    public required uint[] AnsiPaletteArgb { get; init; }
+
+    /// <summary>DECSCNM (?5) was set at capture; the defaults above are already swapped.</summary>
+    [JsonPropertyName("reverseVideo")]
+    public required bool ReverseVideo { get; init; }
+
+    /// <summary>The theme's foreground default is an explicit override rather than the theme default.</summary>
+    [JsonPropertyName("foregroundOverride")]
+    public required bool ForegroundOverride { get; init; }
+
+    /// <summary>The theme's background default is an explicit override rather than the theme default.</summary>
+    [JsonPropertyName("backgroundOverride")]
+    public required bool BackgroundOverride { get; init; }
+
+    /// <summary>Indices whose palette entries carry runtime overrides (OSC 4/104 style), ascending.</summary>
+    [JsonPropertyName("paletteOverrideIndices")]
+    public required int[] PaletteOverrideIndices { get; init; }
+
+    /// <summary>
+    /// The pane's Minimum contrast setting when known (1 is off). Recorded because it is applied
+    /// later in the pipeline: resolved values here are pre-contrast, so rendered glyphs may differ.
+    /// Null when the reading endpoint has no pane render parameters (a windowless import).
+    /// </summary>
+    [JsonPropertyName("minimumContrast"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? MinimumContrast { get; init; }
 }
 
 /// <summary>Params for <c>captureScreen</c> (A5).</summary>
