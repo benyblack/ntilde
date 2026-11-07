@@ -1,30 +1,30 @@
 {
   "schemaVersion": 1,
-  "measuredAt": "2026-11-07T14:07:10.430Z",
-  "runId": "710c19c4438d398f712fbec3763a4b95",
+  "measuredAt": "2026-11-07T14:34:28.350Z",
+  "runId": "a3c82293b63665af56ee96018c2472f7",
   "context": {
-    "runId": "710c19c4438d398f712fbec3763a4b95",
-    "appVersion": "0.13.0+b481ad97",
+    "runId": "a3c82293b63665af56ee96018c2472f7",
+    "appVersion": "0.13.0+c54efdc8",
     "nodeVersion": "v24.22.2",
-    "startedAt": "2026-11-07T14:06:41.617Z",
+    "startedAt": "2026-11-07T14:33:55.054Z",
     "executable": "/Users/behnam/.local/share/ntilde-sidecar/Release/net10.0/Ntilde",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "a8e4173a074c72634a346ee6f4fd87dd6ae1e72c2d89a654ffbc4529e9e2facc",
+    "assemblySha256": "8005e14452a6b990921948325d5f56479d7204cf606f3ed630b3edb1260c8431",
     "adapter": "ntilde-owned-macos-v1",
-    "adapterBundleSha256": "174d298a96c7f7c2edf9077bbd4a849a1e9509ce1c0a9fbcd9ec8ebe58394f30",
+    "adapterBundleSha256": "960fc9a6a14facd415bfd6e1178c2ecae7f3b521fa1726e3c00e58d283a9199d",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
     "sourceSnapshotPolicy": "readonly-owned-source-graph-v9",
     "gradingAdapterId": "ntilde-owned-ascii-sgr-grading-v1",
     "asciiSgrSuiteId": "ntilde-owned-ascii-sgr-graded-v1",
-    "gradingBundleSha256": "024b0c9f499e2037b11a47b491a1fde2ac21c150e28fae910af653015088d0b9",
+    "gradingBundleSha256": "8ec3004959c750a0dfeac661f613dc4b903f25789ecbdcd2fd44caa48d542f9b",
     "gradingContractsVersion": 1,
     "sgrColorsAdapterId": "ntilde-owned-sgr-colors-grading-v1",
     "sgrColorsSuiteId": "ntilde-owned-sgr-colors-graded-v1",
-    "sgrColorsBundleSha256": "a9e665d5f65526fd2eaaa6e55de16aa7ef062192c7f8aa8d4c4455f2b6ce99bb",
+    "sgrColorsBundleSha256": "33a0c9115aaeb547f1d5e5eaa56b822c2d9824a2edda3d29f0e929e7077cfe98",
     "sgrColorsContractsVersion": 2,
     "sgrRgbAdapterId": "ntilde-owned-sgr-rgb-grading-v1",
     "sgrRgbSuiteId": "ntilde-owned-sgr-rgb-graded-v1",
-    "sgrRgbBundleSha256": "3b4af84dc1a774baf8862115f7d907ece7d63f406c1f34d428991b4075bf18f1",
+    "sgrRgbBundleSha256": "c6c41df970de00c14e3b3f2142d59a6f7c9038fedda2ff4327258f4af36af6d4",
     "sgrRgbContractsVersion": 1,
     "sgrRgb": "layered versioned collector extension; pinned named-color RGB termless criteria replayed on parent-observed App-resolved colors bound to one recorded theme state; not stock output",
     "resolvedColors": "opt-in readScreen projection resolved in the App rendering layer; storage-to-theme resolution stage, one coherent render snapshot; no pixels"
@@ -33,18 +33,18 @@
   "adapter": {
     "id": "ntilde-owned-sgr-rgb-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-sgr-colors-grading-v1",
-    "bundleSha256": "3b4af84dc1a774baf8862115f7d907ece7d63f406c1f34d428991b4075bf18f1",
+    "bundleSha256": "c6c41df970de00c14e3b3f2142d59a6f7c9038fedda2ff4327258f4af36af6d4",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "sgrRgbReport": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-sgr-rgb-graded-v1",
-    "runId": "710c19c4438d398f712fbec3763a4b95",
+    "runId": "a3c82293b63665af56ee96018c2472f7",
     "contractsVersion": 1,
     "adapter": {
       "id": "ntilde-owned-sgr-rgb-grading-v1",
       "derivedFromAdapterId": "ntilde-owned-sgr-colors-grading-v1",
-      "bundleSha256": "3b4af84dc1a774baf8862115f7d907ece7d63f406c1f34d428991b4075bf18f1",
+      "bundleSha256": "c6c41df970de00c14e3b3f2142d59a6f7c9038fedda2ff4327258f4af36af6d4",
       "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
     },
     "scope": "Pinned terminfo.dev@4.0.0 named-color termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen resolved RGB bound to one recorded palette/theme state. Stored-index conclusions remain the SGR-colors suite's; no glyph appearance or stock grades.",
@@ -250,7 +250,7 @@
       {
         "index": 0,
         "kind": "sgrgb-start",
-        "paneId": "3e463e30-a598-40d1-ae84-1feafbb63523",
+        "paneId": "0575f321-ea4f-4f4b-897c-6cc264832f9b",
         "barrier": null,
         "screen": {
           "rows": 40,
@@ -308,6 +308,19 @@
               "bg": -1
             }
           ],
+          "cellDetails": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
           "colorBinding": {
             "stage": "theme-resolution",
             "stageNote": "Per-channel storage-to-theme resolution exactly as the draw operation resolves cells: default -> theme default, palette index -> ANSI palette entry, literal -> stored ARGB; opaque alpha. Captured with the cells and theme under one buffer read lock. Precedes the inverse-cell swap, minimum-contrast adjustment, opacity compositing and glyph rasterisation, so rendered glyph appearance may still differ from these values.",
@@ -594,18 +607,18 @@
             }
           ]
         },
-        "sha256": "e02cdc0083396e7c9b8e8f6249a678b731cdab47ab97b444702d4db0839af951"
+        "sha256": "e3cec49cfaa231ba4f2663807cd175f2ccc6712deb0af1be181a5337db798620"
       },
       {
         "index": 1,
         "kind": "sgrgb-bind",
-        "paneId": "3e463e30-a598-40d1-ae84-1feafbb63523",
+        "paneId": "0575f321-ea4f-4f4b-897c-6cc264832f9b",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
           "cols": 140,
           "lines": [
-            "NTILDE_SR_710c19c4438d398f712fbec3763a4b95",
+            "NTILDE_SR_a3c82293b63665af56ee96018c2472f7",
             "",
             "",
             "",
@@ -657,6 +670,19 @@
               "bg": -1
             }
           ],
+          "cellDetails": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
           "colorBinding": {
             "stage": "theme-resolution",
             "stageNote": "Per-channel storage-to-theme resolution exactly as the draw operation resolves cells: default -> theme default, palette index -> ANSI palette entry, literal -> stored ARGB; opaque alpha. Captured with the cells and theme under one buffer read lock. Precedes the inverse-cell swap, minimum-contrast adjustment, opacity compositing and glyph rasterisation, so rendered glyph appearance may still differ from these values.",
@@ -943,12 +969,12 @@
             }
           ]
         },
-        "sha256": "e55ec20eed7a4e27febdda949a61a90c6c6e434f07c88af7500f4d5cbc2cafd3"
+        "sha256": "92b0283a61e8db6e2bea306afd18e1220c3117ffb50305dd54abe7117be87731"
       },
       {
         "index": 2,
         "kind": "sgrgb-read",
-        "paneId": "3e463e30-a598-40d1-ae84-1feafbb63523",
+        "paneId": "0575f321-ea4f-4f4b-897c-6cc264832f9b",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
@@ -1024,6 +1050,52 @@
               "bg": -1
             }
           ],
+          "cellDetails": [
+            {
+              "count": 1,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 1,
+              "bg": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "count": 1,
+              "flags": 16896,
+              "fg": 4,
+              "bg": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "count": 5597,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
           "colorBinding": {
             "stage": "theme-resolution",
             "stageNote": "Per-channel storage-to-theme resolution exactly as the draw operation resolves cells: default -> theme default, palette index -> ANSI palette entry, literal -> stored ARGB; opaque alpha. Captured with the cells and theme under one buffer read lock. Precedes the inverse-cell swap, minimum-contrast adjustment, opacity compositing and glyph rasterisation, so rendered glyph appearance may still differ from these values.",
@@ -1349,12 +1421,12 @@
             }
           ]
         },
-        "sha256": "c550e729653de0ff7e441801ece2188e867e2ad8529822eb7592fb00de96c3e9"
+        "sha256": "7d1964fcd42d5041d259f63f1a1eba51b76a37ee037b9f84a827541838b274e8"
       },
       {
         "index": 3,
         "kind": "sgrgb-read",
-        "paneId": "3e463e30-a598-40d1-ae84-1feafbb63523",
+        "paneId": "0575f321-ea4f-4f4b-897c-6cc264832f9b",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
@@ -1430,6 +1502,52 @@
               "bg": -1
             }
           ],
+          "cellDetails": [
+            {
+              "count": 1,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "count": 1,
+              "flags": 33024,
+              "fg": -1,
+              "bg": 4,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "count": 5597,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
           "colorBinding": {
             "stage": "theme-resolution",
             "stageNote": "Per-channel storage-to-theme resolution exactly as the draw operation resolves cells: default -> theme default, palette index -> ANSI palette entry, literal -> stored ARGB; opaque alpha. Captured with the cells and theme under one buffer read lock. Precedes the inverse-cell swap, minimum-contrast adjustment, opacity compositing and glyph rasterisation, so rendered glyph appearance may still differ from these values.",
@@ -1755,12 +1873,12 @@
             }
           ]
         },
-        "sha256": "d6e5677b8b2145e6f15d8c9cc57c39b6ae4e115499cc9c927fbfe1994ddc11b5"
+        "sha256": "4eecac50451b818f46b47974e2cac16756d2572b998b643b37d519fd501f6178"
       },
       {
         "index": 4,
         "kind": "sgrgb-finish",
-        "paneId": "3e463e30-a598-40d1-ae84-1feafbb63523",
+        "paneId": "0575f321-ea4f-4f4b-897c-6cc264832f9b",
         "barrier": "\u001b[?62;4;22c",
         "screen": {
           "rows": 40,
@@ -1816,6 +1934,19 @@
               "flags": 768,
               "fg": -1,
               "bg": -1
+            }
+          ],
+          "cellDetails": [
+            {
+              "count": 5600,
+              "flags": 768,
+              "fg": -1,
+              "bg": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
             }
           ],
           "colorBinding": {
@@ -2104,7 +2235,7 @@
             }
           ]
         },
-        "sha256": "e02cdc0083396e7c9b8e8f6249a678b731cdab47ab97b444702d4db0839af951"
+        "sha256": "e3cec49cfaa231ba4f2663807cd175f2ccc6712deb0af1be181a5337db798620"
       }
     ]
   },
@@ -2248,7 +2379,7 @@
     "suiteComplete": false,
     "probeHash": "16a690f34c0e",
     "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
-    "rawSha256": "4b8535b83d786d7fbab6c215983afd20f3544e8f8cc5e55373818f724fdc9e74",
+    "rawSha256": "08ea36230742811c88faf09919c0d673b9de7cf729d8cc9d21619f361be6cc5c",
     "probes": {
       "sgr.reset": {
         "outcome": "inconclusive",
@@ -2284,32 +2415,32 @@
   },
   "receipt": {
     "schemaVersion": 15,
-    "runId": "710c19c4438d398f712fbec3763a4b95",
+    "runId": "a3c82293b63665af56ee96018c2472f7",
     "suiteId": "ntilde-owned-ascii-cells-v1",
     "file": "cell-observations.json",
-    "sha256": "21490ed664de40eba7d1aa8183fd160e7a560f7140c35b76412ee081d8136f2f",
+    "sha256": "1d2228f53930e7556a20f505cc92ff1285079b2a9f5ea59d7f52696506b9c529",
     "counts": {
       "passed": 8
     },
     "provisionalUntil": "cell-receipt.json",
     "sgrEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-sgr-indices-v1",
       "file": "sgr-observations.json",
-      "sha256": "c18c22e1c78f641443efec8757caaf3b9181bb914d14e16eb48d0778ce4a8ec2",
+      "sha256": "1505bea5d9776596aaa07459a54dfd8daaf4a3033df187ab9c26702c18f37450",
       "counts": {
         "passed": 17
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "gradingEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
       "file": "grading-observations.json",
-      "sha256": "fcdcc9c4e5ac518c2cb51ae5bac12a2e817758cca8ede7c2e3df75cb80902fd5",
+      "sha256": "cc12190e392d6b82b0da7e398360ab130ba1cc3977bce6b80df7d2cd530817ec",
       "runFile": "grading-run.json",
       "runSha256": "eff452cfc4f44b8339d020780bcc9ae17962c4f110fb5d47e2d92edf6f6418cf",
-      "adapterBundleSha256": "024b0c9f499e2037b11a47b491a1fde2ac21c150e28fae910af653015088d0b9",
+      "adapterBundleSha256": "8ec3004959c750a0dfeac661f613dc4b903f25789ecbdcd2fd44caa48d542f9b",
       "contractsVersion": 1,
       "counts": {
         "supported": 4
@@ -2317,13 +2448,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrColorsEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-sgr-colors-graded-v1",
       "file": "sgcolors-observations.json",
-      "sha256": "7ccef795e05f84c0f47de32ff0e4e8a35cb40e271569260a9757dd062c19a8ad",
+      "sha256": "1c3d6f88d0c6033b6766aa614debbc68419ef3d44f793b4263fcaeccc0943c9e",
       "runFile": "sgcolors-run.json",
       "runSha256": "71b4bb63f8ad984bac39fe9f1c91c9e1432b39b2bce5c1e3c2f45a3076a3b916",
-      "adapterBundleSha256": "a9e665d5f65526fd2eaaa6e55de16aa7ef062192c7f8aa8d4c4455f2b6ce99bb",
+      "adapterBundleSha256": "33a0c9115aaeb547f1d5e5eaa56b822c2d9824a2edda3d29f0e929e7077cfe98",
       "contractsVersion": 2,
       "counts": {
         "supported": 5
@@ -2331,13 +2462,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrRgbEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-sgr-rgb-graded-v1",
       "file": "sgrgb-observations.json",
-      "sha256": "6d6d99890c34cb6f81d33eca46009991a3bdf1fb8cfe272baaf5832f281078ad",
+      "sha256": "5cd737d8590775a0045337923046e5498a5bed1d883027cf907ea2ce8239470e",
       "runFile": "sgrgb-run.json",
       "runSha256": "08c884b24fa5a793184d981113f958f1b334b722aac654d9702c836ce51a7478",
-      "adapterBundleSha256": "3b4af84dc1a774baf8862115f7d907ece7d63f406c1f34d428991b4075bf18f1",
+      "adapterBundleSha256": "c6c41df970de00c14e3b3f2142d59a6f7c9038fedda2ff4327258f4af36af6d4",
       "contractsVersion": 1,
       "counts": {
         "supported": 2
@@ -2345,30 +2476,30 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "rgbEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-rgb-underline-v1",
       "file": "rgb-observations.json",
-      "sha256": "3df102cd12523f4dd3fb5972fe0a268d80e8e53f1cd4bf347db214c8d550e209",
+      "sha256": "3cb2a9f4881ec52f48ed2428725ee89c6f4bcd47c8059d6e189e10454ae63e49",
       "counts": {
         "passed": 20
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "renditionEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-rendition-charsets-v3",
       "file": "rendition-observations.json",
-      "sha256": "61f008d3c8fe34e993c7bcb225b386a703051ea33e98039b9f6a741b66eb3ec4",
+      "sha256": "9dd2171d334cd828a40169c67e0ceb9794eba684c32e176fca8108865ff89377",
       "counts": {
         "passed": 19
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "cursorEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-cursor-modes-v1",
       "file": "cursor-observations.json",
-      "sha256": "a73cdc764fa2888164b59dc7e2baf8a433256c6c605f93734d686b3b0e4c7918",
+      "sha256": "4433c82043b0499add21ccd4b3e900f281952594064453f8772525f607d61430",
       "counts": {
         "passed": 8,
         "failed": 1
@@ -2376,10 +2507,10 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "pixelEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-render-pixels-v1",
       "file": "pixel-observations.json",
-      "sha256": "08b430682b9cb0c31ab75f8f628f210cf042a84cc43a4d40ab9edcc8e279f007",
+      "sha256": "99b0f4e656daf6972ca58151dd6ce1e10a7afb1036fa53f302126392fbd38f31",
       "counts": {
         "passed": 24,
         "failed": 1
@@ -2387,92 +2518,92 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "colorEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-runtime-colors-v1",
       "file": "color-observations.json",
-      "sha256": "7180be89e30f9b7876d11f966865326398a793381657eaf2a56be0957b17a627",
+      "sha256": "7c1a9911eda6921a1259049eca9135aa10661398b04856e1148f78b24554d28c",
       "counts": {
         "passed": 10
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "eraseEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-erasure-v1",
       "file": "erase-observations.json",
-      "sha256": "ddd4810e95f2423221d6686f135276d12527bc9ba465be9a5d4b9398407a8717",
+      "sha256": "61eb82ca3f4aca1e3700c1c4f842546298910799ae8047fa184d2ef68891bf38",
       "counts": {
         "passed": 13
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "editingEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-cell-editing-v1",
       "file": "editing-observations.json",
-      "sha256": "424be301b45d1cea0545a31fbceef2d51106b864c9aa7f38558f596827a098e2",
+      "sha256": "dabae4d776e46830c1c14c1611da6d8eb1c65b50360ba8e444f03771759f9551",
       "counts": {
         "passed": 22
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "historyEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-history-scrolling-v1",
       "file": "history-observations.json",
-      "sha256": "e711fc50d88c899001f218a49af48d872b7f1f89dc358559242cba7552b2eca2",
+      "sha256": "f461b766228b19ba896da6d264858ce5b26b2acd481f3f962e1212cb5be772ca",
       "counts": {
         "passed": 30
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "resizeEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-resize-reflow-v1",
       "file": "resize-observations.json",
-      "sha256": "8b6ba0329f165a35bbd466005954cfc9e9b40f324daec97b2de556763086bde8",
+      "sha256": "d09afb2cd0a4786c6a15f479451a5a2de9a1c9bc76e1ca1c07cf269649517b1e",
       "counts": {
         "passed": 3
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "savedEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-saved-alternate-v1",
       "file": "saved-observations.json",
-      "sha256": "b0d9f91e38c7fd83e65df21c5ea009b7d5e0b110997ffce0ba110ebf3cce7bee",
+      "sha256": "a341b547e69cda96c027a9d1bd1c956c6d635f7d407132ccc14b0e0a4a77dded",
       "counts": {
         "passed": 9
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "metadataEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-pane-metadata-v1",
       "file": "metadata-observations.json",
-      "sha256": "1f582d04ba3454470021e5501b2f687ad7f2383e6166542d50a6e22e5f31ee6b",
+      "sha256": "026f138893ff8c5e9e662adb67bf4d5b3f937f28c324abb7ffa040f814b9c730",
       "counts": {
-        "passed": 10,
-        "inconclusive": 2,
+        "passed": 9,
+        "inconclusive": 3,
         "failed": 1
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "inputEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-routed-input-v1",
       "file": "input-observations.json",
-      "sha256": "943365057db8b066f1dd184651751b6e9718e14648dcf535ba37922940d4c110",
+      "sha256": "4d7062d3e666b10806b93a81cea0cdae93506a3cd13c35ebee2828b19441bf68",
       "counts": {
         "passed": 39
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "staticImageEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-static-images-v1",
       "file": "image-observations.json",
-      "sha256": "0ce2e09b5f5c389c5220325b47b650c3859b0983b4c4b0cde00f82811e920d10",
+      "sha256": "cd8a6631c87a9b957665c4cc4baa3dc78008ddb9d70842517c61eaecc765ef29",
       "counts": {
         "passed": 21,
         "failed": 1,
@@ -2481,10 +2612,10 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "queryEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-exact-queries-v1",
       "file": "query-observations.json",
-      "sha256": "d35cc57c35321f3be54ad4dc458b13cd957424267936c79c5c4d56aad3e34587",
+      "sha256": "6179d76ecb28efa95220877c1bfee015a2a524b5663b0c1bd0967a9e0833408a",
       "counts": {
         "matched": 33,
         "mismatched": 7
@@ -2492,29 +2623,41 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "privateClipboardEvidence": {
-      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "runId": "a3c82293b63665af56ee96018c2472f7",
       "suiteId": "ntilde-owned-private-clipboard-v1",
       "file": "private-clipboard-observations.json",
-      "sha256": "b71de7a9d60194243723179f142baa172bcc719a1b855ffb6a340e2739d37c23",
+      "sha256": "d9d609fe3491437a4454e33376ebb4ceb6a0c5fd9cc851125304bc3c59ca808d",
       "counts": {
         "completedProbes": 3,
         "acceptedWrites": 2
       },
       "complete": true
     },
-    "ownershipProofSha256": "7e62598440883301cfc61179315e810ccb9b4d163c004f49541760a3ae4d6b73",
-    "contextSha256": "85a818b5ea724a850adee1691788cc2b6a46893105af9224895a2e4d5250fe3b",
-    "rawSha256": "4b8535b83d786d7fbab6c215983afd20f3544e8f8cc5e55373818f724fdc9e74",
+    "ownershipProofSha256": "29af6975d2cccd9e0174feea5b3fa402cf734776ae695cd8638b172ef53bc596",
+    "contextSha256": "0f4319b233a3db4a486c07011b722d3a8fa14a22632fdeef69a154efd8059362",
+    "rawSha256": "08ea36230742811c88faf09919c0d673b9de7cf729d8cc9d21619f361be6cc5c",
     "fixtureRemoved": true,
-    "completedAt": "2026-11-07T14:07:17.187Z"
+    "completedAt": "2026-11-07T14:34:35.903Z"
   },
   "retained": {
-    "sgrRgbObservationsSha256": "6d6d99890c34cb6f81d33eca46009991a3bdf1fb8cfe272baaf5832f281078ad",
+    "sgrRgbObservationsSha256": "5cd737d8590775a0045337923046e5498a5bed1d883027cf907ea2ce8239470e",
     "sgrRgbRunSha256": "08c884b24fa5a793184d981113f958f1b334b722aac654d9702c836ce51a7478",
-    "sgrRgbJournalSha256": "d87b441341013ba52a0581985ba70a330165c399726ef0d9ef5ea1e761e00135",
-    "collectorSgrRgbSha256": "3b4af84dc1a774baf8862115f7d907ece7d63f406c1f34d428991b4075bf18f1",
-    "sgrColorsObservationsSha256": "7ccef795e05f84c0f47de32ff0e4e8a35cb40e271569260a9757dd062c19a8ad",
-    "gradingObservationsSha256": "fcdcc9c4e5ac518c2cb51ae5bac12a2e817758cca8ede7c2e3df75cb80902fd5"
+    "sgrRgbJournalSha256": "c52836faa8dfed86f9000dfa82f3a0e433e0ef5f645c2dbdb638f57c58c7b776",
+    "collectorSgrRgbSha256": "c6c41df970de00c14e3b3f2142d59a6f7c9038fedda2ff4327258f4af36af6d4",
+    "sgrColorsObservationsSha256": "1c3d6f88d0c6033b6766aa614debbc68419ef3d44f793b4263fcaeccc0943c9e",
+    "gradingObservationsSha256": "cc12190e392d6b82b0da7e398360ab130ba1cc3977bce6b80df7d2cd530817ec"
   },
-  "attempts": []
+  "attempts": [
+    {
+      "directory": "owned-rfQ8HV",
+      "runId": "710c19c4438d398f712fbec3763a4b95",
+      "receiptCompletedAt": "2026-11-07T14:07:17.187Z",
+      "receiptSchema": 15,
+      "receiptCounts": {
+        "supported": 2
+      },
+      "error": null,
+      "note": "First measurement (2/2 supported) collected before the review fixes: its journal lacks the stored literal-byte coherence input (cellDetails) and its App build predates the capture-dimensions refusal. Superseded by the published run after the Codex/CodeRabbit findings; retained unmodified with its original facts."
+    }
+  ]
 }

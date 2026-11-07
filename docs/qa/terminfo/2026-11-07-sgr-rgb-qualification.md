@@ -89,29 +89,37 @@ whole chain rather than trusting declarations.
 
 | Measure | Value |
 |---|---|
-| Run / receipt completed | run `710c19c4438d398f712fbec3763a4b95`, receipt 2026-11-07T14:07:17.187Z (schema 15) |
-| App informational version | `0.13.0+b481ad97` |
-| App source | `b481ad97…` (this branch's App-side extension: the opt-in resolved-color readScreen projection; differs from main) |
-| Adapter/scripts source | pinned byte-for-byte by the run's policy-v9 source inventory (`b481ad97…`, the same commit; recorded by role, not by trust) |
+| Run / receipt completed | run `a3c82293b63665af56ee96018c2472f7`, receipt 2026-11-07T14:34:35.903Z (schema 15) |
+| App informational version | `0.13.0+c54efdc8` |
+| App source | `c54efdc8…` (this branch's App-side extension: the opt-in resolved-color readScreen projection with the review-driven capture-dimensions refusal; differs from main) |
+| Adapter/scripts source | pinned byte-for-byte by the run's policy-v9 source inventory (`c54efdc8…`, the same commit; recorded by role, not by trust) |
 | Owned-adapter collector run | 86 supported / 1 unsupported / 168 inconclusive; `suiteComplete=false`; SGR scoring unchanged from stock definitions (derived adapter output, not unmodified stock CLI bytes) |
 | Two-case collector outcomes | inconclusive (`consumed`) |
 | Same-run predecessor suites | first batch 4/4 supported; SGR-colors 5/5 supported (reconfirmed under the current contracts v2; the frozen 2026-11-06 publication keeps its measured v1 semantics and still rederives) |
 | Geometry | 40 rows × 140 columns |
-| Local evidence | `artifacts/terminfo/owned-rfQ8HV` (machine-readable copy with digests in the [JSON](2026-11-07-sgr-rgb-qualification.json)) |
+| Local evidence | `artifacts/terminfo/owned-lHNMLR` (machine-readable copy with digests in the [JSON](2026-11-07-sgr-rgb-qualification.json)) |
 
 The collector run's single `unsupported` remains `extensions.osc5522-clipboard`
 ("Mode 5522 not supported", evidence `query`) — outside this batch and
 unchanged by it.
 
-## Preserved failures
+## Preserved attempts and failures
 
-No in-run attempt failed: the successful run above is the first and only
-measurement attempt. One pre-launch invocation was refused by the sidecar gate
-before any App process, fixture or evidence existed (the executable path
-resolved through a source tree containing `Ntilde.App/`, which the
-`.app`-bundle refusal legitimately rejects); the run was reissued from the
-mirrored sidecar path. No historical publication, receipt or
-archived-evidence rederivation changed.
+Two preparation facts are retained with their original shape:
+
+1. One pre-launch invocation was refused by the sidecar gate before any App
+   process, fixture or evidence existed (the executable path resolved through a
+   source tree containing `Ntilde.App/`, which the `.app`-bundle refusal
+   legitimately rejects); the measurement was issued from the mirrored sidecar
+   path instead.
+2. The **first complete measurement** (run `710c19c4438d398f712fbec3763a4b95`,
+   receipt schema 15 completed 2026-11-07T14:07:17.187Z, 2/2 supported) was
+   collected before the Codex/CodeRabbit review fixes: its journal predates the
+   stored literal-byte coherence input (cellDetails in every RGB frame) and its
+   App build predates the capture-dimensions refusal. It is superseded by the
+   published run above and retained unmodified in `artifacts/terminfo/owned-rfQ8HV`
+   with its facts in the [JSON](2026-11-07-sgr-rgb-qualification.json). No
+   historical publication, receipt or archived-evidence rederivation changed.
 
 ## Reproduce
 
