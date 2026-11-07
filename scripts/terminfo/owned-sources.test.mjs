@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 114 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 114); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 123 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 123); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -79,15 +79,23 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('private v15 fixed114 source scope includes all selected nonexecuted references while v14 remains fixed113', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV15SourceFiles);
+test('private v16 fixed123 source scope includes all selected nonexecuted references while v15 remains fixed114', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV16SourceFiles);
+    assert.equal(Object.keys(capturedV15SourceFiles).length, 114);
     assert.equal(Object.keys(capturedV14SourceFiles).length, 113);
     assert.equal(Object.keys(capturedV13SourceFiles).length, 108);
     assert.equal(Object.keys(capturedV11SourceFiles).length, 74);
     assert.equal(Object.keys(privateClipboardReferencePaths).length, 21);
+    assert.equal(Object.keys(sgrRgbReferencePaths).length, 3);
+    // No captured file may be pinned twice: one alias, one byte set.
+    const targets = [...Object.values(privateClipboardReferencePaths), ...Object.values(sgrRgbReferencePaths)];
+    assert.equal(new Set(targets).size, targets.length);
     const bootstrap = readFileSync(new URL('../terminfo-owned.mjs', import.meta.url), 'utf8');
     const start = bootstrap.indexOf('Object.freeze(') + 'Object.freeze('.length;
     const literal = bootstrap.slice(start, bootstrap.indexOf(');', start));
     assert.deepEqual(JSON.parse(literal), privateClipboardReferencePaths);
-    assert.ok(Object.values(privateClipboardReferencePaths).every(path => path.startsWith('src/') && path.endsWith('.cs')));
+    const second = bootstrap.indexOf('Object.freeze(', start) + 'Object.freeze('.length;
+    assert.deepEqual(JSON.parse(bootstrap.slice(second, bootstrap.indexOf(');', second))), sgrRgbReferencePaths);
+    assert.ok([...Object.values(privateClipboardReferencePaths), ...Object.values(sgrRgbReferencePaths)]
+        .every(path => path.startsWith('src/') && path.endsWith('.cs')));
 });

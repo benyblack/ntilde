@@ -121,15 +121,18 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     // The grown v13 inventory carries its own policy; a v12-era run (policy v5,
     // 103 sources) still resolves to its own frozen file set.
     const { retainedInventory } = await import('./metadata-receipt.mjs');
-    const { capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
-    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v8');
+    const { capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
+    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v9');
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v5' }), capturedV12SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v6' }), capturedV13SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v7' }), capturedV14SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v8' }), capturedV15SourceFiles);
+    assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v9' }), capturedV16SourceFiles);
     assert.equal(Object.keys(capturedV12SourceFiles).length, 103);
     assert.equal(Object.keys(capturedV13SourceFiles).length, 108);
-    // The v7 map stays frozen at its measured 113 files; graded-plan lives in v8.
+    // The v7 map stays frozen at its measured 113 files; graded-plan lives in v8,
+    // the SGR-RGB scope (six scripts, three render-resolution references) in v9.
     assert.equal(Object.keys(capturedV14SourceFiles).length, 113);
     assert.equal(Object.keys(capturedV15SourceFiles).length, 114);
+    assert.equal(Object.keys(capturedV16SourceFiles).length, 123);
 });

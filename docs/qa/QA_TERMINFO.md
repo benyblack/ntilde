@@ -507,6 +507,40 @@ evidence rederives with its own revision. The collector run beside the graded
 suites is owned-adapter output with unchanged SGR scoring, not unmodified
 stock CLI bytes.
 
+### SGR standard-color RGB-appearance qualification grading
+
+The [SGR-RGB batch](terminfo/2026-11-07-sgr-rgb-qualification.md) finishes the
+named-color criterion's remaining scope — exactly `sgr.fg.standard` and
+`sgr.bg.standard` — through a third layered, explicitly versioned collector
+extension (`ntilde-owned-sgr-rgb-grading-v1`) derived digest-checked over the
+SGR-colors extension. The App observer gained an opt-in `readScreen`
+projection (`includeResolvedColors`) that resolves each cell's
+foreground/background through the draw path's own storage-to-theme precedence
+(default → theme default, palette index → ANSI palette entry, literal →
+stored ARGB) against one coherent render snapshot, and reports the resolved
+runs together with the palette/theme binding (theme name, defaults, 256-entry
+palette, override flags, DECSCNM, minimum-contrast setting) they were
+resolved against. Resolution stays in the App's rendering layer; the VT core
+is unchanged.
+
+The two fixtures replay byte-identically to the stored batch
+(`C\x1b[31mX\x1b[34mY` and `C\x1b[41mX\x1b[44mY`), the pinned
+`namedColorProbe` code executes over the RGB-carrying projection, and the
+conclusion requires the pinned code, the independent contract grader and the
+parent-side replay to agree. The pinned distinguishability semantics are
+preserved exactly: a theme whose entries alias stays inconclusive ("Baseline,
+theme colors, or color readback were indistinguishable"), never unsupported,
+and arbitrary resolved values cannot pass — every run must cohere with the
+binding's palette lookups and with the stored attribute runs of the same
+snapshot, and one binding must cover the whole suite (a palette/theme change
+during observation voids the run). The RGB conclusions claim the resolution
+stage only: no contrast adjustment, opacity compositing or glyph
+rasterisation, and the stored-index conclusions remain the SGR-colors
+suite's. Receipt schema 15 binds the layered report, run log and adapter
+bytes after verified cleanup; source policy v9 carries the 123-file
+inventory (six new scripts plus the render-resolution C# reference inputs)
+with every earlier policy mapping frozen.
+
 The batch carries one explicitly attributed cherry-pick (`8ffc6d19`, the
 private-clipboard wide-column observer fix from
 `codex/terminfo-benchmark-refresh`): current main cannot complete the shared

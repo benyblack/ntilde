@@ -1670,7 +1670,8 @@ namespace Ntilde.AgentHost
                 return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'.");
             }
 
-            var response = ScreenResult(request.Id, registration.Buffer, p);
+            var response = ScreenResult(request.Id, registration.Buffer, p,
+                minimumContrast: registration.RenderParameters?.MinimumContrast);
             if (response.Error == null) TryNoteRead(registration);
             return response;
         }
@@ -1680,10 +1681,13 @@ namespace Ntilde.AgentHost
         /// session's screen was imported into. Read under the buffer's read lock, through the deterministic
         /// <see cref="BufferSnapshot"/> path.
         /// </summary>
-        private static AgentHostResponse ScreenResult(long requestId, TerminalBuffer buffer, ReadScreenParams parameters, bool completeLocalHistory = true)
+        private static AgentHostResponse ScreenResult(long requestId, TerminalBuffer buffer, ReadScreenParams parameters, bool completeLocalHistory = true,
+            double? minimumContrast = null)
         {
             BufferSnapshot snapshot;
             CellDetailRunDto[]? details = null;
+            ResolvedColorRunDto[]? resolvedColors = null;
+            ColorBindingDto? colorBinding = null;
             CursorModeDto? cursorMode = null;
             BufferStateDto? bufferState = null;
             bool cursorVisible;
@@ -1729,11 +1733,25 @@ namespace Ntilde.AgentHost
                 buffer.Lock.ExitReadLock();
             }
 
+            // Resolved colors come from the coherent cells-plus-theme render snapshot, which
+            // takes the buffer's read lock itself — hence outside the block above. A resize
+            // racing the two captures changes the dimensions this capture reads; refusing
+            // keeps the response from mixing two screens, never projecting a torn viewport.
+            if (parameters.IncludeResolvedColors
+                && !ResolvedColorSnapshot.TryCapture(buffer, out resolvedColors, out colorBinding, minimumContrast,
+                    expectedRows: rows, expectedCols: cols))
+            {
+                return Error(requestId, AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable,
+                    $"Complete resolved colors require at most {AgentHostProtocol.MaxCellDetailCells} cells and {AgentHostProtocol.MaxCellDetailRuns} runs, captured without a concurrent resize.");
+            }
+
             var dto = new ScreenSnapshotDto
             {
                 Lines = snapshot.Lines,
                 AttributeLines = snapshot.AttributeLines,
                 CellDetails = details,
+                ResolvedColors = resolvedColors,
+                ColorBinding = colorBinding,
                 CursorMode = cursorMode,
                 BufferState = bufferState,
                 CursorRow = snapshot.CursorRow,
@@ -1867,11 +1885,26 @@ namespace Ntilde.AgentHost
             AgentHostRequest request, IWindowlessSessionSource source, ReadScreenParams p, CancellationToken cancellationToken)
         {
             var screen = await source.ReadScreenAsync(p.PaneId, 0, cancellationToken).ConfigureAwait(false);
-            var (buffer, failure) = ImportScreen(request.Id, p.PaneId, AgentHostProtocol.Methods.ReadScreen, screen);
-            if (failure == null)
+            AgentHostResponse failure;
+            if (screen.Outcome == WindowlessOutcome.Ok && p.IncludeResolvedColors)
             {
-                ArgumentNullException.ThrowIfNull(buffer);
-                failure = ScreenResult(request.Id, buffer, p, completeLocalHistory: false);
+                // Only a session that actually resolved as windowless is refused the
+                // projection — an unknown paneId keeps its own typed error below. The
+                // imported buffer has no theme of the session it came from; resolving
+                // against the import default would present colors that session never
+                // rendered. Routed through WindowlessRead so the refusal is journaled.
+                failure = Error(request.Id, AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable,
+                    "Resolved colors are unavailable for windowless sessions: the imported screen carries no theme of the session it came from.");
+            }
+            else
+            {
+                var (buffer, importFailure) = ImportScreen(request.Id, p.PaneId, AgentHostProtocol.Methods.ReadScreen, screen);
+                if (importFailure == null)
+                {
+                    ArgumentNullException.ThrowIfNull(buffer);
+                    importFailure = ScreenResult(request.Id, buffer, p, completeLocalHistory: false);
+                }
+                failure = importFailure;
             }
             return WindowlessRead(request, AgentHostProtocol.Methods.ReadScreen, p.PaneId, screen, failure);
         }

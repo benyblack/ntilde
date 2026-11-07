@@ -26,8 +26,8 @@ export function validateExactFeeds(contract, feeds, label) {
 }
 
 /** Validate one parent-journaled frame against its expected kind and shape. */
-export function validateGradedFrame(frame, index, baseline, kindAt, label) {
-    screenSnapshot(frame.screen, true);
+export function validateGradedFrame(frame, index, baseline, kindAt, label, screenOf = value => screenSnapshot(value, true)) {
+    screenOf(frame.screen);
     if (frame.index !== index || frame.kind !== kindAt(index) || frame.sha256 !== snapshotHash(frame.screen)
         || frame.paneId !== baseline.paneId
         || frame.screen.rows !== baseline.screen.rows || frame.screen.cols !== baseline.screen.cols) {
@@ -39,7 +39,7 @@ export function validateGradedFrame(frame, index, baseline, kindAt, label) {
 }
 
 /** Validate a complete journal: kinds, nonce binding and restoration. */
-export function validateGradedJournal(frames, { frameCount, prefix, noncePrefix, runId, label }) {
+export function validateGradedJournal(frames, { frameCount, prefix, noncePrefix, runId, label, screenOf }) {
     const kindAt = index => {
         if (index === 0) return `${prefix}-start`;
         if (index === 1) return `${prefix}-bind`;
@@ -47,7 +47,7 @@ export function validateGradedJournal(frames, { frameCount, prefix, noncePrefix,
         return `${prefix}-read`;
     };
     if (!Array.isArray(frames) || frames.length !== frameCount) throw new Error(`Incomplete ${label} snapshot sequence.`);
-    for (const [index, frame] of frames.entries()) validateGradedFrame(frame, index, frames[0], kindAt, label);
+    for (const [index, frame] of frames.entries()) validateGradedFrame(frame, index, frames[0], kindAt, label, screenOf);
     const binding = frames[1].screen;
     if (!/^[a-f\d]{32}$/.test(runId ?? '') || binding.lines[0] !== noncePrefix + runId
         || binding.cursorRow !== 0 || binding.cursorCol !== (noncePrefix + runId).length) {
@@ -71,6 +71,19 @@ export function crossCheckGradedCapture(contract, recorded, readFrames, label) {
             }
             readSteps++;
         }
+    }
+}
+
+/** Validate one case's recorded capture record shape (feeds, barriers, reads). */
+export function validateGradedCaptureRecord(contract, recorded, label) {
+    validateExactFeeds(contract, recorded.feeds, 'contract');
+    if (!Array.isArray(recorded.barriers) || recorded.barriers.length !== planFeeds(contract).length
+        || recorded.barriers.some(barrier => !/^\x1b\[\?[\d;]+c$/.test(barrier ?? ''))
+        || !Array.isArray(recorded.reads) || recorded.reads.length !== planReads(contract)) {
+        throw new Error(`Invalid ${contract.caseId} graded capture record (${label}).`);
+    }
+    for (const [step, read] of contract.plan.filter(item => item.read).entries()) {
+        if (recorded.reads[step].kind !== read.read) throw new Error(`Wrong ${contract.caseId} read kind (${label}).`);
     }
 }
 

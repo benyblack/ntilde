@@ -30,13 +30,22 @@ const privateClipboardReferencePaths = Object.freeze({
     "clipboard-agent-registry.cs": "src/Ntilde.App/AgentHost/AgentSessionRegistry.cs",
     "clipboard-agent-protocol.cs": "src/Ntilde.AgentHost.Contracts/AgentHostProtocol.cs"
 });
+// SGR-RGB render-resolution reference inputs (policy v9): the App-side resolved-color
+// projection this batch measures, captured as nonexecuted reference bytes. Files the
+// clipboard scope already captures are not duplicated: one byte set per file.
+const sgrRgbReferencePaths = Object.freeze({
+    "sgr-rgb-resolved-color-snapshot.cs": "src/Ntilde.App/AgentHost/ResolvedColorSnapshot.cs",
+    "sgr-rgb-draw-operation.cs": "src/Ntilde.App/Shell/TerminalDrawOperation.cs",
+    "sgr-rgb-render-snapshots.cs": "src/Ntilde.VT/RenderSnapshots.cs"
+});
 /** Map admitted reference aliases or established script basenames without reading or executing them. */
 function pathFor(root, file) {
     if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
+    if (Object.hasOwn(sgrRgbReferencePaths, file)) return join(root, sgrRgbReferencePaths[file]);
     const relative = file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file;
     return join(root, 'scripts', relative);
 }
-const policy = 'readonly-owned-source-graph-v8';
+const policy = 'readonly-owned-source-graph-v9';
 function setDirectoryModes(root, mode) {
     for (const entry of readdirSync(root, { withFileTypes: true })) if (entry.isDirectory()) setDirectoryModes(join(root, entry.name), mode);
     chmodSync(root, mode);
@@ -68,7 +77,8 @@ async function capture(root) {
     const inventory = JSON.parse(input), hashes = {}, sources = new Map();
     if (inventory.runnerSourceSha256 !== 'terminfo-owned-runner.mjs' || inventory.sourceInventorySha256 !== 'owned-source-inventory.json') throw new Error('Invalid source inventory.');
     for (const [key, file] of Object.entries(inventory)) {
-        if (!/^[a-zA-Z][a-zA-Z0-9]*Sha256$/.test(key) || (!/^[a-z][a-z0-9-]*\.(?:mjs|json)$/.test(file) && !Object.hasOwn(privateClipboardReferencePaths, file))) throw new Error('Invalid source inventory entry.');
+        if (!/^[a-zA-Z][a-zA-Z0-9]*Sha256$/.test(key) || (!/^[a-z][a-z0-9-]*\.(?:mjs|json)$/.test(file)
+            && !Object.hasOwn(privateClipboardReferencePaths, file) && !Object.hasOwn(sgrRgbReferencePaths, file))) throw new Error('Invalid source inventory entry.');
         const source = pathFor(repo, file), info = lstatSync(source);
         if (!info.isFile() || info.isSymbolicLink()) throw new Error('Expected a regular source file.');
         const bytes = file === 'owned-source-inventory.json' ? input : readFileSync(source);

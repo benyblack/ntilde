@@ -188,6 +188,37 @@ public class AgentHostWindowlessProtocolTests
     }
 
     [Fact]
+    public void ReadScreen_windowless_resolved_colors_are_refused_after_resolution_and_journaled()
+    {
+        // The imported screen carries no theme of the session it came from; resolving
+        // against the import default would present colors that session never rendered.
+        // The session is resolved first, and the refusal is journaled like any read.
+        var source = new StubWindowlessSource();
+        var session = source.Add("hello", cols: 90, rows: 20);
+        var journal = new AgentActivityJournal();
+        using var service = NewService(new AgentSessionRegistry(), journal);
+        service.SetWindowlessSource(source);
+        var line = Line(AgentHostProtocol.Methods.ReadScreen,
+            JsonSerializer.Serialize(new ReadScreenParams { PaneId = session.SessionId, IncludeResolvedColors = true },
+                AgentHostJsonContext.Default.ReadScreenParams));
+        var response = Handle(service, line);
+        Assert.Equal(AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable, response.Error?.Code);
+        Assert.Null(response.Result);
+        Assert.Equal([(session.SessionId, 0)], source.Reads); // resolved first, then refused
+        var entry = Assert.Single(journal.Snapshot());
+        Assert.Equal(AgentHostProtocol.Methods.ReadScreen, entry.Method);
+        Assert.True(entry.Windowless);
+        Assert.Equal("screenDetailsUnavailable", entry.Outcome);
+
+        // An unknown paneId keeps its own typed error, not the projection refusal.
+        var unknown = Line(AgentHostProtocol.Methods.ReadScreen,
+            JsonSerializer.Serialize(new ReadScreenParams { PaneId = Guid.NewGuid(), IncludeResolvedColors = true },
+                AgentHostJsonContext.Default.ReadScreenParams));
+        var notFound = Handle(service, unknown);
+        Assert.Equal(AgentHostProtocol.ErrorCodes.SessionNotFound, notFound.Error?.Code);
+    }
+
+    [Fact]
     public void ReadScreen_windowless_cell_details_preserve_imported_rgb_and_underline_metadata()
     {
         var source = new StubWindowlessSource();
