@@ -218,12 +218,12 @@ public class ResolvedColorReadScreenTests : IDisposable
         var buffer = new TerminalBuffer(20, 3);
         new AnsiParser(buffer).Process("C\x1b[31mX");
         Assert.False(ResolvedColorSnapshot.TryCapture(buffer, out var runs, out var binding, minimumContrast: 1,
-            expectedRows: 20, expectedCols: 4));
+            expectedRows: 3, expectedCols: 21));
         Assert.Null(runs);
         Assert.Null(binding);
         // The matching expectation still captures.
         Assert.True(ResolvedColorSnapshot.TryCapture(buffer, out runs, out binding, minimumContrast: 1,
-            expectedRows: 20, expectedCols: 3));
+            expectedRows: 3, expectedCols: 20));
         Assert.NotNull(runs);
         Assert.NotNull(binding);
     }
