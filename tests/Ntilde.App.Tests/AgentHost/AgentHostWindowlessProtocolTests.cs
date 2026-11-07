@@ -188,6 +188,24 @@ public class AgentHostWindowlessProtocolTests
     }
 
     [Fact]
+    public void ReadScreen_windowless_resolved_colors_are_refused()
+    {
+        // The imported screen carries no theme of the session it came from; resolving
+        // against the import default would present colors that session never rendered.
+        var source = new StubWindowlessSource();
+        var session = source.Add("hello", cols: 90, rows: 20);
+        using var service = NewService(new AgentSessionRegistry(), new AgentActivityJournal());
+        service.SetWindowlessSource(source);
+        var line = Line(AgentHostProtocol.Methods.ReadScreen,
+            JsonSerializer.Serialize(new ReadScreenParams { PaneId = session.SessionId, IncludeResolvedColors = true },
+                AgentHostJsonContext.Default.ReadScreenParams));
+        var response = Handle(service, line);
+        Assert.Equal(AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable, response.Error?.Code);
+        Assert.Null(response.Result);
+        Assert.Empty(source.Reads); // refused before any read is asked for
+    }
+
+    [Fact]
     public void ReadScreen_windowless_cell_details_preserve_imported_rgb_and_underline_metadata()
     {
         var source = new StubWindowlessSource();
