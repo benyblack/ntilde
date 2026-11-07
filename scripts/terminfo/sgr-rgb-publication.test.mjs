@@ -7,7 +7,9 @@ import { createHash } from 'node:crypto';
 import { buildSgrRgbGradingReport } from './sgr-rgb-grading.mjs';
 import { sgrRgbAdapterId } from './sgr-rgb-grading-collector.mjs';
 import { sgrRgbSuiteId } from './sgr-rgb-contracts.mjs';
+/** SHA-256 of exact bytes. */
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+/** The frozen publication this test rederives. */
 const path = new URL('../../docs/qa/terminfo/2026-11-07-sgr-rgb-qualification.json', import.meta.url);
 
 test('the published SGR-RGB grading evidence re-derives exactly from its retained journal and run log', () => {

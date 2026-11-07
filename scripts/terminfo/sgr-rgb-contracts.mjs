@@ -13,11 +13,15 @@ import { expandResolvedColors, exposedRgb, checkStoredColorCoherence } from './r
 // Contracts v1 is the measured semantics of this batch: resolution-stage RGB
 // over the App's live render theme, distinguishability only.
 export const sgrRgbContractsVersion = 1;
+/** Identity of this suite's layered extension output. */
 export const sgrRgbSuiteId = 'ntilde-owned-sgr-rgb-graded-v1';
+/** The nonce prefix binding worker output to this suite. */
 export const sgrRgbNoncePrefix = 'NTILDE_SR_';
+/** The shared measured reset every plan begins with. */
 const sgrRgbReset = asciiSgrReset;
 export { sgrRgbReset };
 
+/** TerminalCellFlags bits this suite reads. */
 export const sgrRgbFlagBits = Object.freeze({
     bold: 0x0001, italic: 0x0004, underline: 0x0008, faint: 0x0040,
     defaultFg: 0x0100, defaultBg: 0x0200, paletteFg: 0x4000, paletteBg: 0x8000,
@@ -49,14 +53,18 @@ export function validateSgrRgbScreen(screen) {
     checkStoredColorCoherence(screen);
 }
 
+/** The pinned sameRgb: exact {r,g,b} equality. */
 const sameRgb = (a, b) => a.r === b.r && a.g === b.g && a.b === b.b;
+/** The pinned sameCellColor: undefined-aware, null-aware color equality. */
 const sameCellColor = (a, b) => {
     if (a === undefined || b === undefined) return false;
     if (a === null || b === null) return a === b;
     return sameRgb(a, b);
 };
 
+/** No style flag set on the cell. */
 const plainStyles = cell => !cell.bold && !cell.dim && !cell.italic && !cell.underline;
+/** Both channels on default storage. */
 const bothDefault = cell => cell.fgSource === 'default' && cell.bgSource === 'default';
 
 /** The two pinned cases; each performs one feed and one three-cell read. */
@@ -66,6 +74,7 @@ const case_ = (fields) => Object.freeze({
     ...fields,
 });
 
+/** The two pinned named-color cases. */
 export const sgrRgbContracts = Object.freeze([
     case_({
         caseId: 'sgr.fg.standard', probeId: 'sgr.fg.standard', channel: 'fg', other: 'bg',
@@ -133,6 +142,7 @@ function gradeNamedColorRgb(cells, contract, revision) {
     return { outcome: 'inconclusive', note: contract.pinnedControlNote };
 }
 
+/** Contract case ids in suite order. */
 export const sgrRgbCaseIds = Object.freeze(sgrRgbContracts.map(contract => contract.caseId));
 
 /** Independent contract grader entry: mirrors the pinned RGB criteria without the bundle. */

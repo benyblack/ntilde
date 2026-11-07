@@ -7,6 +7,7 @@ import { syntheticSgrRgbEvidence, syntheticSgrRgbScreen, syntheticColorBinding, 
 import { sgrRgbRecordingContext } from './sgr-rgb-collector.mjs';
 import { snapshotHash } from './agent-observer.mjs';
 
+/** Fresh synthetic evidence plus its parent-derived report. */
 const report = () => {
     const evidence = syntheticSgrRgbEvidence();
     return { evidence, report: buildSgrRgbGradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter) };

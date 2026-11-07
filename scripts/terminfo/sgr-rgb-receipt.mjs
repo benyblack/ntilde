@@ -11,9 +11,12 @@ import { adaptSgrRgbCollector, sgrRgbAdapterId } from './sgr-rgb-grading-collect
 import { adaptSgrColorsCollector } from './sgr-colors-grading-collector.mjs';
 import { adaptGradingCollector } from './grading-collector.mjs';
 import { buildSgrRgbGradingReport } from './sgr-rgb-grading.mjs';
+/** SHA-256 of exact bytes. */
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+/** Every retained artifact this suffix owns. */
 const files = ['sgrgb-observations.json', 'sgrgb-run.json', 'sgrgb-snapshots.jsonl', 'collector-sgrgb.mjs'];
 
+/** Whether a retained artifact path exists. */
 function present(path) {
     try { lstatSync(path); return true; }
     catch (error) {

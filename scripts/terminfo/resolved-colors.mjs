@@ -14,6 +14,7 @@ const uint = value => Number.isSafeInteger(value) && value >= 0 && value <= 0xff
 const index = value => Number.isSafeInteger(value) && value >= 0 && value <= 255;
 /** The resolution stage is opaque: every reported color must carry 0xFF alpha. */
 const opaque = value => uint(value) && (value >>> 24) === 0xff;
+/** The three storage states a resolved channel can be resolved from. */
 export const resolvedColorSources = Object.freeze(['default', 'palette', 'literal']);
 
 /** Validate and normalize one complete palette/theme binding exactly as the App reports it. */

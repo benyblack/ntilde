@@ -120,6 +120,7 @@ internal static class ResolvedColorSnapshot
         };
     }
 
+    /// <summary>Project the render theme into the reported binding facts.</summary>
     private static ColorBindingDto BindingOf(RenderThemeSnapshot theme, double? minimumContrast)
     {
         var palette = new uint[theme.AnsiPalette is { Length: 256 } array ? 256 : 0];
@@ -148,10 +149,13 @@ internal static class ResolvedColorSnapshot
         };
     }
 
+    /// <summary>An opaque Skia copy of a theme color; compositing is a later stage.</summary>
     private static SKColor ToOpaqueSkColor(TermColor color) => new(color.R, color.G, color.B, 255);
 
     /// <summary>Pack the resolved RGB with opaque alpha: compositing is a later pipeline stage.</summary>
+    /// <summary>Pack a resolved SKColor with opaque alpha.</summary>
     private static uint OpaqueArgb(SKColor color) => 0xFF000000u | (uint)color.Red << 16 | (uint)color.Green << 8 | color.Blue;
 
+    /// <summary>Pack a theme color with opaque alpha.</summary>
     private static uint OpaqueArgb(TermColor color) => 0xFF000000u | (uint)color.R << 16 | (uint)color.G << 8 | color.B;
 }

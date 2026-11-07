@@ -12,6 +12,7 @@
 // SGR-colors extension still contains the exact pinned probe definitions.
 import { sgrRgbCaseIds } from './sgr-rgb-contracts.mjs';
 
+/** Identity of this fourth layered extension. */
 export const sgrRgbAdapterId = 'ntilde-owned-sgr-rgb-grading-v1';
 
 /** Exact pinned probe-definition seams from terminfo.dev@4.0.0 (as retained by
@@ -41,6 +42,7 @@ export const ntildeSgrRgbAdapter = Object.freeze({
   id: ${JSON.stringify(sgrRgbAdapterId)},
   probeIds: ${JSON.stringify([...sgrRgbCaseIds])}
 });
+/** Execute one pinned termless probe over caller-served cells. */
 export function ntildeRunSgrRgbTermless(probeId, ctx) {
   init_src();
   const probe = ALL_PROBES.find(item => item.id === probeId);

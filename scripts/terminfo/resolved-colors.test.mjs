@@ -4,6 +4,7 @@ import { copyColorBinding, copyResolvedColors, expandResolvedColors, exposedRgb,
     colorBindingHash, checkStoredColorCoherence, resolvedColorSources } from './resolved-colors.mjs';
 import { syntheticSgrRgbScreen, syntheticSgrRgbLiteralScreen, syntheticColorBinding, rgb, syntheticPalette } from './fixtures/sgr-rgb-evidence.mjs';
 
+/** Synthetic cell budget for run-validation assertions. */
 const cells = 360;
 
 test('a valid binding copies normalized with every field checked', () => {
