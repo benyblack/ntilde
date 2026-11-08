@@ -98,6 +98,18 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(unique.size, 31, 'the prior twenty-nine qualifications plus the two merged selective-reset cases');
     for (const suite of Object.values(summary.sameRun)) assert.ok(suite.cases.every(item => item.outcome === 'supported'));
     assert.ok(!ids.some(id => unique.has(id)), 'the three new cases are counted separately');
+    // Each predecessor and finding report is bound to the receipt by hash, so an inconclusive report cannot hide behind the summary.
+    const keys = { 'ascii-sgr': 'gradingEvidence', colors: 'sgrColorsEvidence', rgb: 'sgrRgbEvidence', attrs: 'sgrAttrsEvidence', palette: 'sgrPaletteEvidence',
+        truecolor: 'sgrTruecolorEvidence', underline: 'sgrUnderlineEvidence', underlineColor: 'sgrUnderlineColorEvidence', reset: 'sgrResetEvidence' };
+    for (const [suite, key] of Object.entries(keys)) {
+        assert.equal(summary.sameRun[suite].observationsSha256, receipt[key].sha256, suite);
+        assert.equal(summary.sameRun[suite].receiptSha256, receipt[key].sha256, suite);
+        const counts = {};
+        for (const item of summary.sameRun[suite].cases) counts[item.outcome] = (counts[item.outcome] ?? 0) + 1;
+        assert.deepEqual(counts, receipt[key].counts, `${suite} case outcomes match the receipt counts`);
+    }
+    assert.equal(summary.truecolorFinding.observationsSha256, receipt.truecolorFindingEvidence.sha256);
+    assert.equal(summary.underlineResolved.observationsSha256, receipt.underlineResolvedEvidence.sha256);
     assert.equal(summary.truecolorFinding.cases.length, 10);
     assert.ok(summary.truecolorFinding.cases.every(item => item.caseId.startsWith('finding.truecolor-literal.') && item.outcome === 'supported'));
     assert.equal(summary.underlineResolved.cases.length, 3);

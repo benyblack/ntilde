@@ -49,9 +49,13 @@ export { pinnedNoRenderedCellNote };
 
 const clear = sgrAttrsClear;
 const attributeNames = ['bold', 'dim', 'italic', 'underline', 'inverse', 'hidden', 'strikethrough', 'blink', 'overline'];
-/** Whether a cell has exactly the named attributes set (underline: single style), default colors, any underline color. */
-const decoyExactly = (cell, set) => attributeNames.every(name => (name === 'underline' ? (cell.underline !== false) : cell[name]) === set.includes(name))
-    && storedNeutral(cell) && (!set.includes('underline') || cell.underlineStyle === 1);
+/** The stored underline color of the overline decoy: the literal requested by SGR 58;2;255;0;128, no palette index. */
+const decoyLiteral = 0xffff0080;
+/** Whether a cell has exactly the named attributes set (underline: single style), default fg/bg, and the contracted
+ * stored underline color: the literal for the overline decoy, none otherwise. */
+const decoyExactly = (cell, set, { color = false } = {}) => attributeNames.every(name => (name === 'underline' ? (cell.underline !== false) : cell[name]) === set.includes(name))
+    && storedNeutral(cell) && (!set.includes('underline') || cell.underlineStyle === 1)
+    && cell.underlineColorIndex === -1 && (cell.underlineArgb === null ? null : cell.underlineArgb >>> 0) === (color ? decoyLiteral : null);
 
 /** One toggle case (blink or overline): neutral control, the pinned fixture, a reset control and independence controls. */
 const toggle = ({ caseId, attr, sequence, resetSequence, decoy, decoySet, independence }) => Object.freeze({
@@ -70,7 +74,7 @@ const toggle = ({ caseId, attr, sequence, resetSequence, decoy, decoySet, indepe
     appearanceScope: attr === 'blink'
         ? 'stored blink flag only (bit 0x20), distinct from every other attribute; animation, blink timing and rendered blinking are not claimed'
         : 'stored overline boolean (an explicit exposed field), independent of the underline flag, style and color; overline stroke appearance is not claimed',
-    grade: observation => gradeToggle(attr, observation, { sequence, resetSequence, decoySet }),
+    grade: observation => gradeToggle(attr, observation, { sequence, resetSequence, decoySet, decoyColor: attr === 'overline' }),
     observed: observation => briefToggle(attr, observation),
 });
 
@@ -102,17 +106,24 @@ function briefToggle(attr, observation) {
         reverseVideo: observation.reverseVideo };
 }
 
-/** The overline independence group: overline kept when underline ends, absent without SGR 53. Overline-state checks only
- * bind when the target worked, so an unsupported overline stays gradeable. */
+/** Every attribute except overline equals the expected set, with default stored colors and no underline color. */
+const attributesOnly = (cell, set) => attributeNames.every(name => name === 'overline'
+    || (name === 'underline' ? (cell.underline !== false) : cell[name]) === set.includes(name))
+    && storedNeutral(cell) && cell.underlineColorIndex === -1 && cell.underlineArgb === null;
+
+/** The overline independence group: V has underline (and overline), U has only overline once the underline ends, T has
+ * nothing after SGR 55; no other attribute or color anywhere. Overline-state checks only bind when the target worked, so an
+ * unsupported overline stays gradeable. */
 function independenceValid(group, whenSupported) {
     const [v, u, t] = group;
-    const shape = v.char === 'V' && u.char === 'U' && t.char === 'T' && v.underline === 'single' && v.underlineStyle === 1
-        && u.underline === false && u.underlineStyle === 0 && t.underline === false && t.underlineStyle === 0 && storedNeutral(v) && storedNeutral(u) && storedNeutral(t);
+    const shape = v.char === 'V' && u.char === 'U' && t.char === 'T'
+        && attributesOnly(v, ['underline']) && v.underlineStyle === 1 && attributesOnly(u, []) && u.underlineStyle === 0
+        && attributesOnly(t, []) && t.underlineStyle === 0;
     return shape && (!whenSupported || (v.overline === true && u.overline === true && t.overline === false));
 }
 
 /** The shared control walk, then the exact stored-attribute verdict. */
-function gradeToggle(attr, observation, { decoySet }) {
+function gradeToggle(attr, observation, { decoySet, decoyColor }) {
     const { baseline, target, trailing, decoy, independence, reverseVideo } = observation;
     if (target.char !== 'X') return { outcome: 'inconclusive', note: pinnedNoRenderedCellNote };
     if (reverseVideo !== false) return { outcome: 'inconclusive', note: 'DECSCNM reverse video was not proven off, so stored attributes cannot be separated from it' };
@@ -125,7 +136,7 @@ function gradeToggle(attr, observation, { decoySet }) {
         return { outcome: 'inconclusive', note: 'Reset/restoration control cells were not measured as contracted' };
     }
     // Wrong-flag control: a cell with every OTHER attribute set must not read the target attribute.
-    if (decoy.char !== 'W' || !decoyExactly(decoy, decoySet) || decoy[attr] !== false) {
+    if (decoy.char !== 'W' || !decoyExactly(decoy, decoySet, { color: decoyColor }) || decoy[attr] !== false) {
         return { outcome: 'inconclusive', note: `The decoy control did not show ${attr} independent of the other attributes` };
     }
     if (attr === 'overline' && !independenceValid(independence, worked)) {

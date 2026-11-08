@@ -100,6 +100,18 @@ test('overline: SGR 55 must not re-enable underline on the final independence ce
         groups[4] = [styled('V', [], { style: 1 }), plainCell('U'), styled('T', [], { style: 1 })]; }), 'inconclusive');
 });
 
+test('decoy and independence cells validate their stored underline color and every unrelated attribute (review fix)', () => {
+    // The overline decoy must hold exactly the requested literal underline color; a missing or different color voids it.
+    assert.equal(outcome(OVERLINE, groups => { groups[3][0] = styled('W', ['bold', 'dim', 'italic', 'blink', 'inverse', 'hidden', 'strikethrough'], { style: 1 }); }), 'inconclusive', 'no stored color');
+    assert.equal(outcome(OVERLINE, groups => { groups[3][0] = styled('W', ['bold', 'dim', 'italic', 'blink', 'inverse', 'hidden', 'strikethrough'], { style: 1, rgb: { r: 1, g: 2, b: 3 } }); }), 'inconclusive', 'wrong color');
+    // The blink decoy carries no underline color.
+    assert.equal(outcome(BLINK, groups => { groups[3][0] = styled('W', ['bold', 'dim', 'italic', 'inverse', 'hidden', 'strikethrough', 'overline'], { style: 1, rgb: { r: 255, g: 0, b: 128 } }); }), 'inconclusive');
+    // Unrelated attributes on V, U or T void the independence control.
+    for (const [index, cell] of [[0, styled('V', ['overline', 'bold'], { style: 1 })], [1, styled('U', ['overline', 'italic'])], [2, styled('T', ['bold'])]]) {
+        assert.equal(outcome(OVERLINE, groups => { groups[4][index] = cell; }), 'inconclusive', `attribute drift on cell ${index}`);
+    }
+});
+
 test('overline: the pinned false-versus-unavailable distinction is preserved by the replay', () => {
     const contract = byId(OVERLINE);
     const cell = overline => ({ char: 'X', overline, blink: false });
