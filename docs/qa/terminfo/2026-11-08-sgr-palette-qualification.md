@@ -95,18 +95,18 @@ stock collector's own `consumed` grades.
 | Layered adapter | `ntilde-owned-sgr-palette-grading-v1` (contracts v1), suite `ntilde-owned-sgr-palette-graded-v1` |
 | Derived from | `ntilde-owned-sgr-attributes-grading-v1` → `ntilde-owned-sgr-rgb-grading-v1` → `ntilde-owned-sgr-colors-grading-v1` → `ntilde-owned-ascii-sgr-grading-v1` → `ntilde-owned-macos-v1` over pinned `terminfo.dev@4.0.0` |
 | Pinned bundle SHA-256 | `aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6` |
-| Layered bundle SHA-256 | `82494fd7ad258b28da13a83d086fdb86851306e880af17a73007fa6312dc7d51` |
+| Layered bundle SHA-256 | `dabc2403f739a1c58d337930ad3f56b0bb958b0455c2b3e63d4e25e2e624d817` |
 | Receipt schema / source policy | 17 / `readonly-owned-source-graph-v11` (inventory v18, 133 files); policies v1–v10 keep their frozen maps |
 
 ## Measurement
 
 | Measure | Value |
 |---|---|
-| Run / receipt completed | run `d7dd5a520c1675766c13980bc8e8117e`, receipt 2026-11-08T09:48:20.174Z |
+| Run / receipt completed | run `69aae2e06fbda0071c319b20adeb4558`, receipt 2026-11-08T10:20:07.862Z |
 | App | `0.13.0`; **App source identical to main `d29f56ff` (#889)** — `git diff d29f56ff HEAD -- src` is empty; sidecar built fresh from this branch |
-| Adapter/scripts source | commit `a762d326` (also `adapterRevision` in the [summary](2026-11-08-sgr-palette/summary.json)), pinned byte-for-byte by the run's policy-v11 inventory |
+| Adapter/scripts source | commit `ef9761e6` (also `adapterRevision` in the [summary](2026-11-08-sgr-palette/summary.json)), pinned byte-for-byte by the run's policy-v11 inventory |
 | Same-run predecessors | grading 4/4, SGR-colors 5/5 (contracts v2), SGR-RGB 2/2, SGR-attributes 5/5 supported — fourteen unique qualifications |
-| Local evidence | `artifacts/terminfo/owned-2sV5a0`; digests in the summary |
+| Local evidence | `artifacts/terminfo/owned-c8bUGF`; digests in the summary |
 
 ## Publication layout
 
@@ -129,7 +129,8 @@ unmodified:
 2. The first owner invocation refused to start because the pinned collector cache was not prepared in the fresh worktree; no run directory existed. Prepared with the documented `npm ci` and repeated.
 3. `owned-BhLFns` (run `1814f55c3d61995209db7f2141f16eaf`): a **complete** measurement (6/6 supported) from `9bb7fbfe`, superseded. CodeRabbit found that early inconclusive verdicts omitted the layer states and that attribute drift on the default-reset cell graded as a failed reset instead of an invalid control; both change measured source, so the measurement was rerun. Retained unmodified locally.
 4. `owned-Ndnl98`: "Owned app exited before collection (0)", created while the local Codex review ran in its sandbox; no evidence beyond the failure record.
-5. `owned-wjgnGh` and `owned-4UrYcd`: EPERM failures before launch, produced by the two local Codex review sessions running the script tests in their sandbox; no app launched.
+5. `owned-wjgnGh`, `owned-4UrYcd` and `owned-qFtVvO`: EPERM failures before launch, produced by the three local Codex review sessions running the script tests in their sandbox; no app launched.
+6. `owned-2sV5a0` (run `d7dd5a520c1675766c13980bc8e8117e`): a second complete measurement (6/6) from `a762d326`, superseded after the final Codex review found that stored indices came from the cell details while coherence checked the attribute runs, so a detail-only index rewrite was accepted. The projection now cross-checks detail, attribute-run and resolved indices per cell (evidence validation), so the measurement was rerun. Retained unmodified locally.
 
 ## Reproduce
 
