@@ -99,7 +99,11 @@ test('retained cells keep bold; background-color erase is observed (not required
         const { attributes } = item.observed;
         assert.equal(attributes.retainedKeepBold, true);
         assert.match(attributes.policy, /observed, not required/);
-        assert.equal(attributes.backgroundColorErase, 'erased cells carry the current background');
+        // The pen cell stores palette index 4; the erased tail stores the same resolved blue as a literal: same color, different representation.
+        assert.equal(attributes.backgroundColorErase, 'erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)');
+        const { pen, firstErased } = attributes.backgroundColorEraseDetail;
+        assert.deepEqual([pen.bgIndex, pen.backgroundArgb, firstErased.bgIndex, firstErased.backgroundArgb], [4, null, -1, 4278190318]);
+        assert.deepEqual(pen.resolved, firstErased.resolved);
         assert.ok(attributes.after.ink.some(entry => Array.isArray(entry.cols) && entry.char === ' '), 'the painted tail is one range entry');
     }
 });
@@ -158,10 +162,10 @@ test('prior publications still rederive beside this batch and the failed and sup
     assert.equal(reset.receipt.schemaVersion, 23);
     assert.equal(reset.receipt.eraseLineEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 4);
-    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [false, false, true, true]);
+    assert.equal(attempts.length, 6);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [false, false, true, true, true, true]);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
     const superseded = attempts.filter(attempt => attempt.verdicts);
-    assert.equal(superseded.length, 2);
+    assert.equal(superseded.length, 4);
     assert.deepEqual(Object.values(superseded.find(attempt => /attribute control/.test(attempt.outcome)).verdicts).sort(), ['supported', 'unsupported', 'unsupported']);
 });

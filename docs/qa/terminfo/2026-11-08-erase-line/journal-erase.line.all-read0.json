@@ -2,9 +2,9 @@
   "caseId": "erase.line.all",
   "read": 0,
   "frame": {
-    "index": 22,
+    "index": 24,
     "kind": "erln-read",
-    "paneId": "98953aa7-b42b-4a1f-ac72-ba4ceaf4addc",
+    "paneId": "804c4f34-6810-4acd-8fc5-9d41e6eb6dbc",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
       "rows": 40,

@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-erase-line-graded-v1",
-  "runId": "abd8c2e2165ece81e1a6424a63b3b940",
+  "runId": "198d5b2c5f163ce1fc47994aa90865bb",
   "contractsVersion": 1,
   "adapter": {
     "id": "ntilde-owned-erase-line-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-sgr-selective-reset-grading-v1",
-    "bundleSha256": "61477d116e7474ae74c50b8b458bd744f3aa604ab1ac4fa52d4126657cee6e3b",
+    "bundleSha256": "7482a096345c235923a3c23c328d3c9de8f3a17a114e704cf4211d73bf3d8c55",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 erase-in-line termless criteria (erase.line.right with the omitted-parameter spelling, erase.line.left with EL 1 and erase.line.all with EL 2) replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored cells, the cursor and stored attribute details, with controls for the unmodified seed (no-op), every other EL spelling (omitted, explicit 0, 1 and 2: wrong direction, accidental whole-line clearing), a wide-row control for unaffected rows and columns past column 5 and the cursor-cell boundary, and a bold-seeded attribute control (retained attributes required; background-color erase observed, not required). Stored state only: the pinned terminal pixel path is capture-only upstream and is not qualified; no stock grades.",
   "initialSnapshot": 0,
-  "restoredSnapshot": 32,
+  "restoredSnapshot": 35,
   "cases": [
     {
       "caseId": "erase.line.right",
@@ -51,9 +51,13 @@
         "\u001b[K",
         "\u001b[0m\u001b[2J\u001b[H",
         "\u001b[1mABCDE\u001b[0m\u001b[1;3H\u001b[44m",
-        "\u001b[K"
+        "\u001b[K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX"
       ],
       "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
         "\u001b[?62;4;22c",
         "\u001b[?62;4;22c",
         "\u001b[?62;4;22c",
@@ -114,6 +118,10 @@
         [
           0,
           2
+        ],
+        [
+          0,
+          1
         ]
       ],
       "observed": {
@@ -399,8 +407,49 @@
               }
             ]
           },
+          "penReference": {
+            "text": [
+              "X_________"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "X",
+                "flags": 33024,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
           "retainedKeepBold": true,
-          "backgroundColorErase": "erased cells carry the current background"
+          "backgroundColorErase": "erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)",
+          "backgroundColorEraseDetail": {
+            "pen": {
+              "bgIndex": 4,
+              "backgroundArgb": null,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            },
+            "firstErased": {
+              "bgIndex": -1,
+              "backgroundArgb": 4278190318,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            }
+          }
         }
       },
       "colorBinding": {
@@ -476,9 +525,13 @@
         "\u001b[1K",
         "\u001b[0m\u001b[2J\u001b[H",
         "\u001b[1mABCDE\u001b[0m\u001b[1;3H\u001b[44m",
-        "\u001b[1K"
+        "\u001b[1K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX"
       ],
       "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
         "\u001b[?62;4;22c",
         "\u001b[?62;4;22c",
         "\u001b[?62;4;22c",
@@ -539,6 +592,10 @@
         [
           0,
           2
+        ],
+        [
+          0,
+          1
         ]
       ],
       "observed": {
@@ -829,8 +886,49 @@
               }
             ]
           },
+          "penReference": {
+            "text": [
+              "X_________"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "X",
+                "flags": 33024,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
           "retainedKeepBold": true,
-          "backgroundColorErase": "erased cells carry the current background"
+          "backgroundColorErase": "erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)",
+          "backgroundColorEraseDetail": {
+            "pen": {
+              "bgIndex": 4,
+              "backgroundArgb": null,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            },
+            "firstErased": {
+              "bgIndex": -1,
+              "backgroundArgb": 4278190318,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            }
+          }
         }
       },
       "colorBinding": {
@@ -906,9 +1004,13 @@
         "\u001b[2K",
         "\u001b[0m\u001b[2J\u001b[H",
         "\u001b[1mABCDE\u001b[0m\u001b[1;3H\u001b[44m",
-        "\u001b[2K"
+        "\u001b[2K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX"
       ],
       "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
         "\u001b[?62;4;22c",
         "\u001b[?62;4;22c",
         "\u001b[?62;4;22c",
@@ -969,6 +1071,10 @@
         [
           0,
           2
+        ],
+        [
+          0,
+          1
         ]
       ],
       "observed": {
@@ -1265,8 +1371,50 @@
               }
             ]
           },
+          "penReference": {
+            "text": [
+              "X_________",
+              "__________"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "X",
+                "flags": 33024,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
           "retainedKeepBold": true,
-          "backgroundColorErase": "erased cells carry the current background"
+          "backgroundColorErase": "erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)",
+          "backgroundColorEraseDetail": {
+            "pen": {
+              "bgIndex": 4,
+              "backgroundArgb": null,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            },
+            "firstErased": {
+              "bgIndex": -1,
+              "backgroundArgb": 4278190318,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            }
+          }
         }
       },
       "colorBinding": {

@@ -47,15 +47,16 @@ erased cells read blank. Controls, each a separate journaled read:
   past column 5, and the cursor-cell boundary (the cursor cell is erased by EL 0 and EL 1);
 - **attributes:** a bold-seeded row with the blue background pen active when the erase runs. Retained cells must stay bold with
   default colors (required). Whether erased cells take the current background (BCE) is **observed, not required**, because no pinned
-  criterion constrains it.
+  criterion constrains it. A reference cell written under the same `SGR 44` pen (a separate read) defines the contracted background;
+  the observation compares the erased cells with it by resolved color and, separately, by stored representation.
 
 Unsupported needs valid controls and an observed mismatch; a missing or invalid seed, DECSCNM not proven off, too small a screen,
 stale or incoherent evidence or incomplete restoration is inconclusive or refused.
 
 ## Measurement
 
-Scripts `789497d3`; the App source is unchanged since `783dd991` (the sidecar was built there; no App change). Owned run
-`abd8c2e2165ece81e1a6424a63b3b940`, receipt schema 24, source policy v18 (inventory v25, 168 files), default theme, 40x140,
+Scripts `2410ef71`; the App source is unchanged since `783dd991` (the sidecar was built there; no App change). Owned run
+`198d5b2c5f163ce1fc47994aa90865bb`, receipt schema 24, source policy v18 (inventory v25, 168 files), default theme, 40x140,
 disposable sidecar `erase-line` built from this checkout.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
@@ -68,14 +69,19 @@ Observed: seed `ABCDE`, cursor (0,2) in every case. Right erased to `AB` + blank
 empty row with row 1 still `KEEP!`; the cursor stayed at (0,2) every time. Omitted and explicit 0 gave the same result; EL 1 and EL 2
 differed as expected. In the wide row EL 0 left `AB`, EL 1 left `DEFGHIJ`, EL 2 left nothing, with the rows above and below intact.
 Retained bold cells kept flags 769; **background-color erase is observed:** with the blue pen active the erased cells (for EL 0, from
-column 2 through the last column) carry the stored background literal.
+column 2 through the last column) carry the pen's resolved color `(0,0,238)`, but **stored as a literal ARGB (`4278190318`) rather than the
+palette index 4 a cell written under the same pen stores**. That representation difference is an Ntilde-specific observation, not a
+requirement and not a benchmark grade; it affects nothing the pinned criteria read.
 
-**Preserved attempts** (all four in the summary): (1) the disposable app aborted at startup (Avalonia render timer, display asleep);
-(2) the suite ran but the later private-clipboard stage timed out and no receipt was completed; (3) `owned-CEXOUy`, complete but
-superseded — the first full measurement graded the attribute control over columns 0–4 only, so the correct end-of-line background fill read
-as damage and two cases graded unsupported; the contract was fixed (re-deriving that retained run with the fixed contract gives three
-supported) and the measurement repeated; (4) `owned-iVrLXY`, complete with three supported, superseded when the observed record was
-compacted for reviewable file sizes.
+**Preserved attempts** (all six in the summary, with run ids and script revisions): (1) the disposable app aborted at startup (Avalonia
+render timer, display asleep); (2) the suite ran but the later private-clipboard stage timed out and no receipt was completed; (3)
+`owned-CEXOUy`, complete but superseded — the first full measurement graded the attribute control over columns 0–4 only, so the correct
+end-of-line background fill read as damage and two cases graded unsupported; the contract was fixed (re-deriving that retained run with
+the fixed contract gives three supported) and the measurement repeated; (4) `owned-iVrLXY`, complete, superseded when the observed
+record was compacted for reviewable file sizes; (5) `owned-cAU9u2`, complete, superseded after Codex review found the background
+observation called any non-default color the current pen (a pen reference read was added); (6) `owned-w6W0UA`, complete, superseded
+because that reference showed the same color stored in a different representation, which the observation now reports separately.
+Every complete attempt graded all three cases supported except (3).
 
 Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (the inventory is derived from the
 merged contracts by the publication test); the separate 10/10 truecolor-literal finding; the separate 3/3 App-observed underline-color
