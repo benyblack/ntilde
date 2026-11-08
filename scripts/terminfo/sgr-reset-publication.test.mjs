@@ -132,7 +132,9 @@ test('prior publications still rederive beside this batch and carry no selective
     assert.equal(resolved.receipt.schemaVersion, 22);
     assert.equal(resolved.receipt.sgrResetEvidence, undefined);
     const { attempts } = load().summary;
-    assert.equal(attempts.length, 1, 'the superseded first measurement is preserved');
-    assert.equal(attempts[0].receiptCompleted, true);
-    assert.notEqual(attempts[0].runId, load().summary.context.runId);
+    assert.equal(attempts.length, 2, 'both superseded measurements are preserved');
+    for (const attempt of attempts) {
+        assert.equal(attempt.receiptCompleted, true);
+        assert.notEqual(attempt.runId, load().summary.context.runId);
+    }
 });

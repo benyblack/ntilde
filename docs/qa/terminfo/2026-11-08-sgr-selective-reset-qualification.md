@@ -34,7 +34,7 @@ Controls (each a separate journaled read, all stored-state; none carries a bench
 - **no-op:** the same setup bytes without the reset — Z must keep the setup state, proving the readback shows persistence;
 - **accidental full reset:** SGR 0 — Y must be fully neutral (bold lost), the difference a selective reset must not show;
 - **wrong reset:** SGR 22 for underline (underline stays, bold clears); SGR 24 for inverse (inverse and bold stay);
-- underline only: double underline then SGR 24, and SGR 59 (underline stays, color clears) to separate SGR 24 from SGR 59;
+- underline only: double underline then SGR 24 (a validated control: SGR 21 must store double and SGR 24 must end it), and SGR 59 (underline stays, color clears) to separate SGR 24 from SGR 59;
 - inverse only: the same fixture under DECSCNM on — per-cell flags must be identical, and global reverse video appears in exactly that
   one frame (binding validated, restored afterward).
 
@@ -45,8 +45,8 @@ refused. **Underline color is observed, never required**: no pinned criterion co
 
 ## Measurement
 
-Committed source `8484b7e6` (scripts and App source coincide; no App change). Owned run `933f338ba9b650f93bccd71361b0cf21`, receipt schema 23, source policy v17
-(inventory v24, 163 files), default theme, disposable sidecar built from this checkout. Second collection: the first (run `d4c55288e450c653a45f6fe108e9327a`, source `5d61ec48`, also both supported) is preserved in the summary as superseded after a Codex review fix changed the underline-color observation derivation.
+Committed source `2565668b` (scripts and App source coincide; no App change). Owned run `1291ff5a824318c595c98dfd2ceff1cf`, receipt schema 23, source policy v17
+(inventory v24, 163 files), default theme, disposable sidecar built from this checkout. Third collection. Two earlier complete runs (both pass) are preserved in the summary as superseded: `d4c55288e450c653a45f6fe108e9327a` (source `5d61ec48`) before a Codex review fix to the underline-color observation, and `933f338ba9b650f93bccd71361b0cf21` (source `8484b7e6`) before CodeRabbit fixes to the double-underline control and DECSCNM frame validation.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
 |---|---|---|---|
