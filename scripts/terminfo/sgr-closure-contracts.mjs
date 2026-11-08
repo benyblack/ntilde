@@ -107,7 +107,7 @@ function briefToggle(attr, observation) {
 function independenceValid(group, whenSupported) {
     const [v, u, t] = group;
     const shape = v.char === 'V' && u.char === 'U' && t.char === 'T' && v.underline === 'single' && v.underlineStyle === 1
-        && u.underline === false && u.underlineStyle === 0 && storedNeutral(v) && storedNeutral(u) && storedNeutral(t);
+        && u.underline === false && u.underlineStyle === 0 && t.underline === false && t.underlineStyle === 0 && storedNeutral(v) && storedNeutral(u) && storedNeutral(t);
     return shape && (!whenSupported || (v.overline === true && u.overline === true && t.overline === false));
 }
 

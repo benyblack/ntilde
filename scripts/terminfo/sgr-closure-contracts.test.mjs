@@ -92,6 +92,14 @@ test('overline: the overline field is an explicit boolean and never inferred fro
     assert.equal(broken.outcome, 'unsupported', 'no overline anywhere: valid underline-independence shape, observed mismatch');
 });
 
+test('overline: SGR 55 must not re-enable underline on the final independence cell (review fix)', () => {
+    assert.equal(outcome(OVERLINE, groups => { groups[4][2] = styled('T', [], { style: 1 }); }), 'inconclusive');
+    assert.equal(outcome(OVERLINE, groups => { groups[4][1] = styled('U', ['overline'], { style: 1 }); }), 'inconclusive', 'SGR 24 left the underline on U');
+    // Same invariant when the overline itself failed: a re-enabled underline still voids the control.
+    assert.equal(outcome(OVERLINE, groups => { groups[1] = [plainCell('X')]; groups[2] = [plainCell('X'), plainCell('Y')];
+        groups[4] = [styled('V', [], { style: 1 }), plainCell('U'), styled('T', [], { style: 1 })]; }), 'inconclusive');
+});
+
 test('overline: the pinned false-versus-unavailable distinction is preserved by the replay', () => {
     const contract = byId(OVERLINE);
     const cell = overline => ({ char: 'X', overline, blink: false });
