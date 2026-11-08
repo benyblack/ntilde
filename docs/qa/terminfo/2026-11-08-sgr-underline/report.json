@@ -1,0 +1,649 @@
+{
+ "schemaVersion": 1,
+ "suiteId": "ntilde-owned-sgr-underline-styles-graded-v1",
+ "runId": "45c6010b8d8153b3495361a87cc76295",
+ "contractsVersion": 1,
+ "adapter": {
+  "id": "ntilde-owned-sgr-underline-grading-v1",
+  "derivedFromAdapterId": "ntilde-owned-sgr-truecolor-grading-v1",
+  "bundleSha256": "07a8e2bfe52f038fe7202a3588ee92d204524393f10a9633a1dde3481b9ba6f8",
+  "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+ },
+ "scope": "Pinned terminfo.dev@4.0.0 double, curly, dotted and dashed underline-style termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored attribute flags and the exact stored underline-style value, with controls for initially inactive attributes, unrelated-attribute and color drift, DECSCNM, SGR 24 restoration and a labeled ladder of every underline spelling (SGR 4, 4:1, 21, 4:2, 4:3, 4:4, 4:5) that proves the readback can tell styles apart. Stored state only: stroke appearance is not claimed; no stock grades.",
+ "initialSnapshot": 0,
+ "restoredSnapshot": 18,
+ "cases": [
+  {
+   "caseId": "sgr.underline.double",
+   "pinnedCriterion": "attribute applied to the rendered X cell",
+   "pinnedFeeds": [
+    "\u001b[21mX"],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[21mX\u001b[0m"],
+    "demand": "consumed (cursor advance does not verify SGR styling)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[21mX",
+    "\u001b[24mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4mP\u001b[0m\u001b[4:1mQ\u001b[0m\u001b[21mR\u001b[0m\u001b[4:2mS\u001b[0m\u001b[4:3mT\u001b[0m\u001b[4:4mU\u001b[0m\u001b[4:5mV\u001b[0mN"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    [0, 1],
+    [0, 1],
+    [0, 2],
+    [0, 8]
+   ],
+   "observed": {
+    "baseline": {
+     "char": "C",
+     "flags": 768,
+     "underline": false,
+     "underlineStyle": 0
+    },
+    "target": {
+     "char": "X",
+     "flags": 776,
+     "underline": "double",
+     "underlineStyle": 2
+    },
+    "trailing": [
+     {
+      "char": "X",
+      "flags": 776,
+      "underline": "double",
+      "underlineStyle": 2
+     },
+     {
+      "char": "Y",
+      "flags": 768,
+      "underline": false,
+      "underlineStyle": 0
+     }
+    ],
+    "controlLadder": [
+     {
+      "spelling": "SGR 4",
+      "char": "P",
+      "flags": 776,
+      "underline": "single",
+      "underlineStyle": 1
+     },
+     {
+      "spelling": "SGR 4:1",
+      "char": "Q",
+      "flags": 776,
+      "underline": "single",
+      "underlineStyle": 1
+     },
+     {
+      "spelling": "SGR 21",
+      "char": "R",
+      "flags": 776,
+      "underline": "double",
+      "underlineStyle": 2
+     },
+     {
+      "spelling": "SGR 4:2",
+      "char": "S",
+      "flags": 776,
+      "underline": "double",
+      "underlineStyle": 2
+     },
+     {
+      "spelling": "SGR 4:3",
+      "char": "T",
+      "flags": 776,
+      "underline": "curly",
+      "underlineStyle": 3
+     },
+     {
+      "spelling": "SGR 4:4",
+      "char": "U",
+      "flags": 776,
+      "underline": "dotted",
+      "underlineStyle": 4
+     },
+     {
+      "spelling": "SGR 4:5",
+      "char": "V",
+      "flags": 776,
+      "underline": "dashed",
+      "underlineStyle": 5
+     },
+     {
+      "spelling": "neutral (after SGR 0)",
+      "char": "N",
+      "flags": 768,
+      "underline": false,
+      "underlineStyle": 0
+     }
+    ],
+    "reverseVideo": false
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"double\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":2,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.underline.double: attribute applied to the rendered X cell",
+      "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"double\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":2,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported"
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "stored underline flag and exact stored double-underline style only; double stroke geometry, thickness, color and rendered appearance are not claimed"
+   }
+  },
+  {
+   "caseId": "sgr.underline.curly",
+   "pinnedCriterion": "attribute applied to the rendered X cell",
+   "pinnedFeeds": [
+    "\u001b[4:3mX"],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[4:3mX\u001b[0m"],
+    "demand": "consumed (cursor advance does not verify SGR styling)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4:3mX",
+    "\u001b[24mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4mP\u001b[0m\u001b[4:1mQ\u001b[0m\u001b[21mR\u001b[0m\u001b[4:2mS\u001b[0m\u001b[4:3mT\u001b[0m\u001b[4:4mU\u001b[0m\u001b[4:5mV\u001b[0mN"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    [0, 1],
+    [0, 1],
+    [0, 2],
+    [0, 8]
+   ],
+   "observed": {
+    "baseline": {
+     "char": "C",
+     "flags": 768,
+     "underline": false,
+     "underlineStyle": 0
+    },
+    "target": {
+     "char": "X",
+     "flags": 776,
+     "underline": "curly",
+     "underlineStyle": 3
+    },
+    "trailing": [
+     {
+      "char": "X",
+      "flags": 776,
+      "underline": "curly",
+      "underlineStyle": 3
+     },
+     {
+      "char": "Y",
+      "flags": 768,
+      "underline": false,
+      "underlineStyle": 0
+     }
+    ],
+    "controlLadder": [
+     {
+      "spelling": "SGR 4",
+      "char": "P",
+      "flags": 776,
+      "underline": "single",
+      "underlineStyle": 1
+     },
+     {
+      "spelling": "SGR 4:1",
+      "char": "Q",
+      "flags": 776,
+      "underline": "single",
+      "underlineStyle": 1
+     },
+     {
+      "spelling": "SGR 21",
+      "char": "R",
+      "flags": 776,
+      "underline": "double",
+      "underlineStyle": 2
+     },
+     {
+      "spelling": "SGR 4:2",
+      "char": "S",
+      "flags": 776,
+      "underline": "double",
+      "underlineStyle": 2
+     },
+     {
+      "spelling": "SGR 4:3",
+      "char": "T",
+      "flags": 776,
+      "underline": "curly",
+      "underlineStyle": 3
+     },
+     {
+      "spelling": "SGR 4:4",
+      "char": "U",
+      "flags": 776,
+      "underline": "dotted",
+      "underlineStyle": 4
+     },
+     {
+      "spelling": "SGR 4:5",
+      "char": "V",
+      "flags": 776,
+      "underline": "dashed",
+      "underlineStyle": 5
+     },
+     {
+      "spelling": "neutral (after SGR 0)",
+      "char": "N",
+      "flags": 768,
+      "underline": false,
+      "underlineStyle": 0
+     }
+    ],
+    "reverseVideo": false
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"curly\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":3,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.underline.curly: attribute applied to the rendered X cell",
+      "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"curly\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":3,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported"
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "stored underline flag and exact stored curly-underline style only; curly stroke geometry, thickness, color and rendered appearance are not claimed"
+   }
+  },
+  {
+   "caseId": "sgr.underline.dotted",
+   "pinnedCriterion": "attribute applied to the rendered X cell",
+   "pinnedFeeds": [
+    "\u001b[4:4mX"],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[4:4mX\u001b[0m"],
+    "demand": "consumed (cursor advance does not verify SGR styling)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4:4mX",
+    "\u001b[24mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4mP\u001b[0m\u001b[4:1mQ\u001b[0m\u001b[21mR\u001b[0m\u001b[4:2mS\u001b[0m\u001b[4:3mT\u001b[0m\u001b[4:4mU\u001b[0m\u001b[4:5mV\u001b[0mN"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    [0, 1],
+    [0, 1],
+    [0, 2],
+    [0, 8]
+   ],
+   "observed": {
+    "baseline": {
+     "char": "C",
+     "flags": 768,
+     "underline": false,
+     "underlineStyle": 0
+    },
+    "target": {
+     "char": "X",
+     "flags": 776,
+     "underline": "dotted",
+     "underlineStyle": 4
+    },
+    "trailing": [
+     {
+      "char": "X",
+      "flags": 776,
+      "underline": "dotted",
+      "underlineStyle": 4
+     },
+     {
+      "char": "Y",
+      "flags": 768,
+      "underline": false,
+      "underlineStyle": 0
+     }
+    ],
+    "controlLadder": [
+     {
+      "spelling": "SGR 4",
+      "char": "P",
+      "flags": 776,
+      "underline": "single",
+      "underlineStyle": 1
+     },
+     {
+      "spelling": "SGR 4:1",
+      "char": "Q",
+      "flags": 776,
+      "underline": "single",
+      "underlineStyle": 1
+     },
+     {
+      "spelling": "SGR 21",
+      "char": "R",
+      "flags": 776,
+      "underline": "double",
+      "underlineStyle": 2
+     },
+     {
+      "spelling": "SGR 4:2",
+      "char": "S",
+      "flags": 776,
+      "underline": "double",
+      "underlineStyle": 2
+     },
+     {
+      "spelling": "SGR 4:3",
+      "char": "T",
+      "flags": 776,
+      "underline": "curly",
+      "underlineStyle": 3
+     },
+     {
+      "spelling": "SGR 4:4",
+      "char": "U",
+      "flags": 776,
+      "underline": "dotted",
+      "underlineStyle": 4
+     },
+     {
+      "spelling": "SGR 4:5",
+      "char": "V",
+      "flags": 776,
+      "underline": "dashed",
+      "underlineStyle": 5
+     },
+     {
+      "spelling": "neutral (after SGR 0)",
+      "char": "N",
+      "flags": 768,
+      "underline": false,
+      "underlineStyle": 0
+     }
+    ],
+    "reverseVideo": false
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"dotted\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":4,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.underline.dotted: attribute applied to the rendered X cell",
+      "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"dotted\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":4,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported"
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "stored underline flag and exact stored dotted-underline style only; dotted stroke geometry, thickness, color and rendered appearance are not claimed"
+   }
+  },
+  {
+   "caseId": "sgr.underline.dashed",
+   "pinnedCriterion": "attribute applied to the rendered X cell",
+   "pinnedFeeds": [
+    "\u001b[4:5mX"],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[4:5mX\u001b[0m"],
+    "demand": "consumed (cursor advance does not verify SGR styling)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4:5mX",
+    "\u001b[24mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4mP\u001b[0m\u001b[4:1mQ\u001b[0m\u001b[21mR\u001b[0m\u001b[4:2mS\u001b[0m\u001b[4:3mT\u001b[0m\u001b[4:4mU\u001b[0m\u001b[4:5mV\u001b[0mN"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    [0, 1],
+    [0, 1],
+    [0, 2],
+    [0, 8]
+   ],
+   "observed": {
+    "baseline": {
+     "char": "C",
+     "flags": 768,
+     "underline": false,
+     "underlineStyle": 0
+    },
+    "target": {
+     "char": "X",
+     "flags": 776,
+     "underline": "dashed",
+     "underlineStyle": 5
+    },
+    "trailing": [
+     {
+      "char": "X",
+      "flags": 776,
+      "underline": "dashed",
+      "underlineStyle": 5
+     },
+     {
+      "char": "Y",
+      "flags": 768,
+      "underline": false,
+      "underlineStyle": 0
+     }
+    ],
+    "controlLadder": [
+     {
+      "spelling": "SGR 4",
+      "char": "P",
+      "flags": 776,
+      "underline": "single",
+      "underlineStyle": 1
+     },
+     {
+      "spelling": "SGR 4:1",
+      "char": "Q",
+      "flags": 776,
+      "underline": "single",
+      "underlineStyle": 1
+     },
+     {
+      "spelling": "SGR 21",
+      "char": "R",
+      "flags": 776,
+      "underline": "double",
+      "underlineStyle": 2
+     },
+     {
+      "spelling": "SGR 4:2",
+      "char": "S",
+      "flags": 776,
+      "underline": "double",
+      "underlineStyle": 2
+     },
+     {
+      "spelling": "SGR 4:3",
+      "char": "T",
+      "flags": 776,
+      "underline": "curly",
+      "underlineStyle": 3
+     },
+     {
+      "spelling": "SGR 4:4",
+      "char": "U",
+      "flags": 776,
+      "underline": "dotted",
+      "underlineStyle": 4
+     },
+     {
+      "spelling": "SGR 4:5",
+      "char": "V",
+      "flags": 776,
+      "underline": "dashed",
+      "underlineStyle": 5
+     },
+     {
+      "spelling": "neutral (after SGR 0)",
+      "char": "N",
+      "flags": 768,
+      "underline": false,
+      "underlineStyle": 0
+     }
+    ],
+    "reverseVideo": false
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"dashed\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":5,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.underline.dashed: attribute applied to the rendered X cell",
+      "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"dashed\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":5,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported"
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "stored underline flag and exact stored dashed-underline style only; dashed stroke geometry, thickness, color and rendered appearance are not claimed"
+   }
+  }
+ ]
+}

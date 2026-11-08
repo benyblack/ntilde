@@ -142,5 +142,10 @@
     "truecolorFindingContractsSourceSha256": "truecolor-literal-finding-contracts.mjs",
     "truecolorFindingCollectorSourceSha256": "truecolor-literal-finding-collector.mjs",
     "truecolorFindingGradingSourceSha256": "truecolor-literal-finding-grading.mjs",
-    "truecolorFindingReceiptSourceSha256": "truecolor-literal-finding-receipt.mjs"
+    "truecolorFindingReceiptSourceSha256": "truecolor-literal-finding-receipt.mjs",
+    "sgrUnderlineContractsSourceSha256": "sgr-underline-contracts.mjs",
+    "sgrUnderlineCollectorSourceSha256": "sgr-underline-collector.mjs",
+    "sgrUnderlineGradingSourceSha256": "sgr-underline-grading.mjs",
+    "sgrUnderlineGradingCollectorSourceSha256": "sgr-underline-grading-collector.mjs",
+    "sgrUnderlineReceiptSourceSha256": "sgr-underline-receipt.mjs"
 }

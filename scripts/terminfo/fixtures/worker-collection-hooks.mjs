@@ -25,6 +25,7 @@ code.set(new URL('sgr-attrs-collector.mjs', root).href, log + `export async func
 code.set(new URL('sgr-palette-collector.mjs', root).href, log + `export async function collectSgrPaletteGrading() { record('SgrPalette'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('truecolor-literal-finding-collector.mjs', root).href, log + `export async function collectTruecolorFindingGrading() { record('TruecolorFinding'); return { schemaVersion: 1, suiteId: 'stub', caseIds: [], cases: [] }; }`);
 code.set(new URL('sgr-truecolor-collector.mjs', root).href, log + `export async function collectSgrTruecolorGrading() { record('SgrTruecolor'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('sgr-underline-collector.mjs', root).href, log + `export async function collectSgrUnderlineGrading() { record('SgrUnderline'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);

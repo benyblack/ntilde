@@ -14,6 +14,7 @@ import { collectSgrAttrsGrading } from './sgr-attrs-collector.mjs';
 import { collectSgrPaletteGrading } from './sgr-palette-collector.mjs';
 import { collectSgrTruecolorGrading } from './sgr-truecolor-collector.mjs';
 import { collectTruecolorFindingGrading } from './truecolor-literal-finding-collector.mjs';
+import { collectSgrUnderlineGrading } from './sgr-underline-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -126,6 +127,14 @@ try {
         // The truecolor-literal finding (no pinned probe, no collector extension) follows on the same fence.
         const truecolorFindingRun = await collectTruecolorFindingGrading({ config, fence, owner });
         writeFileSync(join(config.output, 'sgtf-run.json'), JSON.stringify(truecolorFindingRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered SGR-underline-style qualification follows the truecolor finding on the same fence.
+        const sgrUnderlineSource = readFileSync(config.sgrUnderlineBundle);
+        if (createHash('sha256').update(sgrUnderlineSource).digest('hex') !== config.sgrUnderlineBundleSha256) {
+            throw new Error('Local SGR-underline adapter bundle changed.');
+        }
+        const sgrUnderlineModule = await import(pathToFileURL(config.sgrUnderlineBundle).href);
+        const sgrUnderlineRun = await collectSgrUnderlineGrading({ config, fence, owner, gradingModule: sgrUnderlineModule });
+        writeFileSync(join(config.output, 'sgus-run.json'), JSON.stringify(sgrUnderlineRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

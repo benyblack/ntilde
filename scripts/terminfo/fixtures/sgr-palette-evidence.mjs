@@ -46,7 +46,8 @@ export const defaultChannel = Object.freeze({ kind: 'default' });
 export const paletteChannel = index => ({ kind: 'palette', index });
 export const literalChannel = (r, g, b) => ({ kind: 'literal', rgb: { r, g, b } });
 /** A synthetic cell spec. */
-export const colorCell = (char, { fg = defaultChannel, bg = defaultChannel, attrs = [] } = {}) => ({ char, fg, bg, attrs });
+export const colorCell = (char, { fg = defaultChannel, bg = defaultChannel, attrs = [], underlineStyle = 0, underlineColorIndex = -1, underlineArgb = null } = {}) =>
+    ({ char, fg, bg, attrs, underlineStyle, underlineColorIndex, underlineArgb });
 /** A plain neutral cell. */
 export const plainCell = char => colorCell(char);
 
@@ -84,12 +85,14 @@ export function syntheticSgrPaletteScreen(leading, binding = paletteBinding()) {
     const specs = [...leading, ...Array.from({ length: cells - leading.length }, () => plainSpec)];
     const parts = specs.map(spec => {
         const fg = stored(spec.fg, 'fg'), bg = stored(spec.bg, 'bg');
-        const flags = spec.attrs.reduce((value, name) => value | attrBits[name === 'dim' ? 'faint' : name], 0) | fg.flag | bg.flag;
+        const flags = spec.attrs.reduce((value, name) => value | attrBits[name === 'dim' ? 'faint' : name], 0) | fg.flag | bg.flag
+            | (spec.underlineStyle ? attrBits.underline : 0);
         return {
             attribute: { count: 1, flags, fg: fg.index, bg: bg.index },
             resolved: { count: 1, fg: resolvedChannel(spec.fg, 'fg', binding), bg: resolvedChannel(spec.bg, 'bg', binding) },
             detail: { count: 1, flags, fg: fg.index, bg: bg.index, foregroundArgb: fg.literal, backgroundArgb: bg.literal,
-                overline: spec.attrs.includes('overline'), underlineStyle: 0, underlineColorIndex: -1, underlineArgb: null },
+                overline: spec.attrs.includes('overline'), underlineStyle: spec.underlineStyle ?? 0,
+                underlineColorIndex: spec.underlineColorIndex ?? -1, underlineArgb: spec.underlineArgb ?? null },
         };
     });
     return { rows: sgrPaletteRows, cols: sgrPaletteCols,
