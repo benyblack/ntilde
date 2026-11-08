@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV18SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV19SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV18SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV19SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV18SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV19SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -169,6 +169,27 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'sgpal-run.json', runSha256: hash(readFileSync(join(output, 'sgpal-run.json'))),
                 adapterBundleSha256: hash(sgrPaletteBytes), contractsVersion: sgrPaletteContractsVersion,
                 counts: { supported: 6 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v12 always carries the layered SGR-truecolor suffix as well.
+            const { syntheticSgrTruecolorEvidence } = await import('./sgr-truecolor-evidence.mjs');
+            const { buildSgrTruecolorGradingReport } = await import('../sgr-truecolor-grading.mjs');
+            const { adaptSgrTruecolorCollector, sgrTruecolorAdapterId } = await import('../sgr-truecolor-grading-collector.mjs');
+            const { sgrTruecolorSuiteId, sgrTruecolorContractsVersion } = await import('../sgr-truecolor-contracts.mjs');
+            const sgrTruecolorBytes = Buffer.from(adaptSgrTruecolorCollector(sgrPaletteBytes.toString()));
+            const sgrTruecolor = syntheticSgrTruecolorEvidence(context.runId, hash(sgrTruecolorBytes));
+            sgrTruecolor.adapter = { id: sgrTruecolorAdapterId, derivedFromAdapterId: sgrPaletteAdapterId,
+                bundleSha256: hash(sgrTruecolorBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const sgrTruecolorReport = buildSgrTruecolorGradingReport(sgrTruecolor.frames, sgrTruecolor.run, context.runId, sgrTruecolor.adapter);
+            write('sgtc-observations.json', sgrTruecolorReport);
+            write('sgtc-run.json', sgrTruecolor.run);
+            writeFileSync(join(output, 'sgtc-snapshots.jsonl'), sgrTruecolor.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-sgtc.mjs'), sgrTruecolorBytes);
+            Object.assign(context, { sgrTruecolorAdapterId, sgrTruecolorSuiteId, sgrTruecolorBundleSha256: hash(sgrTruecolorBytes),
+                sgrTruecolorContractsVersion });
+            evidence.sgrTruecolorEvidence = { runId: context.runId, suiteId: sgrTruecolorSuiteId,
+                file: 'sgtc-observations.json', sha256: hash(readFileSync(join(output, 'sgtc-observations.json'))),
+                runFile: 'sgtc-run.json', runSha256: hash(readFileSync(join(output, 'sgtc-run.json'))),
+                adapterBundleSha256: hash(sgrTruecolorBytes), contractsVersion: sgrTruecolorContractsVersion,
+                counts: { supported: 2 }, provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

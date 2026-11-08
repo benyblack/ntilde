@@ -121,8 +121,8 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     // The grown v13 inventory carries its own policy; a v12-era run (policy v5,
     // 103 sources) still resolves to its own frozen file set.
     const { retainedInventory } = await import('./metadata-receipt.mjs');
-    const { capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
-    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v11');
+    const { capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
+    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v12');
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v5' }), capturedV12SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v6' }), capturedV13SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v7' }), capturedV14SourceFiles);
@@ -130,6 +130,7 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v9' }), capturedV16SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v10' }), capturedV17SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v11' }), capturedV18SourceFiles);
+    assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v12' }), capturedV19SourceFiles);
     assert.equal(Object.keys(capturedV12SourceFiles).length, 103);
     assert.equal(Object.keys(capturedV13SourceFiles).length, 108);
     // The v7 map stays frozen at its measured 113 files; graded-plan lives in v8,
@@ -141,4 +142,6 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     assert.equal(Object.keys(capturedV17SourceFiles).length, 128);
     // The SGR-palette scope (five scripts) lives in v11.
     assert.equal(Object.keys(capturedV18SourceFiles).length, 133);
+    // The SGR-truecolor scope (five scripts) lives in v12.
+    assert.equal(Object.keys(capturedV19SourceFiles).length, 138);
 });

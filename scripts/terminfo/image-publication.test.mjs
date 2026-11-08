@@ -209,11 +209,11 @@ for (const [label, grow, policy] of [['inventory', true, false], ['policy', fals
             }
             if (policy) {
                 const path = join(modules, 'owned-sources.mjs'); writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v12';"));
+                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v13';"));
             }
             const sources = await import(pathToFileURL(join(modules, 'owned-sources.mjs')).href);
-            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v12' : 'readonly-owned-source-graph-v11');
-            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 134 : 133); assert.deepEqual(sources.capturedV10SourceFiles, capturedV10SourceFiles);
+            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v13' : 'readonly-owned-source-graph-v12');
+            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 139 : 138); assert.deepEqual(sources.capturedV10SourceFiles, capturedV10SourceFiles);
             const next = await import(pathToFileURL(join(modules, 'receipt.mjs')).href), output = join(root, 'evidence'); mkdirSync(output);
             const files = historicalArchive(name); writeFiles(files, output); const old = read(files, 'cell-receipt.json'); rmSync(join(output, 'cell-receipt.json'));
             compareReceipt(next.completeOwnedReceipt(output, join(output, 'removed-fixture'), evidenceFrom(old)), read(files, 'cell-receipt.json'));
