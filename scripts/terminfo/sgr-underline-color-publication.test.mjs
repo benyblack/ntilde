@@ -148,9 +148,13 @@ test('every publication file stays small enough to review in one piece', () => {
     }
 });
 
-test('prior publications still rederive beside this batch', () => {
+test('failed and superseded attempts are preserved and prior publications still rederive beside this batch', () => {
     const { summary } = load();
-    assert.deepEqual(summary.attempts, []);
+    assert.equal(summary.attempts.length, 3);
+    assert.deepEqual(summary.attempts.map(attempt => attempt.receiptCompleted), [true, false, false]);
+    assert.equal(summary.attempts[0].outcome, 'complete, superseded');
+    assert.ok(summary.attempts.slice(1).every(attempt => attempt.outcome === 'failed before collection'));
+    assert.ok(summary.attempts.every(attempt => attempt.runId !== summary.context.runId));
     const underline = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-sgr-underline/summary.json', import.meta.url)));
     assert.equal(underline.receipt.schemaVersion, 20);
     assert.equal(underline.receipt.sgrUnderlineColorEvidence, undefined);

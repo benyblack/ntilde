@@ -1,12 +1,12 @@
 {
  "schemaVersion": 1,
  "suiteId": "ntilde-owned-sgr-underline-color-graded-v1",
- "runId": "d2754cf7a2fc2fbab6bbbc386713da82",
+ "runId": "6acc3ebd19c13a60b45713d6acb8b1fb",
  "contractsVersion": 1,
  "adapter": {
   "id": "ntilde-owned-sgr-underline-color-grading-v1",
   "derivedFromAdapterId": "ntilde-owned-sgr-underline-grading-v1",
-  "bundleSha256": "fb46df50e7623175f7c9b1b7dd712e97fa8c9328e0ec0d16cdf9781db57ea965",
+  "bundleSha256": "1b8defa2078120e7da406f13a082a430e165a353ab13db538eae21c9b3d7338d",
   "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
  },
  "scope": "Pinned terminfo.dev@4.0.0 indexed, RGB and reset underline-color termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored underline style, underline color index / literal ARGB / default marker, with the resolved underline RGB derived parent-side from the stored color and the recorded palette binding, and controls for unrelated attribute, overline and foreground/background drift, DECSCNM, literal-versus-index storage with equal RGB, foreground substitution, explicit-versus-default, style preservation across SGR 59, and (indexed) an OSC 4 mutation of every contracted entry with a full-palette comparison and restoration. Stored state and parent-derived resolution only: rendered underline appearance is not claimed; no stock grades. The aggregate sgr.underline.color case is not qualified here.",

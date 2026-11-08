@@ -4,7 +4,7 @@
   "start": {
    "index": 0,
    "kind": "sguc-start",
-   "paneId": "cdda64d7-d9d8-4fa0-884b-0ad99fa6c628",
+   "paneId": "f0b3227c-d9ed-4d55-9b39-41aa7da016d8",
    "barrier": null,
    "screen": {
     "rows": 40,
@@ -69,12 +69,12 @@
   "bind": {
    "index": 1,
    "kind": "sguc-bind",
-   "paneId": "cdda64d7-d9d8-4fa0-884b-0ad99fa6c628",
+   "paneId": "f0b3227c-d9ed-4d55-9b39-41aa7da016d8",
    "barrier": "\u001b[?62;4;22c",
    "screen": {
     "rows": 40,
     "cols": 140,
-    "lines": ["NTILDE_UC_d2754cf7a2fc2fbab6bbbc386713da82", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+    "lines": ["NTILDE_UC_6acc3ebd19c13a60b45713d6acb8b1fb", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
     "cursorRow": 0,
     "cursorCol": 42,
     "cursorVisible": true,
@@ -129,12 +129,12 @@
      }
     ]
    },
-   "sha256": "d457f467f5db74321a52daefd69856036efe70c0763e7a03db4c7bc64afdb61e"
+   "sha256": "ea53816732fb3ba7b9ab69947a3c9079e1e733fd7b956c8b296671eb50708fb0"
   },
   "finish": {
    "index": 10,
    "kind": "sguc-finish",
-   "paneId": "cdda64d7-d9d8-4fa0-884b-0ad99fa6c628",
+   "paneId": "f0b3227c-d9ed-4d55-9b39-41aa7da016d8",
    "barrier": "\u001b[?62;4;22c",
    "screen": {
     "rows": 40,
