@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { capturedV8SourceFiles, legacyV8SourceFiles, capturedV8SourcePolicy, capturedV9SourceFiles, capturedV10SourceFiles, capturedV11SourceFiles, capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV8SourceFiles, legacyV8SourceFiles, capturedV8SourcePolicy, capturedV9SourceFiles, capturedV10SourceFiles, capturedV11SourceFiles, capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, capturedV20SourceFiles, assertRetainedSourceClosure } from './owned-sources.mjs';
 import { buildMetadataReport } from './metadata.mjs';
 import { metadataSuiteId, ownedMetadataPolicy } from './metadata-cases.mjs';
 import { validateOutputGeometry } from './terminal-output.mjs';
@@ -47,7 +47,7 @@ function snapshotMode(output, context) {
 }
 function checkSnapshot(output, context, proof) {
     const policy = context.sourceSnapshotPolicy, inventory = retainedInventory(output, context);
-    check([capturedV8SourcePolicy, 'readonly-owned-source-graph-v2', 'readonly-owned-source-graph-v3', 'readonly-owned-source-graph-v4', 'readonly-owned-source-graph-v5', 'readonly-owned-source-graph-v6', 'readonly-owned-source-graph-v7', 'readonly-owned-source-graph-v8', 'readonly-owned-source-graph-v9', 'readonly-owned-source-graph-v10', 'readonly-owned-source-graph-v11', 'readonly-owned-source-graph-v12'].includes(policy) && /^[a-f\d]{64}$/.test(context.sourceSnapshotManifestSha256 ?? ''));
+    check([capturedV8SourcePolicy, 'readonly-owned-source-graph-v2', 'readonly-owned-source-graph-v3', 'readonly-owned-source-graph-v4', 'readonly-owned-source-graph-v5', 'readonly-owned-source-graph-v6', 'readonly-owned-source-graph-v7', 'readonly-owned-source-graph-v8', 'readonly-owned-source-graph-v9', 'readonly-owned-source-graph-v10', 'readonly-owned-source-graph-v11', 'readonly-owned-source-graph-v12', 'readonly-owned-source-graph-v13'].includes(policy) && /^[a-f\d]{64}$/.test(context.sourceSnapshotManifestSha256 ?? ''));
     const data = bytes(output, 'source-snapshot.json', 65536), manifest = JSON.parse(data);
     check(hash(data) === context.sourceSnapshotManifestSha256 && manifest.schemaVersion === 1 && manifest.policy === policy
         && Object.keys(manifest.hashes ?? {}).length === Object.keys(inventory).length
@@ -61,6 +61,7 @@ function checkSnapshot(output, context, proof) {
 export function retainedInventory(output, context) {
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v11') return capturedV18SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v12') return capturedV19SourceFiles;
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v13') return capturedV20SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v10') return capturedV17SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v9') return capturedV16SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v8') return capturedV15SourceFiles;

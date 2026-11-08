@@ -27,6 +27,8 @@ import { buildSgrPaletteGradingReport } from './terminfo/sgr-palette-grading.mjs
 import { adaptSgrTruecolorCollector, sgrTruecolorAdapterId } from './terminfo/sgr-truecolor-grading-collector.mjs';
 import { sgrTruecolorContractsVersion, sgrTruecolorSuiteId } from './terminfo/sgr-truecolor-contracts.mjs';
 import { buildSgrTruecolorGradingReport } from './terminfo/sgr-truecolor-grading.mjs';
+import { truecolorFindingContractsVersion, truecolorFindingSuiteId } from './terminfo/truecolor-literal-finding-contracts.mjs';
+import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
 import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
@@ -415,6 +417,21 @@ async function retainSgrTruecolorEvidence(output, runId, sgrTruecolorBundle, ups
         contractsVersion: sgrTruecolorContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Re-derive the truecolor-literal finding report parent-side (no pinned probe to replay). */
+function retainTruecolorFindingEvidence(output, runId) {
+    const runBytes = readFileSync(join(output, 'sgtf-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'sgtf-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const report = buildTruecolorFindingReport(frames, run, runId);
+    writeJson(join(output, 'sgtf-observations.json'), report);
+    const counts = {};
+    for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;
+    return { runId, suiteId: truecolorFindingSuiteId, file: 'sgtf-observations.json',
+        sha256: hash(readFileSync(join(output, 'sgtf-observations.json'))),
+        runFile: 'sgtf-run.json', runSha256: hash(runBytes), contractsVersion: truecolorFindingContractsVersion, counts,
+        provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the graded report parent-side, replaying the pinned probes over
  * the retained journal before publishing the binding. */
 async function retainGradingEvidence(output, runId, gradingBundle, upstream) {
@@ -515,6 +532,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let sgrAttrsEvidence;
     let sgrPaletteEvidence;
     let sgrTruecolorEvidence;
+    let truecolorFindingEvidence;
     let rgbEvidence;
     let renditionEvidence;
     let cursorEvidence;
@@ -591,6 +609,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let sgrAttrsObserver;
         let sgrPaletteObserver;
         let sgrTruecolorObserver;
+        let truecolorFindingObserver;
         let pixelObserver;
         let pixelUnavailable;
         let colorObserver;
@@ -637,6 +656,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             sgrColors: 'layered versioned collector extension; pinned reset/standard-color termless criteria replayed on parent-observed stored attributes and palette indices; not stock output',
             sgrPaletteAdapterId, sgrPaletteSuiteId, sgrPaletteBundleSha256, sgrPaletteContractsVersion,
             sgrTruecolorAdapterId, sgrTruecolorSuiteId, sgrTruecolorBundleSha256, sgrTruecolorContractsVersion,
+            truecolorFindingSuiteId, truecolorFindingContractsVersion,
+            truecolorFinding: 'Ntilde finding (not a terminfo.dev case, no pinned probe, no collector extension): five exact direct-RGB values on fg/bg graded from parent-observed stored literal bytes and App-resolved RGB bound to the per-frame recorded palette, with an indexed positive control, an OSC 4 mutation of the aliased entry and its restoration; no pixels',
             sgrTruecolor: 'layered versioned collector extension; pinned truecolor termless criteria (sgr.fg.truecolor, sgr.bg.truecolor; semicolon 38/48;2;r;g;b form only) replayed on parent-observed stored literal bytes (palette index and default marker cleared) with App-resolved RGB bound to one recorded palette/theme; no pixels; not stock output',
             sgrPalette: 'layered versioned collector extension; pinned bright, 256-color and default-color termless criteria (sgr.fg/bg.bright, .256, .default) replayed on parent-observed stored palette indices, default markers and literal bytes with App-resolved RGB bound to one recorded palette/theme; no pixels; not stock output',
             sgrAttrsAdapterId, sgrAttrsSuiteId, sgrAttrsBundleSha256, sgrAttrsContractsVersion,
@@ -658,6 +679,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'sgattr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgpal-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgtc-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'sgtf-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -1175,6 +1197,16 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'sgtc-snapshots.jsonl'), JSON.stringify(sgrTruecolorObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'sgtf') {
+                // The finding suite runs after the SGR-truecolor suite and adds its conclusions beside the earlier ones.
+                if (!sgrTruecolorObserver?.restored) throw new Error('SGR-truecolor suite must restore before truecolor-finding observations.');
+                truecolorFindingObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_TF_${runId}`, includeAttributes: true, includeCellDetails: true, includeOverline: true,
+                    includeResolvedColors: true, prefix: 'sgtf', expectedPaneId: cellObserver.paneId });
+                const result = await truecolorFindingObserver.handle(request.kind, budget, request.barrier);
+                appendFileSync(join(output, 'sgtf-snapshots.jsonl'), JSON.stringify(truecolorFindingObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             const attributes = request.kind.startsWith('sgr-');
             if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
             if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
@@ -1226,7 +1258,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeImageRequest(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
@@ -1334,6 +1366,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             sgrAttrsEvidence = await retainSgrAttrsEvidence(output, runId, sgrAttrsBundle, upstreamBundleSha256);
             sgrPaletteEvidence = await retainSgrPaletteEvidence(output, runId, sgrPaletteBundle, upstreamBundleSha256);
             sgrTruecolorEvidence = await retainSgrTruecolorEvidence(output, runId, sgrTruecolorBundle, upstreamBundleSha256);
+            truecolorFindingEvidence = retainTruecolorFindingEvidence(output, runId);
             rgbEvidence = retainDetails('rgb');
             renditionEvidence = retainDetails('rendition');
             cursorEvidence = retainDetails('cursor');
@@ -1376,6 +1409,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.sgrAttrsEvidence = sgrAttrsEvidence;
             summary.sgrPaletteEvidence = sgrPaletteEvidence;
             summary.sgrTruecolorEvidence = sgrTruecolorEvidence;
+            summary.truecolorFindingEvidence = truecolorFindingEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
@@ -1415,7 +1449,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
