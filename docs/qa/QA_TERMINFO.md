@@ -549,6 +549,18 @@ themselves do not depend on it. See the
 [measurement](terminfo/2026-11-05-ascii-sgr-qualification.md) for the
 retained failure evidence and the pristine-main discrimination run.
 
+### SGR attribute qualification
+
+The [SGR attributes batch](terminfo/2026-11-08-sgr-attributes-qualification.md)
+qualifies `sgr.underline.single`, `sgr.inverse`, `sgr.faint`, `sgr.hidden` and
+`sgr.strikethrough` through the layered `ntilde-owned-sgr-attributes-grading-v1`
+extension over the SGR-RGB one. The pinned `sgrProbe` code runs over parent-observed
+stored flags (plus the stored underline style) with neutral-baseline,
+unrelated-drift, DECSCNM and reset-restoration controls; the contract grader may
+grade unsupported only after valid controls and never more permissively than the
+pinned probe. Claims are stored state only, not rendered appearance. Receipt
+schema 16 and source policy v10 (128 files) bind it; earlier policies stay frozen.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh
