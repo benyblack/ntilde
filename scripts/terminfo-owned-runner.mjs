@@ -36,6 +36,9 @@ import { sgrUnderlineColorContractsVersion, sgrUnderlineColorSuiteId } from './t
 import { buildSgrUnderlineColorGradingReport } from './terminfo/sgr-underline-color-grading.mjs';
 import { underlineResolvedContractsVersion, underlineResolvedSuiteId } from './terminfo/sgr-underline-color-resolved-contracts.mjs';
 import { buildUnderlineResolvedReport } from './terminfo/sgr-underline-color-resolved-grading.mjs';
+import { adaptSgrResetCollector, sgrResetAdapterId } from './terminfo/sgr-reset-grading-collector.mjs';
+import { sgrResetContractsVersion, sgrResetSuiteId } from './terminfo/sgr-reset-contracts.mjs';
+import { buildSgrResetGradingReport } from './terminfo/sgr-reset-grading.mjs';
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
@@ -447,6 +450,36 @@ async function retainSgrTruecolorEvidence(output, runId, sgrTruecolorBundle, ups
         contractsVersion: sgrTruecolorContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Derive and lock the layered SGR selective-reset grading extension over the SGR-underline-color one. */
+function prepareSgrResetCollector(tool, sgrUnderlineColorBundle, output) {
+    const adapted = adaptSgrResetCollector(readFileSync(sgrUnderlineColorBundle));
+    const sgrResetBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-sgsr-${sgrResetBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== sgrResetBundleSha256) throw new Error('Derived SGR selective-reset bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-sgsr.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, sgrResetBundleSha256 };
+}
+
+/** Re-derive the SGR selective-reset report parent-side with the layered pinned replay. */
+async function retainSgrResetEvidence(output, runId, sgrResetBundle, upstream) {
+    const runBytes = readFileSync(join(output, 'sgsr-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'sgsr-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-sgsr.mjs'));
+    const adapter = { id: sgrResetAdapterId, derivedFromAdapterId: sgrUnderlineColorAdapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(sgrResetBundle).href);
+    const report = buildSgrResetGradingReport(frames, run, runId, adapter, { replayModule });
+    writeJson(join(output, 'sgsr-observations.json'), report);
+    const counts = {};
+    for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;
+    return { runId, suiteId: sgrResetSuiteId, file: 'sgsr-observations.json',
+        sha256: hash(readFileSync(join(output, 'sgsr-observations.json'))),
+        runFile: 'sgsr-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: sgrResetContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the SGR-underline-color report parent-side with the layered pinned replay. */
 async function retainSgrUnderlineColorEvidence(output, runId, sgrUnderlineColorBundle, upstream) {
     const runBytes = readFileSync(join(output, 'sguc-run.json'));
@@ -619,6 +652,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let sgrUnderlineEvidence;
     let sgrUnderlineColorEvidence;
     let underlineResolvedEvidence;
+    let sgrResetEvidence;
     let rgbEvidence;
     let renditionEvidence;
     let cursorEvidence;
@@ -655,6 +689,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: sgrTruecolorBundle, sgrTruecolorBundleSha256 } = prepareSgrTruecolorCollector(privateTool, sgrPaletteBundle, output);
         const { bundle: sgrUnderlineBundle, sgrUnderlineBundleSha256 } = prepareSgrUnderlineCollector(privateTool, sgrTruecolorBundle, output);
         const { bundle: sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256 } = prepareSgrUnderlineColorCollector(privateTool, sgrUnderlineBundle, output);
+        const { bundle: sgrResetBundle, sgrResetBundleSha256 } = prepareSgrResetCollector(privateTool, sgrUnderlineColorBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = randomBytes(16).toString('hex');
@@ -664,7 +699,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const profileName = `terminfo disposable worker ${runId}`;
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
-            sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256,
+            sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -701,6 +736,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let sgrUnderlineObserver;
         let sgrUnderlineColorObserver;
         let underlineResolvedObserver;
+        let sgrResetObserver;
         let pixelObserver;
         let pixelUnavailable;
         let colorObserver;
@@ -751,6 +787,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             sgrUnderlineAdapterId, sgrUnderlineSuiteId, sgrUnderlineBundleSha256, sgrUnderlineContractsVersion,
             sgrUnderlineColorAdapterId, sgrUnderlineColorSuiteId, sgrUnderlineColorBundleSha256, sgrUnderlineColorContractsVersion,
             underlineResolvedSuiteId, underlineResolvedContractsVersion,
+            sgrResetAdapterId, sgrResetSuiteId, sgrResetBundleSha256, sgrResetContractsVersion,
+            sgrReset: 'layered versioned collector extension; pinned selective-reset termless criteria (sgr.selective-reset.underline via SGR 24 and sgr.selective-reset.inverse via SGR 27) replayed byte-exactly on parent-observed stored flags, exact underline style, stored colors and overline, with no-op, full-reset, wrong-reset and DECSCNM controls; underline-color behavior observed not required; rendered appearance not claimed; not stock output',
             underlineResolved: 'Ntilde extension controls (not terminfo.dev cases, no pinned probe, no collector extension): the opt-in App-reported resolved underline color (readScreen includeResolvedUnderlineColors) compared with an independent expectation derived from stored underline state, the recorded palette binding and contracted OSC 4 constants, for indexed, literal and default-inheritance underlines with an OSC 4 mutation and its OSC 104 restoration; theme-resolution stage only; rendered appearance is not claimed',
             sgrUnderlineColor: 'layered versioned collector extension; pinned underline-color termless criteria (sgr.underline-color-indexed, -rgb, -reset; the aggregate sgr.underline.color is not qualified) replayed on parent-observed stored underline style and color index/literal/default with parent-derived resolved RGB and an OSC 4 mutation control; colon forms are ungraded controls; rendered underline appearance not claimed; not stock output',
             sgrUnderline: 'layered versioned collector extension; pinned underline-style termless criteria (sgr.underline.double via SGR 21; sgr.underline.curly, .dotted, .dashed via SGR 4:3, 4:4, 4:5) replayed on parent-observed stored underline flag and exact stored style; SGR 4, 4:1 and 4:2 are labeled controls without a grade; stroke appearance not claimed; not stock output',
@@ -780,6 +818,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'sgus-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sguc-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgur-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'sgsr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -1337,6 +1376,16 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'sgur-snapshots.jsonl'), JSON.stringify(underlineResolvedObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'sgsr') {
+                // The selective-reset suite runs after the underline-resolution suite and adds its conclusions beside the earlier ones.
+                if (!underlineResolvedObserver?.restored) throw new Error('Underline-resolution suite must restore before SGR selective-reset observations.');
+                sgrResetObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_SR_${runId}`, includeAttributes: true, includeCellDetails: true, includeOverline: true,
+                    includeResolvedColors: true, prefix: 'sgsr', expectedPaneId: cellObserver.paneId });
+                const result = await sgrResetObserver.handle(request.kind, budget, request.barrier);
+                appendFileSync(join(output, 'sgsr-snapshots.jsonl'), JSON.stringify(sgrResetObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             const attributes = request.kind.startsWith('sgr-');
             if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
             if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
@@ -1388,7 +1437,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeImageRequest(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|sgus|sguc|sgur|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|sgus|sguc|sgur|sgsr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
@@ -1500,6 +1549,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             sgrUnderlineEvidence = await retainSgrUnderlineEvidence(output, runId, sgrUnderlineBundle, upstreamBundleSha256);
             sgrUnderlineColorEvidence = await retainSgrUnderlineColorEvidence(output, runId, sgrUnderlineColorBundle, upstreamBundleSha256);
             underlineResolvedEvidence = retainUnderlineResolvedEvidence(output, runId);
+            sgrResetEvidence = await retainSgrResetEvidence(output, runId, sgrResetBundle, upstreamBundleSha256);
             rgbEvidence = retainDetails('rgb');
             renditionEvidence = retainDetails('rendition');
             cursorEvidence = retainDetails('cursor');
@@ -1546,6 +1596,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.sgrUnderlineEvidence = sgrUnderlineEvidence;
             summary.sgrUnderlineColorEvidence = sgrUnderlineColorEvidence;
             summary.underlineResolvedEvidence = underlineResolvedEvidence;
+            summary.sgrResetEvidence = sgrResetEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
@@ -1585,7 +1636,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
