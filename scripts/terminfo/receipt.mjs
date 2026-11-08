@@ -6,6 +6,7 @@ import { includesAsciiSgrEvidence, checkAsciiSgrEvidence } from './ascii-sgr-rec
 import { includesSgrColorsEvidence, checkSgrColorsEvidence } from './sgr-colors-receipt.mjs';
 import { includesSgrRgbEvidence, checkSgrRgbEvidence } from './sgr-rgb-receipt.mjs';
 import { includesSgrAttrsEvidence, checkSgrAttrsEvidence } from './sgr-attrs-receipt.mjs';
+import { includesSgrPaletteEvidence, checkSgrPaletteEvidence } from './sgr-palette-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
@@ -118,7 +119,7 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
 }
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
-function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs }) {
+function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette }) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -135,6 +136,7 @@ function ownedReceiptVersion(context, { includesEditing, includesHistory, includ
     if (includesSgrColors) schemaVersion = 14;
     if (includesSgrRgb) schemaVersion = 15;
     if (includesSgrAttrs) schemaVersion = 16;
+    if (includesSgrPalette) schemaVersion = 17;
     return schemaVersion;
 }
 
@@ -150,6 +152,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSgrColors = includesSgrColorsEvidence(output, evidence, context);
     const includesSgrRgb = includesSgrRgbEvidence(output, evidence, context);
     const includesSgrAttrs = includesSgrAttrsEvidence(output, evidence, context);
+    const includesSgrPalette = includesSgrPaletteEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
     const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
@@ -157,7 +160,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -175,6 +178,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesSgrColors) checkSgrColorsEvidence(output, evidence, runId, context);
     if (suffixes.includesSgrRgb) checkSgrRgbEvidence(output, evidence, runId, context);
     if (suffixes.includesSgrAttrs) checkSgrAttrsEvidence(output, evidence, runId, context);
+    if (suffixes.includesSgrPalette) checkSgrPaletteEvidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */

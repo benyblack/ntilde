@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV17SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV18SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV17SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV18SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV17SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV18SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -148,6 +148,27 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'sgattr-run.json', runSha256: hash(readFileSync(join(output, 'sgattr-run.json'))),
                 adapterBundleSha256: hash(sgrAttrsBytes), contractsVersion: sgrAttrsContractsVersion,
                 counts: { supported: 5 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v11 always carries the layered SGR-palette suffix as well.
+            const { syntheticSgrPaletteEvidence } = await import('./sgr-palette-evidence.mjs');
+            const { buildSgrPaletteGradingReport } = await import('../sgr-palette-grading.mjs');
+            const { adaptSgrPaletteCollector, sgrPaletteAdapterId } = await import('../sgr-palette-grading-collector.mjs');
+            const { sgrPaletteSuiteId, sgrPaletteContractsVersion } = await import('../sgr-palette-contracts.mjs');
+            const sgrPaletteBytes = Buffer.from(adaptSgrPaletteCollector(sgrAttrsBytes.toString()));
+            const sgrPalette = syntheticSgrPaletteEvidence(context.runId, hash(sgrPaletteBytes));
+            sgrPalette.adapter = { id: sgrPaletteAdapterId, derivedFromAdapterId: sgrAttrsAdapterId,
+                bundleSha256: hash(sgrPaletteBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const sgrPaletteReport = buildSgrPaletteGradingReport(sgrPalette.frames, sgrPalette.run, context.runId, sgrPalette.adapter);
+            write('sgpal-observations.json', sgrPaletteReport);
+            write('sgpal-run.json', sgrPalette.run);
+            writeFileSync(join(output, 'sgpal-snapshots.jsonl'), sgrPalette.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-sgpal.mjs'), sgrPaletteBytes);
+            Object.assign(context, { sgrPaletteAdapterId, sgrPaletteSuiteId, sgrPaletteBundleSha256: hash(sgrPaletteBytes),
+                sgrPaletteContractsVersion });
+            evidence.sgrPaletteEvidence = { runId: context.runId, suiteId: sgrPaletteSuiteId,
+                file: 'sgpal-observations.json', sha256: hash(readFileSync(join(output, 'sgpal-observations.json'))),
+                runFile: 'sgpal-run.json', runSha256: hash(readFileSync(join(output, 'sgpal-run.json'))),
+                adapterBundleSha256: hash(sgrPaletteBytes), contractsVersion: sgrPaletteContractsVersion,
+                counts: { supported: 6 }, provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

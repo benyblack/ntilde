@@ -22,6 +22,7 @@ code.set(new URL('ascii-sgr-collector.mjs', root).href, log + `export async func
 code.set(new URL('sgr-colors-collector.mjs', root).href, log + `export async function collectSgrColorsGrading() { record('SgrColors'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('sgr-rgb-collector.mjs', root).href, log + `export async function collectSgrRgbGrading() { record('SgrRgb'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('sgr-attrs-collector.mjs', root).href, log + `export async function collectSgrAttrsGrading() { record('SgrAttrs'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('sgr-palette-collector.mjs', root).href, log + `export async function collectSgrPaletteGrading() { record('SgrPalette'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);

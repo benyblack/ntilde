@@ -126,5 +126,10 @@
     "sgrAttrsCollectorSourceSha256": "sgr-attrs-collector.mjs",
     "sgrAttrsGradingSourceSha256": "sgr-attrs-grading.mjs",
     "sgrAttrsGradingCollectorSourceSha256": "sgr-attrs-grading-collector.mjs",
-    "sgrAttrsReceiptSourceSha256": "sgr-attrs-receipt.mjs"
+    "sgrAttrsReceiptSourceSha256": "sgr-attrs-receipt.mjs",
+    "sgrPaletteContractsSourceSha256": "sgr-palette-contracts.mjs",
+    "sgrPaletteCollectorSourceSha256": "sgr-palette-collector.mjs",
+    "sgrPaletteGradingSourceSha256": "sgr-palette-grading.mjs",
+    "sgrPaletteGradingCollectorSourceSha256": "sgr-palette-grading-collector.mjs",
+    "sgrPaletteReceiptSourceSha256": "sgr-palette-receipt.mjs"
 }

@@ -30,7 +30,7 @@ function present(path) {
  * policy-v10 run always carries them, because the current worker collects this
  * suite unconditionally after the SGR-RGB suite. */
 export function includesSgrAttrsEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v10'
+    return ['readonly-owned-source-graph-v10', 'readonly-owned-source-graph-v11'].includes(context.sourceSnapshotPolicy)
         || context.sgrAttrsAdapterId !== undefined || context.sgrAttrsSuiteId !== undefined
         || context.sgrAttrsBundleSha256 !== undefined || evidence.sgrAttrsEvidence !== undefined
         || files.some(file => present(join(output, file)));

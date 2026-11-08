@@ -561,6 +561,22 @@ grade unsupported only after valid controls and never more permissively than the
 pinned probe. Claims are stored state only, not rendered appearance. Receipt
 schema 16 and source policy v10 (128 files) bind it; earlier policies stay frozen.
 
+### SGR palette-color qualification
+
+The [SGR palette batch](terminfo/2026-11-08-sgr-palette-qualification.md)
+qualifies `sgr.fg.bright`, `sgr.bg.bright`, `sgr.fg.256`, `sgr.bg.256`,
+`sgr.fg.default` and `sgr.bg.default` through the layered
+`ntilde-owned-sgr-palette-grading-v1` extension over the SGR-attributes one. The
+pinned `namedColorProbe`, `indexedColorProbe` and `defaultColorProbe` code runs over
+parent-observed cells that carry stored palette indices, default markers and literal
+bytes together with App-resolved RGB bound to one recorded palette/theme state.
+Stored storage, resolved RGB and rendered appearance stay distinct layers; rendered
+appearance is not claimed. Controls cover the unaffected channel, unrelated
+attributes, DECSCNM, bold-versus-bright and palette boundary indices; the contract
+grader may grade unsupported only after valid controls and never more permissively
+than the pinned probe. Receipt schema 17 and source policy v11 (133 files) bind it;
+earlier policies stay frozen.
+
 Adapter tests use Node's built-in test runner:
 
 ```sh

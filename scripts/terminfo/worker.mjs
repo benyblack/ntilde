@@ -11,6 +11,7 @@ import { collectAsciiSgrGrading } from './ascii-sgr-collector.mjs';
 import { collectSgrColorsGrading } from './sgr-colors-collector.mjs';
 import { collectSgrRgbGrading } from './sgr-rgb-collector.mjs';
 import { collectSgrAttrsGrading } from './sgr-attrs-collector.mjs';
+import { collectSgrPaletteGrading } from './sgr-palette-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -103,6 +104,15 @@ try {
         const sgrAttrsModule = await import(pathToFileURL(config.sgrAttrsBundle).href);
         const sgrAttrsRun = await collectSgrAttrsGrading({ config, fence, owner, gradingModule: sgrAttrsModule });
         writeFileSync(join(config.output, 'sgattr-run.json'), JSON.stringify(sgrAttrsRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered SGR-palette qualification follows the SGR-attributes suite on the
+        // same exclusively owned fence.
+        const sgrPaletteSource = readFileSync(config.sgrPaletteBundle);
+        if (createHash('sha256').update(sgrPaletteSource).digest('hex') !== config.sgrPaletteBundleSha256) {
+            throw new Error('Local SGR-palette adapter bundle changed.');
+        }
+        const sgrPaletteModule = await import(pathToFileURL(config.sgrPaletteBundle).href);
+        const sgrPaletteRun = await collectSgrPaletteGrading({ config, fence, owner, gradingModule: sgrPaletteModule });
+        writeFileSync(join(config.output, 'sgpal-run.json'), JSON.stringify(sgrPaletteRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
