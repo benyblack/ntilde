@@ -29,6 +29,18 @@ public sealed class MuxJsonTests
     }
 
     [Fact]
+    public void LoginSessionEnded_is_absent_unless_true_and_round_trips()
+    {
+        string live = JsonSerializer.Serialize(new WelcomeResult { Version = 2 }, MuxJsonContext.Default.WelcomeResult);
+        string ended = JsonSerializer.Serialize(new WelcomeResult { Version = 2, LoginSessionEnded = true }, MuxJsonContext.Default.WelcomeResult);
+
+        Assert.DoesNotContain("loginSessionEnded", live, StringComparison.Ordinal);
+        Assert.Contains("\"loginSessionEnded\":true", ended, StringComparison.Ordinal);
+        Assert.True(JsonSerializer.Deserialize(ended, MuxJsonContext.Default.WelcomeResult)!.LoginSessionEnded);
+        Assert.Null(JsonSerializer.Deserialize(live, MuxJsonContext.Default.WelcomeResult)!.LoginSessionEnded);
+    }
+
+    [Fact]
     public void Old_json_without_a_version_key_deserializes_to_null()
     {
         WelcomeResult welcome = JsonSerializer.Deserialize("{\"version\":1,\"forceConPtyFiltering\":false}", MuxJsonContext.Default.WelcomeResult)!;

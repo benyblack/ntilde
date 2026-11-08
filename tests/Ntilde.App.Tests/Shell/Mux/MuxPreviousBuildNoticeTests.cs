@@ -267,4 +267,22 @@ public sealed class MuxPreviousBuildNoticeTests
         Assert.True(launch.TryBeginRestart(MuxEndpointId.Local));
         Assert.False(launch.TryBeginRestart(remote));
     }
+
+    [Theory]
+    [InlineData("0.12.0", false, false)] // this build, live login
+    [InlineData("0.0.1", false, true)]   // another build
+    [InlineData("0.12.0", true, true)]   // this build, but its login session has ended
+    [InlineData(null, true, true)]       // no version reported, login ended
+    [InlineData(null, false, false)]     // no version reported, live login
+    public void A_local_daemon_needs_a_restart_when_another_builds_or_its_login_ended(string? daemon, bool loginEnded, bool expected) =>
+        Assert.Equal(expected, MuxPreviousBuildNotice.NeedsLocalRestart(daemon, loginEnded, "0.12.0"));
+
+    [Fact]
+    public void The_login_session_notice_says_what_fails_and_counts_shells()
+    {
+        Assert.Equal(
+            "The multiplexer was started in a login session that has ended, so new shells cannot look up your user (whoami and ssh fail); restart it to fix them.",
+            MuxPreviousBuildNotice.LoginSessionEndedMessage(0));
+        Assert.EndsWith(" \u2014 this closes its 2 shells.", MuxPreviousBuildNotice.LoginSessionEndedMessage(2), StringComparison.Ordinal);
+    }
 }

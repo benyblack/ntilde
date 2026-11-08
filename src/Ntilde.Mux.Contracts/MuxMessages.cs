@@ -80,6 +80,15 @@ public sealed record WelcomeResult
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ServerVersion { get; init; }
 
+    /// <summary>
+    /// True when the daemon has outlived the macOS login session it was started in (<c>LoginSession.HasEnded</c>): every
+    /// shell it starts can no longer look up the user (<c>whoami</c> prints the uid, <c>ssh</c> refuses), so only a daemon
+    /// started from the current login serves working shells. Probed at each hello. Absent - null on the client - when the
+    /// login is live, on other platforms, and from a daemon that predates it.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? LoginSessionEnded { get; init; }
+
     /// <summary>Absent on older daemons, whose retention cannot be configured by a client.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MuxHistoryLimits? HistoryLimits { get; init; }

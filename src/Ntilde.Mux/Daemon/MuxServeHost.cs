@@ -56,7 +56,7 @@ public static partial class MuxServeHost
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Log($"[MuxDaemon] unhandled: {e.ExceptionObject}");
         TaskScheduler.UnobservedTaskException += (_, e) => { Log($"[MuxDaemon] unobserved task: {e.Exception}"); e.SetObserved(); };
 
-        var server = new MuxServer(sessionFactory, new MuxServerOptions { Log = Log, AppVersion = appVersion });
+        var server = new MuxServer(sessionFactory, new MuxServerOptions { Log = Log, AppVersion = appVersion, LoginSessionEnded = LoginSession.HasEnded });
         using var host = new MuxDaemonHost(server, new MuxDaemonOptions
         {
             Endpoint = paths.Endpoint,
