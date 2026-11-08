@@ -30,8 +30,8 @@ needs valid controls and an exposed `false`/absent value; an unavailable overlin
 
 ## Measurement
 
-Committed source `a58a1693` (scripts and App source coincide; no App change). Owned run `c73e8b76fdac738fdd865b3d47a5c298`, receipt schema 24, source policy v18 (inventory v25,
-168 files), default theme. First and only collection; no failed attempt.
+Committed source `0bc92a30` (scripts and App source coincide; no App change). Owned run `b008385f36753b447ef92ce1b5352017`, receipt schema 24, source policy v18 (inventory v25,
+168 files), default theme. Second collection: the first (run `c73e8b76fdac738fdd865b3d47a5c298`, source `a58a1693`, also all supported) is preserved in the summary as superseded after a Codex review tightened the overline independence control.
 
 | Case | Pinned | Contract | Scope |
 |---|---|---|---|
