@@ -144,7 +144,8 @@ test('hidden keeps its stored text distinct from the conceal flag', () => {
 test('the observation exposes every pinned cell field and the stored style', () => {
     const cell = sgrAttrsCellAt(syntheticSgrAttrsScreens('sgr.underline.single')[1], 0, 0);
     assert.deepEqual(Object.keys(cell), ['char', 'flags', 'bold', 'dim', 'italic', 'underline', 'inverse', 'hidden',
-        'strikethrough', 'blink', 'overline', 'fg', 'bg', 'fgSource', 'bgSource', 'underlineStyle']);
+        'strikethrough', 'blink', 'overline', 'fg', 'bg', 'fgSource', 'bgSource', 'underlineStyle',
+        'underlineColorIndex', 'underlineArgb', 'fgIndex', 'bgIndex', 'foregroundArgb', 'backgroundArgb']);
     assert.equal(cell.underline, 'single');
     assert.equal(cell.underlineStyle, 1);
 });
@@ -208,4 +209,29 @@ test('X gaining overline or other stored drift after the reset leaves every case
         assert.equal(result.outcome, 'inconclusive', caseId);
         assert.match(result.note, /restoration control/);
     }
+});
+
+test('every stored field of X must survive the reset: underline color, palette and literal color drift', () => {
+    const cases = [
+        ['underline color index', 'underlineColorIndex', 1],
+        ['underline ARGB', 'underlineArgb', 0xff112233],
+    ];
+    for (const caseId of sgrAttrsCaseIds) {
+        for (const [name, field, value] of cases) {
+            const screens = syntheticSgrAttrsScreens(caseId);
+            const trailing = structuredClone(screens[2]);
+            trailing.cellDetails[0] = { ...trailing.cellDetails[0], [field]: value };
+            const contract = contractOf(caseId);
+            // Underline color is only legal with an underline; the validators refuse the incoherent shapes,
+            // and the coherent ones must leave the case inconclusive.
+            let outcome;
+            try { outcome = gradeSgrAttrsCase(contract, sgrAttrsObservation([screens[0], screens[1], trailing])).outcome; }
+            catch { outcome = 'refused'; }
+            assert.notEqual(outcome, 'supported', `${caseId} ${name}`);
+        }
+    }
+    const underline = syntheticSgrAttrsScreens('sgr.underline.single');
+    const drifted = structuredClone(underline[2]);
+    drifted.cellDetails[0] = { ...drifted.cellDetails[0], underlineColorIndex: 1 };
+    assert.equal(gradeSgrAttrsCase(contractOf('sgr.underline.single'), sgrAttrsObservation([underline[0], underline[1], drifted])).outcome, 'inconclusive');
 });

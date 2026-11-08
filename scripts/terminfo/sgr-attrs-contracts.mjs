@@ -80,6 +80,10 @@ export function sgrAttrsCellAt(screen, row, col) {
         fg: exposedRgb(resolved.fg), bg: exposedRgb(resolved.bg),
         fgSource: resolved.fg.source, bgSource: resolved.bg.source,
         underlineStyle: detail.underlineStyle,
+        // The rest of the stored tuple, so no control can miss drift in a field the projection dropped.
+        underlineColorIndex: detail.underlineColorIndex, underlineArgb: detail.underlineArgb ?? null,
+        fgIndex: detail.fg, bgIndex: detail.bg,
+        foregroundArgb: detail.foregroundArgb ?? null, backgroundArgb: detail.backgroundArgb ?? null,
     };
 }
 
@@ -89,18 +93,22 @@ export function validateSgrAttrsScreen(screen) {
 }
 
 /** No attribute set and both channels on default storage. */
+const storedNeutral = cell => cell.fgSource === 'default' && cell.bgSource === 'default'
+    && cell.fgIndex === -1 && cell.bgIndex === -1 && cell.foregroundArgb === null && cell.backgroundArgb === null;
+/** No underline color stored either. */
+const underlineColorNeutral = cell => cell.underlineColorIndex === -1 && cell.underlineArgb === null;
 const neutral = cell => attributeNames.every(name => cell[name] === false)
-    && cell.fgSource === 'default' && cell.bgSource === 'default' && cell.underlineStyle === 0;
+    && storedNeutral(cell) && cell.underlineStyle === 0 && underlineColorNeutral(cell);
 /** Exactly these attributes set (underline by style), no others, default colors. */
 const exactly = (cell, set) => attributeNames.every(name => (name === 'underline'
         ? (cell.underline !== false) === set.includes(name)
         : cell[name] === set.includes(name)))
-    && cell.fgSource === 'default' && cell.bgSource === 'default';
+    && storedNeutral(cell) && underlineColorNeutral(cell);
 /** Every attribute OUTSIDE `own` is clear and colors are default: the unrelated-drift control.
  * The case's own attributes are the measured quantity and are deliberately not constrained. */
 const othersClear = (cell, own) => attributeNames.every(name => own.includes(name)
         || (name === 'underline' ? cell.underline === false : cell[name] === false))
-    && cell.fgSource === 'default' && cell.bgSource === 'default'
+    && storedNeutral(cell) && underlineColorNeutral(cell)
     && (own.includes('underline') || cell.underlineStyle === 0);
 
 /** The pinned sgrProbe note texts, byte for byte. */
@@ -144,9 +152,10 @@ function gradeWithControls(observation, rules) {
 }
 
 /** The trailing cells must keep X unchanged and show the case's specific reset. */
-const keepsTarget = (trailing, target) => trailing[0].char === 'X' && trailing[0].flags === target.flags
-    && trailing[0].underlineStyle === target.underlineStyle && trailing[0].overline === target.overline
-    && trailing[0].fgSource === target.fgSource && trailing[0].bgSource === target.bgSource;
+const storedTuple = ['flags', 'underlineStyle', 'overline', 'fgSource', 'bgSource', 'fgIndex', 'bgIndex',
+    'foregroundArgb', 'backgroundArgb', 'underlineColorIndex', 'underlineArgb'];
+const keepsTarget = (trailing, target) => trailing[0].char === 'X'
+    && storedTuple.every(field => trailing[0][field] === target[field]);
 
 export const sgrAttrsContracts = Object.freeze([
     case_({
