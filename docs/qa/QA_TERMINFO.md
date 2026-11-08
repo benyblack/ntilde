@@ -792,3 +792,13 @@ manual application check. Neovim 0.12.6, run in a build of `main`, learns trueco
 table's capabilities through XTGETTCAP, DECRQSS `m` and the `xterm-ntilde` entry. The run
 covers direct and persistent panes and both OSC 52 settings, with 0.13.0 as the baseline.
 It is a manual QA run and changes no grade.
+
+### SGR underline-style qualification
+
+The [SGR underline-style batch](terminfo/2026-11-08-sgr-underline-qualification.md) qualifies exactly
+`sgr.underline.double` (SGR 21), `sgr.underline.curly` (4:3), `sgr.underline.dotted` (4:4) and
+`sgr.underline.dashed` (4:5) through the layered `ntilde-owned-sgr-underline-grading-v1` extension over the
+SGR-truecolor one. The pinned criteria already require one exact style each; the contract adds neutral-baseline,
+unrelated-drift, DECSCNM, SGR 24 restoration and labeled spelling-ladder controls (SGR 4:2 and others are ungraded
+controls). Claims are stored state only, not stroke appearance. Receipt schema 20 and source policy v14 (149 files)
+bind it; earlier policies stay frozen.

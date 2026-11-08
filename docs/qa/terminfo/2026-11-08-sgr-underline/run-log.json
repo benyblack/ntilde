@@ -1,0 +1,219 @@
+{
+ "schemaVersion": 1,
+ "adapterId": "ntilde-owned-sgr-underline-grading-v1",
+ "probeIds": ["sgr.underline.double", "sgr.underline.curly", "sgr.underline.dotted", "sgr.underline.dashed"],
+ "cases": [
+  {
+   "caseId": "sgr.underline.double",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[21mX",
+    "\u001b[24mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4mP\u001b[0m\u001b[4:1mQ\u001b[0m\u001b[21mR\u001b[0m\u001b[4:2mS\u001b[0m\u001b[4:3mT\u001b[0m\u001b[4:4mU\u001b[0m\u001b[4:5mV\u001b[0mN"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 1]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 1]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 2]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 8]
+    }
+   ],
+   "pinned": {
+    "probeId": "sgr.underline.double",
+    "pass": true,
+    "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"double\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":2,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}",
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.underline.double: attribute applied to the rendered X cell",
+      "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"double\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":2,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}"
+     }
+    ]
+   }
+  },
+  {
+   "caseId": "sgr.underline.curly",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4:3mX",
+    "\u001b[24mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4mP\u001b[0m\u001b[4:1mQ\u001b[0m\u001b[21mR\u001b[0m\u001b[4:2mS\u001b[0m\u001b[4:3mT\u001b[0m\u001b[4:4mU\u001b[0m\u001b[4:5mV\u001b[0mN"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 1]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 1]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 2]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 8]
+    }
+   ],
+   "pinned": {
+    "probeId": "sgr.underline.curly",
+    "pass": true,
+    "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"curly\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":3,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}",
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.underline.curly: attribute applied to the rendered X cell",
+      "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"curly\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":3,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}"
+     }
+    ]
+   }
+  },
+  {
+   "caseId": "sgr.underline.dotted",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4:4mX",
+    "\u001b[24mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4mP\u001b[0m\u001b[4:1mQ\u001b[0m\u001b[21mR\u001b[0m\u001b[4:2mS\u001b[0m\u001b[4:3mT\u001b[0m\u001b[4:4mU\u001b[0m\u001b[4:5mV\u001b[0mN"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 1]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 1]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 2]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 8]
+    }
+   ],
+   "pinned": {
+    "probeId": "sgr.underline.dotted",
+    "pass": true,
+    "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"dotted\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":4,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}",
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.underline.dotted: attribute applied to the rendered X cell",
+      "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"dotted\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":4,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}"
+     }
+    ]
+   }
+  },
+  {
+   "caseId": "sgr.underline.dashed",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4:5mX",
+    "\u001b[24mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[4mP\u001b[0m\u001b[4:1mQ\u001b[0m\u001b[21mR\u001b[0m\u001b[4:2mS\u001b[0m\u001b[4:3mT\u001b[0m\u001b[4:4mU\u001b[0m\u001b[4:5mV\u001b[0mN"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 1]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 1]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 2]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 8]
+    }
+   ],
+   "pinned": {
+    "probeId": "sgr.underline.dashed",
+    "pass": true,
+    "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"dashed\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":5,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}",
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.underline.dashed: attribute applied to the rendered X cell",
+      "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"dashed\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":5,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}"
+     }
+    ]
+   }
+  }
+ ]
+}
