@@ -1,0 +1,104 @@
+{
+ "schemaVersion": 1,
+ "adapterId": "ntilde-owned-sgr-truecolor-grading-v1",
+ "probeIds": [
+  "sgr.fg.truecolor",
+  "sgr.bg.truecolor"
+ ],
+ "cases": [
+  {
+   "caseId": "sgr.fg.truecolor",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C\u001b[31mA\u001b[34mB\u001b[38;2;255;128;0mX\u001b[38;2;17;97;201mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[38;2;95;135;175mP\u001b[38;5;67mQ\u001b[38;2;0;0;0mL\u001b[38;2;255;255;255mH\u001b[0m\u001b[42m\u001b[38;2;17;97;201mU\u001b[0mR"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+   ],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [
+      0,
+      5
+     ]
+    },
+    {
+     "kind": "cells",
+     "cursor": [
+      0,
+      6
+     ]
+    }
+   ],
+   "pinned": {
+    "probeId": "sgr.fg.truecolor",
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlFirst\":{\"char\":\"A\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":205,\"g\":0,\"b\":0},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlSecond\":{\"char\":\"B\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":238},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":4,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"targetFirst\":{\"char\":\"X\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":255,\"g\":128,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4294934528,\"backgroundArgb\":null},\"targetSecond\":{\"char\":\"Y\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":17,\"g\":97,\"b\":201},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4279329225,\"backgroundArgb\":null}}",
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.fg.truecolor: two distinct direct-RGB samples are exposed at their exact requested values",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlFirst\":{\"char\":\"A\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":205,\"g\":0,\"b\":0},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlSecond\":{\"char\":\"B\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":238},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":4,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"targetFirst\":{\"char\":\"X\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":255,\"g\":128,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4294934528,\"backgroundArgb\":null},\"targetSecond\":{\"char\":\"Y\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":17,\"g\":97,\"b\":201},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4279329225,\"backgroundArgb\":null}}"
+     }
+    ]
+   }
+  },
+  {
+   "caseId": "sgr.bg.truecolor",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C\u001b[41mA\u001b[44mB\u001b[48;2;0;255;128mX\u001b[48;2;17;97;201mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[48;2;95;135;175mP\u001b[48;5;67mQ\u001b[48;2;0;0;0mL\u001b[48;2;255;255;255mH\u001b[0m\u001b[31m\u001b[48;2;17;97;201mU\u001b[0mR"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+   ],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [
+      0,
+      5
+     ]
+    },
+    {
+     "kind": "cells",
+     "cursor": [
+      0,
+      6
+     ]
+    }
+   ],
+   "pinned": {
+    "probeId": "sgr.bg.truecolor",
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlFirst\":{\"char\":\"A\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":205,\"g\":0,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlSecond\":{\"char\":\"B\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":0,\"b\":238},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":4,\"foregroundArgb\":null,\"backgroundArgb\":null},\"targetFirst\":{\"char\":\"X\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":255,\"b\":128},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4278255488},\"targetSecond\":{\"char\":\"Y\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":17,\"g\":97,\"b\":201},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4279329225}}",
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.bg.truecolor: two distinct direct-RGB samples are exposed at their exact requested values",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlFirst\":{\"char\":\"A\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":205,\"g\":0,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlSecond\":{\"char\":\"B\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":0,\"b\":238},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":4,\"foregroundArgb\":null,\"backgroundArgb\":null},\"targetFirst\":{\"char\":\"X\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":255,\"b\":128},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4278255488},\"targetSecond\":{\"char\":\"Y\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":17,\"g\":97,\"b\":201},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4279329225}}"
+     }
+    ]
+   }
+  }
+ ]
+}
