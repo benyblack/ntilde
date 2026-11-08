@@ -1,0 +1,360 @@
+{
+ "schemaVersion": 1,
+ "layout": "summary + before/ and after/ (report, run-log, journal-common, one journal per case); reassembled by truecolor-literal-finding-publication.test.mjs",
+ "note": "Ntilde finding, not a terminfo.dev case. Before = main App source (parser snaps five values); after = the fixed App. Same scripts revision for both runs.",
+ "before": {
+  "label": "before",
+  "runDir": "owned-8Z05an",
+  "runId": "5b6d980ffbe1057fa41efa415861714f",
+  "appRevision": "86546641",
+  "scriptsRevision": "31696fd4",
+  "sourceSnapshotPolicy": "readonly-owned-source-graph-v13",
+  "receiptSchemaVersion": 19,
+  "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+  "appVersion": "0.13.0",
+  "receiptCompletedAt": "2026-11-08T13:22:51.075Z",
+  "findingEvidenceBinding": {
+   "runId": "5b6d980ffbe1057fa41efa415861714f",
+   "suiteId": "ntilde-owned-truecolor-literal-finding-v1",
+   "file": "sgtf-observations.json",
+   "sha256": "89c6f6c919280b977afb5063e0ac3362b350711923dd2316604a5d50accf6f94",
+   "runFile": "sgtf-run.json",
+   "runSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
+   "contractsVersion": 1,
+   "counts": {
+    "unsupported": 10
+   },
+   "provisionalUntil": "cell-receipt.json"
+  },
+  "findingCounts": {
+   "unsupported": 10
+  },
+  "sameRun": {
+   "sgrTruecolor": {
+    "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.truecolor",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.truecolor",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrPalette": {
+    "suiteId": "ntilde-owned-sgr-palette-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.bright",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.bright",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.256",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.256",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.default",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.default",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrAttrs": {
+    "suiteId": "ntilde-owned-sgr-attributes-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.underline.single",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.inverse",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.faint",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.hidden",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.strikethrough",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrRgb": {
+    "suiteId": "ntilde-owned-sgr-rgb-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.standard",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.standard",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrColors": {
+    "suiteId": "ntilde-owned-sgr-colors-graded-v1",
+    "contractsVersion": 2,
+    "cases": [
+     {
+      "caseId": "sgr.selective-reset.bold",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.selective-reset.italic",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.reset",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.standard",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.standard",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "grading": {
+    "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "text.basic",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "text.overwrite",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bold",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.italic",
+      "outcome": "supported"
+     }
+    ]
+   }
+  },
+  "stockCollector": {
+   "counts": {
+    "inconclusive": 168,
+    "supported": 86,
+    "unsupported": 1
+   },
+   "suiteComplete": false,
+   "probeHash": "16a690f34c0e",
+   "rawSha256": "e1bfa63fabb7b61a014b22f70b0d17c64b4b71bcbebbbba446be47a760bf32f9"
+  },
+  "retained": {
+   "findingObservationsSha256": "89c6f6c919280b977afb5063e0ac3362b350711923dd2316604a5d50accf6f94",
+   "findingRunSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
+   "findingJournalSha256": "7b5ecd0e6a4edb76095576c51334154619dc1744249306817fbeb424196a9146"
+  }
+ },
+ "after": {
+  "label": "after",
+  "runDir": "owned-gHDHuj",
+  "runId": "44bba6bdc262994a9565ab35d53ceedb",
+  "appRevision": "31696fd4",
+  "scriptsRevision": "31696fd4",
+  "sourceSnapshotPolicy": "readonly-owned-source-graph-v13",
+  "receiptSchemaVersion": 19,
+  "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+  "appVersion": "0.13.0",
+  "receiptCompletedAt": "2026-11-08T13:23:47.306Z",
+  "findingEvidenceBinding": {
+   "runId": "44bba6bdc262994a9565ab35d53ceedb",
+   "suiteId": "ntilde-owned-truecolor-literal-finding-v1",
+   "file": "sgtf-observations.json",
+   "sha256": "e9e390c0266865071a93a15dd36aa3b0ef26676a93474e3f3af13ecf1595cd76",
+   "runFile": "sgtf-run.json",
+   "runSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
+   "contractsVersion": 1,
+   "counts": {
+    "supported": 10
+   },
+   "provisionalUntil": "cell-receipt.json"
+  },
+  "findingCounts": {
+   "supported": 10
+  },
+  "sameRun": {
+   "sgrTruecolor": {
+    "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.truecolor",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.truecolor",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrPalette": {
+    "suiteId": "ntilde-owned-sgr-palette-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.bright",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.bright",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.256",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.256",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.default",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.default",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrAttrs": {
+    "suiteId": "ntilde-owned-sgr-attributes-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.underline.single",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.inverse",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.faint",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.hidden",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.strikethrough",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrRgb": {
+    "suiteId": "ntilde-owned-sgr-rgb-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.standard",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.standard",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrColors": {
+    "suiteId": "ntilde-owned-sgr-colors-graded-v1",
+    "contractsVersion": 2,
+    "cases": [
+     {
+      "caseId": "sgr.selective-reset.bold",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.selective-reset.italic",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.reset",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.standard",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.standard",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "grading": {
+    "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "text.basic",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "text.overwrite",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bold",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.italic",
+      "outcome": "supported"
+     }
+    ]
+   }
+  },
+  "stockCollector": {
+   "counts": {
+    "inconclusive": 168,
+    "supported": 86,
+    "unsupported": 1
+   },
+   "suiteComplete": false,
+   "probeHash": "16a690f34c0e",
+   "rawSha256": "fd47b4825e13b92208c95a6d487535556ff8ea025aecedbfe56da8be0eef4b07"
+  },
+  "retained": {
+   "findingObservationsSha256": "e9e390c0266865071a93a15dd36aa3b0ef26676a93474e3f3af13ecf1595cd76",
+   "findingRunSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
+   "findingJournalSha256": "0d195421e8db46d30630816568af59620925dd5c63ecc21257c9420ce18d64a4"
+  }
+ },
+ "attempts": []
+}

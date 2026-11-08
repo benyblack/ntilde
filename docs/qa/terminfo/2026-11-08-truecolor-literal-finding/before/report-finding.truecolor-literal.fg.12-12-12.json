@@ -1,0 +1,367 @@
+{
+ "caseId": "finding.truecolor-literal.fg.12-12-12",
+ "criterion": "direct RGB 12,12,12 stays a stored literal and keeps resolving to itself when palette entry 0 is changed",
+ "channel": "fg",
+ "requested": {
+  "r": 12,
+  "g": 12,
+  "b": 12
+ },
+ "aliasedIndex": 0,
+ "feeds": [
+  "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+  "B\u001b[38;5;0mI\u001b[0m\u001b[38;2;12;12;12mS\u001b[0m\u001b[38:2::12:12:12mC\u001b[0m\u001b[38:2:0:12:12:12mD\u001b[0m", "\u001b]4;0;rgb:ff/00/ff\u0007",
+  "\u001b]104;0\u0007"
+ ],
+ "barriers": [
+  "\u001b[?62;4;22c",
+  "\u001b[?62;4;22c",
+  "\u001b[?62;4;22c",
+  "\u001b[?62;4;22c"],
+ "reads": [
+  [0, 5],
+  [0, 5],
+  [0, 5]
+ ],
+ "observed": {
+  "before": [
+   {
+    "char": "B",
+    "flags": 768,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": null,
+    "bg": null
+   },
+   {
+    "char": "I",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "bg": null
+   },
+   {
+    "char": "S",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "bg": null
+   },
+   {
+    "char": "C",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "bg": null
+   },
+   {
+    "char": "D",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "bg": null
+   }
+  ],
+  "mutated": [
+   {
+    "char": "B",
+    "flags": 768,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": null,
+    "bg": null
+   },
+   {
+    "char": "I",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 255,
+     "g": 0,
+     "b": 255
+    },
+    "bg": null
+   },
+   {
+    "char": "S",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 255,
+     "g": 0,
+     "b": 255
+    },
+    "bg": null
+   },
+   {
+    "char": "C",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 255,
+     "g": 0,
+     "b": 255
+    },
+    "bg": null
+   },
+   {
+    "char": "D",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 255,
+     "g": 0,
+     "b": 255
+    },
+    "bg": null
+   }
+  ],
+  "restored": [
+   {
+    "char": "B",
+    "flags": 768,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": null,
+    "bg": null
+   },
+   {
+    "char": "I",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "bg": null
+   },
+   {
+    "char": "S",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "bg": null
+   },
+   {
+    "char": "C",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "bg": null
+   },
+   {
+    "char": "D",
+    "flags": 16896,
+    "fgSource": "palette",
+    "fgIndex": 0,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "fg": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "bg": null
+   }
+  ],
+  "reverseVideo": false
+ },
+ "bindings": [
+  {
+   "themeName": "Default",
+   "reverseVideo": false,
+   "paletteOverrideIndices": [],
+   "entryArgb": 4278190080,
+   "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  {
+   "themeName": "Default",
+   "reverseVideo": false,
+   "paletteOverrideIndices": [0],
+   "entryArgb": 4294902015,
+   "bindingSha256": "006969f4e684c84df95f83eee09cebdf4301857d7843a8ab229166393c338290"
+  },
+  {
+   "themeName": "Default",
+   "reverseVideo": false,
+   "paletteOverrideIndices": [],
+   "entryArgb": 4278190080,
+   "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  }
+ ],
+ "contractResult": {
+  "outcome": "unsupported",
+  "layers": {
+   "stored": "unsupported",
+   "resolved": "unsupported"
+  },
+  "note": "Direct RGB 12,12,12 was stored as palette index 0 instead of literal bytes",
+  "findings": {
+   "semicolon": {
+    "stored": "palette:0",
+    "resolvedBefore": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "resolvedMutated": {
+     "r": 255,
+     "g": 0,
+     "b": 255
+    },
+    "resolvedRestored": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "initialMatchesRequested": false,
+    "changedByMutation": true
+   },
+   "colon-omitted-colorspace": {
+    "stored": "palette:0",
+    "resolvedBefore": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "resolvedMutated": {
+     "r": 255,
+     "g": 0,
+     "b": 255
+    },
+    "resolvedRestored": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "initialMatchesRequested": false,
+    "changedByMutation": true
+   },
+   "colon-explicit-colorspace": {
+    "stored": "palette:0",
+    "resolvedBefore": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "resolvedMutated": {
+     "r": 255,
+     "g": 0,
+     "b": 255
+    },
+    "resolvedRestored": {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    "initialMatchesRequested": false,
+    "changedByMutation": true
+   }
+  }
+ },
+ "conclusion": {
+  "outcome": "unsupported",
+  "evidence": "owned-stored-and-resolved-cells",
+  "grading": "contract-v1",
+  "layers": {
+   "stored": "unsupported",
+   "resolved": "unsupported"
+  },
+  "note": "Direct RGB 12,12,12 was stored as palette index 0 instead of literal bytes",
+  "scope": "stored literal ARGB bytes 12,12,12 with the palette index and default marker cleared, resolved fg RGB unchanged by an OSC 4 change of entry 0, in the semicolon, colon-omitted-colorspace and colon-explicit-colorspace forms; an explicit indexed positive control follows the same change; rendered appearance is not claimed"
+ }
+}

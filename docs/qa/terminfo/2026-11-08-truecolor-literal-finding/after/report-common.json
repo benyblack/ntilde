@@ -1,0 +1,10 @@
+{
+ "schemaVersion": 1,
+ "suiteId": "ntilde-owned-truecolor-literal-finding-v1",
+ "runId": "44bba6bdc262994a9565ab35d53ceedb",
+ "contractsVersion": 1,
+ "kind": "ntilde-finding-not-a-terminfo-case",
+ "scope": "Ntilde finding about five exact direct-RGB values (0,55,218; 58,150,221; 12,12,12; 204,204,204; 242,242,242) on foreground and background, graded from parent-journaled readScreen stored literal bytes, palette indices and default markers together with App-resolved RGB bound to the per-frame recorded palette, with an explicit indexed positive control, an OSC 4 mutation of the aliased entry and its restoration. Semicolon, colon-omitted-colorspace and colon-explicit-colorspace forms. No pinned terminfo.dev probe, no stock grade, rendered glyph appearance not claimed.",
+ "initialSnapshot": 0,
+ "restoredSnapshot": 32
+}

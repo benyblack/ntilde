@@ -85,7 +85,11 @@ This qualification does **not** cover those five values: no pinned fixture or co
 uses them (the boundary controls use `0,0,0` and `255,255,255`, which are not
 snapped). Read "supported" as "the contracted fixture values, black and white are
 stored as exact literal bytes", not "every truecolor value is stored exactly". A
-control for the snapped values would be a separate finding in a later batch.
+control for the snapped values is a separate finding:
+[truecolor-literal finding](2026-11-08-truecolor-literal-finding.md). It confirmed the
+snapping on the real App, and the parser was corrected afterwards; this document's
+original measurement and verdicts are unchanged and were taken against the App as it
+was (before the correction).
 
 ## Remaining inconclusive criteria
 
