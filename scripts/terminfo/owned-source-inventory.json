@@ -161,5 +161,10 @@
     "sgrResetCollectorSourceSha256": "sgr-reset-collector.mjs",
     "sgrResetGradingSourceSha256": "sgr-reset-grading.mjs",
     "sgrResetGradingCollectorSourceSha256": "sgr-reset-grading-collector.mjs",
-    "sgrResetReceiptSourceSha256": "sgr-reset-receipt.mjs"
+    "sgrResetReceiptSourceSha256": "sgr-reset-receipt.mjs",
+    "eraseLineContractsSourceSha256": "erase-line-contracts.mjs",
+    "eraseLineCollectorSourceSha256": "erase-line-collector.mjs",
+    "eraseLineGradingSourceSha256": "erase-line-grading.mjs",
+    "eraseLineGradingCollectorSourceSha256": "erase-line-grading-collector.mjs",
+    "eraseLineReceiptSourceSha256": "erase-line-receipt.mjs"
 }

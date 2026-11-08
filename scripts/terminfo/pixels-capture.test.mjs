@@ -180,7 +180,7 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
     const output = mkdtempSync(join(tmpdir(), 'nt-worker-order-'));
     try {
         const bundle = join(output, 'bundle.mjs'), gradingBundle = join(output, 'grading.mjs'),
-            sgrColorsBundle = join(output, 'sgcolors.mjs'), sgrRgbBundle = join(output, 'sgrgb.mjs'), sgrAttrsBundle = join(output, 'sgattr.mjs'), sgrPaletteBundle = join(output, 'sgpal.mjs'), sgrTruecolorBundle = join(output, 'sgtc.mjs'), sgrUnderlineBundle = join(output, 'sgus.mjs'), sgrUnderlineColorBundle = join(output, 'sguc.mjs'), sgrResetBundle = join(output, 'sgsr.mjs'),
+            sgrColorsBundle = join(output, 'sgcolors.mjs'), sgrRgbBundle = join(output, 'sgrgb.mjs'), sgrAttrsBundle = join(output, 'sgattr.mjs'), sgrPaletteBundle = join(output, 'sgpal.mjs'), sgrTruecolorBundle = join(output, 'sgtc.mjs'), sgrUnderlineBundle = join(output, 'sgus.mjs'), sgrUnderlineColorBundle = join(output, 'sguc.mjs'), sgrResetBundle = join(output, 'sgsr.mjs'), eraseLineBundle = join(output, 'erln.mjs'),
             config = join(output, 'worker.json'), log = join(output, 'calls.txt');
         const source = 'import {appendFileSync} from \"node:fs\"; export async function collectNtildeRun() { appendFileSync(process.env.NTILDE_WORKER_TEST_LOG, \"stock-close\\n\"); return { testOnly: true }; }';
         const gradingSource = 'export const ntildeGradingAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunTermless() {}';
@@ -202,6 +202,8 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
         writeFileSync(sgrUnderlineColorBundle, sgrUnderlineColorSource);
         const sgrResetSource = 'export const ntildeSgrResetAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunSgrResetTermless() {}';
         writeFileSync(sgrResetBundle, sgrResetSource);
+        const eraseLineSource = 'export const ntildeEraseLineAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunEraseLineTermless() {}';
+        writeFileSync(eraseLineBundle, eraseLineSource);
         writeFileSync(config, JSON.stringify({ privateClipboard, output, bundle, gradingBundle,
             gradingBundleSha256: createHash('sha256').update(gradingSource).digest('hex'),
             sgrColorsBundle, sgrColorsBundleSha256: createHash('sha256').update(sgrColorsSource).digest('hex'),
@@ -212,12 +214,13 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
             sgrUnderlineBundle, sgrUnderlineBundleSha256: createHash('sha256').update(sgrUnderlineSource).digest('hex'),
             sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256: createHash('sha256').update(sgrUnderlineColorSource).digest('hex'),
             sgrResetBundle, sgrResetBundleSha256: createHash('sha256').update(sgrResetSource).digest('hex'),
+            eraseLineBundle, eraseLineBundleSha256: createHash('sha256').update(eraseLineSource).digest('hex'),
             adapterBundleSha256: createHash('sha256').update(source).digest('hex') }));
         const result = spawnSync(process.execPath, ['--import', new URL('./fixtures/worker-collection-hooks.mjs', import.meta.url).href,
             fileURLToPath(new URL('./worker.mjs', import.meta.url)), config], { encoding: 'utf8', timeout: 5000,
             env: { ...process.env, NTILDE_WORKER_TEST_LOG: log } });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Grading', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'UnderlineResolved', 'SgrReset', 'Input', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);
+        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Grading', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'UnderlineResolved', 'SgrReset', 'EraseLine', 'Input', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);
         assert.equal(JSON.parse(readFileSync(join(output, 'raw.json'))).testOnly, true);
         assert.equal(JSON.parse(readFileSync(join(output, 'grading-run.json'))).adapterId, 'stub');
         assert.equal(JSON.parse(readFileSync(join(output, 'sgcolors-run.json'))).adapterId, 'stub');
@@ -227,6 +230,7 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
         assert.deepEqual(JSON.parse(readFileSync(join(output, 'sgus-run.json'))), { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] });
         assert.deepEqual(JSON.parse(readFileSync(join(output, 'sguc-run.json'))), { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] });
         assert.deepEqual(JSON.parse(readFileSync(join(output, 'sgsr-run.json'))), { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] });
+        assert.deepEqual(JSON.parse(readFileSync(join(output, 'erln-run.json'))), { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] });
         assert.equal(JSON.parse(readFileSync(join(output, 'sgrgb-run.json'))).adapterId, 'stub');
     } finally { rmSync(output, { recursive: true, force: true }); }
 });

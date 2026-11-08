@@ -33,10 +33,10 @@ function present(path) {
 }
 
 /** Any retained selective-reset artifact or declaration requires the v23 suffix, and a
- * policy-v17 run always carries them, because the current worker collects this suite
+ * policy-v17 or v18 run always carries them, because the current worker collects this suite
  * unconditionally after the SGR-underline-color suite. */
 export function includesSgrResetEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v17'
+    return ['readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18'].includes(context.sourceSnapshotPolicy)
         || context.sgrResetAdapterId !== undefined || context.sgrResetSuiteId !== undefined
         || context.sgrResetBundleSha256 !== undefined || context.sgrResetContractsVersion !== undefined
         || evidence.sgrResetEvidence !== undefined
