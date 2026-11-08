@@ -117,8 +117,9 @@ test('every publication file stays small enough to review in one piece', () => {
 
 test('failed attempts are preserved and prior publications still rederive beside this batch', () => {
     const { summary } = load();
-    assert.ok(summary.attempts.length >= 1);
-    assert.ok(summary.attempts.every(attempt => attempt.receiptCompleted === false));
+    assert.ok(summary.attempts.length >= 2);
+    assert.equal(summary.attempts[0].receiptCompleted, false);
+    assert.ok(summary.attempts.some(attempt => attempt.outcome === 'complete, superseded' && attempt.receiptCompleted === true));
     const palette = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-sgr-palette/summary.json', import.meta.url)));
     assert.equal(palette.receipt.schemaVersion, 17);
     assert.equal(palette.receipt.sgrTruecolorEvidence, undefined);
