@@ -145,7 +145,8 @@ function gradeWithControls(observation, rules) {
 
 /** The trailing cells must keep X unchanged and show the case's specific reset. */
 const keepsTarget = (trailing, target) => trailing[0].char === 'X' && trailing[0].flags === target.flags
-    && trailing[0].underlineStyle === target.underlineStyle;
+    && trailing[0].underlineStyle === target.underlineStyle && trailing[0].overline === target.overline
+    && trailing[0].fgSource === target.fgSource && trailing[0].bgSource === target.bgSource;
 
 export const sgrAttrsContracts = Object.freeze([
     case_({

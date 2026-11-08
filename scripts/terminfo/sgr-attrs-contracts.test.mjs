@@ -201,3 +201,11 @@ test('faint: an italic or recolored Y cannot turn an absent faint into unsupport
     assert.equal(italicY.outcome, 'inconclusive');
     assert.match(italicY.note, /restoration control/);
 });
+
+test('X gaining overline or other stored drift after the reset leaves every case inconclusive', () => {
+    for (const caseId of sgrAttrsCaseIds) {
+        const result = grade(caseId, reads => { reads.trailing = [styledCell('X', [...reads.target[0].attrs, 'overline']), ...reads.trailing.slice(1)]; });
+        assert.equal(result.outcome, 'inconclusive', caseId);
+        assert.match(result.note, /restoration control/);
+    }
+});
