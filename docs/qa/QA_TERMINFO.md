@@ -837,4 +837,3 @@ The [closure batch](terminfo/2026-11-08-sgr-closure-qualification.md) grades `sg
 collector extension (`ntilde-owned-sgr-closure-grading-v1`). `sgr.underline.color` shares the rgbUnderlineProbe helper with `sgr.underline-color-rgb` and is
 graded from its own reads; the overline guard's unavailable-versus-false distinction is preserved. Receipt schema 24, source policy v18 (168 files). The
 [pinned-SGR inventory](terminfo/2026-11-08-sgr-pinned-inventory.json) shows all 32 pinned `sgr.*` ids with extension evidence (coverage, not a stock score).
-
