@@ -1,0 +1,1173 @@
+{
+ "schemaVersion": 1,
+ "suiteId": "ntilde-owned-sgr-palette-graded-v1",
+ "runId": "1814f55c3d61995209db7f2141f16eaf",
+ "contractsVersion": 1,
+ "adapter": {
+  "id": "ntilde-owned-sgr-palette-grading-v1",
+  "derivedFromAdapterId": "ntilde-owned-sgr-attributes-grading-v1",
+  "bundleSha256": "fdabe03cffe454ba68ced014824a8ecdf8f1ca97d50df5165f81e5a86be52488",
+  "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+ },
+ "scope": "Pinned terminfo.dev@4.0.0 bright, 256-color and default-color termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored palette indices, default markers and literal bytes together with App-resolved RGB bound to one recorded palette/theme state, with controls for the unaffected channel, unrelated attributes, DECSCNM, bold-versus-bright, boundary indices and reset restoration. Rendered glyph appearance is not claimed; no stock grades.",
+ "initialSnapshot": 0,
+ "restoredSnapshot": 14,
+ "cases": [
+  {
+   "caseId": "sgr.fg.bright",
+   "pinnedCriterion": "the two named colors select distinct exposed fg RGB values",
+   "pinnedFeeds": [
+    "C\u001b[91mX\u001b[94mY"
+   ],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[91mX"
+    ],
+    "demand": "consumed (cursor advance does not verify SGR colors)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C\u001b[91mX\u001b[94mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;31mP\u001b[0m\u001b[91mQ\u001b[0mR"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+   ],
+   "reads": [
+    [
+     0,
+     3
+    ],
+    [
+     0,
+     3
+    ]
+   ],
+   "observed": {
+    "fixture": [
+     {
+      "char": "C",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": null,
+      "bg": null,
+      "bold": false
+     },
+     {
+      "char": "X",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 9,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": {
+       "r": 255,
+       "g": 0,
+       "b": 0
+      },
+      "bg": null,
+      "bold": false
+     },
+     {
+      "char": "Y",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 12,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": {
+       "r": 92,
+       "g": 92,
+       "b": 255
+      },
+      "bg": null,
+      "bold": false
+     }
+    ],
+    "control": [
+     {
+      "char": "P",
+      "flags": 16897,
+      "fgSource": "palette",
+      "fgIndex": 1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": {
+       "r": 205,
+       "g": 0,
+       "b": 0
+      },
+      "bg": null,
+      "bold": true
+     },
+     {
+      "char": "Q",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 9,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": {
+       "r": 255,
+       "g": 0,
+       "b": 0
+      },
+      "bg": null,
+      "bold": false
+     },
+     {
+      "char": "R",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": null,
+      "bg": null,
+      "bold": false
+     }
+    ],
+    "reverseVideo": false,
+    "defaults": {
+     "fg": {
+      "r": 211,
+      "g": 211,
+      "b": 211
+     },
+     "bg": {
+      "r": 0,
+      "g": 0,
+      "b": 0
+     }
+    }
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"first\":{\"char\":\"X\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":255,\"g\":0,\"b\":0},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":9,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"second\":{\"char\":\"Y\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":92,\"g\":92,\"b\":255},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":12,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.fg.bright: the two named colors select distinct exposed fg RGB values",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"first\":{\"char\":\"X\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":255,\"g\":0,\"b\":0},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":9,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"second\":{\"char\":\"Y\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":92,\"g\":92,\"b\":255},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":12,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    }
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    },
+    "scope": "stored bright palette indices 9 and 12 (not bold, not the standard indices), resolved fg RGB at the theme-resolution stage of the one recorded palette; rendered appearance is not claimed"
+   }
+  },
+  {
+   "caseId": "sgr.bg.bright",
+   "pinnedCriterion": "the two named colors select distinct exposed bg RGB values",
+   "pinnedFeeds": [
+    "C\u001b[101mX\u001b[104mY"
+   ],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[101mX"
+    ],
+    "demand": "consumed (cursor advance does not verify SGR colors)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C\u001b[101mX\u001b[104mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;41mP\u001b[0m\u001b[101mQ\u001b[0mR"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+   ],
+   "reads": [
+    [
+     0,
+     3
+    ],
+    [
+     0,
+     3
+    ]
+   ],
+   "observed": {
+    "fixture": [
+     {
+      "char": "C",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": null,
+      "bg": null,
+      "bold": false
+     },
+     {
+      "char": "X",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "palette",
+      "bgIndex": 9,
+      "fg": null,
+      "bg": {
+       "r": 255,
+       "g": 0,
+       "b": 0
+      },
+      "bold": false
+     },
+     {
+      "char": "Y",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "palette",
+      "bgIndex": 12,
+      "fg": null,
+      "bg": {
+       "r": 92,
+       "g": 92,
+       "b": 255
+      },
+      "bold": false
+     }
+    ],
+    "control": [
+     {
+      "char": "P",
+      "flags": 33025,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "palette",
+      "bgIndex": 1,
+      "fg": null,
+      "bg": {
+       "r": 205,
+       "g": 0,
+       "b": 0
+      },
+      "bold": true
+     },
+     {
+      "char": "Q",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "palette",
+      "bgIndex": 9,
+      "fg": null,
+      "bg": {
+       "r": 255,
+       "g": 0,
+       "b": 0
+      },
+      "bold": false
+     },
+     {
+      "char": "R",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": null,
+      "bg": null,
+      "bold": false
+     }
+    ],
+    "reverseVideo": false,
+    "defaults": {
+     "fg": {
+      "r": 211,
+      "g": 211,
+      "b": 211
+     },
+     "bg": {
+      "r": 0,
+      "g": 0,
+      "b": 0
+     }
+    }
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"first\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":255,\"g\":0,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":9,\"foregroundArgb\":null,\"backgroundArgb\":null},\"second\":{\"char\":\"Y\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":92,\"g\":92,\"b\":255},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":12,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.bg.bright: the two named colors select distinct exposed bg RGB values",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"first\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":255,\"g\":0,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":9,\"foregroundArgb\":null,\"backgroundArgb\":null},\"second\":{\"char\":\"Y\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":92,\"g\":92,\"b\":255},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":12,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    }
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    },
+    "scope": "stored bright palette indices 9 and 12 (not bold, not the standard indices), resolved bg RGB at the theme-resolution stage of the one recorded palette; rendered appearance is not claimed"
+   }
+  },
+  {
+   "caseId": "sgr.fg.256",
+   "pinnedCriterion": "indices 67 and 173 match two independently observed canonical RGB cube references",
+   "pinnedFeeds": [
+    "C\u001b[38;2;95;135;175mA\u001b[38;2;215;135;95mB\u001b[38;5;67mX\u001b[38;5;173mY"
+   ],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[38;5;67m"
+    ],
+    "demand": "consumed (cursor advance does not verify SGR colors)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C\u001b[38;2;95;135;175mA\u001b[38;2;215;135;95mB\u001b[38;5;67mX\u001b[38;5;173mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[38;5;0mP\u001b[38;5;255mQ\u001b[0mR"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+   ],
+   "reads": [
+    [
+     0,
+     5
+    ],
+    [
+     0,
+     3
+    ]
+   ],
+   "observed": {
+    "fixture": [
+     {
+      "char": "C",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": null
+     },
+     {
+      "char": "A",
+      "flags": 512,
+      "fgSource": "literal",
+      "fgIndex": -1,
+      "foregroundArgb": 4284450735,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 95,
+       "g": 135,
+       "b": 175
+      },
+      "bg": null
+     },
+     {
+      "char": "B",
+      "flags": 512,
+      "fgSource": "literal",
+      "fgIndex": -1,
+      "foregroundArgb": 4292314975,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 215,
+       "g": 135,
+       "b": 95
+      },
+      "bg": null
+     },
+     {
+      "char": "X",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 67,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 95,
+       "g": 135,
+       "b": 175
+      },
+      "bg": null
+     },
+     {
+      "char": "Y",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 173,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 215,
+       "g": 135,
+       "b": 95
+      },
+      "bg": null
+     }
+    ],
+    "control": [
+     {
+      "char": "P",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 0,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 0,
+       "g": 0,
+       "b": 0
+      },
+      "bg": null
+     },
+     {
+      "char": "Q",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 255,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 238,
+       "g": 238,
+       "b": 238
+      },
+      "bg": null
+     },
+     {
+      "char": "R",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": null
+     }
+    ],
+    "reverseVideo": false,
+    "defaults": {
+     "fg": {
+      "r": 211,
+      "g": 211,
+      "b": 211
+     },
+     "bg": {
+      "r": 0,
+      "g": 0,
+      "b": 0
+     }
+    }
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"directFirst\":{\"char\":\"A\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":95,\"g\":135,\"b\":175},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4284450735,\"backgroundArgb\":null},\"directSecond\":{\"char\":\"B\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":215,\"g\":135,\"b\":95},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4292314975,\"backgroundArgb\":null},\"indexedFirst\":{\"char\":\"X\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":95,\"g\":135,\"b\":175},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":67,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"indexedSecond\":{\"char\":\"Y\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":215,\"g\":135,\"b\":95},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":173,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.fg.256: indices 67 and 173 match two independently observed canonical RGB cube references",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"directFirst\":{\"char\":\"A\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":95,\"g\":135,\"b\":175},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4284450735,\"backgroundArgb\":null},\"directSecond\":{\"char\":\"B\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":215,\"g\":135,\"b\":95},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4292314975,\"backgroundArgb\":null},\"indexedFirst\":{\"char\":\"X\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":95,\"g\":135,\"b\":175},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":67,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"indexedSecond\":{\"char\":\"Y\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":215,\"g\":135,\"b\":95},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":173,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    }
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    },
+    "scope": "stored palette indices 67 and 173 distinct from the literal RGB reference cells, resolved fg RGB equal to the canonical cube references under the one recorded palette; rendered appearance is not claimed"
+   }
+  },
+  {
+   "caseId": "sgr.bg.256",
+   "pinnedCriterion": "indices 67 and 173 match two independently observed canonical RGB cube references",
+   "pinnedFeeds": [
+    "C\u001b[48;2;95;135;175mA\u001b[48;2;215;135;95mB\u001b[48;5;67mX\u001b[48;5;173mY"
+   ],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[48;5;67m"
+    ],
+    "demand": "consumed (cursor advance does not verify SGR colors)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C\u001b[48;2;95;135;175mA\u001b[48;2;215;135;95mB\u001b[48;5;67mX\u001b[48;5;173mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[48;5;0mP\u001b[48;5;255mQ\u001b[0mR"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+   ],
+   "reads": [
+    [
+     0,
+     5
+    ],
+    [
+     0,
+     3
+    ]
+   ],
+   "observed": {
+    "fixture": [
+     {
+      "char": "C",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": null
+     },
+     {
+      "char": "A",
+      "flags": 256,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "literal",
+      "bgIndex": -1,
+      "backgroundArgb": 4284450735,
+      "fg": null,
+      "bg": {
+       "r": 95,
+       "g": 135,
+       "b": 175
+      }
+     },
+     {
+      "char": "B",
+      "flags": 256,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "literal",
+      "bgIndex": -1,
+      "backgroundArgb": 4292314975,
+      "fg": null,
+      "bg": {
+       "r": 215,
+       "g": 135,
+       "b": 95
+      }
+     },
+     {
+      "char": "X",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "palette",
+      "bgIndex": 67,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": {
+       "r": 95,
+       "g": 135,
+       "b": 175
+      }
+     },
+     {
+      "char": "Y",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "palette",
+      "bgIndex": 173,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": {
+       "r": 215,
+       "g": 135,
+       "b": 95
+      }
+     }
+    ],
+    "control": [
+     {
+      "char": "P",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "palette",
+      "bgIndex": 0,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": {
+       "r": 0,
+       "g": 0,
+       "b": 0
+      }
+     },
+     {
+      "char": "Q",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "palette",
+      "bgIndex": 255,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": {
+       "r": 238,
+       "g": 238,
+       "b": 238
+      }
+     },
+     {
+      "char": "R",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": null
+     }
+    ],
+    "reverseVideo": false,
+    "defaults": {
+     "fg": {
+      "r": 211,
+      "g": 211,
+      "b": 211
+     },
+     "bg": {
+      "r": 0,
+      "g": 0,
+      "b": 0
+     }
+    }
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"directFirst\":{\"char\":\"A\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":95,\"g\":135,\"b\":175},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4284450735},\"directSecond\":{\"char\":\"B\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":215,\"g\":135,\"b\":95},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4292314975},\"indexedFirst\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":95,\"g\":135,\"b\":175},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":67,\"foregroundArgb\":null,\"backgroundArgb\":null},\"indexedSecond\":{\"char\":\"Y\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":215,\"g\":135,\"b\":95},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":173,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.bg.256: indices 67 and 173 match two independently observed canonical RGB cube references",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"directFirst\":{\"char\":\"A\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":95,\"g\":135,\"b\":175},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4284450735},\"directSecond\":{\"char\":\"B\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":215,\"g\":135,\"b\":95},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4292314975},\"indexedFirst\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":95,\"g\":135,\"b\":175},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":67,\"foregroundArgb\":null,\"backgroundArgb\":null},\"indexedSecond\":{\"char\":\"Y\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":215,\"g\":135,\"b\":95},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":173,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    }
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    },
+    "scope": "stored palette indices 67 and 173 distinct from the literal RGB reference cells, resolved bg RGB equal to the canonical cube references under the one recorded palette; rendered appearance is not claimed"
+   }
+  },
+  {
+   "caseId": "sgr.fg.default",
+   "pinnedCriterion": "reset R restores the measured C fg after a distinct colored X",
+   "pinnedFeeds": [
+    "C\u001b[31mX\u001b[39mR"
+   ],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[39m"
+    ],
+    "demand": "consumed (cursor advance does not verify SGR colors)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C\u001b[31mX\u001b[39mR",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[31;42mA\u001b[39mB\u001b[0mR"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+   ],
+   "reads": [
+    [
+     0,
+     3
+    ],
+    [
+     0,
+     3
+    ]
+   ],
+   "observed": {
+    "fixture": [
+     {
+      "char": "C",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": null,
+      "bg": null
+     },
+     {
+      "char": "X",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": {
+       "r": 205,
+       "g": 0,
+       "b": 0
+      },
+      "bg": null
+     },
+     {
+      "char": "R",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": null,
+      "bg": null
+     }
+    ],
+    "control": [
+     {
+      "char": "A",
+      "flags": 49152,
+      "fgSource": "palette",
+      "fgIndex": 1,
+      "bgSource": "palette",
+      "bgIndex": 2,
+      "fg": {
+       "r": 205,
+       "g": 0,
+       "b": 0
+      },
+      "bg": {
+       "r": 0,
+       "g": 205,
+       "b": 0
+      }
+     },
+     {
+      "char": "B",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "palette",
+      "bgIndex": 2,
+      "fg": null,
+      "bg": {
+       "r": 0,
+       "g": 205,
+       "b": 0
+      }
+     },
+     {
+      "char": "R",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": null,
+      "bg": null
+     }
+    ],
+    "reverseVideo": false,
+    "defaults": {
+     "fg": {
+      "r": 211,
+      "g": 211,
+      "b": 211
+     },
+     "bg": {
+      "r": 0,
+      "g": 0,
+      "b": 0
+     }
+    }
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"before\":{\"char\":\"X\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":205,\"g\":0,\"b\":0},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"R\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.fg.default: reset R restores the measured C fg after a distinct colored X",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"before\":{\"char\":\"X\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":205,\"g\":0,\"b\":0},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"R\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    }
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    },
+    "scope": "explicit stored palette 1 setup, then the stored fg default marker with no palette or literal bytes; the setup must resolve distinctly from the theme default; rendered appearance is not claimed"
+   }
+  },
+  {
+   "caseId": "sgr.bg.default",
+   "pinnedCriterion": "reset R restores the measured C bg after a distinct colored X",
+   "pinnedFeeds": [
+    "C\u001b[42mX\u001b[49mR"
+   ],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[49m"
+    ],
+    "demand": "consumed (cursor advance does not verify SGR colors)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C\u001b[42mX\u001b[49mR",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[31;42mA\u001b[49mB\u001b[0mR"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+   ],
+   "reads": [
+    [
+     0,
+     3
+    ],
+    [
+     0,
+     3
+    ]
+   ],
+   "observed": {
+    "fixture": [
+     {
+      "char": "C",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": null,
+      "bg": null
+     },
+     {
+      "char": "X",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "palette",
+      "bgIndex": 2,
+      "fg": null,
+      "bg": {
+       "r": 0,
+       "g": 205,
+       "b": 0
+      }
+     },
+     {
+      "char": "R",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": null,
+      "bg": null
+     }
+    ],
+    "control": [
+     {
+      "char": "A",
+      "flags": 49152,
+      "fgSource": "palette",
+      "fgIndex": 1,
+      "bgSource": "palette",
+      "bgIndex": 2,
+      "fg": {
+       "r": 205,
+       "g": 0,
+       "b": 0
+      },
+      "bg": {
+       "r": 0,
+       "g": 205,
+       "b": 0
+      }
+     },
+     {
+      "char": "B",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": {
+       "r": 205,
+       "g": 0,
+       "b": 0
+      },
+      "bg": null
+     },
+     {
+      "char": "R",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "fg": null,
+      "bg": null
+     }
+    ],
+    "reverseVideo": false,
+    "defaults": {
+     "fg": {
+      "r": 211,
+      "g": 211,
+      "b": 211
+     },
+     "bg": {
+      "r": 0,
+      "g": 0,
+      "b": 0
+     }
+    }
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"before\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":205,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":2,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"R\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.bg.default: reset R restores the measured C bg after a distinct colored X",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"before\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":205,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":2,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"R\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    }
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    },
+    "scope": "explicit stored palette 2 setup, then the stored bg default marker with no palette or literal bytes; the setup must resolve distinctly from the theme default; rendered appearance is not claimed"
+   }
+  }
+ ]
+}
