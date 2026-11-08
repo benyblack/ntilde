@@ -4,20 +4,20 @@
  "note": "Ntilde finding, not a terminfo.dev case. Before = main App source (parser snaps five values); after = the fixed App. Same scripts revision for both runs.",
  "before": {
   "label": "before",
-  "runDir": "owned-8Z05an",
-  "runId": "5b6d980ffbe1057fa41efa415861714f",
+  "runDir": "owned-WzBTKL",
+  "runId": "763ceb3ab05a9b51ffd4b11f03f2bda4",
   "appRevision": "86546641",
-  "scriptsRevision": "31696fd4",
+  "scriptsRevision": "34b8e7ec",
   "sourceSnapshotPolicy": "readonly-owned-source-graph-v13",
   "receiptSchemaVersion": 19,
   "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
   "appVersion": "0.13.0",
-  "receiptCompletedAt": "2026-11-08T13:22:51.075Z",
+  "receiptCompletedAt": "2026-11-08T14:12:53.627Z",
   "findingEvidenceBinding": {
-   "runId": "5b6d980ffbe1057fa41efa415861714f",
+   "runId": "763ceb3ab05a9b51ffd4b11f03f2bda4",
    "suiteId": "ntilde-owned-truecolor-literal-finding-v1",
    "file": "sgtf-observations.json",
-   "sha256": "89c6f6c919280b977afb5063e0ac3362b350711923dd2316604a5d50accf6f94",
+   "sha256": "eb66184509637bef0d474c143fbeef7b47e927f10e75c4fd5c514e732d4a8464",
    "runFile": "sgtf-run.json",
    "runSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
    "contractsVersion": 1,
@@ -171,30 +171,30 @@
    },
    "suiteComplete": false,
    "probeHash": "16a690f34c0e",
-   "rawSha256": "e1bfa63fabb7b61a014b22f70b0d17c64b4b71bcbebbbba446be47a760bf32f9"
+   "rawSha256": "9a0ec67f92136f1d9776a63337b74330c9db9a824faf2427b3ed84f58a50da85"
   },
   "retained": {
-   "findingObservationsSha256": "89c6f6c919280b977afb5063e0ac3362b350711923dd2316604a5d50accf6f94",
+   "findingObservationsSha256": "eb66184509637bef0d474c143fbeef7b47e927f10e75c4fd5c514e732d4a8464",
    "findingRunSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
-   "findingJournalSha256": "7b5ecd0e6a4edb76095576c51334154619dc1744249306817fbeb424196a9146"
+   "findingJournalSha256": "4c351bd8ba9ef7cf910a9a345172ae9c758a021bd351d999ad25f82245f10664"
   }
  },
  "after": {
   "label": "after",
-  "runDir": "owned-gHDHuj",
-  "runId": "44bba6bdc262994a9565ab35d53ceedb",
-  "appRevision": "31696fd4",
-  "scriptsRevision": "31696fd4",
+  "runDir": "owned-huDNo0",
+  "runId": "68334378d2fda6c04ea7ae0b826347fa",
+  "appRevision": "34b8e7ec",
+  "scriptsRevision": "34b8e7ec",
   "sourceSnapshotPolicy": "readonly-owned-source-graph-v13",
   "receiptSchemaVersion": 19,
   "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
   "appVersion": "0.13.0",
-  "receiptCompletedAt": "2026-11-08T13:23:47.306Z",
+  "receiptCompletedAt": "2026-11-08T14:13:31.339Z",
   "findingEvidenceBinding": {
-   "runId": "44bba6bdc262994a9565ab35d53ceedb",
+   "runId": "68334378d2fda6c04ea7ae0b826347fa",
    "suiteId": "ntilde-owned-truecolor-literal-finding-v1",
    "file": "sgtf-observations.json",
-   "sha256": "e9e390c0266865071a93a15dd36aa3b0ef26676a93474e3f3af13ecf1595cd76",
+   "sha256": "410b599985a5c5e80ac87afcd51088a759b1a89086b46fbc16f819c51aec7921",
    "runFile": "sgtf-run.json",
    "runSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
    "contractsVersion": 1,
@@ -348,13 +348,42 @@
    },
    "suiteComplete": false,
    "probeHash": "16a690f34c0e",
-   "rawSha256": "fd47b4825e13b92208c95a6d487535556ff8ea025aecedbfe56da8be0eef4b07"
+   "rawSha256": "644d801a4e207ed0692d281827ed56f6d5a9a8af219bd5e46aec04068acb1b2e"
   },
   "retained": {
-   "findingObservationsSha256": "e9e390c0266865071a93a15dd36aa3b0ef26676a93474e3f3af13ecf1595cd76",
+   "findingObservationsSha256": "410b599985a5c5e80ac87afcd51088a759b1a89086b46fbc16f819c51aec7921",
    "findingRunSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
-   "findingJournalSha256": "0d195421e8db46d30630816568af59620925dd5c63ecc21257c9420ce18d64a4"
+   "findingJournalSha256": "1111fb38aed46325e376cb1683b6be65a22927f4271cc85a79a79c7cba7b1f64"
   }
  },
- "attempts": []
+ "attempts": [
+  {
+   "directory": "owned-8Z05an",
+   "runId": "5b6d980ffbe1057fa41efa415861714f",
+   "role": "before",
+   "outcome": "complete, superseded",
+   "receiptCompleted": true,
+   "receiptCounts": {
+    "unsupported": 10
+   },
+   "note": "First before measurement (main App 86546641, scripts 31696fd4, 10/10 unsupported). CodeRabbit then found that unrelated palette entries were only compared between reads, not with the run's start palette; the fix changes evidence validation, so both measurements were rerun. Retained unmodified locally."
+  },
+  {
+   "directory": "owned-gHDHuj",
+   "runId": "44bba6bdc262994a9565ab35d53ceedb",
+   "role": "after",
+   "outcome": "complete, superseded",
+   "receiptCompleted": true,
+   "receiptCounts": {
+    "supported": 10
+   },
+   "note": "First after measurement (fixed App 31696fd4, scripts 31696fd4, 10/10 supported), superseded for the same reason. Retained unmodified locally."
+  },
+  {
+   "directory": "owned-cvj6ym",
+   "outcome": "failed before collection",
+   "error": "Owned app exited before collection (0). Created while the local Codex review session ran in its sandbox; no collection evidence beyond the failure record",
+   "receiptCompleted": false
+  }
+ ]
 }

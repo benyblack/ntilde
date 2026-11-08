@@ -102,9 +102,9 @@ clear. Missing or invalid controls are inconclusive, never unsupported.
 | Run | App source | Result |
 |---|---|---|
 | before | main `86546641` | 10/10 **unsupported** (stored as palette 4/4/0/7/15; initial resolved color differs; changed by OSC 4) |
-| after | this change `31696fd4` | 10/10 **supported** (literal bytes; initial resolved equals the request; unchanged by OSC 4) |
+| after | this change `34b8e7ec` | 10/10 **supported** (literal bytes; initial resolved equals the request; unchanged by OSC 4) |
 
-Both runs use the same scripts revision `31696fd4` and complete their cleanup receipts.
+Both runs use the same scripts revision `34b8e7ec` and complete their cleanup receipts.
 Layers stay separate: stored literal bytes and palette indices, resolved RGB at the
 theme-resolution stage, and **no rendered-appearance claim**. In each run the 22 prior
 unique qualifications (ASCII text/bold/italic, SGR resets and stored indices, resolved
@@ -115,15 +115,24 @@ retained bytes. The stock collector keeps its own grades in both runs (86 suppor
 
 | Measure | before | after |
 |---|---|---|
-| Run | `5b6d980ffbe1057fa41efa415861714f` | `44bba6bdc262994a9565ab35d53ceedb` |
-| Receipt completed | 2026-11-08T13:22:51Z | 2026-11-08T13:23:47Z |
-| Local evidence | `artifacts/terminfo/owned-8Z05an` | `artifacts/terminfo/owned-gHDHuj` |
-| App revision | `86546641` (main) | `31696fd4` |
+| Run | `763ceb3ab05a9b51ffd4b11f03f2bda4` | `68334378d2fda6c04ea7ae0b826347fa` |
+| Receipt completed | 2026-11-08T14:12:53Z | 2026-11-08T14:13:31Z |
+| Local evidence | `artifacts/terminfo/owned-WzBTKL` | `artifacts/terminfo/owned-huDNo0` |
+| App revision | `86546641` (main) | `34b8e7ec` |
 
 Publication: [`summary.json`](2026-11-08-truecolor-literal-finding/summary.json) and, per run
 (`before/`, `after/`), the context and receipt, the run log, a common report, one report and
 one journal file per case (each ≤ 510 lines). The publication test reassembles both runs and
 re-derives the full reports.
+
+## Preserved attempts
+
+Kept unmodified locally and listed in the summary: the first before/after measurement pair
+(`owned-8Z05an` 10/10 unsupported, `owned-gHDHuj` 10/10 supported; scripts `31696fd4`),
+superseded because CodeRabbit found that unrelated palette entries were compared only
+between reads and not with the run's start palette — an evidence-validation change, so both
+runs were repeated — and the Codex-review-sandbox run `owned-cvj6ym`, which failed before
+collection. Later Codex-sandbox failure directories, if any, hold no evidence.
 
 ## Limits
 

@@ -4,7 +4,7 @@
   "start": {
    "index": 0,
    "kind": "sgtf-start",
-   "paneId": "1fefa811-81e3-46d9-be13-3936c05d9fe4",
+   "paneId": "3866083b-bef4-450d-8b63-10cebdc4c258",
    "barrier": null,
    "screen": {
     "rows": 40,
@@ -69,12 +69,12 @@
   "bind": {
    "index": 1,
    "kind": "sgtf-bind",
-   "paneId": "1fefa811-81e3-46d9-be13-3936c05d9fe4",
+   "paneId": "3866083b-bef4-450d-8b63-10cebdc4c258",
    "barrier": "\u001b[?62;4;22c",
    "screen": {
     "rows": 40,
     "cols": 140,
-    "lines": ["NTILDE_TF_5b6d980ffbe1057fa41efa415861714f", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+    "lines": ["NTILDE_TF_763ceb3ab05a9b51ffd4b11f03f2bda4", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
     "cursorRow": 0,
     "cursorCol": 42,
     "cursorVisible": true,
@@ -129,12 +129,12 @@
      }
     ]
    },
-   "sha256": "f95039ca9a5c6216c7a2c8f5caa5f9dae885e7542a1f08aa8c9399cf51a95dec"
+   "sha256": "090cc84b73055cbf916a34a66e4f523f201bec2bfe3111f4ef78e3d1b18dc8cd"
   },
   "finish": {
    "index": 32,
    "kind": "sgtf-finish",
-   "paneId": "1fefa811-81e3-46d9-be13-3936c05d9fe4",
+   "paneId": "3866083b-bef4-450d-8b63-10cebdc4c258",
    "barrier": "\u001b[?62;4;22c",
    "screen": {
     "rows": 40,
