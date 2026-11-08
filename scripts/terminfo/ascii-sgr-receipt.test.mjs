@@ -121,8 +121,8 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     // The grown v13 inventory carries its own policy; a v12-era run (policy v5,
     // 103 sources) still resolves to its own frozen file set.
     const { retainedInventory } = await import('./metadata-receipt.mjs');
-    const { capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, capturedV20SourceFiles, capturedV21SourceFiles, capturedV22SourceFiles, capturedV23SourceFiles, capturedV24SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
-    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v17');
+    const { capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, capturedV20SourceFiles, capturedV21SourceFiles, capturedV22SourceFiles, capturedV23SourceFiles, capturedV24SourceFiles, capturedV25SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
+    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v18');
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v5' }), capturedV12SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v6' }), capturedV13SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v7' }), capturedV14SourceFiles);
@@ -133,6 +133,7 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v12' }), capturedV19SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v13' }), capturedV20SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v14' }), capturedV21SourceFiles);
+    assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v18' }), capturedV25SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v17' }), capturedV24SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v16' }), capturedV23SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v15' }), capturedV22SourceFiles);
@@ -159,4 +160,6 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     assert.equal(Object.keys(capturedV23SourceFiles).length, 158);
     // The SGR selective-reset scope (five scripts) lives in v17.
     assert.equal(Object.keys(capturedV24SourceFiles).length, 163);
+    // The SGR closure scope (five scripts) lives in v18.
+    assert.equal(Object.keys(capturedV25SourceFiles).length, 168);
 });
