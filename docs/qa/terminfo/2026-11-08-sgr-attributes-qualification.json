@@ -1,25 +1,25 @@
 {
  "schemaVersion": 1,
- "measuredAt": "2026-11-08T01:02:03.153Z",
- "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+ "measuredAt": "2026-11-08T01:09:44.682Z",
+ "runId": "89ddff76fed173a64dd754e39a816270",
  "context": {
   "adapter": "ntilde-owned-macos-v1",
-  "adapterBundleSha256": "7e5750d640be90fa254f7ae0eac5b8d3c1bde4f0eaee185a240c34d683899287",
+  "adapterBundleSha256": "4df19d2c64ac7b1af8bf96e262f575efa8194bd0c62edc13e9bfb0dfc941aa9a",
   "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
   "appVersion": "0.13.0",
   "sourceSnapshotPolicy": "readonly-owned-source-graph-v10",
-  "sourceSnapshotManifestSha256": "8ad498b89739420b37030b9a8a204fa121cd7774751411e9d758c47b01b7d08b",
-  "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-01W5LX",
+  "sourceSnapshotManifestSha256": "fbbafc326bfc37bfea1d2781e034fa0ac968cda361e9b1d89cc31bdbb781a761",
+  "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-MWbzX2",
   "appVersionSource": "operator supplied; not independently verified",
-  "initialSettingsSha256": "fbf5d06b55bb61e7074cafd87af8692dec4dce6469f3ff1dfe5e5b68f485f549",
+  "initialSettingsSha256": "b412bf73cbb5de2abb2db80f11bc0988a1d2702ff9c024ef7bd5a508951e704f",
   "executable": "/Users/behnam/.ntilde-qa-sidecars/attrs/Debug/net10.0/Ntilde",
   "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
   "assemblySha256": "f28a2c857e44dff77da4a3746c0051ff6704b8305fdfce0f6c2351bbe2f9de72",
   "nodeVersion": "v24.22.2",
   "dependencyInstall": "isolated npm ci --ignore-scripts",
-  "startedAt": "2026-11-08T01:01:34.315Z",
-  "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
-  "runnerSourceSha256": "c776e0c0f24afe262d009d1c561e18e7dfea673bdec5713c426a66caaa305e7c",
+  "startedAt": "2026-11-08T01:09:16.023Z",
+  "runId": "89ddff76fed173a64dd754e39a816270",
+  "runnerSourceSha256": "4e6d39b3c0447f38d1b2896fcb585ba733a7658a6dc3771fe850db071509acdd",
   "adapterSourceSha256": "d21ad64158e39ca20c093cb1cad82f772a42afc0a460b5117ed6f3ff3f4d50e3",
   "ownershipSourceSha256": "f5399e038da078f1baba80d5a26b4d4c046136b31e1de42139e6349bc8b52f17",
   "workerSourceSha256": "c71192047aef75ea315862aa7d05353ee5689ffb652c41051e5c5d685c47a7dd",
@@ -142,9 +142,9 @@
   "sgrRgbInput1SourceSha256": "037c0442a1ccfe9d90997149d00b4c3511e63767b3b37f71310efcc0ccc8ad86",
   "sgrRgbInput2SourceSha256": "86bcbb0c65ae7f09fcd772acab05ebcdfd46399bff24ebf885790a41c28c3552",
   "sgrRgbInput3SourceSha256": "291e29d0cf0b8831db4044c2142dfde27144d14e341d13df30eee7dac831601e",
-  "sgrAttrsContractsSourceSha256": "54b9fa0d33e6f40282821c0daf3628c84560b7c0d4e9673d7556ccfca2c8b16c",
+  "sgrAttrsContractsSourceSha256": "adc20f44bf90ab9e4bf542e65db0dcd525e33e6669385dd2a7db57f6365e377c",
   "sgrAttrsCollectorSourceSha256": "4b3b302d97897f94d8ec6fad5e903b972fd3f323c3ca87c14acfb519d4a03e25",
-  "sgrAttrsGradingSourceSha256": "10c22f6e1c6c65fbb46a333a3117bdbb4a110bb6e243270f39c4dd58bc9dee9a",
+  "sgrAttrsGradingSourceSha256": "fdd660a54f732ab253e392ba5ef48afad7e3f0cd91bef4d435c6df6b93f15e5a",
   "sgrAttrsGradingCollectorSourceSha256": "8cdcf650eeba3e14201788b88c079e5baaf9c36221af25f80260c696dbbae942",
   "sgrAttrsReceiptSourceSha256": "d8e045de7e17e19a8bf264ace488944ff32bf5a583f9cd54a1cd85102e773b1f",
   "retainedAdapterBundle": "collector-adapter.mjs",
@@ -175,22 +175,22 @@
   "pixels": "nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing",
   "gradingAdapterId": "ntilde-owned-ascii-sgr-grading-v1",
   "asciiSgrSuiteId": "ntilde-owned-ascii-sgr-graded-v1",
-  "gradingBundleSha256": "3e5d0f0a9e7e4c9656ad848d133cca89404198bf9c9e9fbed9998154ceb3c93c",
+  "gradingBundleSha256": "67649707d95f6f134fee93b5158a681c7752bd2908c0a7ff5d78d11121ca888d",
   "gradingContractsVersion": 1,
   "grading": "versioned collector extension; pinned termless criteria replayed on parent-observed cells; not stock output",
   "sgrColorsAdapterId": "ntilde-owned-sgr-colors-grading-v1",
   "sgrColorsSuiteId": "ntilde-owned-sgr-colors-graded-v1",
-  "sgrColorsBundleSha256": "a2a6f3e9f2a122066381ec05f65a4eabc56d0198af2d18bbfd77f3bdb16cb98a",
+  "sgrColorsBundleSha256": "694f23e0428b3b06dca3cb1207dd52e870d84a77343fcadcf827cfbe81693515",
   "sgrColorsContractsVersion": 2,
   "sgrColors": "layered versioned collector extension; pinned reset/standard-color termless criteria replayed on parent-observed stored attributes and palette indices; not stock output",
   "sgrAttrsAdapterId": "ntilde-owned-sgr-attributes-grading-v1",
   "sgrAttrsSuiteId": "ntilde-owned-sgr-attributes-graded-v1",
-  "sgrAttrsBundleSha256": "acd7680f33071aba942cfaac3a4ced4f265d8f56c8e0210fdd9d970483bd106d",
+  "sgrAttrsBundleSha256": "1ff1496a42132f69717eb9918712bebf40c7b53b59cff6e67bbd001db5b83432",
   "sgrAttrsContractsVersion": 1,
   "sgrAttrs": "layered versioned collector extension; pinned SGR attribute termless criteria (underline.single, inverse, faint, hidden, strikethrough) replayed on parent-observed stored flags and underline style with DECSCNM, neutral-baseline and reset controls; stored state only, no pixels; not stock output",
   "sgrRgbAdapterId": "ntilde-owned-sgr-rgb-grading-v1",
   "sgrRgbSuiteId": "ntilde-owned-sgr-rgb-graded-v1",
-  "sgrRgbBundleSha256": "6179117364428b30c498e76f76a21c7334e0c9d7d7cded986b51f7dc70275b8c",
+  "sgrRgbBundleSha256": "eba10169b491baff631071d22dff63f2b57cab5dfdf14219d434098b6411896d",
   "sgrRgbContractsVersion": 1,
   "sgrRgb": "layered versioned collector extension; pinned named-color RGB termless criteria replayed on parent-observed App-resolved colors bound to one recorded theme state; not stock output",
   "resolvedColors": "opt-in readScreen projection resolved in the App rendering layer; storage-to-theme resolution stage, one coherent render snapshot; no pixels",
@@ -198,24 +198,24 @@
   "attributes": "separate ASCII SGR flags and palette-index suite",
   "cellDetails": "separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels",
   "cursorModes": "stored cursor style/blink/default/visibility; pristine owned DECSTR cleanup, no host appearance or blink phase",
-  "ownerPid": 17330
+  "ownerPid": 25820
  },
  "contractsVersion": 1,
  "adapter": {
   "id": "ntilde-owned-sgr-attributes-grading-v1",
   "derivedFromAdapterId": "ntilde-owned-sgr-rgb-grading-v1",
-  "bundleSha256": "acd7680f33071aba942cfaac3a4ced4f265d8f56c8e0210fdd9d970483bd106d",
+  "bundleSha256": "1ff1496a42132f69717eb9918712bebf40c7b53b59cff6e67bbd001db5b83432",
   "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
  },
  "sgrAttrsReport": {
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-sgr-attributes-graded-v1",
-  "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+  "runId": "89ddff76fed173a64dd754e39a816270",
   "contractsVersion": 1,
   "adapter": {
    "id": "ntilde-owned-sgr-attributes-grading-v1",
    "derivedFromAdapterId": "ntilde-owned-sgr-rgb-grading-v1",
-   "bundleSha256": "acd7680f33071aba942cfaac3a4ced4f265d8f56c8e0210fdd9d970483bd106d",
+   "bundleSha256": "1ff1496a42132f69717eb9918712bebf40c7b53b59cff6e67bbd001db5b83432",
    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 sgrProbe termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored attribute flags and underline style, with controls for initially inactive attributes, unrelated-attribute drift, DECSCNM and reset restoration. Stored state only: no rendered appearance, no stock grades.",
@@ -301,7 +301,7 @@
     },
     "pinned": {
      "pass": true,
-     "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1}",
+     "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1}",
      "note": null,
      "observation": {
       "outcome": "supported",
@@ -311,7 +311,7 @@
       {
        "kind": "positive",
        "expected": "sgr.underline.single: attribute applied to the rendered X cell",
-       "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1}"
+       "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1}"
       }
      ]
     },
@@ -400,7 +400,7 @@
     },
     "pinned": {
      "pass": true,
-     "response": "{\"char\":\"X\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
+     "response": "{\"char\":\"X\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
      "note": null,
      "observation": {
       "outcome": "supported",
@@ -410,7 +410,7 @@
       {
        "kind": "positive",
        "expected": "sgr.inverse: attribute applied to the rendered X cell",
-       "observed": "{\"char\":\"X\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
+       "observed": "{\"char\":\"X\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
       }
      ]
     },
@@ -509,7 +509,7 @@
     },
     "pinned": {
      "pass": true,
-     "response": "{\"char\":\"X\",\"flags\":832,\"bold\":false,\"dim\":true,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
+     "response": "{\"char\":\"X\",\"flags\":832,\"bold\":false,\"dim\":true,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
      "note": null,
      "observation": {
       "outcome": "supported",
@@ -519,7 +519,7 @@
       {
        "kind": "positive",
        "expected": "sgr.faint: attribute applied to the rendered X cell",
-       "observed": "{\"char\":\"X\",\"flags\":832,\"bold\":false,\"dim\":true,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
+       "observed": "{\"char\":\"X\",\"flags\":832,\"bold\":false,\"dim\":true,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
       }
      ]
     },
@@ -608,7 +608,7 @@
     },
     "pinned": {
      "pass": true,
-     "response": "{\"char\":\"X\",\"flags\":896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":true,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
+     "response": "{\"char\":\"X\",\"flags\":896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":true,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
      "note": null,
      "observation": {
       "outcome": "supported",
@@ -618,7 +618,7 @@
       {
        "kind": "positive",
        "expected": "sgr.hidden: attribute applied to the rendered X cell",
-       "observed": "{\"char\":\"X\",\"flags\":896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":true,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
+       "observed": "{\"char\":\"X\",\"flags\":896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":true,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
       }
      ]
     },
@@ -707,7 +707,7 @@
     },
     "pinned": {
      "pass": true,
-     "response": "{\"char\":\"X\",\"flags\":784,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":true,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
+     "response": "{\"char\":\"X\",\"flags\":784,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":true,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
      "note": null,
      "observation": {
       "outcome": "supported",
@@ -717,7 +717,7 @@
       {
        "kind": "positive",
        "expected": "sgr.strikethrough: attribute applied to the rendered X cell",
-       "observed": "{\"char\":\"X\",\"flags\":784,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":true,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
+       "observed": "{\"char\":\"X\",\"flags\":784,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":true,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
       }
      ]
     },
@@ -736,7 +736,7 @@
    {
     "index": 0,
     "kind": "sgattr-start",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": null,
     "screen": {
      "rows": 40,
@@ -796,6 +796,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 5600,
        "flags": 768,
        "fg": -1,
@@ -1093,18 +1094,18 @@
       }
      ]
     },
-    "sha256": "e3cec49cfaa231ba4f2663807cd175f2ccc6712deb0af1be181a5337db798620"
+    "sha256": "97036ded7fe2edc1c7ca7398c67b5dda9b1748a85cfe449c3a810bb2cd559a9d"
    },
    {
     "index": 1,
     "kind": "sgattr-bind",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
      "cols": 140,
      "lines": [
-      "NTILDE_SA_af3916def9dfe3f9bbcaa6dee5c8230f",
+      "NTILDE_SA_89ddff76fed173a64dd754e39a816270",
       "",
       "",
       "",
@@ -1158,6 +1159,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 5600,
        "flags": 768,
        "fg": -1,
@@ -1455,12 +1457,12 @@
       }
      ]
     },
-    "sha256": "fa787e79652f0bdec90e9bd79c358591d20af9f713e273fd6983ba4a799604a2"
+    "sha256": "6d3e0f6839e8ed783096efbc44eab6a2f9e266820a9ba36015c5a5a294154b19"
    },
    {
     "index": 2,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -1520,6 +1522,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 5600,
        "flags": 768,
        "fg": -1,
@@ -1817,12 +1820,12 @@
       }
      ]
     },
-    "sha256": "09155734cc417495a3c382b10cd44d4c11a589e161b7aa1b3c74f11a3574f211"
+    "sha256": "d5d214e36a84cf5466d59aeb212665e38e3aa4b158543082c214f15ceb962cff"
    },
    {
     "index": 3,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -1888,6 +1891,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 1,
        "flags": 776,
        "fg": -1,
@@ -1899,6 +1903,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 5599,
        "flags": 768,
        "fg": -1,
@@ -2196,12 +2201,12 @@
       }
      ]
     },
-    "sha256": "12e417a3304ce389022ed21de7719779e29737fd4b32f82e430d0b44fb3e98de"
+    "sha256": "590c028747cbce12ff73c51ea368aab17c5738aa090635009539514ba38cb8c9"
    },
    {
     "index": 4,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -2267,6 +2272,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 1,
        "flags": 776,
        "fg": -1,
@@ -2278,6 +2284,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 5599,
        "flags": 768,
        "fg": -1,
@@ -2575,12 +2582,12 @@
       }
      ]
     },
-    "sha256": "41ad7630ce24bd4acc0d071d0cda75044b2406115e905058f55c255d3f21be76"
+    "sha256": "36087623d46fa5c0c0fd830eabfdb4be19b8a5510987b67a8fe7a303201d1428"
    },
    {
     "index": 5,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -2640,6 +2647,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 5600,
        "flags": 768,
        "fg": -1,
@@ -2937,12 +2945,12 @@
       }
      ]
     },
-    "sha256": "09155734cc417495a3c382b10cd44d4c11a589e161b7aa1b3c74f11a3574f211"
+    "sha256": "d5d214e36a84cf5466d59aeb212665e38e3aa4b158543082c214f15ceb962cff"
    },
    {
     "index": 6,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -3008,6 +3016,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 1,
        "flags": 770,
        "fg": -1,
@@ -3019,6 +3028,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 5599,
        "flags": 768,
        "fg": -1,
@@ -3316,12 +3326,12 @@
       }
      ]
     },
-    "sha256": "f8478d2cbf6e2024a91490ee1f9e1b51a3dd52e08317787c3d430eb352683154"
+    "sha256": "6634eaa76c308dce0f9753ffff38d0aa92e235a94eb12c236d86ed857ffc810a"
    },
    {
     "index": 7,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -3387,6 +3397,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 1,
        "flags": 770,
        "fg": -1,
@@ -3398,6 +3409,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 5599,
        "flags": 768,
        "fg": -1,
@@ -3695,12 +3707,12 @@
       }
      ]
     },
-    "sha256": "b57962694435c6456d072d7085696893ab0640ae5da0ec6680924a382e75535c"
+    "sha256": "97f4681569a82d07df943268d46a60b53855d23a309dd1cd74ce3439e7f6b4e7"
    },
    {
     "index": 8,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -3760,6 +3772,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 5600,
        "flags": 768,
        "fg": -1,
@@ -4057,12 +4070,12 @@
       }
      ]
     },
-    "sha256": "09155734cc417495a3c382b10cd44d4c11a589e161b7aa1b3c74f11a3574f211"
+    "sha256": "d5d214e36a84cf5466d59aeb212665e38e3aa4b158543082c214f15ceb962cff"
    },
    {
     "index": 9,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -4128,6 +4141,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 1,
        "flags": 832,
        "fg": -1,
@@ -4139,6 +4153,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 5599,
        "flags": 768,
        "fg": -1,
@@ -4436,12 +4451,12 @@
       }
      ]
     },
-    "sha256": "905a874966aed001b7811dd4b189c760471f236b68f7f7fa5709caac146a6c7e"
+    "sha256": "c31124e175320dc74f9a4a828ee532d77bc23f668559b0d5ce12b0624882a1ed"
    },
    {
     "index": 10,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -4513,6 +4528,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 1,
        "flags": 832,
        "fg": -1,
@@ -4524,6 +4540,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 1,
        "flags": 833,
        "fg": -1,
@@ -4535,6 +4552,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 5598,
        "flags": 768,
        "fg": -1,
@@ -4832,12 +4850,12 @@
       }
      ]
     },
-    "sha256": "d8628684da7cc56914c48f52ae0ba0be2417030e0703997ec404c77ebe11a510"
+    "sha256": "51ed6e29625ec27fa19f328424919c2711af536aeb1c339acd52cbc51c7cf475"
    },
    {
     "index": 11,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -4897,6 +4915,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 5600,
        "flags": 768,
        "fg": -1,
@@ -5194,12 +5213,12 @@
       }
      ]
     },
-    "sha256": "09155734cc417495a3c382b10cd44d4c11a589e161b7aa1b3c74f11a3574f211"
+    "sha256": "d5d214e36a84cf5466d59aeb212665e38e3aa4b158543082c214f15ceb962cff"
    },
    {
     "index": 12,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -5265,6 +5284,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 1,
        "flags": 896,
        "fg": -1,
@@ -5276,6 +5296,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 5599,
        "flags": 768,
        "fg": -1,
@@ -5573,12 +5594,12 @@
       }
      ]
     },
-    "sha256": "b0d89c8c42d73b34522ed39983c028116a1e1ee5763c6d6c16d9d34f1cd284c4"
+    "sha256": "02e89eb2d0b7d6923f42394631e0aa803900089e904241ec632b4d1bfdf1c328"
    },
    {
     "index": 13,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -5644,6 +5665,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 1,
        "flags": 896,
        "fg": -1,
@@ -5655,6 +5677,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 5599,
        "flags": 768,
        "fg": -1,
@@ -5952,12 +5975,12 @@
       }
      ]
     },
-    "sha256": "9e989500c03330dda9f5ef69c22cdb40b37b3bb308a5e531eaafe970875673a5"
+    "sha256": "0a73e83eed13df3f612da340d3955bf4e7e7a0d7819069fe894b3b77977a2c08"
    },
    {
     "index": 14,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -6017,6 +6040,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 5600,
        "flags": 768,
        "fg": -1,
@@ -6314,12 +6338,12 @@
       }
      ]
     },
-    "sha256": "09155734cc417495a3c382b10cd44d4c11a589e161b7aa1b3c74f11a3574f211"
+    "sha256": "d5d214e36a84cf5466d59aeb212665e38e3aa4b158543082c214f15ceb962cff"
    },
    {
     "index": 15,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -6385,6 +6409,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 1,
        "flags": 784,
        "fg": -1,
@@ -6396,6 +6421,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 5599,
        "flags": 768,
        "fg": -1,
@@ -6693,12 +6719,12 @@
       }
      ]
     },
-    "sha256": "91f5de64a39ed149b4916f9754c61f7df6424bded7c188b290890ca024e8bd59"
+    "sha256": "1da2f1c49e6d5e36eac43cae9a1870d287dcf0846a660693810a09d65876c8d6"
    },
    {
     "index": 16,
     "kind": "sgattr-read",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -6764,6 +6790,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 1,
        "flags": 784,
        "fg": -1,
@@ -6775,6 +6802,7 @@
        "underlineArgb": null
       },
       {
+       "overline": false,
        "count": 5599,
        "flags": 768,
        "fg": -1,
@@ -7072,12 +7100,12 @@
       }
      ]
     },
-    "sha256": "c4412098e4e4286ae278b3ad96861262c5fd4ed73e012ace3a8ec5058e7ace0a"
+    "sha256": "f36de0ec0784c3d2cbf07d39e5074b95ea7ea1d46e81e34be998cf567fc65dd4"
    },
    {
     "index": 17,
     "kind": "sgattr-finish",
-    "paneId": "c9a6545c-726f-4f24-b155-b38400bf8934",
+    "paneId": "818b1a67-870b-4734-9ed0-bff76985bbff",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
      "rows": 40,
@@ -7137,6 +7165,7 @@
      ],
      "cellDetails": [
       {
+       "overline": false,
        "count": 5600,
        "flags": 768,
        "fg": -1,
@@ -7434,7 +7463,7 @@
       }
      ]
     },
-    "sha256": "e3cec49cfaa231ba4f2663807cd175f2ccc6712deb0af1be181a5337db798620"
+    "sha256": "97036ded7fe2edc1c7ca7398c67b5dda9b1748a85cfe449c3a810bb2cd559a9d"
    }
   ]
  },
@@ -7491,7 +7520,7 @@
     "pinned": {
      "probeId": "sgr.underline.single",
      "pass": true,
-     "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1}",
+     "response": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1}",
      "observation": {
       "outcome": "supported",
       "evidence": "parser-state"
@@ -7500,7 +7529,7 @@
       {
        "kind": "positive",
        "expected": "sgr.underline.single: attribute applied to the rendered X cell",
-       "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1}"
+       "observed": "{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1}"
       }
      ]
     }
@@ -7547,7 +7576,7 @@
     "pinned": {
      "probeId": "sgr.inverse",
      "pass": true,
-     "response": "{\"char\":\"X\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
+     "response": "{\"char\":\"X\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
      "observation": {
       "outcome": "supported",
       "evidence": "parser-state"
@@ -7556,7 +7585,7 @@
       {
        "kind": "positive",
        "expected": "sgr.inverse: attribute applied to the rendered X cell",
-       "observed": "{\"char\":\"X\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
+       "observed": "{\"char\":\"X\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
       }
      ]
     }
@@ -7603,7 +7632,7 @@
     "pinned": {
      "probeId": "sgr.faint",
      "pass": true,
-     "response": "{\"char\":\"X\",\"flags\":832,\"bold\":false,\"dim\":true,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
+     "response": "{\"char\":\"X\",\"flags\":832,\"bold\":false,\"dim\":true,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
      "observation": {
       "outcome": "supported",
       "evidence": "parser-state"
@@ -7612,7 +7641,7 @@
       {
        "kind": "positive",
        "expected": "sgr.faint: attribute applied to the rendered X cell",
-       "observed": "{\"char\":\"X\",\"flags\":832,\"bold\":false,\"dim\":true,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
+       "observed": "{\"char\":\"X\",\"flags\":832,\"bold\":false,\"dim\":true,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
       }
      ]
     }
@@ -7659,7 +7688,7 @@
     "pinned": {
      "probeId": "sgr.hidden",
      "pass": true,
-     "response": "{\"char\":\"X\",\"flags\":896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":true,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
+     "response": "{\"char\":\"X\",\"flags\":896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":true,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
      "observation": {
       "outcome": "supported",
       "evidence": "parser-state"
@@ -7668,7 +7697,7 @@
       {
        "kind": "positive",
        "expected": "sgr.hidden: attribute applied to the rendered X cell",
-       "observed": "{\"char\":\"X\",\"flags\":896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":true,\"strikethrough\":false,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
+       "observed": "{\"char\":\"X\",\"flags\":896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":true,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
       }
      ]
     }
@@ -7715,7 +7744,7 @@
     "pinned": {
      "probeId": "sgr.strikethrough",
      "pass": true,
-     "response": "{\"char\":\"X\",\"flags\":784,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":true,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
+     "response": "{\"char\":\"X\",\"flags\":784,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":true,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}",
      "observation": {
       "outcome": "supported",
       "evidence": "parser-state"
@@ -7724,7 +7753,7 @@
       {
        "kind": "positive",
        "expected": "sgr.strikethrough: attribute applied to the rendered X cell",
-       "observed": "{\"char\":\"X\",\"flags\":784,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":true,\"blink\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
+       "observed": "{\"char\":\"X\",\"flags\":784,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":true,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0}"
       }
      ]
     }
@@ -7804,7 +7833,7 @@
   "suiteComplete": false,
   "probeHash": "16a690f34c0e",
   "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
-  "rawSha256": "83b6c3684dfb9eb0290ed30bcc1c636a0101d34e96b42144c61f91e3796f23c9",
+  "rawSha256": "e66c7d541fe72eb4b6f06c8474c61751dec2a3a9122004643431acd43ce3c0cc",
   "probes": {
    "sgr.faint": {
     "outcome": "inconclusive",
@@ -7845,32 +7874,32 @@
  },
  "receipt": {
   "schemaVersion": 16,
-  "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+  "runId": "89ddff76fed173a64dd754e39a816270",
   "suiteId": "ntilde-owned-ascii-cells-v1",
   "file": "cell-observations.json",
-  "sha256": "8d6ae91205e11383c559eac686489b8fb692af0db7c8962cbc917a3e0503988e",
+  "sha256": "a106d30847d2742f295e1810137b11b20979624afa5044bc2cae4e83b6acf111",
   "counts": {
    "passed": 8
   },
   "provisionalUntil": "cell-receipt.json",
   "sgrEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-sgr-indices-v1",
    "file": "sgr-observations.json",
-   "sha256": "f668357ecb54a3b74d237e93cae90cf1b536c9be91a055e10b481be9edf23bb2",
+   "sha256": "12f58da139e826a697a8b5cf0b66e82ee46218b898adf197957db65459f8a305",
    "counts": {
     "passed": 17
    },
    "provisionalUntil": "cell-receipt.json"
   },
   "gradingEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
    "file": "grading-observations.json",
-   "sha256": "3dee1cbca7f3f3b184df76bbd63c72e9b5373c63d85b196885ad5c73c970801c",
+   "sha256": "bff6badce279e32b82b50e3b4c716dd5c8f251dfc08e29a7b3ea38dd4707ad48",
    "runFile": "grading-run.json",
    "runSha256": "eff452cfc4f44b8339d020780bcc9ae17962c4f110fb5d47e2d92edf6f6418cf",
-   "adapterBundleSha256": "3e5d0f0a9e7e4c9656ad848d133cca89404198bf9c9e9fbed9998154ceb3c93c",
+   "adapterBundleSha256": "67649707d95f6f134fee93b5158a681c7752bd2908c0a7ff5d78d11121ca888d",
    "contractsVersion": 1,
    "counts": {
     "supported": 4
@@ -7878,13 +7907,13 @@
    "provisionalUntil": "cell-receipt.json"
   },
   "sgrColorsEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-sgr-colors-graded-v1",
    "file": "sgcolors-observations.json",
-   "sha256": "a98fb464aee61def60e33d0c3de4bcb04411c172cae9f6fc5344f5e075ac7dbd",
+   "sha256": "7670e013429ba3ed9e756603226b664208c666afd254bbd03954e86d793a27dc",
    "runFile": "sgcolors-run.json",
    "runSha256": "71b4bb63f8ad984bac39fe9f1c91c9e1432b39b2bce5c1e3c2f45a3076a3b916",
-   "adapterBundleSha256": "a2a6f3e9f2a122066381ec05f65a4eabc56d0198af2d18bbfd77f3bdb16cb98a",
+   "adapterBundleSha256": "694f23e0428b3b06dca3cb1207dd52e870d84a77343fcadcf827cfbe81693515",
    "contractsVersion": 2,
    "counts": {
     "supported": 5
@@ -7892,13 +7921,13 @@
    "provisionalUntil": "cell-receipt.json"
   },
   "sgrRgbEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-sgr-rgb-graded-v1",
    "file": "sgrgb-observations.json",
-   "sha256": "43be8b19502450475893bd1da5b2d757563f92f70d805a30ac214805e5a28f2e",
+   "sha256": "b193e880fb03961e2946c3773f9e99a054a43f21af8f13475b01098e5e909f1c",
    "runFile": "sgrgb-run.json",
    "runSha256": "08c884b24fa5a793184d981113f958f1b334b722aac654d9702c836ce51a7478",
-   "adapterBundleSha256": "6179117364428b30c498e76f76a21c7334e0c9d7d7cded986b51f7dc70275b8c",
+   "adapterBundleSha256": "eba10169b491baff631071d22dff63f2b57cab5dfdf14219d434098b6411896d",
    "contractsVersion": 1,
    "counts": {
     "supported": 2
@@ -7906,13 +7935,13 @@
    "provisionalUntil": "cell-receipt.json"
   },
   "sgrAttrsEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-sgr-attributes-graded-v1",
    "file": "sgattr-observations.json",
-   "sha256": "85b545889232aec3ce5b8e9c96d4a0a79629b78fb4e117c5d4c360c6437aca14",
+   "sha256": "9a0635d9463d0669451a95515398ce5fc996689879da1f0c31b4e5bf17bdaa8e",
    "runFile": "sgattr-run.json",
-   "runSha256": "4a7db8bd104db16b0f8035937fabe1e707fdc0d4e5e3c9a765bbc0e4bf6cd015",
-   "adapterBundleSha256": "acd7680f33071aba942cfaac3a4ced4f265d8f56c8e0210fdd9d970483bd106d",
+   "runSha256": "ba059530fffa101c8df5e1a814a950825ff4ce7c1bd6a3ae1779b3efdd37fb9f",
+   "adapterBundleSha256": "1ff1496a42132f69717eb9918712bebf40c7b53b59cff6e67bbd001db5b83432",
    "contractsVersion": 1,
    "counts": {
     "supported": 5
@@ -7920,30 +7949,30 @@
    "provisionalUntil": "cell-receipt.json"
   },
   "rgbEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-rgb-underline-v1",
    "file": "rgb-observations.json",
-   "sha256": "0f414b4515335117b6e3edb0b0ea262756e4191ac9897671026f4459be1cd2e9",
+   "sha256": "8c2bb3a385d656fba4a00883cf5ad9a025608f3263ba7d0bb8deb024923038a5",
    "counts": {
     "passed": 20
    },
    "provisionalUntil": "cell-receipt.json"
   },
   "renditionEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-rendition-charsets-v3",
    "file": "rendition-observations.json",
-   "sha256": "ffac241efc1030dbb6c1e2f458593a62717138186921b04eb597cdff59b8c908",
+   "sha256": "4c4ba94252ac37d1b4ccaca826c145e11d059bc965859bbc213e1dad80e92d15",
    "counts": {
     "passed": 19
    },
    "provisionalUntil": "cell-receipt.json"
   },
   "cursorEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-cursor-modes-v1",
    "file": "cursor-observations.json",
-   "sha256": "d4fcbc176918d58b1e371ca6e638d50e9bbaaf127db8eccfebf9e90b089397f8",
+   "sha256": "34efcf3c07be63507c5e0f893fa9eb65151f8d833eb1a53e8443ad3c582d895b",
    "counts": {
     "passed": 8,
     "failed": 1
@@ -7951,10 +7980,10 @@
    "provisionalUntil": "cell-receipt.json"
   },
   "pixelEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-render-pixels-v1",
    "file": "pixel-observations.json",
-   "sha256": "7fa32f404fcba92b3ce8222adbb45928c11931461d85d7fae1ce998f656c4c89",
+   "sha256": "2b8af8369e637ed11c27a3433022be650183730d97451fb3650c2346f7359ca8",
    "counts": {
     "passed": 24,
     "failed": 1
@@ -7962,70 +7991,70 @@
    "provisionalUntil": "cell-receipt.json"
   },
   "colorEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-runtime-colors-v1",
    "file": "color-observations.json",
-   "sha256": "655507de6892cafb79421816f67b6809023f06b707f41ab132777df58d9b860a",
+   "sha256": "bf126cd415f36c829cf2c4fd661a8043458ec15b7e4d21bfe9e46c1279f494f4",
    "counts": {
     "passed": 10
    },
    "provisionalUntil": "cell-receipt.json"
   },
   "eraseEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-erasure-v1",
    "file": "erase-observations.json",
-   "sha256": "2fa9c089e7fc72cf0a1ef3373554ab5c475a4ba5523b0de5fd70bbc880242f87",
+   "sha256": "ec43412c56941516df7a411b80b0e1d6a14b3415a380da910ccb7a978d3591ab",
    "counts": {
     "passed": 13
    },
    "provisionalUntil": "cell-receipt.json"
   },
   "editingEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-cell-editing-v1",
    "file": "editing-observations.json",
-   "sha256": "7c831446bf71a83835db2a0ccbcd690c46a7918ace93feff55d8cf7b828b1c83",
+   "sha256": "d3af98eabcf503e372262031b2c8f0d8bce262fd9db913a31752d53b24fd52bf",
    "counts": {
     "passed": 22
    },
    "provisionalUntil": "cell-receipt.json"
   },
   "historyEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-history-scrolling-v1",
    "file": "history-observations.json",
-   "sha256": "745b306c01a38568b15dcaf448e701959ed53b34ca39577fa262a2d9490317a2",
+   "sha256": "2eb1b620d58c397b294c940c9f7217ae90ea8eb6c7a013587d6207bc47b37b23",
    "counts": {
     "passed": 30
    },
    "provisionalUntil": "cell-receipt.json"
   },
   "resizeEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-resize-reflow-v1",
    "file": "resize-observations.json",
-   "sha256": "0bf34992242be7abde3277ab87cb60a67891bd96bc9ff10374dc5ad64248a0a6",
+   "sha256": "02cbd07ac3927474488f0d16edf3c98e20eaf77a3481696cbb9fb81c927ad11a",
    "counts": {
     "passed": 3
    },
    "provisionalUntil": "cell-receipt.json"
   },
   "savedEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-saved-alternate-v1",
    "file": "saved-observations.json",
-   "sha256": "246a52f213b7171be78440841f7e4dc258e8528ac3975171ac21d4cfe08d9b58",
+   "sha256": "d66f5db2fdc56e76e08fbca8d2110c63705459a7d9e4538d623d5645480463d4",
    "counts": {
     "passed": 9
    },
    "provisionalUntil": "cell-receipt.json"
   },
   "metadataEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-pane-metadata-v1",
    "file": "metadata-observations.json",
-   "sha256": "444da0f71450bac442f53e69b7ff8ffcf343432d1b5118af7ae8284c9c031250",
+   "sha256": "04c0dfdc8c363942c827a7f3244e167e5c60ee232a1c11a43aac1f4af20dac92",
    "counts": {
     "passed": 10,
     "inconclusive": 2,
@@ -8034,20 +8063,20 @@
    "provisionalUntil": "cell-receipt.json"
   },
   "inputEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-routed-input-v1",
    "file": "input-observations.json",
-   "sha256": "dbc8b5144aa59c682e94dfdafaf27ef45965e108969291a0871ec2f7392198d3",
+   "sha256": "eb2d2077b785d6ca619d51ead349c37223774be7dfb97fd89c7f52fc46cf380a",
    "counts": {
     "passed": 39
    },
    "provisionalUntil": "cell-receipt.json"
   },
   "staticImageEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-static-images-v1",
    "file": "image-observations.json",
-   "sha256": "21662762b2e312748ad3fade5043beccdbed73fa84c51ce0aec40d942c6614a9",
+   "sha256": "7af782be95ede39ef43d3e70bc1d4589bd7cc80a8627f50cb7d64224e980f7ad",
    "counts": {
     "passed": 21,
     "failed": 1,
@@ -8056,10 +8085,10 @@
    "provisionalUntil": "cell-receipt.json"
   },
   "queryEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-exact-queries-v1",
    "file": "query-observations.json",
-   "sha256": "8ab0b17da39a3034fe99de2fd45428a064dad1a39dba0659170157ad09510534",
+   "sha256": "b54e0bfd1733b8d3c330cc9ba7e2d219a197ec0c67a26069a4c13c3872a5c005",
    "counts": {
     "matched": 33,
     "mismatched": 7
@@ -8067,30 +8096,30 @@
    "provisionalUntil": "cell-receipt.json"
   },
   "privateClipboardEvidence": {
-   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "runId": "89ddff76fed173a64dd754e39a816270",
    "suiteId": "ntilde-owned-private-clipboard-v1",
    "file": "private-clipboard-observations.json",
-   "sha256": "4e4eeb3febba3db2748c6c42ec847363b7adcb916fc0d2f6faadf2c189ea5a99",
+   "sha256": "653f9f2173d3bb00c500d8eaada84213a0b69889f388b77add2c38caa645cbd9",
    "counts": {
     "completedProbes": 3,
     "acceptedWrites": 2
    },
    "complete": true
   },
-  "ownershipProofSha256": "49d3cc932e58ec635b1906717f4e35f411d8858a33751123d5f81a93ff785824",
-  "contextSha256": "2d7664a727e8bd0f9d2a306e22d8c9e52e594ce1c1f8c281c178070ae8e5ea91",
-  "rawSha256": "83b6c3684dfb9eb0290ed30bcc1c636a0101d34e96b42144c61f91e3796f23c9",
+  "ownershipProofSha256": "1dbfb9b1ee7f7a93d12340bec7f52b2ca1f426b34e1ca31c316ee6f9739674fb",
+  "contextSha256": "09aca66b0ef82e19009d1059dd3c2aa7c7db49e7972c8626314819d3c367187a",
+  "rawSha256": "e66c7d541fe72eb4b6f06c8474c61751dec2a3a9122004643431acd43ce3c0cc",
   "fixtureRemoved": true,
-  "completedAt": "2026-11-08T01:02:10.082Z"
+  "completedAt": "2026-11-08T01:09:51.578Z"
  },
  "retained": {
-  "sgrAttrsObservationsSha256": "85b545889232aec3ce5b8e9c96d4a0a79629b78fb4e117c5d4c360c6437aca14",
-  "sgrAttrsRunSha256": "4a7db8bd104db16b0f8035937fabe1e707fdc0d4e5e3c9a765bbc0e4bf6cd015",
-  "sgrAttrsJournalSha256": "708730d53dfa0c29a46c9d49d4c24b598ff1556a7b6741c6f9792031a70c4525",
-  "collectorSgrAttrsSha256": "acd7680f33071aba942cfaac3a4ced4f265d8f56c8e0210fdd9d970483bd106d",
-  "sgrRgbObservationsSha256": "43be8b19502450475893bd1da5b2d757563f92f70d805a30ac214805e5a28f2e",
-  "sgrColorsObservationsSha256": "a98fb464aee61def60e33d0c3de4bcb04411c172cae9f6fc5344f5e075ac7dbd",
-  "gradingObservationsSha256": "3dee1cbca7f3f3b184df76bbd63c72e9b5373c63d85b196885ad5c73c970801c"
+  "sgrAttrsObservationsSha256": "9a0635d9463d0669451a95515398ce5fc996689879da1f0c31b4e5bf17bdaa8e",
+  "sgrAttrsRunSha256": "ba059530fffa101c8df5e1a814a950825ff4ce7c1bd6a3ae1779b3efdd37fb9f",
+  "sgrAttrsJournalSha256": "3608feb06eccbc47f1d820f718e136eed3d56c2442fadb2f7b67083147dfb0e4",
+  "collectorSgrAttrsSha256": "1ff1496a42132f69717eb9918712bebf40c7b53b59cff6e67bbd001db5b83432",
+  "sgrRgbObservationsSha256": "b193e880fb03961e2946c3773f9e99a054a43f21af8f13475b01098e5e909f1c",
+  "sgrColorsObservationsSha256": "7670e013429ba3ed9e756603226b664208c666afd254bbd03954e86d793a27dc",
+  "gradingObservationsSha256": "bff6badce279e32b82b50e3b4c716dd5c8f251dfc08e29a7b3ea38dd4707ad48"
  },
  "attempts": [
   {
@@ -8114,6 +8143,16 @@
     "supported": 5
    },
    "note": "First complete measurement (5/5 supported, schema 16) from adapter commit 125a8c59. Codex review then found that contradictory attribute-run and cell-detail projections were not refused; the fix changes measured source, so the measurement was rerun. Retained unmodified locally."
+  },
+  {
+   "directory": "owned-rwCXsg",
+   "runId": "af3916def9dfe3f9bbcaa6dee5c8230f",
+   "outcome": "complete, superseded",
+   "receiptCompleted": true,
+   "receiptCounts": {
+    "supported": 5
+   },
+   "note": "Second complete measurement (5/5) from a7a0ef93, taken after the Codex fix. CodeRabbit then found that overline was not observed in the controls and the faint Y cell was not drift-checked on the unsupported path; both change measured source, so the measurement was rerun. Retained unmodified locally."
   },
   {
    "directory": "owned-vhxDkz",

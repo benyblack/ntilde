@@ -49,7 +49,7 @@ App's stored `TerminalCellFlags` (default-color bits `0x0300` included).
 | `sgr.hidden` | flags 896, conceal set, `X` text stored | neutral baseline; no drift; `SGR 28` clears `Y` | **supported** (stored conceal flag with text present) |
 | `sgr.strikethrough` | flags 784, strikethrough set | neutral baseline; no drift; `SGR 29` clears `Y` | **supported** (stored flag) |
 
-Each claim is the **stored state** only. Rendered appearance — underline
+Each claim is the **stored state** only (overline included in the controls). Rendered appearance — underline
 stroke, inverse swap, dimming, glyph suppression for conceal, strike line — is
 **not claimed**: no pinned criterion requires it, no pixel or resolved-color
 evidence was used as proof, and resolved colors were read only to bind
@@ -70,18 +70,18 @@ measured font/theme limits) and the stock collector's own `consumed` grades.
 | Layered adapter | `ntilde-owned-sgr-attributes-grading-v1` (contracts v1), suite `ntilde-owned-sgr-attributes-graded-v1` |
 | Derived from | `ntilde-owned-sgr-rgb-grading-v1` → `ntilde-owned-sgr-colors-grading-v1` → `ntilde-owned-ascii-sgr-grading-v1` → `ntilde-owned-macos-v1` over pinned `terminfo.dev@4.0.0` |
 | Pinned bundle SHA-256 | `aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6` |
-| Layered bundle SHA-256 | `acd7680f33071aba942cfaac3a4ced4f265d8f56c8e0210fdd9d970483bd106d` |
+| Layered bundle SHA-256 | `1ff1496a42132f69717eb9918712bebf40c7b53b59cff6e67bbd001db5b83432` |
 | Receipt schema / source policy | 16 / `readonly-owned-source-graph-v10` (inventory v17, 128 files); policies v1–v9 keep their frozen maps |
 
 ## Measurement
 
 | Measure | Value |
 |---|---|
-| Run / receipt completed | run `af3916def9dfe3f9bbcaa6dee5c8230f`, receipt 2026-11-08T01:02:10.082Z |
+| Run / receipt completed | run `89ddff76fed173a64dd754e39a816270`, receipt 2026-11-08T01:09:51.578Z |
 | App | `0.13.0`; **App source identical to main `499a0246` (#888)** — `git diff 499a0246 HEAD -- src` is empty; sidecar built from this branch |
-| Adapter/scripts source | commit `a7a0ef93` (pinned byte-for-byte by the run's policy-v10 inventory), after the Codex-review fix; the sidecar App was built earlier from an App-identical tree |
+| Adapter/scripts source | commit `b21736b8` (pinned byte-for-byte by the run's policy-v10 inventory), after the Codex and CodeRabbit review fixes; the sidecar App was built earlier from an App-identical tree |
 | Same-run predecessors | grading 4/4, SGR-colors 5/5 (contracts v2), SGR-RGB 2/2 supported |
-| Local evidence | `artifacts/terminfo/owned-rwCXsg` (digests in the [JSON](2026-11-08-sgr-attributes-qualification.json)) |
+| Local evidence | `artifacts/terminfo/owned-cjZJts` (digests in the [JSON](2026-11-08-sgr-attributes-qualification.json)) |
 
 ## Preserved attempts
 
@@ -89,7 +89,8 @@ measured font/theme limits) and the stock collector's own `consumed` grades.
 2. `owned-QZc8ZG`: the app aborted before collection (Avalonia render timer, display asleep).
 3. `owned-FBpYqE`: collection stopped with "Unknown owner request" because the runner allowlist did not admit the new `sgattr` journal kinds. Fixed in `125a8c59` with a regression test.
 4. `owned-SNe7Jd` (run `e41cfd493c53dcfff35fa4ef978448ea`): a **complete** measurement (5/5 supported) from `125a8c59`, superseded. Codex review found that contradictory attribute-run and cell-detail projections were not refused (a target with underline off in one and single underline in the other graded supported). The fix changes measured source, so the measurement was rerun; the earlier run is retained unmodified.
-5. `owned-vhxDkz`: an EPERM before launch, produced by the review sandbox running the script tests; no app launched.
+5. `owned-rwCXsg` (run `af3916def9dfe3f9bbcaa6dee5c8230f`): a second complete measurement (5/5) from `a7a0ef93`, superseded after CodeRabbit found that overline was not observed in the controls and the faint `Y` control was not drift-checked on the unsupported path; both change measured source. Overline is now requested in the stored details and must be clear in the baseline, drift and restoration controls (retained in the journal; asserted by the publication test). Retained unmodified locally.
+6. `owned-vhxDkz`: an EPERM before launch, produced by the review sandbox running the script tests; no app launched.
 
 ## Reproduce
 

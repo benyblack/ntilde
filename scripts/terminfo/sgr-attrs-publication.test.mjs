@@ -50,6 +50,14 @@ test('every conclusion is bound to its exact stored observation and stays within
     assert.equal(by('sgr.hidden').observed.trailing[0].hidden, true);
 });
 
+test('overline was observed and clear on every journaled cell of the five cases', () => {
+    const { sgrAttrsReport: report } = load();
+    for (const frame of report.snapshots.filter(item => item.kind === 'sgattr-read')) {
+        const runs = frame.screen.cellDetails;
+        assert.ok(runs.every(run => run.overline === false));
+    }
+});
+
 test('the receipt binds the run, adapters and counts, and every predecessor reconfirms in the same run', () => {
     const data = load();
     const { receipt } = data;
@@ -80,9 +88,10 @@ test('the untouched stock run keeps its own grades and all five cases stay incon
 
 test('failed attempts are preserved and prior publications still rederive beside this batch', () => {
     const data = load();
-    assert.equal(data.attempts.length, 4);
-    assert.deepEqual(data.attempts.map(attempt => attempt.receiptCompleted), [false, false, true, false]);
+    assert.equal(data.attempts.length, 5);
+    assert.deepEqual(data.attempts.map(attempt => attempt.receiptCompleted), [false, false, true, true, false]);
     assert.equal(data.attempts[2].outcome, 'complete, superseded');
+    assert.equal(data.attempts[3].outcome, 'complete, superseded');
     const rgb = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-07-sgr-rgb-qualification.json', import.meta.url)));
     assert.equal(rgb.receipt.schemaVersion, 15);
     assert.equal(rgb.receipt.sgrAttrsEvidence, undefined);
