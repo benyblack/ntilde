@@ -240,3 +240,16 @@ test('the erased range of the attribute control is the real range: EL 0 runs to 
     assert.equal(report(RIGHT, [bold('A'), blue(), ...blanks(58)]).outcome, 'unsupported');
     assert.equal(report(LEFT, [...blanks(3), bold('D'), bold('E'), blue()]).outcome, 'unsupported');
 });
+
+test('the observed record collapses a painted erased tail into one range entry and keeps neutral cells as strings', () => {
+    const contract = byId(RIGHT);
+    const reads = syntheticEraseLineReads(RIGHT);
+    reads.bce = { rows: [[colorCell('A', { attrs: ['bold'] }), colorCell('B', { attrs: ['bold'] }),
+        ...Array.from({ length: 58 }, () => colorCell(' ', { bg: { kind: 'palette', index: 4 } }))]], cursor: [0, 2] };
+    const observed = contract.observed(eraseLineObservation(contract, syntheticEraseLineScreens(RIGHT, paletteBinding(), () => reads)));
+    const ink = observed.attributes.after.ink;
+    assert.equal(ink.length, 3);
+    assert.deepEqual([ink[0].col, ink[0].char, ink[1].col, ink[1].char], [0, 'A', 1, 'B']);
+    assert.deepEqual([ink[2].row, ink[2].cols, ink[2].char, ink[2].bgIndex], [0, [2, 59], ' ', 4]);
+    assert.deepEqual(observed.setup.ink, ['0,0,A', '0,1,B', '0,2,C', '0,3,D', '0,4,E']);
+});

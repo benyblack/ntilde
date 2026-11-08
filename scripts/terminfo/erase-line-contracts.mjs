@@ -236,6 +236,23 @@ function gradeErase(contract, observation) {
 const brief = cell => (neutral(cell) ? `${cell.row},${cell.col},${cell.char}`
     : { row: cell.row, col: cell.col, char: cell.char, flags: cell.flags, fgIndex: cell.fgIndex, bgIndex: cell.bgIndex,
         foregroundArgb: cell.foregroundArgb, backgroundArgb: cell.backgroundArgb });
+/** The stored fields two adjacent non-neutral cells must share to read as one run. */
+const runKey = cell => JSON.stringify([cell.row, cell.char, cell.flags, cell.fgIndex, cell.bgIndex, cell.foregroundArgb, cell.backgroundArgb]);
+/** The ink list, with each run of identical adjacent non-neutral cells (for example an erased tail painted with a background) collapsed to
+ * one `{ row, cols: [first, last], ... }` entry; neutral cells stay one string each. */
+function briefInk(ink) {
+    const out = [];
+    let last = null;
+    for (const cell of ink) {
+        if (neutral(cell)) { out.push(brief(cell)); last = null; continue; }
+        if (last !== null && last.row === cell.row && last.col + 1 === cell.col && runKey(last) === runKey(cell)) {
+            const entry = out.at(-1);
+            if (entry.cols === undefined) { entry.cols = [entry.col, cell.col]; delete entry.col; } else entry.cols[1] = cell.col;
+        } else out.push(brief(cell));
+        last = cell;
+    }
+    return out;
+}
 /** The first `rows` rows of a group's ink as ten-column text, `_` for blank. */
 const render = (state, rows) => Array.from({ length: rows }, (_, row) => Array.from({ length: 10 }, (__, col) => {
     const cell = state.ink.find(item => item.row === row && item.col === col);
@@ -245,7 +262,7 @@ const render = (state, rows) => Array.from({ length: rows }, (_, row) => Array.f
 /** The observed record: every group's text, cursor and ink, plus the labeled spelling and background observations. */
 function briefErase(contract, observation) {
     const rows = contract.neighbor ? 2 : 1;
-    const state = (item, count = rows) => ({ text: render(item, count), cursor: item.cursor, ink: item.ink.map(brief) });
+    const state = (item, count = rows) => ({ text: render(item, count), cursor: item.cursor, ink: briefInk(item.ink) });
     const mode = name => (name === 'erased' ? contract.mode : spellings[name].mode);
     const expectedFor = name => inkIs(observation[name], fixtureInk(contract, erasedText(seed, mode(name)))) && sameCursor(observation[name], 0, seedColumn);
     const spellingRecord = name => ({ sequence: spellings[name].bytes, mode: spellings[name].mode, ...state(observation[name]),
