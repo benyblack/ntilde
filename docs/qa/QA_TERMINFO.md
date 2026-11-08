@@ -830,3 +830,12 @@ The [selective-reset batch](terminfo/2026-11-08-sgr-selective-reset-qualificatio
 `sgr.selective-reset.inverse` through a tenth layered collector extension (`ntilde-owned-sgr-selective-reset-grading-v1`), replaying the pinned
 `C${setup}X${reset}Y` fixtures byte-exactly with no-op, full-reset, wrong-reset, SGR 59 and DECSCNM controls. Receipt schema 23, source policy v17
 with the 163-file inventory; underline color is documented, not required; no pixel claim.
+
+### Erase-in-line qualification (EL 0, EL 1, EL 2)
+
+The [erase-in-line batch](terminfo/2026-11-08-erase-line-qualification.md) grades exactly `erase.line.right` (omitted-parameter spelling),
+`erase.line.left` and `erase.line.all` through an eleventh layered collector extension (`ntilde-owned-erase-line-grading-v1`),
+replaying the pinned setup and erase bytes and running the pinned termless `eraseRowResult` over parent-journaled stored cells, the
+cursor and stored attributes. The contract adds cursor, unaffected-row/column, retained-attribute and wide-row controls; the other EL
+spellings are labeled observations; background-color erase is observed, not required. The pinned terminal pixel path is capture-only
+upstream and is not qualified. Receipt schema 24 and source policy v18 (168 files) bind it; earlier policies stay frozen.
