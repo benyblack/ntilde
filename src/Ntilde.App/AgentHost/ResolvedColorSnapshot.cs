@@ -136,7 +136,10 @@ internal static class ResolvedColorSnapshot
             TerminalDrawOperation.UnderlineColorSource.None => new ResolvedUnderlineDto { Source = "none", Index = -1 },
             TerminalDrawOperation.UnderlineColorSource.Inherit => new ResolvedUnderlineDto
             {
-                Source = "inherit", Index = -1, InheritsFrom = r.InheritsBackground ? "background" : "foreground", Argb = OpaqueArgb(r.Color),
+                Source = "inherit",
+                Index = -1,
+                InheritsFrom = r.InheritsBackground ? "background" : "foreground",
+                Argb = OpaqueArgb(r.Color),
             },
             TerminalDrawOperation.UnderlineColorSource.Palette => new ResolvedUnderlineDto { Source = "palette", Index = r.PaletteIndex, Argb = OpaqueArgb(r.Color) },
             _ => new ResolvedUnderlineDto { Source = "literal", Index = -1, Argb = OpaqueArgb(r.Color) },

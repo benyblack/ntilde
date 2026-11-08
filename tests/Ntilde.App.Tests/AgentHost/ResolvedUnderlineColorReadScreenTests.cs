@@ -234,7 +234,10 @@ public class ResolvedUnderlineColorReadScreenTests : IDisposable
         using var service = new AgentHostService(registry, AgentHostTestEndpoint.CreateEndpoint(_tempDir), _tempDir);
         var response = service.HandleRequestLineAsync(RequestLine(new ReadScreenParams
         {
-            PaneId = registration.PaneId, IncludeCellDetails = true, IncludeResolvedColors = true, IncludeResolvedUnderlineColors = true,
+            PaneId = registration.PaneId,
+            IncludeCellDetails = true,
+            IncludeResolvedColors = true,
+            IncludeResolvedUnderlineColors = true,
         }), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
         var dto = response.Result!.Value.Deserialize(AgentHostJsonContext.Default.ScreenSnapshotDto)!;
         var stored = dto.CellDetails!.SelectMany(run => Enumerable.Repeat(run, run.Count)).ToArray();
