@@ -60,6 +60,12 @@ export function sgrAttrsCellAt(screen, row, col) {
     const detail = expandCellDetails(screen.cellDetails, screen.rows * screen.cols, false)[position];
     const resolved = expandResolvedColors(screen.resolvedColors, screen.rows * screen.cols, screen.colorBinding)[position];
     if (!detail || !resolved) throw new Error(`Missing stored cell evidence at ${row},${col}.`);
+    // The attribute runs and the stored cell details are two projections of one cell: every
+    // flag must agree and the underline flag must match the stored style, or the evidence
+    // contradicts itself and nothing may be graded from it.
+    if (detail.flags !== flags || Boolean(flags & sgrAttrsFlagBits.underline) !== Boolean(detail.underlineStyle)) {
+        throw new Error(`Contradictory stored cell projections at ${row},${col}.`);
+    }
     return {
         char: (screen.lines[row] ?? ' ')[col] ?? ' ', flags,
         bold: (flags & sgrAttrsFlagBits.bold) !== 0,

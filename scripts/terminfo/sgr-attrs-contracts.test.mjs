@@ -162,3 +162,14 @@ test('the owner request allowlist admits every journal kind this suite emits', a
         assert.match(`sgattr-${kind}`, new RegExp(`^(?:${match[1]})-(?:start|bind|read|finish)$`));
     }
 });
+
+test('contradictory attribute-run and cell-detail projections are refused, not graded', () => {
+    const screen = syntheticSgrAttrsScreens('sgr.underline.single')[1];
+    // Attribute runs say underline off while the stored details say single underline.
+    const plainRuns = syntheticSgrAttrsScreen([plainCell('X')]).attributeRuns;
+    assert.throws(() => sgrAttrsCellAt({ ...screen, attributeRuns: plainRuns }, 0, 0), /Contradictory stored cell projections/);
+    // A flag other than underline disagreeing is equally refused.
+    const strikeRuns = syntheticSgrAttrsScreen([styledCell('X', ['underline', 'strikethrough'])]).attributeRuns;
+    assert.throws(() => sgrAttrsCellAt({ ...screen, attributeRuns: strikeRuns }, 0, 0), /Contradictory stored cell projections/);
+    assert.doesNotThrow(() => sgrAttrsCellAt(screen, 0, 0));
+});
