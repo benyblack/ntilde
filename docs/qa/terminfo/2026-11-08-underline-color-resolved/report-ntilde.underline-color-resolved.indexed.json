@@ -1,0 +1,441 @@
+{
+ "caseId": "ntilde.underline-color-resolved.indexed",
+ "kind": "ntilde-extension-control",
+ "check": "ntilde-extension-contract",
+ "criterion": "indexed underline colors resolve to the App palette entry, follow an OSC 4 change of that entry and return after OSC 104; default and absent underlines are unaffected",
+ "feeds": [
+  "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+  "\u001b[4mA\u001b[58;5;5mX\u001b[58;5;4mY\u001b[59mB\u001b[24mZ", "\u001b]4;4;rgb:11/22/33\u0007\u001b]4;5;rgb:44/55/66\u0007",
+  "\u001b]104;4\u0007\u001b]104;5\u0007"
+ ],
+ "barriers": [
+  "\u001b[?62;4;22c",
+  "\u001b[?62;4;22c",
+  "\u001b[?62;4;22c",
+  "\u001b[?62;4;22c"],
+ "reads": [
+  [0, 5],
+  [0, 5],
+  [0, 5]
+ ],
+ "observed": {
+  "before": [
+   {
+    "char": "A",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    }
+   },
+   {
+    "char": "X",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": 5,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 5,
+     "argb": 4291625165
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 5,
+     "argb": 4291625165
+    }
+   },
+   {
+    "char": "Y",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": 4,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    }
+   },
+   {
+    "char": "B",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    }
+   },
+   {
+    "char": "Z",
+    "flags": 768,
+    "inverse": false,
+    "underlineStyle": 0,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "none",
+     "index": -1
+    },
+    "parentExpected": {
+     "source": "none",
+     "index": -1
+    }
+   }
+  ],
+  "mutated": [
+   {
+    "char": "A",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    }
+   },
+   {
+    "char": "X",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": 5,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 5,
+     "argb": 4282668390
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 5,
+     "argb": 4282668390
+    }
+   },
+   {
+    "char": "Y",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": 4,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4279312947
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4279312947
+    }
+   },
+   {
+    "char": "B",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    }
+   },
+   {
+    "char": "Z",
+    "flags": 768,
+    "inverse": false,
+    "underlineStyle": 0,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "none",
+     "index": -1
+    },
+    "parentExpected": {
+     "source": "none",
+     "index": -1
+    }
+   }
+  ],
+  "restored": [
+   {
+    "char": "A",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    }
+   },
+   {
+    "char": "X",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": 5,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 5,
+     "argb": 4291625165
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 5,
+     "argb": 4291625165
+    }
+   },
+   {
+    "char": "Y",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": 4,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    }
+   },
+   {
+    "char": "B",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    }
+   },
+   {
+    "char": "Z",
+    "flags": 768,
+    "inverse": false,
+    "underlineStyle": 0,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "none",
+     "index": -1
+    },
+    "parentExpected": {
+     "source": "none",
+     "index": -1
+    }
+   }
+  ]
+ },
+ "bindings": [
+  {
+   "themeName": "Default",
+   "reverseVideo": false,
+   "paletteOverrideIndices": [],
+   "underlineStage": "underline-resolution",
+   "entry4Argb": 4278190318,
+   "entry5Argb": 4291625165,
+   "bindingSha256": "d07d0b4fdd8ad79093c45f53ed0f5a66ebf8549c63694cc6c266d7fc8362e332"
+  },
+  {
+   "themeName": "Default",
+   "reverseVideo": false,
+   "paletteOverrideIndices": [4, 5],
+   "underlineStage": "underline-resolution",
+   "entry4Argb": 4279312947,
+   "entry5Argb": 4282668390,
+   "bindingSha256": "1998ada2d98df0261eea087017a3ae5495ce13c8023233fb62993589b06aa503"
+  },
+  {
+   "themeName": "Default",
+   "reverseVideo": false,
+   "paletteOverrideIndices": [],
+   "underlineStage": "underline-resolution",
+   "entry4Argb": 4278190318,
+   "entry5Argb": 4291625165,
+   "bindingSha256": "d07d0b4fdd8ad79093c45f53ed0f5a66ebf8549c63694cc6c266d7fc8362e332"
+  }
+ ],
+ "contractResult": {
+  "outcome": "supported",
+  "layers": {
+   "stored": "supported",
+   "appResolved": "supported"
+  }
+ },
+ "conclusion": {
+  "outcome": "supported",
+  "evidence": "owned-stored-and-app-resolved-underline",
+  "grading": "contract-v1",
+  "layers": {
+   "stored": "supported",
+   "appResolved": "supported"
+  },
+  "scope": "App-reported resolved underline for stored palette indices 5 and 4, default markers before and after SGR 59 and an absent underline, compared across start, OSC 4 mutation of entries 4 and 5 and OSC 104 restoration; stored cells identical across the reads; rendered appearance is not claimed"
+ }
+}

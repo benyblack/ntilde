@@ -1,0 +1,89 @@
+{
+ "schemaVersion": 1,
+ "suiteId": "ntilde-owned-underline-color-resolved-v1",
+ "contractsVersion": 1,
+ "caseIds": ["ntilde.underline-color-resolved.indexed", "ntilde.underline-color-resolved.literal", "ntilde.underline-color-resolved.default-inheritance"],
+ "cases": [
+  {
+   "caseId": "ntilde.underline-color-resolved.indexed",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "\u001b[4mA\u001b[58;5;5mX\u001b[58;5;4mY\u001b[59mB\u001b[24mZ", "\u001b]4;4;rgb:11/22/33\u0007\u001b]4;5;rgb:44/55/66\u0007",
+    "\u001b]104;4\u0007\u001b]104;5\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "ntilde.underline-color-resolved.literal",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "\u001b[4mA\u001b[58;2;255;0;128mX\u001b[58;2;1;2;3mY\u001b[58;2;205;0;205mP\u001b[59mB", "\u001b]4;4;rgb:11/22/33\u0007\u001b]4;5;rgb:44/55/66\u0007",
+    "\u001b]104;4\u0007\u001b]104;5\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "ntilde.underline-color-resolved.default-inheritance",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "\u001b[4mA\u001b[38;5;5mB\u001b[38;2;10;20;30mC\u001b[7mD\u001b[58;5;4mE\u001b[27;59mF\u001b[0;4;38;5;5;58;5;4mH\u001b[59mI\u001b[0;4;7;38;5;4;48;5;5mJ\u001b[0mG", "\u001b]4;4;rgb:11/22/33\u0007\u001b]4;5;rgb:44/55/66\u0007",
+    "\u001b]104;4\u0007\u001b]104;5\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 10]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 10]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 10]
+    }
+   ]
+  }
+ ]
+}
