@@ -123,9 +123,50 @@ export const sgrResetCaseIds = Object.freeze(sgrResetContracts.map(contract => c
 /** Whether a cell is the stored X-with-setup shape: target attribute and bold on, nothing else, default colors. */
 const active = (contract, cell) => on(contract, cell) && cell.bold === true && othersClear(cell, [contract.attr, 'bold']);
 
+/** The first control that is not valid for this case, as an inconclusive note, or null when every control holds. */
+function invalidControl(contract, observation) {
+    const { pinned, noop, full, wrong } = observation;
+    const target = pinned[1];
+    // A no-op reset would leave Y exactly like X: the same bytes without the reset must keep the setup state on Z.
+    if (!sameTuple(noop[1], target) || noop[2].char !== 'Z' || !sameTuple(noop[2], target)) {
+        return 'The no-reset control did not show the setup state persisting, so a no-op reset cannot be distinguished';
+    }
+    // An accidental full SGR 0 clears bold too: the readback must show that difference.
+    if (!sameTuple(full[1], target) || full[2].char !== 'Y' || !neutral(full[2])) {
+        return 'The full-reset control did not return Y to the neutral state, so a full reset cannot be distinguished';
+    }
+    // A reset aimed at another attribute must leave the target set (and clear what it targets).
+    const wrongExpected = contract.attr === 'underline' ? ['underline'] : ['inverse', 'bold'];
+    if (!sameTuple(wrong[1], target) || wrong[2].char !== 'Y' || !exactly(wrong[2], wrongExpected)) {
+        return `The ${contract.wrongLabel} control did not leave ${contract.attr} as contracted, so a wrong reset cannot be distinguished`;
+    }
+    return contract.attr === 'inverse' ? invalidDecscnm(observation) : invalidDouble(observation);
+}
+
+/** SGR 21 must store the double style on X and SGR 24 must clear it on Y with bold kept: the control that shows SGR 24 ends every underline style. */
+function invalidDouble({ double }) {
+    const [, x, y] = double;
+    if (double[0].char !== 'C' || x.char !== 'X' || y.char !== 'Y' || x.underline !== 'double' || x.underlineStyle !== 2 || x.bold !== true) {
+        return 'The double-underline control did not store the double style before SGR 24, so it cannot show SGR 24 ending other underline styles';
+    }
+    if (y.underline !== false || y.underlineStyle !== 0 || y.bold !== true || !othersClear(y, ['bold'])) {
+        return 'SGR 24 did not end the double-underline control as contracted';
+    }
+    return null;
+}
+
+/** Per-cell inverse must be stored identically under DECSCNM, and the DECSCNM-on frame must have been engaged. */
+function invalidDecscnm({ pinned, decscnm, reverseControl }) {
+    if (reverseControl !== true) return 'The DECSCNM-on control was not engaged, so per-cell inverse cannot be separated from global reverse video';
+    if (decscnm.some((cell, index) => cell.char !== 'CXY'[index] || cell.flags !== pinned[index].flags || !sameTuple(cell, pinned[index]))) {
+        return 'Per-cell inverse storage changed under DECSCNM, so it is not distinct from global reverse video';
+    }
+    return null;
+}
+
 /** The shared control walk, then the exact selective-reset verdict. */
 function gradeReset(contract, observation) {
-    const { initial, pinned, noop, full, wrong, reverseVideo } = observation;
+    const { initial, pinned, reverseVideo } = observation;
     const [baseline, target, after] = pinned;
     if (baseline.char !== 'C' || target.char !== 'X' || after.char !== 'Y') return { outcome: 'inconclusive', note: pinnedNotExposedNote };
     if (reverseVideo !== false) {
@@ -137,27 +178,8 @@ function gradeReset(contract, observation) {
     if (!active(contract, target)) {
         return { outcome: 'inconclusive', note: `The setup did not store only ${contract.attr} and bold on X with default colors, so the reset control is invalid` };
     }
-    // A no-op reset would leave Y exactly like X: the same bytes without the reset must keep the setup state on Z.
-    if (!sameTuple(noop[1], target) || noop[2].char !== 'Z' || !sameTuple(noop[2], target)) {
-        return { outcome: 'inconclusive', note: 'The no-reset control did not show the setup state persisting, so a no-op reset cannot be distinguished' };
-    }
-    // An accidental full SGR 0 clears bold too: the readback must show that difference.
-    if (!sameTuple(full[1], target) || full[2].char !== 'Y' || !neutral(full[2])) {
-        return { outcome: 'inconclusive', note: 'The full-reset control did not return Y to the neutral state, so a full reset cannot be distinguished' };
-    }
-    // A reset aimed at another attribute must leave the target set (and clear what it targets).
-    const wrongExpected = contract.attr === 'underline' ? ['underline'] : ['inverse', 'bold'];
-    if (!sameTuple(wrong[1], target) || wrong[2].char !== 'Y' || !exactly(wrong[2], wrongExpected)) {
-        return { outcome: 'inconclusive', note: `The ${contract.wrongLabel} control did not leave ${contract.attr} as contracted, so a wrong reset cannot be distinguished` };
-    }
-    if (contract.attr === 'inverse') {
-        const { decscnm, reverseControl } = observation;
-        if (reverseControl !== true) return { outcome: 'inconclusive', note: 'The DECSCNM-on control was not engaged, so per-cell inverse cannot be separated from global reverse video' };
-        if (decscnm.some((cell, index) => cell.char !== 'CXY'[index] || cell.flags !== pinned[index].flags
-            || !sameTuple(cell, pinned[index]))) {
-            return { outcome: 'inconclusive', note: 'Per-cell inverse storage changed under DECSCNM, so it is not distinct from global reverse video' };
-        }
-    }
+    const invalid = invalidControl(contract, observation);
+    if (invalid) return { outcome: 'inconclusive', note: invalid };
     if (!off(contract, after)) {
         return { outcome: 'unsupported', note: contract.attr === 'underline'
             ? 'The stored underline flag or style survived SGR 24 on Y' : 'The stored inverse flag survived SGR 27 on Y' };

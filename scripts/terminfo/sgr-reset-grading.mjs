@@ -38,6 +38,10 @@ function bindingStable(frames) {
         if (themeKey(binding) !== key) throw new Error('SGR selective-reset observation saw the theme or palette change.');
         if (index === reverseAt) {
             if (binding.reverseVideo !== true) throw new Error('SGR selective-reset DECSCNM control frame did not report reverse video.');
+            // DECSCNM folds into the theme defaults by swapping them; any other default-color change is not reverse video.
+            if (binding.foregroundArgb !== start.backgroundArgb || binding.backgroundArgb !== start.foregroundArgb) {
+                throw new Error('SGR selective-reset DECSCNM control frame changed the theme defaults beyond the reverse-video swap.');
+            }
         } else if (colorBindingHash(binding) !== colorBindingHash(start)) {
             throw new Error('SGR selective-reset observation saw an unexpected binding change.');
         }

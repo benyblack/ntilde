@@ -38,7 +38,8 @@ export function syntheticSgrResetReads(caseId) {
 }
 
 /** The binding of the DECSCNM-on control read. */
-export const reverseBinding = binding => ({ ...binding, reverseVideo: true });
+export const reverseBinding = binding => ({ ...binding, reverseVideo: true,
+    foregroundArgb: binding.backgroundArgb, backgroundArgb: binding.foregroundArgb });
 
 const resetSuite = Object.freeze({ noncePrefix: 'NTILDE_SR_', prefix: 'sgsr', contracts: sgrResetContracts,
     adapterId: sgrResetAdapterId, derivedFrom: 'ntilde-owned-sgr-underline-color-grading-v1', reset: sgrResetReset,

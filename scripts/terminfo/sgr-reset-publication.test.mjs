@@ -98,6 +98,10 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.retained.sgrResetJournalSha256, journalHash);
     assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v17');
     assert.equal(receipt.fixtureRemoved, true);
+    // The two identifiers keep distinct scopes: the owned run binds every journal and the receipt; the stock collector run has its own id.
+    assert.equal(summary.ownedRunId, summary.context.runId);
+    assert.equal(summary.runId, undefined);
+    assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.equal(unique.size, 29, 'the prior twenty-nine unique benchmark qualifications');
     for (const suite of Object.values(summary.sameRun)) assert.ok(suite.cases.every(item => item.outcome === 'supported'));

@@ -158,3 +158,15 @@ test('contract-version pinning and evidence validation entry', () => {
     assert.throws(() => buildSgrResetGradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter, { contractsVersion: 2 }), /Unknown SGR selective-reset contracts revision 2/);
     assert.equal(plainCell('x').char, 'x');
 });
+
+test('the DECSCNM control frame may differ from the start binding only by the reverse-video default swap (review fix)', () => {
+    const evidence = syntheticSgrResetEvidence(runId);
+    const index = evidence.frames.findIndex(frame => frame.screen.colorBinding.reverseVideo === true);
+    for (const edit of [binding => { binding.foregroundArgb = 0xff112233; }, binding => { binding.backgroundArgb = 0xff112233; },
+        binding => { [binding.foregroundArgb, binding.backgroundArgb] = [binding.backgroundArgb, binding.foregroundArgb]; }]) {
+        const copy = clone(evidence);
+        edit(copy.frames[index].screen.colorBinding);
+        copy.frames[index].sha256 = snapshotHash(copy.frames[index].screen);
+        assert.throws(() => build(copy), /theme defaults beyond the reverse-video swap|Resolved|disagree|Invalid resolved-color/);
+    }
+});

@@ -218,3 +218,11 @@ test('wrong characters on the pinned fixture are not exposed (pinned note)', () 
     const result = grade(UNDERLINE, reads => { reads.pinned[1] = styled('Q', ['bold'], { style: 1 }); });
     assert.deepEqual(result, { outcome: 'inconclusive', note: pinnedNotExposedNote });
 });
+
+test('the double-underline control must hold: SGR 21 stores double and SGR 24 ends it before any verdict (review fix)', () => {
+    assert.equal(outcome(UNDERLINE, reads => { reads.double[1] = styled('X', ['bold'], { style: 1 }); }), 'inconclusive', 'SGR 21 did not store double');
+    assert.equal(outcome(UNDERLINE, reads => { reads.double[2] = styled('Y', ['bold'], { style: 2 }); }), 'inconclusive', 'SGR 24 left double active');
+    assert.equal(outcome(UNDERLINE, reads => { reads.double[2] = plainCell('Y'); }), 'inconclusive', 'bold lost');
+    assert.equal(outcome(UNDERLINE, reads => { reads.double[0] = plainCell('Q'); }), 'inconclusive', 'wrong cell');
+    assert.match(grade(UNDERLINE, reads => { reads.double[2] = styled('Y', ['bold'], { style: 2 }); }).note, /double-underline/);
+});
