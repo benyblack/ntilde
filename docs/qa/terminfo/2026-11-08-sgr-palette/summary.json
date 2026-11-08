@@ -662,6 +662,12 @@
    "outcome": "failed before launch",
    "error": "EPERM on mkdtemp under ~/.ntilde-qa: created by the Codex review sandbox running the script tests; no app was launched and no evidence exists beyond the failure record",
    "receiptCompleted": false
+  },
+  {
+   "directory": "owned-4UrYcd",
+   "outcome": "failed before launch",
+   "error": "EPERM on mkdtemp under ~/.ntilde-qa: created by the second local Codex review session running the script tests in its sandbox; no app was launched and no evidence exists beyond the failure record",
+   "receiptCompleted": false
   }
  ]
 }

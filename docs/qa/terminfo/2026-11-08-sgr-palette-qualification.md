@@ -129,7 +129,7 @@ unmodified:
 2. The first owner invocation refused to start because the pinned collector cache was not prepared in the fresh worktree; no run directory existed. Prepared with the documented `npm ci` and repeated.
 3. `owned-BhLFns` (run `1814f55c3d61995209db7f2141f16eaf`): a **complete** measurement (6/6 supported) from `9bb7fbfe`, superseded. CodeRabbit found that early inconclusive verdicts omitted the layer states and that attribute drift on the default-reset cell graded as a failed reset instead of an invalid control; both change measured source, so the measurement was rerun. Retained unmodified locally.
 4. `owned-Ndnl98`: "Owned app exited before collection (0)", created while the local Codex review ran in its sandbox; no evidence beyond the failure record.
-5. `owned-wjgnGh`: an EPERM before launch from the review sandbox running the script tests; no app launched.
+5. `owned-wjgnGh` and `owned-4UrYcd`: EPERM failures before launch, produced by the two local Codex review sessions running the script tests in their sandbox; no app launched.
 
 ## Reproduce
 
