@@ -10,6 +10,7 @@ import { ownedTerminalRestorer, restoreOwnedTerminalState, prepareOwnedOutput } 
 import { collectAsciiSgrGrading } from './ascii-sgr-collector.mjs';
 import { collectSgrColorsGrading } from './sgr-colors-collector.mjs';
 import { collectSgrRgbGrading } from './sgr-rgb-collector.mjs';
+import { collectSgrAttrsGrading } from './sgr-attrs-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -93,6 +94,15 @@ try {
         const sgrRgbModule = await import(pathToFileURL(config.sgrRgbBundle).href);
         const sgrRgbRun = await collectSgrRgbGrading({ config, fence, owner, gradingModule: sgrRgbModule });
         writeFileSync(join(config.output, 'sgrgb-run.json'), JSON.stringify(sgrRgbRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered SGR-attributes qualification follows the SGR-RGB suite on the
+        // same exclusively owned fence.
+        const sgrAttrsSource = readFileSync(config.sgrAttrsBundle);
+        if (createHash('sha256').update(sgrAttrsSource).digest('hex') !== config.sgrAttrsBundleSha256) {
+            throw new Error('Local SGR-attributes adapter bundle changed.');
+        }
+        const sgrAttrsModule = await import(pathToFileURL(config.sgrAttrsBundle).href);
+        const sgrAttrsRun = await collectSgrAttrsGrading({ config, fence, owner, gradingModule: sgrAttrsModule });
+        writeFileSync(join(config.output, 'sgattr-run.json'), JSON.stringify(sgrAttrsRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

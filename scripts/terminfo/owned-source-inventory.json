@@ -121,5 +121,10 @@
     "sgrRgbReceiptSourceSha256": "sgr-rgb-receipt.mjs",
     "sgrRgbInput1SourceSha256": "sgr-rgb-resolved-color-snapshot.cs",
     "sgrRgbInput2SourceSha256": "sgr-rgb-draw-operation.cs",
-    "sgrRgbInput3SourceSha256": "sgr-rgb-render-snapshots.cs"
+    "sgrRgbInput3SourceSha256": "sgr-rgb-render-snapshots.cs",
+    "sgrAttrsContractsSourceSha256": "sgr-attrs-contracts.mjs",
+    "sgrAttrsCollectorSourceSha256": "sgr-attrs-collector.mjs",
+    "sgrAttrsGradingSourceSha256": "sgr-attrs-grading.mjs",
+    "sgrAttrsGradingCollectorSourceSha256": "sgr-attrs-grading-collector.mjs",
+    "sgrAttrsReceiptSourceSha256": "sgr-attrs-receipt.mjs"
 }

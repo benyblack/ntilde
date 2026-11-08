@@ -5,6 +5,7 @@ import { includesQueryEvidence, checkQueryEvidence } from './query-receipt.mjs';
 import { includesAsciiSgrEvidence, checkAsciiSgrEvidence } from './ascii-sgr-receipt.mjs';
 import { includesSgrColorsEvidence, checkSgrColorsEvidence } from './sgr-colors-receipt.mjs';
 import { includesSgrRgbEvidence, checkSgrRgbEvidence } from './sgr-rgb-receipt.mjs';
+import { includesSgrAttrsEvidence, checkSgrAttrsEvidence } from './sgr-attrs-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
@@ -117,7 +118,7 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
 }
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
-function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb }) {
+function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs }) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -133,6 +134,7 @@ function ownedReceiptVersion(context, { includesEditing, includesHistory, includ
     if (includesAsciiSgr) schemaVersion = 13;
     if (includesSgrColors) schemaVersion = 14;
     if (includesSgrRgb) schemaVersion = 15;
+    if (includesSgrAttrs) schemaVersion = 16;
     return schemaVersion;
 }
 
@@ -147,6 +149,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesAsciiSgr = includesAsciiSgrEvidence(output, evidence, context);
     const includesSgrColors = includesSgrColorsEvidence(output, evidence, context);
     const includesSgrRgb = includesSgrRgbEvidence(output, evidence, context);
+    const includesSgrAttrs = includesSgrAttrsEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
     const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
@@ -154,7 +157,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -171,6 +174,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesAsciiSgr) checkAsciiSgrEvidence(output, evidence, runId, context);
     if (suffixes.includesSgrColors) checkSgrColorsEvidence(output, evidence, runId, context);
     if (suffixes.includesSgrRgb) checkSgrRgbEvidence(output, evidence, runId, context);
+    if (suffixes.includesSgrAttrs) checkSgrAttrsEvidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
