@@ -373,3 +373,10 @@ test('every report conclusion carries both layer states even when inconclusive',
         assert.deepEqual(item.contractResult.layers, item.conclusion.layers);
     }
 });
+
+test('a detail-only index rewrite with a recalibrated palette cannot turn a wrong index into a supported 256 case', () => {
+    const base = report();
+    const forged = structuredClone(base.evidence);
+    rehash(forged, frameOf(2), screen => { screen.cellDetails.find(run => run.fg === 67).fg = 68; });
+    assert.throws(() => rebuild(forged), /Contradictory|does not match its observed evidence|coheren/i);
+});

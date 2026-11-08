@@ -317,3 +317,14 @@ test('default: attribute drift on the reset cell is an invalid control, not a fa
         assert.deepEqual(result.layers, { stored: 'not-evaluated', resolved: 'not-evaluated' });
     }
 });
+
+test('the projection refuses stored detail indices that disagree with the attribute runs and resolved channels', () => {
+    const screen = syntheticSgrPaletteScreen([colorCell('X', { fg: paletteChannel(67) })]);
+    assert.equal(sgrPaletteCellAt(screen, 0, 0).fgIndex, 67);
+    const detailsOnly = structuredClone(screen);
+    detailsOnly.cellDetails[0].fg = 68;
+    assert.throws(() => sgrPaletteCellAt(detailsOnly, 0, 0), /Contradictory stored and resolved fg palette indices/);
+    const runsOnly = structuredClone(screen);
+    runsOnly.attributeRuns[0].fg = 68;
+    assert.throws(() => sgrPaletteCellAt(runsOnly, 0, 0), /Contradictory/);
+});

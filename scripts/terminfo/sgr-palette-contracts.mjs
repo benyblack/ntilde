@@ -29,6 +29,7 @@
 // colors are inconclusive and never unsupported.
 import { planFeed, planRead, validateExactFeeds } from './graded-plan.mjs';
 import { sgrAttrsCellAt, sgrAttrsReset, sgrAttrsClear, validateSgrAttrsScreen } from './sgr-attrs-contracts.mjs';
+import { expandResolvedColors } from './resolved-colors.mjs';
 
 /** Contracts v1 is the first measured semantics of this batch. */
 export const sgrPaletteContractsVersion = 1;
@@ -43,7 +44,25 @@ export const sgrPaletteClear = sgrAttrsClear;
 
 /** One projection of one cell: the attribute suite's, which already carries flags,
  * stored details (indices, literal ARGB, underline color, overline) and resolved RGB. */
-export const sgrPaletteCellAt = sgrAttrsCellAt;
+export function sgrPaletteCellAt(screen, row, col) {
+    const cell = sgrAttrsCellAt(screen, row, col);
+    // The stored indices come from the cell details, the flags from the attribute runs and the resolved
+    // channels from the resolved runs: all three must name the same palette index for this one cell.
+    const position = row * screen.cols + col;
+    let offset = 0, run;
+    for (const candidate of screen.attributeRuns ?? []) {
+        if (position < offset + candidate.count) { run = candidate; break; }
+        offset += candidate.count;
+    }
+    const resolved = expandResolvedColors(screen.resolvedColors, screen.rows * screen.cols, screen.colorBinding)[position];
+    for (const [channel, field] of [['fg', 'fg'], ['bg', 'bg']]) {
+        const resolvedIndex = resolved[channel].source === 'palette' ? resolved[channel].index : -1;
+        if (run?.[field] !== cell[channel + 'Index'] || resolvedIndex !== cell[channel + 'Index']) {
+            throw new Error(`Contradictory stored and resolved ${channel} palette indices at ${row},${col}.`);
+        }
+    }
+    return cell;
+}
 /** Observation screens are validated exactly like the attribute suite's. */
 export const validateSgrPaletteScreen = validateSgrAttrsScreen;
 
