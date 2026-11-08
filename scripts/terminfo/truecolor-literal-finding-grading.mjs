@@ -46,7 +46,7 @@ export function buildTruecolorFindingReport(frames, run, runId, { contractsVersi
         const readFrames = recorded.reads.map(() => frames[frameIndex++]);
         crossCheckGradedCapture(contract, recorded, readFrames, label);
         const screens = readFrames.map(frame => frame.screen);
-        const observation = truecolorFindingObservation(contract, screens);
+        const observation = truecolorFindingObservation(contract, screens, frames[0].screen.colorBinding);
         const result = gradeTruecolorFindingCase(contract, observation, contractsVersion);
         caseResults.push({ caseId: contract.caseId, criterion: contract.criterion, channel: contract.channel,
             requested: contract.requested, aliasedIndex: contract.index, feeds: recorded.feeds, barriers: recorded.barriers,

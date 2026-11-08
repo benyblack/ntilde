@@ -126,6 +126,19 @@ test('a palette change outside the contracted mutation voids the run; a theme ch
     assert.equal(rebuild(stray).cases[0].conclusion.outcome, 'inconclusive');
 });
 
+test('an unrelated palette entry changed in every read of a case grades inconclusive through the report builder', () => {
+    const persistent = syntheticTruecolorFindingEvidence('a'.repeat(32), { bindingOf: (contract, phase) => {
+        const base = findingBinding(contract, phase);
+        if (contract.caseId !== truecolorFindingContracts[4].caseId) return base;
+        const palette = [...base.ansiPaletteArgb]; palette[100] = 0xff112233;
+        return { ...base, ansiPaletteArgb: palette };
+    } });
+    const report = rebuild(persistent);
+    assert.equal(report.cases[4].conclusion.outcome, 'inconclusive');
+    assert.match(report.cases[4].conclusion.note, /baseline palette/);
+    assert.equal(report.cases[3].conclusion.outcome, 'supported');
+});
+
 test('rejects mismatched run identities', () => {
     const base = syntheticTruecolorFindingEvidence();
     assert.throws(() => buildTruecolorFindingReport(base.frames, base.run, 'b'.repeat(32)), /not bound to this run/);

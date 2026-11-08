@@ -54,9 +54,10 @@ export function syntheticTruecolorFindingEvidence(runId = 'a'.repeat(32), { cell
 }
 
 /** The independent contract verdict for one synthetic case. */
-export function syntheticTruecolorFindingGrade(caseId, { cellsOf = null, bindingOf = null } = {}) {
+export function syntheticTruecolorFindingGrade(caseId, { cellsOf = null, bindingOf = null, baselineOf = null } = {}) {
     const contract = truecolorFindingContracts.find(item => item.caseId === caseId);
     const screens = phases.map(phase => syntheticSgrPaletteScreen(cellsOf?.(contract, phase) ?? findingCells(contract),
         bindingOf?.(contract, phase) ?? findingBinding(contract, phase)));
-    return gradeTruecolorFindingCase(contract, truecolorFindingObservation(contract, screens));
+    const baseline = baselineOf?.(contract) ?? bindingOf?.(contract, 'before') ?? findingBinding(contract, 'before');
+    return gradeTruecolorFindingCase(contract, truecolorFindingObservation(contract, screens, baseline));
 }

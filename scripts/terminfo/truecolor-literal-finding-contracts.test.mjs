@@ -8,7 +8,8 @@ import { canonicalPalette, paletteBinding, colorCell, plainCell, paletteChannel,
     syntheticSgrPaletteScreen } from './fixtures/sgr-palette-evidence.mjs';
 
 const ids = truecolorFindingContracts.map(contract => contract.caseId);
-const grade = (caseId, { cells, binding } = {}) => syntheticTruecolorFindingGrade(caseId, {
+const grade = (caseId, { cells, binding, baseline } = {}) => syntheticTruecolorFindingGrade(caseId, {
+    baselineOf: baseline ?? null,
     cellsOf: cells ? (contract, phase) => cells(contract, phase, findingCells(contract)) : null,
     bindingOf: binding ? (contract, phase) => binding(contract, phase, findingBinding(contract, phase)) : null,
 });
@@ -91,7 +92,7 @@ test('altered literal bytes are unsupported only with valid controls; a stale re
     }
     const contract = truecolorFindingContracts[0];
     const screens = phases.map(phase => syntheticSgrPaletteScreen(findingCells(contract), findingBinding(contract, phase)));
-    const observation = truecolorFindingObservation(contract, screens);
+    const observation = truecolorFindingObservation(contract, screens, findingBinding(contract, 'before'));
     observation.mutated[2] = { ...observation.mutated[2], fg: { r: 255, g: 0, b: 255 } };
     const result = gradeTruecolorFindingCase(contract, observation);
     assert.equal(result.outcome, 'unsupported');
@@ -103,18 +104,18 @@ test('invalid controls never become conclusive, even beside an aliased target', 
     assert.equal(faithful(ids[0]), 'supported');
     const bad = { cells: (c, phase) => findingCells(c, { aliased: true }) };
     for (const [name, options, note] of [
-        ['mutation never applied', { ...bad, binding: (c, phase) => findingBinding(c, 'before') }, /palette-mutation control/],
+        ['mutation never applied', { ...bad, binding: (c, phase) => findingBinding(c, 'before') }, /palette-mutation control|baseline palette/],
         ['mutation applied to a different entry', { ...bad, binding: (c, phase, b) => {
             if (phase !== 'mutated') return b;
             const palette = canonicalPalette(); palette[(c.index + 1) % 16] = 0xffff00ff;
-            return { ...paletteBinding({ palette }), paletteOverrideIndices: [(c.index + 1) % 16] }; } }, /palette-mutation control/],
+            return { ...paletteBinding({ palette }), paletteOverrideIndices: [(c.index + 1) % 16] }; } }, /palette-mutation control|baseline palette/],
         ['mutation also changed another entry', { ...bad, binding: (c, phase, b) => {
             if (phase !== 'mutated') return b;
-            const palette = [...b.ansiPaletteArgb]; palette[200] = 0xff123456; return { ...b, ansiPaletteArgb: palette }; } }, /palette-mutation control/],
-        ['palette not restored', { ...bad, binding: (c, phase, b) => (phase === 'restored' ? findingBinding(c, 'mutated') : b) }, /palette-mutation control/],
+            const palette = [...b.ansiPaletteArgb]; palette[200] = 0xff123456; return { ...b, ansiPaletteArgb: palette }; } }, /palette-mutation control|baseline palette/],
+        ['palette not restored', { ...bad, binding: (c, phase, b) => (phase === 'restored' ? findingBinding(c, 'mutated') : b) }, /palette-mutation control|baseline palette/],
         ['wrong mutation color', { ...bad, binding: (c, phase, b) => {
             if (phase !== 'mutated') return b;
-            const palette = [...b.ansiPaletteArgb]; palette[c.index] = 0xff00ff00; return { ...b, ansiPaletteArgb: palette }; } }, /palette-mutation control/],
+            const palette = [...b.ansiPaletteArgb]; palette[c.index] = 0xff00ff00; return { ...b, ansiPaletteArgb: palette }; } }, /palette-mutation control|baseline palette/],
         ['reverse video', { ...bad, binding: (c, phase, b) => ({ ...b, reverseVideo: true }) }, /DECSCNM/],
         ['baseline active', { cells: (c, phase, f) => withCell(findingCells(c, { aliased: true }), 0, colorCell('B', { attrs: ['italic'] })) }, /Neutral baseline/],
         ['indexed control stored as literal', { cells: (c, phase) => withCell(findingCells(c, { aliased: true }), 1, colorCell('I', own(c, literalChannel(1, 2, 3)))) }, /positive control/],
@@ -140,12 +141,32 @@ test('invalid controls never become conclusive, even beside an aliased target', 
 test('the grader refuses unknown revisions and incomplete observations', () => {
     const contract = truecolorFindingContracts[0];
     const screens = phases.map(phase => syntheticSgrPaletteScreen(findingCells(contract), findingBinding(contract, phase)));
-    const observation = truecolorFindingObservation(contract, screens);
+    const observation = truecolorFindingObservation(contract, screens, findingBinding(contract, 'before'));
     assert.equal(gradeTruecolorFindingCase(contract, observation).outcome, 'supported');
     assert.throws(() => gradeTruecolorFindingCase(contract, observation, 2), /Unknown truecolor-finding contracts revision/);
     assert.throws(() => gradeTruecolorFindingCase(contract, { ...observation, bindings: [] }), /Missing finding.truecolor-literal.fg.0-55-218 read captures/);
     assert.throws(() => gradeTruecolorFindingCase(contract, { ...observation, mutated: observation.mutated.slice(1) }), /Missing/);
     assert.throws(() => truecolorFindingObservation(contract, screens.slice(1)), /Missing truecolor-finding read captures/);
+});
+
+test('an unrelated palette entry that changed and stayed changed across every read is not a pristine palette', () => {
+    const drifted = (c, phase) => {
+        const base = findingBinding(c, phase);
+        const palette = [...base.ansiPaletteArgb]; palette[100] = 0xff112233;
+        return { ...base, ansiPaletteArgb: palette };
+    };
+    for (const id of [ids[0], ids[6]]) {
+        const result = grade(id, { binding: drifted, baseline: c => findingBinding(c, 'before'), cells: (c, phase) => findingCells(c, { aliased: true }) });
+        assert.equal(result.outcome, 'inconclusive', id);
+        assert.match(result.note, /baseline palette/);
+    }
+    // A pre-existing override in the baseline is not a pristine palette either.
+    const overridden = grade(ids[1], { baseline: c => ({ ...findingBinding(c, 'before'), paletteOverrideIndices: [9] }) });
+    assert.equal(overridden.outcome, 'inconclusive');
+    assert.match(overridden.note, /baseline palette/);
+    assert.throws(() => gradeTruecolorFindingCase(truecolorFindingContracts[0], { ...truecolorFindingObservation(truecolorFindingContracts[0],
+        phases.map(phase => syntheticSgrPaletteScreen(findingCells(truecolorFindingContracts[0]), findingBinding(truecolorFindingContracts[0], phase))),
+        findingBinding(truecolorFindingContracts[0], 'before')), baseline: undefined }), /Missing/);
 });
 
 test('default markers, palette index 0 and literal black stay distinct end to end', () => {

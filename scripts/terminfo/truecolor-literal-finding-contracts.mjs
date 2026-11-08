@@ -70,7 +70,7 @@ function findingCase(channel, value) {
             + `change of entry ${index}, in the semicolon, colon-omitted-colorspace and colon-explicit-colorspace forms; an explicit indexed `
             + 'positive control follows the same change; rendered appearance is not claimed',
         grade(observation) {
-            const { before, mutated, restored, bindings, reverseVideo } = observation;
+            const { before, mutated, restored, bindings, reverseVideo, baseline: runBaseline } = observation;
             const baseline = before[0];
             if (![before, mutated, restored].every(group => group.every((cell, position) => cell.char === 'BISCD'[position]))) {
                 return inconclusive('The finding fixture cells were not exposed');
@@ -79,6 +79,13 @@ function findingCase(channel, value) {
             if (!neutral(baseline)) return inconclusive('Neutral baseline control was not measured (a color or attribute was initially active)');
             const paletteOf = binding => binding.ansiPaletteArgb;
             const [first, second, third] = bindings;
+            // Every read is compared with the run's own recorded start palette: an unrelated entry that changed and stayed
+            // changed across all reads (or a pre-existing override) must not pass as a pristine palette.
+            if (runBaseline.paletteOverrideIndices.length !== 0 || JSON.stringify(paletteOf(first)) !== JSON.stringify(paletteOf(runBaseline))
+                || JSON.stringify(paletteOf(third)) !== JSON.stringify(paletteOf(runBaseline))
+                || paletteOf(second).some((argb, position) => position !== index && argb !== paletteOf(runBaseline)[position])) {
+                return inconclusive('A read palette differs from the run\'s recorded baseline palette outside the contracted mutation');
+            }
             // The mutation control: exactly the aliased entry changed, to the contracted magenta, and was restored.
             const onlyEntryChanged = paletteOf(first).every((argb, position) => position === index
                 ? paletteOf(second)[position] === mutationArgb && argb !== mutationArgb
@@ -143,13 +150,13 @@ export const truecolorFindingContracts = Object.freeze(
 export const truecolorFindingCaseIds = Object.freeze(truecolorFindingContracts.map(contract => contract.caseId));
 
 /** Project the three read groups of one case into the grader's observation. */
-export function truecolorFindingObservation(contract, screens) {
+export function truecolorFindingObservation(contract, screens, baseline) {
     if (!Array.isArray(screens) || screens.length !== 3) throw new Error('Missing truecolor-finding read captures.');
     const reverse = screens.map(screen => screen.colorBinding.reverseVideo);
     return { before: Array.from({ length: contract.fixtureCells }, (_, col) => sgrColorCellAt(screens[0], 0, col)),
         mutated: Array.from({ length: contract.fixtureCells }, (_, col) => sgrColorCellAt(screens[1], 0, col)),
         restored: Array.from({ length: contract.fixtureCells }, (_, col) => sgrColorCellAt(screens[2], 0, col)),
-        bindings: screens.map(screen => screen.colorBinding),
+        bindings: screens.map(screen => screen.colorBinding), baseline,
         reverseVideo: reverse.every(value => value === false) ? false : reverse.some(value => value === true) ? true : null };
 }
 
@@ -157,7 +164,7 @@ export function truecolorFindingObservation(contract, screens) {
 export function gradeTruecolorFindingCase(contract, observation, revision = truecolorFindingContractsVersion) {
     if (revision !== 1) throw new Error(`Unknown truecolor-finding contracts revision ${revision}.`);
     if (![observation?.before, observation?.mutated, observation?.restored].every(group => Array.isArray(group) && group.length === contract.fixtureCells)
-        || !Array.isArray(observation.bindings) || observation.bindings.length !== 3) {
+        || !Array.isArray(observation.bindings) || observation.bindings.length !== 3 || !observation.baseline) {
         throw new Error(`Missing ${contract.caseId} read captures.`);
     }
     return contract.grade(observation);

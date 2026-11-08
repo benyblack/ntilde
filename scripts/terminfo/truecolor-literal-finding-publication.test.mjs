@@ -4,6 +4,7 @@
 // per run (context/receipt, run log, common report, one report and one journal per case).
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { buildTruecolorFindingReport } from './truecolor-literal-finding-grading.mjs';
 import { truecolorFindingContracts, truecolorFindingSuiteId, snappedValues } from './truecolor-literal-finding-contracts.mjs';
@@ -119,6 +120,19 @@ test('identities: same scripts revision, App revisions differ, both receipts com
     assert.deepEqual(before.findingCounts, { unsupported: 10 });
     assert.deepEqual(after.findingCounts, { supported: 10 });
     assert.deepEqual(before.findingEvidenceBinding.counts, before.findingCounts);
+});
+
+test('the reconstructed report, run log and journal hash to the receipt and retained digests', () => {
+    const hash = value => createHash('sha256').update(value).digest('hex');
+    for (const label of ['before', 'after']) {
+        const { run, report, contextReceipt } = load(label);
+        const binding = contextReceipt.receipt.truecolorFindingEvidence;
+        assert.equal(hash(JSON.stringify(report, null, 2) + '\n'), binding.sha256);
+        assert.equal(hash(JSON.stringify(report, null, 2) + '\n'), summary[label].retained.findingObservationsSha256);
+        assert.equal(hash(JSON.stringify(run) + '\n'), binding.runSha256);
+        assert.equal(hash(JSON.stringify(run) + '\n'), summary[label].retained.findingRunSha256);
+        assert.equal(hash(report.snapshots.map(frame => JSON.stringify(frame)).join('\n') + '\n'), summary[label].retained.findingJournalSha256);
+    }
 });
 
 test('the context and receipt files agree with the summary', () => {
