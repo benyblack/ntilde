@@ -24,7 +24,7 @@ function present(path) {
  * and a policy-v7 run always carries them, because the current worker
  * collects this suite unconditionally after the first grading suite. */
 export function includesSgrColorsEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v7', 'readonly-owned-source-graph-v8', 'readonly-owned-source-graph-v9', 'readonly-owned-source-graph-v10', 'readonly-owned-source-graph-v11', 'readonly-owned-source-graph-v12', 'readonly-owned-source-graph-v13'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v7', 'readonly-owned-source-graph-v8', 'readonly-owned-source-graph-v9', 'readonly-owned-source-graph-v10', 'readonly-owned-source-graph-v11', 'readonly-owned-source-graph-v12', 'readonly-owned-source-graph-v13', 'readonly-owned-source-graph-v14'].includes(context.sourceSnapshotPolicy)
         || context.sgrColorsAdapterId !== undefined || context.sgrColorsSuiteId !== undefined
         || context.sgrColorsBundleSha256 !== undefined || evidence.sgrColorsEvidence !== undefined
         || files.some(file => present(join(output, file)));

@@ -284,3 +284,7 @@ export { planFeeds as sgrAttrsFeeds, planReads as sgrAttrsReads } from './graded
 export function validateSgrAttrsFeeds(contract, feeds) {
     validateExactFeeds(contract, feeds, 'contract');
 }
+
+/** The stored-state predicates and projection constants the attribute contracts use, shared by later layers
+ * that grade finer attribute detail (for example underline styles) with identical neutrality semantics. */
+export const sgrAttrsPredicates = Object.freeze({ neutral, othersClear, exactly, keepsTarget, storedNeutral, underlineColorNeutral });
