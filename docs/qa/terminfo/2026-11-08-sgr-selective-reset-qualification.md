@@ -45,8 +45,8 @@ refused. **Underline color is observed, never required**: no pinned criterion co
 
 ## Measurement
 
-Committed source `5d61ec48` (scripts and App source coincide; no App change). Owned run `d4c55288e450c653a45f6fe108e9327a`, receipt schema 23, source policy v17
-(inventory v24, 163 files), default theme, disposable sidecar built from this checkout. First and only collection; no failed attempt.
+Committed source `8484b7e6` (scripts and App source coincide; no App change). Owned run `933f338ba9b650f93bccd71361b0cf21`, receipt schema 23, source policy v17
+(inventory v24, 163 files), default theme, disposable sidecar built from this checkout. Second collection: the first (run `d4c55288e450c653a45f6fe108e9327a`, source `5d61ec48`, also both supported) is preserved in the summary as superseded after a Codex review fix changed the underline-color observation derivation.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
 |---|---|---|---|

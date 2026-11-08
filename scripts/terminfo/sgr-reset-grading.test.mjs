@@ -28,7 +28,6 @@ test('a complete run rederives both cases: pinned and contract agree and nothing
     for (const item of report.cases) {
         assert.equal(item.divergence, undefined);
         assert.equal(item.conclusion.grading, 'pinned-termless-plus-contract-v1');
-        assert.deepEqual(item.pinnedFeeds, [`C${item.terminalFixture.writes[0].replace(/^(.*)X/, '$1X')}`.replace(/^C/, 'C')].length ? item.pinnedFeeds : []);
         assert.equal(item.pinned.response.includes('"char":"X"'), true);
     }
 });

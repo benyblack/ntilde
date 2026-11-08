@@ -127,5 +127,8 @@ test('prior publications still rederive beside this batch and carry no selective
     const resolved = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-underline-color-resolved/summary.json', import.meta.url)));
     assert.equal(resolved.receipt.schemaVersion, 22);
     assert.equal(resolved.receipt.sgrResetEvidence, undefined);
-    assert.equal(load().summary.attempts.length, 0, 'no failed attempt preceded this measurement');
+    const { attempts } = load().summary;
+    assert.equal(attempts.length, 1, 'the superseded first measurement is preserved');
+    assert.equal(attempts[0].receiptCompleted, true);
+    assert.notEqual(attempts[0].runId, load().summary.context.runId);
 });

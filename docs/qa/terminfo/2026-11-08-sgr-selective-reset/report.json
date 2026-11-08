@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-sgr-selective-reset-graded-v1",
-  "runId": "d4c55288e450c653a45f6fe108e9327a",
+  "runId": "933f338ba9b650f93bccd71361b0cf21",
   "contractsVersion": 1,
   "adapter": {
     "id": "ntilde-owned-sgr-selective-reset-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-sgr-underline-color-grading-v1",
-    "bundleSha256": "7e5926e49fe5533ea78b77df682b78b15a170ae1ccc172a51d1d622d9a81a064",
+    "bundleSha256": "2a3314b98ac86591ebd7b093fa4f353d5498bdefedccf0dce48f7c3b5d8e39bf",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 selective-reset underline (SGR 24) and inverse (SGR 27) termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored attribute flags, the exact stored underline style, stored foreground/background and overline, with controls for initially inactive attributes, the same bytes without the reset (no-op), an accidental full SGR 0, a wrong reset sequence, unrelated-attribute and color drift, DECSCNM (proven off, and a DECSCNM-on control for per-cell inverse) and, for underline, double-underline, SGR 59 and observed (not required) underline-color behavior. Stored state only: rendered appearance is not claimed; no stock grades.",
@@ -400,7 +400,7 @@
         "reverseVideo": false,
         "underlineColorBehavior": {
           "policy": "observed, not required: no pinned criterion constrains underline color",
-          "requestedLiteralStored": true,
+          "requestedColorStored": true,
           "afterSgr24": {
             "underline": false,
             "underlineColorIndex": -1,
