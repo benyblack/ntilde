@@ -35,6 +35,11 @@ export function validateColorEvidence(spec, frames, run, runId, adapter) {
     }
     // One palette/theme/render state for the whole suite: a palette or theme change between
     // reads would resolve cells against different values and voids the run.
+    // A suite with a contracted palette mutation supplies its own check; every other suite must see one binding throughout.
+    if (spec.bindingStable) {
+        spec.bindingStable(frames);
+        return;
+    }
     const binding = colorBindingHash(frames[0].screen.colorBinding);
     if (frames.some(frame => colorBindingHash(frame.screen.colorBinding) !== binding)) {
         throw new Error(`${spec.label} observation saw the palette or theme change.`);
@@ -90,7 +95,7 @@ export function buildColorReport(spec, frames, run, runId, adapter, { contractsV
         const readFrames = recorded.reads.map(() => frames[frameIndex++]);
         crossCheckGradedCapture(contract, recorded, readFrames, spec.label);
         const screens = readFrames.map(frame => frame.screen);
-        const observation = spec.observation(contract, screens);
+        const observation = spec.observation(contract, screens, frames[0].screen.colorBinding);
         const contractResult = spec.grade(contract, observation, contractsVersion);
         const pinned = recorded.pinned;
         if (pinned?.probeId !== contract.caseId || pinned.observation?.evidence !== 'parser-state') {

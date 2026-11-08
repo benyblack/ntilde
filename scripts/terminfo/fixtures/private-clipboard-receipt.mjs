@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV21SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV22SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV21SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV22SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV21SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV22SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -225,6 +225,27 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'sgus-run.json', runSha256: hash(readFileSync(join(output, 'sgus-run.json'))),
                 adapterBundleSha256: hash(sgrUnderlineBytes), contractsVersion: sgrUnderlineContractsVersion,
                 counts: { supported: 4 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v15 always carries the layered SGR-underline-color suffix as well.
+            const { syntheticSgrUnderlineColorEvidence } = await import('./sgr-underline-color-evidence.mjs');
+            const { buildSgrUnderlineColorGradingReport } = await import('../sgr-underline-color-grading.mjs');
+            const { adaptSgrUnderlineColorCollector, sgrUnderlineColorAdapterId } = await import('../sgr-underline-color-grading-collector.mjs');
+            const { sgrUnderlineColorSuiteId, sgrUnderlineColorContractsVersion } = await import('../sgr-underline-color-contracts.mjs');
+            const sgrUnderlineColorBytes = Buffer.from(adaptSgrUnderlineColorCollector(sgrUnderlineBytes.toString()));
+            const sgrUnderlineColor = syntheticSgrUnderlineColorEvidence(context.runId, hash(sgrUnderlineColorBytes));
+            sgrUnderlineColor.adapter = { id: sgrUnderlineColorAdapterId, derivedFromAdapterId: sgrUnderlineAdapterId,
+                bundleSha256: hash(sgrUnderlineColorBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const sgrUnderlineColorReport = buildSgrUnderlineColorGradingReport(sgrUnderlineColor.frames, sgrUnderlineColor.run, context.runId, sgrUnderlineColor.adapter);
+            write('sguc-observations.json', sgrUnderlineColorReport);
+            write('sguc-run.json', sgrUnderlineColor.run);
+            writeFileSync(join(output, 'sguc-snapshots.jsonl'), sgrUnderlineColor.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-sguc.mjs'), sgrUnderlineColorBytes);
+            Object.assign(context, { sgrUnderlineColorAdapterId, sgrUnderlineColorSuiteId, sgrUnderlineColorBundleSha256: hash(sgrUnderlineColorBytes),
+                sgrUnderlineColorContractsVersion });
+            evidence.sgrUnderlineColorEvidence = { runId: context.runId, suiteId: sgrUnderlineColorSuiteId,
+                file: 'sguc-observations.json', sha256: hash(readFileSync(join(output, 'sguc-observations.json'))),
+                runFile: 'sguc-run.json', runSha256: hash(readFileSync(join(output, 'sguc-run.json'))),
+                adapterBundleSha256: hash(sgrUnderlineColorBytes), contractsVersion: sgrUnderlineColorContractsVersion,
+                counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;
