@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV16SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV17SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV16SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV17SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV16SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV17SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -127,6 +127,27 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'sgrgb-run.json', runSha256: hash(readFileSync(join(output, 'sgrgb-run.json'))),
                 adapterBundleSha256: hash(sgrRgbBytes), contractsVersion: sgrRgbContractsVersion,
                 counts: { supported: 2 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v10 always carries the layered SGR-attributes suffix as well.
+            const { syntheticSgrAttrsEvidence } = await import('./sgr-attrs-evidence.mjs');
+            const { buildSgrAttrsGradingReport } = await import('../sgr-attrs-grading.mjs');
+            const { adaptSgrAttrsCollector, sgrAttrsAdapterId } = await import('../sgr-attrs-grading-collector.mjs');
+            const { sgrAttrsSuiteId, sgrAttrsContractsVersion } = await import('../sgr-attrs-contracts.mjs');
+            const sgrAttrsBytes = Buffer.from(adaptSgrAttrsCollector(sgrRgbBytes.toString()));
+            const sgrAttrs = syntheticSgrAttrsEvidence(context.runId, hash(sgrAttrsBytes));
+            sgrAttrs.adapter = { id: sgrAttrsAdapterId, derivedFromAdapterId: sgrRgbAdapterId,
+                bundleSha256: hash(sgrAttrsBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const sgrAttrsReport = buildSgrAttrsGradingReport(sgrAttrs.frames, sgrAttrs.run, context.runId, sgrAttrs.adapter);
+            write('sgattr-observations.json', sgrAttrsReport);
+            write('sgattr-run.json', sgrAttrs.run);
+            writeFileSync(join(output, 'sgattr-snapshots.jsonl'), sgrAttrs.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-sgattr.mjs'), sgrAttrsBytes);
+            Object.assign(context, { sgrAttrsAdapterId, sgrAttrsSuiteId, sgrAttrsBundleSha256: hash(sgrAttrsBytes),
+                sgrAttrsContractsVersion });
+            evidence.sgrAttrsEvidence = { runId: context.runId, suiteId: sgrAttrsSuiteId,
+                file: 'sgattr-observations.json', sha256: hash(readFileSync(join(output, 'sgattr-observations.json'))),
+                runFile: 'sgattr-run.json', runSha256: hash(readFileSync(join(output, 'sgattr-run.json'))),
+                adapterBundleSha256: hash(sgrAttrsBytes), contractsVersion: sgrAttrsContractsVersion,
+                counts: { supported: 5 }, provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

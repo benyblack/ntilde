@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 123 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 123); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 128 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 128); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -79,8 +79,10 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('private v16 fixed123 source scope includes all selected nonexecuted references while v15 remains fixed114', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV16SourceFiles);
+test('private v17 fixed128 source scope adds the five attribute scripts while v16 remains fixed123 and v15 fixed114', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV17SourceFiles);
+    assert.equal(Object.keys(capturedV16SourceFiles).length, 123);
+    assert.deepEqual(Object.keys(capturedV17SourceFiles).slice(0, 123), Object.keys(capturedV16SourceFiles));
     assert.equal(Object.keys(capturedV15SourceFiles).length, 114);
     assert.equal(Object.keys(capturedV14SourceFiles).length, 113);
     assert.equal(Object.keys(capturedV13SourceFiles).length, 108);
