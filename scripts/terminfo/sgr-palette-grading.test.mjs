@@ -365,3 +365,11 @@ test('the default marker stays distinct from palette index 0 and from literal bl
     assert.equal(find(asLiteral.report, 'sgr.fg.default').conclusion.outcome, 'unsupported');
     void defaultChannel;
 });
+
+test('every report conclusion carries both layer states even when inconclusive', () => {
+    const { report: value } = report(null, { ...paletteBinding(), reverseVideo: true });
+    for (const item of value.cases) {
+        assert.deepEqual(item.conclusion.layers, { stored: 'not-evaluated', resolved: 'not-evaluated' });
+        assert.deepEqual(item.contractResult.layers, item.conclusion.layers);
+    }
+});

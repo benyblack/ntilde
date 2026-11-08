@@ -88,7 +88,8 @@ const sameCellColor = (a, b) => {
     if (a === null || b === null) return a === b;
     return sameRgb(a, b);
 };
-const inconclusive = (note, layers) => ({ outcome: 'inconclusive', note, ...(layers ? { layers } : {}) });
+/** Every verdict carries both layer states; layers a case never reached are `not-evaluated`. */
+const inconclusive = (note, layers = { stored: 'not-evaluated', resolved: 'not-evaluated' }) => ({ outcome: 'inconclusive', note, layers });
 const argbRgb = argb => ({ r: (argb >> 16) & 255, g: (argb >> 8) & 255, b: argb & 255 });
 
 /** Case builder: pinned fixture, then a control group on a cleared screen. */
@@ -188,7 +189,9 @@ function defaultCase(caseId, channel, setupCode, resetCode, setupIndex) {
             if (!isDefault(partial, channel) || !isPalette(partial, other, other === 'fg' ? 1 : 2)) {
                 return { outcome: 'unsupported', layers, note: `SGR ${resetCode} did not reset only the ${channel} channel` };
             }
-            if (!isDefault(reset, channel) || !isDefault(reset, other) || !attributesClear(reset)) {
+            // Attribute drift on the reset cell is an invalid control, not a failed color reset.
+            if (!attributesClear(reset)) return inconclusive('Unrelated attributes drifted on the reset cell');
+            if (!isDefault(reset, channel) || !isDefault(reset, other)) {
                 return { outcome: 'unsupported', layers, note: `SGR ${resetCode} did not restore the ${channel} default marker after the explicit setup` };
             }
             return { outcome: 'supported', layers: { stored: 'supported', resolved: 'supported' } };

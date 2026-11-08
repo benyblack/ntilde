@@ -299,3 +299,21 @@ test('the projection carries stored, literal and resolved state separately', () 
     assert.deepEqual(literal.fg, indexed.fg);
     assert.deepEqual([plain.fgSource, plain.fg, plain.fgIndex], ['default', null, -1]);
 });
+
+test('every verdict carries both layer states, including early inconclusive paths', () => {
+    for (const contract of sgrPaletteContracts) {
+        const reverse = syntheticSgrPaletteGrade(contract.caseId, { ...paletteBinding(), reverseVideo: true });
+        assert.deepEqual(reverse.layers, { stored: 'not-evaluated', resolved: 'not-evaluated' }, contract.caseId);
+        const active = grade(contract.caseId, reads => { reads.fixture[0] = colorCell('C', { attrs: ['italic'] }); });
+        assert.deepEqual(active.layers, { stored: 'not-evaluated', resolved: 'not-evaluated' }, contract.caseId);
+    }
+});
+
+test('default: attribute drift on the reset cell is an invalid control, not a failed reset', () => {
+    for (const caseId of ['sgr.fg.default', 'sgr.bg.default']) {
+        const result = grade(caseId, reads => { reads.fixture[2] = colorCell('R', { attrs: ['italic'] }); });
+        assert.equal(result.outcome, 'inconclusive', caseId);
+        assert.match(result.note, /reset cell/);
+        assert.deepEqual(result.layers, { stored: 'not-evaluated', resolved: 'not-evaluated' });
+    }
+});
