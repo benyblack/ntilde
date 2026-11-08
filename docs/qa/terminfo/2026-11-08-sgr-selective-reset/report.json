@@ -1,0 +1,822 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-sgr-selective-reset-graded-v1",
+  "runId": "d4c55288e450c653a45f6fe108e9327a",
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-sgr-selective-reset-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-sgr-underline-color-grading-v1",
+    "bundleSha256": "7e5926e49fe5533ea78b77df682b78b15a170ae1ccc172a51d1d622d9a81a064",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 selective-reset underline (SGR 24) and inverse (SGR 27) termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored attribute flags, the exact stored underline style, stored foreground/background and overline, with controls for initially inactive attributes, the same bytes without the reset (no-op), an accidental full SGR 0, a wrong reset sequence, unrelated-attribute and color drift, DECSCNM (proven off, and a DECSCNM-on control for per-cell inverse) and, for underline, double-underline, SGR 59 and observed (not required) underline-color behavior. Stored state only: rendered appearance is not claimed; no stock grades.",
+  "initialSnapshot": 0,
+  "restoredSnapshot": 16,
+  "cases": [
+    {
+      "caseId": "sgr.selective-reset.underline",
+      "pinnedCriterion": "measured setup attributes clear on Y and unrelated attributes remain set",
+      "pinnedFeeds": [
+        "C\u001b[1;4mX\u001b[24mY"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "\u001b[1;4mX\u001b[24mY"
+        ],
+        "demand": "consumed",
+        "minimum": {
+          "rows": 1,
+          "cols": 3
+        }
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;4mX\u001b[24mY",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;4mXZ",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;4mX\u001b[0mY",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;4mX\u001b[22mY",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;21mX\u001b[24mY",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;4m\u001b[58;2;255;0;128mX\u001b[24mY\u001b[4mZ",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;4m\u001b[58;2;255;0;128mX\u001b[59mY"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "observed": {
+        "initial": {
+          "char": " ",
+          "flags": 768,
+          "bold": false,
+          "underline": false,
+          "underlineStyle": 0,
+          "inverse": false,
+          "overline": false,
+          "fgIndex": -1,
+          "bgIndex": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "underlineColorIndex": -1,
+          "underlineArgb": null
+        },
+        "pinned": [
+          {
+            "char": "C",
+            "flags": 768,
+            "bold": false,
+            "underline": false,
+            "underlineStyle": 0,
+            "inverse": false,
+            "overline": false,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          },
+          {
+            "char": "X",
+            "flags": 777,
+            "bold": true,
+            "underline": "single",
+            "underlineStyle": 1,
+            "inverse": false,
+            "overline": false,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          },
+          {
+            "char": "Y",
+            "flags": 769,
+            "bold": true,
+            "underline": false,
+            "underlineStyle": 0,
+            "inverse": false,
+            "overline": false,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          }
+        ],
+        "controls": {
+          "noReset": [
+            {
+              "char": "C",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "X",
+              "flags": 777,
+              "bold": true,
+              "underline": "single",
+              "underlineStyle": 1,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "Z",
+              "flags": 777,
+              "bold": true,
+              "underline": "single",
+              "underlineStyle": 1,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
+          "fullReset": [
+            {
+              "char": "C",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "X",
+              "flags": 777,
+              "bold": true,
+              "underline": "single",
+              "underlineStyle": 1,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "Y",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
+          "wrongReset(SGR 22)": [
+            {
+              "char": "C",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "X",
+              "flags": 777,
+              "bold": true,
+              "underline": "single",
+              "underlineStyle": 1,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "Y",
+              "flags": 776,
+              "bold": false,
+              "underline": "single",
+              "underlineStyle": 1,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
+          "doubleUnderlineThenSgr24": [
+            {
+              "char": "C",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "X",
+              "flags": 777,
+              "bold": true,
+              "underline": "double",
+              "underlineStyle": 2,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "Y",
+              "flags": 769,
+              "bold": true,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
+          "sgr59KeepsUnderline": [
+            {
+              "char": "C",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "X",
+              "flags": 777,
+              "bold": true,
+              "underline": "single",
+              "underlineStyle": 1,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": 4294901888
+            },
+            {
+              "char": "Y",
+              "flags": 777,
+              "bold": true,
+              "underline": "single",
+              "underlineStyle": 1,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ]
+        },
+        "reverseVideo": false,
+        "underlineColorBehavior": {
+          "policy": "observed, not required: no pinned criterion constrains underline color",
+          "requestedLiteralStored": true,
+          "afterSgr24": {
+            "underline": false,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          },
+          "afterSgr24ThenSgr4": {
+            "underline": "single",
+            "underlineColorIndex": -1,
+            "underlineArgb": 4294901888
+          },
+          "afterSgr59": {
+            "underline": "single",
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          },
+          "sgr24ClearsStoredColor": true,
+          "sgr24ColorSurvivesReEnable": true,
+          "sgr59ClearsStoredColor": true,
+          "sgr59KeepsUnderline": true
+        }
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"before\":{\"char\":\"X\",\"flags\":777,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"Y\",\"flags\":769,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "sgr.selective-reset.underline: measured setup attributes clear on Y and unrelated attributes remain set",
+            "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"before\":{\"char\":\"X\",\"flags\":777,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"Y\",\"flags\":769,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored underline flag and exact stored single style before SGR 24, the disabled representation (flag clear, style 0) after it, bold preserved, stored colors and underline color untouched by the pinned fixture; SGR 59 and underline-color behavior observed not required; stroke appearance is not claimed"
+      }
+    },
+    {
+      "caseId": "sgr.selective-reset.inverse",
+      "pinnedCriterion": "measured setup attributes clear on Y and unrelated attributes remain set",
+      "pinnedFeeds": [
+        "C\u001b[1;7mX\u001b[27mY"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "\u001b[1;7mX\u001b[27mY"
+        ],
+        "demand": "consumed",
+        "minimum": {
+          "rows": 1,
+          "cols": 3
+        }
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;7mX\u001b[27mY",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;7mXZ",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;7mX\u001b[0mY",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "C\u001b[1;7mX\u001b[24mY",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[?5hC\u001b[1;7mX\u001b[27mY",
+        "\u001b[?5l\u001b[0m\u001b[2J\u001b[H"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "observed": {
+        "initial": {
+          "char": " ",
+          "flags": 768,
+          "bold": false,
+          "underline": false,
+          "underlineStyle": 0,
+          "inverse": false,
+          "overline": false,
+          "fgIndex": -1,
+          "bgIndex": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "underlineColorIndex": -1,
+          "underlineArgb": null
+        },
+        "pinned": [
+          {
+            "char": "C",
+            "flags": 768,
+            "bold": false,
+            "underline": false,
+            "underlineStyle": 0,
+            "inverse": false,
+            "overline": false,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          },
+          {
+            "char": "X",
+            "flags": 771,
+            "bold": true,
+            "underline": false,
+            "underlineStyle": 0,
+            "inverse": true,
+            "overline": false,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          },
+          {
+            "char": "Y",
+            "flags": 769,
+            "bold": true,
+            "underline": false,
+            "underlineStyle": 0,
+            "inverse": false,
+            "overline": false,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          }
+        ],
+        "controls": {
+          "noReset": [
+            {
+              "char": "C",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "X",
+              "flags": 771,
+              "bold": true,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": true,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "Z",
+              "flags": 771,
+              "bold": true,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": true,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
+          "fullReset": [
+            {
+              "char": "C",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "X",
+              "flags": 771,
+              "bold": true,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": true,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "Y",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
+          "wrongReset(SGR 24)": [
+            {
+              "char": "C",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "X",
+              "flags": 771,
+              "bold": true,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": true,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "Y",
+              "flags": 771,
+              "bold": true,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": true,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ],
+          "decscnmOn": [
+            {
+              "char": "C",
+              "flags": 768,
+              "bold": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "X",
+              "flags": 771,
+              "bold": true,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": true,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            },
+            {
+              "char": "Y",
+              "flags": 769,
+              "bold": true,
+              "underline": false,
+              "underlineStyle": 0,
+              "inverse": false,
+              "overline": false,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineColorIndex": -1,
+              "underlineArgb": null
+            }
+          ]
+        },
+        "reverseVideo": false,
+        "reverseControl": true
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"before\":{\"char\":\"X\",\"flags\":771,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"Y\",\"flags\":769,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "sgr.selective-reset.inverse: measured setup attributes clear on Y and unrelated attributes remain set",
+            "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"before\":{\"char\":\"X\",\"flags\":771,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"Y\",\"flags\":769,\"bold\":true,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored per-cell inverse flag before and after SGR 27 with DECSCNM proven off, bold preserved, stored foreground/background untouched, per-cell inverse kept distinct from a DECSCNM-on control; the foreground/background swap and rendered appearance are not claimed"
+      }
+    }
+  ]
+}

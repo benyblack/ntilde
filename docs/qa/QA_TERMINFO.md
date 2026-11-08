@@ -823,3 +823,10 @@ controls (indexed, literal, default-inheritance; OSC 4 start/mutate/restore) com
 independent expectation from stored state. No benchmark case changes; the pinned underline-color evidence stays
 parent-derived. Theme-resolution stage only, no rendered-appearance claim. Receipt schema 22 and source policy v16
 (158 files) bind it; earlier policies stay frozen.
+
+### SGR selective-reset qualification (SGR 24 and SGR 27)
+
+The [selective-reset batch](terminfo/2026-11-08-sgr-selective-reset-qualification.md) grades exactly `sgr.selective-reset.underline` and
+`sgr.selective-reset.inverse` through a tenth layered collector extension (`ntilde-owned-sgr-selective-reset-grading-v1`), replaying the pinned
+`C${setup}X${reset}Y` fixtures byte-exactly with no-op, full-reset, wrong-reset, SGR 59 and DECSCNM controls. Receipt schema 23, source policy v17
+with the 163-file inventory; underline color is documented, not required; no pixel claim.
