@@ -34,7 +34,7 @@ function present(path) {
  * policy-v14 run always carries them, because the current worker collects this
  * suite unconditionally after the truecolor-finding suite. */
 export function includesSgrUnderlineEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v14'
+    return ['readonly-owned-source-graph-v14', 'readonly-owned-source-graph-v15'].includes(context.sourceSnapshotPolicy)
         || context.sgrUnderlineAdapterId !== undefined || context.sgrUnderlineSuiteId !== undefined
         || context.sgrUnderlineBundleSha256 !== undefined || context.sgrUnderlineContractsVersion !== undefined
         || evidence.sgrUnderlineEvidence !== undefined

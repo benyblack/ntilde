@@ -24,7 +24,7 @@ function present(path) {
 /** Any retained finding artifact or declaration requires the v19 suffix, and a policy-v13 run
  * always carries them because the current worker collects the suite unconditionally. */
 export function includesTruecolorFindingEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v13', 'readonly-owned-source-graph-v14'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v13', 'readonly-owned-source-graph-v14', 'readonly-owned-source-graph-v15'].includes(context.sourceSnapshotPolicy)
         || context.truecolorFindingSuiteId !== undefined || context.truecolorFindingContractsVersion !== undefined
         || evidence.truecolorFindingEvidence !== undefined
         || files.some(file => present(join(output, file)));
