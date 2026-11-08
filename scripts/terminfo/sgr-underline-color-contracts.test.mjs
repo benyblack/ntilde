@@ -139,6 +139,14 @@ test('indexed: the OSC 4 mutation must change exactly the contracted entries and
     assert.deepEqual(Object.keys(mutation).map(Number), [4, 5, 67]);
 });
 
+test('indexed: a pre-existing unrelated palette override is preserved through the mutation and restoration', () => {
+    const base = paletteBinding();
+    base.ansiPaletteArgb[200] = 0xff0a0b0c;
+    base.paletteOverrideIndices = [200];
+    assert.deepEqual(mutatedBinding(base).paletteOverrideIndices, [4, 5, 67, 200]);
+    assert.equal(syntheticSgrUnderlineColorGrade(INDEXED, base).outcome, 'supported');
+});
+
 test('rgb: wrong components, palette approximations and a substituted foreground are unsupported', () => {
     for (const rgb of [{ r: 255, g: 0, b: 129 }, { r: 254, g: 0, b: 128 }, { r: 255, g: 1, b: 128 }, { r: 0, g: 255, b: 0 }]) {
         const result = grade(RGB, reads => replaceCell(reads.fixture, 'X', ulCell('X', { fg: literalChannel(0, 255, 0), rgb })));

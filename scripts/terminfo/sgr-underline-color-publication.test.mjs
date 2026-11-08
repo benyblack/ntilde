@@ -4,6 +4,7 @@
 // one journal per case); the test reassembles the exact journal order.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { buildSgrUnderlineColorGradingReport } from './sgr-underline-color-grading.mjs';
 import { sgrUnderlineColorAdapterId } from './sgr-underline-color-grading-collector.mjs';
@@ -109,6 +110,17 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(receipt.sgrUnderlineColorEvidence.contractsVersion, 1);
     assert.equal(receipt.sgrUnderlineColorEvidence.adapterBundleSha256, summary.context.sgrUnderlineColorBundleSha256);
     assert.deepEqual(receipt.sgrUnderlineColorEvidence.counts, { supported: 3 });
+    // The published digests are those of the exact retained bytes: rebuild them from the reassembled evidence.
+    const { run, report } = load();
+    const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+    const observationsHash = hash(JSON.stringify(report, null, 2) + '\n');
+    const runHash = hash(JSON.stringify(run) + '\n');
+    const journalHash = hash(report.snapshots.map(frame => JSON.stringify(frame) + '\n').join(''));
+    assert.equal(receipt.sgrUnderlineColorEvidence.sha256, observationsHash);
+    assert.equal(receipt.sgrUnderlineColorEvidence.runSha256, runHash);
+    assert.equal(summary.retained.sgrUnderlineColorObservationsSha256, observationsHash);
+    assert.equal(summary.retained.sgrUnderlineColorRunSha256, runHash);
+    assert.equal(summary.retained.sgrUnderlineColorJournalSha256, journalHash);
     assert.deepEqual(receipt.sgrUnderlineEvidence.counts, { supported: 4 });
     assert.deepEqual(receipt.sgrTruecolorEvidence.counts, { supported: 2 });
     assert.deepEqual(receipt.sgrPaletteEvidence.counts, { supported: 6 });

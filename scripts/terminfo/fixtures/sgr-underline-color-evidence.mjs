@@ -48,7 +48,7 @@ export function syntheticSgrUnderlineColorReads(caseId) {
 /** The binding of the mutated read: the contracted entries changed and flagged as overrides. */
 export const mutatedBinding = binding => ({ ...binding,
     ansiPaletteArgb: binding.ansiPaletteArgb.map((value, index) => mutation[index] ?? value),
-    paletteOverrideIndices: Object.keys(mutation).map(Number).sort((a, b) => a - b) });
+    paletteOverrideIndices: [...new Set([...binding.paletteOverrideIndices, ...Object.keys(mutation).map(Number)])].sort((a, b) => a - b) });
 
 const underlineColorSuite = Object.freeze({ noncePrefix: 'NTILDE_UC_', prefix: 'sguc', contracts: sgrUnderlineColorContracts,
     adapterId: sgrUnderlineColorAdapterId, derivedFrom: 'ntilde-owned-sgr-underline-grading-v1', reset: sgrUnderlineColorReset,

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { checkSgrUnderlineColorEvidence, includesSgrUnderlineColorEvidence } from './sgr-underline-color-receipt.mjs';
@@ -284,9 +284,24 @@ test('policy v15 requires the SGR-underline-color binding even without artifacts
 }));
 
 test('a retained contracts-version declaration alone admits the suffix so incomplete evidence is rejected', () => fixture(f => {
+    for (const file of ['sguc-observations.json', 'sguc-run.json', 'sguc-snapshots.jsonl', 'collector-sguc.mjs']) rmSync(join(f.output, file));
     const context = { sgrUnderlineColorContractsVersion: 1 };
     assert.equal(includesSgrUnderlineColorEvidence(f.output, {}, context), true);
     assert.throws(() => checkSgrUnderlineColorEvidence(f.output, {}, runId, context), /Missing or changed SGR-underline-color adapter declaration/);
+}));
+
+test('a symlinked retained artifact is refused even when it points at valid evidence', () => fixture(f => {
+    for (const file of ['sguc-observations.json', 'sguc-run.json', 'sguc-snapshots.jsonl', 'collector-sguc.mjs']) {
+        const target = join(f.scratch, 'elsewhere-' + file);
+        mkdirSync(f.scratch, { recursive: true });
+        writeFileSync(target, readFileSync(join(f.output, file)));
+        rmSync(join(f.output, file));
+        symlinkSync(target, join(f.output, file));
+        assert.throws(() => checkSgrUnderlineColorEvidence(f.output, predecessors(f), runId, f.context), /not a regular file/, file);
+        rmSync(join(f.output, file));
+        writeFileSync(join(f.output, file), readFileSync(target));
+    }
+    assert.doesNotThrow(() => checkSgrUnderlineColorEvidence(f.output, predecessors(f), runId, f.context));
 }));
 
 test('historical receipts stay valid without any SGR-underline-color artifacts', () => {

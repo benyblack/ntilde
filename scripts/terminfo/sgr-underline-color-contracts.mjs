@@ -285,7 +285,7 @@ const resetCase = case_({
     pinnedCriterion: 'X has explicit underline rgb(255,0,128); SGR 59 restores Y to the measured reset-state C color',
     terminalFixture: { writes: ['\x1b[4m\x1b[58;2;255;0;128m\x1b[59m'], demand: 'consumed (cursor advance does not verify SGR styling)', minimum: { rows: 1, cols: 2 } },
     appearanceScope: 'stored default underline-color marker with no explicit index or literal after SGR 59, with underline style, foreground and background preserved; the default is an inherited-text-color marker, not a measured RGB, and rendered appearance is not claimed',
-    labeledSpellings: ['SGR 59 after an indexed color and after a literal color on a styled curly underline (cells S/T, U/V)'],
+    labeledSpellings: ['SGR 59 after an indexed color on a curly underline with explicit foreground/background (cells S/T)', 'SGR 59 after a literal color on a single underline with default foreground/background (cells U/V)'],
     grade(observation) {
         const { fixture: [c, x, y], control, reverseVideo } = observation;
         if (c.char !== 'C' || x.char !== 'X' || y.char !== 'Y') return inconclusive(pinnedResetNotExposedNote);

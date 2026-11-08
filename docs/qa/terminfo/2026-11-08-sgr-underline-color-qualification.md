@@ -53,7 +53,8 @@ C and Y are both default. Y keeps underline style 1, foreground and background.
 - Controls: neutral setup, unrelated attribute/overline/foreground/background drift and the exact underline style;
   DECSCNM off; literal bytes versus palette 67 with equal resolved RGB; explicit index 5 with foreground 5 versus the
   default; foreground equal to the requested color with a default underline (substitution); a neutral cell; SGR 59
-  from an indexed and from a literal color on a curly underline with foreground/background preserved. The indexed case
+  from an indexed color on a curly underline with explicit foreground/background, and from a literal color on a
+  single underline with default foreground/background, preserving these attributes. The indexed case
   also mutates palette entries 4, 5 and 67 with OSC 4 and restores them with OSC 104, comparing **all 256 entries** and
   the override list at start, mutated and restored reads; stored cells must be identical across the three states and
   every palette-sourced color must follow its own read's palette.

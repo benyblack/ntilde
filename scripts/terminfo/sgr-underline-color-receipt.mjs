@@ -42,6 +42,14 @@ export function includesSgrUnderlineColorEvidence(output, evidence, context) {
         || files.some(file => present(join(output, file)));
 }
 
+/** Every retained artifact must be a regular file inside the output directory: a symlink could point at valid evidence
+ * that later disappears, leaving a run that can no longer be rederived. */
+function requireRegularFiles(output) {
+    for (const file of files) {
+        if (!lstatSync(join(output, file)).isFile()) throw new Error(`SGR-underline-color artifact is not a regular file: ${file}`);
+    }
+}
+
 /** Full rederivation: journal, run log, layered adapter bytes and conclusions. */
 export function checkSgrUnderlineColorEvidence(output, evidence, runId, context) {
     if (context.sgrUnderlineColorAdapterId !== sgrUnderlineColorAdapterId || context.sgrUnderlineColorSuiteId !== sgrUnderlineColorSuiteId) {
@@ -66,6 +74,7 @@ export function checkSgrUnderlineColorEvidence(output, evidence, runId, context)
         || context.sgrUnderlineColorContractsVersion !== binding.contractsVersion) {
         throw new Error('Invalid SGR-underline-color suite receipt binding.');
     }
+    requireRegularFiles(output);
     const bytes = readFileSync(join(output, binding.file));
     if (hash(bytes) !== binding.sha256) throw new Error('SGR-underline-color observation bytes changed.');
     const runBytes = readFileSync(join(output, binding.runFile));
