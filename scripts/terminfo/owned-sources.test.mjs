@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 133 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 133); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 140 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 140); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -79,8 +79,10 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('private v18 fixed133 source scope adds the five palette scripts while v17 remains fixed128, v16 fixed123 and v15 fixed114', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV18SourceFiles);
+test('private v19 fixed140 source scope adds the five truecolor scripts and two shared color cores while v18 remains fixed133, v17 fixed128, v16 fixed123 and v15 fixed114', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV19SourceFiles);
+    assert.equal(Object.keys(capturedV18SourceFiles).length, 133);
+    assert.deepEqual(Object.keys(capturedV19SourceFiles).slice(0, 133), Object.keys(capturedV18SourceFiles));
     assert.equal(Object.keys(capturedV17SourceFiles).length, 128);
     assert.deepEqual(Object.keys(capturedV18SourceFiles).slice(0, 128), Object.keys(capturedV17SourceFiles));
     assert.equal(Object.keys(capturedV16SourceFiles).length, 123);

@@ -596,6 +596,22 @@ executable to exercise it as well, with a connected, awake desktop display:
 NTILDE_TERMINFO_TEST_EXECUTABLE=/absolute/path/to/Ntilde node --test scripts/terminfo/*.test.mjs
 ```
 
+### SGR truecolor qualification
+
+The [SGR truecolor batch](terminfo/2026-11-08-sgr-truecolor-qualification.md)
+qualifies exactly `sgr.fg.truecolor` and `sgr.bg.truecolor` through the layered
+`ntilde-owned-sgr-truecolor-grading-v1` extension over the SGR-palette one. The
+pinned `truecolorProbe` code runs over parent-observed cells carrying stored literal
+ARGB bytes (palette index and default marker proven cleared) together with
+App-resolved RGB bound to one recorded palette/theme state. Only the semicolon
+`38/48;2;r;g;b` form the pinned fixture exercises is qualified; the related
+`extensions.truecolor` case, colon forms and colorspace ids are separate variants and
+are not claimed. Controls cover literal-versus-palette storage with equal resolved
+appearance, boundary components, the unaffected channel, unrelated attributes
+(including overline and underline color) and DECSCNM; rendered appearance is not
+claimed. Receipt schema 18 and source policy v12 (138 files) bind it; earlier
+policies stay frozen.
+
 ## Interpret
 
 The ordinary inline CLI refuses most state-changing checks without its own

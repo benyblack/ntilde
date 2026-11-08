@@ -1,0 +1,561 @@
+{
+ "schemaVersion": 1,
+ "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
+ "runId": "a44537686a17710c484e2bfcbf3194d9",
+ "contractsVersion": 1,
+ "adapter": {
+  "id": "ntilde-owned-sgr-truecolor-grading-v1",
+  "derivedFromAdapterId": "ntilde-owned-sgr-palette-grading-v1",
+  "bundleSha256": "37bfb1faf4766e7bc893f8c8a440ece041cd2572e5fb3d998e8d797cfcd22b6c",
+  "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+ },
+ "scope": "Pinned terminfo.dev@4.0.0 truecolor foreground and background termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored literal bytes (palette index and default marker cleared) together with App-resolved RGB bound to one recorded palette/theme state, with controls for the unaffected channel, unrelated attributes, DECSCNM, literal-versus-palette storage with equal appearance, boundary components and reset restoration. Only the semicolon 38/48;2;r;g;b form is qualified. Rendered glyph appearance is not claimed; no stock grades.",
+ "initialSnapshot": 0,
+ "restoredSnapshot": 6,
+ "cases": [
+  {
+   "caseId": "sgr.fg.truecolor",
+   "pinnedCriterion": "two distinct direct-RGB samples are exposed at their exact requested values",
+   "pinnedFeeds": [
+    "C\u001b[31mA\u001b[34mB\u001b[38;2;255;128;0mX\u001b[38;2;17;97;201mY"
+   ],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[38;2;255;128;0m"
+    ],
+    "demand": "consumed (cursor advance does not verify SGR colors)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C\u001b[31mA\u001b[34mB\u001b[38;2;255;128;0mX\u001b[38;2;17;97;201mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[38;2;95;135;175mP\u001b[38;5;67mQ\u001b[38;2;0;0;0mL\u001b[38;2;255;255;255mH\u001b[0m\u001b[42m\u001b[38;2;17;97;201mU\u001b[0mR"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+   ],
+   "reads": [
+    [
+     0,
+     5
+    ],
+    [
+     0,
+     6
+    ]
+   ],
+   "observed": {
+    "fixture": [
+     {
+      "char": "C",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": null
+     },
+     {
+      "char": "A",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 1,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 205,
+       "g": 0,
+       "b": 0
+      },
+      "bg": null
+     },
+     {
+      "char": "B",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 4,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 0,
+       "g": 0,
+       "b": 238
+      },
+      "bg": null
+     },
+     {
+      "char": "X",
+      "flags": 512,
+      "fgSource": "literal",
+      "fgIndex": -1,
+      "foregroundArgb": 4294934528,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 255,
+       "g": 128,
+       "b": 0
+      },
+      "bg": null
+     },
+     {
+      "char": "Y",
+      "flags": 512,
+      "fgSource": "literal",
+      "fgIndex": -1,
+      "foregroundArgb": 4279329225,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 17,
+       "g": 97,
+       "b": 201
+      },
+      "bg": null
+     }
+    ],
+    "control": [
+     {
+      "char": "P",
+      "flags": 512,
+      "fgSource": "literal",
+      "fgIndex": -1,
+      "foregroundArgb": 4284450735,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 95,
+       "g": 135,
+       "b": 175
+      },
+      "bg": null
+     },
+     {
+      "char": "Q",
+      "flags": 16896,
+      "fgSource": "palette",
+      "fgIndex": 67,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 95,
+       "g": 135,
+       "b": 175
+      },
+      "bg": null
+     },
+     {
+      "char": "L",
+      "flags": 512,
+      "fgSource": "literal",
+      "fgIndex": -1,
+      "foregroundArgb": 4278190080,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 0,
+       "g": 0,
+       "b": 0
+      },
+      "bg": null
+     },
+     {
+      "char": "H",
+      "flags": 512,
+      "fgSource": "literal",
+      "fgIndex": -1,
+      "foregroundArgb": 4294967295,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 255,
+       "g": 255,
+       "b": 255
+      },
+      "bg": null
+     },
+     {
+      "char": "U",
+      "flags": 32768,
+      "fgSource": "literal",
+      "fgIndex": -1,
+      "foregroundArgb": 4279329225,
+      "bgSource": "palette",
+      "bgIndex": 2,
+      "backgroundArgb": null,
+      "fg": {
+       "r": 17,
+       "g": 97,
+       "b": 201
+      },
+      "bg": {
+       "r": 0,
+       "g": 205,
+       "b": 0
+      }
+     },
+     {
+      "char": "R",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": null
+     }
+    ],
+    "reverseVideo": false,
+    "defaults": {
+     "fg": {
+      "r": 211,
+      "g": 211,
+      "b": 211
+     },
+     "bg": {
+      "r": 0,
+      "g": 0,
+      "b": 0
+     }
+    }
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlFirst\":{\"char\":\"A\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":205,\"g\":0,\"b\":0},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlSecond\":{\"char\":\"B\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":238},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":4,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"targetFirst\":{\"char\":\"X\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":255,\"g\":128,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4294934528,\"backgroundArgb\":null},\"targetSecond\":{\"char\":\"Y\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":17,\"g\":97,\"b\":201},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4279329225,\"backgroundArgb\":null}}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.fg.truecolor: two distinct direct-RGB samples are exposed at their exact requested values",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlFirst\":{\"char\":\"A\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":205,\"g\":0,\"b\":0},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlSecond\":{\"char\":\"B\",\"flags\":16896,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":238},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":4,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"targetFirst\":{\"char\":\"X\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":255,\"g\":128,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4294934528,\"backgroundArgb\":null},\"targetSecond\":{\"char\":\"Y\",\"flags\":512,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":17,\"g\":97,\"b\":201},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4279329225,\"backgroundArgb\":null}}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    }
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    },
+    "scope": "stored literal ARGB bytes 255,128,0 and 17,97,201 with the palette index and default marker cleared, resolved fg RGB equal to the requested values under the one recorded palette; the semicolon 38/48;2;r;g;b form only; rendered appearance is not claimed"
+   }
+  },
+  {
+   "caseId": "sgr.bg.truecolor",
+   "pinnedCriterion": "two distinct direct-RGB samples are exposed at their exact requested values",
+   "pinnedFeeds": [
+    "C\u001b[41mA\u001b[44mB\u001b[48;2;0;255;128mX\u001b[48;2;17;97;201mY"
+   ],
+   "terminalFixture": {
+    "writes": [
+     "\u001b[48;2;0;255;128m"
+    ],
+    "demand": "consumed (cursor advance does not verify SGR colors)",
+    "minimum": {
+     "rows": 1,
+     "cols": 2
+    }
+   },
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "C\u001b[41mA\u001b[44mB\u001b[48;2;0;255;128mX\u001b[48;2;17;97;201mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[48;2;95;135;175mP\u001b[48;5;67mQ\u001b[48;2;0;0;0mL\u001b[48;2;255;255;255mH\u001b[0m\u001b[31m\u001b[48;2;17;97;201mU\u001b[0mR"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+   ],
+   "reads": [
+    [
+     0,
+     5
+    ],
+    [
+     0,
+     6
+    ]
+   ],
+   "observed": {
+    "fixture": [
+     {
+      "char": "C",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": null
+     },
+     {
+      "char": "A",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "palette",
+      "bgIndex": 1,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": {
+       "r": 205,
+       "g": 0,
+       "b": 0
+      }
+     },
+     {
+      "char": "B",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "palette",
+      "bgIndex": 4,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": {
+       "r": 0,
+       "g": 0,
+       "b": 238
+      }
+     },
+     {
+      "char": "X",
+      "flags": 256,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "literal",
+      "bgIndex": -1,
+      "backgroundArgb": 4278255488,
+      "fg": null,
+      "bg": {
+       "r": 0,
+       "g": 255,
+       "b": 128
+      }
+     },
+     {
+      "char": "Y",
+      "flags": 256,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "literal",
+      "bgIndex": -1,
+      "backgroundArgb": 4279329225,
+      "fg": null,
+      "bg": {
+       "r": 17,
+       "g": 97,
+       "b": 201
+      }
+     }
+    ],
+    "control": [
+     {
+      "char": "P",
+      "flags": 256,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "literal",
+      "bgIndex": -1,
+      "backgroundArgb": 4284450735,
+      "fg": null,
+      "bg": {
+       "r": 95,
+       "g": 135,
+       "b": 175
+      }
+     },
+     {
+      "char": "Q",
+      "flags": 33024,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "palette",
+      "bgIndex": 67,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": {
+       "r": 95,
+       "g": 135,
+       "b": 175
+      }
+     },
+     {
+      "char": "L",
+      "flags": 256,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "literal",
+      "bgIndex": -1,
+      "backgroundArgb": 4278190080,
+      "fg": null,
+      "bg": {
+       "r": 0,
+       "g": 0,
+       "b": 0
+      }
+     },
+     {
+      "char": "H",
+      "flags": 256,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "literal",
+      "bgIndex": -1,
+      "backgroundArgb": 4294967295,
+      "fg": null,
+      "bg": {
+       "r": 255,
+       "g": 255,
+       "b": 255
+      }
+     },
+     {
+      "char": "U",
+      "flags": 16384,
+      "fgSource": "palette",
+      "fgIndex": 1,
+      "foregroundArgb": null,
+      "bgSource": "literal",
+      "bgIndex": -1,
+      "backgroundArgb": 4279329225,
+      "fg": {
+       "r": 205,
+       "g": 0,
+       "b": 0
+      },
+      "bg": {
+       "r": 17,
+       "g": 97,
+       "b": 201
+      }
+     },
+     {
+      "char": "R",
+      "flags": 768,
+      "fgSource": "default",
+      "fgIndex": -1,
+      "foregroundArgb": null,
+      "bgSource": "default",
+      "bgIndex": -1,
+      "backgroundArgb": null,
+      "fg": null,
+      "bg": null
+     }
+    ],
+    "reverseVideo": false,
+    "defaults": {
+     "fg": {
+      "r": 211,
+      "g": 211,
+      "b": 211
+     },
+     "bg": {
+      "r": 0,
+      "g": 0,
+      "b": 0
+     }
+    }
+   },
+   "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+   },
+   "pinned": {
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlFirst\":{\"char\":\"A\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":205,\"g\":0,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlSecond\":{\"char\":\"B\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":0,\"b\":238},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":4,\"foregroundArgb\":null,\"backgroundArgb\":null},\"targetFirst\":{\"char\":\"X\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":255,\"b\":128},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4278255488},\"targetSecond\":{\"char\":\"Y\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":17,\"g\":97,\"b\":201},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4279329225}}",
+    "note": null,
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.bg.truecolor: two distinct direct-RGB samples are exposed at their exact requested values",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlFirst\":{\"char\":\"A\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":205,\"g\":0,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"controlSecond\":{\"char\":\"B\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":0,\"b\":238},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":4,\"foregroundArgb\":null,\"backgroundArgb\":null},\"targetFirst\":{\"char\":\"X\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":255,\"b\":128},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4278255488},\"targetSecond\":{\"char\":\"Y\",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":17,\"g\":97,\"b\":201},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4279329225}}"
+     }
+    ]
+   },
+   "contractResult": {
+    "outcome": "supported",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    }
+   },
+   "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": {
+     "stored": "supported",
+     "resolved": "supported"
+    },
+    "scope": "stored literal ARGB bytes 0,255,128 and 17,97,201 with the palette index and default marker cleared, resolved bg RGB equal to the requested values under the one recorded palette; the semicolon 38/48;2;r;g;b form only; rendered appearance is not claimed"
+   }
+  }
+ ]
+}

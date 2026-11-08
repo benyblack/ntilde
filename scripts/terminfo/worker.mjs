@@ -12,6 +12,7 @@ import { collectSgrColorsGrading } from './sgr-colors-collector.mjs';
 import { collectSgrRgbGrading } from './sgr-rgb-collector.mjs';
 import { collectSgrAttrsGrading } from './sgr-attrs-collector.mjs';
 import { collectSgrPaletteGrading } from './sgr-palette-collector.mjs';
+import { collectSgrTruecolorGrading } from './sgr-truecolor-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -113,6 +114,14 @@ try {
         const sgrPaletteModule = await import(pathToFileURL(config.sgrPaletteBundle).href);
         const sgrPaletteRun = await collectSgrPaletteGrading({ config, fence, owner, gradingModule: sgrPaletteModule });
         writeFileSync(join(config.output, 'sgpal-run.json'), JSON.stringify(sgrPaletteRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered SGR-truecolor qualification follows the SGR-palette suite on the same fence.
+        const sgrTruecolorSource = readFileSync(config.sgrTruecolorBundle);
+        if (createHash('sha256').update(sgrTruecolorSource).digest('hex') !== config.sgrTruecolorBundleSha256) {
+            throw new Error('Local SGR-truecolor adapter bundle changed.');
+        }
+        const sgrTruecolorModule = await import(pathToFileURL(config.sgrTruecolorBundle).href);
+        const sgrTruecolorRun = await collectSgrTruecolorGrading({ config, fence, owner, gradingModule: sgrTruecolorModule });
+        writeFileSync(join(config.output, 'sgtc-run.json'), JSON.stringify(sgrTruecolorRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
