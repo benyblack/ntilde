@@ -222,12 +222,16 @@ test('every stored field of X must survive the reset: underline color, palette a
             const trailing = structuredClone(screens[2]);
             trailing.cellDetails[0] = { ...trailing.cellDetails[0], [field]: value };
             const contract = contractOf(caseId);
-            // Underline color is only legal with an underline; the validators refuse the incoherent shapes,
-            // and the coherent ones must leave the case inconclusive.
-            let outcome;
-            try { outcome = gradeSgrAttrsCase(contract, sgrAttrsObservation([screens[0], screens[1], trailing])).outcome; }
-            catch { outcome = 'refused'; }
-            assert.notEqual(outcome, 'supported', `${caseId} ${name}`);
+            const observation = () => sgrAttrsObservation([screens[0], screens[1], trailing]);
+            if (caseId === 'sgr.underline.single') {
+                // A valid underline color changing on X: the case is inconclusive, never supported.
+                const result = gradeSgrAttrsCase(contract, observation());
+                assert.equal(result.outcome, 'inconclusive', `${caseId} ${name}`);
+                assert.match(result.note, /restoration control/, `${caseId} ${name}`);
+            } else {
+                // An underline color without an underline is an impossible stored tuple.
+                assert.throws(observation, /Invalid stored cell detail run/, `${caseId} ${name}`);
+            }
         }
     }
     const underline = syntheticSgrAttrsScreens('sgr.underline.single');

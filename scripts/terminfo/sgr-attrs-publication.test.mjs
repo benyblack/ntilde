@@ -90,10 +90,10 @@ test('failed attempts are preserved and prior publications still rederive beside
     const data = load();
     assert.equal(data.attempts.length, 7);
     assert.deepEqual(data.attempts.map(attempt => attempt.receiptCompleted), [false, false, true, true, true, true, false]);
-    assert.equal(data.attempts[2].outcome, 'complete, superseded');
-    assert.equal(data.attempts[3].outcome, 'complete, superseded');
-    assert.equal(data.attempts[4].outcome, 'complete, superseded');
-    assert.equal(data.attempts[5].outcome, 'complete, superseded');
+    assert.deepEqual(data.attempts.map(attempt => attempt.outcome), [
+        'failed before collection', 'failed during collection',
+        'complete, superseded', 'complete, superseded', 'complete, superseded', 'complete, superseded',
+        'failed before launch']);
     const rgb = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-07-sgr-rgb-qualification.json', import.meta.url)));
     assert.equal(rgb.receipt.schemaVersion, 15);
     assert.equal(rgb.receipt.sgrAttrsEvidence, undefined);
