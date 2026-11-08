@@ -70,24 +70,26 @@ measured font/theme limits) and the stock collector's own `consumed` grades.
 | Layered adapter | `ntilde-owned-sgr-attributes-grading-v1` (contracts v1), suite `ntilde-owned-sgr-attributes-graded-v1` |
 | Derived from | `ntilde-owned-sgr-rgb-grading-v1` → `ntilde-owned-sgr-colors-grading-v1` → `ntilde-owned-ascii-sgr-grading-v1` → `ntilde-owned-macos-v1` over pinned `terminfo.dev@4.0.0` |
 | Pinned bundle SHA-256 | `aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6` |
-| Layered bundle SHA-256 | `18741b4f47abe3561cbe772cad1c6060cae3bbb180d90b87bd48048c4e19320c` |
+| Layered bundle SHA-256 | `acd7680f33071aba942cfaac3a4ced4f265d8f56c8e0210fdd9d970483bd106d` |
 | Receipt schema / source policy | 16 / `readonly-owned-source-graph-v10` (inventory v17, 128 files); policies v1–v9 keep their frozen maps |
 
 ## Measurement
 
 | Measure | Value |
 |---|---|
-| Run / receipt completed | run `e41cfd493c53dcfff35fa4ef978448ea`, receipt 2026-11-08T00:53:05.504Z |
+| Run / receipt completed | run `af3916def9dfe3f9bbcaa6dee5c8230f`, receipt 2026-11-08T01:02:10.082Z |
 | App | `0.13.0`; **App source identical to main `499a0246` (#888)** — `git diff 499a0246 HEAD -- src` is empty; sidecar built from this branch |
-| Adapter/scripts source | commit `125a8c59` (pinned byte-for-byte by the run's policy-v10 inventory); an earlier script commit `2cab9699` lacked the runner allowlist fix, see attempts |
+| Adapter/scripts source | commit `a7a0ef93` (pinned byte-for-byte by the run's policy-v10 inventory), after the Codex-review fix; the sidecar App was built earlier from an App-identical tree |
 | Same-run predecessors | grading 4/4, SGR-colors 5/5 (contracts v2), SGR-RGB 2/2 supported |
-| Local evidence | `artifacts/terminfo/owned-SNe7Jd` (digests in the [JSON](2026-11-08-sgr-attributes-qualification.json)) |
+| Local evidence | `artifacts/terminfo/owned-rwCXsg` (digests in the [JSON](2026-11-08-sgr-attributes-qualification.json)) |
 
 ## Preserved attempts
 
 1. The first sidecar build failed (Ntilde.Cli not restored); a solution restore fixed it.
-2. `owned-QZc8ZG`: the app aborted before collection (Avalonia render timer, display asleep). No evidence beyond the failure record.
-3. `owned-FBpYqE`: collection stopped with "Unknown owner request" because the runner allowlist did not admit the new `sgattr` journal kinds. Fixed in `125a8c59` with a regression test; the published run is a fresh run from that commit.
+2. `owned-QZc8ZG`: the app aborted before collection (Avalonia render timer, display asleep).
+3. `owned-FBpYqE`: collection stopped with "Unknown owner request" because the runner allowlist did not admit the new `sgattr` journal kinds. Fixed in `125a8c59` with a regression test.
+4. `owned-SNe7Jd` (run `e41cfd493c53dcfff35fa4ef978448ea`): a **complete** measurement (5/5 supported) from `125a8c59`, superseded. Codex review found that contradictory attribute-run and cell-detail projections were not refused (a target with underline off in one and single underline in the other graded supported). The fix changes measured source, so the measurement was rerun; the earlier run is retained unmodified.
+5. `owned-vhxDkz`: an EPERM before launch, produced by the review sandbox running the script tests; no app launched.
 
 ## Reproduce
 

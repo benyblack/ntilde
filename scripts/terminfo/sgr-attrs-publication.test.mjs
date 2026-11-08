@@ -80,8 +80,9 @@ test('the untouched stock run keeps its own grades and all five cases stay incon
 
 test('failed attempts are preserved and prior publications still rederive beside this batch', () => {
     const data = load();
-    assert.equal(data.attempts.length, 2);
-    assert.ok(data.attempts.every(attempt => attempt.receiptCompleted === false));
+    assert.equal(data.attempts.length, 4);
+    assert.deepEqual(data.attempts.map(attempt => attempt.receiptCompleted), [false, false, true, false]);
+    assert.equal(data.attempts[2].outcome, 'complete, superseded');
     const rgb = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-07-sgr-rgb-qualification.json', import.meta.url)));
     assert.equal(rgb.receipt.schemaVersion, 15);
     assert.equal(rgb.receipt.sgrAttrsEvidence, undefined);
