@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v16';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v17';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -290,11 +290,21 @@ export const capturedV23SourceFiles = Object.freeze({
     sgrUnderlineColorResolvedReceiptSourceSha256: "sgr-underline-color-resolved-receipt.mjs",
 });
 
-/** Bind the private temporary root, exact v23 inventory and manifest environment pin before trusting any captured source. */
+// Frozen v24 SGR selective-reset (SGR 24, SGR 27) grading scope; future experiments must create a distinct policy and map.
+export const capturedV24SourceFiles = Object.freeze({
+    ...capturedV23SourceFiles,
+    sgrResetContractsSourceSha256: "sgr-reset-contracts.mjs",
+    sgrResetCollectorSourceSha256: "sgr-reset-collector.mjs",
+    sgrResetGradingSourceSha256: "sgr-reset-grading.mjs",
+    sgrResetGradingCollectorSourceSha256: "sgr-reset-grading-collector.mjs",
+    sgrResetReceiptSourceSha256: "sgr-reset-receipt.mjs",
+});
+
+/** Bind the private temporary root, exact v24 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV23SourceFiles)) throw new Error('Invalid current v23 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV24SourceFiles)) throw new Error('Invalid current v24 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

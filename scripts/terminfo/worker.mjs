@@ -17,6 +17,7 @@ import { collectTruecolorFindingGrading } from './truecolor-literal-finding-coll
 import { collectSgrUnderlineGrading } from './sgr-underline-collector.mjs';
 import { collectSgrUnderlineColorGrading } from './sgr-underline-color-collector.mjs';
 import { collectUnderlineResolvedGrading } from './sgr-underline-color-resolved-collector.mjs';
+import { collectSgrResetGrading } from './sgr-reset-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -148,6 +149,14 @@ try {
         // The App-observed underline-color resolution suite follows it on the same fence; it has no collector extension.
         const underlineResolvedRun = await collectUnderlineResolvedGrading({ config, fence, owner });
         writeFileSync(join(config.output, 'sgur-run.json'), JSON.stringify(underlineResolvedRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered SGR selective-reset qualification follows the underline-resolution suite on the same fence.
+        const sgrResetSource = readFileSync(config.sgrResetBundle);
+        if (createHash('sha256').update(sgrResetSource).digest('hex') !== config.sgrResetBundleSha256) {
+            throw new Error('Local SGR selective-reset adapter bundle changed.');
+        }
+        const sgrResetModule = await import(pathToFileURL(config.sgrResetBundle).href);
+        const sgrResetRun = await collectSgrResetGrading({ config, fence, owner, gradingModule: sgrResetModule });
+        writeFileSync(join(config.output, 'sgsr-run.json'), JSON.stringify(sgrResetRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
