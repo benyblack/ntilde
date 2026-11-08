@@ -77,14 +77,31 @@ test('a persistent unrelated palette change cannot pass, and a changed theme voi
     const noRestore = syntheticSgrUnderlineColorEvidence('a'.repeat(32), 'f'.repeat(64), undefined, reads(INDEXED, edit => {
         const binding = paletteBinding(); binding.ansiPaletteArgb[200] = 0xff010203; edit.restoredBinding = binding;
     }));
-    // The restored frame no longer equals the start frame's palette, but the journal's closing frame still does: the grader decides.
-    assert.equal(rebuild(noRestore).cases[0].conclusion.outcome, 'inconclusive');
+    // The restored read no longer equals the start palette although the closing frame does: the journal itself is refused.
+    assert.throws(() => rebuild(noRestore), /unexpected palette change/);
     const theme = syntheticSgrUnderlineColorEvidence();
     rehash(theme, frameOf[RGB], screen => { screen.colorBinding = { ...screen.colorBinding, themeName: 'Changed' }; });
     assert.throws(() => rebuild(theme), /saw the theme change/);
     const unrestored = syntheticSgrUnderlineColorEvidence();
     rehash(unrestored, unrestored.frames.length - 1, screen => { screen.colorBinding = mutatedBinding(screen.colorBinding); });
     assert.throws(() => rebuild(unrestored), /not restored|palette was not restored/);
+});
+
+test('an unrelated palette change in a non-mutating read is refused even when it is restored by the end', () => {
+    for (const [name, index] of [['rgb fixture read', frameOf[RGB]], ['rgb control read', frameOf[RGB] + 1], ['reset fixture read', frameOf[RESET]],
+        ['reset control read', frameOf[RESET] + 1], ['indexed fixture read', frameOf[INDEXED]], ['indexed control read', frameOf[INDEXED] + 1],
+        ['indexed restored read', frameOf[INDEXED] + 3]]) {
+        const evidence = syntheticSgrUnderlineColorEvidence();
+        rehash(evidence, index, screen => {
+            screen.colorBinding = { ...screen.colorBinding, ansiPaletteArgb: screen.colorBinding.ansiPaletteArgb.map((value, entry) => (entry === 200 ? 0xff010203 : value)),
+                paletteOverrideIndices: [200] };
+        });
+        assert.throws(() => rebuild(evidence), /unexpected palette change/, name);
+    }
+    // The contracted mutation read may differ, but only the mutating case's third read may be the mutated one.
+    const misplaced = syntheticSgrUnderlineColorEvidence();
+    rehash(misplaced, frameOf[RGB], screen => { screen.colorBinding = mutatedBinding(screen.colorBinding); });
+    assert.throws(() => rebuild(misplaced), /unexpected palette change/);
 });
 
 test('the pinned replay reproduces the pinned verdict shapes from the observed cells', () => {

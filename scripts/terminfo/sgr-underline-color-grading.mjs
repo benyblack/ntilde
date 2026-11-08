@@ -17,13 +17,32 @@ import { sgrUnderlineColorRecordingContext } from './sgr-underline-color-collect
 /** Everything in a binding except the palette and its override list. */
 const themeKey = binding => JSON.stringify({ ...binding, ansiPaletteArgb: undefined, paletteOverrideIndices: undefined });
 
-/** The theme may not change; only the contracted palette entries may, inside the indexed case's mutation reads, and the run ends on its start palette. */
-function bindingStable(frames) {
-    const theme = themeKey(frames[0].screen.colorBinding);
-    if (frames.some(frame => themeKey(frame.screen.colorBinding) !== theme)) {
-        throw new Error('SGR-underline-color observation saw the theme change.');
+/** The journal index of the one frame allowed to carry the contracted OSC 4 mutation: the third read of the mutating case. */
+function mutatedFrameIndex() {
+    let index = 2;
+    for (const contract of sgrUnderlineColorContracts) {
+        if (contract.mutated) return index + 2;
+        index += contract.plan.filter(step => step.read).length;
     }
-    if (colorBindingHash(frames[0].screen.colorBinding) !== colorBindingHash(frames.at(-1).screen.colorBinding)) {
+    return -1;
+}
+
+/** The theme may never change; the palette and override list must equal the run's start state in EVERY frame except the one
+ * contracted mutation read, which must hold exactly the contracted entries; and the run ends on its start palette. */
+function bindingStable(frames) {
+    const start = frames[0].screen.colorBinding;
+    const theme = themeKey(start);
+    const mutatedAt = mutatedFrameIndex();
+    for (const [index, frame] of frames.entries()) {
+        const binding = frame.screen.colorBinding;
+        if (themeKey(binding) !== theme) throw new Error('SGR-underline-color observation saw the theme change.');
+        if (index === mutatedAt) continue; // its exact contents are graded by the indexed contract
+        if (JSON.stringify(binding.ansiPaletteArgb) !== JSON.stringify(start.ansiPaletteArgb)
+            || JSON.stringify(binding.paletteOverrideIndices) !== JSON.stringify(start.paletteOverrideIndices)) {
+            throw new Error('SGR-underline-color observation saw an unexpected palette change.');
+        }
+    }
+    if (colorBindingHash(start) !== colorBindingHash(frames.at(-1).screen.colorBinding)) {
         throw new Error('SGR-underline-color palette was not restored.');
     }
 }
