@@ -89,7 +89,7 @@ export function sgrAttrsCellAt(screen, row, col) {
 
 /** Validate one observation screen: attributes, stored details and resolved colors coherent. */
 export function validateSgrAttrsScreen(screen) {
-    checkStoredColorCoherence(screen);
+    checkStoredColorCoherence(screen, true);
 }
 
 /** No attribute set and both channels on default storage. */

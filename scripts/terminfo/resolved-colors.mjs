@@ -100,12 +100,14 @@ export const exposedRgb = channel => channel.source === 'default'
  * snapshot cell by cell: default markers, palette flags with exact indices, and —
  * through the stored literal ARGB bytes carried by cellDetails — literal storage
  * resolved to exactly its stored RGB. This is the anti-substitution binding between
- * the projections; a screen without stored literal bytes cannot be validated. */
-export function checkStoredColorCoherence(screen) {
+ * the projections; a screen without stored literal bytes cannot be validated.
+ * `includeOverline` (default false, the frozen behavior) expands the stored details with their
+ * overline state, so runs that differ only in overline are not mistaken for duplicates. */
+export function checkStoredColorCoherence(screen, includeOverline = false) {
     const cells = screen.rows * screen.cols;
     const flags = expandScreenFlags(screen);
     const resolved = expandResolvedColors(screen.resolvedColors, cells, screen.colorBinding);
-    const stored = expandCellDetails(screen.cellDetails, cells);
+    const stored = expandCellDetails(screen.cellDetails, cells, includeOverline);
     const runAt = (row, col) => {
         const target = row * screen.cols + col;
         let offset = 0;

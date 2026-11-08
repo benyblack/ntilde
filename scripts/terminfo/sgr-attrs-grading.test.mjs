@@ -268,3 +268,21 @@ test('the recording context serves only the pinned fixture screen and refuses st
     assert.equal(replayed.pass, true);
     assert.equal(replayed.observation.outcome, 'supported');
 });
+
+test('an overlined control cell beside plain cells grades inconclusive through the full report builder', () => {
+    // Adjacent detail runs that differ only in overline must validate, not abort the report.
+    const { report: value } = report(caseId => {
+        const reads = syntheticSgrAttrsReads(caseId);
+        reads.baseline = [styledCell('C', ['overline'])];
+        return reads;
+    });
+    assert.ok(value.cases.every(item => item.conclusion.outcome === 'inconclusive'));
+    assert.ok(value.cases.every(item => /initially active/.test(item.conclusion.note)));
+    const targetOverline = report(caseId => {
+        const reads = syntheticSgrAttrsReads(caseId);
+        reads.target = [styledCell('X', [...reads.target[0].attrs, 'overline'])];
+        reads.trailing = [reads.target[0], ...reads.trailing.slice(1)];
+        return reads;
+    });
+    assert.ok(targetOverline.report.cases.every(item => item.conclusion.outcome === 'inconclusive'));
+});
