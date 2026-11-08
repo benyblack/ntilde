@@ -16,6 +16,7 @@ import { collectSgrTruecolorGrading } from './sgr-truecolor-collector.mjs';
 import { collectTruecolorFindingGrading } from './truecolor-literal-finding-collector.mjs';
 import { collectSgrUnderlineGrading } from './sgr-underline-collector.mjs';
 import { collectSgrUnderlineColorGrading } from './sgr-underline-color-collector.mjs';
+import { collectUnderlineResolvedGrading } from './sgr-underline-color-resolved-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -144,6 +145,9 @@ try {
         const sgrUnderlineColorModule = await import(pathToFileURL(config.sgrUnderlineColorBundle).href);
         const sgrUnderlineColorRun = await collectSgrUnderlineColorGrading({ config, fence, owner, gradingModule: sgrUnderlineColorModule });
         writeFileSync(join(config.output, 'sguc-run.json'), JSON.stringify(sgrUnderlineColorRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The App-observed underline-color resolution suite follows it on the same fence; it has no collector extension.
+        const underlineResolvedRun = await collectUnderlineResolvedGrading({ config, fence, owner });
+        writeFileSync(join(config.output, 'sgur-run.json'), JSON.stringify(underlineResolvedRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

@@ -27,6 +27,7 @@ code.set(new URL('truecolor-literal-finding-collector.mjs', root).href, log + `e
 code.set(new URL('sgr-truecolor-collector.mjs', root).href, log + `export async function collectSgrTruecolorGrading() { record('SgrTruecolor'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('sgr-underline-collector.mjs', root).href, log + `export async function collectSgrUnderlineGrading() { record('SgrUnderline'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('sgr-underline-color-collector.mjs', root).href, log + `export async function collectSgrUnderlineColorGrading() { record('SgrUnderlineColor'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('sgr-underline-color-resolved-collector.mjs', root).href, log + `export async function collectUnderlineResolvedGrading() { record('UnderlineResolved'); return { schemaVersion: 1, suiteId: 'stub', caseIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);

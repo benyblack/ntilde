@@ -1739,7 +1739,7 @@ namespace Ntilde.AgentHost
             // keeps the response from mixing two screens, never projecting a torn viewport.
             if (parameters.IncludeResolvedColors
                 && !ResolvedColorSnapshot.TryCapture(buffer, out resolvedColors, out colorBinding, minimumContrast,
-                    expectedRows: rows, expectedCols: cols))
+                    expectedRows: rows, expectedCols: cols, includeUnderline: parameters.IncludeResolvedUnderlineColors))
             {
                 return Error(requestId, AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable,
                     $"Complete resolved colors require at most {AgentHostProtocol.MaxCellDetailCells} cells and {AgentHostProtocol.MaxCellDetailRuns} runs, captured without a concurrent resize.");

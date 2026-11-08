@@ -116,7 +116,7 @@ function privateRequest(endpoint, method, params, timeoutMs, byteLimit) {
 }
 
 /** Copy and bound only requested state; absent or malformed evidence never becomes a successful snapshot. */
-export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false) {
+export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false) {
     if (!Number.isSafeInteger(value?.rows) || value.rows < 3 || value.rows > 128
         || !Number.isSafeInteger(value.cols) || value.cols < 48 || value.cols > 256
         || !Array.isArray(value.lines) || value.lines.length !== value.rows
@@ -131,6 +131,10 @@ export function screenSnapshot(value, includeAttributes = false, includeCellDeta
     if (includeResolvedColors) {
         // The binding validates first; every resolved run must cohere with it.
         result.colorBinding = copyColorBinding(value.colorBinding);
+        // The underline stage is opt-in both ways: requested means present and valid, not requested means absent.
+        if ((result.colorBinding.underlineStage !== undefined) !== includeResolvedUnderlineColors) {
+            throw new Error('Resolved underline stage does not match the request.');
+        }
         result.resolvedColors = copyResolvedColors(value.resolvedColors, value.rows * value.cols, result.colorBinding);
     }
     if (includeCursorMode) {
@@ -147,8 +151,8 @@ export function screenSnapshot(value, includeAttributes = false, includeCellDeta
 }
 
 export class OwnedCellObserver {
-    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
-        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, includeOverline, includeBufferState, includeResolvedColors, prefix, rpc, endpoint });
+    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
+        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, includeOverline, includeBufferState, includeResolvedColors, includeResolvedUnderlineColors, prefix, rpc, endpoint });
         this.paneId = expectedPaneId;
         this.snapshots = 0;
         this.frames = [];
@@ -177,12 +181,16 @@ export class OwnedCellObserver {
             ...(this.includeCursorMode ? { includeCursorMode: true } : {}),
             ...(this.includeOverline ? { includeOverline: true } : {}),
             ...(this.includeBufferState ? { includeBufferState: true } : {}),
-            ...(this.includeResolvedColors ? { includeResolvedColors: true } : {}) }, budget);
+            ...(this.includeResolvedColors ? { includeResolvedColors: true } : {}),
+            ...(this.includeResolvedUnderlineColors ? { includeResolvedUnderlineColors: true } : {}) }, budget);
         const projection = screenSnapshot(raw);
         if (this.includeAttributes) projection.attributeRuns = readAttributeRuns(raw.attributeLines, projection.rows, projection.cols);
         if (this.includeCellDetails) projection.cellDetails = raw.cellDetails;
         if (this.includeResolvedColors) {
             projection.colorBinding = copyColorBinding(raw.colorBinding);
+            if ((projection.colorBinding.underlineStage !== undefined) !== this.includeResolvedUnderlineColors) {
+                throw new Error('Resolved underline stage does not match the request.');
+            }
             projection.resolvedColors = copyResolvedColors(raw.resolvedColors, projection.rows * projection.cols, projection.colorBinding);
         }
         if (this.includeCursorMode) projection.cursorMode = raw.cursorMode;
@@ -191,7 +199,7 @@ export class OwnedCellObserver {
             projection.history = copyHistory(await this.request('readScrollback', { paneId: before.paneId, startLine: 0, maxLines: 64 }, budget),
                 projection.bufferState.scrollbackLines, projection.cols);
         }
-        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode, this.includeOverline, this.includeBufferState, this.includeResolvedColors);
+        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode, this.includeOverline, this.includeBufferState, this.includeResolvedColors, this.includeResolvedUnderlineColors);
         const after = await this.session(budget);
         if (before.paneId !== after.paneId || before.rows !== screen.rows || before.cols !== screen.cols
             || after.rows !== screen.rows || after.cols !== screen.cols

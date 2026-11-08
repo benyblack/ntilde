@@ -214,12 +214,13 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
             fileURLToPath(new URL('./worker.mjs', import.meta.url)), config], { encoding: 'utf8', timeout: 5000,
             env: { ...process.env, NTILDE_WORKER_TEST_LOG: log } });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Grading', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'Input', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);
+        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Grading', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'UnderlineResolved', 'Input', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);
         assert.equal(JSON.parse(readFileSync(join(output, 'raw.json'))).testOnly, true);
         assert.equal(JSON.parse(readFileSync(join(output, 'grading-run.json'))).adapterId, 'stub');
         assert.equal(JSON.parse(readFileSync(join(output, 'sgcolors-run.json'))).adapterId, 'stub');
         assert.deepEqual(JSON.parse(readFileSync(join(output, 'sgtc-run.json'))), { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] });
         assert.deepEqual(JSON.parse(readFileSync(join(output, 'sgtf-run.json'))), { schemaVersion: 1, suiteId: 'stub', caseIds: [], cases: [] });
+        assert.deepEqual(JSON.parse(readFileSync(join(output, 'sgur-run.json'))), { schemaVersion: 1, suiteId: 'stub', caseIds: [], cases: [] });
         assert.deepEqual(JSON.parse(readFileSync(join(output, 'sgus-run.json'))), { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] });
         assert.deepEqual(JSON.parse(readFileSync(join(output, 'sguc-run.json'))), { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] });
         assert.equal(JSON.parse(readFileSync(join(output, 'sgrgb-run.json'))).adapterId, 'stub');

@@ -219,6 +219,27 @@ public class AgentHostWindowlessProtocolTests
     }
 
     [Fact]
+    public void ReadScreen_windowless_resolved_underline_colors_are_refused_like_resolved_colors_and_ignored_alone()
+    {
+        var source = new StubWindowlessSource();
+        var session = source.Add("hello", cols: 90, rows: 20);
+        using var service = NewService(new AgentSessionRegistry(), new AgentActivityJournal());
+        service.SetWindowlessSource(source);
+        var both = Handle(service, Line(AgentHostProtocol.Methods.ReadScreen,
+            JsonSerializer.Serialize(new ReadScreenParams { PaneId = session.SessionId, IncludeResolvedColors = true, IncludeResolvedUnderlineColors = true },
+                AgentHostJsonContext.Default.ReadScreenParams)));
+        Assert.Equal(AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable, both.Error?.Code);
+        Assert.Null(both.Result);
+
+        // Without includeResolvedColors the flag changes nothing: the ordinary windowless read still answers.
+        var alone = Handle(service, Line(AgentHostProtocol.Methods.ReadScreen,
+            JsonSerializer.Serialize(new ReadScreenParams { PaneId = session.SessionId, IncludeResolvedUnderlineColors = true },
+                AgentHostJsonContext.Default.ReadScreenParams)));
+        Assert.Null(alone.Error);
+        Assert.False(alone.Result!.Value.TryGetProperty("resolvedColors", out _));
+    }
+
+    [Fact]
     public void ReadScreen_windowless_cell_details_preserve_imported_rgb_and_underline_metadata()
     {
         var source = new StubWindowlessSource();
