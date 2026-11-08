@@ -5,7 +5,7 @@
   {
    "index": 6,
    "kind": "sgpal-read",
-   "paneId": "dff475af-3727-4b3e-b85d-71629f640e55",
+   "paneId": "80688282-8bd1-47a4-b165-84ed79699aec",
    "barrier": "\u001b[?62;4;22c",
    "screen": {
     "rows": 40,
@@ -517,7 +517,7 @@
   {
    "index": 7,
    "kind": "sgpal-read",
-   "paneId": "dff475af-3727-4b3e-b85d-71629f640e55",
+   "paneId": "80688282-8bd1-47a4-b165-84ed79699aec",
    "barrier": "\u001b[?62;4;22c",
    "screen": {
     "rows": 40,

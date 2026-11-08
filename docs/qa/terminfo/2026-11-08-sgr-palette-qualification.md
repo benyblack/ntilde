@@ -95,18 +95,18 @@ stock collector's own `consumed` grades.
 | Layered adapter | `ntilde-owned-sgr-palette-grading-v1` (contracts v1), suite `ntilde-owned-sgr-palette-graded-v1` |
 | Derived from | `ntilde-owned-sgr-attributes-grading-v1` → `ntilde-owned-sgr-rgb-grading-v1` → `ntilde-owned-sgr-colors-grading-v1` → `ntilde-owned-ascii-sgr-grading-v1` → `ntilde-owned-macos-v1` over pinned `terminfo.dev@4.0.0` |
 | Pinned bundle SHA-256 | `aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6` |
-| Layered bundle SHA-256 | `fdabe03cffe454ba68ced014824a8ecdf8f1ca97d50df5165f81e5a86be52488` |
+| Layered bundle SHA-256 | `82494fd7ad258b28da13a83d086fdb86851306e880af17a73007fa6312dc7d51` |
 | Receipt schema / source policy | 17 / `readonly-owned-source-graph-v11` (inventory v18, 133 files); policies v1–v10 keep their frozen maps |
 
 ## Measurement
 
 | Measure | Value |
 |---|---|
-| Run / receipt completed | run `1814f55c3d61995209db7f2141f16eaf`, receipt 2026-11-08T09:31:26.549Z |
+| Run / receipt completed | run `d7dd5a520c1675766c13980bc8e8117e`, receipt 2026-11-08T09:48:20.174Z |
 | App | `0.13.0`; **App source identical to main `d29f56ff` (#889)** — `git diff d29f56ff HEAD -- src` is empty; sidecar built fresh from this branch |
-| Adapter/scripts source | commit recorded in the [summary](2026-11-08-sgr-palette/summary.json) (`adapterRevision`), pinned byte-for-byte by the run's policy-v11 inventory |
+| Adapter/scripts source | commit `a762d326` (also `adapterRevision` in the [summary](2026-11-08-sgr-palette/summary.json)), pinned byte-for-byte by the run's policy-v11 inventory |
 | Same-run predecessors | grading 4/4, SGR-colors 5/5 (contracts v2), SGR-RGB 2/2, SGR-attributes 5/5 supported — fourteen unique qualifications |
-| Local evidence | `artifacts/terminfo/owned-BhLFns`; digests in the summary |
+| Local evidence | `artifacts/terminfo/owned-2sV5a0`; digests in the summary |
 
 ## Publication layout
 
@@ -123,7 +123,13 @@ the whole report.
 ## Preserved attempts
 
 See `attempts` in the summary; failed and superseded measurements are kept
-unmodified.
+unmodified:
+
+1. The first sidecar build failed (Ntilde.Cli not restored); a solution restore fixed it.
+2. The first owner invocation refused to start because the pinned collector cache was not prepared in the fresh worktree; no run directory existed. Prepared with the documented `npm ci` and repeated.
+3. `owned-BhLFns` (run `1814f55c3d61995209db7f2141f16eaf`): a **complete** measurement (6/6 supported) from `9bb7fbfe`, superseded. CodeRabbit found that early inconclusive verdicts omitted the layer states and that attribute drift on the default-reset cell graded as a failed reset instead of an invalid control; both change measured source, so the measurement was rerun. Retained unmodified locally.
+4. `owned-Ndnl98`: "Owned app exited before collection (0)", created while the local Codex review ran in its sandbox; no evidence beyond the failure record.
+5. `owned-wjgnGh`: an EPERM before launch from the review sandbox running the script tests; no app launched.
 
 ## Reproduce
 
