@@ -190,13 +190,18 @@ function bceState(contract, before, after, pen) {
     // The pen reference: the stored background of a cell written under the same SGR 44 pen (never the default).
     const penCell = pen.ink.find(cell => cell.char === 'X');
     const penMeasured = penCell !== undefined && (penCell.bgIndex >= 0 || penCell.backgroundArgb !== null);
-    const isPen = cell => isPainted(cell) && cell.bgIndex === penCell.bgIndex && cell.backgroundArgb === penCell.backgroundArgb;
+    // Resolved color and stored representation are compared separately: the same blue may be stored as a palette index or a literal.
+    const sameResolved = cell => isPainted(cell) && JSON.stringify(cell.bg) === JSON.stringify(penCell.bg);
+    const sameStored = cell => sameResolved(cell) && cell.bgIndex === penCell.bgIndex && cell.backgroundArgb === penCell.backgroundArgb;
     const bceApplied = erased.length === 0 ? null : painted.every(cell => cell === undefined) ? 'erased cells keep the default background'
         : !penMeasured ? 'unmeasured: the reference pen cell was not stored with a background'
-            : painted.every(isPen) ? 'erased cells carry the current background'
-                : painted.every(isPainted) && !painted.some(isPen) ? 'erased cells carry a different non-default background than the current pen'
-                    : 'mixed';
-    return { seeded, retainedOk, blanksOk, cursorOk: sameCursor(after, 0, seedColumn), bceApplied };
+            : painted.every(sameStored) ? 'erased cells carry the current background'
+                : painted.every(sameResolved) ? 'erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)'
+                    : painted.every(isPainted) && !painted.some(sameResolved) ? 'erased cells carry a different non-default background color than the current pen'
+                        : 'mixed';
+    const storedOf = cell => (cell === undefined ? null : { bgIndex: cell.bgIndex, backgroundArgb: cell.backgroundArgb, resolved: cell.bg });
+    const bceDetail = { pen: penMeasured ? storedOf(penCell) : null, firstErased: storedOf(painted[0]) };
+    return { seeded, retainedOk, blanksOk, cursorOk: sameCursor(after, 0, seedColumn), bceApplied, bceDetail };
 }
 
 /** Why the pinned row did not match, as an unsupported note; the diagnosis only picks the words, never the verdict. */
@@ -288,7 +293,7 @@ function briefErase(contract, observation) {
             after: state(observation.wide, 3) },
         attributes: { policy: 'retained cells keep their bold-only stored tuple (required); background-color erase is observed, not required',
             before: state(observation.bceBefore), after: state(observation.bce), penReference: state(observation.pen), retainedKeepBold: bceSeeded.retainedOk,
-            backgroundColorErase: bceSeeded.bceApplied } };
+            backgroundColorErase: bceSeeded.bceApplied, backgroundColorEraseDetail: bceSeeded.bceDetail } };
 }
 
 /** Group the read screens of one case by role. */

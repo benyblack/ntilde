@@ -266,9 +266,13 @@ test('the background observation compares erased cells with the SGR 44 pen refer
     };
     const right = cells => reads => { reads.bce = { rows: [[bold('A'), bold('B'), ...cells]], cursor: [0, 2] }; };
     // The pen stores palette 4; palette 1 is a different color. Non-gating: the verdict stays supported either way.
-    assert.deepEqual(observe(right(tail(1))), { outcome: 'supported', bce: 'erased cells carry a different non-default background than the current pen' });
+    assert.deepEqual(observe(right(tail(1))), { outcome: 'supported', bce: 'erased cells carry a different non-default background color than the current pen' });
     assert.deepEqual(observe(right(tail(4))), { outcome: 'supported', bce: 'erased cells carry the current background' });
     assert.equal(observe(right([...tail(4, 30), ...tail(1, 28)])).bce, 'mixed');
+    // The same blue stored as a literal instead of a palette index is the same resolved color with a different representation.
+    const literal = Array.from({ length: 58 }, () => colorCell(' ', { bg: { kind: 'literal', rgb: { r: 0, g: 0, b: 238 } } }));
+    assert.deepEqual(observe(right(literal)), { outcome: 'supported',
+        bce: 'erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)' });
     // A reference cell that did not store a background cannot support any claim about the pen.
     assert.equal(observe(reads => { right(tail(4))(reads); reads.pen = { rows: [[colorCell('X')]], cursor: [0, 1] }; }).bce,
         'unmeasured: the reference pen cell was not stored with a background');
