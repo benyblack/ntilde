@@ -65,9 +65,9 @@ C and Y are both default. Y keeps underline style 1, foreground and background.
 
 ## Measurement
 
-Fresh committed build: scripts and App source at `8c34e4af` (App source unchanged from main `5d0923ee`, so App and
-adapter revisions coincide). Owned run `owned-syzaXK`, run id `6acc3ebd19c13a60b45713d6acb8b1fb`, receipt completed
-2026-11-08T16:57:47Z, default theme (palette 4 = 0,0,238; palette 5 = 205,0,205).
+Fresh committed build: scripts and App source at `be0a490e` (App source unchanged from main `5d0923ee`, so App and
+adapter revisions coincide). Owned run `owned-TTpuQg`, run id `9f14001275edd10fcd83601626a2e68d`, receipt completed
+2026-11-08T17:33:14Z, default theme (palette 4 = 0,0,238; palette 5 = 205,0,205).
 
 | Case | Pinned | Contract | Layers (stored / resolved) |
 |---|---|---|---|
@@ -90,6 +90,9 @@ The stock collector is unchanged: 86 supported, 1 unsupported, 168 inconclusive.
 - `owned-0xvKXe` (scripts `145a5ce9`): a complete 3/3 run, superseded. The Codex review showed that palette stability
   was enforced only inside the indexed case; the fix (every non-mutation frame must equal the start palette) changes
   evidence validation, so the measurement was rerun. Retained unmodified locally.
+- `owned-syzaXK` (scripts `8c34e4af`): a second complete 3/3 run, superseded. The CodeRabbit review fixes changed two
+  inventoried scripts (a control label and symlink rejection in the receipt check), so the measured source no longer
+  equalled the committed source and the measurement was rerun. Retained unmodified locally.
 - `owned-ijwh1a`, `owned-ktHIu6`: the disposable app aborted in Avalonia native startup (display asleep) before any
   collection. The next attempt woke the display (`caffeinate -u`) and ran with `caffeinate -d`.
 

@@ -5,7 +5,7 @@
   {
    "index": 2,
    "kind": "sguc-read",
-   "paneId": "f0b3227c-d9ed-4d55-9b39-41aa7da016d8",
+   "paneId": "6371f22a-90ca-4f0b-b819-732569f313e6",
    "barrier": "\u001b[?62;4;22c",
    "screen": {
     "rows": 40,
@@ -156,7 +156,7 @@
   {
    "index": 3,
    "kind": "sguc-read",
-   "paneId": "f0b3227c-d9ed-4d55-9b39-41aa7da016d8",
+   "paneId": "6371f22a-90ca-4f0b-b819-732569f313e6",
    "barrier": "\u001b[?62;4;22c",
    "screen": {
     "rows": 40,
@@ -331,7 +331,7 @@
   {
    "index": 4,
    "kind": "sguc-read",
-   "paneId": "f0b3227c-d9ed-4d55-9b39-41aa7da016d8",
+   "paneId": "6371f22a-90ca-4f0b-b819-732569f313e6",
    "barrier": "\u001b[?62;4;22c",
    "screen": {
     "rows": 40,
@@ -592,7 +592,7 @@
   {
    "index": 5,
    "kind": "sguc-read",
-   "paneId": "f0b3227c-d9ed-4d55-9b39-41aa7da016d8",
+   "paneId": "6371f22a-90ca-4f0b-b819-732569f313e6",
    "barrier": "\u001b[?62;4;22c",
    "screen": {
     "rows": 40,
