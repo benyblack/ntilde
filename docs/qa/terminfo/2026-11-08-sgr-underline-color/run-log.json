@@ -1,0 +1,138 @@
+{
+ "schemaVersion": 1,
+ "adapterId": "ntilde-owned-sgr-underline-color-grading-v1",
+ "probeIds": ["sgr.underline-color-indexed", "sgr.underline-color-rgb", "sgr.underline-color-reset"],
+ "cases": [
+  {
+   "caseId": "sgr.underline-color-indexed",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "\u001b[4;38;5;4m\u001b[59mA\u001b[58;5;5mX\u001b[38;5;5m\u001b[59mB\u001b[58;5;4mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[0m\u001b[4m\u001b[58;2;95;135;175mP\u001b[0m\u001b[4m\u001b[58;5;67mQ\u001b[0m\u001b[4;38;5;5m\u001b[58;5;5mR\u001b[0mN\u001b[0m\u001b[4m\u001b[58:5:5mS", "\u001b]4;4;rgb:65/43/21\u0007\u001b]4;5;rgb:12/34/56\u0007\u001b]4;67;rgb:aa/bb/cc\u0007",
+    "\u001b[0m\u001b[2J\u001b[H\u001b[4;38;5;4m\u001b[59mA\u001b[58;5;5mX\u001b[38;5;5m\u001b[59mB\u001b[58;5;4mY\u001b[0m\u001b[0m\u001b[4m\u001b[58;2;95;135;175mP\u001b[0m\u001b[4m\u001b[58;5;67mQ\u001b[0m\u001b[4;38;5;5m\u001b[58;5;5mR\u001b[0mN\u001b[0m\u001b[4m\u001b[58:5:5mS", "\u001b]104;4\u0007\u001b]104;5\u0007\u001b]104;67\u0007",
+    "\u001b[0m\u001b[2J\u001b[H\u001b[4;38;5;4m\u001b[59mA\u001b[58;5;5mX\u001b[38;5;5m\u001b[59mB\u001b[58;5;4mY\u001b[0m\u001b[0m\u001b[4m\u001b[58;2;95;135;175mP\u001b[0m\u001b[4m\u001b[58;5;67mQ\u001b[0m\u001b[4;38;5;5m\u001b[58;5;5mR\u001b[0mN\u001b[0m\u001b[4m\u001b[58:5:5mS"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 4]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 9]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 9]
+    }
+   ],
+   "pinned": {
+    "probeId": "sgr.underline-color-indexed",
+    "pass": true,
+    "response": "{\"default4\":{\"char\":\"A\",\"flags\":16904,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":238},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":4,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"target5\":{\"char\":\"X\",\"flags\":16904,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":238},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":5,\"underlineArgb\":null,\"fgIndex\":4,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"palette\",\"underlineColor\":{\"r\":205,\"g\":0,\"b\":205},\"underlineInheritsForeground\":false},\"default5\":{\"char\":\"B\",\"flags\":16904,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":205,\"g\":0,\"b\":205},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":5,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"target4\":{\"char\":\"Y\",\"flags\":16904,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":205,\"g\":0,\"b\":205},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":4,\"underlineArgb\":null,\"fgIndex\":5,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"palette\",\"underlineColor\":{\"r\":0,\"g\":0,\"b\":238},\"underlineInheritsForeground\":false}}",
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "SGR 58 index 5/4 underline colors match the opposite SGR 38 palette controls, not their same-foreground defaults",
+      "observed": "{\"default4\":{\"char\":\"A\",\"flags\":16904,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":238},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":4,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"target5\":{\"char\":\"X\",\"flags\":16904,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":238},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":5,\"underlineArgb\":null,\"fgIndex\":4,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"palette\",\"underlineColor\":{\"r\":205,\"g\":0,\"b\":205},\"underlineInheritsForeground\":false},\"default5\":{\"char\":\"B\",\"flags\":16904,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":205,\"g\":0,\"b\":205},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":5,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"target4\":{\"char\":\"Y\",\"flags\":16904,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":205,\"g\":0,\"b\":205},\"bg\":null,\"fgSource\":\"palette\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":4,\"underlineArgb\":null,\"fgIndex\":5,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"palette\",\"underlineColor\":{\"r\":0,\"g\":0,\"b\":238},\"underlineInheritsForeground\":false}}"
+     }
+    ]
+   }
+  },
+  {
+   "caseId": "sgr.underline-color-rgb",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "\u001b[4m\u001b[59m\u001b[38;2;0;0;255mA\u001b[38;2;0;255;0mB\u001b[58;2;255;0;128mX",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[0m\u001b[4m\u001b[58;2;95;135;175mP\u001b[0m\u001b[4m\u001b[58;5;67mQ\u001b[0m\u001b[4m\u001b[38;2;255;0;128mR\u001b[0mN\u001b[0m\u001b[4m\u001b[58:2::255:0:128mC\u001b[0m\u001b[4m\u001b[58:2:0:255:0:128mD"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 3]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 6]
+    }
+   ],
+   "pinned": {
+    "probeId": "sgr.underline-color-rgb",
+    "pass": true,
+    "response": "{\"blueControl\":{\"char\":\"A\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":255},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278190335,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"greenControl\":{\"char\":\"B\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":255,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278255360,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"target\":{\"char\":\"X\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":255,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":4294901888,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278255360,\"backgroundArgb\":null,\"underlineSource\":\"literal\",\"underlineColor\":{\"r\":255,\"g\":0,\"b\":128},\"underlineInheritsForeground\":false}}",
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "sgr.underline-color-rgb: X has explicit rgb(255,0,128) underline distinct from the reset/default B cell",
+      "observed": "{\"blueControl\":{\"char\":\"A\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":255},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278190335,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"greenControl\":{\"char\":\"B\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":255,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278255360,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"target\":{\"char\":\"X\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":255,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":4294901888,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278255360,\"backgroundArgb\":null,\"underlineSource\":\"literal\",\"underlineColor\":{\"r\":255,\"g\":0,\"b\":128},\"underlineInheritsForeground\":false}}"
+     }
+    ]
+   }
+  },
+  {
+   "caseId": "sgr.underline-color-reset",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "\u001b[4m\u001b[59mC\u001b[58;2;255;0;128mX\u001b[59mY",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[0m\u001b[4:3m\u001b[38;5;2m\u001b[48;5;4m\u001b[58;5;5mS\u001b[59mT\u001b[0m\u001b[4m\u001b[58;2;1;2;3mU\u001b[59mV\u001b[0mN"],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 3]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ],
+   "pinned": {
+    "probeId": "sgr.underline-color-reset",
+    "pass": true,
+    "response": "{\"baseline\":{\"char\":\"C\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"before\":{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":4294901888,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"literal\",\"underlineColor\":{\"r\":255,\"g\":0,\"b\":128},\"underlineInheritsForeground\":false},\"after\":{\"char\":\"Y\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true}}",
+    "observation": {
+     "outcome": "supported",
+     "evidence": "parser-state"
+    },
+    "assertions": [
+     {
+      "kind": "positive",
+      "expected": "X has explicit underline rgb(255,0,128); SGR 59 restores Y to the measured reset-state C color",
+      "observed": "{\"baseline\":{\"char\":\"C\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"before\":{\"char\":\"X\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":4294901888,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"literal\",\"underlineColor\":{\"r\":255,\"g\":0,\"b\":128},\"underlineInheritsForeground\":false},\"after\":{\"char\":\"Y\",\"flags\":776,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true}}"
+     }
+    ]
+   }
+  }
+ ]
+}

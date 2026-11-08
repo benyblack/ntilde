@@ -802,3 +802,14 @@ SGR-truecolor one. The pinned criteria already require one exact style each; the
 unrelated-drift, DECSCNM, SGR 24 restoration and labeled spelling-ladder controls (SGR 4:2 and others are ungraded
 controls). Claims are stored state only, not stroke appearance. Receipt schema 20 and source policy v14 (149 files)
 bind it; earlier policies stay frozen.
+
+### SGR underline-color qualification
+
+The [SGR underline-color batch](terminfo/2026-11-08-sgr-underline-color-qualification.md) qualifies exactly
+`sgr.underline-color-indexed`, `sgr.underline-color-rgb` and `sgr.underline-color-reset` through the layered
+`ntilde-owned-sgr-underline-color-grading-v1` extension over the underline-style one; the overlapping aggregate
+`sgr.underline.color` is not qualified. Stored underline style and color (index, literal bytes or default marker) are
+observed; the resolved underline RGB is derived parent-side from the recorded palette because the App reports none;
+an OSC 4 mutation of entries 4, 5 and 67 compares the whole palette at start, mutated and restored. Rendered
+underline appearance is not claimed. Receipt schema 21 and source policy v15 (154 files) bind it; earlier policies stay frozen.
+
