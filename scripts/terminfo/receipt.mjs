@@ -8,6 +8,7 @@ import { includesSgrRgbEvidence, checkSgrRgbEvidence } from './sgr-rgb-receipt.m
 import { includesSgrAttrsEvidence, checkSgrAttrsEvidence } from './sgr-attrs-receipt.mjs';
 import { includesSgrPaletteEvidence, checkSgrPaletteEvidence } from './sgr-palette-receipt.mjs';
 import { includesSgrTruecolorEvidence, checkSgrTruecolorEvidence } from './sgr-truecolor-receipt.mjs';
+import { includesTruecolorFindingEvidence, checkTruecolorFindingEvidence } from './truecolor-literal-finding-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
@@ -120,7 +121,7 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
 }
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
-function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor }) {
+function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding }) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -139,6 +140,7 @@ function ownedReceiptVersion(context, { includesEditing, includesHistory, includ
     if (includesSgrAttrs) schemaVersion = 16;
     if (includesSgrPalette) schemaVersion = 17;
     if (includesSgrTruecolor) schemaVersion = 18;
+    if (includesTruecolorFinding) schemaVersion = 19;
     return schemaVersion;
 }
 
@@ -156,6 +158,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSgrAttrs = includesSgrAttrsEvidence(output, evidence, context);
     const includesSgrPalette = includesSgrPaletteEvidence(output, evidence, context);
     const includesSgrTruecolor = includesSgrTruecolorEvidence(output, evidence, context);
+    const includesTruecolorFinding = includesTruecolorFindingEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
     const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
@@ -163,7 +166,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -183,6 +186,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesSgrAttrs) checkSgrAttrsEvidence(output, evidence, runId, context);
     if (suffixes.includesSgrPalette) checkSgrPaletteEvidence(output, evidence, runId, context);
     if (suffixes.includesSgrTruecolor) checkSgrTruecolorEvidence(output, evidence, runId, context);
+    if (suffixes.includesTruecolorFinding) checkTruecolorFindingEvidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */

@@ -613,6 +613,17 @@ claimed. The VT parser snaps five exact truecolor values (e.g. `12,12,12`, `204,
 indices; they are outside this qualification (see the batch's known-limit section). Receipt schema 18 and source policy v12 (138 files) bind it; earlier
 policies stay frozen.
 
+### Truecolor-literal finding (not a terminfo.dev case)
+
+The [truecolor-literal finding](terminfo/2026-11-08-truecolor-literal-finding.md)
+covers five exact direct-RGB values the VT parser used to rewrite into palette indices.
+It is an Ntilde finding with its own suite (`ntilde-owned-truecolor-literal-finding-v1`,
+ids `finding.truecolor-literal.*`): no pinned probe, no collector extension, no stock
+grade. It records a before run (main's App: all ten cases unsupported) and an after run
+(the corrected parser: all ten supported), each with an explicit indexed positive
+control, an OSC 4 mutation of the aliased entry and its restoration. Receipt schema 19
+and source policy v13 (144 files); earlier policies stay frozen.
+
 ## Interpret
 
 The ordinary inline CLI refuses most state-changing checks without its own

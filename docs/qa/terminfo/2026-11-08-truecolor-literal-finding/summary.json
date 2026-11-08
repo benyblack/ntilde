@@ -1,0 +1,389 @@
+{
+ "schemaVersion": 1,
+ "layout": "summary + before/ and after/ (report, run-log, journal-common, one journal per case); reassembled by truecolor-literal-finding-publication.test.mjs",
+ "note": "Ntilde finding, not a terminfo.dev case. Before = main App source (parser snaps five values); after = the fixed App. Same scripts revision for both runs.",
+ "before": {
+  "label": "before",
+  "runDir": "owned-WzBTKL",
+  "runId": "763ceb3ab05a9b51ffd4b11f03f2bda4",
+  "appRevision": "86546641",
+  "scriptsRevision": "34b8e7ec",
+  "sourceSnapshotPolicy": "readonly-owned-source-graph-v13",
+  "receiptSchemaVersion": 19,
+  "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+  "appVersion": "0.13.0",
+  "receiptCompletedAt": "2026-11-08T14:12:53.627Z",
+  "findingEvidenceBinding": {
+   "runId": "763ceb3ab05a9b51ffd4b11f03f2bda4",
+   "suiteId": "ntilde-owned-truecolor-literal-finding-v1",
+   "file": "sgtf-observations.json",
+   "sha256": "eb66184509637bef0d474c143fbeef7b47e927f10e75c4fd5c514e732d4a8464",
+   "runFile": "sgtf-run.json",
+   "runSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
+   "contractsVersion": 1,
+   "counts": {
+    "unsupported": 10
+   },
+   "provisionalUntil": "cell-receipt.json"
+  },
+  "findingCounts": {
+   "unsupported": 10
+  },
+  "sameRun": {
+   "sgrTruecolor": {
+    "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.truecolor",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.truecolor",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrPalette": {
+    "suiteId": "ntilde-owned-sgr-palette-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.bright",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.bright",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.256",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.256",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.default",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.default",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrAttrs": {
+    "suiteId": "ntilde-owned-sgr-attributes-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.underline.single",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.inverse",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.faint",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.hidden",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.strikethrough",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrRgb": {
+    "suiteId": "ntilde-owned-sgr-rgb-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.standard",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.standard",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrColors": {
+    "suiteId": "ntilde-owned-sgr-colors-graded-v1",
+    "contractsVersion": 2,
+    "cases": [
+     {
+      "caseId": "sgr.selective-reset.bold",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.selective-reset.italic",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.reset",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.standard",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.standard",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "grading": {
+    "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "text.basic",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "text.overwrite",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bold",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.italic",
+      "outcome": "supported"
+     }
+    ]
+   }
+  },
+  "stockCollector": {
+   "counts": {
+    "inconclusive": 168,
+    "supported": 86,
+    "unsupported": 1
+   },
+   "suiteComplete": false,
+   "probeHash": "16a690f34c0e",
+   "rawSha256": "9a0ec67f92136f1d9776a63337b74330c9db9a824faf2427b3ed84f58a50da85"
+  },
+  "retained": {
+   "findingObservationsSha256": "eb66184509637bef0d474c143fbeef7b47e927f10e75c4fd5c514e732d4a8464",
+   "findingRunSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
+   "findingJournalSha256": "4c351bd8ba9ef7cf910a9a345172ae9c758a021bd351d999ad25f82245f10664"
+  }
+ },
+ "after": {
+  "label": "after",
+  "runDir": "owned-huDNo0",
+  "runId": "68334378d2fda6c04ea7ae0b826347fa",
+  "appRevision": "34b8e7ec",
+  "scriptsRevision": "34b8e7ec",
+  "sourceSnapshotPolicy": "readonly-owned-source-graph-v13",
+  "receiptSchemaVersion": 19,
+  "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+  "appVersion": "0.13.0",
+  "receiptCompletedAt": "2026-11-08T14:13:31.339Z",
+  "findingEvidenceBinding": {
+   "runId": "68334378d2fda6c04ea7ae0b826347fa",
+   "suiteId": "ntilde-owned-truecolor-literal-finding-v1",
+   "file": "sgtf-observations.json",
+   "sha256": "410b599985a5c5e80ac87afcd51088a759b1a89086b46fbc16f819c51aec7921",
+   "runFile": "sgtf-run.json",
+   "runSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
+   "contractsVersion": 1,
+   "counts": {
+    "supported": 10
+   },
+   "provisionalUntil": "cell-receipt.json"
+  },
+  "findingCounts": {
+   "supported": 10
+  },
+  "sameRun": {
+   "sgrTruecolor": {
+    "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.truecolor",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.truecolor",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrPalette": {
+    "suiteId": "ntilde-owned-sgr-palette-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.bright",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.bright",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.256",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.256",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.default",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.default",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrAttrs": {
+    "suiteId": "ntilde-owned-sgr-attributes-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.underline.single",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.inverse",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.faint",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.hidden",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.strikethrough",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrRgb": {
+    "suiteId": "ntilde-owned-sgr-rgb-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "sgr.fg.standard",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.standard",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "sgrColors": {
+    "suiteId": "ntilde-owned-sgr-colors-graded-v1",
+    "contractsVersion": 2,
+    "cases": [
+     {
+      "caseId": "sgr.selective-reset.bold",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.selective-reset.italic",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.reset",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.fg.standard",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bg.standard",
+      "outcome": "supported"
+     }
+    ]
+   },
+   "grading": {
+    "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
+    "contractsVersion": 1,
+    "cases": [
+     {
+      "caseId": "text.basic",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "text.overwrite",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.bold",
+      "outcome": "supported"
+     },
+     {
+      "caseId": "sgr.italic",
+      "outcome": "supported"
+     }
+    ]
+   }
+  },
+  "stockCollector": {
+   "counts": {
+    "inconclusive": 168,
+    "supported": 86,
+    "unsupported": 1
+   },
+   "suiteComplete": false,
+   "probeHash": "16a690f34c0e",
+   "rawSha256": "644d801a4e207ed0692d281827ed56f6d5a9a8af219bd5e46aec04068acb1b2e"
+  },
+  "retained": {
+   "findingObservationsSha256": "410b599985a5c5e80ac87afcd51088a759b1a89086b46fbc16f819c51aec7921",
+   "findingRunSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
+   "findingJournalSha256": "1111fb38aed46325e376cb1683b6be65a22927f4271cc85a79a79c7cba7b1f64"
+  }
+ },
+ "attempts": [
+  {
+   "directory": "owned-8Z05an",
+   "runId": "5b6d980ffbe1057fa41efa415861714f",
+   "role": "before",
+   "outcome": "complete, superseded",
+   "receiptCompleted": true,
+   "receiptCounts": {
+    "unsupported": 10
+   },
+   "note": "First before measurement (main App 86546641, scripts 31696fd4, 10/10 unsupported). CodeRabbit then found that unrelated palette entries were only compared between reads, not with the run's start palette; the fix changes evidence validation, so both measurements were rerun. Retained unmodified locally."
+  },
+  {
+   "directory": "owned-gHDHuj",
+   "runId": "44bba6bdc262994a9565ab35d53ceedb",
+   "role": "after",
+   "outcome": "complete, superseded",
+   "receiptCompleted": true,
+   "receiptCounts": {
+    "supported": 10
+   },
+   "note": "First after measurement (fixed App 31696fd4, scripts 31696fd4, 10/10 supported), superseded for the same reason. Retained unmodified locally."
+  },
+  {
+   "directory": "owned-cvj6ym",
+   "outcome": "failed before collection",
+   "error": "Owned app exited before collection (0). Created while the local Codex review session ran in its sandbox; no collection evidence beyond the failure record",
+   "receiptCompleted": false
+  }
+ ]
+}

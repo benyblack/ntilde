@@ -13,6 +13,7 @@ import { collectSgrRgbGrading } from './sgr-rgb-collector.mjs';
 import { collectSgrAttrsGrading } from './sgr-attrs-collector.mjs';
 import { collectSgrPaletteGrading } from './sgr-palette-collector.mjs';
 import { collectSgrTruecolorGrading } from './sgr-truecolor-collector.mjs';
+import { collectTruecolorFindingGrading } from './truecolor-literal-finding-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -122,6 +123,9 @@ try {
         const sgrTruecolorModule = await import(pathToFileURL(config.sgrTruecolorBundle).href);
         const sgrTruecolorRun = await collectSgrTruecolorGrading({ config, fence, owner, gradingModule: sgrTruecolorModule });
         writeFileSync(join(config.output, 'sgtc-run.json'), JSON.stringify(sgrTruecolorRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The truecolor-literal finding (no pinned probe, no collector extension) follows on the same fence.
+        const truecolorFindingRun = await collectTruecolorFindingGrading({ config, fence, owner });
+        writeFileSync(join(config.output, 'sgtf-run.json'), JSON.stringify(truecolorFindingRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

@@ -1,0 +1,278 @@
+{
+ "schemaVersion": 1,
+ "suiteId": "ntilde-owned-truecolor-literal-finding-v1",
+ "contractsVersion": 1,
+ "caseIds": ["finding.truecolor-literal.fg.0-55-218", "finding.truecolor-literal.fg.58-150-221", "finding.truecolor-literal.fg.12-12-12", "finding.truecolor-literal.fg.204-204-204", "finding.truecolor-literal.fg.242-242-242", "finding.truecolor-literal.bg.0-55-218", "finding.truecolor-literal.bg.58-150-221", "finding.truecolor-literal.bg.12-12-12", "finding.truecolor-literal.bg.204-204-204", "finding.truecolor-literal.bg.242-242-242"],
+ "cases": [
+  {
+   "caseId": "finding.truecolor-literal.fg.0-55-218",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "B\u001b[38;5;4mI\u001b[0m\u001b[38;2;0;55;218mS\u001b[0m\u001b[38:2::0:55:218mC\u001b[0m\u001b[38:2:0:0:55:218mD\u001b[0m", "\u001b]4;4;rgb:ff/00/ff\u0007",
+    "\u001b]104;4\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "finding.truecolor-literal.fg.58-150-221",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "B\u001b[38;5;4mI\u001b[0m\u001b[38;2;58;150;221mS\u001b[0m\u001b[38:2::58:150:221mC\u001b[0m\u001b[38:2:0:58:150:221mD\u001b[0m", "\u001b]4;4;rgb:ff/00/ff\u0007",
+    "\u001b]104;4\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "finding.truecolor-literal.fg.12-12-12",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "B\u001b[38;5;0mI\u001b[0m\u001b[38;2;12;12;12mS\u001b[0m\u001b[38:2::12:12:12mC\u001b[0m\u001b[38:2:0:12:12:12mD\u001b[0m", "\u001b]4;0;rgb:ff/00/ff\u0007",
+    "\u001b]104;0\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "finding.truecolor-literal.fg.204-204-204",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "B\u001b[38;5;7mI\u001b[0m\u001b[38;2;204;204;204mS\u001b[0m\u001b[38:2::204:204:204mC\u001b[0m\u001b[38:2:0:204:204:204mD\u001b[0m", "\u001b]4;7;rgb:ff/00/ff\u0007",
+    "\u001b]104;7\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "finding.truecolor-literal.fg.242-242-242",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "B\u001b[38;5;15mI\u001b[0m\u001b[38;2;242;242;242mS\u001b[0m\u001b[38:2::242:242:242mC\u001b[0m\u001b[38:2:0:242:242:242mD\u001b[0m", "\u001b]4;15;rgb:ff/00/ff\u0007",
+    "\u001b]104;15\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "finding.truecolor-literal.bg.0-55-218",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "B\u001b[48;5;4mI\u001b[0m\u001b[48;2;0;55;218mS\u001b[0m\u001b[48:2::0:55:218mC\u001b[0m\u001b[48:2:0:0:55:218mD\u001b[0m", "\u001b]4;4;rgb:ff/00/ff\u0007",
+    "\u001b]104;4\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "finding.truecolor-literal.bg.58-150-221",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "B\u001b[48;5;4mI\u001b[0m\u001b[48;2;58;150;221mS\u001b[0m\u001b[48:2::58:150:221mC\u001b[0m\u001b[48:2:0:58:150:221mD\u001b[0m", "\u001b]4;4;rgb:ff/00/ff\u0007",
+    "\u001b]104;4\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "finding.truecolor-literal.bg.12-12-12",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "B\u001b[48;5;0mI\u001b[0m\u001b[48;2;12;12;12mS\u001b[0m\u001b[48:2::12:12:12mC\u001b[0m\u001b[48:2:0:12:12:12mD\u001b[0m", "\u001b]4;0;rgb:ff/00/ff\u0007",
+    "\u001b]104;0\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "finding.truecolor-literal.bg.204-204-204",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "B\u001b[48;5;7mI\u001b[0m\u001b[48;2;204;204;204mS\u001b[0m\u001b[48:2::204:204:204mC\u001b[0m\u001b[48:2:0:204:204:204mD\u001b[0m", "\u001b]4;7;rgb:ff/00/ff\u0007",
+    "\u001b]104;7\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  },
+  {
+   "caseId": "finding.truecolor-literal.bg.242-242-242",
+   "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+    "B\u001b[48;5;15mI\u001b[0m\u001b[48;2;242;242;242mS\u001b[0m\u001b[48:2::242:242:242mC\u001b[0m\u001b[48:2:0:242:242:242mD\u001b[0m", "\u001b]4;15;rgb:ff/00/ff\u0007",
+    "\u001b]104;15\u0007"
+   ],
+   "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"],
+   "reads": [
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    },
+    {
+     "kind": "cells",
+     "cursor": [0, 5]
+    }
+   ]
+  }
+ ]
+}

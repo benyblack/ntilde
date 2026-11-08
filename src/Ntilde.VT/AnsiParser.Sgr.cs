@@ -69,14 +69,9 @@ namespace Ntilde.VT
                     var color = ParseExtendedColor(args, separators, ref i, out idx);
                     if (color.HasValue)
                     {
-                        // Snapping for Campbell Blue/Black
-                        if (idx == -1 && color.Value.R == 0 && color.Value.G == 55 && color.Value.B == 218) idx = 4; // #0037DA Blue
-                        if (idx == -1 && color.Value.R == 58 && color.Value.G == 150 && color.Value.B == 221) idx = 4; // #3A96DD Blue (PS)
-                        if (idx == -1 && color.Value.R == 12 && color.Value.G == 12 && color.Value.B == 12) idx = 0; // #0C0C0C Black
-                        if (idx == -1 && color.Value.R == 204 && color.Value.G == 204 && color.Value.B == 204) idx = 7; // #CCCCCC White
-                        if (idx == -1 && color.Value.R == 242 && color.Value.G == 242 && color.Value.B == 242) idx = 15; // #F2F2F2 Bright White
-
-                        // Use GetBasicColor ONLY for snapped or basic indices (0-15).
+                        // A direct-RGB request is a literal: it is never rewritten into a palette index, so it
+                        // neither follows the theme nor changes with OSC 4 (idx is -1 unless 38/48;5 named one).
+                        // Use GetBasicColor ONLY for basic indices (0-15).
                         // For 256-color indices (16-255) or TrueColor (-1), use the raw color.Value.
                         _buffer.CurrentForeground = (idx >= 0 && idx <= 15) ? GetBasicColor(idx % 8, idx >= 8) : color.Value;
                         _buffer.CurrentFgIndex = idx;
@@ -107,13 +102,8 @@ namespace Ntilde.VT
                     var color = ParseExtendedColor(args, separators, ref i, out idx);
                     if (color.HasValue)
                     {
-                        // Snapping for Campbell Blue/Black
-                        if (idx == -1 && color.Value.R == 0 && color.Value.G == 55 && color.Value.B == 218) idx = 4; // #0037DA Blue
-                        if (idx == -1 && color.Value.R == 58 && color.Value.G == 150 && color.Value.B == 221) idx = 4; // #3A96DD Blue (PS)
-                        if (idx == -1 && color.Value.R == 12 && color.Value.G == 12 && color.Value.B == 12) idx = 0; // #0C0C0C Black
-                        if (idx == -1 && color.Value.R == 204 && color.Value.G == 204 && color.Value.B == 204) idx = 7; // #CCCCCC White
-                        if (idx == -1 && color.Value.R == 242 && color.Value.G == 242 && color.Value.B == 242) idx = 15; // #F2F2F2 Bright White
-
+                        // A direct-RGB request is a literal: it is never rewritten into a palette index, so it
+                        // neither follows the theme nor changes with OSC 4 (idx is -1 unless 38/48;5 named one).
                         _buffer.CurrentBackground = (idx >= 0 && idx <= 15) ? GetBasicColor(idx % 8, idx >= 8) : color.Value;
                         _buffer.CurrentBgIndex = idx;
                         _buffer.IsDefaultBackground = false;

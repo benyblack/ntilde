@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV19SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV20SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV19SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV20SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV19SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV20SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -190,6 +190,20 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'sgtc-run.json', runSha256: hash(readFileSync(join(output, 'sgtc-run.json'))),
                 adapterBundleSha256: hash(sgrTruecolorBytes), contractsVersion: sgrTruecolorContractsVersion,
                 counts: { supported: 2 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v13 always carries the truecolor-literal finding suffix as well.
+            const { syntheticTruecolorFindingEvidence } = await import('./truecolor-literal-finding-evidence.mjs');
+            const { buildTruecolorFindingReport } = await import('../truecolor-literal-finding-grading.mjs');
+            const { truecolorFindingSuiteId, truecolorFindingContractsVersion } = await import('../truecolor-literal-finding-contracts.mjs');
+            const finding = syntheticTruecolorFindingEvidence(context.runId);
+            const findingReport = buildTruecolorFindingReport(finding.frames, finding.run, context.runId);
+            write('sgtf-observations.json', findingReport);
+            write('sgtf-run.json', finding.run);
+            writeFileSync(join(output, 'sgtf-snapshots.jsonl'), finding.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            Object.assign(context, { truecolorFindingSuiteId, truecolorFindingContractsVersion });
+            evidence.truecolorFindingEvidence = { runId: context.runId, suiteId: truecolorFindingSuiteId,
+                file: 'sgtf-observations.json', sha256: hash(readFileSync(join(output, 'sgtf-observations.json'))),
+                runFile: 'sgtf-run.json', runSha256: hash(readFileSync(join(output, 'sgtf-run.json'))),
+                contractsVersion: truecolorFindingContractsVersion, counts: { supported: 10 }, provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

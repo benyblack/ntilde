@@ -138,5 +138,9 @@
     "sgrTruecolorGradingCollectorSourceSha256": "sgr-truecolor-grading-collector.mjs",
     "sgrTruecolorReceiptSourceSha256": "sgr-truecolor-receipt.mjs",
     "sgrColorCoreSourceSha256": "sgr-color-core.mjs",
-    "sgrColorGradingCoreSourceSha256": "sgr-color-grading-core.mjs"
+    "sgrColorGradingCoreSourceSha256": "sgr-color-grading-core.mjs",
+    "truecolorFindingContractsSourceSha256": "truecolor-literal-finding-contracts.mjs",
+    "truecolorFindingCollectorSourceSha256": "truecolor-literal-finding-collector.mjs",
+    "truecolorFindingGradingSourceSha256": "truecolor-literal-finding-grading.mjs",
+    "truecolorFindingReceiptSourceSha256": "truecolor-literal-finding-receipt.mjs"
 }
