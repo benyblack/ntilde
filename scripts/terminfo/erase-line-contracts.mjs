@@ -166,10 +166,12 @@ const fixtureInk = (contract, text) => [...place(0, text), ...(contract.neighbor
 /** The expected ink of one wide-control state: three rows, the middle one erased in the contracted mode. */
 const wideInk = text => [...place(0, 'ABOVE-ROW!'), ...place(1, text), ...place(2, 'BELOW-ROW!')].sort(byPosition);
 
-/** The BCE control: retained cells keep their bold-only tuple, every other ink cell is a blank in the erased range. */
+/** The BCE control: retained cells keep their bold-only tuple, every other ink cell is a blank inside the erased range of the
+ * whole row (EL 0 erases through the last column, EL 1 up to the cursor, EL 2 the full row). */
 function bceState(contract, before, after) {
+    const cols = after.cols;
     const retained = [...erasedText(seed, contract.mode)].flatMap((char, col) => (char === ' ' ? [] : [col]));
-    const erased = [0, 1, 2, 3, 4].filter(col => !retained.includes(col));
+    const erased = Array.from({ length: cols }, (_, col) => col).filter(col => !survives(contract.mode, col) && (col >= seed.length || !retained.includes(col)));
     const bold = cell => cell.bold === true && !cell.dim && !cell.italic && !cell.inverse && !cell.hidden && !cell.strikethrough
         && !cell.blink && !cell.overline && cell.underlineStyle === 0 && cell.fgIndex === -1 && cell.bgIndex === -1
         && cell.foregroundArgb === null && cell.backgroundArgb === null && cell.underlineColorIndex === -1 && cell.underlineArgb === null;
@@ -181,8 +183,9 @@ function bceState(contract, before, after) {
         && cell.char === seed[cell.col] && bold(cell));
     const blanksOk = blanks.every(cell => cell.row === 0 && erased.includes(cell.col));
     const painted = erased.map(col => blanks.find(cell => cell.col === col));
-    const bceApplied = erased.length === 0 ? null : painted.every(Boolean) && painted.every(cell => cell.bgIndex >= 0 || cell.backgroundArgb !== null)
-        ? 'erased cells carry the current background' : painted.every(cell => cell === undefined) ? 'erased cells keep the default background' : 'mixed';
+    const isPainted = cell => cell !== undefined && (cell.bgIndex >= 0 || cell.backgroundArgb !== null);
+    const bceApplied = erased.length === 0 ? null : painted.every(isPainted) ? 'erased cells carry the current background'
+        : painted.every(cell => cell === undefined) ? 'erased cells keep the default background' : 'mixed';
     return { seeded, retainedOk, blanksOk, cursorOk: sameCursor(after, 0, seedColumn), bceApplied };
 }
 

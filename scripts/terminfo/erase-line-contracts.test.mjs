@@ -152,7 +152,7 @@ test('required attributes: retained cells must keep bold and no stored color; er
 test('background-color erase is observed, never required: painted erased cells keep the verdict and are reported', () => {
     const painted = reads => {
         reads.bce = { rows: [[colorCell('A', { attrs: ['bold'] }), colorCell('B', { attrs: ['bold'] }),
-            ...Array.from({ length: 3 }, () => colorCell(' ', { bg: { kind: 'palette', index: 4 } }))]], cursor: [0, 2] };
+            ...Array.from({ length: 58 }, () => colorCell(' ', { bg: { kind: 'palette', index: 4 } }))]], cursor: [0, 2] };
     };
     assert.deepEqual(grade(RIGHT, painted), { outcome: 'supported' });
     const contract = byId(RIGHT);
@@ -218,4 +218,25 @@ test('grader refuses missing groups and unknown revisions', () => {
     assert.throws(() => gradeEraseLineCase(contract, observation), /Missing erase\.line\.right read captures/);
     assert.throws(() => eraseLineObservation(contract, []), /Missing erase-in-line read captures/);
     assert.throws(() => gradeEraseLineCase(contract, eraseLineObservation(contract, syntheticEraseLineScreens(RIGHT)), 2), /Unknown erase-in-line contracts revision 2/);
+});
+
+test('the erased range of the attribute control is the real range: EL 0 runs to the last column, EL 1 stops at the cursor, EL 2 covers the row', () => {
+    const bold = char => colorCell(char, { attrs: ['bold'] });
+    const blue = () => colorCell(' ', { bg: { kind: 'palette', index: 4 } });
+    const report = (caseId, cells) => {
+        const contract = byId(caseId);
+        const reads = syntheticEraseLineReads(caseId);
+        reads.bce = { rows: [cells], cursor: [0, 2] };
+        const screens = syntheticEraseLineScreens(caseId, paletteBinding(), () => reads);
+        const observation = eraseLineObservation(contract, screens);
+        return { outcome: gradeEraseLineCase(contract, observation).outcome, bce: contract.observed(observation).attributes.backgroundColorErase };
+    };
+    const blanks = count => Array.from({ length: count }, blue);
+    assert.deepEqual(report(RIGHT, [bold('A'), bold('B'), ...blanks(58)]), { outcome: 'supported', bce: 'erased cells carry the current background' });
+    assert.deepEqual(report(LEFT, [...blanks(3), bold('D'), bold('E')]), { outcome: 'supported', bce: 'erased cells carry the current background' });
+    assert.deepEqual(report(ALL, blanks(60)), { outcome: 'supported', bce: 'erased cells carry the current background' });
+    // Painting only part of the erased range is reported as mixed, and painting a retained column is a change to a retained cell.
+    assert.equal(report(RIGHT, [bold('A'), bold('B'), ...blanks(10)]).bce, 'mixed');
+    assert.equal(report(RIGHT, [bold('A'), blue(), ...blanks(58)]).outcome, 'unsupported');
+    assert.equal(report(LEFT, [...blanks(3), bold('D'), bold('E'), blue()]).outcome, 'unsupported');
 });
