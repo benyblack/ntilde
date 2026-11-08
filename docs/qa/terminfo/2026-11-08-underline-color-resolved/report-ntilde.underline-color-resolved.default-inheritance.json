@@ -1,0 +1,831 @@
+{
+ "caseId": "ntilde.underline-color-resolved.default-inheritance",
+ "kind": "ntilde-extension-control",
+ "check": "ntilde-extension-contract",
+ "criterion": "a default underline (never set, or restored by SGR 59) inherits the cell's presented text color: the foreground, or the background under inverse; an explicit color is untouched by inverse and by the inherited channel",
+ "feeds": [
+  "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+  "\u001b[4mA\u001b[38;5;5mB\u001b[38;2;10;20;30mC\u001b[7mD\u001b[58;5;4mE\u001b[27;59mF\u001b[0;4;38;5;5;58;5;4mH\u001b[59mI\u001b[0;4;7;38;5;4;48;5;5mJ\u001b[0mG", "\u001b]4;4;rgb:11/22/33\u0007\u001b]4;5;rgb:44/55/66\u0007",
+  "\u001b]104;4\u0007\u001b]104;5\u0007"
+ ],
+ "barriers": [
+  "\u001b[?62;4;22c",
+  "\u001b[?62;4;22c",
+  "\u001b[?62;4;22c",
+  "\u001b[?62;4;22c"],
+ "reads": [
+  [0, 10],
+  [0, 10],
+  [0, 10]
+ ],
+ "observed": {
+  "before": [
+   {
+    "char": "A",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    }
+   },
+   {
+    "char": "B",
+    "flags": 16904,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 5,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4291625165
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4291625165
+    }
+   },
+   {
+    "char": "C",
+    "flags": 520,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    }
+   },
+   {
+    "char": "D",
+    "flags": 522,
+    "inverse": true,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4278190080
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4278190080
+    }
+   },
+   {
+    "char": "E",
+    "flags": 522,
+    "inverse": true,
+    "underlineStyle": 1,
+    "underlineColorIndex": 4,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    }
+   },
+   {
+    "char": "F",
+    "flags": 520,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    }
+   },
+   {
+    "char": "H",
+    "flags": 16904,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": 4,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 5,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    }
+   },
+   {
+    "char": "I",
+    "flags": 16904,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 5,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4291625165
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4291625165
+    }
+   },
+   {
+    "char": "J",
+    "flags": 49162,
+    "inverse": true,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 4,
+    "foregroundArgb": null,
+    "bgSource": "palette",
+    "bgIndex": 5,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4291625165
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4291625165
+    }
+   },
+   {
+    "char": "G",
+    "flags": 768,
+    "inverse": false,
+    "underlineStyle": 0,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "none",
+     "index": -1
+    },
+    "parentExpected": {
+     "source": "none",
+     "index": -1
+    }
+   }
+  ],
+  "mutated": [
+   {
+    "char": "A",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    }
+   },
+   {
+    "char": "B",
+    "flags": 16904,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 5,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4282668390
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4282668390
+    }
+   },
+   {
+    "char": "C",
+    "flags": 520,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    }
+   },
+   {
+    "char": "D",
+    "flags": 522,
+    "inverse": true,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4278190080
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4278190080
+    }
+   },
+   {
+    "char": "E",
+    "flags": 522,
+    "inverse": true,
+    "underlineStyle": 1,
+    "underlineColorIndex": 4,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4279312947
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4279312947
+    }
+   },
+   {
+    "char": "F",
+    "flags": 520,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    }
+   },
+   {
+    "char": "H",
+    "flags": 16904,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": 4,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 5,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4279312947
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4279312947
+    }
+   },
+   {
+    "char": "I",
+    "flags": 16904,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 5,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4282668390
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4282668390
+    }
+   },
+   {
+    "char": "J",
+    "flags": 49162,
+    "inverse": true,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 4,
+    "foregroundArgb": null,
+    "bgSource": "palette",
+    "bgIndex": 5,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4282668390
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4282668390
+    }
+   },
+   {
+    "char": "G",
+    "flags": 768,
+    "inverse": false,
+    "underlineStyle": 0,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "none",
+     "index": -1
+    },
+    "parentExpected": {
+     "source": "none",
+     "index": -1
+    }
+   }
+  ],
+  "restored": [
+   {
+    "char": "A",
+    "flags": 776,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4292072403
+    }
+   },
+   {
+    "char": "B",
+    "flags": 16904,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 5,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4291625165
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4291625165
+    }
+   },
+   {
+    "char": "C",
+    "flags": 520,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    }
+   },
+   {
+    "char": "D",
+    "flags": 522,
+    "inverse": true,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4278190080
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4278190080
+    }
+   },
+   {
+    "char": "E",
+    "flags": 522,
+    "inverse": true,
+    "underlineStyle": 1,
+    "underlineColorIndex": 4,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    }
+   },
+   {
+    "char": "F",
+    "flags": 520,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "literal",
+    "fgIndex": -1,
+    "foregroundArgb": 4278850590,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4278850590
+    }
+   },
+   {
+    "char": "H",
+    "flags": 16904,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": 4,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 5,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    },
+    "parentExpected": {
+     "source": "palette",
+     "index": 4,
+     "argb": 4278190318
+    }
+   },
+   {
+    "char": "I",
+    "flags": 16904,
+    "inverse": false,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 5,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4291625165
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "foreground",
+     "argb": 4291625165
+    }
+   },
+   {
+    "char": "J",
+    "flags": 49162,
+    "inverse": true,
+    "underlineStyle": 1,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "palette",
+    "fgIndex": 4,
+    "foregroundArgb": null,
+    "bgSource": "palette",
+    "bgIndex": 5,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4291625165
+    },
+    "parentExpected": {
+     "source": "inherit",
+     "index": -1,
+     "inheritsFrom": "background",
+     "argb": 4291625165
+    }
+   },
+   {
+    "char": "G",
+    "flags": 768,
+    "inverse": false,
+    "underlineStyle": 0,
+    "underlineColorIndex": -1,
+    "underlineArgb": null,
+    "fgSource": "default",
+    "fgIndex": -1,
+    "foregroundArgb": null,
+    "bgSource": "default",
+    "bgIndex": -1,
+    "backgroundArgb": null,
+    "appObserved": {
+     "source": "none",
+     "index": -1
+    },
+    "parentExpected": {
+     "source": "none",
+     "index": -1
+    }
+   }
+  ]
+ },
+ "bindings": [
+  {
+   "themeName": "Default",
+   "reverseVideo": false,
+   "paletteOverrideIndices": [],
+   "underlineStage": "underline-resolution",
+   "entry4Argb": 4278190318,
+   "entry5Argb": 4291625165,
+   "bindingSha256": "d07d0b4fdd8ad79093c45f53ed0f5a66ebf8549c63694cc6c266d7fc8362e332"
+  },
+  {
+   "themeName": "Default",
+   "reverseVideo": false,
+   "paletteOverrideIndices": [4, 5],
+   "underlineStage": "underline-resolution",
+   "entry4Argb": 4279312947,
+   "entry5Argb": 4282668390,
+   "bindingSha256": "1998ada2d98df0261eea087017a3ae5495ce13c8023233fb62993589b06aa503"
+  },
+  {
+   "themeName": "Default",
+   "reverseVideo": false,
+   "paletteOverrideIndices": [],
+   "underlineStage": "underline-resolution",
+   "entry4Argb": 4278190318,
+   "entry5Argb": 4291625165,
+   "bindingSha256": "d07d0b4fdd8ad79093c45f53ed0f5a66ebf8549c63694cc6c266d7fc8362e332"
+  }
+ ],
+ "contractResult": {
+  "outcome": "supported",
+  "layers": {
+   "stored": "supported",
+   "appResolved": "supported"
+  }
+ },
+ "conclusion": {
+  "outcome": "supported",
+  "evidence": "owned-stored-and-app-resolved-underline",
+  "grading": "contract-v1",
+  "layers": {
+   "stored": "supported",
+   "appResolved": "supported"
+  },
+  "scope": "App-reported resolved underline and its inherited channel for default markers over default, palette and literal foregrounds, inverse over default and palette backgrounds, an explicit palette underline under inverse and SGR 59 restoring the default marker, across start, OSC 4 mutation and OSC 104 restoration; faint, minimum contrast and the foreground override are excluded stages; rendered appearance is not claimed"
+ }
+}

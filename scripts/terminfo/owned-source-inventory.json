@@ -152,5 +152,9 @@
     "sgrUnderlineColorCollectorSourceSha256": "sgr-underline-color-collector.mjs",
     "sgrUnderlineColorGradingSourceSha256": "sgr-underline-color-grading.mjs",
     "sgrUnderlineColorGradingCollectorSourceSha256": "sgr-underline-color-grading-collector.mjs",
-    "sgrUnderlineColorReceiptSourceSha256": "sgr-underline-color-receipt.mjs"
+    "sgrUnderlineColorReceiptSourceSha256": "sgr-underline-color-receipt.mjs",
+    "sgrUnderlineColorResolvedContractsSourceSha256": "sgr-underline-color-resolved-contracts.mjs",
+    "sgrUnderlineColorResolvedCollectorSourceSha256": "sgr-underline-color-resolved-collector.mjs",
+    "sgrUnderlineColorResolvedGradingSourceSha256": "sgr-underline-color-resolved-grading.mjs",
+    "sgrUnderlineColorResolvedReceiptSourceSha256": "sgr-underline-color-resolved-receipt.mjs"
 }

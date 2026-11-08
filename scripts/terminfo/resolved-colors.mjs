@@ -17,6 +17,15 @@ const opaque = value => uint(value) && (value >>> 24) === 0xff;
 /** The three storage states a resolved channel can be resolved from. */
 export const resolvedColorSources = Object.freeze(['default', 'palette', 'literal']);
 
+/** The opt-in underline stage marker and its note, both required together. */
+function validUnderlineStage(binding) {
+    if (binding.underlineStage !== 'underline-resolution' || typeof binding.underlineStageNote !== 'string'
+        || binding.underlineStageNote.length < 64 || binding.underlineStageNote.length > 2048) {
+        throw new Error('Invalid resolved-color underline stage.');
+    }
+    return { underlineStage: binding.underlineStage, underlineStageNote: binding.underlineStageNote };
+}
+
 /** Validate and normalize one complete palette/theme binding exactly as the App reports it. */
 export function copyColorBinding(binding) {
     if (!binding || binding.stage !== 'theme-resolution' || typeof binding.stageNote !== 'string'
@@ -36,7 +45,10 @@ export function copyColorBinding(binding) {
                 && binding.minimumContrast >= 1 && binding.minimumContrast <= 21))) {
         throw new Error('Invalid resolved-color theme binding.');
     }
-    return { stage: binding.stage, stageNote: binding.stageNote, themeName: binding.themeName ?? null,
+    // The underline stage is an additive opt-in: absent, the normalized shape (and its hash) is exactly the frozen one.
+    const underline = binding.underlineStage === undefined && binding.underlineStageNote === undefined ? null
+        : validUnderlineStage(binding);
+    return { ...(underline ?? {}), stage: binding.stage, stageNote: binding.stageNote, themeName: binding.themeName ?? null,
         foregroundArgb: binding.foregroundArgb, backgroundArgb: binding.backgroundArgb,
         ansiPaletteArgb: [...binding.ansiPaletteArgb], reverseVideo: binding.reverseVideo,
         foregroundOverride: binding.foregroundOverride, backgroundOverride: binding.backgroundOverride,
@@ -59,9 +71,29 @@ const channelValid = (channel, field, binding) => {
     return channel.index === -1; // literal: exact stored bytes, opaque at this stage
 };
 
-/** Full-run equality (both channels, source, index and value). */
+/** The four sources a resolved underline can come from. */
+export const resolvedUnderlineSources = Object.freeze(['none', 'inherit', 'palette', 'literal']);
+
+/** One underline is valid only in its own source's shape; palette values sit exactly at the binding's entry. Inherit's
+ * value is checked against the cell's own channel by `checkUnderlineCoherence`, because it is not a binding constant. */
+const underlineValid = (ul, binding) => {
+    if (!ul || !resolvedUnderlineSources.includes(ul.source)) return false;
+    if (ul.source === 'none') return ul.index === -1 && ul.argb === undefined && ul.inheritsFrom === undefined;
+    if (!opaque(ul.argb)) return false;
+    if (ul.source === 'inherit') return ul.index === -1 && (ul.inheritsFrom === 'foreground' || ul.inheritsFrom === 'background');
+    if (ul.inheritsFrom !== undefined) return false;
+    if (ul.source === 'palette') return index(ul.index) && ul.argb === binding.ansiPaletteArgb[ul.index];
+    return ul.index === -1; // literal
+};
+const copyUnderline = ul => ({ source: ul.source, index: ul.index,
+    ...(ul.inheritsFrom === undefined ? {} : { inheritsFrom: ul.inheritsFrom }), ...(ul.argb === undefined ? {} : { argb: ul.argb }) });
+const sameUnderline = (a, b) => a === undefined || b === undefined ? a === b
+    : a.source === b.source && a.index === b.index && a.inheritsFrom === b.inheritsFrom && a.argb === b.argb;
+
+/** Full-run equality (both channels, source, index and value, and the underline when it is projected). */
 const sameRun = (a, b) => a.fg.source === b.fg.source && a.fg.index === b.fg.index && a.fg.argb === b.fg.argb
-    && a.bg.source === b.bg.source && a.bg.index === b.bg.index && a.bg.argb === b.bg.argb;
+    && a.bg.source === b.bg.source && a.bg.index === b.bg.index && a.bg.argb === b.bg.argb
+    && sameUnderline(a.ul, b.ul);
 
 /** Validate canonical, complete resolved-color runs cohering with the binding. */
 export function copyResolvedColors(runs, cells, binding) {
@@ -70,12 +102,16 @@ export function copyResolvedColors(runs, cells, binding) {
         throw new Error('Invalid resolved-color budget.');
     }
     let total = 0, previous;
+    const withUnderline = binding.underlineStage !== undefined;
     const result = runs.map(run => {
         if (!run || !Number.isSafeInteger(run.count) || run.count < 1
             || !channelValid(run.fg, 'foregroundArgb', binding) || !channelValid(run.bg, 'backgroundArgb', binding)) {
             throw new Error('Invalid resolved-color run.');
         }
-        const value = { count: run.count, fg: { ...run.fg }, bg: { ...run.bg } };
+        // A binding that carries the underline stage requires every run to project an underline; one without it forbids it,
+        // so an opted-out read can never smuggle App values in and an opted-in read can never omit them.
+        if (withUnderline ? !underlineValid(run.ul, binding) : run.ul !== undefined) throw new Error('Invalid resolved-color run.');
+        const value = { count: run.count, fg: { ...run.fg }, bg: { ...run.bg }, ...(withUnderline ? { ul: copyUnderline(run.ul) } : {}) };
         total += run.count;
         if (total > cells || (previous && sameRun(previous, value))) throw new Error('Noncanonical resolved-color viewport.');
         previous = value;
@@ -88,7 +124,8 @@ export function copyResolvedColors(runs, cells, binding) {
 /** Expand validated runs into independent per-cell channel pairs. */
 export function expandResolvedColors(runs, cells, binding) {
     return copyResolvedColors(runs, cells, binding)
-        .flatMap(({ count, ...value }) => Array.from({ length: count }, () => ({ fg: { ...value.fg }, bg: { ...value.bg } })));
+        .flatMap(({ count, ...value }) => Array.from({ length: count }, () => ({ fg: { ...value.fg }, bg: { ...value.bg },
+            ...(value.ul === undefined ? {} : { ul: { ...value.ul } }) })));
 }
 
 /** The pinned projection of one channel: default is null (defined, distinguishing it
@@ -139,6 +176,38 @@ export function checkStoredColorCoherence(screen, includeOverline = false) {
             }
             if (channel.source === 'literal' && (channel.argb & 0xffffff) !== (detail[literalField] & 0xffffff)) {
                 throw new Error(`Resolved literal ${label} disagrees with stored bytes at ${row},${col}.`);
+            }
+        }
+    }
+}
+
+/** Opt-in underline coherence: the App-resolved underline of every cell must agree with that same cell's stored
+ * projections (underline flag, stored palette index / literal bytes / default marker, inverse flag) and, for an
+ * inherited underline, with the cell's own resolved text channel. A parent-derived value cannot pass for an
+ * observation: the check compares only what the App reported. */
+export function checkUnderlineCoherence(screen) {
+    if (screen.colorBinding?.underlineStage === undefined) throw new Error('Resolved underline stage was not requested.');
+    const cells = screen.rows * screen.cols;
+    const resolved = expandResolvedColors(screen.resolvedColors, cells, screen.colorBinding);
+    const stored = expandCellDetails(screen.cellDetails, cells, true);
+    for (const [position, cell] of resolved.entries()) {
+        const detail = stored[position], ul = cell.ul;
+        const where = `${Math.floor(position / screen.cols)},${position % screen.cols}`;
+        const underlined = detail.underlineStyle !== 0;
+        if ((ul.source !== 'none') !== underlined) throw new Error(`Resolved underline presence disagrees with the stored underline at ${where}.`);
+        if (ul.source === 'palette' && (detail.underlineColorIndex !== ul.index || detail.underlineArgb != null)) {
+            throw new Error(`Resolved underline palette index disagrees with stored attributes at ${where}.`);
+        }
+        if (ul.source === 'literal' && (detail.underlineColorIndex !== -1 || detail.underlineArgb == null
+            || (detail.underlineArgb & 0xffffff) !== (ul.argb & 0xffffff))) {
+            throw new Error(`Resolved literal underline disagrees with stored bytes at ${where}.`);
+        }
+        if (ul.source === 'inherit') {
+            const inverse = (detail.flags & 2) !== 0;
+            const channel = inverse ? cell.bg : cell.fg;
+            if (detail.underlineColorIndex !== -1 || detail.underlineArgb != null
+                || ul.inheritsFrom !== (inverse ? 'background' : 'foreground') || ul.argb !== channel.argb) {
+                throw new Error(`Resolved inherited underline disagrees with the stored marker or the cell's text channel at ${where}.`);
             }
         }
     }

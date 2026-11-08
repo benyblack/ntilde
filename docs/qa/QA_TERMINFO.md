@@ -813,3 +813,13 @@ observed; the resolved underline RGB is derived parent-side from the recorded pa
 an OSC 4 mutation of entries 4, 5 and 67 compares the whole palette at start, mutated and restored. Rendered
 underline appearance is not claimed. Receipt schema 21 and source policy v15 (154 files) bind it; earlier policies stay frozen.
 
+### App-observed underline-color resolution
+
+The [follow-up](terminfo/2026-11-08-underline-color-resolved-qualification.md) to the underline-color batch adds the
+opt-in `readScreen` flag `includeResolvedUnderlineColors` (with `includeResolvedColors`): per-cell underline color
+resolved by the draw path's own underline precedence (explicit index through the palette, explicit literal, or the
+default marker inheriting the presented text color), from the same coherent render snapshot. Three Ntilde extension
+controls (indexed, literal, default-inheritance; OSC 4 start/mutate/restore) compare the App's value with an
+independent expectation from stored state. No benchmark case changes; the pinned underline-color evidence stays
+parent-derived. Theme-resolution stage only, no rendered-appearance claim. Receipt schema 22 and source policy v16
+(158 files) bind it; earlier policies stay frozen.

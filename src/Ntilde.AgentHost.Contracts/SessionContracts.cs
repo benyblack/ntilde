@@ -114,6 +114,16 @@ public sealed record ReadScreenParams
     [JsonPropertyName("includeResolvedColors")]
     public bool IncludeResolvedColors { get; init; }
 
+    /// <summary>
+    /// Add the draw path's resolved underline color to every resolved-color run (<c>ul</c>) and the
+    /// underline stage note to the binding. Only effective together with
+    /// <see cref="IncludeResolvedColors"/>; explicit opt-in leaves the foreground/background runs of
+    /// older clients byte-identical. Same stage as the channel colors (theme resolution, before the
+    /// minimum-contrast, faint, override and compositing stages); not rendered pixels.
+    /// </summary>
+    [JsonPropertyName("includeResolvedUnderlineColors"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IncludeResolvedUnderlineColors { get; init; }
+
     /// <summary>Include observed margins, editing modes, pending wrap, active screen and local history count.</summary>
     [JsonPropertyName("includeBufferState"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool IncludeBufferState { get; init; }
@@ -273,6 +283,39 @@ public sealed record ResolvedColorRunDto
 
     [JsonPropertyName("bg")]
     public required ResolvedChannelDto Bg { get; init; }
+
+    /// <summary>The resolved underline color; present only when <c>includeResolvedUnderlineColors</c> was requested.</summary>
+    [JsonPropertyName("ul"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ResolvedUnderlineDto? Ul { get; init; }
+}
+
+/// <summary>
+/// One cell's underline color resolved by the draw path's own underline-color precedence.
+/// <c>none</c>: the cell has no underline (nothing is drawn); <c>palette</c>: an explicit SGR 58;5
+/// index resolved through the binding's ANSI palette; <c>literal</c>: explicit SGR 58;2 RGB;
+/// <c>inherit</c>: no explicit color (default marker, e.g. after SGR 59) so the underline takes the
+/// cell's presented text color, which is <c>inheritsFrom</c> = <c>foreground</c>, or
+/// <c>background</c> under inverse video. Inverse, faint, minimum contrast and foreground overrides
+/// do not touch an explicit color; for <c>inherit</c> the reported value is the presented text color
+/// at the theme-resolution stage, before contrast, faint and override adjustment.
+/// </summary>
+public sealed record ResolvedUnderlineDto
+{
+    /// <summary>One of <c>none</c>, <c>inherit</c>, <c>palette</c>, <c>literal</c>.</summary>
+    [JsonPropertyName("source")]
+    public required string Source { get; init; }
+
+    /// <summary>Palette index 0..255 for <c>palette</c>; -1 otherwise.</summary>
+    [JsonPropertyName("index")]
+    public required short Index { get; init; }
+
+    /// <summary>For <c>inherit</c>: the channel the underline takes (<c>foreground</c> or <c>background</c>); otherwise null.</summary>
+    [JsonPropertyName("inheritsFrom"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? InheritsFrom { get; init; }
+
+    /// <summary>The resolved color, packed opaque ARGB; null for <c>none</c>.</summary>
+    [JsonPropertyName("argb"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint? Argb { get; init; }
 }
 
 /// <summary>
@@ -330,6 +373,14 @@ public sealed record ColorBindingDto
     /// </summary>
     [JsonPropertyName("minimumContrast"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? MinimumContrast { get; init; }
+
+    /// <summary>Fixed marker for the underline resolution stage (<c>underline-resolution</c>); present only with <c>includeResolvedUnderlineColors</c>.</summary>
+    [JsonPropertyName("underlineStage"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UnderlineStage { get; init; }
+
+    /// <summary>What the underline stage resolves and the downstream effects it excludes; present only with <c>underlineStage</c>.</summary>
+    [JsonPropertyName("underlineStageNote"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UnderlineStageNote { get; init; }
 }
 
 /// <summary>Params for <c>captureScreen</c> (A5).</summary>

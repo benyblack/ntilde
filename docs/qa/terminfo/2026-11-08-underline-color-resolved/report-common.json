@@ -1,0 +1,10 @@
+{
+ "schemaVersion": 1,
+ "suiteId": "ntilde-owned-underline-color-resolved-v1",
+ "runId": "e3f14e99bd11bc5776436d5ebe8ffb36",
+ "contractsVersion": 1,
+ "kind": "ntilde-extension-controls-not-terminfo-cases",
+ "scope": "Ntilde extension controls for the opt-in App-reported resolved underline color (readScreen includeResolvedUnderlineColors), graded using parent-journaled stored underline style/palette index/literal bytes/default marker, the per-read recorded palette binding and the App-reported own resolved underline, against an independent expectation derived from stored state, the start binding of the run and contracted OSC 4 constants. Stage: theme resolution; minimum contrast, faint, foreground override, painting, compositing and rasterisation are excluded and rendered appearance is not claimed. No pinned terminfo.dev probe, no stock grade; the pinned underline-color qualifications keep their parent-derived evidence.",
+ "initialSnapshot": 0,
+ "restoredSnapshot": 11
+}

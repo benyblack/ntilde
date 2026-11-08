@@ -37,7 +37,8 @@ therefore computed by the parent: a palette index resolves through the palette i
 draw path's `ResolveUnderlineColor` uses the same palette entry a foreground index uses), literal bytes are
 themselves, and a default reports `null`. The indexed case's "resolved" verdict thus rests on the stored index plus
 the App-reported palette, not on the App's drawing code, and does not prove the App paints that color. Reporting
-the final underline color from the App is a separate follow-up.
+the final underline color from the App is a separate follow-up (done in
+[the App-observed underline-color resolution](2026-11-08-underline-color-resolved-qualification.md)).
 
 **Default underline color.** A default underline is a stored marker (index -1, no literal), not a fixed RGB. It
 inherits the cell's text color at draw time (the draw path keeps the run's foreground paint when no explicit color

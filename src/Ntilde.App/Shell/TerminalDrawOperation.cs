@@ -1459,7 +1459,7 @@ namespace Ntilde.Shell
                     bool runIsHidden = cell.IsHidden;
                     bool runIsBlink = cell.IsBlink;
                     var bg = cell.IsInverse ? cf : cb;
-                    var fg = EnforceMinimumContrast(cell.IsInverse ? cb : cf, bg, overlayFill);
+                    var fg = EnforceMinimumContrast(PresentedTextColor(cell, cf, cb), bg, overlayFill);
                     if (runIsFaint)
                     {
                         fg = BlendTowards(fg, bg, 0.5f);
@@ -1491,7 +1491,7 @@ namespace Ntilde.Shell
                         var ncb = ResolveCellBackground(next, themeBg, alpha, themeSnapshot);
                         var ncf = ResolveCellForeground(next, themeFg, alpha, themeSnapshot);
                         var nbg = next.IsInverse ? ncf : ncb;
-                        var nfg = EnforceMinimumContrast(next.IsInverse ? ncb : ncf, nbg, overlayFill);
+                        var nfg = EnforceMinimumContrast(PresentedTextColor(next, ncf, ncb), nbg, overlayFill);
                         if (next.IsFaint)
                         {
                             nfg = BlendTowards(nfg, nbg, 0.5f);
@@ -3254,8 +3254,44 @@ namespace Ntilde.Shell
             return new SKColor(cell.Foreground.R, cell.Foreground.G, cell.Foreground.B, 255);
         }
 
+        /// <summary>
+        /// The text color a cell presents before contrast, faint and override adjustment: its resolved
+        /// foreground, or its resolved background under inverse video. The draw path and the agent
+        /// host's underline projection both take it from here.
+        /// </summary>
+        internal static SKColor PresentedTextColor(RenderCellSnapshot cell, SKColor resolvedForeground, SKColor resolvedBackground)
+            => cell.IsInverse ? resolvedBackground : resolvedForeground;
+
+        /// <summary>Where a cell's underline color comes from at the theme-resolution stage.</summary>
+        internal enum UnderlineColorSource { None, Inherit, Palette, Literal }
+
+        /// <summary>One cell's underline color at the theme-resolution stage.</summary>
+        internal readonly record struct UnderlineResolution(UnderlineColorSource Source, short PaletteIndex, bool InheritsBackground, SKColor Color);
+
+        /// <summary>
+        /// The underline color the draw path would stroke, resolved at the same stage as
+        /// <see cref="ResolveCellForeground"/>: no underline draws nothing; an explicit SGR 58 color
+        /// (palette index through the theme, else literal) is used as stored, untouched by inverse, faint,
+        /// minimum contrast or the foreground override; otherwise the stroke keeps the run's text color
+        /// (<see cref="PresentedTextColor"/>). The theme defaults are the presented ones, so DECSCNM is
+        /// already folded in. Shared with the agent host so the projection cannot drift from the draw path.
+        /// </summary>
+        internal static UnderlineResolution ResolveCellUnderline(RenderCellSnapshot cell, SKColor themeFg, SKColor themeBg, RenderThemeSnapshot themeSnapshot)
+        {
+            if (!cell.IsUnderline) return new UnderlineResolution(UnderlineColorSource.None, -1, false, default);
+            if (cell.Underline is { HasColor: true } underline)
+            {
+                var color = ResolveUnderlineColor(underline, themeSnapshot);
+                return underline.ColorIndex >= 0
+                    ? new UnderlineResolution(UnderlineColorSource.Palette, underline.ColorIndex, false, color)
+                    : new UnderlineResolution(UnderlineColorSource.Literal, -1, false, color);
+            }
+            var text = PresentedTextColor(cell, ResolveCellForeground(cell, themeFg, 255, themeSnapshot), ResolveCellBackground(cell, themeBg, 255, themeSnapshot));
+            return new UnderlineResolution(UnderlineColorSource.Inherit, -1, cell.IsInverse, text);
+        }
+
         /// <summary>The SGR 58 underline color (#270): a palette index through the theme, as the foreground's is, or RGB.</summary>
-        private static SKColor ResolveUnderlineColor(CellUnderline underline, RenderThemeSnapshot themeSnapshot)
+        internal static SKColor ResolveUnderlineColor(CellUnderline underline, RenderThemeSnapshot themeSnapshot)
         {
             TermColor c = underline.ColorIndex >= 0
                 ? ResolvePaletteIndex(underline.ColorIndex, themeSnapshot)

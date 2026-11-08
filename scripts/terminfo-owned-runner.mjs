@@ -34,6 +34,8 @@ import { buildSgrUnderlineGradingReport } from './terminfo/sgr-underline-grading
 import { adaptSgrUnderlineColorCollector, sgrUnderlineColorAdapterId } from './terminfo/sgr-underline-color-grading-collector.mjs';
 import { sgrUnderlineColorContractsVersion, sgrUnderlineColorSuiteId } from './terminfo/sgr-underline-color-contracts.mjs';
 import { buildSgrUnderlineColorGradingReport } from './terminfo/sgr-underline-color-grading.mjs';
+import { underlineResolvedContractsVersion, underlineResolvedSuiteId } from './terminfo/sgr-underline-color-resolved-contracts.mjs';
+import { buildUnderlineResolvedReport } from './terminfo/sgr-underline-color-resolved-grading.mjs';
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
@@ -483,6 +485,21 @@ async function retainSgrUnderlineEvidence(output, runId, sgrUnderlineBundle, ups
         contractsVersion: sgrUnderlineContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Re-derive the App-observed underline-color resolution report parent-side (no pinned probe to replay). */
+function retainUnderlineResolvedEvidence(output, runId) {
+    const runBytes = readFileSync(join(output, 'sgur-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'sgur-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const report = buildUnderlineResolvedReport(frames, run, runId);
+    writeJson(join(output, 'sgur-observations.json'), report);
+    const counts = {};
+    for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;
+    return { runId, suiteId: underlineResolvedSuiteId, file: 'sgur-observations.json',
+        sha256: hash(readFileSync(join(output, 'sgur-observations.json'))),
+        runFile: 'sgur-run.json', runSha256: hash(runBytes), contractsVersion: underlineResolvedContractsVersion, counts,
+        provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the truecolor-literal finding report parent-side (no pinned probe to replay). */
 function retainTruecolorFindingEvidence(output, runId) {
     const runBytes = readFileSync(join(output, 'sgtf-run.json'));
@@ -601,6 +618,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let truecolorFindingEvidence;
     let sgrUnderlineEvidence;
     let sgrUnderlineColorEvidence;
+    let underlineResolvedEvidence;
     let rgbEvidence;
     let renditionEvidence;
     let cursorEvidence;
@@ -682,6 +700,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let truecolorFindingObserver;
         let sgrUnderlineObserver;
         let sgrUnderlineColorObserver;
+        let underlineResolvedObserver;
         let pixelObserver;
         let pixelUnavailable;
         let colorObserver;
@@ -731,6 +750,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             truecolorFindingSuiteId, truecolorFindingContractsVersion,
             sgrUnderlineAdapterId, sgrUnderlineSuiteId, sgrUnderlineBundleSha256, sgrUnderlineContractsVersion,
             sgrUnderlineColorAdapterId, sgrUnderlineColorSuiteId, sgrUnderlineColorBundleSha256, sgrUnderlineColorContractsVersion,
+            underlineResolvedSuiteId, underlineResolvedContractsVersion,
+            underlineResolved: 'Ntilde extension controls (not terminfo.dev cases, no pinned probe, no collector extension): the opt-in App-reported resolved underline color (readScreen includeResolvedUnderlineColors) compared with an independent expectation derived from stored underline state, the recorded palette binding and contracted OSC 4 constants, for indexed, literal and default-inheritance underlines with an OSC 4 mutation and its OSC 104 restoration; theme-resolution stage only; rendered appearance is not claimed',
             sgrUnderlineColor: 'layered versioned collector extension; pinned underline-color termless criteria (sgr.underline-color-indexed, -rgb, -reset; the aggregate sgr.underline.color is not qualified) replayed on parent-observed stored underline style and color index/literal/default with parent-derived resolved RGB and an OSC 4 mutation control; colon forms are ungraded controls; rendered underline appearance not claimed; not stock output',
             sgrUnderline: 'layered versioned collector extension; pinned underline-style termless criteria (sgr.underline.double via SGR 21; sgr.underline.curly, .dotted, .dashed via SGR 4:3, 4:4, 4:5) replayed on parent-observed stored underline flag and exact stored style; SGR 4, 4:1 and 4:2 are labeled controls without a grade; stroke appearance not claimed; not stock output',
             truecolorFinding: 'Ntilde finding (not a terminfo.dev case, no pinned probe, no collector extension): five exact direct-RGB values on fg/bg graded from parent-observed stored literal bytes and App-resolved RGB bound to the per-frame recorded palette, with an indexed positive control, an OSC 4 mutation of the aliased entry and its restoration; no pixels',
@@ -758,6 +779,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'sgtf-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgus-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sguc-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'sgur-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -1305,6 +1327,16 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'sguc-snapshots.jsonl'), JSON.stringify(sgrUnderlineColorObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'sgur') {
+                // The App-observed underline-resolution suite runs after the underline-color suite and adds its conclusions beside the earlier ones.
+                if (!sgrUnderlineColorObserver?.restored) throw new Error('SGR-underline-color suite must restore before underline-resolution observations.');
+                underlineResolvedObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_UR_${runId}`, includeAttributes: true, includeCellDetails: true, includeOverline: true,
+                    includeResolvedColors: true, includeResolvedUnderlineColors: true, prefix: 'sgur', expectedPaneId: cellObserver.paneId });
+                const result = await underlineResolvedObserver.handle(request.kind, budget, request.barrier);
+                appendFileSync(join(output, 'sgur-snapshots.jsonl'), JSON.stringify(underlineResolvedObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             const attributes = request.kind.startsWith('sgr-');
             if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
             if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
@@ -1356,7 +1388,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeImageRequest(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|sgus|sguc|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|sgus|sguc|sgur|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
@@ -1467,6 +1499,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             truecolorFindingEvidence = retainTruecolorFindingEvidence(output, runId);
             sgrUnderlineEvidence = await retainSgrUnderlineEvidence(output, runId, sgrUnderlineBundle, upstreamBundleSha256);
             sgrUnderlineColorEvidence = await retainSgrUnderlineColorEvidence(output, runId, sgrUnderlineColorBundle, upstreamBundleSha256);
+            underlineResolvedEvidence = retainUnderlineResolvedEvidence(output, runId);
             rgbEvidence = retainDetails('rgb');
             renditionEvidence = retainDetails('rendition');
             cursorEvidence = retainDetails('cursor');
@@ -1512,6 +1545,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.truecolorFindingEvidence = truecolorFindingEvidence;
             summary.sgrUnderlineEvidence = sgrUnderlineEvidence;
             summary.sgrUnderlineColorEvidence = sgrUnderlineColorEvidence;
+            summary.underlineResolvedEvidence = underlineResolvedEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
@@ -1551,7 +1585,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

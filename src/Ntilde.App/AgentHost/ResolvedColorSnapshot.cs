@@ -27,6 +27,12 @@ internal static class ResolvedColorSnapshot
         + "minimum-contrast adjustment, opacity compositing and glyph rasterisation, so rendered glyph "
         + "appearance may still differ from these values.";
 
+    internal const string UnderlineStage = "underline-resolution";
+    internal const string UnderlineStageNote = "Underline color exactly as the draw path's underline stroke resolves it, at the same theme-resolution stage: "
+        + "no underline -> none; explicit SGR 58 palette index -> ANSI palette entry; explicit literal -> stored RGB (inverse, faint, minimum contrast and the foreground override never touch an explicit color); "
+        + "otherwise the stroke keeps the cell's presented text color (foreground, or background under inverse video), reported before minimum-contrast, faint and override adjustment. "
+        + "Opaque alpha. Excludes whether the stroke is actually painted (hidden, blink phase, selection or cursor overlays), opacity compositing and rasterisation, so rendered appearance may still differ.";
+
     /// <summary>
     /// Capture a complete resolved-color viewport with its binding, or refuse before any partial data.
     /// The caller passes the rows/cols it already read for the rest of the response: a resize that
@@ -34,7 +40,7 @@ internal static class ResolvedColorSnapshot
     /// than answered with projections of two different screens.
     /// </summary>
     internal static bool TryCapture(TerminalBuffer buffer, out ResolvedColorRunDto[]? runs, out ColorBindingDto? binding, double? minimumContrast = null,
-        int expectedRows = -1, int expectedCols = -1)
+        int expectedRows = -1, int expectedCols = -1, bool includeUnderline = false)
     {
         runs = null;
         binding = null;
@@ -81,9 +87,10 @@ internal static class ResolvedColorSnapshot
                     Count = 1,
                     Fg = ResolveChannel(cell, isForeground: true, themeFg, theme),
                     Bg = ResolveChannel(cell, isForeground: false, themeBg, theme),
+                    Ul = includeUnderline ? ResolveUnderline(cell, themeFg, themeBg, theme) : null,
                 };
                 // Canonical runs: adjacent runs differ; the budget mirrors CellDetailSnapshot's.
-                if (previous != null && previous.Fg == value.Fg && previous.Bg == value.Bg)
+                if (previous != null && previous.Fg == value.Fg && previous.Bg == value.Bg && previous.Ul == value.Ul)
                 {
                     count++;
                     continue;
@@ -96,7 +103,7 @@ internal static class ResolvedColorSnapshot
         }
         if (previous != null) runList.Add(previous with { Count = count });
         runs = runList.ToArray();
-        binding = BindingOf(theme, minimumContrast);
+        binding = BindingOf(theme, minimumContrast, includeUnderline);
         return true;
     }
 
@@ -120,8 +127,27 @@ internal static class ResolvedColorSnapshot
         };
     }
 
+    /// <summary>Resolve one cell's underline through the draw operation's own underline precedence.</summary>
+    private static ResolvedUnderlineDto ResolveUnderline(RenderCellSnapshot cell, SKColor themeFg, SKColor themeBg, RenderThemeSnapshot theme)
+    {
+        var r = TerminalDrawOperation.ResolveCellUnderline(cell, themeFg, themeBg, theme);
+        return r.Source switch
+        {
+            TerminalDrawOperation.UnderlineColorSource.None => new ResolvedUnderlineDto { Source = "none", Index = -1 },
+            TerminalDrawOperation.UnderlineColorSource.Inherit => new ResolvedUnderlineDto
+            {
+                Source = "inherit",
+                Index = -1,
+                InheritsFrom = r.InheritsBackground ? "background" : "foreground",
+                Argb = OpaqueArgb(r.Color),
+            },
+            TerminalDrawOperation.UnderlineColorSource.Palette => new ResolvedUnderlineDto { Source = "palette", Index = r.PaletteIndex, Argb = OpaqueArgb(r.Color) },
+            _ => new ResolvedUnderlineDto { Source = "literal", Index = -1, Argb = OpaqueArgb(r.Color) },
+        };
+    }
+
     /// <summary>Project the render theme into the reported binding facts.</summary>
-    private static ColorBindingDto BindingOf(RenderThemeSnapshot theme, double? minimumContrast)
+    private static ColorBindingDto BindingOf(RenderThemeSnapshot theme, double? minimumContrast, bool includeUnderline)
     {
         var palette = new uint[theme.AnsiPalette is { Length: 256 } array ? 256 : 0];
         if (palette.Length == 256)
@@ -146,6 +172,8 @@ internal static class ResolvedColorSnapshot
             BackgroundOverride = theme.HasBackgroundOverride,
             PaletteOverrideIndices = overrides.ToArray(),
             MinimumContrast = minimumContrast,
+            UnderlineStage = includeUnderline ? UnderlineStage : null,
+            UnderlineStageNote = includeUnderline ? UnderlineStageNote : null,
         };
     }
 
