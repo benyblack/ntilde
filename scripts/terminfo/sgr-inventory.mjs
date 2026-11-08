@@ -31,6 +31,9 @@ const fixtureOf = contract => contract.pinnedFeeds ? [...contract.pinnedFeeds]
     : contract.fixture !== undefined ? [contract.fixture]
         : contract.plan.filter(step => step.feed).slice(1, 2).map(step => step.feed);
 
+/** Code-unit order, so the published ordering is stable and locale-independent. */
+const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
 /** Build the inventory: per id the covering suites and fixtures, plus overlap groups, with no identities merged. */
 export function buildSgrInventory() {
     const cases = new Map();
@@ -41,7 +44,7 @@ export function buildSgrInventory() {
             cases.set(contract.caseId, entry);
         }
     }
-    const ids = [...cases.keys()].sort();
+    const ids = [...cases.keys()].sort(byCodeUnit);
     const byFixture = new Map();
     for (const id of ids) {
         for (const { fixture } of cases.get(id).coverage) {

@@ -45,7 +45,7 @@ test('the inventory ids equal the pinned bundle registrations when the collector
     const start = source.indexOf('  sgrProbes = [');
     const end = source.indexOf('\n  ];', start);
     const block = source.slice(start, end);
-    const ids = [...new Set([...block.matchAll(/(?:Probe|probe)\("(sgr\.[^"]+)"/g)].map(match => match[1]))].sort();
+    const ids = [...new Set([...block.matchAll(/(?:Probe|probe)\("(sgr\.[^"]+)"/g)].map(match => match[1]))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     assert.equal(ids.length, 32);
     assert.deepEqual(ids, published.cases.map(item => item.id));
 });
