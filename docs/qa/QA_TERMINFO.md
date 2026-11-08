@@ -830,3 +830,11 @@ The [selective-reset batch](terminfo/2026-11-08-sgr-selective-reset-qualificatio
 `sgr.selective-reset.inverse` through a tenth layered collector extension (`ntilde-owned-sgr-selective-reset-grading-v1`), replaying the pinned
 `C${setup}X${reset}Y` fixtures byte-exactly with no-op, full-reset, wrong-reset, SGR 59 and DECSCNM controls. Receipt schema 23, source policy v17
 with the 163-file inventory; underline color is documented, not required; no pixel claim.
+
+### SGR closure qualification (blink, overline, underline.color) and the pinned-SGR inventory
+
+The [closure batch](terminfo/2026-11-08-sgr-closure-qualification.md) grades `sgr.blink`, `sgr.overline` and `sgr.underline.color` through an eleventh layered
+collector extension (`ntilde-owned-sgr-closure-grading-v1`). `sgr.underline.color` shares the rgbUnderlineProbe helper with `sgr.underline-color-rgb` and is
+graded from its own reads; the overline guard's unavailable-versus-false distinction is preserved. Receipt schema 24, source policy v18 (168 files). The
+[pinned-SGR inventory](terminfo/2026-11-08-sgr-pinned-inventory.json) shows all 32 pinned `sgr.*` ids with extension evidence (coverage, not a stock score).
+
