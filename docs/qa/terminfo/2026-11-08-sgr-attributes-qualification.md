@@ -70,18 +70,18 @@ measured font/theme limits) and the stock collector's own `consumed` grades.
 | Layered adapter | `ntilde-owned-sgr-attributes-grading-v1` (contracts v1), suite `ntilde-owned-sgr-attributes-graded-v1` |
 | Derived from | `ntilde-owned-sgr-rgb-grading-v1` → `ntilde-owned-sgr-colors-grading-v1` → `ntilde-owned-ascii-sgr-grading-v1` → `ntilde-owned-macos-v1` over pinned `terminfo.dev@4.0.0` |
 | Pinned bundle SHA-256 | `aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6` |
-| Layered bundle SHA-256 | `8fa81f156a53611c24ff32259d05a463018707e527a0d21dc86342e17036c33a` |
+| Layered bundle SHA-256 | `5a5a8015da5d67127a6df91f53a032d41c4b8119e01dcc2f1e41a018f4d3c945` |
 | Receipt schema / source policy | 16 / `readonly-owned-source-graph-v10` (inventory v17, 128 files); policies v1–v9 keep their frozen maps |
 
 ## Measurement
 
 | Measure | Value |
 |---|---|
-| Run / receipt completed | run `7672cf19eabd75d922e60ad6e505d55f`, receipt 2026-11-08T01:21:02.306Z |
+| Run / receipt completed | run `d46ee1b469dffc9d8a7ae1f46f91db19`, receipt 2026-11-08T02:14:15.269Z |
 | App | `0.13.0`; **App source identical to main `499a0246` (#888)** — `git diff 499a0246 HEAD -- src` is empty; sidecar built from this branch |
-| Adapter/scripts source | commit `83762e4d` (pinned byte-for-byte by the run's policy-v10 inventory), after the Codex and CodeRabbit review fixes (four review-driven reruns); the sidecar App was built earlier from an App-identical tree |
+| Adapter/scripts source | commit `8fa4eb26` (pinned byte-for-byte by the run's policy-v10 inventory), after the Codex and CodeRabbit review fixes (five review-driven reruns); the sidecar App was built earlier from an App-identical tree |
 | Same-run predecessors | grading 4/4, SGR-colors 5/5 (contracts v2), SGR-RGB 2/2 supported |
-| Local evidence | `artifacts/terminfo/owned-0qisMk` (digests in the [JSON](2026-11-08-sgr-attributes-qualification.json)) |
+| Local evidence | `artifacts/terminfo/owned-OeltYQ` (digests in the [JSON](2026-11-08-sgr-attributes-qualification.json)) |
 
 ## Preserved attempts
 
@@ -92,7 +92,8 @@ measured font/theme limits) and the stock collector's own `consumed` grades.
 5. `owned-rwCXsg` (run `af3916def9dfe3f9bbcaa6dee5c8230f`): a second complete measurement (5/5) from `a7a0ef93`, superseded after CodeRabbit found that overline was not observed in the controls and the faint `Y` control was not drift-checked on the unsupported path; both change measured source. Overline is now requested in the stored details and must be clear in the baseline, drift and restoration controls (retained in the journal; asserted by the publication test). Retained unmodified locally.
 6. `owned-cjZJts` (run `89ddff76fed173a64dd754e39a816270`): a third complete measurement (5/5) from `b21736b8`, superseded after Codex found the X-survives-reset control ignored overline and color storage. Retained unmodified locally.
 7. `owned-51BbHQ` (run `1d210e7a9168737da19371ac9f093879`): a fourth complete measurement (5/5) from `070dd115`, superseded after Codex found the survives-reset control ignored underline-color drift because the projection dropped those fields. The projection now carries the complete stored tuple (underline color index/ARGB, fg/bg palette indices and literal ARGB) and every control compares it. Retained unmodified locally.
-8. `owned-vhxDkz`: an EPERM before launch, produced by the review sandbox running the script tests; no app launched.
+8. `owned-0qisMk` (run `7672cf19eabd75d922e60ad6e505d55f`): a fifth complete measurement (5/5) from `83762e4d`, superseded after Codex found that a valid overlined control cell beside plain cells aborted evidence validation (the shared stored-color coherence check expanded details without overline). That check gained an opt-in `includeOverline` (default off, so the SGR-RGB suite is unchanged), with a full-report regression test. Retained unmodified locally.
+9. `owned-vhxDkz`: an EPERM before launch, produced by the review sandbox running the script tests; no app launched.
 
 ## Reproduce
 
