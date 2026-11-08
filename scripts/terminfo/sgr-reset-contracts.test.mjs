@@ -165,6 +165,19 @@ test('SGR 24 vs SGR 59: underline color behavior is observed, never required', (
     assert.equal(behavior(false).sgr24ColorSurvivesReEnable, false);
     assert.equal(behavior(true).sgr24ColorSurvivesReEnable, true);
     assert.match(behavior(false).policy, /not required/);
+    // Review fix: a different color is neither "cleared" nor "survived".
+    const swapped = (yRgb, zRgb) => reads => {
+        const rgb = { r: 255, g: 0, b: 128 };
+        reads.color = [plainCell('C'), styled('X', ['bold'], { style: 1, rgb }), styled('Y', ['bold']), styled('Z', ['bold'], { style: 1, rgb: zRgb ?? rgb })];
+        reads.sgr59 = [plainCell('C'), styled('X', ['bold'], { style: 1, rgb }), styled('Y', ['bold'], { style: 1, rgb: yRgb })];
+    };
+    const behaviorOf = edit => contract.observed(sgrResetObservation(contract, syntheticSgrResetScreens(UNDERLINE, paletteBinding(),
+        id => { const reads = syntheticSgrResetReads(id); edit(reads); return reads; }))).underlineColorBehavior;
+    const changed = behaviorOf(swapped({ r: 1, g: 2, b: 3 }, { r: 9, g: 9, b: 9 }));
+    assert.equal(changed.sgr59ClearsStoredColor, false, 'SGR 59 left a different color stored');
+    assert.equal(changed.sgr24ColorSurvivesReEnable, false, 'a different literal is not the original color');
+    assert.equal(behaviorOf(swapped(null, null)).sgr59ClearsStoredColor, true);
+    assert.equal(behaviorOf(swapped(null, null)).sgr24ColorSurvivesReEnable, true);
     // SGR 59 leaves the underline in place while clearing the color (the contrast with SGR 24).
     assert.equal(behavior(false).sgr59KeepsUnderline, true);
     assert.equal(behavior(false).sgr59ClearsStoredColor, true);

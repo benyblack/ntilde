@@ -59,7 +59,7 @@ test('SGR 24: underline is active before the reset, cleared (flag and style 0) a
     assert.equal(underline.controls.sgr59KeepsUnderline[2].underline, 'single');
     // Underline color is documented, not required.
     assert.match(underline.underlineColorBehavior.policy, /not required/);
-    assert.equal(underline.underlineColorBehavior.requestedLiteralStored, true);
+    assert.equal(underline.underlineColorBehavior.requestedColorStored, true);
     assert.equal(underline.underlineColorBehavior.sgr59KeepsUnderline, true);
 });
 

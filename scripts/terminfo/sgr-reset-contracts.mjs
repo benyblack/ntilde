@@ -195,16 +195,19 @@ function briefReset(contract, observation) {
 function underlineColorBehavior(observation) {
     const [, x, afterReset, reEnabled] = observation.color;
     const [, x59, after59] = observation.sgr59;
-    const literal = cell => cell.underlineArgb !== null;
     const state = cell => ({ underlineColorIndex: cell.underlineColorIndex, underlineArgb: cell.underlineArgb });
+    // Default storage means BOTH fields are at their markers; a color is the stored (index, literal) pair compared as a whole.
+    const isDefault = cell => cell.underlineColorIndex === -1 && cell.underlineArgb === null;
+    const sameColor = (a, b) => a.underlineColorIndex === b.underlineColorIndex && a.underlineArgb === b.underlineArgb;
+    const requested = !isDefault(x) && sameColor(x, x59);
     return { policy: 'observed, not required: no pinned criterion constrains underline color',
-        requestedLiteralStored: literal(x) && literal(x59),
+        requestedColorStored: requested,
         afterSgr24: { underline: afterReset.underline, ...state(afterReset) },
         afterSgr24ThenSgr4: { underline: reEnabled.underline, ...state(reEnabled) },
         afterSgr59: { underline: after59.underline, ...state(after59) },
-        sgr24ClearsStoredColor: literal(x) ? !literal(afterReset) : null,
-        sgr24ColorSurvivesReEnable: literal(x) ? literal(reEnabled) : null,
-        sgr59ClearsStoredColor: literal(x59) ? !literal(after59) : null,
+        sgr24ClearsStoredColor: requested ? isDefault(afterReset) : null,
+        sgr24ColorSurvivesReEnable: requested ? sameColor(reEnabled, x) : null,
+        sgr59ClearsStoredColor: requested ? isDefault(after59) : null,
         sgr59KeepsUnderline: after59.underline !== false };
 }
 
