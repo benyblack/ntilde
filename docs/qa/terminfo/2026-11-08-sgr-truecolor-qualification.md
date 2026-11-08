@@ -87,18 +87,18 @@ colorspace syntax variants, `extensions.truecolor`, and the stock collector's ow
 | Layered adapter | `ntilde-owned-sgr-truecolor-grading-v1` (contracts v1), suite `ntilde-owned-sgr-truecolor-graded-v1` |
 | Derived from | `ntilde-owned-sgr-palette-grading-v1` → `…sgr-attributes…` → `…sgr-rgb…` → `…sgr-colors…` → `…ascii-sgr…` → `ntilde-owned-macos-v1` over pinned `terminfo.dev@4.0.0` |
 | Pinned bundle SHA-256 | `aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6` |
-| Layered bundle SHA-256 | `e0f589183d6cd4309342d5516c1f7332e6de1fef1ffad25c1ce639dbf5f4885a` |
+| Layered bundle SHA-256 | `37bfb1faf4766e7bc893f8c8a440ece041cd2572e5fb3d998e8d797cfcd22b6c` |
 | Receipt schema / source policy | 18 / `readonly-owned-source-graph-v12` (inventory v19, 140 files); policies v1–v11 keep their frozen maps |
 
 ## Measurement
 
 | Measure | Value |
 |---|---|
-| Run / receipt completed | run `22b3b3c22f75864c0f08b273be4d6694`, receipt 2026-11-08T11:12:41Z |
+| Run / receipt completed | run `a44537686a17710c484e2bfcbf3194d9`, receipt 2026-11-08T11:18:42Z |
 | App | `0.13.0`; App source identical to main `2218cb74` (no `src/` change on this branch); sidecar built fresh from committed `d0595efd` (App source unchanged since) |
-| Adapter/scripts source | commit `3529132f` (`adapterRevision` in the [summary](2026-11-08-sgr-truecolor/summary.json)), pinned byte-for-byte by the run's policy-v12 inventory |
+| Adapter/scripts source | commit `e6c88b89` (`adapterRevision` in the [summary](2026-11-08-sgr-truecolor/summary.json)), pinned byte-for-byte by the run's policy-v12 inventory |
 | Same-run predecessors | grading 4/4, SGR-colors 5/5, SGR-RGB 2/2, SGR-attributes 5/5, SGR-palette 6/6 supported — twenty unique qualifications, all rederive |
-| Local evidence | `artifacts/terminfo/owned-5ydlyP`; digests in the summary |
+| Local evidence | `artifacts/terminfo/owned-qNsCmN`; digests in the summary |
 
 ## Publication layout
 
@@ -113,10 +113,12 @@ whole report.
 
 See `attempts` in the summary, all retained unmodified locally: the first
 collector-cache install failed (gitignored lockfile absent; fixed from the retained
-lockfile, digest verified); `owned-uTMzpm` (run `d1364691…`, adapter `d0595efd`) is a
-complete 2/2 measurement superseded because the SonarCloud duplication gate led to a
-shared-core refactor that changes measured source; and three Codex-review-sandbox
-runs (`owned-yomWuQ`, `owned-mpzO8J`, `owned-DFEk1i`) failed before collection.
+lockfile, digest verified); `owned-uTMzpm` (adapter `d0595efd`) and `owned-5ydlyP`
+(adapter `3529132f`) are complete 2/2 measurements superseded because review
+findings changed measured source (the SonarCloud duplication gate led to a
+shared-core refactor; CodeRabbit found a receipt-admission gap); and the
+Codex-review-sandbox runs (`owned-yomWuQ`, `owned-mpzO8J`, `owned-DFEk1i`,
+`owned-rDKQr5`) failed before collection.
 
 ## Reproduce
 
