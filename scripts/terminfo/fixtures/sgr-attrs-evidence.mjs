@@ -61,9 +61,9 @@ export function syntheticSgrAttrsScreen(leading, binding = syntheticColorBinding
         { count: cells - specs.length, flags: defaults, fg: -1, bg: -1 }]);
     const resolved = coalesce([...specs.map(() => ({ count: 1, fg: channelDefaultFg, bg: channelDefaultBg })),
         { count: cells - specs.length, fg: channelDefaultFg, bg: channelDefaultBg }]);
-    const detail = (count, flags, underlineStyle) => ({ count, flags, fg: -1, bg: -1, foregroundArgb: null, backgroundArgb: null,
-        underlineStyle, underlineColorIndex: -1, underlineArgb: null });
-    const details = coalesce([...specs.map(spec => detail(1, spec.flags, spec.underlineStyle)),
+    const detail = (count, flags, underlineStyle, overline = false) => ({ count, flags, fg: -1, bg: -1, foregroundArgb: null, backgroundArgb: null,
+        overline, underlineStyle, underlineColorIndex: -1, underlineArgb: null });
+    const details = coalesce([...specs.map(spec => detail(1, spec.flags, spec.underlineStyle, spec.attrs.includes('overline'))),
         detail(cells - specs.length, defaults, 0)]);
     return { rows: sgrAttrsRows, cols: sgrAttrsCols, lines: [specs.map(spec => spec.char).join(''), '', '', '', '', ''],
         cursorRow: 0, cursorCol: specs.length, cursorVisible: true,

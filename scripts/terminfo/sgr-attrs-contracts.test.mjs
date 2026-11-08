@@ -100,8 +100,12 @@ test('underline: only the single style qualifies; other styles are a measured mi
         assert.equal(result.outcome, 'unsupported', `style ${style}`);
         assert.match(result.note, /instead of single/);
     }
-    // The stored style and the flag must agree: style bits without the flag are rejected by the stored-detail validators.
-    assert.throws(() => sgrAttrsCellAt(syntheticSgrAttrsScreen([styledCell('X', [], 1)]), 0, 0) && (() => { throw new Error('flag-coherent'); })(), /flag-coherent/);
+    // The stored style and the flag must agree: mutate a valid stored run after fixture creation
+    // so the validator, not the fixture, produces the refusal.
+    const screen = syntheticSgrAttrsScreens('sgr.underline.single')[1];
+    const broken = structuredClone(screen);
+    broken.cellDetails[0].underlineStyle = 0;
+    assert.throws(() => sgrAttrsCellAt(broken, 0, 0), /Invalid stored cell detail run|Contradictory stored cell projections/);
 });
 
 test('faint is distinct from bold: bold-only is unsupported, faint+bold target is drift', () => {
@@ -140,7 +144,7 @@ test('hidden keeps its stored text distinct from the conceal flag', () => {
 test('the observation exposes every pinned cell field and the stored style', () => {
     const cell = sgrAttrsCellAt(syntheticSgrAttrsScreens('sgr.underline.single')[1], 0, 0);
     assert.deepEqual(Object.keys(cell), ['char', 'flags', 'bold', 'dim', 'italic', 'underline', 'inverse', 'hidden',
-        'strikethrough', 'blink', 'fg', 'bg', 'fgSource', 'bgSource', 'underlineStyle']);
+        'strikethrough', 'blink', 'overline', 'fg', 'bg', 'fgSource', 'bgSource', 'underlineStyle']);
     assert.equal(cell.underline, 'single');
     assert.equal(cell.underlineStyle, 1);
 });
@@ -172,4 +176,28 @@ test('contradictory attribute-run and cell-detail projections are refused, not g
     const strikeRuns = syntheticSgrAttrsScreen([styledCell('X', ['underline', 'strikethrough'])]).attributeRuns;
     assert.throws(() => sgrAttrsCellAt({ ...screen, attributeRuns: strikeRuns }, 0, 0), /Contradictory stored cell projections/);
     assert.doesNotThrow(() => sgrAttrsCellAt(screen, 0, 0));
+});
+
+test('unintended overline invalidates the baseline, target and restoration controls', () => {
+    for (const caseId of sgrAttrsCaseIds) {
+        const baseline = grade(caseId, reads => { reads.baseline = [styledCell('C', ['overline'])]; });
+        assert.equal(baseline.outcome, 'inconclusive', caseId);
+        const drift = grade(caseId, reads => {
+            reads.target = [styledCell('X', [...reads.target[0].attrs, 'overline'])];
+            reads.trailing = [reads.target[0], ...reads.trailing.slice(1)];
+        });
+        assert.equal(drift.outcome, 'inconclusive', caseId);
+        assert.match(drift.note, /drifted/);
+        const restored = grade(caseId, reads => { reads.trailing = [reads.trailing[0], styledCell('Y', ['overline']), ...reads.trailing.slice(2)]; });
+        assert.equal(restored.outcome, 'inconclusive', caseId);
+    }
+    assert.equal(sgrAttrsCellAt(syntheticSgrAttrsScreens('sgr.inverse')[1], 0, 0).overline, false);
+});
+
+test('faint: an italic or recolored Y cannot turn an absent faint into unsupported', () => {
+    const absent = reads => { reads.target = [plainCell('X')]; reads.trailing = [plainCell('X'), styledCell('Y', ['bold']), plainCell('Z')]; };
+    assert.equal(grade('sgr.faint', absent).outcome, 'unsupported');
+    const italicY = grade('sgr.faint', reads => { absent(reads); reads.trailing[1] = styledCell('Y', ['bold', 'italic']); });
+    assert.equal(italicY.outcome, 'inconclusive');
+    assert.match(italicY.note, /restoration control/);
 });

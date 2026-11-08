@@ -49,7 +49,7 @@ export const sgrAttrsFlagBits = Object.freeze({
 /** UnderlineStyle storage names (0 = none). */
 const underlineNames = Object.freeze([false, 'single', 'double', 'curly', 'dotted', 'dashed']);
 /** Every boolean attribute the controls hold off unless a case sets it. */
-const attributeNames = Object.freeze(['bold', 'dim', 'italic', 'underline', 'inverse', 'hidden', 'strikethrough', 'blink']);
+const attributeNames = Object.freeze(['bold', 'dim', 'italic', 'underline', 'inverse', 'hidden', 'strikethrough', 'blink', 'overline']);
 
 /** Project one observed cell to the pinned getCell shape plus the storage the
  * attribute came from. `underline` is the stored style name or false, so the
@@ -57,7 +57,7 @@ const attributeNames = Object.freeze(['bold', 'dim', 'italic', 'underline', 'inv
 export function sgrAttrsCellAt(screen, row, col) {
     const position = row * screen.cols + col;
     const flags = expandScreenFlags(screen)[position] ?? 0;
-    const detail = expandCellDetails(screen.cellDetails, screen.rows * screen.cols, false)[position];
+    const detail = expandCellDetails(screen.cellDetails, screen.rows * screen.cols, true)[position];
     const resolved = expandResolvedColors(screen.resolvedColors, screen.rows * screen.cols, screen.colorBinding)[position];
     if (!detail || !resolved) throw new Error(`Missing stored cell evidence at ${row},${col}.`);
     // The attribute runs and the stored cell details are two projections of one cell: every
@@ -76,6 +76,7 @@ export function sgrAttrsCellAt(screen, row, col) {
         hidden: (flags & sgrAttrsFlagBits.hidden) !== 0,
         strikethrough: (flags & sgrAttrsFlagBits.strikethrough) !== 0,
         blink: (flags & sgrAttrsFlagBits.blink) !== 0,
+        overline: detail.overline,
         fg: exposedRgb(resolved.fg), bg: exposedRgb(resolved.bg),
         fgSource: resolved.fg.source, bgSource: resolved.bg.source,
         underlineStyle: detail.underlineStyle,
@@ -196,6 +197,7 @@ export const sgrAttrsContracts = Object.freeze([
                 // the basic restoration (X unchanged, Y present, Z clear of bold and faint).
                 trailingValid: (trailing, target, whenSupported) => keepsTarget(trailing, target)
                     && trailing[1].char === 'Y' && trailing[2].char === 'Z' && neutral(trailing[2])
+                    && othersClear(trailing[1], ['bold', 'dim'])
                     && (!whenSupported || exactly(trailing[1], ['bold', 'dim'])),
                 unrelatedClear: target => othersClear(target, ['dim']),
                 verdict: target => (target.dim && !target.bold ? { outcome: 'supported' }

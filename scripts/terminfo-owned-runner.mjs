@@ -1069,7 +1069,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 // attribute conclusions beside the color ones, never replaces them.
                 if (!sgrRgbObserver?.restored) throw new Error('SGR-RGB suite must restore before SGR-attribute observations.');
                 sgrAttrsObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
-                    nonce: `NTILDE_SA_${runId}`, includeAttributes: true, includeCellDetails: true,
+                    nonce: `NTILDE_SA_${runId}`, includeAttributes: true, includeCellDetails: true, includeOverline: true,
                     includeResolvedColors: true, prefix: 'sgattr', expectedPaneId: cellObserver.paneId });
                 const result = await sgrAttrsObserver.handle(request.kind, budget, request.barrier);
                 appendFileSync(join(output, 'sgattr-snapshots.jsonl'), JSON.stringify(sgrAttrsObserver.frames.at(-1)) + '\n');

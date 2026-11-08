@@ -21,7 +21,7 @@ const frameCount = 3 + readCount;
 
 /** Attribute screens carry attributes, stored details and resolved colors together. */
 const attributeScreen = value => {
-    const screen = screenSnapshot(value, true, true, false, false, false, true);
+    const screen = screenSnapshot(value, true, true, false, true, false, true);
     validateSgrAttrsScreen(screen);
     return screen;
 };
