@@ -3,7 +3,8 @@
 // production validators used for real measurements; nothing here replaces the
 // frozen real-App publication.
 import { snapshotHash } from '../agent-observer.mjs';
-import { sgrPaletteContracts, sgrPaletteReset, sgrPaletteFeeds, sgrPaletteObservation,
+import { planFeeds } from '../graded-plan.mjs';
+import { sgrPaletteContracts, sgrPaletteReset, sgrPaletteObservation,
     gradeSgrPaletteCase } from '../sgr-palette-contracts.mjs';
 import { replaySgrPalettePinned } from '../sgr-palette-grading.mjs';
 import { sgrPaletteAdapterId } from '../sgr-palette-grading-collector.mjs';
@@ -126,41 +127,52 @@ export function syntheticSgrPaletteReads(caseId) {
     };
 }
 
-/** Screens (fixture, control) of one synthetic case. */
-export function syntheticSgrPaletteScreens(caseId, binding = paletteBinding(), readsOf = null) {
-    const reads = readsOf?.(caseId) ?? syntheticSgrPaletteReads(caseId);
-    return [reads.fixture, reads.control].map(specs => syntheticSgrPaletteScreen(specs, binding));
-}
-
 /** One journaled frame with its digest. */
 function frame(index, kind, screenValue, barrier) {
     return { index, kind, paneId, barrier, screen: screenValue, sha256: snapshotHash(screenValue) };
 }
 
-/** A complete, valid synthetic run: frames, worker run log and adapter facts.
- * `readsOf(caseId)` may override the per-case cell specs to build negative evidence. */
-export function syntheticSgrPaletteEvidence(runId = 'a'.repeat(32), bundleSha256 = 'f'.repeat(64),
-    binding = paletteBinding(), readsOf = null) {
-    const nonce = 'NTILDE_SP_' + runId;
+/** A complete, valid synthetic run of any layered color suite: frames, worker run log and adapter facts.
+ * `suite` supplies contracts, identities, frame prefix and the pinned replay; `readsOf(caseId)` may
+ * override the per-case cell specs to build negative evidence. */
+export function syntheticColorEvidence(suite, runId, bundleSha256, binding, readsOf) {
+    const nonce = suite.noncePrefix + runId;
     const blank = syntheticSgrPaletteScreen([], binding);
     const bindScreen = { ...syntheticSgrPaletteScreen([], binding), lines: [nonce, '', '', '', '', ''], cursorCol: nonce.length };
-    const frames = [frame(0, 'sgpal-start', blank, null), frame(1, 'sgpal-bind', bindScreen, deviceAttribute)];
-    const cases = sgrPaletteContracts.map(contract => {
-        const feeds = sgrPaletteFeeds(contract);
+    const frames = [frame(0, suite.prefix + '-start', blank, null), frame(1, suite.prefix + '-bind', bindScreen, deviceAttribute)];
+    const cases = suite.contracts.map(contract => {
+        const feeds = planFeeds(contract);
         const barriers = feeds.map(() => deviceAttribute);
-        const screens = syntheticSgrPaletteScreens(contract.caseId, binding, readsOf);
-        for (const screen of screens) frames.push(frame(frames.length, 'sgpal-read', screen, deviceAttribute));
-        const pinned = { probeId: contract.caseId, ...replaySgrPalettePinned(contract, screens) };
+        const screens = suite.screens(contract.caseId, binding, readsOf);
+        for (const screen of screens) frames.push(frame(frames.length, suite.prefix + '-read', screen, deviceAttribute));
+        const pinned = { probeId: contract.caseId, ...suite.replay(contract, screens) };
         return { caseId: contract.caseId, feeds, barriers,
             reads: screens.map(screen => ({ kind: 'cells', cursor: [screen.cursorRow, screen.cursorCol] })), pinned };
     });
-    frames.push(frame(frames.length, 'sgpal-finish', blank, deviceAttribute));
-    const run = { schemaVersion: 1, adapterId: sgrPaletteAdapterId,
-        probeIds: sgrPaletteContracts.map(contract => contract.caseId), cases };
-    const adapter = { id: sgrPaletteAdapterId, derivedFromAdapterId: 'ntilde-owned-sgr-attributes-grading-v1',
-        bundleSha256, upstreamBundleSha256: 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6' };
-    return { frames, run, runId, adapter, reset: sgrPaletteReset };
+    frames.push(frame(frames.length, suite.prefix + '-finish', blank, deviceAttribute));
+    const run = { schemaVersion: 1, adapterId: suite.adapterId, probeIds: suite.contracts.map(contract => contract.caseId), cases };
+    const adapter = { id: suite.adapterId, derivedFromAdapterId: suite.derivedFrom, bundleSha256,
+        upstreamBundleSha256: 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6' };
+    return { frames, run, runId, adapter, reset: suite.reset };
 }
+
+/** Screens (fixture, control) of one synthetic case. */
+export function syntheticColorScreens(reads, binding) {
+    return [reads.fixture, reads.control].map(specs => syntheticSgrPaletteScreen(specs, binding));
+}
+
+const paletteSuite = Object.freeze({ noncePrefix: 'NTILDE_SP_', prefix: 'sgpal', contracts: sgrPaletteContracts,
+    adapterId: sgrPaletteAdapterId, derivedFrom: 'ntilde-owned-sgr-attributes-grading-v1', reset: sgrPaletteReset,
+    screens: (caseId, binding, readsOf) => syntheticColorScreens(readsOf?.(caseId) ?? syntheticSgrPaletteReads(caseId), binding),
+    replay: replaySgrPalettePinned });
+
+/** Screens (fixture, control) of one synthetic case. */
+export const syntheticSgrPaletteScreens = (caseId, binding = paletteBinding(), readsOf = null) =>
+    paletteSuite.screens(caseId, binding, readsOf);
+
+/** A complete, valid synthetic run: frames, worker run log and adapter facts. */
+export const syntheticSgrPaletteEvidence = (runId = 'a'.repeat(32), bundleSha256 = 'f'.repeat(64),
+    binding = paletteBinding(), readsOf = null) => syntheticColorEvidence(paletteSuite, runId, bundleSha256, binding, readsOf);
 
 /** The independent contract verdict for one synthetic case. */
 export function syntheticSgrPaletteGrade(caseId, binding = paletteBinding(), readsOf = null) {

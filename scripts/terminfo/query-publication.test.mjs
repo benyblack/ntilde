@@ -231,7 +231,7 @@ for (const [label, grow, policy] of [['inventory', true, false], ['policy', fals
             }
             const sources = await import(pathToFileURL(join(modules, 'owned-sources.mjs')).href);
             assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v13' : 'readonly-owned-source-graph-v12');
-            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 139 : 138); assert.deepEqual(sources.capturedV11SourceFiles, capturedV11SourceFiles);
+            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 141 : 140); assert.deepEqual(sources.capturedV11SourceFiles, capturedV11SourceFiles);
             const next = await import(pathToFileURL(join(modules, 'receipt.mjs')).href), output = join(root, 'evidence'); mkdirSync(output);
             const files = historicalArchive(name); writeFiles(files, output); const old = read(files, 'cell-receipt.json'); rmSync(join(output, 'cell-receipt.json'));
             compareReceipt(next.completeOwnedReceipt(output, join(output, 'removed-fixture'), evidenceFrom(old)), read(files, 'cell-receipt.json'));

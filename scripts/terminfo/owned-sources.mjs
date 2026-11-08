@@ -248,6 +248,8 @@ export const capturedV19SourceFiles = Object.freeze({
     sgrTruecolorGradingSourceSha256: "sgr-truecolor-grading.mjs",
     sgrTruecolorGradingCollectorSourceSha256: "sgr-truecolor-grading-collector.mjs",
     sgrTruecolorReceiptSourceSha256: "sgr-truecolor-receipt.mjs",
+    sgrColorCoreSourceSha256: "sgr-color-core.mjs",
+    sgrColorGradingCoreSourceSha256: "sgr-color-grading-core.mjs",
 });
 
 /** Bind the private temporary root, exact v19 inventory and manifest environment pin before trusting any captured source. */

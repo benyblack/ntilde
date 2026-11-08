@@ -30,7 +30,7 @@ for (const [name, grow, policy] of [
                 "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v13';"));
         }
         const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
-        assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 139 : 138);
+        assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 141 : 140);
         assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v13' : 'readonly-owned-source-graph-v12');
         const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-04-metadata-snapshot.json', import.meta.url)));
         const paths = Object.keys(published.archive.fileSha256).filter(name => name.startsWith('sources/')).map(name => name.slice(8));
@@ -99,7 +99,7 @@ for (const [name, grow, policy] of [['inventory', true, false], ['policy', false
             const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
             assert.equal(Object.keys(sources.capturedV9SourceFiles).length, 60);
             assert.equal(sources.capturedV9SourcePolicy, 'readonly-owned-source-graph-v2');
-            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 139 : 138);
+            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 141 : 140);
             const next = await import(pathToFileURL(join(scripts, 'receipt.mjs')).href), output = join(root, 'evidence'); mkdirSync(output);
             const archived = historicalArchive('2026-11-04-input-observations');
             for (const [file, bytes] of archived) { const target = join(output, file); mkdirSync(join(target, '..'), { recursive: true }); writeFileSync(target, bytes); }

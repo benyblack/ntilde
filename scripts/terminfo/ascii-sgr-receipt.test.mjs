@@ -142,6 +142,6 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     assert.equal(Object.keys(capturedV17SourceFiles).length, 128);
     // The SGR-palette scope (five scripts) lives in v11.
     assert.equal(Object.keys(capturedV18SourceFiles).length, 133);
-    // The SGR-truecolor scope (five scripts) lives in v12.
-    assert.equal(Object.keys(capturedV19SourceFiles).length, 138);
+    // The SGR-truecolor scope (five scripts plus two shared color cores) lives in v12.
+    assert.equal(Object.keys(capturedV19SourceFiles).length, 140);
 });

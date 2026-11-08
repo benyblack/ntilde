@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 138 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 138); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 140 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 140); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -79,7 +79,7 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('private v19 fixed138 source scope adds the five truecolor scripts while v18 remains fixed133, v17 fixed128, v16 fixed123 and v15 fixed114', () => {
+test('private v19 fixed140 source scope adds the five truecolor scripts and two shared color cores while v18 remains fixed133, v17 fixed128, v16 fixed123 and v15 fixed114', () => {
     assert.deepEqual(ownedSourceFiles, capturedV19SourceFiles);
     assert.equal(Object.keys(capturedV18SourceFiles).length, 133);
     assert.deepEqual(Object.keys(capturedV19SourceFiles).slice(0, 133), Object.keys(capturedV18SourceFiles));
