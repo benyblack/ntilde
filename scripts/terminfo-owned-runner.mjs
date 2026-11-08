@@ -1126,7 +1126,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeImageRequest(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);

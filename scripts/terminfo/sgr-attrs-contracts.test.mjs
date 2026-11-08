@@ -151,3 +151,14 @@ test('the grader refuses malformed observations and unknown revisions', () => {
     assert.throws(() => gradeSgrAttrsCase(contract, sgrAttrsObservation(syntheticSgrAttrsScreens('sgr.inverse')), 2), /Unknown SGR-attributes contracts revision 2/);
     assert.throws(() => sgrAttrsObservation([]), /Missing SGR-attribute read captures/);
 });
+
+test('the owner request allowlist admits every journal kind this suite emits', async () => {
+    const { readFileSync } = await import('node:fs');
+    const runner = readFileSync(new URL('../terminfo-owned-runner.mjs', import.meta.url), 'utf8');
+    const match = /\/\^\(\?:([a-z|]+)\)-\(\?:start\|bind\|read\|finish\)\$\//.exec(runner);
+    assert.ok(match, 'allowlist regex present');
+    assert.ok(match[1].split('|').includes('sgattr'));
+    for (const kind of ['start', 'bind', 'read', 'finish']) {
+        assert.match(`sgattr-${kind}`, new RegExp(`^(?:${match[1]})-(?:start|bind|read|finish)$`));
+    }
+});
