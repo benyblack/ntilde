@@ -212,6 +212,7 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
         assert.equal(JSON.parse(readFileSync(join(output, 'raw.json'))).testOnly, true);
         assert.equal(JSON.parse(readFileSync(join(output, 'grading-run.json'))).adapterId, 'stub');
         assert.equal(JSON.parse(readFileSync(join(output, 'sgcolors-run.json'))).adapterId, 'stub');
+        assert.deepEqual(JSON.parse(readFileSync(join(output, 'sgtc-run.json'))), { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] });
         assert.equal(JSON.parse(readFileSync(join(output, 'sgrgb-run.json'))).adapterId, 'stub');
     } finally { rmSync(output, { recursive: true, force: true }); }
 });

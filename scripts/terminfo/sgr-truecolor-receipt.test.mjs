@@ -238,6 +238,12 @@ test('policy v12 requires the SGR-truecolor binding even without artifacts', () 
         /Missing or changed SGR-truecolor adapter declaration/);
 }));
 
+test('a retained contracts-version declaration alone admits the suffix so incomplete evidence is rejected', () => fixture(f => {
+    const context = { sgrTruecolorContractsVersion: 1 };
+    assert.equal(includesSgrTruecolorEvidence(f.output, {}, context), true);
+    assert.throws(() => checkSgrTruecolorEvidence(f.output, {}, runId, context), /Missing or changed SGR-truecolor adapter declaration/);
+}));
+
 test('historical receipts stay valid without any SGR-truecolor artifacts', () => {
     const publication = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-sgr-attributes-qualification.json', import.meta.url)));
     assert.equal(publication.receipt.schemaVersion, 16);

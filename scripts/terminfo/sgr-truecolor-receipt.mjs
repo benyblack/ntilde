@@ -29,12 +29,13 @@ function present(path) {
 }
 
 /** Any retained SGR-truecolor artifact or declaration requires the v18 suffix — and a
- * policy-v11 run always carries them, because the current worker collects this
+ * policy-v12 run always carries them, because the current worker collects this
  * suite unconditionally after the SGR-palette suite. */
 export function includesSgrTruecolorEvidence(output, evidence, context) {
     return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v12'
         || context.sgrTruecolorAdapterId !== undefined || context.sgrTruecolorSuiteId !== undefined
-        || context.sgrTruecolorBundleSha256 !== undefined || evidence.sgrTruecolorEvidence !== undefined
+        || context.sgrTruecolorBundleSha256 !== undefined || context.sgrTruecolorContractsVersion !== undefined
+        || evidence.sgrTruecolorEvidence !== undefined
         || files.some(file => present(join(output, file)));
 }
 
