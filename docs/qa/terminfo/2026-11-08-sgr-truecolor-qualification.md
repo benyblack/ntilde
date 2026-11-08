@@ -73,6 +73,20 @@ indices, and resolved channels are cross-checked per cell, and resolved RGB must
 cohere with the one recorded palette/theme binding. Rendered appearance is **not
 claimed**.
 
+## Known limit: values the parser snaps to palette colors
+
+`AnsiParser.Sgr.cs` recognises five exact `38/48;2;r;g;b` values taken from Windows
+terminal themes and stores them as **palette indices**, not literal bytes:
+`0,55,218` and `58,150,221` become index 4, `12,12,12` index 0, `204,204,204`
+index 7 and `242,242,242` index 15. A program that sends one of these gets a theme
+color back, which follows later theme changes.
+
+This qualification does **not** cover those five values: no pinned fixture or control
+uses them (the boundary controls use `0,0,0` and `255,255,255`, which are not
+snapped). Read "supported" as "the contracted fixture values, black and white are
+stored as exact literal bytes", not "every truecolor value is stored exactly". A
+control for the snapped values would be a separate finding in a later batch.
+
 ## Remaining inconclusive criteria
 
 None among the two. Open, outside this batch: rendered appearance of the colors

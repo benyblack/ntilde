@@ -609,7 +609,8 @@ App-resolved RGB bound to one recorded palette/theme state. Only the semicolon
 are not claimed. Controls cover literal-versus-palette storage with equal resolved
 appearance, boundary components, the unaffected channel, unrelated attributes
 (including overline and underline color) and DECSCNM; rendered appearance is not
-claimed. Receipt schema 18 and source policy v12 (138 files) bind it; earlier
+claimed. The VT parser snaps five exact truecolor values (e.g. `12,12,12`, `204,204,204`) to palette
+indices; they are outside this qualification (see the batch's known-limit section). Receipt schema 18 and source policy v12 (138 files) bind it; earlier
 policies stay frozen.
 
 ## Interpret
