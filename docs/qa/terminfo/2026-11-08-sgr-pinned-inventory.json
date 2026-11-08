@@ -1,0 +1,489 @@
+{
+  "schemaVersion": 1,
+  "scope": "Extension evidence coverage of the pinned terminfo.dev@4.0.0 SGR case ids. Not a stock compatibility score: stock collector grades are tracked separately and unchanged.",
+  "pinned": {
+    "package": "terminfo.dev@4.0.0",
+    "bundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "probeHash": "16a690f34c0e"
+  },
+  "total": 32,
+  "cases": [
+    {
+      "id": "sgr.bg.256",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-palette",
+          "doc": "2026-11-08-sgr-palette-qualification.md",
+          "fixture": [
+            "C\u001b[48;2;95;135;175mA\u001b[48;2;215;135;95mB\u001b[48;5;67mX\u001b[48;5;173mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.bg.bright",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-palette",
+          "doc": "2026-11-08-sgr-palette-qualification.md",
+          "fixture": [
+            "C\u001b[101mX\u001b[104mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.bg.default",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-palette",
+          "doc": "2026-11-08-sgr-palette-qualification.md",
+          "fixture": [
+            "C\u001b[42mX\u001b[49mR"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.bg.standard",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-colors",
+          "doc": "2026-11-06-sgr-colors-qualification.md",
+          "fixture": [
+            "C\u001b[41mX\u001b[44mY"
+          ]
+        },
+        {
+          "suite": "sgr-rgb",
+          "doc": "2026-11-07-sgr-rgb-qualification.md",
+          "fixture": [
+            "C\u001b[41mX\u001b[44mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.bg.truecolor",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-truecolor",
+          "doc": "2026-11-08-sgr-truecolor-qualification.md",
+          "fixture": [
+            "C\u001b[41mA\u001b[44mB\u001b[48;2;0;255;128mX\u001b[48;2;17;97;201mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.blink",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-closure",
+          "doc": "2026-11-08-sgr-closure-qualification.md",
+          "fixture": [
+            "\u001b[5mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.bold",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "ascii-sgr",
+          "doc": "2026-11-05-ascii-sgr-qualification.md",
+          "fixture": [
+            "\u001b[1mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.faint",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-attrs",
+          "doc": "2026-11-08-sgr-attributes-qualification.md",
+          "fixture": [
+            "\u001b[2mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.fg.256",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-palette",
+          "doc": "2026-11-08-sgr-palette-qualification.md",
+          "fixture": [
+            "C\u001b[38;2;95;135;175mA\u001b[38;2;215;135;95mB\u001b[38;5;67mX\u001b[38;5;173mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.fg.bright",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-palette",
+          "doc": "2026-11-08-sgr-palette-qualification.md",
+          "fixture": [
+            "C\u001b[91mX\u001b[94mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.fg.default",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-palette",
+          "doc": "2026-11-08-sgr-palette-qualification.md",
+          "fixture": [
+            "C\u001b[31mX\u001b[39mR"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.fg.standard",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-colors",
+          "doc": "2026-11-06-sgr-colors-qualification.md",
+          "fixture": [
+            "C\u001b[31mX\u001b[34mY"
+          ]
+        },
+        {
+          "suite": "sgr-rgb",
+          "doc": "2026-11-07-sgr-rgb-qualification.md",
+          "fixture": [
+            "C\u001b[31mX\u001b[34mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.fg.truecolor",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-truecolor",
+          "doc": "2026-11-08-sgr-truecolor-qualification.md",
+          "fixture": [
+            "C\u001b[31mA\u001b[34mB\u001b[38;2;255;128;0mX\u001b[38;2;17;97;201mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.hidden",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-attrs",
+          "doc": "2026-11-08-sgr-attributes-qualification.md",
+          "fixture": [
+            "\u001b[8mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.inverse",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-attrs",
+          "doc": "2026-11-08-sgr-attributes-qualification.md",
+          "fixture": [
+            "\u001b[7mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.italic",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "ascii-sgr",
+          "doc": "2026-11-05-ascii-sgr-qualification.md",
+          "fixture": [
+            "\u001b[3mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.overline",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-closure",
+          "doc": "2026-11-08-sgr-closure-qualification.md",
+          "fixture": [
+            "\u001b[53mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.reset",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-colors",
+          "doc": "2026-11-06-sgr-colors-qualification.md",
+          "fixture": [
+            "C\u001b[1;3;4mX\u001b[0mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.selective-reset.bold",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-colors",
+          "doc": "2026-11-06-sgr-colors-qualification.md",
+          "fixture": [
+            "C\u001b[1;2;3mX\u001b[22mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.selective-reset.inverse",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-reset",
+          "doc": "2026-11-08-sgr-selective-reset-qualification.md",
+          "fixture": [
+            "C\u001b[1;7mX\u001b[27mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.selective-reset.italic",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-colors",
+          "doc": "2026-11-06-sgr-colors-qualification.md",
+          "fixture": [
+            "C\u001b[1;3mX\u001b[23mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.selective-reset.underline",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-reset",
+          "doc": "2026-11-08-sgr-selective-reset-qualification.md",
+          "fixture": [
+            "C\u001b[1;4mX\u001b[24mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.strikethrough",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-attrs",
+          "doc": "2026-11-08-sgr-attributes-qualification.md",
+          "fixture": [
+            "\u001b[9mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.underline-color-indexed",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-underline-color",
+          "doc": "2026-11-08-sgr-underline-color-qualification.md",
+          "fixture": [
+            "\u001b[4;38;5;4m\u001b[59mA\u001b[58;5;5mX\u001b[38;5;5m\u001b[59mB\u001b[58;5;4mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.underline-color-reset",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-underline-color",
+          "doc": "2026-11-08-sgr-underline-color-qualification.md",
+          "fixture": [
+            "\u001b[4m\u001b[59mC\u001b[58;2;255;0;128mX\u001b[59mY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.underline-color-rgb",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-underline-color",
+          "doc": "2026-11-08-sgr-underline-color-qualification.md",
+          "fixture": [
+            "\u001b[4m\u001b[59m\u001b[38;2;0;0;255mA\u001b[38;2;0;255;0mB\u001b[58;2;255;0;128mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.underline.color",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-closure",
+          "doc": "2026-11-08-sgr-closure-qualification.md",
+          "fixture": [
+            "\u001b[4m\u001b[59m\u001b[38;2;0;0;255mA\u001b[38;2;0;255;0mB\u001b[58;2;255;0;128mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.underline.curly",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-underline",
+          "doc": "2026-11-08-sgr-underline-qualification.md",
+          "fixture": [
+            "\u001b[4:3mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.underline.dashed",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-underline",
+          "doc": "2026-11-08-sgr-underline-qualification.md",
+          "fixture": [
+            "\u001b[4:5mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.underline.dotted",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-underline",
+          "doc": "2026-11-08-sgr-underline-qualification.md",
+          "fixture": [
+            "\u001b[4:4mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.underline.double",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-underline",
+          "doc": "2026-11-08-sgr-underline-qualification.md",
+          "fixture": [
+            "\u001b[21mX"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sgr.underline.single",
+      "status": "qualified",
+      "remainingGap": null,
+      "coverage": [
+        {
+          "suite": "sgr-attrs",
+          "doc": "2026-11-08-sgr-attributes-qualification.md",
+          "fixture": [
+            "\u001b[4mX"
+          ]
+        }
+      ]
+    }
+  ],
+  "unqualified": [],
+  "pendingSelectiveReset": [],
+  "overlaps": {
+    "idsCoveredBySeveralSuites": [
+      "sgr.bg.standard",
+      "sgr.fg.standard"
+    ],
+    "idsSharingFixtureBytes": [
+      [
+        "sgr.underline-color-rgb",
+        "sgr.underline.color"
+      ]
+    ],
+    "note": "Overlaps are identified, never merged: each id keeps its own contract, evidence and verdict."
+  }
+}

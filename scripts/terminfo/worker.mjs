@@ -18,6 +18,7 @@ import { collectSgrUnderlineGrading } from './sgr-underline-collector.mjs';
 import { collectSgrUnderlineColorGrading } from './sgr-underline-color-collector.mjs';
 import { collectUnderlineResolvedGrading } from './sgr-underline-color-resolved-collector.mjs';
 import { collectSgrResetGrading } from './sgr-reset-collector.mjs';
+import { collectSgrClosureGrading } from './sgr-closure-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -157,6 +158,14 @@ try {
         const sgrResetModule = await import(pathToFileURL(config.sgrResetBundle).href);
         const sgrResetRun = await collectSgrResetGrading({ config, fence, owner, gradingModule: sgrResetModule });
         writeFileSync(join(config.output, 'sgsr-run.json'), JSON.stringify(sgrResetRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered SGR closure qualification follows the selective-reset suite on the same fence.
+        const sgrClosureSource = readFileSync(config.sgrClosureBundle);
+        if (createHash('sha256').update(sgrClosureSource).digest('hex') !== config.sgrClosureBundleSha256) {
+            throw new Error('Local SGR closure adapter bundle changed.');
+        }
+        const sgrClosureModule = await import(pathToFileURL(config.sgrClosureBundle).href);
+        const sgrClosureRun = await collectSgrClosureGrading({ config, fence, owner, gradingModule: sgrClosureModule });
+        writeFileSync(join(config.output, 'sgcl-run.json'), JSON.stringify(sgrClosureRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

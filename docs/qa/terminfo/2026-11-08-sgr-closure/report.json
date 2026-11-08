@@ -1,0 +1,783 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-sgr-closure-graded-v1",
+  "runId": "c2095584432b60c18817a09d59364391",
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-sgr-closure-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-sgr-selective-reset-grading-v1",
+    "bundleSha256": "f65ea1a293a50e7af015ff3b91208c4cd38df78de8a8ab52c33428741b7f1c77",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 sgr.blink, sgr.overline and sgr.underline.color termless criteria replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored attribute flags, the explicit stored overline boolean, underline style and stored underline color (index, literal bytes, default null marker) with parent-derived RGB, with controls for neutral setup, reset restoration, wrong-flag decoys, overline independence from underline, unrelated-attribute and color drift, DECSCNM and, for the color case, the sibling-shared literal/index/foreground controls. Stored state only: no blink timing or animation, no overline or underline stroke appearance, no App-resolved color; no stock grades.",
+  "initialSnapshot": 0,
+  "restoredSnapshot": 13,
+  "cases": [
+    {
+      "caseId": "sgr.blink",
+      "pinnedCriterion": "attribute applied to the rendered X cell",
+      "pinnedFeeds": [
+        "\u001b[5mX"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "\u001b[5mX\u001b[0m"
+        ],
+        "demand": "consumed (cursor advance does not verify SGR styling)",
+        "minimum": {
+          "rows": 1,
+          "cols": 2
+        }
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+        "C",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[5mX",
+        "\u001b[25mY",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;2;3;4;7;8;9;53mW"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "observed": {
+        "baseline": {
+          "char": "C",
+          "flags": 768,
+          "blink": false,
+          "overline": false,
+          "underline": false,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null,
+          "fgIndex": -1,
+          "bgIndex": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null
+        },
+        "target": {
+          "char": "X",
+          "flags": 800,
+          "blink": true,
+          "overline": false,
+          "underline": false,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null,
+          "fgIndex": -1,
+          "bgIndex": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null
+        },
+        "trailing": [
+          {
+            "char": "X",
+            "flags": 800,
+            "blink": true,
+            "overline": false,
+            "underline": false,
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          },
+          {
+            "char": "Y",
+            "flags": 768,
+            "blink": false,
+            "overline": false,
+            "underline": false,
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          }
+        ],
+        "controls": {
+          "decoy": {
+            "char": "W",
+            "flags": 991,
+            "blink": false,
+            "overline": true,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          }
+        },
+        "reverseVideo": false
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"char\":\"X\",\"flags\":800,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":true,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "sgr.blink: attribute applied to the rendered X cell",
+            "observed": "{\"char\":\"X\",\"flags\":800,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":true,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored blink flag only (bit 0x20), distinct from every other attribute; animation, blink timing and rendered blinking are not claimed"
+      }
+    },
+    {
+      "caseId": "sgr.overline",
+      "pinnedCriterion": "attribute applied to the rendered X cell",
+      "pinnedFeeds": [
+        "\u001b[53mX"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "\u001b[53mX\u001b[0m"
+        ],
+        "demand": "consumed (cursor advance does not verify SGR styling)",
+        "minimum": {
+          "rows": 1,
+          "cols": 2
+        }
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+        "C",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[53mX",
+        "\u001b[55mY",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;2;3;4;5;7;8;9m\u001b[58;2;255;0;128mW",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[4;53mV\u001b[24mU\u001b[55mT"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "observed": {
+        "baseline": {
+          "char": "C",
+          "flags": 768,
+          "blink": false,
+          "overline": false,
+          "underline": false,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null,
+          "fgIndex": -1,
+          "bgIndex": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null
+        },
+        "target": {
+          "char": "X",
+          "flags": 768,
+          "blink": false,
+          "overline": true,
+          "underline": false,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null,
+          "fgIndex": -1,
+          "bgIndex": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null
+        },
+        "trailing": [
+          {
+            "char": "X",
+            "flags": 768,
+            "blink": false,
+            "overline": true,
+            "underline": false,
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          },
+          {
+            "char": "Y",
+            "flags": 768,
+            "blink": false,
+            "overline": false,
+            "underline": false,
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          }
+        ],
+        "controls": {
+          "decoy": {
+            "char": "W",
+            "flags": 1023,
+            "blink": true,
+            "overline": false,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineColorIndex": -1,
+            "underlineArgb": 4294901888,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          },
+          "independence": [
+            {
+              "char": "V",
+              "flags": 776,
+              "blink": false,
+              "overline": true,
+              "underline": "single",
+              "underlineStyle": 1,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null
+            },
+            {
+              "char": "U",
+              "flags": 768,
+              "blink": false,
+              "overline": true,
+              "underline": false,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null
+            },
+            {
+              "char": "T",
+              "flags": 768,
+              "blink": false,
+              "overline": false,
+              "underline": false,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null
+            }
+          ]
+        },
+        "reverseVideo": false
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"char\":\"X\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":true,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "sgr.overline: attribute applied to the rendered X cell",
+            "observed": "{\"char\":\"X\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":true,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored overline boolean (an explicit exposed field), independent of the underline flag, style and color; overline stroke appearance is not claimed"
+      }
+    },
+    {
+      "caseId": "sgr.underline.color",
+      "pinnedCriterion": "X has explicit rgb(255,0,128) underline distinct from the reset/default B cell",
+      "pinnedFeeds": [
+        "\u001b[4m\u001b[59m\u001b[38;2;0;0;255mA\u001b[38;2;0;255;0mB\u001b[58;2;255;0;128mX"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "\u001b[4m\u001b[58;2;255;0;128mX\u001b[0m"
+        ],
+        "demand": "consumed (cursor advance does not verify SGR styling)",
+        "minimum": {
+          "rows": 1,
+          "cols": 2
+        }
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b]104\u0007",
+        "\u001b[4m\u001b[59m\u001b[38;2;0;0;255mA\u001b[38;2;0;255;0mB\u001b[58;2;255;0;128mX",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[4m\u001b[58;2;95;135;175mP\u001b[0m\u001b[4m\u001b[58;5;67mQ\u001b[0m\u001b[4m\u001b[38;2;255;0;128mR\u001b[0mN\u001b[0m\u001b[4m\u001b[58:2::255:0:128mC\u001b[0m\u001b[4m\u001b[58:2:0:255:0:128mD"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "observed": {
+        "fixture": [
+          {
+            "char": "A",
+            "flags": 520,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "default",
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "underlineColor": null,
+            "underlineInheritsForeground": true,
+            "fg": {
+              "r": 0,
+              "g": 0,
+              "b": 255
+            },
+            "fgSource": "literal",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "B",
+            "flags": 520,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "default",
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "underlineColor": null,
+            "underlineInheritsForeground": true,
+            "fg": {
+              "r": 0,
+              "g": 255,
+              "b": 0
+            },
+            "fgSource": "literal",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "X",
+            "flags": 520,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "literal",
+            "underlineColorIndex": -1,
+            "underlineArgb": 4294901888,
+            "underlineColor": {
+              "r": 255,
+              "g": 0,
+              "b": 128
+            },
+            "underlineInheritsForeground": false,
+            "fg": {
+              "r": 0,
+              "g": 255,
+              "b": 0
+            },
+            "fgSource": "literal",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          }
+        ],
+        "control": [
+          {
+            "char": "P",
+            "flags": 776,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "literal",
+            "underlineColorIndex": -1,
+            "underlineArgb": 4284450735,
+            "underlineColor": {
+              "r": 95,
+              "g": 135,
+              "b": 175
+            },
+            "underlineInheritsForeground": false,
+            "fg": null,
+            "fgSource": "default",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "Q",
+            "flags": 776,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "palette",
+            "underlineColorIndex": 67,
+            "underlineArgb": null,
+            "underlineColor": {
+              "r": 95,
+              "g": 135,
+              "b": 175
+            },
+            "underlineInheritsForeground": false,
+            "fg": null,
+            "fgSource": "default",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "R",
+            "flags": 520,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "default",
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "underlineColor": null,
+            "underlineInheritsForeground": true,
+            "fg": {
+              "r": 255,
+              "g": 0,
+              "b": 128
+            },
+            "fgSource": "literal",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "N",
+            "flags": 768,
+            "underline": false,
+            "underlineStyle": 0,
+            "underlineSource": "none",
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "underlineColor": null,
+            "underlineInheritsForeground": false,
+            "fg": null,
+            "fgSource": "default",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "C",
+            "flags": 776,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "literal",
+            "underlineColorIndex": -1,
+            "underlineArgb": 4294901888,
+            "underlineColor": {
+              "r": 255,
+              "g": 0,
+              "b": 128
+            },
+            "underlineInheritsForeground": false,
+            "fg": null,
+            "fgSource": "default",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "D",
+            "flags": 776,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "literal",
+            "underlineColorIndex": -1,
+            "underlineArgb": 4294901888,
+            "underlineColor": {
+              "r": 255,
+              "g": 0,
+              "b": 128
+            },
+            "underlineInheritsForeground": false,
+            "fg": null,
+            "fgSource": "default",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          }
+        ],
+        "labeledControls": [
+          {
+            "char": "P",
+            "flags": 776,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "literal",
+            "underlineColorIndex": -1,
+            "underlineArgb": 4284450735,
+            "underlineColor": {
+              "r": 95,
+              "g": 135,
+              "b": 175
+            },
+            "underlineInheritsForeground": false,
+            "fg": null,
+            "fgSource": "default",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "Q",
+            "flags": 776,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "palette",
+            "underlineColorIndex": 67,
+            "underlineArgb": null,
+            "underlineColor": {
+              "r": 95,
+              "g": 135,
+              "b": 175
+            },
+            "underlineInheritsForeground": false,
+            "fg": null,
+            "fgSource": "default",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "R",
+            "flags": 520,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "default",
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "underlineColor": null,
+            "underlineInheritsForeground": true,
+            "fg": {
+              "r": 255,
+              "g": 0,
+              "b": 128
+            },
+            "fgSource": "literal",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "N",
+            "flags": 768,
+            "underline": false,
+            "underlineStyle": 0,
+            "underlineSource": "none",
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "underlineColor": null,
+            "underlineInheritsForeground": false,
+            "fg": null,
+            "fgSource": "default",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "C",
+            "flags": 776,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "literal",
+            "underlineColorIndex": -1,
+            "underlineArgb": 4294901888,
+            "underlineColor": {
+              "r": 255,
+              "g": 0,
+              "b": 128
+            },
+            "underlineInheritsForeground": false,
+            "fg": null,
+            "fgSource": "default",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          },
+          {
+            "char": "D",
+            "flags": 776,
+            "underline": "single",
+            "underlineStyle": 1,
+            "underlineSource": "literal",
+            "underlineColorIndex": -1,
+            "underlineArgb": 4294901888,
+            "underlineColor": {
+              "r": 255,
+              "g": 0,
+              "b": 128
+            },
+            "underlineInheritsForeground": false,
+            "fg": null,
+            "fgSource": "default",
+            "fgIndex": -1,
+            "bgSource": "default",
+            "overline": false
+          }
+        ],
+        "reverseVideo": false
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"blueControl\":{\"char\":\"A\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":255},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278190335,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"greenControl\":{\"char\":\"B\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":255,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278255360,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"target\":{\"char\":\"X\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":255,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":4294901888,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278255360,\"backgroundArgb\":null,\"underlineSource\":\"literal\",\"underlineColor\":{\"r\":255,\"g\":0,\"b\":128},\"underlineInheritsForeground\":false}}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "sgr.underline.color: X has explicit rgb(255,0,128) underline distinct from the reset/default B cell",
+            "observed": "{\"blueControl\":{\"char\":\"A\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":0,\"b\":255},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278190335,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"greenControl\":{\"char\":\"B\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":255,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278255360,\"backgroundArgb\":null,\"underlineSource\":\"default\",\"underlineColor\":null,\"underlineInheritsForeground\":true},\"target\":{\"char\":\"X\",\"flags\":520,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":\"single\",\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":{\"r\":0,\"g\":255,\"b\":0},\"bg\":null,\"fgSource\":\"literal\",\"bgSource\":\"default\",\"underlineStyle\":1,\"underlineColorIndex\":-1,\"underlineArgb\":4294901888,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":4278255360,\"backgroundArgb\":null,\"underlineSource\":\"literal\",\"underlineColor\":{\"r\":255,\"g\":0,\"b\":128},\"underlineInheritsForeground\":false}}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "layers": {
+          "stored": "supported",
+          "resolved": "supported"
+        }
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "layers": {
+          "stored": "supported",
+          "resolved": "supported"
+        },
+        "scope": "stored underline style and exact literal underline bytes with no palette index, the default-underline representation distinct from the foreground; rendered underline appearance is not claimed"
+      }
+    }
+  ]
+}
