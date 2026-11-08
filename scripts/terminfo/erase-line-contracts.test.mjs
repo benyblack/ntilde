@@ -253,3 +253,23 @@ test('the observed record collapses a painted erased tail into one range entry a
     assert.deepEqual([ink[2].row, ink[2].cols, ink[2].char, ink[2].bgIndex], [0, [2, 59], ' ', 4]);
     assert.deepEqual(observed.setup.ink, ['0,0,A', '0,1,B', '0,2,C', '0,3,D', '0,4,E']);
 });
+
+test('the background observation compares erased cells with the SGR 44 pen reference, so a wrong color is never reported as the current background', () => {
+    const bold = char => colorCell(char, { attrs: ['bold'] });
+    const tail = (index, count = 58) => Array.from({ length: count }, () => colorCell(' ', { bg: { kind: 'palette', index } }));
+    const observe = (edit, caseId = RIGHT) => {
+        const contract = byId(caseId);
+        const reads = syntheticEraseLineReads(caseId);
+        edit(reads);
+        const observation = eraseLineObservation(contract, syntheticEraseLineScreens(caseId, paletteBinding(), () => reads));
+        return { outcome: gradeEraseLineCase(contract, observation).outcome, bce: contract.observed(observation).attributes.backgroundColorErase };
+    };
+    const right = cells => reads => { reads.bce = { rows: [[bold('A'), bold('B'), ...cells]], cursor: [0, 2] }; };
+    // The pen stores palette 4; palette 1 is a different color. Non-gating: the verdict stays supported either way.
+    assert.deepEqual(observe(right(tail(1))), { outcome: 'supported', bce: 'erased cells carry a different non-default background than the current pen' });
+    assert.deepEqual(observe(right(tail(4))), { outcome: 'supported', bce: 'erased cells carry the current background' });
+    assert.equal(observe(right([...tail(4, 30), ...tail(1, 28)])).bce, 'mixed');
+    // A reference cell that did not store a background cannot support any claim about the pen.
+    assert.equal(observe(reads => { right(tail(4))(reads); reads.pen = { rows: [[colorCell('X')]], cursor: [0, 1] }; }).bce,
+        'unmeasured: the reference pen cell was not stored with a background');
+});

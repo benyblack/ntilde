@@ -41,7 +41,8 @@ export function syntheticEraseLineReads(caseId) {
         wide: { rows: [rowOf('ABOVE-ROW!'), rowOf(survivors('ABCDEFGHIJ', contract.mode)), rowOf('BELOW-ROW!')], cursor: [1, 2] },
         bceBefore: { rows: [rowOf('ABCDE', ['bold'])], cursor: [0, 2] },
         bce: { rows: [rowOf(survivors('ABCDE', contract.mode)).map((cell, col) => (cell.char === ' ' ? cell : colorCell(cell.char, { attrs: ['bold'] })))],
-            cursor: [0, 2] } };
+            cursor: [0, 2] },
+        pen: { rows: [[colorCell('X', { bg: { kind: 'palette', index: 4 } })]], cursor: [0, 1] } };
     for (const name of contract.others) reads[name] = fixture(modes[name]);
     return reads;
 }

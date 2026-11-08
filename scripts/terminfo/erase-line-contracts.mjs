@@ -59,6 +59,8 @@ const seed = 'ABCDE';
 const wideSeed = '\x1b[1;1HABOVE-ROW!\x1b[2;1HABCDEFGHIJ\x1b[3;1HBELOW-ROW!\x1b[2;3H';
 const wideText = 'ABCDEFGHIJ';
 const bceSeed = '\x1b[1mABCDE\x1b[0m\x1b[1;3H\x1b[44m';
+/** The reference write: one cell written under the same SGR 44 pen, so its stored background is the contracted pen background. */
+const penReference = '\x1b[44mX';
 /** The four EL spellings: omitted and explicit 0 are the same mode, spelled differently. */
 const spellings = Object.freeze({ omitted: { bytes: '\x1b[K', mode: 0 }, explicit0: { bytes: '\x1b[0K', mode: 0 },
     explicit1: { bytes: '\x1b[1K', mode: 1 }, explicit2: { bytes: '\x1b[2K', mode: 2 } });
@@ -81,6 +83,7 @@ const case_ = ({ caseId, spelling, setup, neighbor }) => {
         { role: 'wide', feeds: [sequence] },
         { role: 'bceBefore', feeds: [clear, bceSeed] },
         { role: 'bce', feeds: [sequence] },
+        { role: 'pen', feeds: [clear, penReference] },
     ];
     const plan = [planFeed(eraseLineReset)];
     for (const group of groups) {
@@ -168,7 +171,7 @@ const wideInk = text => [...place(0, 'ABOVE-ROW!'), ...place(1, text), ...place(
 
 /** The BCE control: retained cells keep their bold-only tuple, every other ink cell is a blank inside the erased range of the
  * whole row (EL 0 erases through the last column, EL 1 up to the cursor, EL 2 the full row). */
-function bceState(contract, before, after) {
+function bceState(contract, before, after, pen) {
     const cols = after.cols;
     const retained = [...erasedText(seed, contract.mode)].flatMap((char, col) => (char === ' ' ? [] : [col]));
     const erased = Array.from({ length: cols }, (_, col) => col).filter(col => !survives(contract.mode, col) && (col >= seed.length || !retained.includes(col)));
@@ -184,8 +187,15 @@ function bceState(contract, before, after) {
     const blanksOk = blanks.every(cell => cell.row === 0 && erased.includes(cell.col));
     const painted = erased.map(col => blanks.find(cell => cell.col === col));
     const isPainted = cell => cell !== undefined && (cell.bgIndex >= 0 || cell.backgroundArgb !== null);
-    const bceApplied = erased.length === 0 ? null : painted.every(isPainted) ? 'erased cells carry the current background'
-        : painted.every(cell => cell === undefined) ? 'erased cells keep the default background' : 'mixed';
+    // The pen reference: the stored background of a cell written under the same SGR 44 pen (never the default).
+    const penCell = pen.ink.find(cell => cell.char === 'X');
+    const penMeasured = penCell !== undefined && (penCell.bgIndex >= 0 || penCell.backgroundArgb !== null);
+    const isPen = cell => isPainted(cell) && cell.bgIndex === penCell.bgIndex && cell.backgroundArgb === penCell.backgroundArgb;
+    const bceApplied = erased.length === 0 ? null : painted.every(cell => cell === undefined) ? 'erased cells keep the default background'
+        : !penMeasured ? 'unmeasured: the reference pen cell was not stored with a background'
+            : painted.every(isPen) ? 'erased cells carry the current background'
+                : painted.every(isPainted) && !painted.some(isPen) ? 'erased cells carry a different non-default background than the current pen'
+                    : 'mixed';
     return { seeded, retainedOk, blanksOk, cursorOk: sameCursor(after, 0, seedColumn), bceApplied };
 }
 
@@ -219,7 +229,7 @@ function gradeErase(contract, observation) {
     if (!inkIs(wideBefore, wideInk(wideText)) || !sameCursor(wideBefore, 1, seedColumn)) {
         return { outcome: 'inconclusive', note: 'The wide-row control seed was not measured, so unaffected rows and columns cannot be distinguished' };
     }
-    const bceSeeded = bceState(contract, bceBefore, bce);
+    const bceSeeded = bceState(contract, bceBefore, bce, observation.pen);
     if (!bceSeeded.seeded) return { outcome: 'inconclusive', note: 'The attribute control seed was not measured, so retained attributes cannot be distinguished' };
     if (!inkIs(erased, fixtureInk(contract, erasedText(seed, contract.mode)))) return { outcome: 'unsupported', note: diagnose(contract, erased) };
     if (!sameCursor(erased, 0, seedColumn)) return { outcome: 'unsupported', note: 'The cursor moved during the erase: EL must leave it at its cell' };
@@ -267,7 +277,7 @@ function briefErase(contract, observation) {
     const expectedFor = name => inkIs(observation[name], fixtureInk(contract, erasedText(seed, mode(name)))) && sameCursor(observation[name], 0, seedColumn);
     const spellingRecord = name => ({ sequence: spellings[name].bytes, mode: spellings[name].mode, ...state(observation[name]),
         matchesEcma48: expectedFor(name), sameAsPinned: JSON.stringify(observation[name].ink) === JSON.stringify(observation.erased.ink) });
-    const bceSeeded = bceState(contract, observation.bceBefore, observation.bce);
+    const bceSeeded = bceState(contract, observation.bceBefore, observation.bce, observation.pen);
     return { geometry: { rows: observation.setup.rows, cols: observation.setup.cols }, reverseVideo: observation.reverseVideo,
         pinnedSpelling: contract.spelling, pinnedSequence: contract.sequence,
         initial: { ink: observation.initial.ink.length, cursor: observation.initial.cursor },
@@ -277,7 +287,7 @@ function briefErase(contract, observation) {
         wideRow: { policy: 'unaffected rows and columns: ten-column middle row between two full rows', before: state(observation.wideBefore, 3),
             after: state(observation.wide, 3) },
         attributes: { policy: 'retained cells keep their bold-only stored tuple (required); background-color erase is observed, not required',
-            before: state(observation.bceBefore), after: state(observation.bce), retainedKeepBold: bceSeeded.retainedOk,
+            before: state(observation.bceBefore), after: state(observation.bce), penReference: state(observation.pen), retainedKeepBold: bceSeeded.retainedOk,
             backgroundColorErase: bceSeeded.bceApplied } };
 }
 

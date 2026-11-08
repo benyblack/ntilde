@@ -29,7 +29,7 @@ test('a complete run rederives all three cases: pinned and contract agree and no
         assert.equal(item.conclusion.grading, 'pinned-termless-plus-contract-v1');
         assert.equal(item.pinned.assertions[0].expected, item.pinnedFeeds && eraseLineContracts.find(c => c.caseId === item.caseId).pinnedExpected);
     }
-    assert.equal(report.snapshots.length, 3 + 3 * 10);
+    assert.equal(report.snapshots.length, 3 + 3 * 11);
     assert.match(report.scope, /capture-only upstream and is not qualified/);
 });
 
