@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-char-edit-graded-v1",
-  "runId": "8a4ea6b38243d477f22980a2ed6d68d8",
+  "runId": "df238255441c8fa924a18a452877d0a9",
   "contractsVersion": 1,
   "adapter": {
     "id": "ntilde-owned-char-edit-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-erase-line-grading-v1",
-    "bundleSha256": "d3e624946685ca309cdb001f9e35fd0095d6d62ea77c2ca84d09b745e257e96f",
+    "bundleSha256": "331c31d40d79aefb61f650e8a4cfa91e01b81053539b4af02ced3f1f73a8f28a",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 character-editing termless criteria (editing.insert-chars with the explicit-1 ICH spelling, editing.delete-chars with the explicit-1 DCH spelling and editing.repeat-char with REP count 3) replayed on a disposable App and graded from parent-journaled readScreen stored cells, the cursor and stored attribute details, with controls for the unmodified seed (no-op), every other count spelling (omitted, explicit 0, 2 and a huge count for ICH/DCH; omitted, 0, 1 and 5 for REP), a wide-row control for unaffected rows and the whole-row shift, a right-edge control (truncation and exposed blanks), REP after a fence barrier (ECMA-48 undefined) as a labeled observation, and an attribute control (moved cells keep their attributes; created blank cells and repeated cells observed against a same-pen reference, not required). REP sends the graphic and the repeat in one fenced write because the fence barrier is itself a control function; the pinned pre-REP reads come from a separate group ending at the graphic. Stored ASCII state only: the pinned pixel/query paths never measure cells and are not qualified; no Unicode, wide-cell or combining-character editing; no stock grades.",

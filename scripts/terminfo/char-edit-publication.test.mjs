@@ -214,10 +214,12 @@ test('prior publications still rederive beside this batch and the failed and sup
     assert.equal(erase.receipt.schemaVersion, 25);
     assert.equal(erase.receipt.charEditEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 2);
-    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [false, true]);
+    assert.equal(attempts.length, 3);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [false, true, true]);
     assert.match(attempts[0].outcome, /Unexpected input during cell collection/);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
     assert.match(attempts[1].outcome, /flank cells' columns but not their rows/);
     assert.deepEqual(Object.values(attempts[1].verdicts), ['supported', 'supported', 'supported']);
+    assert.match(attempts[2].outcome, /overline, underline style and underline color/);
+    assert.deepEqual(Object.values(attempts[2].verdicts), ['supported', 'supported', 'supported']);
 });
