@@ -1,0 +1,188 @@
+{
+  "caseId": "erase.character",
+  "feeds": [
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "ABCDE\u001b[1G",
+    "\u001b[3X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "ABCDE\u001b[1G",
+    "\u001b[X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "ABCDE\u001b[1G",
+    "\u001b[0X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "ABCDE\u001b[1G",
+    "\u001b[1X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "ABCDE\u001b[1G",
+    "\u001b[5X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+    "\u001b[3X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+    "\u001b[999X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[999C\u001b[2DWXY\u001b[2D",
+    "\u001b[2X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1mAB\u001b[0mC\u001b[1mDE\u001b[0mFG\u001b[1;3H\u001b[44m",
+    "\u001b[3X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[44mX"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        1,
+        2
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        1,
+        2
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        1,
+        2
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        137
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        137
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        2
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        2
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        1
+      ]
+    }
+  ],
+  "pinned": {
+    "probeId": "erase.character",
+    "pass": true,
+    "response": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"cursorBefore\":{\"x\":0,\"y\":0},\"after\":[\" \",\" \",\" \",\"D\",\"E\"]}",
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "row 0 blank,blank,blank,D,E; cursor before 0,0",
+        "observed": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"cursorBefore\":{\"x\":0,\"y\":0},\"after\":[\" \",\" \",\" \",\"D\",\"E\"]}"
+      }
+    ]
+  }
+}

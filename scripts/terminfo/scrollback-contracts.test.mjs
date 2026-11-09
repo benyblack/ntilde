@@ -166,7 +166,7 @@ test('alternate screen: main contents and exactly three history lines are seeded
 
 test('the model refuses anything it does not model instead of inventing an expectation', () => {
     const model = createScrollbackModel(10, 40);
-    for (const bytes of ['\x1b[?1000h', '\x1b[1;5r\x1b[9;1r', '\x1b[K', '\x1b[1m', '\x1b[3@', '\x07', '\x1b7', 'é']) {
+    for (const bytes of ['\x1b[?1000h', '\x1b[1;5r\x1b[9;1r', '\x1b[1J', '\x1b[3m', '\x1b[4K', '\x1b[3@', '\x07', '\x1b7', 'é']) {
         assert.throws(() => feedScrollbackModel(model, bytes), /does not model|could not parse/, JSON.stringify(bytes));
     }
     assert.throws(() => feedScrollbackModel(createScrollbackModel(10, 8), 'ABCDEFGHI'), /wrapping/);

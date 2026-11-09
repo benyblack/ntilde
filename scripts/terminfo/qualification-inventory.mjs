@@ -48,6 +48,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('erase-attrs-region', '2026-11-09-erase-attrs-region', '2026-11-09-erase-attrs-region-qualification.md'), module: 'erase-attrs-region-contracts.mjs', exports: ['eraseAttrsRegionSuiteId', 'eraseAttrsRegionContractsVersion', 'eraseAttrsRegionCaseIds'], test: 'erase-attrs-region-publication.test.mjs' },
     { ...directory('attr-rect', '2026-11-09-attr-rect', '2026-11-09-attr-rect-qualification.md'), module: 'attr-rect-contracts.mjs', exports: ['attrRectSuiteId', 'attrRectContractsVersion', 'attrRectCaseIds'], test: 'attr-rect-publication.test.mjs' },
     { ...directory('cursor', '2026-11-09-cursor', '2026-11-09-cursor-qualification.md'), module: 'cursor-qual-contracts.mjs', exports: ['cursorQualSuiteId', 'cursorQualContractsVersion', 'cursorQualCaseIds'], test: 'cursor-qual-publication.test.mjs' },
+    { ...directory('erase-chars-history', '2026-11-09-erase-chars-history', '2026-11-09-erase-chars-history-qualification.md'), module: 'erase-chars-history-contracts.mjs', exports: ['eraseCharsHistorySuiteId', 'eraseCharsHistoryContractsVersion', 'eraseCharsHistoryCaseIds'], test: 'erase-chars-history-publication.test.mjs' },
 ]);
 
 /** Ntilde-specific findings: separate evidence, separate claims, never part of the benchmark id totals. */

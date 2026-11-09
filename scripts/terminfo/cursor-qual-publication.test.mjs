@@ -161,7 +161,8 @@ test('the receipt binds the run, adapters, counts and retained digests, and ever
     assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
     // The predecessor inventory is derived from the merged contracts, not assumed: every other benchmark suite's case ids.
     const expected = [];
-    for (const suite of benchmarkSuites.filter(item => item.suite !== 'cursor')) {
+    // Only the suites merged before this one: a later suite's cases are not part of this run.
+    for (const suite of benchmarkSuites.slice(0, benchmarkSuites.findIndex(item => item.suite === 'cursor'))) {
         const module = await import(new URL(suite.module, import.meta.url));
         expected.push(...module[suite.exports[2]]);
     }
@@ -172,7 +173,7 @@ test('the receipt binds the run, adapters, counts and retained digests, and ever
         if (suite.cases.some(item => item.effectContract)) assert.ok(suite.cases.every(item => item.effectContract === 'supported'), name);
         else assert.ok(suite.cases.every(item => item.outcome === 'supported'), name);
     }
-    assert.equal(Object.keys(summary.sameRun).length, benchmarkSuites.length - 1, 'one same-run entry per merged predecessor suite');
+    assert.equal(Object.keys(summary.sameRun).length, benchmarkSuites.findIndex(item => item.suite === 'cursor'), 'one same-run entry per merged predecessor suite');
     assert.ok(![...cursorQualCaseIds].some(id => unique.has(id)), 'the four cursor cases are counted separately');
     assert.equal(summary.truecolorFinding.cases.length, 10);
     assert.ok(summary.truecolorFinding.cases.every(item => item.caseId.startsWith('finding.truecolor-literal.') && item.outcome === 'supported'));

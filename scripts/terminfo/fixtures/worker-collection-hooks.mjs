@@ -43,6 +43,7 @@ code.set(new URL('saved-reset-collector.mjs', root).href, log + `export async fu
 code.set(new URL('erase-attrs-region-collector.mjs', root).href, log + `export async function collectEraseAttrsRegionGrading() { record('EraseAttrsRegion'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('attr-rect-collector.mjs', root).href, log + `export async function collectAttrRectGrading() { record('AttrRect'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('cursor-qual-collector.mjs', root).href, log + `export async function collectCursorQualGrading() { record('CursorQual'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('erase-chars-history-collector.mjs', root).href, log + `export async function collectEraseCharsHistoryGrading() { record('EraseCharsHistory'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);

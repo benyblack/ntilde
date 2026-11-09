@@ -29,6 +29,7 @@ import { collectSavedResetGrading } from './saved-reset-collector.mjs';
 import { collectEraseAttrsRegionGrading } from './erase-attrs-region-collector.mjs';
 import { collectAttrRectGrading } from './attr-rect-collector.mjs';
 import { collectCursorQualGrading } from './cursor-qual-collector.mjs';
+import { collectEraseCharsHistoryGrading } from './erase-chars-history-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -256,6 +257,14 @@ try {
         const cursorQualModule = await import(pathToFileURL(config.cursorQualBundle).href);
         const cursorQualRun = await collectCursorQualGrading({ config, fence, owner, gradingModule: cursorQualModule });
         writeFileSync(join(config.output, 'curq-run.json'), JSON.stringify(cursorQualRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered erase-character/saved-lines qualification follows the cursor-qualification suite on the same fence.
+        const eraseCharsHistorySource = readFileSync(config.eraseCharsHistoryBundle);
+        if (createHash('sha256').update(eraseCharsHistorySource).digest('hex') !== config.eraseCharsHistoryBundleSha256) {
+            throw new Error('Local erase-character/saved-lines adapter bundle changed.');
+        }
+        const eraseCharsHistoryModule = await import(pathToFileURL(config.eraseCharsHistoryBundle).href);
+        const eraseCharsHistoryRun = await collectEraseCharsHistoryGrading({ config, fence, owner, gradingModule: eraseCharsHistoryModule });
+        writeFileSync(join(config.output, 'echh-run.json'), JSON.stringify(eraseCharsHistoryRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

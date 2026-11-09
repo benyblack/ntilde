@@ -66,3 +66,17 @@ test('a dangling fixture symlink is still an unremoved entry', { skip: process.p
     symlinkSync(join(f.output, 'missing-target'), f.scratch);
     assert.throws(() => completeOwnedReceipt(f.output, f.scratch, f.evidence), /cleanup/);
 }));
+
+// The schema is selected from a table of suffix flags in schema order. A flag that admittedSuffixes returns but the table omits would be
+// silently ignored (a newer run stamped with an older schema), so the two lists must agree: same names, with the table in suffix order.
+test('every optional suffix admittedSuffixes returns is registered, once, in the schema-order table', () => {
+    const source = readFileSync(new URL('./receipt.mjs', import.meta.url), 'utf8');
+    const table = [...source.slice(source.indexOf('const receiptSuffixOrder'), source.indexOf(']);', source.indexOf('const receiptSuffixOrder'))).matchAll(/'(includes\w+)'/g)].map(match => match[1]);
+    const returned = source.slice(source.indexOf('function admittedSuffixes'));
+    const object = returned.slice(returned.indexOf('return {') + 'return {'.length, returned.indexOf('};', returned.indexOf('return {')));
+    const names = [...object.matchAll(/\b(includes\w+)\b/g)].map(match => match[1]);
+    assert.equal(new Set(table).size, table.length, 'no flag is registered twice');
+    assert.deepEqual([...new Set(names)].sort(), [...table].sort());
+    // Schema 4 is the first suffix and each later one the next version, so the table length fixes the newest schema.
+    assert.ok(table.length >= 32);
+});

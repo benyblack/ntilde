@@ -1,0 +1,524 @@
+{
+  "caseId": "erase.character",
+  "pinnedCriterion": "ECH `ESC[3X` at column 0 of ABCDE erases exactly cells 0..2 in place: cells 0..2 read blank and cells 3 and 4 read D and E, after a setup cursor of 0,0",
+  "pinnedFeeds": [
+    "ABCDE\u001b[1G",
+    "\u001b[3X"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "\u001b[1;1H\u001b[2K",
+      "ABCD",
+      "\u001b[1;2H",
+      "\u001b[2X"
+    ],
+    "demand": "exact erased range, retained cells, unaffected rows and columns, cursor, and stored attributes",
+    "minimum": {
+      "rows": 1,
+      "cols": 6
+    },
+    "note": "upstream pixel/query path writes different bytes and ends in a cursor-position query that never measures cells or saved lines: it carries no verdict and is not qualified"
+  },
+  "feeds": [
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "ABCDE\u001b[1G",
+    "\u001b[3X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "ABCDE\u001b[1G",
+    "\u001b[X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "ABCDE\u001b[1G",
+    "\u001b[0X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "ABCDE\u001b[1G",
+    "\u001b[1X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "ABCDE\u001b[1G",
+    "\u001b[5X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+    "\u001b[3X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+    "\u001b[999X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[999C\u001b[2DWXY\u001b[2D",
+    "\u001b[2X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1mAB\u001b[0mC\u001b[1mDE\u001b[0mFG\u001b[1;3H\u001b[44m",
+    "\u001b[3X",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[44mX"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      0,
+      137
+    ],
+    [
+      0,
+      137
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      1
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "units": "physical rows: no wrapped (logical) lines are written, so a history count is a count of stored physical rows and totalLines is rows plus that count",
+    "roles": {
+      "initial": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "seed": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [
+          "0: ABCDE"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "erased": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [
+          "0:    DE"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "omitted": {
+        "kind": "observed",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [
+          "0:  BCDE"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "explicit0": {
+        "kind": "observed",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [
+          "0:  BCDE"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "explicit1": {
+        "kind": "observed",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [
+          "0:  BCDE"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "explicit5": {
+        "kind": "observed",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "wideBefore": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          1,
+          2
+        ],
+        "viewport": [
+          "0: ABOVE-ROW!",
+          "1: ABCDEFGHIJ",
+          "2: BELOW-ROW!"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "wide": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          1,
+          2
+        ],
+        "viewport": [
+          "0: ABOVE-ROW!",
+          "1: AB   FGHIJ",
+          "2: BELOW-ROW!"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "wideOversized": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          1,
+          2
+        ],
+        "viewport": [
+          "0: ABOVE-ROW!",
+          "1: AB",
+          "2: BELOW-ROW!"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "edgeBefore": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          137
+        ],
+        "viewport": [
+          "0:                                                                                                                                          WXY"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "edge": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          137
+        ],
+        "viewport": [
+          "0:                                                                                                                                            Y"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "attrBefore": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          2
+        ],
+        "viewport": [
+          "0: ABCDEFG"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "attr": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          2
+        ],
+        "viewport": [
+          "0: AB   FG"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "pen": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          1
+        ],
+        "viewport": [
+          "0: X"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      }
+    },
+    "spellingControls": {
+      "policy": "observed, not graded: separate ECH spellings, kept distinct from the pinned explicit-3 spelling",
+      "names": [
+        "omitted",
+        "explicit0",
+        "explicit1",
+        "explicit5"
+      ]
+    },
+    "attributes": {
+      "policy": "retained cells keep their stored tuple and erased cells carry no stale text attribute (required); the erased background is observed against a same-pen reference, not required",
+      "retainedKeepAttributes": true,
+      "erasedNoStaleAttributes": true,
+      "createdBlankBackground": "erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)",
+      "createdBlankBackgroundDetail": {
+        "pen": {
+          "bgIndex": 4,
+          "backgroundArgb": null,
+          "resolved": {
+            "r": 0,
+            "g": 0,
+            "b": 238
+          }
+        },
+        "firstErased": {
+          "bgIndex": -1,
+          "backgroundArgb": 4278190318,
+          "resolved": {
+            "r": 0,
+            "g": 0,
+            "b": 238
+          }
+        }
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"cursorBefore\":{\"x\":0,\"y\":0},\"after\":[\" \",\" \",\" \",\"D\",\"E\"]}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "row 0 blank,blank,blank,D,E; cursor before 0,0",
+        "observed": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"cursorBefore\":{\"x\":0,\"y\":0},\"after\":[\" \",\" \",\" \",\"D\",\"E\"]}"
+      }
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "layers": [
+      "stored cells",
+      "cursor",
+      "stored attributes",
+      "margins and modes"
+    ]
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": [
+      "stored cells",
+      "cursor",
+      "stored attributes",
+      "margins and modes"
+    ],
+    "scope": "stored ASCII cells only: the exact erased range and every retained cell across the whole row, unaffected rows, the cursor, margins and modes, and stored attributes of retained and erased cells; the background of erased cells is observed against a same-pen reference, not required; no wide-cell or combining-character erasure and no pixels are claimed"
+  }
+}

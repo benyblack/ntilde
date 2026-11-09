@@ -219,5 +219,10 @@
     "cursorQualCollectorSourceSha256": "cursor-qual-collector.mjs",
     "cursorQualGradingSourceSha256": "cursor-qual-grading.mjs",
     "cursorQualGradingCollectorSourceSha256": "cursor-qual-grading-collector.mjs",
-    "cursorQualReceiptSourceSha256": "cursor-qual-receipt.mjs"
+    "cursorQualReceiptSourceSha256": "cursor-qual-receipt.mjs",
+    "eraseCharsHistoryContractsSourceSha256": "erase-chars-history-contracts.mjs",
+    "eraseCharsHistoryCollectorSourceSha256": "erase-chars-history-collector.mjs",
+    "eraseCharsHistoryGradingSourceSha256": "erase-chars-history-grading.mjs",
+    "eraseCharsHistoryGradingCollectorSourceSha256": "erase-chars-history-grading-collector.mjs",
+    "eraseCharsHistoryReceiptSourceSha256": "erase-chars-history-receipt.mjs"
 }

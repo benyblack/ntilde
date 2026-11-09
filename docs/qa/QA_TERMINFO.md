@@ -874,6 +874,24 @@ separately identified effect contracts (`ntilde.attr-rect.effect/v1`) are graded
 the rectangle extent selected first is a labeled experiment, not a pinned grade. The DECSACE setting is not readable, so it is inferred from the cells changed and
 restored with a stream witness. Receipt schema 33 and source policy v27 (214 files) bind it; earlier policies stay frozen.
 
+### Erase-character and saved-lines qualification (ECH, ED 3)
+
+The [erase-character/saved-lines batch](terminfo/2026-11-09-erase-chars-history-qualification.md) grades exactly `erase.character` (ECH `ESC[3X`) and
+`erase.screen.scrollback` (ED 3 `ESC[3J`) through a twenty-first layered collector extension (`ntilde-owned-erase-chars-history-grading-v1`). The cells,
+cursor, margins, modes, active buffer and the actual ordered saved lines are observed independently on a disposable App's main screen; ECH is told apart from
+DCH, whole-line erasure and a no-op, ED 3 from ED 2, ordinary scrolling and an already-empty history. Other ECH spellings are labeled observations. Physical
+rows only; the pinned pixel/query paths never carry a verdict and are not qualified. Receipt schema 34 and source policy v28 (219 files) bind it; earlier
+policies stay frozen.
+
+### Erase-character and saved-lines qualification (ECH, ED 3)
+
+The [erase-character/saved-lines batch](terminfo/2026-11-09-erase-chars-history-qualification.md) grades exactly `erase.character` (ECH `ESC[3X`) and
+`erase.screen.scrollback` (ED 3 `ESC[3J`) through a twenty-second layered collector extension (`ntilde-owned-erase-chars-history-grading-v1`). The cells,
+cursor, margins, modes, active buffer and the actual ordered saved lines are observed independently on a disposable App's main screen; ECH is told apart from
+DCH, whole-line erasure and a no-op, ED 3 from ED 2, ordinary scrolling and an already-empty history. Other ECH spellings are labeled observations. Physical
+rows only; the pinned pixel/query paths never carry a verdict and are not qualified. Receipt schema 35 and source policy v29 (226 files) bind it; earlier
+policies stay frozen.
+
 ### Erase-in-display qualification (ED 0, ED 1, ED 2)
 
 The [erase-in-display batch](terminfo/2026-11-09-erase-display-qualification.md) grades exactly `erase.screen.below`, `erase.screen.above` and
