@@ -35,11 +35,11 @@ no-reset control showing the SGR pen persists. Unsupported needs valid controls 
 
 ## Measurement
 
-Scripts `2d22f91b` (committed source, the merge of main with the character-editing layer); App source unchanged from main `4e32f6d9` (sidecar `saved-reset` built there; main's character-editing merge changed no App file). Run
-`91849fd9fa621dfd9ad63f6d091b9397`, receipt schema 27, source policy v21 (inventory v28, 183 files), default theme, 40x140.
+Scripts `793b1937ddeba4454cd37a0adf36aafb31685b4c` (committed source: the merge of main with the character-editing layer plus the Codex-review fix); App source unchanged from main `4e32f6d9` (sidecar `saved-reset` built there; main's character-editing merge changed no App file). Run
+`fd0b4dc04bf20d54b0f13a4b506ae692`, receipt schema 27, source policy v21 (inventory v28, 183 files), default theme, 40x140.
 
 **Preserved attempt:** run `2c4b2603ebe805a4232cf1ab5122581f` (scripts `9ac95942`, receipt 26, policy v20, 178 files) was complete but superseded because main merged the
-character-editing layer meanwhile; this layer was restacked as the fourteenth extension and the whole suite re-measured. Every case graded identically in both runs.
+character-editing layer meanwhile; this layer was restacked as the fourteenth extension and the whole suite re-measured (run `91849fd9…`, scripts `2d22f91b`). That run was superseded when Codex found the full-tuple SGR reset control did not validate unrelated state (cursor, buffer, margins, modes, history); the contract was fixed and the suite re-measured. Every case graded identically in all three runs.
 
 | Case | Pinned (parent replay + live pinned code) | Effect contract | Divergence |
 |---|---|---|---|
