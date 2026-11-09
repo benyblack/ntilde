@@ -3,7 +3,7 @@
     "start": {
       "index": 0,
       "kind": "chrs-start",
-      "paneId": "0d73d47a-a9d7-4d20-ac58-53746f810156",
+      "paneId": "1f6464bc-c241-49c2-8c37-d809829136ea",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -31,12 +31,12 @@
     "bind": {
       "index": 1,
       "kind": "chrs-bind",
-      "paneId": "0d73d47a-a9d7-4d20-ac58-53746f810156",
+      "paneId": "1f6464bc-c241-49c2-8c37-d809829136ea",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
-        "lines": ["NTILDE_CS_0d755a3e8384126589de9a5fb06adbd4", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+        "lines": ["NTILDE_CS_11a73b3cbdcae9a6fe5efbb3c66edec0", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
         "cursorRow": 0,
         "cursorCol": 42,
         "cursorVisible": true,
@@ -54,12 +54,12 @@
           }
         ]
       },
-      "sha256": "bce91c598fbeefe6042e1113397a2b6f5ee15d1c016581b6386755f2c8be3802"
+      "sha256": "1da3cca3befc2ea81665c8c42ce4c3f6b5dea439b59ac5bfcaa71f4ab7a1be7e"
     },
     "finish": {
       "index": 52,
       "kind": "chrs-finish",
-      "paneId": "0d73d47a-a9d7-4d20-ac58-53746f810156",
+      "paneId": "1f6464bc-c241-49c2-8c37-d809829136ea",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
