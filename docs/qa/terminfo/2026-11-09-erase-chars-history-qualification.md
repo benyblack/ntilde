@@ -19,7 +19,7 @@ scrolls blank rows only, so it cannot tell ED 3 from "ED 3 that also clears the 
 
 ## Method
 
-Twenty-first digest-checked collector extension `ntilde-owned-erase-chars-history-grading-v1` (derived over the attribute-rectangle one, which sits over erase-attributes/margins and saved-state/reset; it refuses derivation
+Twenty-second digest-checked collector extension `ntilde-owned-erase-chars-history-grading-v1` (derived over the cursor-qualification one, which sits over attribute-rectangle, erase-attributes/margins and saved-state/reset; it refuses derivation
 unless both registrations, with their termless **and** cursor-query paths, `eraseRowResult`, `isBlank`, `rowCells`, `parserStateResult` and
 `unmeasuredCellResult` are present verbatim once; the ED 0/1/2 registrations and `eraseScreenResult` are deliberately not seams), contracts v1, suite
 `ntilde-owned-erase-chars-history-graded-v1`, prefix `echh`, nonce `NTILDE_EH_`. One owned worker drives both cases on the disposable App's **main** screen
@@ -62,8 +62,8 @@ is recorded with both verdicts (`contract-stricter-than-pinned` and the like).
 
 ## Measurement
 
-Scripts `8fc5f751` (the committed tree, measured from the private captured source snapshot); the App source is that of `2bd4b0c0` (the Release sidecar was built from this checkout after merging main's DECCARA/DECRARA/DECSACE and rectangle work). Owned run `776907555d21bcf67fa5368aa43ce904`, taken through the shared desktop lock, receipt
-schema 34, source policy v28 (inventory v35, 219 files), default theme, 40x140, disposable sidecar `artifacts/sidecar-erase-chars-history`, macOS, Node 24.
+Scripts `faced990` (the committed tree, measured from the private captured source snapshot); the App source is that of `359417dd` (the Release sidecar was built from this checkout after merging main's cursor, reverse-wrap and rectangle work). Owned run `208478a460abc358979d78fd87b7b44e`, taken through the shared desktop lock, receipt
+schema 35, source policy v29 (inventory v36, 226 files), default theme, 40x140, disposable sidecar `artifacts/sidecar-erase-chars-history`, macOS, Node 24.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
 |---|---|---|---|
@@ -97,18 +97,15 @@ batch was restacked as the twentieth extension and re-measured; (4) run `57427dd
 batch's suite had completed its frames, no receipt, repeated unchanged; (5) run `f2fdd9890744a48faac76ae92380bca5` (scripts `366a7463`, receipt 33, policy v27), complete, both cases supported, superseded after CodeRabbit review because an oversized ECH
 count was only observed, so a spill past the line end could be masked by the next clear; it became a graded read; (6) and (7) two starts that failed before any collection
 (the disposable App aborted because the desktop display was asleep), retained as failed attempts and repeated unchanged with the display kept awake; (8) run `75058e84cdb44ad5dcb3393c58bb0b88` (scripts `d99b2860`, receipt 33, policy v27), complete, both cases supported, superseded because main meanwhile merged the attribute-rectangle layer
-on the same policy and schema and changed the App, so this batch was restacked as the twenty-first extension and re-measured on a sidecar built from the merged checkout; (9) the final run above.
+on the same policy and schema and changed the App, so this batch was restacked as the twenty-first extension and re-measured on a sidecar built from the merged checkout; (9) run `776907555d21bcf67fa5368aa43ce904` (scripts `8fc5f751`, receipt 34, policy v28), complete, both cases supported, superseded because main meanwhile merged the cursor qualification layer on
+the same policy and schema, so this batch was restacked as the twenty-second extension and re-measured on a sidecar built from the merged checkout; (10) the final run above.
 
 
-Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (68 unique ids, including the saved-state/reset and attribute-rectangle suites with their
+Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (72 unique ids, including the saved-state/reset and attribute-rectangle suites with their
 preserved pinned-inconclusive verdicts beside their supported effect contracts); the separate 10/10 truecolor-literal finding; the separate 3/3
 App-observed underline-color resolution. **The stock collector was not re-run** (it needs an interactive Ntilde tab): the pinned bundle and probeHash are
 unchanged and this batch changes no stock behavior, so the carried counts (168 inconclusive, 86 supported, 1 unsupported) are labeled as carried; both ids are inconclusive there through
 the cursor-query path.
-
-**Integration after measurement:** main later gained reverse-wraparound (`c915c699`..`e1e379dd`, `CSI ? 45`), which routes CUB through `CursorBackward`. With the mode off (the default, and
-never enabled by these fixtures) that method is the previous `max(0, col - n)` with the pending wrap cleared, so the CUB in the right-edge seed behaves as measured; the ECH, ED and scrolling
-paths and the measured scripts are untouched and the measurement was not repeated. The merged tree was checked by the unchanged self-test list (the retained evidence still rederives byte for byte).
 
 ## Limits
 

@@ -41,7 +41,7 @@ test('the published erase-character / saved-lines evidence re-derives exactly fr
     assert.equal(JSON.stringify(report), JSON.stringify(derived));
     assert.equal(report.suiteId, eraseCharsHistorySuiteId);
     assert.equal(report.adapter.id, eraseCharsHistoryAdapterId);
-    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-attr-rect-grading-v1');
+    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-cursor-qualification-grading-v1');
     assert.equal(report.snapshots.length, 3 + 15 + 10);
     assert.deepEqual(report.cases.map(item => item.caseId), [...eraseCharsHistoryCaseIds]);
     assert.deepEqual(report.cases.map(item => item.conclusion.outcome), ['supported', 'supported']);
@@ -161,7 +161,7 @@ test('ED 3 is told apart from ED 2, ordinary scrolling and an already-empty hist
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', async () => {
     const { summary, run, report } = load();
     const { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 34);
+    assert.equal(receipt.schemaVersion, 35);
     assert.equal(receipt.eraseCharsHistoryEvidence.suiteId, eraseCharsHistorySuiteId);
     assert.equal(receipt.eraseCharsHistoryEvidence.runId, summary.context.runId);
     assert.deepEqual(receipt.eraseCharsHistoryEvidence.counts, { supported: 2 });
@@ -174,7 +174,7 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.retained.eraseCharsHistoryObservationsSha256, observationsHash);
     assert.equal(summary.retained.eraseCharsHistoryRunSha256, runHash);
     assert.equal(summary.retained.eraseCharsHistoryJournalSha256, journalHash);
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v28');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v29');
     assert.equal(receipt.fixtureRemoved, true);
     assert.equal(summary.ownedRunId, summary.context.runId);
     assert.match(summary.scriptsRevision, /^[0-9a-f]{40}$/);
@@ -226,16 +226,16 @@ test('every publication file stays small enough to review in one piece', () => {
 
 test('prior publications still rederive beside this batch, without this suite', () => {
     for (const [name, schema] of [['2026-11-08-erase-line', 25], ['2026-11-09-char-edit', 26], ['2026-11-09-erase-display', 27], ['2026-11-09-line-editing', 28],
-        ['2026-11-09-charsets', 29], ['2026-11-09-scrollback', 30], ['2026-11-09-saved-reset', 31], ['2026-11-09-erase-attrs-region', 32], ['2026-11-09-attr-rect', 33]]) {
+        ['2026-11-09-charsets', 29], ['2026-11-09-scrollback', 30], ['2026-11-09-saved-reset', 31], ['2026-11-09-erase-attrs-region', 32], ['2026-11-09-attr-rect', 33], ['2026-11-09-cursor', 34]]) {
         const published = JSON.parse(readFileSync(new URL(`../../docs/qa/terminfo/${name}/summary.json`, import.meta.url)));
         assert.equal(published.receipt.schemaVersion, schema, name);
         assert.equal(published.receipt.eraseCharsHistoryEvidence, undefined, name);
     }
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 8);
+    assert.equal(attempts.length, 9);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
-    // Five complete, superseded runs and three failed attempts that are not evidence.
-    for (const index of [0, 1, 2, 4, 7]) {
+    // Six complete, superseded runs and three failed attempts that are not evidence.
+    for (const index of [0, 1, 2, 4, 7, 8]) {
         assert.equal(attempts[index].receiptCompleted, true, String(index));
         assert.deepEqual(attempts[index].verdicts, { 'erase.character': 'supported', 'erase.screen.scrollback': 'supported' });
         assert.match(attempts[index].outcome, /superseded/);
