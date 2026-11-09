@@ -23,7 +23,7 @@ helper bodies, so an upstream change that gave one a verdict would be refused. I
 
 ## Method
 
-Twentieth digest-checked collector extension `ntilde-owned-rectangle-editing-grading-v1` (derived over the erase attributes/margins one), contracts v1, suite
+Twenty-third digest-checked collector extension `ntilde-owned-rectangle-editing-grading-v1` (derived over the erase-character/saved-lines one, `derivedFromAdapterId` `ntilde-owned-erase-chars-history-grading-v1`, which is itself layered over the cursor, attribute-rectangle and erase attributes/margins ones), contracts v1, suite
 `ntilde-owned-rectangle-editing-graded-v1`, prefix `rect`, nonce `NTILDE_RC_`, minimum geometry 12x16 (the measured screen is 40x140). The pinned bytes are fed byte-exactly, one write each, on a
 measured reset screen; the pinned probe runs over the parent-journaled screens and the parent re-executes it. The independent contract grader compares every cell of the whole
 screen with a rectangle model written for this suite and never grades more permissively than the pinned probe (recorded divergences: none).
@@ -45,9 +45,10 @@ missing buffer state, a margin or mode the App did not confirm, an unmeasured pe
 
 ## Measurement
 
-Scripts (adapter) revision `e39a53f7faf18749d74fb870e0b91e14c310f1ea`; App source revision `5210c58d215324b0c649cf83c4318b599663906c` (the last commit that touched `src/`: PR 908 and its review fix); the Release sidecar
-was built from this merged checkout with the repository wrappers. Owned run `faee7daf7e602fd9ce7e837f1b174a74`, receipt schema 33, source policy v27 (inventory v34, 214 files), default theme, 40x140, App version
-0.13.0 (operator supplied; not independently verified), disposable sidecar `artifacts/sidecar-rect-edit`, stock collector run `6340ec6fd8ba4522704e4374b2f02745`. One owned collection; no attempt failed or was discarded.
+Scripts (adapter) revision `042587c2a00350e0f04ed051d81d2720454d2d78`; App source revision `359417dd25a547a0c4f06373aa9c9d8cae221644` (the last commit that touched `src/`: the merge of PR 913, reverse-wraparound, over the attribute-rectangle work; PR 908's DECFRA/DECCRA and its review fix are inside it); the Release sidecar
+was built from this merged checkout with the repository wrappers. Owned run `bf9252644d2532d7f0d603fc0c5bec73`, receipt schema 36, source policy v30 (inventory v37, 231 files), default theme, 40x140, App version
+0.13.0 (operator supplied; not independently verified), disposable sidecar `artifacts/sidecar-rect-edit-22`, stock collector run `ae997cb82d2fd95be0ee28461ee9bf9d`, measured 2026-11-09T19:16Z on macOS with Node 24.
+The published `summary.json` records both owned collections that were started on these scripts; the first did not complete (see Preserved attempts).
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Stock grade |
 |---|---|---|---|
@@ -67,7 +68,17 @@ and the DECSCA-marked seed was erased like any other. Erased cells stored no att
 the clamped destination row copied only the first source row to the last row (`ABC`), the clamped destination column copied only the first source column to the last column (`A`, `K`), and the no-op group (reversed borders, extra parameter)
 changed nothing. Attributed cells arrived with their stored tuples while the different pen stayed active. **Observed, not graded:** both page-2 spellings (source and destination) were ignored.
 
+**Preserved attempts:** (1) run `faee7daf7e602fd9ce7e837f1b174a74` (scripts `e39a53f7`, App source `5210c58d`, receipt 33, policy v27, stock run `6340ec6fd8ba4522704e4374b2f02745`, sidecar `artifacts/sidecar-rect-edit`), complete, all three cases supported, as the twentieth
+extension; superseded because the attribute-rectangle, reverse-wrap and cursor work merged first and the layer was restacked on the new base, so that measurement is not reused; (2) run
+`3412e154c7ecf4aa22c2ab57c8f3b00c` (policy v29, receipt 35, as the twenty-second extension over the cursor layer), complete, all three cases supported, discarded because #910 (erase-character/saved-lines)
+merged on the same policy and schema and changed the scripts and the collector chain before this branch merged, so the layer was restacked as the twenty-third extension and measured again;
+(3) run `51e52a34af07a480d49b4791e5f37b91` (scripts `042587c2`), aborted during cell collection before any suite with the collector refusal `Unexpected input during cell collection`
+(retained under `artifacts/terminfo/owned-9Na9v7`, no evidence used); the cause is not understood (the shared desktop lock was held, the App log is empty), and it was retried once with identical inputs, which
+produced the published run above. Only (3) and the published run are recorded in `summary.json` `attempts`; (1) and (2) are recorded here because they were measured on bases that no longer exist.
+
+The consolidated inventory's reviewability cap on the generated JSON was raised from 160 KiB to 176 KiB (`qualification-inventory.test.mjs`): the 77-id inventory is about 164 KB, 230 bytes over the old cap.
+
 ## Boundaries
 
-Stored ASCII state only: no Unicode, wide-cell, scaled-text, image-plane, protected-cell, rendered-appearance or platform claim. DECSERA, DECCARA/DECRARA, DECSACE and checksums are not graded. History is observed only
+Stored ASCII state only: no Unicode, wide-cell, scaled-text, image-plane, protected-cell, rendered-appearance or platform claim. DECSERA and checksums are not graded here; DECCARA, DECRARA and DECSACE are graded by the attribute-rectangle batch. History is observed only
 (the reads run on the alternate screen). The pages behavior is an Ntilde policy. The pinned terminal paths never carry a verdict and are not qualified; stock grades are unchanged.
