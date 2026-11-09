@@ -51,7 +51,7 @@ test('the UTF-8 samples keep their code points: U+00E9 (two UTF-8 bytes) and U+4
     assert.deepEqual([...Buffer.from(e)], [0xc3, 0xa9]);
     assert.deepEqual([...Buffer.from(wide)], [0xe4, 0xb8, 0x96]);
     assert.equal(e, e.normalize('NFC'));
-    assert.notEqual('é', e);
+    assert.notEqual(e, 'é');
 });
 
 test('every plan starts with the measured reset, replays only its own pinned bytes and reads once per group', () => {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { makeScrollbackContracts, scrollbackCaseIds, scrollbackDecidingIds, scrollbackReset, scrollbackMinimum, scrollbackMismatch,
-    scrollbackView, scrollbackObservation, gradeScrollbackCase, compactLines, validateScrollbackFeeds, scrollbackFeeds, scrollbackReads } from './scrollback-contracts.mjs';
+    scrollbackView, scrollbackObservation, gradeScrollbackCase, compactLines, splitTrailingNumber, validateScrollbackFeeds, scrollbackFeeds, scrollbackReads } from './scrollback-contracts.mjs';
 import { createScrollbackModel, feedScrollbackModel, scrollbackModelState } from './scrollback-model.mjs';
 import { blankState, syntheticScrollbackScreens, syntheticScrollbackScreen, syntheticScrollbackGrade, syntheticScrollbackContracts,
     scrollbackRows, paletteBinding } from './fixtures/scrollback-evidence.mjs';
@@ -331,6 +331,70 @@ test('compact lines collapse numbered runs and keep the rest', () => {
     assert.deepEqual(compactLines([]), []);
     assert.deepEqual(compactLines(['a', 'b'], 3), ['3: a', '4: b']);
     assert.deepEqual(blankState(4).lines, ['', '', '', '']);
+});
+
+// The reference is the expression compactLines used before the linear scan replaced it (SonarCloud S8786, super-linear backtracking).
+const legacyTrailingNumber = text => { const match = /^(.*?)(\d+)$/.exec(text); return match ? { prefix: match[1], digits: match[2] } : null; };
+const legacyCompactLines = (lines, firstRow = 0) => {
+    const out = [];
+    for (let index = 0; index < lines.length; index++) {
+        const text = lines[index];
+        if (text === '') continue;
+        const match = /^(.*?)(\d+)$/.exec(text);
+        let end = index;
+        if (match) {
+            while (end + 1 < lines.length) {
+                const next = /^(.*?)(\d+)$/.exec(lines[end + 1]);
+                const last = /^(.*?)(\d+)$/.exec(lines[end]);
+                if (!next || next[1] !== match[1] || Number(next[2]) !== Number(last[2]) + 1) break;
+                end++;
+            }
+        }
+        out.push(end === index ? `${firstRow + index}: ${text}`
+            : `${firstRow + index}-${firstRow + end}: ${text}..${/^(.*?)(\d+)$/.exec(lines[end])[2]}`);
+        index = end;
+    }
+    return out;
+};
+const sampleLines = (() => {
+    const alphabet = ['0', '1', '9', 'a', ' ', '-', '\n', '\r', '\u2028', 'é', '٣'];
+    const lines = ['', '7', '0007', 'x', 'x1', 'line 9', 'line 10', 'a\n1', '1\n', 'a\u20281', 'é٣1'];
+    let seed = 7;
+    const next = () => (seed = (seed * 1103515245 + 12345) % 2147483648);
+    for (let count = 0; count < 600; count++) lines.push(Array.from({ length: next() % 9 }, () => alphabet[next() % alphabet.length]).join(''));
+    return lines;
+})();
+
+test('splitTrailingNumber matches the former expression on every sampled line, including terminators and non-ASCII digits', () => {
+    for (const line of sampleLines) assert.deepEqual(splitTrailingNumber(line), legacyTrailingNumber(line), JSON.stringify(line));
+    assert.deepEqual(splitTrailingNumber('line 12'), { prefix: 'line ', digits: '12' });
+    assert.deepEqual(splitTrailingNumber('123'), { prefix: '', digits: '123' });
+    assert.equal(splitTrailingNumber('no digits'), null);
+    assert.equal(splitTrailingNumber('12x'), null);
+    assert.equal(splitTrailingNumber('a\n1'), null, 'a line terminator in the text still prevents a match');
+});
+
+test('compactLines output is unchanged over sampled and numbered-run inputs', () => {
+    for (let offset = 0; offset < sampleLines.length; offset += 25) {
+        const window = sampleLines.slice(offset, offset + 25);
+        assert.deepEqual(compactLines(window, offset), legacyCompactLines(window, offset), `window ${offset}`);
+    }
+    const runs = [...Array.from({ length: 12 }, (_, index) => `line ${index + 8}`), 'line 20', 'ROW-3', 'ROW-4', 'ROW-6', '', 'tail 0009', 'tail 0010'];
+    assert.deepEqual(compactLines(runs), legacyCompactLines(runs));
+    assert.deepEqual(compactLines(runs, 5), legacyCompactLines(runs, 5));
+});
+
+test('compactLines is linear on maximum-admitted and far larger adversarial lines', () => {
+    const widest = `${'1'.repeat(255)}x${'1'.repeat(256)}`;
+    assert.equal(splitTrailingNumber(widest).digits.length, 256);
+    // 256 columns by 128 rows is the largest admitted viewport; each row is digit-rich with a late non-digit.
+    const viewport = Array.from({ length: 128 }, (_, row) => `${'9'.repeat(255)}${row % 2 ? 'x' : ''}`);
+    assert.equal(compactLines(viewport).length, legacyCompactLines(viewport).length);
+    // The former expression needs on the order of n^2 steps for this; a linear scan finishes at once even at a million characters.
+    const huge = `${'1'.repeat(1_000_000)}x`;
+    assert.equal(splitTrailingNumber(huge), null);
+    assert.equal(splitTrailingNumber(`${huge}7`).digits, '7');
+    assert.deepEqual(compactLines([huge, huge]), [`0: ${huge}`, `1: ${huge}`]);
 });
 
 test('the observed record carries every role, kind, screen, margins, cursor and history for review', () => {
