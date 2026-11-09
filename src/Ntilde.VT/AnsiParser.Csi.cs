@@ -398,21 +398,26 @@ namespace Ntilde.VT
                     }
                     break;
                 case 'J': // Erase in Display
-                          // CSI ? Ps J is DECSED, which erases only UNPROTECTED characters.
-                          // DECSCA (CSI Ps " q), the sequence that marks characters as
-                          // protected, is not implemented, so every character in the buffer is
-                          // unprotected and DECSED is exactly ED. The alias is therefore
-                          // correct for modes 0-2 today. Private mode 3 is undefined and must
-                          // never inherit ordinary ED 3's scrollback-history deletion.
-                          // If DECSCA is implemented, this case has to split.
+                          // CSI ? Ps J is DECSED, which erases only UNPROTECTED characters (those
+                          // not written under DECSCA 1). While nothing on the screen is protected
+                          // it is exactly ED, and takes the ordinary path. Private mode 3 is
+                          // undefined and must never inherit ordinary ED 3's scrollback deletion.
                     if (intermediates.Length == 0 && (leader == '\0' || leader == '?'))
                     {
-                        EraseInDisplay(argCount > 0 ? validArgs[0] : 0, allowHistoryErase: leader == '\0');
+                        int displayMode = argCount > 0 ? validArgs[0] : 0;
+                        if (leader == '?' && _buffer.TrySelectiveEraseInDisplay(displayMode))
+                        {
+                            if (displayMode == 2) _verticalOffset = 0; // as ED 2 snaps the view
+                        }
+                        else
+                        {
+                            EraseInDisplay(displayMode, allowHistoryErase: leader == '\0');
+                        }
                     }
                     break;
                 case 'K': // Erase in Line
-                          // CSI ? Ps K is DECSEL. Aliased to EL for the same reason as DECSED
-                          // above: with DECSCA unimplemented, nothing is protected.
+                          // CSI ? Ps K is DECSEL. Still aliased to EL: unlike DECSED it does not yet
+                          // spare protected characters (a documented gap, see the coverage matrix).
                     if (intermediates.Length == 0 && (leader == '\0' || leader == '?'))
                     {
                         int mode = argCount > 0 ? validArgs[0] : 0;
@@ -424,6 +429,9 @@ namespace Ntilde.VT
                     break;
                 case 'z': // DECERA - Erase Rectangular Area
                     EraseRectangularArea(csi);
+                    break;
+                case '{': // DECSERA - Selective Erase Rectangular Area (CSI Pt;Pl;Pb;Pr $ {)
+                    EraseRectangularArea(csi, selective: true);
                     break;
                 case 'x': // DECSACE (CSI Ps * x), DECFRA (only the exact $ x identity); bare CSI x (DECREQTPARM) stays unhandled
                     if (intermediates.SequenceEqual("*")) SelectAttributeChangeExtent(csi);
@@ -564,6 +572,12 @@ namespace Ntilde.VT
                     if (leader == '\0' && intermediates.Length == 1 && intermediates[0] == ' ')
                     {
                         ApplyCursorStyle(argCount > 0 ? validArgs[0] : 0);
+                    }
+                    // DECSCA - Select Character Protection Attribute (CSI Ps " q): its own
+                    // sequence, and not an SGR attribute.
+                    else if (leader == '\0' && intermediates.Length == 1 && intermediates[0] == '"')
+                    {
+                        SelectCharacterProtection(csi);
                     }
                     // XTVERSION - CSI > q / CSI > 0 q asks for the terminal's name and version,
                     // answered as DCS > | text ST. Tools log it, and some pick features by it.

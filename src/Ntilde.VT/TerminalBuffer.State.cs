@@ -75,6 +75,7 @@ namespace Ntilde.VT
             public bool IsItalic;
             public bool IsUnderline;
             public bool IsOverline;
+            public bool IsCharacterProtected;
             public bool IsBlink;
             public bool IsStrikethrough;
             public bool IsHidden;

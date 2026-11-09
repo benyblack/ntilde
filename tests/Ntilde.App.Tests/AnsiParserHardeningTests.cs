@@ -272,7 +272,7 @@ public sealed class AnsiParserHardeningTests
         ('c', '>'), // DA2 - secondary device attributes, answered.
         ('h', '?'), // DEC private mode set.
         ('l', '?'), // DEC private mode reset.
-        ('J', '?'), // DECSED - deliberately aliased to ED while DECSCA is unimplemented.
+        ('J', '?'), // DECSED - selective: spares DECSCA-protected characters, exactly ED while none are protected.
         ('K', '?'), // DECSEL - deliberately aliased to EL for the same reason.
         ('n', '?'), // DECXCPR - answered in the private form.
         ('u', '?'), // Kitty keyboard query - answers CSI ? Ps u. The '>', '<' and '=' kitty
@@ -304,7 +304,7 @@ public sealed class AnsiParserHardeningTests
         Assert.True(offenders.Count == 0, "Prefixed CSI sequences executed a bare meaning:\n" + string.Join("\n", offenders));
     }
 
-    /// <summary>Sweeps all intermediate identities except the exact separately tested DECSCUSR, DECRQM, DECERA, DECFRA, DECCRA, DECCARA and DECRARA commands.</summary>
+    /// <summary>Sweeps all intermediate identities except the exact separately tested DECSCUSR, DECSCA, DECRQM, DECERA, DECSERA, DECFRA, DECCRA, DECCARA and DECRARA commands.</summary>
     [Fact]
     public void IntermediatePrefixedCsi_NeverExecutesTheBareMeaning()
     {
@@ -318,6 +318,8 @@ public sealed class AnsiParserHardeningTests
                 if (final == 'q' && intermediate == ' ') continue;
                 if (final == 'p' && intermediate == '$') continue;
                 if (final == 'z' && intermediate == '$') continue; // DECERA; other z identities remain in the sweep.
+                if (final == '{' && intermediate == '$') continue; // DECSERA; other { identities remain in the sweep.
+                if (final == 'q' && intermediate == '"') continue; // DECSCA is a pen mode; its exact form is covered by SelectiveErasureTests.
                 if (final is 'r' or 't' && intermediate == '$') continue; // DECCARA and DECRARA (RectangularAttributeTests).
                 if (final is 'x' or 'v' && intermediate == '$') continue; // DECFRA / DECCRA; other identities remain in the sweep.
 
@@ -681,7 +683,7 @@ public sealed class AnsiParserHardeningTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
-    /// <summary>DECSED/DECSEL stay aliased to ED/EL while DECSCA is unimplemented.</summary>
+    /// <summary>With nothing protected, DECSED is exactly ED (and DECSEL, not yet selective, is still EL).</summary>
     [Fact]
     public void Decsed_StillErases_WhileNothingIsProtected()
     {

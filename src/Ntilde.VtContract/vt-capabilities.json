@@ -202,15 +202,15 @@
       "key": "CSI:?J",
       "mnemonic": "DECSED",
       "support": "partial",
-      "description": "Modes 0, 1 and 2 alias ordinary erase while protected-cell storage (DECSCA) is unsupported. Undefined mode 3 is ignored; it never clears scrollback.",
+      "description": "Modes 0, 1 and 2 erase their ED region except DECSCA-protected characters, and are ordinary ED while nothing is protected. Undefined mode 3 is ignored; it never clears scrollback.",
       "matrixFeature": "DECSED (? J)",
-      "evidencePath": "tests/Ntilde.VT.Tests/SelectiveEraseHistoryTests.cs"
+      "evidencePath": "tests/Ntilde.VT.Tests/SelectiveErasureTests.cs"
     },
     {
       "key": "CSI:?K",
       "mnemonic": "DECSEL",
       "support": "partial",
-      "description": "Modes 0, 1 and 2 alias ordinary erase while protected-cell storage (DECSCA) is unsupported. Undefined mode 3 is ignored; it never clears scrollback.",
+      "description": "Modes 0, 1 and 2 alias ordinary line erase; DECSEL does not yet spare DECSCA-protected characters. Undefined mode 3 is ignored; it never clears scrollback.",
       "matrixFeature": "DECSEL (? K)",
       "evidencePath": "tests/Ntilde.VT.Tests/SelectiveEraseHistoryTests.cs"
     },
@@ -218,7 +218,7 @@
       "key": "CSI:$z",
       "mnemonic": "DECERA",
       "support": "partial",
-      "description": "Erase a bounded stored-text rectangle with omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. Wide/scaled text follows existing atomic erasure. Image-plane erasure and protected-cell storage remain unqualified.",
+      "description": "Erase a bounded stored-text rectangle with omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. Wide/scaled text follows existing atomic erasure. Image-plane erasure remains unqualified; protected characters are erased too.",
       "matrixFeature": "DECERA ($ z)",
       "evidencePath": "tests/Ntilde.VT.Tests/RectangularEraseTests.cs",
       "contractCase": "erase-rectangular-area"
@@ -227,7 +227,7 @@
       "key": "CSI:$x",
       "mnemonic": "DECFRA",
       "support": "partial",
-      "description": "Fill a bounded stored-text rectangle with one character (32-126 through the in-use GL set, 160-255 as Latin-1) carrying the live SGR pen; omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. Invalid character codes and reversed borders are ignored. Image-plane, protected-cell and Unicode/wide-fill behavior remain unqualified.",
+      "description": "Fill a bounded stored-text rectangle with one character (32-126 through the in-use GL set, 160-255 as Latin-1) carrying the live SGR pen; omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. Invalid character codes and reversed borders are ignored. Filled characters are written under the live DECSCA pen. Image-plane and Unicode/wide-fill behavior remain unqualified.",
       "matrixFeature": "DECFRA ($ x)",
       "evidencePath": "tests/Ntilde.VT.Tests/RectangleCopyFillTests.cs",
       "contractCase": "fill-rectangular-area"
@@ -236,7 +236,7 @@
       "key": "CSI:$v",
       "mnemonic": "DECCRA",
       "support": "partial",
-      "description": "Copy a bounded stored-text rectangle on page 1 as if the source were read first (overlap-safe), keeping character, attributes, colors, hyperlinks and underline decoration, with omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. A source or destination page other than 0/1 is ignored. Image-plane, protected-cell, scaled-text and multi-page behavior remain unqualified.",
+      "description": "Copy a bounded stored-text rectangle on page 1 as if the source were read first (overlap-safe), keeping character, attributes, colors, hyperlinks and underline decoration, with omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. A source or destination page other than 0/1 is ignored. DECSCA protection travels with the copied characters. Image-plane, scaled-text and multi-page behavior remain unqualified.",
       "matrixFeature": "DECCRA ($ v)",
       "evidencePath": "tests/Ntilde.VT.Tests/RectangleCopyFillTests.cs",
       "contractCase": "copy-rectangular-area"
@@ -245,7 +245,7 @@
       "key": "CSI:$r",
       "mnemonic": "DECCARA",
       "support": "partial",
-      "description": "Set or clear bold, underline, blink and inverse (selectors 0, 1, 4, 5, 7, 22, 24, 25, 27; other selectors are ignored) over a stored-cell stream or rectangle with omitted/zero borders, page clipping and DECOM row origin; text, colors, side tables, cursor and the SGR pen are untouched. Margins do not clip. In the stream extent cells past a row's written extent are left alone while the rectangle changes them; protected-cell storage and OSC 66 block atomicity are not modelled.",
+      "description": "Set or clear bold, underline, blink and inverse (selectors 0, 1, 4, 5, 7, 22, 24, 25, 27; other selectors are ignored) over a stored-cell stream or rectangle with omitted/zero borders, page clipping and DECOM row origin; text, colors, side tables, cursor and the SGR pen are untouched. Margins do not clip. In the stream extent cells past a row's written extent are left alone while the rectangle changes them; protection is untouched (attributes only) and OSC 66 block atomicity is not modelled.",
       "matrixFeature": "DECCARA ($ r)",
       "evidencePath": "tests/Ntilde.VT.Tests/RectangularAttributeTests.cs",
       "contractCase": "change-attributes-rectangular-area"
@@ -254,7 +254,7 @@
       "key": "CSI:$t",
       "mnemonic": "DECRARA",
       "support": "partial",
-      "description": "Reverse (toggle) bold, underline, blink and inverse (selectors 0, 1, 4, 5, 7; 22/24/25/27 and other selectors are ignored) over the DECSACE stream or rectangle with the DECCARA borders and clipping; selector 0 or an omitted list reverses all four. Text, colors, side tables, cursor and the SGR pen are untouched. Protected-cell storage is not modelled.",
+      "description": "Reverse (toggle) bold, underline, blink and inverse (selectors 0, 1, 4, 5, 7; 22/24/25/27 and other selectors are ignored) over the DECSACE stream or rectangle with the DECCARA borders and clipping; selector 0 or an omitted list reverses all four. Text, colors, side tables, cursor and the SGR pen are untouched. Protection is untouched (attributes only).",
       "matrixFeature": "DECRARA ($ t)",
       "evidencePath": "tests/Ntilde.VT.Tests/RectangularAttributeTests.cs",
       "contractCase": "reverse-attributes-rectangular-area"

@@ -77,6 +77,17 @@ namespace Ntilde.VT
 
         public bool IsUnderline { get => _isUnderline; set { _isUnderline = value; _isStyleDirty = true; } }
 
+        /// <summary>
+        /// DECSCA: whether subsequently written characters are protected from DECSED and DECSERA. This is
+        /// not an SGR attribute, so SGR 0 leaves it alone; only DECSCA, DECSTR, RIS and the saved-cursor
+        /// restores change it. Existing cells keep the protection they were written with.
+        /// </summary>
+        public bool IsCharacterProtected
+        {
+            get => _state.IsCharacterProtected;
+            set => _state.IsCharacterProtected = value;
+        }
+
         /// <summary>Whether subsequently written cells carry SGR 53 overline.</summary>
         public bool IsOverline
         {

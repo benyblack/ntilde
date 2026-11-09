@@ -415,6 +415,21 @@ Absent authored extents conservatively retain full rows. Optional `wrap_cols` ar
 metadata retains legacy spacing, since old cells cannot distinguish authored spaces from padding.
 Incoming boundaries are validated before state changes, including rejection of hidden cell data.
 
+### Character protection (DECSCA)
+
+`CSI 1 " q` sets a pen mode, separate from SGR, that marks later characters protected in a sparse
+per-row side table beside the other row metadata; the cell flags and the 12-byte cell layout do not
+change. Protection travels with its cell wherever VT moves or copies it: writes (wide glyphs mark both
+halves through the anchor, scaled blocks the whole unit), ICH/DCH/insert mode, scrolling, both screen banks, resize and
+reflow, saved cursors (the pen mode, per screen), `prot`/`dsca` in full-state transfer and
+`prot_cells`/`dsca` in recording checkpoints. Every ordinary erase and overwrite clears it, so protected
+text is not read-only. DECSED and DECSERA erase only the unprotected characters of their region with
+the ordinary erases' blanks and cleanup, and are exactly ED and DECERA while nothing is protected; a
+scaled block with any protected cell is spared whole. Protection is screen state: rows that scroll into
+history lose it, and ANSI text export, render snapshots and the mux text client do not carry it.
+Absent members import as unprotected. Readers outside VT see it through `HasProtectedCharacters`/`IsCellProtected` only. DECSEL and ISO SPA/EPA are separate contracts.
+See `docs/MODULE_OWNERSHIP.md` for the owning invariants.
+
 ## 4. Recording / Playback — `Ntilde.Replay`
 
 A focused module that owns the record/replay file format and the snapshot/byte-stream coupling. References VT for snapshot types (`BufferSnapshot`), but is independent of Pty, Rendering, and App.

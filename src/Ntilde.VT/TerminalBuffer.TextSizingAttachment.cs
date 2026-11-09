@@ -3,7 +3,7 @@ using Ntilde.VT.Links;
 
 namespace Ntilde.VT;
 
-internal readonly record struct TextSizingCellStyle(TerminalCell Cell, Hyperlink? Hyperlink, CellUnderline? Underline)
+internal readonly record struct TextSizingCellStyle(TerminalCell Cell, Hyperlink? Hyperlink, CellUnderline? Underline, bool IsProtected = false)
 {
     internal TerminalCell ForPiece(CellTextSizing piece)
     {
@@ -79,7 +79,7 @@ public partial class TerminalBuffer
     {
         if (replacement.Width > Cols || replacement.Height > Rows) return true;
         var row = _viewport[_cursorRow];
-        var style = new TextSizingCellStyle(row.Cells[col], row.GetHyperlink(col), row.GetUnderline(col));
+        var style = new TextSizingCellStyle(row.Cells[col], row.GetHyperlink(col), row.GetUnderline(col), IsProtectedOrInProtectedBlock(_cursorRow, col));
         int originalTop = y - TextSizingAbsoluteRow(0);
         bool followsEnd = _cursorRow == originalTop && _cursorCol == Math.Min(Cols - 1, x + piece.Block.Width)
             && _isPendingWrap == (Modes.IsAutoWrapMode && x + piece.Block.Width >= Cols);
@@ -151,6 +151,7 @@ public partial class TerminalBuffer
         row.SetExtendedText(col, piece.IsAnchor ? piece.Block.Text : null);
         row.SetHyperlink(col, style.Hyperlink);
         row.SetUnderline(col, style.Underline);
+        row.SetProtected(col, style.IsProtected);
         row.SetTextSizing(col, piece);
         row.NoteColumnsWritten(col + 1);
         row.TouchRevision();

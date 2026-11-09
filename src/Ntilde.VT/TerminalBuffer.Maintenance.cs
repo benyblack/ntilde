@@ -292,24 +292,7 @@ namespace Ntilde.VT
         private void ClearScreenInternal(bool resetCursor)
         {
             EraseTextSizingRange(0, Cols, TextSizingAbsoluteRow(0), TextSizingAbsoluteRow(Rows));
-            // Remove images intersecting the visible screen of the ACTIVE buffer only.
-            // On the main screen CellY is absolute (scrollback + viewport; see
-            // ScrollUpInternal/InsertLines), so images living entirely in scrollback are
-            // preserved — ED 2 must not touch history. Images belonging to the inactive
-            // screen are untouched. An image straddling the scrollback/viewport boundary
-            // is removed entirely, since a partial erase isn't representable.
-            int viewportTopAbs = _isAltScreen ? 0 : _scrollback.Count;
-            for (int i = _images.Count - 1; i >= 0; i--)
-            {
-                var img = _images[i];
-                if (img.IsAltScreenImage != _isAltScreen) continue;
-
-                if (img.CellY + img.CellHeight > viewportTopAbs)
-                {
-                    RetireImage(img);
-                    _images.RemoveAt(i);
-                }
-            }
+            RetireImagesOverVisibleScreen();
 
             // CRITICAL: Erase cells IN-PLACE rather than replacing row objects.
             // TUI apps like Yazi rely on partial redraws — they only redraw rows that changed.
@@ -328,6 +311,31 @@ namespace Ntilde.VT
 
             // Mouse modes should only change via DEC private mode sequences,
             // not from screen clearing operations (htop clears screen after enabling mouse)
+        }
+
+        /// <summary>
+        /// ED 2 and DECSED 2 retire the inline images that intersect the visible screen of the ACTIVE buffer: images are not characters,
+        /// so protection never spares them.
+        /// </summary>
+        private void RetireImagesOverVisibleScreen()
+        {
+            // On the main screen CellY is absolute (scrollback + viewport; see
+            // ScrollUpInternal/InsertLines), so images living entirely in scrollback are
+            // preserved — ED 2 must not touch history. Images belonging to the inactive
+            // screen are untouched. An image straddling the scrollback/viewport boundary
+            // is removed entirely, since a partial erase isn't representable.
+            int viewportTopAbs = _isAltScreen ? 0 : _scrollback.Count;
+            for (int i = _images.Count - 1; i >= 0; i--)
+            {
+                var img = _images[i];
+                if (img.IsAltScreenImage != _isAltScreen) continue;
+
+                if (img.CellY + img.CellHeight > viewportTopAbs)
+                {
+                    RetireImage(img);
+                    _images.RemoveAt(i);
+                }
+            }
         }
 
         public void ScreenAlignmentPattern()
@@ -349,6 +357,7 @@ namespace Ntilde.VT
                     {
                         row.Cells[c] = cell;
                     }
+                    row.ClearProtection(); // the filled E cells are fresh characters, never protected ones
                     row.TouchRevision();
                 }
 
@@ -500,6 +509,7 @@ namespace Ntilde.VT
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
                 row.ClearUnderlines();
+                row.ClearProtection();
                 row.ClearTextSizing();
                 row.TouchRevision();
             }

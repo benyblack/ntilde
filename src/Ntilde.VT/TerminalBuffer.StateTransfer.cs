@@ -358,6 +358,7 @@ namespace Ntilde.VT
             Dictionary<int, string>? extendedText = null;
             Dictionary<int, int>? linkIds = null;
             Dictionary<int, int>? underlineIds = null;
+            List<int>? protectedCells = null;
 
             for (int r = 0; r < rowCount && r < rows.Length; r++)
             {
@@ -385,6 +386,8 @@ namespace Ntilde.VT
                     ref extendedText,
                     ref linkIds,
                     ref underlineIds);
+
+                AppendProtectedCells(row, r * cols, cols, ref protectedCells);
             }
 
             return new TerminalScreenState
@@ -396,7 +399,18 @@ namespace Ntilde.VT
                 ExtendedText = extendedText,
                 LinkIds = linkIds,
                 UnderlineIds = underlineIds,
+                ProtectedCells = protectedCells?.ToArray(),
             };
+        }
+
+        /// <summary>Appends one row's protected cells as ascending <c>row * cols + col</c> keys.</summary>
+        private static void AppendProtectedCells(TerminalRow row, int rowStart, int cols, ref List<int>? sink)
+        {
+            if (!row.HasProtectedCells) return;
+            for (int col = 0; col < cols; col++)
+            {
+                if (row.IsProtected(col)) (sink ??= []).Add(rowStart + col);
+            }
         }
 
         private static void StoreWrappedColumns(ref int[]? values, int rows, int row, int? columns, int fullWidth)
@@ -427,6 +441,7 @@ namespace Ntilde.VT
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
                 row.ClearUnderlines();
+                row.ClearProtection();
                 row.ClearTextSizing();
                 for (int c = 0; c < row.Cells.Length; c++)
                 {
@@ -511,6 +526,22 @@ namespace Ntilde.VT
                         rows[r].SetUnderline(c, underlines[kv.Value]);
                     }
                 }
+            }
+
+            if (state.ProtectedCells != null)
+            {
+                foreach (int key in state.ProtectedCells)
+                {
+                    if (!TrySplitKey(key, sourceCols, rowsToCopy, colsToCopy, out int r, out int c))
+                    {
+                        continue;
+                    }
+
+                    rows[r].SetProtected(c, true);
+                }
+
+                // A narrower destination clips a wide glyph at its last column; the anchor loses protection with the lost half.
+                for (int r = 0; r < rowsToCopy; r++) rows[r].ClearProtectionOfClippedWideAnchor(colsToCopy, sourceCols);
             }
         }
 
@@ -711,6 +742,7 @@ namespace Ntilde.VT
                 IsItalic = cursor.IsItalic,
                 IsUnderline = cursor.IsUnderline,
                 IsOverline = cursor.IsOverline,
+                IsCharacterProtected = cursor.IsCharacterProtected,
                 UnderlineStyle = (byte)cursor.UnderlineStyle,
                 UnderlineColor = cursor.UnderlineColor?.ToUint(),
                 UnderlineColorIndex = cursor.UnderlineColorIndex,
@@ -741,6 +773,7 @@ namespace Ntilde.VT
             target.IsItalic = sgr.IsItalic;
             target.IsUnderline = sgr.IsUnderline;
             target.IsOverline = sgr.IsOverline;
+            target.IsCharacterProtected = sgr.IsCharacterProtected;
             target.UnderlineStyle = (UnderlineStyle)sgr.UnderlineStyle;
             target.UnderlineColor = sgr.UnderlineColor is { } targetColor ? TermColor.FromUint(targetColor) : null;
             target.UnderlineColorIndex = sgr.UnderlineColorIndex;
@@ -763,6 +796,7 @@ namespace Ntilde.VT
             IsItalic = _isItalic,
             IsUnderline = _isUnderline,
             IsOverline = IsOverline,
+            IsCharacterProtected = IsCharacterProtected,
             UnderlineStyle = (byte)_state.UnderlineStyle,
             UnderlineColor = _state.UnderlineColor?.ToUint(),
             UnderlineColorIndex = _state.UnderlineColorIndex,
@@ -792,6 +826,7 @@ namespace Ntilde.VT
             _isItalic = sgr.IsItalic;
             _isUnderline = sgr.IsUnderline;
             IsOverline = sgr.IsOverline;
+            IsCharacterProtected = sgr.IsCharacterProtected;
             UnderlineStyle = (UnderlineStyle)sgr.UnderlineStyle;
             UnderlineColor = sgr.UnderlineColor is { } liveColor ? TermColor.FromUint(liveColor) : null;
             UnderlineColorIndex = sgr.UnderlineColorIndex;
@@ -985,6 +1020,20 @@ namespace Ntilde.VT
                 if (state.RowWraps == null || row >= state.RowWraps.Length || !state.RowWraps[row])
                     throw StateTransferValidation.Reject(what, "wrap columns require a soft-wrapped row");
                 ValidateWrapTail(state, cells.Slice(row * cols, cols), row * cols, width, what);
+            }
+
+            RejectProtectionInWrapPadding(state, widths, rows, cols, what);
+        }
+
+        /// <summary>Protection keyed into a wrap-padding tail would hide behind the boundary, like the other cell metadata.</summary>
+        private static void RejectProtectionInWrapPadding(TerminalScreenState state, int[] widths, int rows, int cols, string what)
+        {
+            if (state.ProtectedCells == null) return;
+            foreach (int key in state.ProtectedCells)
+            {
+                int row = key / cols;
+                if (key >= 0 && row < rows && widths[row] >= 0 && key % cols >= widths[row])
+                    throw StateTransferValidation.Reject(what, "wrap padding carries protected cells");
             }
         }
 

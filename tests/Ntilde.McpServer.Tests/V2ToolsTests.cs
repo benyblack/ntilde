@@ -191,7 +191,7 @@ public class ExplainEscapeSequenceTests
     [InlineData("CSI ?1049l", "DECRST")]
     [InlineData("CSI >c", "DA")]
     [InlineData("CSI 6 q", "DECSCUSR")]
-    [InlineData("CSI ?2J", "ED")]      // DECSED, still aliased to ED while DECSCA is unimplemented
+    [InlineData("CSI ?2J", "ED")]      // DECSED; the explainer names the nearest ordinary erase
     [InlineData("CSI ?6n", "DSR")]     // DECXCPR
     public void DefinedQualifiedForms_StillResolve(string sequence, string expected)
     {
@@ -519,6 +519,19 @@ public class ExplainEscapeSequenceTests
                 Assert.DoesNotContain("unsupported", result, System.StringComparison.OrdinalIgnoreCase);
             }
         }
+    }
+
+    [Theory]
+    [InlineData("CSI ?2J")]
+    [InlineData("ESC[?0J")]
+    [InlineData("CSI ? 1 J")]
+    public void ParameterizedDecsed_IsExplainedAsSelectiveErase(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+
+        Assert.Contains("DECSED", result, System.StringComparison.Ordinal);
+        Assert.Contains("protected", result, System.StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("scrollback", VtTools.ExplainEscapeSequence("CSI ?2J").Replace("never clears scrollback", string.Empty), System.StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
