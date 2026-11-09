@@ -20,6 +20,7 @@ import { collectUnderlineResolvedGrading } from './sgr-underline-color-resolved-
 import { collectSgrResetGrading } from './sgr-reset-collector.mjs';
 import { collectSgrClosureGrading } from './sgr-closure-collector.mjs';
 import { collectEraseLineGrading } from './erase-line-collector.mjs';
+import { collectEraseDisplayGrading } from './erase-display-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -175,6 +176,14 @@ try {
         const eraseLineModule = await import(pathToFileURL(config.eraseLineBundle).href);
         const eraseLineRun = await collectEraseLineGrading({ config, fence, owner, gradingModule: eraseLineModule });
         writeFileSync(join(config.output, 'erln-run.json'), JSON.stringify(eraseLineRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered erase-in-display qualification follows the erase-in-line suite on the same fence.
+        const eraseDisplaySource = readFileSync(config.eraseDisplayBundle);
+        if (createHash('sha256').update(eraseDisplaySource).digest('hex') !== config.eraseDisplayBundleSha256) {
+            throw new Error('Local erase-in-display adapter bundle changed.');
+        }
+        const eraseDisplayModule = await import(pathToFileURL(config.eraseDisplayBundle).href);
+        const eraseDisplayRun = await collectEraseDisplayGrading({ config, fence, owner, gradingModule: eraseDisplayModule });
+        writeFileSync(join(config.output, 'erdi-run.json'), JSON.stringify(eraseDisplayRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

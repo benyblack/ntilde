@@ -14,7 +14,6 @@ import { syntheticColorBinding, rgb } from './sgr-rgb-evidence.mjs';
 export const sgrPaletteRows = 6;
 /** Synthetic column count, comfortably above the observer's floor. */
 export const sgrPaletteCols = 60;
-const cells = sgrPaletteRows * sgrPaletteCols;
 /** A fixed synthetic pane identity. */
 const paneId = '0f0e0d0c-0b0a-4009-8008-700600500400';
 /** The DA barrier every fenced operation records. */
@@ -80,9 +79,10 @@ function resolvedChannel(spec, channel, binding) {
 }
 
 /** A complete valid observation screen with the given leading cells; the rest is plain. */
-export function syntheticSgrPaletteScreen(leading, binding = paletteBinding()) {
+export function syntheticSgrPaletteScreen(leading, binding = paletteBinding(), geometry = { rows: sgrPaletteRows, cols: sgrPaletteCols }) {
     const plainSpec = colorCell(' ');
-    const specs = [...leading, ...Array.from({ length: cells - leading.length }, () => plainSpec)];
+    const total = geometry.rows * geometry.cols;
+    const specs = [...leading, ...Array.from({ length: total - leading.length }, () => plainSpec)];
     const parts = specs.map(spec => {
         const fg = stored(spec.fg, 'fg'), bg = stored(spec.bg, 'bg');
         const flags = spec.attrs.reduce((value, name) => value | attrBits[name === 'dim' ? 'faint' : name], 0) | fg.flag | bg.flag
@@ -95,8 +95,8 @@ export function syntheticSgrPaletteScreen(leading, binding = paletteBinding()) {
                 underlineColorIndex: spec.underlineColorIndex ?? -1, underlineArgb: spec.underlineArgb ?? null },
         };
     });
-    return { rows: sgrPaletteRows, cols: sgrPaletteCols,
-        lines: [leading.map(spec => spec.char).join(''), '', '', '', '', ''],
+    return { rows: geometry.rows, cols: geometry.cols,
+        lines: [leading.map(spec => spec.char).join(''), ...Array.from({ length: geometry.rows - 1 }, () => '')],
         cursorRow: 0, cursorCol: leading.length, cursorVisible: true,
         attributeRuns: coalesce(parts.map(part => part.attribute)),
         resolvedColors: coalesce(parts.map(part => part.resolved)),
@@ -140,8 +140,12 @@ function frame(index, kind, screenValue, barrier) {
  * override the per-case cell specs to build negative evidence. */
 export function syntheticColorEvidence(suite, runId, bundleSha256, binding, readsOf) {
     const nonce = suite.noncePrefix + runId;
-    const blank = syntheticSgrPaletteScreen([], binding);
-    const bindScreen = { ...syntheticSgrPaletteScreen([], binding), lines: [nonce, '', '', '', '', ''], cursorCol: nonce.length };
+    // A suite may run on another geometry and decorate every screen (for example with buffer state and history).
+    const geometry = suite.geometry ?? { rows: sgrPaletteRows, cols: sgrPaletteCols };
+    const decorate = suite.decorate ?? (value => value);
+    const blank = decorate(syntheticSgrPaletteScreen([], binding, geometry));
+    const bindScreen = decorate({ ...syntheticSgrPaletteScreen([], binding, geometry),
+        lines: [nonce, ...Array.from({ length: geometry.rows - 1 }, () => '')], cursorCol: nonce.length });
     const frames = [frame(0, suite.prefix + '-start', blank, null), frame(1, suite.prefix + '-bind', bindScreen, deviceAttribute)];
     const cases = suite.contracts.map(contract => {
         const feeds = planFeeds(contract);

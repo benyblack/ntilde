@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV26SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV27SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV26SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV27SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV26SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV27SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -319,6 +319,26 @@ export async function privateClipboardReceiptFixture(action) {
                 file: 'erln-observations.json', sha256: hash(readFileSync(join(output, 'erln-observations.json'))),
                 runFile: 'erln-run.json', runSha256: hash(readFileSync(join(output, 'erln-run.json'))),
                 adapterBundleSha256: hash(eraseLineBytes), contractsVersion: eraseLineContractsVersion,
+                counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v20 always carries the layered erase-in-display suffix as well.
+            const { syntheticEraseDisplayEvidence } = await import('./erase-display-evidence.mjs');
+            const { buildEraseDisplayGradingReport } = await import('../erase-display-grading.mjs');
+            const { adaptEraseDisplayCollector, eraseDisplayAdapterId } = await import('../erase-display-grading-collector.mjs');
+            const { eraseDisplaySuiteId, eraseDisplayContractsVersion } = await import('../erase-display-contracts.mjs');
+            const eraseDisplayBytes = Buffer.from(adaptEraseDisplayCollector(eraseLineBytes.toString()));
+            const eraseDisplay = syntheticEraseDisplayEvidence(context.runId, hash(eraseDisplayBytes));
+            eraseDisplay.adapter = { id: eraseDisplayAdapterId, derivedFromAdapterId: eraseLineAdapterId,
+                bundleSha256: hash(eraseDisplayBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const eraseDisplayReport = buildEraseDisplayGradingReport(eraseDisplay.frames, eraseDisplay.run, context.runId, eraseDisplay.adapter);
+            write('erdi-observations.json', eraseDisplayReport);
+            write('erdi-run.json', eraseDisplay.run);
+            writeFileSync(join(output, 'erdi-snapshots.jsonl'), eraseDisplay.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-erdi.mjs'), eraseDisplayBytes);
+            Object.assign(context, { eraseDisplayAdapterId, eraseDisplaySuiteId, eraseDisplayBundleSha256: hash(eraseDisplayBytes), eraseDisplayContractsVersion });
+            evidence.eraseDisplayEvidence = { runId: context.runId, suiteId: eraseDisplaySuiteId,
+                file: 'erdi-observations.json', sha256: hash(readFileSync(join(output, 'erdi-observations.json'))),
+                runFile: 'erdi-run.json', runSha256: hash(readFileSync(join(output, 'erdi-run.json'))),
+                adapterBundleSha256: hash(eraseDisplayBytes), contractsVersion: eraseDisplayContractsVersion,
                 counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
