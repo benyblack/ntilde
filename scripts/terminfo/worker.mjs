@@ -20,6 +20,7 @@ import { collectUnderlineResolvedGrading } from './sgr-underline-color-resolved-
 import { collectSgrResetGrading } from './sgr-reset-collector.mjs';
 import { collectSgrClosureGrading } from './sgr-closure-collector.mjs';
 import { collectEraseLineGrading } from './erase-line-collector.mjs';
+import { collectCharEditGrading } from './char-edit-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -175,6 +176,14 @@ try {
         const eraseLineModule = await import(pathToFileURL(config.eraseLineBundle).href);
         const eraseLineRun = await collectEraseLineGrading({ config, fence, owner, gradingModule: eraseLineModule });
         writeFileSync(join(config.output, 'erln-run.json'), JSON.stringify(eraseLineRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered character-editing qualification follows the erase-in-line suite on the same fence.
+        const charEditSource = readFileSync(config.charEditBundle);
+        if (createHash('sha256').update(charEditSource).digest('hex') !== config.charEditBundleSha256) {
+            throw new Error('Local character-editing adapter bundle changed.');
+        }
+        const charEditModule = await import(pathToFileURL(config.charEditBundle).href);
+        const charEditRun = await collectCharEditGrading({ config, fence, owner, gradingModule: charEditModule });
+        writeFileSync(join(config.output, 'ched-run.json'), JSON.stringify(charEditRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
