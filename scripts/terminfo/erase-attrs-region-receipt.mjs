@@ -52,7 +52,7 @@ function present(path) {
  * policy-v26 run always carries them, because the current worker collects this suite
  * unconditionally after the saved-state/reset suite. */
 export function includesEraseAttrsRegionEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v26'
+    return ['readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27'].includes(context.sourceSnapshotPolicy)
         || context.eraseAttrsRegionAdapterId !== undefined || context.eraseAttrsRegionSuiteId !== undefined
         || context.eraseAttrsRegionBundleSha256 !== undefined || context.eraseAttrsRegionContractsVersion !== undefined
         || evidence.eraseAttrsRegionEvidence !== undefined

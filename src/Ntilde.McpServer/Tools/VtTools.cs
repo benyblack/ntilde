@@ -229,6 +229,16 @@ public sealed class VtTools
                 return ExplainRectangularErase(prefix[..^1]) + note;
             }
 
+            if (finalByte is 'r' or 't' && qualifiers == "$")
+            {
+                return ExplainRectangularAttributes(finalByte, prefix[..^1]) + note;
+            }
+
+            if (finalByte == 'x' && qualifiers == "*")
+            {
+                return ExplainAttributeChangeExtent(prefix[..^1]) + note;
+            }
+
             if (finalByte is 'x' or 'v' && qualifiers == "$")
             {
                 return ExplainRectangleCopyFill(finalByte, prefix[..^1]) + note;
@@ -469,6 +479,22 @@ public sealed class VtTools
             || parameters.Any(c => c != ';' && (c < '0' || c > '9')))
             return "CSI rectangular erase form: only up to four plain borders are admitted; Ntilde's parser ignores this form.";
         return "CSI sequence, final byte 'z': " + ContractSequenceTable["CSI:$z"];
+    }
+
+    /// <summary>DECCARA/DECRARA: plain semicolon-separated numbers only; subparameters are not part of either form.</summary>
+    private static string ExplainRectangularAttributes(char finalByte, string parameters)
+    {
+        if (parameters.Any(c => c != ';' && (c < '0' || c > '9')))
+            return "CSI rectangular attribute form: only plain semicolon-separated numbers are admitted; Ntilde's parser ignores this form.";
+        return $"CSI sequence, final byte '{finalByte}': " + ContractSequenceTable[finalByte == 'r' ? "CSI:$r" : "CSI:$t"];
+    }
+
+    /// <summary>DECSACE: at most one plain numeric parameter.</summary>
+    private static string ExplainAttributeChangeExtent(string parameters)
+    {
+        if (parameters.Any(c => c < '0' || c > '9'))
+            return "CSI select-attribute-change-extent form: only one plain parameter is admitted; Ntilde's parser ignores this form.";
+        return "CSI sequence, final byte 'x': " + ContractSequenceTable["CSI:*x"];
     }
 
     /// <summary>Names the Partial DECFRA (up to five) or DECCRA (up to eight) plain-parameter contract; any other shape is ignored by the parser.</summary>

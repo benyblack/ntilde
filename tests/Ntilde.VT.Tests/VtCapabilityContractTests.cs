@@ -47,6 +47,9 @@ public sealed class VtCapabilityContractTests
             ["erase-rectangular-area"] = AssertRectangularTextErase,
             ["fill-rectangular-area"] = AssertRectangularTextFill,
             ["copy-rectangular-area"] = AssertRectangularTextCopy,
+            ["change-attributes-rectangular-area"] = AssertRectangularAttributeChange,
+            ["reverse-attributes-rectangular-area"] = AssertRectangularAttributeReverse,
+            ["select-attribute-change-extent"] = AssertAttributeChangeExtent,
             ["color-stack-push"] = AssertRuntimeColorStack,
             ["color-stack-pop"] = AssertRuntimeColorStack,
             ["color-scheme-query"] = AssertColorSchemeQuery,
@@ -76,6 +79,9 @@ public sealed class VtCapabilityContractTests
             ["erase-rectangular-area"] = "\u001b[2;2;3;3$z",
             ["fill-rectangular-area"] = "\u001b[88;2;2;3;3$x",
             ["copy-rectangular-area"] = "\u001b[1;1;2;2;1;2;2$v",
+            ["change-attributes-rectangular-area"] = "\u001b[2*x\u001b[2;2;3;3;7$r",
+            ["reverse-attributes-rectangular-area"] = "\u001b[2*x\u001b[2;2;3;3;7$t",
+            ["select-attribute-change-extent"] = "\u001b[2*x",
             ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
             ["color-stack-pop"] = "\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a",
             ["color-scheme-query"] = "\x1b[?996n",
@@ -172,6 +178,53 @@ public sealed class VtCapabilityContractTests
         }
         finally { buffer.Lock.ExitReadLock(); }
         Assert.Equal((2, 3, true), (buffer.CursorRow, buffer.CursorCol, buffer.IsPendingWrap));
+    }
+
+    private static (TerminalBuffer Buffer, AnsiParser Parser) AttributeFixture()
+    {
+        var buffer = new TerminalBuffer(4, 3);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("AAAA\r\nBBBB\r\nCCCC");
+        return (buffer, parser);
+    }
+
+    private static string InverseMap(TerminalBuffer buffer)
+    {
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            return string.Join("|", Enumerable.Range(0, buffer.Rows).Select(row => new string(Enumerable.Range(0, buffer.Cols)
+                .Select(col => buffer.GetCell(col, row).IsInverse ? 'I' : '.').ToArray())));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    private static void AssertRectangularAttributeChange()
+    {
+        var (buffer, parser) = AttributeFixture();
+        parser.Process("\u001b[2*x\u001b[2;2;3;3;7$r");
+        Assert.Equal("....|.II.|.II.", InverseMap(buffer));
+        parser.Process("\u001b[2;2;3;3;27$r");
+        Assert.Equal("....|....|....", InverseMap(buffer));
+    }
+
+    private static void AssertRectangularAttributeReverse()
+    {
+        var (buffer, parser) = AttributeFixture();
+        parser.Process("\u001b[2*x\u001b[2;2;3;3;7$t");
+        Assert.Equal("....|.II.|.II.", InverseMap(buffer));
+        parser.Process("\u001b[2;2;3;3;7$t");
+        Assert.Equal("....|....|....", InverseMap(buffer));
+    }
+
+    private static void AssertAttributeChangeExtent()
+    {
+        var (buffer, parser) = AttributeFixture();
+        parser.Process("\u001b[1;2;3;3;7$r");
+        Assert.Equal(".III|IIII|III.", InverseMap(buffer));
+        var (rectangle, rectangleParser) = AttributeFixture();
+        rectangleParser.Process("\u001b[2*x\u001b[1;2;3;3;7$r");
+        Assert.Equal(".II.|.II.|.II.", InverseMap(rectangle));
     }
 
     private static void AssertDecrqssMargins()

@@ -378,6 +378,12 @@ namespace Ntilde.VT
         /// importing host's own default applies. Legacy payloads lack it and read as null.
         /// </summary>
         [JsonPropertyName("alt_scroll"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? AlternateScrollOverride { get; set; }
+
+        /// <summary>
+        /// DECSACE rectangle extent (Ps 2). Written only while the rectangle is selected; absent means the stream default,
+        /// which is what every legacy payload read as.
+        /// </summary>
+        [JsonPropertyName("decsace_rect"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? RectangularAttributeExtent { get; set; }
     }
 
     /// <summary>Both kitty keyboard flag stacks and which one is live.</summary>

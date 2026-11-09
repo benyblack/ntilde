@@ -40,15 +40,18 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 65,
-    "suiteClaims": 67,
+    "uniqueBenchmarkIds": 68,
+    "suiteClaims": 70,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 65,
+    "effectSupportedIds": 68,
     "pinnedAndEffectSupportedIds": 60,
     "effectSupportedPinnedInconclusiveIds": [
+      "editing.deccara",
+      "editing.decrara",
+      "editing.decsace",
       "modes.altscreen-1047",
       "modes.altscreen-47",
       "scrollback.alt-screen",
@@ -64,7 +67,7 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 103,
+      "effectUnqualified": 100,
       "notPinnedSupported": 108
     }
   },
@@ -1366,7 +1369,75 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/erase-attrs-region-publication.test.mjs",
-        "testSha256": "a2ea5f4c44bee76872437a022816551dfab3536b34dde87f0eb12af167efc4f8"
+        "testSha256": "7567e4502e6a4d2f45fc0b1186202b026ab428fa82135dc548f64ae97f39e861"
+      }
+    },
+    {
+      "suite": "attr-rect",
+      "suiteId": "ntilde-owned-attr-rect-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-09-attr-rect/",
+      "doc": "2026-11-09-attr-rect-qualification.md",
+      "caseCount": 3,
+      "caseIds": [
+        "editing.deccara",
+        "editing.decrara",
+        "editing.decsace"
+      ],
+      "evidence": {
+        "files": 50,
+        "bytes": 807225,
+        "sha256": "ef5af927a695626c78c7019c861f0e612431de193419f367e8bbeaa5fe5dc742"
+      },
+      "receipt": {
+        "schemaVersion": 33,
+        "runId": "6af895fbcdedae19c5682fee92717d57",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "d2640ae07c0e46df4f791b96e5d708b2b7662c3f46baa7265607ce16a4391efa"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-attr-rect-graded-v1",
+          "file": "atrc-observations.json",
+          "sha256": "081d87fbb60cfda501216d7aaf0e8ee26d93b286006792e1acaf297476cc1df7",
+          "runFile": "atrc-run.json",
+          "runSha256": "c87d716d5f4e813e0c5c1c05972471ba799ff8a2ddd16747a5f262997d4b7474",
+          "counts": {
+            "inconclusive": 3
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "6af895fbcdedae19c5682fee92717d57",
+        "measuredAt": "2026-11-09T16:32:16.193Z",
+        "appRevision": "9ee16b381337241c2fa2575eae8c63b76a50f932",
+        "appVersion": "0.12.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "9ee16b381337241c2fa2575eae8c63b76a50f932",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "5fa6e681f93aa4fde3f25acec4616cc6e9c869abf7569178fc0334a3daa6a62f",
+        "gradingAdapterId": "ntilde-owned-attr-rect-grading-v1",
+        "gradingAdapterBundleSha256": "ed32bcb933bb777d7d2ac620cb988f3906a11d25d1505388c24dd4c9462cbf63",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v27",
+        "sourceSnapshotManifestSha256": "0eb5e61d47c4ae7a2a66afbcd5b4309ffa8bdccecbe819c2618346c52085f46b"
+      },
+      "stock": {
+        "basis": "carried-forward",
+        "runId": null,
+        "counts": null,
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": null,
+        "sourceRevision": null,
+        "note": "The stock collector (scripts/terminfo-baseline.mjs) needs an interactive Ntilde tab and was not re-run for this batch. The stock per-case outcomes of the three pinned cases cannot depend on the implemented behavior: the pinned terminal paths of editing.deccara and editing.decrara end in a cursor-position query (unmeasuredCellResult, never a verdict) and editing.decsace is a not-attempted placeholder. The counts are carried, not re-measured: they are the stock baseline 2026-11-09-stock-baseline.json (stock run 02be5c606e0e7d79ab8e11f142d21ae0); no stock grade is changed by this batch."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/attr-rect-publication.test.mjs",
+        "testSha256": "3756ca92e85f658697bd42c2beb166ba39fb9dd51ab8fe3da532d943b4380321"
       }
     }
   ],
@@ -1552,6 +1623,162 @@
             "stored-state"
           ],
           "evidenceTag": "owned-stored-physical-cells"
+        }
+      ]
+    },
+    {
+      "id": "editing.deccara",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "attr-rect",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "attr-rect",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "editing.deccara",
+          "suite": "attr-rect",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "DECCARA character or outside attribute control changed"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-extent-default"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-fixture-assumes-rectangle-extent",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "DECCARA character or outside attribute control changed"
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-stored-cells"
+        }
+      ]
+    },
+    {
+      "id": "editing.decrara",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "attr-rect",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "attr-rect",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "editing.decrara",
+          "suite": "attr-rect",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "DECRARA character or outside attribute control changed"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-extent-default"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-fixture-assumes-rectangle-extent",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "DECRARA character or outside attribute control changed"
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-stored-cells"
+        }
+      ]
+    },
+    {
+      "id": "editing.decsace",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "attr-rect",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "attr-rect",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "editing.decsace",
+          "suite": "attr-rect",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Sequence consumption does not measure attribute-change extent"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Sequence consumption does not measure attribute-change extent"
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-stored-cells"
         }
       ]
     },

@@ -454,6 +454,22 @@ public class ExplainEscapeSequenceTests
         Assert.Contains("PARTIALLY", result, StringComparison.Ordinal);
     }
 
+    /// <summary>The exact attribute-rectangle spellings keep the catalogue's Partial support limitation.</summary>
+    [Theory]
+    [InlineData("CSI $ r", "DECCARA")]
+    [InlineData("\x1b[1;1;3;5;7$r", "DECCARA")]
+    [InlineData("CSI 1;1;3;5;1;4 $ r", "DECCARA")]
+    [InlineData("CSI $ t", "DECRARA")]
+    [InlineData("\\e[1;1;3;5;7$t", "DECRARA")]
+    [InlineData("CSI 2 * x", "DECSACE")]
+    [InlineData("CSI * x", "DECSACE")]
+    public void Attribute_rectangle_forms_explain_the_partial_contract(string sequence, string mnemonic)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Contains(mnemonic, result, StringComparison.Ordinal);
+        Assert.Contains("PARTIALLY", result, StringComparison.Ordinal);
+    }
+
     /// <summary>Other identities, excess parameters and subparameters cannot inherit the admitted fill or copy explanation.</summary>
     [Theory]
     [InlineData("CSI x")]
@@ -470,6 +486,23 @@ public class ExplainEscapeSequenceTests
         string result = VtTools.ExplainEscapeSequence(sequence);
         Assert.DoesNotContain("DECFRA", result, StringComparison.Ordinal);
         Assert.DoesNotContain("DECCRA", result, StringComparison.Ordinal);
+    }
+
+    /// <summary>Other identities and subparameters cannot inherit the attribute-rectangle explanations, and DECCARA is never DECSTBM.</summary>
+    [Theory]
+    [InlineData("CSI 1:2 $ r")]
+    [InlineData("CSI ? 1;1;3;5;7 $ r")]
+    [InlineData("CSI 1:2 $ t")]
+    [InlineData("CSI 1;2 * x")]
+    [InlineData("CSI 2:1 * x")]
+    [InlineData("CSI ? 2 * x")]
+    [InlineData("CSI 2 $ x")]
+    public void Other_attribute_rectangle_forms_claim_no_contract(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.DoesNotContain("DECCARA", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("DECRARA", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("DECSACE", result, StringComparison.Ordinal);
     }
 
     [Fact]

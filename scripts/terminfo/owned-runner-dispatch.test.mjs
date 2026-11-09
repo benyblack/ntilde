@@ -28,7 +28,7 @@ test('no dispatch expression can backtrack: literal alternations only, no quanti
 test('the dispatch accepts exactly prefix-suffix pairs and rejects near misses', () => {
     const [images, cells, resize, input] = expressions;
     const [cellPrefixes, cellSuffixes] = alternatives(literals[1]);
-    assert.ok(cellPrefixes.length >= 25 && cellPrefixes.includes('scrl') && cellPrefixes.includes('svrs'));
+    assert.ok(cellPrefixes.length >= 25 && cellPrefixes.includes('scrl') && cellPrefixes.includes('svrs') && cellPrefixes.includes('atrc'));
     for (const prefix of cellPrefixes) for (const suffix of cellSuffixes) assert.ok(cells.test(`${prefix}-${suffix}`), `${prefix}-${suffix}`);
     for (const miss of ['cell-apply', 'cell-start\n', 'cell-startx', 'xcell-start', 'cell-', '-start', 'cell-start-start', 'scrl', 'CELL-START', ' cell-start', 'cell-start ', '']) assert.equal(cells.test(miss), false, JSON.stringify(miss));
     assert.ok(images.test('images-seal') && !images.test('images-control') && !images.test('image-start'));

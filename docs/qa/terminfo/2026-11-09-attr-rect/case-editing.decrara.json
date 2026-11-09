@@ -1,0 +1,558 @@
+{
+  "caseId": "editing.decrara",
+  "pinnedCriterion": "three rows of aaaaa/bbbbb/ccccc with columns 1..5 inverse and one plain flank cell each (Z, Y, X): `ESC[1;1;3;5;7$t` leaves every character and the right flank column NOT inverse, and clears inverse on columns 1..5",
+  "pinnedFeeds": [
+    "\u001b[1;1H\u001b[7maaaaa\u001b[0mZ\u001b[2;1H\u001b[7mbbbbb\u001b[0mY\u001b[3;1H\u001b[7mccccc\u001b[0mX",
+    "\u001b[1;1H",
+    "\u001b[1;1;3;5;7$t"
+  ],
+  "pinnedFed": 3,
+  "terminalFixture": {
+    "writes": [
+      "\u001b[1;1H",
+      "\u001b[1;1;3;5;7$t",
+      "cursor query"
+    ],
+    "demand": "a cursor-position reply only (always inconclusive)",
+    "minimum": {
+      "rows": 3,
+      "cols": 5
+    },
+    "note": "upstream pixel/query path never measures cells or attributes: it carries no verdict and is not qualified"
+  },
+  "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[7maaaaa\u001b[0mZ\u001b[2;1H\u001b[7mbbbbb\u001b[0mY\u001b[3;1H\u001b[7mccccc\u001b[0mX",
+    "\u001b[1;1H",
+    "\u001b[1;1;3;5;7$t",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[7maaaaa\u001b[0mZ\u001b[2;1H\u001b[7mbbbbb\u001b[0mY\u001b[3;1H\u001b[7mccccc\u001b[0mX",
+    "\u001b[1;1H",
+    "\u001b[2*x",
+    "\u001b[1;1;3;5;7$t",
+    "\u001b[0*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1Habcdef\u001b[2;1Hghijkl\u001b[3;1Hmnopqr\u001b[4;1Hstuvwx\u001b[1;1H",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1Habcdef\u001b[2;1Hghijkl\u001b[3;1Hmnopqr\u001b[4;1Hstuvwx\u001b[1;1H",
+    "\u001b[2*x",
+    "\u001b[2;2;3;5;7$t",
+    "\u001b[0*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1Habcdef\u001b[2;1Hghijkl\u001b[3;1Hmnopqr\u001b[4;1Hstuvwx\u001b[1;1H",
+    "\u001b[4;1H",
+    "\u001b[1;44m",
+    "\u001b[2*x",
+    "\u001b[1;1;2;3;7$t",
+    "\u001b[0*x",
+    "P",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[7ma\u001b[0m\u001b[1;2Hb\u001b[1;3H\u001b[7mc\u001b[0m\u001b[1;4Hd\u001b[1;5H\u001b[7me\u001b[0m\u001b[1;6Hf\u001b[2;1H\u001b[1mg\u001b[0m\u001b[2;2H\u001b[3;31mh\u001b[0m\u001b[2;3H\u001b[4mi\u001b[0m\u001b[2;4H\u001b[5mj\u001b[0m\u001b[2;5H\u001b[1;7mk\u001b[0m\u001b[2;6Hl\u001b[6;11H",
+    "\u001b[2*x",
+    "\u001b[1;1;2;6;7$t",
+    "\u001b[0*x",
+    "\u001b[2*x",
+    "\u001b[1;1;2;6;7$t",
+    "\u001b[0*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1;3;31ma\u001b[0m\u001b[1;2H\u001b[3;4;31mb\u001b[0m\u001b[1;3H\u001b[3;5;31mc\u001b[0m\u001b[1;4H\u001b[3;7;31md\u001b[0m\u001b[1;5H\u001b[3;31me\u001b[0m\u001b[1;6H\u001b[1;3;4;5;7;31mf\u001b[0m\u001b[2;1H\u001b[1;3;31ma\u001b[0m\u001b[2;2H\u001b[3;4;31mb\u001b[0m\u001b[2;3H\u001b[3;5;31mc\u001b[0m\u001b[2;4H\u001b[3;7;31md\u001b[0m\u001b[2;5H\u001b[3;31me\u001b[0m\u001b[2;6H\u001b[1;3;4;5;7;31mf\u001b[0m\u001b[3;1H\u001b[1;3;31ma\u001b[0m\u001b[3;2H\u001b[3;4;31mb\u001b[0m\u001b[3;3H\u001b[3;5;31mc\u001b[0m\u001b[3;4H\u001b[3;7;31md\u001b[0m\u001b[3;5H\u001b[3;31me\u001b[0m\u001b[3;6H\u001b[1;3;4;5;7;31mf\u001b[0m\u001b[4;1H\u001b[1;3;31ma\u001b[0m\u001b[4;2H\u001b[3;4;31mb\u001b[0m\u001b[4;3H\u001b[3;5;31mc\u001b[0m\u001b[4;4H\u001b[3;7;31md\u001b[0m\u001b[4;5H\u001b[3;31me\u001b[0m\u001b[4;6H\u001b[1;3;4;5;7;31mf\u001b[0m\u001b[5;1H\u001b[1;3;31ma\u001b[0m\u001b[5;2H\u001b[3;4;31mb\u001b[0m\u001b[5;3H\u001b[3;5;31mc\u001b[0m\u001b[5;4H\u001b[3;7;31md\u001b[0m\u001b[5;5H\u001b[3;31me\u001b[0m\u001b[5;6H\u001b[1;3;4;5;7;31mf\u001b[0m\u001b[6;1H\u001b[1;3;31ma\u001b[0m\u001b[6;2H\u001b[3;4;31mb\u001b[0m\u001b[6;3H\u001b[3;5;31mc\u001b[0m\u001b[6;4H\u001b[3;7;31md\u001b[0m\u001b[6;5H\u001b[3;31me\u001b[0m\u001b[6;6H\u001b[1;3;4;5;7;31mf\u001b[0m\u001b[6;11H",
+    "\u001b[2*x",
+    "\u001b[1;1;1;6;1$t",
+    "\u001b[2;1;2;6;0$t",
+    "\u001b[3;1;3;6$t",
+    "\u001b[4;1;4;6;22;24;25;27$t",
+    "\u001b[5;1;5;6;1;1$t",
+    "\u001b[6;1;6;6;4;5$t",
+    "\u001b[0*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[7maaaaa\u001b[0mZ\u001b[2;1H\u001b[7mbbbbb\u001b[0mY\u001b[3;1H\u001b[7mccccc\u001b[0mX",
+    "\u001b[1;1H",
+    "\u001b[1;1;3;5;7$t"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      2,
+      6
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      3,
+      1
+    ],
+    [
+      5,
+      10
+    ],
+    [
+      5,
+      10
+    ],
+    [
+      5,
+      10
+    ],
+    [
+      5,
+      10
+    ],
+    [
+      5,
+      10
+    ],
+    [
+      0,
+      0
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "initial": {
+      "ink": 0,
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    "extentObservation": "the DECSACE setting is not readable; it is inferred from the cells changed and restored to the stream after every rectangle control",
+    "seed": {
+      "text": [
+        "aaaaaZ",
+        "bbbbbY",
+        "cccccX",
+        "______"
+      ],
+      "marks": [
+        "IIIII.",
+        "IIIII.",
+        "IIIII.",
+        "......"
+      ],
+      "cursor": [
+        2,
+        6
+      ],
+      "inkCells": 18,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "cursor": {
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    "pinnedDefaultExtent": {
+      "text": [
+        "aaaaaZ",
+        "bbbbbY",
+        "cccccX",
+        "______"
+      ],
+      "marks": [
+        ".....I",
+        ".....I",
+        "......",
+        "......"
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 18,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      },
+      "matchesStream": true
+    },
+    "rectangleExperiment": {
+      "policy": "labeled experiment, not a pinned grade: the pinned bytes after `ESC[2*x`; the stream is restored with `ESC[0*x` afterwards",
+      "text": [
+        "aaaaaZ",
+        "bbbbbY",
+        "cccccX",
+        "______"
+      ],
+      "marks": [
+        "......",
+        "......",
+        "......",
+        "......"
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 18,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      },
+      "matchesRectangle": true
+    },
+    "plain": {
+      "text": [
+        "abcdef",
+        "ghijkl",
+        "mnopqr",
+        "stuvwx"
+      ],
+      "marks": [
+        "......",
+        "......",
+        "......",
+        "......"
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 24,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "bounds": {
+      "text": [
+        "abcdef",
+        "ghijkl",
+        "mnopqr",
+        "stuvwx"
+      ],
+      "marks": [
+        "......",
+        ".IIII.",
+        ".IIII.",
+        "......"
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 24,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "pen": {
+      "text": [
+        "abcdef",
+        "ghijkl",
+        "mnopqr",
+        "Ptuvwx"
+      ],
+      "marks": [
+        "III...",
+        "III...",
+        "......",
+        "B....."
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "inkCells": 24,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "witness": {
+      "text": [
+        "aaaaaZ",
+        "bbbbbY",
+        "cccccX",
+        "______"
+      ],
+      "marks": [
+        ".....I",
+        ".....I",
+        "......",
+        "......"
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 18,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      },
+      "matchesStream": true
+    },
+    "toggle": {
+      "before": {
+        "text": [
+          "abcdef",
+          "ghijkl"
+        ],
+        "marks": [
+          "I.I.I.",
+          "B.UK[IB]."
+        ],
+        "cursor": [
+          5,
+          10
+        ],
+        "inkCells": 12,
+        "buffer": {
+          "top": 0,
+          "bottom": 39,
+          "origin": false,
+          "alt": true
+        }
+      },
+      "after": {
+        "text": [
+          "abcdef",
+          "ghijkl"
+        ],
+        "marks": [
+          ".I.I.I",
+          "[IB]I[IU][IK]BI"
+        ],
+        "cursor": [
+          5,
+          10
+        ],
+        "inkCells": 12,
+        "buffer": {
+          "top": 0,
+          "bottom": 39,
+          "origin": false,
+          "alt": true
+        }
+      },
+      "second": {
+        "text": [
+          "abcdef",
+          "ghijkl"
+        ],
+        "marks": [
+          "I.I.I.",
+          "B.UK[IB]."
+        ],
+        "cursor": [
+          5,
+          10
+        ],
+        "inkCells": 12,
+        "buffer": {
+          "top": 0,
+          "bottom": 39,
+          "origin": false,
+          "alt": true
+        }
+      },
+      "restored": true
+    },
+    "operands": {
+      "before": {
+        "text": [
+          "abcdef",
+          "abcdef",
+          "abcdef",
+          "abcdef",
+          "abcdef",
+          "abcdef"
+        ],
+        "marks": [
+          "BUKI.[IBUK]",
+          "BUKI.[IBUK]",
+          "BUKI.[IBUK]",
+          "BUKI.[IBUK]",
+          "BUKI.[IBUK]",
+          "BUKI.[IBUK]"
+        ],
+        "cursor": [
+          5,
+          10
+        ],
+        "inkCells": 36,
+        "buffer": {
+          "top": 0,
+          "bottom": 39,
+          "origin": false,
+          "alt": true
+        }
+      },
+      "after": {
+        "text": [
+          "abcdef",
+          "abcdef",
+          "abcdef",
+          "abcdef",
+          "abcdef",
+          "abcdef"
+        ],
+        "marks": [
+          ".[BU][BK][IB]B[IUK]",
+          "[IUK][IBK][IBU][BUK][IBUK].",
+          "[IUK][IBK][IBU][BUK][IBUK].",
+          "BUKI.[IBUK]",
+          "BUKI.[IBUK]",
+          "[BUK]KU[IUK][UK][IB]"
+        ],
+        "cursor": [
+          5,
+          10
+        ],
+        "inkCells": 36,
+        "buffer": {
+          "top": 0,
+          "bottom": 39,
+          "origin": false,
+          "alt": true
+        }
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": false,
+    "response": "{\"before\":[[{\"char\":\"a\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"Z\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}],[{\"char\":\"b\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}],[{\"char\":\"c\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"X\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}]],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[[{\"char\":\"a\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"Z\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}],[{\"char\":\"b\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"Y\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}],[{\"char\":\"c\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"X\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}]]}",
+    "note": "DECRARA character or outside attribute control changed",
+    "observation": {
+      "outcome": "inconclusive",
+      "reason": "insufficient-evidence",
+      "evidence": "parser-state",
+      "note": "DECRARA character or outside attribute control changed"
+    },
+    "assertions": null
+  },
+  "rectangleExperiment": {
+    "policy": "labeled experiment, not a pinned grade: the same pinned code over the same pinned bytes taken after `ESC[2*x`; the stream is restored with `ESC[0*x` afterwards",
+    "outcome": "supported",
+    "pass": true,
+    "response": "{\"before\":[[{\"char\":\"a\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"Z\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}],[{\"char\":\"b\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}],[{\"char\":\"c\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":770,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"X\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}]],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[[{\"char\":\"a\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"a\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"Z\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}],[{\"char\":\"b\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"b\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}],[{\"char\":\"c\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"c\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},{\"char\":\"X\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}]]}",
+    "note": null
+  },
+  "effectContract": {
+    "id": "ntilde.attr-rect.effect/v1",
+    "version": 1,
+    "outcome": "supported",
+    "defaultExtent": "stream",
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "defaultExtent": "stream"
+  },
+  "divergence": {
+    "pinnedOutcome": "inconclusive",
+    "contractOutcome": "supported",
+    "kind": "pinned-fixture-assumes-rectangle-extent"
+  },
+  "conclusion": {
+    "outcome": "inconclusive",
+    "evidence": "owned-stored-cells",
+    "grading": "pinned-termless-preserved-extent-default",
+    "note": "DECRARA character or outside attribute control changed",
+    "scope": "stored per-cell bold, underline, blink and inverse of the DECRARA area, preserved text, other attributes, palette colors and side details, the cursor, the SGR pen and the buffer facts (margins, origin, wrap); the DECSACE extent is inferred behaviorally, never read; no rendered appearance, no resolved-color claim"
+  }
+}

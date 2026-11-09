@@ -100,6 +100,8 @@ namespace Ntilde.VT
         [JsonPropertyName("decom")] public bool IsOriginMode { get; set; }
         /// <summary>DECSCNM (?5). Absent (false) in legacy recordings.</summary>
         [JsonPropertyName("decscnm")] public bool IsReverseVideo { get; set; }
+        /// <summary>DECSACE rectangle extent (Ps 2). Written only while selected; absent (false, the stream) in legacy recordings.</summary>
+        [JsonPropertyName("decsace_rect"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsRectangularAttributeExtent { get; set; }
         [JsonPropertyName("sixel_display")] public bool IsSixelDisplayMode { get; set; }
         [JsonPropertyName("sixel_cw"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public float? SixelCellWidthPx { get; set; }
         [JsonPropertyName("sixel_ch"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public float? SixelCellHeightPx { get; set; }

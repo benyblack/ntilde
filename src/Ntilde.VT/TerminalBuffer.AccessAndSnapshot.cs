@@ -1116,6 +1116,7 @@ namespace Ntilde.VT
                 if (snapshot.MouseModeX10PressOnly) Modes.SetMouseTrackingMode(9, true);
                 else Modes.MouseModeX10PressOnly = false;
                 Modes.IsOriginMode = snapshot.IsOriginMode;
+                Modes.IsRectangularAttributeExtent = snapshot.IsRectangularAttributeExtent;
                 if (Modes.IsReverseVideo != snapshot.IsReverseVideo)
                 {
                     Modes.IsReverseVideo = snapshot.IsReverseVideo;
