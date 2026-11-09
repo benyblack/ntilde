@@ -186,5 +186,10 @@
     "lineEditCollectorSourceSha256": "line-edit-collector.mjs",
     "lineEditGradingSourceSha256": "line-edit-grading.mjs",
     "lineEditGradingCollectorSourceSha256": "line-edit-grading-collector.mjs",
-    "lineEditReceiptSourceSha256": "line-edit-receipt.mjs"
+    "lineEditReceiptSourceSha256": "line-edit-receipt.mjs",
+    "charsetsContractsSourceSha256": "charsets-contracts.mjs",
+    "charsetsCollectorSourceSha256": "charsets-collector.mjs",
+    "charsetsGradingSourceSha256": "charsets-grading.mjs",
+    "charsetsGradingCollectorSourceSha256": "charsets-grading-collector.mjs",
+    "charsetsReceiptSourceSha256": "charsets-receipt.mjs"
 }

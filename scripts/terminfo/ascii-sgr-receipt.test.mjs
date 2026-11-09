@@ -121,8 +121,8 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     // The grown v13 inventory carries its own policy; a v12-era run (policy v5,
     // 103 sources) still resolves to its own frozen file set.
     const { retainedInventory } = await import('./metadata-receipt.mjs');
-    const { capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, capturedV20SourceFiles, capturedV21SourceFiles, capturedV22SourceFiles, capturedV23SourceFiles, capturedV24SourceFiles, capturedV25SourceFiles, capturedV26SourceFiles, capturedV27SourceFiles, capturedV28SourceFiles, capturedV29SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
-    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v22');
+    const { capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, capturedV20SourceFiles, capturedV21SourceFiles, capturedV22SourceFiles, capturedV23SourceFiles, capturedV24SourceFiles, capturedV25SourceFiles, capturedV26SourceFiles, capturedV27SourceFiles, capturedV28SourceFiles, capturedV29SourceFiles, capturedV30SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
+    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v23');
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v5' }), capturedV12SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v6' }), capturedV13SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v7' }), capturedV14SourceFiles);
@@ -133,6 +133,7 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v12' }), capturedV19SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v13' }), capturedV20SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v14' }), capturedV21SourceFiles);
+    assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v23' }), capturedV30SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v22' }), capturedV29SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v21' }), capturedV28SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v20' }), capturedV27SourceFiles);
@@ -164,10 +165,11 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     assert.equal(Object.keys(capturedV23SourceFiles).length, 158);
     // The SGR selective-reset scope (five scripts) lives in v17.
     assert.equal(Object.keys(capturedV24SourceFiles).length, 163);
-    // The SGR closure scope (five scripts) lives in v18, the erase-in-line scope (five scripts) in v19 and the character-editing scope (five scripts) in v20. The erase-in-display scope (five scripts) lives in v21.
+    // The SGR closure scope (five scripts) lives in v18, the erase-in-line scope (five scripts) in v19 and the character-editing scope (five scripts) in v20. The erase-in-display scope (five scripts) lives in v21 and the charsets scope (five scripts) in v22 and the charsets scope (five scripts) in v23.
     assert.equal(Object.keys(capturedV25SourceFiles).length, 168);
     assert.equal(Object.keys(capturedV26SourceFiles).length, 173);
     assert.equal(Object.keys(capturedV27SourceFiles).length, 178);
     assert.equal(Object.keys(capturedV28SourceFiles).length, 183);
     assert.equal(Object.keys(capturedV29SourceFiles).length, 188);
+    assert.equal(Object.keys(capturedV30SourceFiles).length, 193);
 });

@@ -23,6 +23,7 @@ import { collectEraseLineGrading } from './erase-line-collector.mjs';
 import { collectCharEditGrading } from './char-edit-collector.mjs';
 import { collectEraseDisplayGrading } from './erase-display-collector.mjs';
 import { collectLineEditGrading } from './line-edit-collector.mjs';
+import { collectCharsetsGrading } from './charsets-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -202,6 +203,14 @@ try {
         const lineEditModule = await import(pathToFileURL(config.lineEditBundle).href);
         const lineEditRun = await collectLineEditGrading({ config, fence, owner, gradingModule: lineEditModule });
         writeFileSync(join(config.output, 'ledt-run.json'), JSON.stringify(lineEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered charset qualification follows the line-editing suite on the same fence.
+        const charsetsSource = readFileSync(config.charsetsBundle);
+        if (createHash('sha256').update(charsetsSource).digest('hex') !== config.charsetsBundleSha256) {
+            throw new Error('Local charsets adapter bundle changed.');
+        }
+        const charsetsModule = await import(pathToFileURL(config.charsetsBundle).href);
+        const charsetsRun = await collectCharsetsGrading({ config, fence, owner, gradingModule: charsetsModule });
+        writeFileSync(join(config.output, 'chrs-run.json'), JSON.stringify(charsetsRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

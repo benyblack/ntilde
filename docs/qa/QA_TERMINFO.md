@@ -866,3 +866,12 @@ screen, the cursor and the App's stored margins, origin and insert mode. The con
 a DECSTBM scroll-region control (cursor inside, above and below), origin mode and moved-cell attribute controls; count spellings, new-line
 background fill, cursor column and scrollback are observations. The pinned terminal pixel path never carries a verdict and is not qualified.
 Receipt schema 28 and source policy v22 (188 files) bind it; earlier policies stay frozen.
+
+### Charset qualification (UTF-8, DEC special graphics, DEC line drawing, G0/G1 switching)
+
+The [charset batch](terminfo/2026-11-09-charsets-qualification.md) grades exactly `charsets.utf8`, `charsets.dec-special`,
+`charsets.dec-line-drawing` and `charsets.g0-g1-switching` through a sixteenth layered collector extension
+(`ntilde-owned-charsets-grading-v1`), replaying the pinned bytes untouched and running the pinned termless probes over parent-journaled
+physical cells derived from complete stored cell details (never attribute strings or UTF-16 offsets). Controls cover the ASCII
+same-source seed, designation versus invocation, persistence past SI and lowercase restoration witnesses. The pinned pixel and
+cursor-query paths are not qualified. Receipt schema 29 and source policy v23 (193 files) bind it; earlier policies stay frozen.

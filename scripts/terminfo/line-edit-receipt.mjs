@@ -38,10 +38,10 @@ function present(path) {
 }
 
 /** Any retained line-editing artifact or declaration requires the v28 suffix, and a
- * policy-v22 run always carries them, because the current worker collects this suite
+ * policy-v22 or v23 run always carries them, because the current worker collects this suite
  * unconditionally after the erase-in-display suite. */
 export function includesLineEditEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v22'
+    return ['readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23'].includes(context.sourceSnapshotPolicy)
         || context.lineEditAdapterId !== undefined || context.lineEditSuiteId !== undefined
         || context.lineEditBundleSha256 !== undefined || context.lineEditContractsVersion !== undefined
         || evidence.lineEditEvidence !== undefined
