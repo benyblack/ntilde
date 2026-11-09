@@ -48,7 +48,7 @@ test('the published saved-state/reset evidence re-derives exactly from its retai
     assert.equal(JSON.stringify(report), JSON.stringify(derived));
     assert.equal(report.suiteId, savedResetSuiteId);
     assert.equal(report.adapter.id, savedResetAdapterId);
-    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-erase-line-grading-v1');
+    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-char-edit-grading-v1');
     assert.equal(report.snapshots.length, 3 + 13 + 9 + 12 + 5 + 6);
     assert.deepEqual(report.cases.map(item => item.caseId), ids);
 });

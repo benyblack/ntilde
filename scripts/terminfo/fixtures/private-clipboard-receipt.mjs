@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV27SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV28SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV27SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV28SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV27SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV28SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -300,7 +300,7 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'sgcl-run.json', runSha256: hash(readFileSync(join(output, 'sgcl-run.json'))),
                 adapterBundleSha256: hash(sgrClosureBytes), contractsVersion: sgrClosureContractsVersion,
                 counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
-            // Policy v19 always carries the layered erase-in-line suffix as well.
+            // Policy v19 and later always carry the layered erase-in-line suffix as well.
             const { syntheticEraseLineEvidence } = await import('./erase-line-evidence.mjs');
             const { buildEraseLineGradingReport } = await import('../erase-line-grading.mjs');
             const { adaptEraseLineCollector, eraseLineAdapterId } = await import('../erase-line-grading-collector.mjs');
@@ -320,15 +320,35 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'erln-run.json', runSha256: hash(readFileSync(join(output, 'erln-run.json'))),
                 adapterBundleSha256: hash(eraseLineBytes), contractsVersion: eraseLineContractsVersion,
                 counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
-            // Policy v20 always carries the layered saved-state/reset suffix as well.
+            // Policy v20 always carries the layered character-editing suffix as well.
+            const { syntheticCharEditEvidence } = await import('./char-edit-evidence.mjs');
+            const { buildCharEditGradingReport } = await import('../char-edit-grading.mjs');
+            const { adaptCharEditCollector, charEditAdapterId } = await import('../char-edit-grading-collector.mjs');
+            const { charEditSuiteId, charEditContractsVersion } = await import('../char-edit-contracts.mjs');
+            const charEditBytes = Buffer.from(adaptCharEditCollector(eraseLineBytes.toString()));
+            const charEdit = syntheticCharEditEvidence(context.runId, hash(charEditBytes));
+            charEdit.adapter = { id: charEditAdapterId, derivedFromAdapterId: eraseLineAdapterId,
+                bundleSha256: hash(charEditBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const charEditReport = buildCharEditGradingReport(charEdit.frames, charEdit.run, context.runId, charEdit.adapter);
+            write('ched-observations.json', charEditReport);
+            write('ched-run.json', charEdit.run);
+            writeFileSync(join(output, 'ched-snapshots.jsonl'), charEdit.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-ched.mjs'), charEditBytes);
+            Object.assign(context, { charEditAdapterId, charEditSuiteId, charEditBundleSha256: hash(charEditBytes), charEditContractsVersion });
+            evidence.charEditEvidence = { runId: context.runId, suiteId: charEditSuiteId,
+                file: 'ched-observations.json', sha256: hash(readFileSync(join(output, 'ched-observations.json'))),
+                runFile: 'ched-run.json', runSha256: hash(readFileSync(join(output, 'ched-run.json'))),
+                adapterBundleSha256: hash(charEditBytes), contractsVersion: charEditContractsVersion,
+                counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v21 always carries the layered saved-state/reset suffix as well.
             const { syntheticSavedResetEvidence } = await import('./saved-reset-evidence.mjs');
             const { buildSavedResetGradingReport } = await import('../saved-reset-grading.mjs');
             const { adaptSavedResetCollector, savedResetAdapterId } = await import('../saved-reset-grading-collector.mjs');
             const { savedResetSuiteId, savedResetContractsVersion } = await import('../saved-reset-contracts.mjs');
             const { savedResetCounts } = await import('../saved-reset-receipt.mjs');
-            const savedResetBytes = Buffer.from(adaptSavedResetCollector(eraseLineBytes.toString()));
+            const savedResetBytes = Buffer.from(adaptSavedResetCollector(charEditBytes.toString()));
             const savedReset = syntheticSavedResetEvidence(context.runId, hash(savedResetBytes));
-            savedReset.adapter = { id: savedResetAdapterId, derivedFromAdapterId: eraseLineAdapterId,
+            savedReset.adapter = { id: savedResetAdapterId, derivedFromAdapterId: charEditAdapterId,
                 bundleSha256: hash(savedResetBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
             const savedResetReport = buildSavedResetGradingReport(savedReset.frames, savedReset.run, context.runId, savedReset.adapter);
             write('svrs-observations.json', savedResetReport);

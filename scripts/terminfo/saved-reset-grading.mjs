@@ -24,7 +24,7 @@ const screenOf = value => {
 /** The suite's report spec: identities, pinned replay and scope. */
 const spec = Object.freeze({ label: 'Saved-state/reset', prefix: 'svrs', noncePrefix: savedResetNoncePrefix,
     contracts: savedResetContracts, caseIds: savedResetCaseIds, suiteId: savedResetSuiteId, version: savedResetContractsVersion,
-    adapterId: savedResetAdapterId, derivedFrom: 'ntilde-owned-erase-line-grading-v1', screenOf,
+    adapterId: savedResetAdapterId, derivedFrom: 'ntilde-owned-char-edit-grading-v1', screenOf,
     scope: 'Pinned terminfo.dev@4.0.0 termless criteria for modes.alt-screen.exit (the seeded ?1049 roundtrip), modes.altscreen-47, modes.altscreen-1047, '
             + 'reset.sgr (ESC[1;3;7m X ESC[0m Y, a case separate from sgr.reset) and reset.decaln (ESC # 8, cell 0,0) replayed byte-exactly on a disposable App '
             + 'main screen and graded from parent-journaled readScreen stored cells, cursor, active-buffer flag, margins, mode flags and history. '
