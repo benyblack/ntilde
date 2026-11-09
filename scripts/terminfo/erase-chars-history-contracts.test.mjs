@@ -43,8 +43,9 @@ test('the pinned fixtures are exactly the pinned bytes: ECH `ABCDE ESC[1G` then 
 
 test('ECH spellings other than the pinned one are observed roles, never graded', () => {
     const kinds = Object.fromEntries(ech.roles.map(role => [role.role, role.kind]));
-    for (const name of ['omitted', 'explicit0', 'explicit1', 'explicit5', 'wideOversized']) assert.equal(kinds[name], 'observed', name);
-    for (const name of ['erased', 'wide', 'edge', 'attr']) assert.equal(kinds[name], 'measured', name);
+    for (const name of ['omitted', 'explicit0', 'explicit1', 'explicit5']) assert.equal(kinds[name], 'observed', name);
+    // The oversized count is graded: a spill past the line end cannot be masked by the next clear.
+    for (const name of ['erased', 'wide', 'wideOversized', 'edge', 'attr']) assert.equal(kinds[name], 'measured', name);
     // Every spelling is fed exactly as spelled.
     const feeds = eraseCharsHistoryFeeds(ech);
     for (const bytes of ['\x1b[X', '\x1b[0X', '\x1b[1X', '\x1b[5X', '\x1b[999X', '\x1b[2X']) assert.ok(feeds.includes(bytes), JSON.stringify(bytes));
@@ -174,6 +175,15 @@ test('ECH: the wide, right-edge and unaffected-row controls catch shifting, row 
     assert.match(grade(ech, only('wide', state => setLine(state, 1, 'ABCDEFGHIJ'))).note, /wide: no-op/);
     assert.match(grade(ech, only('wide', state => setLine(state, 1, ''))).note, /wide: the whole line was erased/);
     assert.match(grade(ech, only('edge', state => setLine(state, 0, ' '.repeat(echCols - 3) + 'WXY'))).note, /edge: no-op/);
+    // An oversized count that wraps onto the next row, erases the rows around the line, or erases the whole line is unsupported and named.
+    const oversized = change => grade(ech, only('wideOversized', change));
+    assert.match(oversized(state => setLine(state, 2, '')).note, /wideOversized: /);
+    assert.match(oversized(state => setLine(state, 2, 'ELOW-ROW!')).note, /wideOversized: /);
+    assert.match(oversized(state => setLine(state, 0, '')).note, /wideOversized: /);
+    assert.match(oversized(state => setLine(state, 1, 'ABCDEFGHIJ')).note, /wideOversized: no-op/);
+    assert.match(oversized(state => setLine(state, 1, '')).note, /wideOversized: the whole line was erased/);
+    assert.match(oversized(state => setLine(state, 1, '   DEFGHIJ')).note, /wideOversized: the erase did not stop at the cursor/);
+    assert.equal(oversized(state => { state.cursor = [2, 0]; }).outcome, 'unsupported');
     assert.match(grade(ech, only('edge', state => setLine(state, 0, ''))).note, /edge: erased 3 cells instead of 2/);
     assert.equal(grade(ech, only('edge', state => { state.cursor = [0, echCols - 1]; })).outcome, 'unsupported');
     assert.equal(grade(ech, only('wide', state => { state.cursor = [2, 0]; })).outcome, 'unsupported');

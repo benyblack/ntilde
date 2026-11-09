@@ -399,6 +399,19 @@ for (const [name, mutate] of [
     assert.equal(existsSync(join(f.output, 'cell-receipt.json')), false);
 }));
 
+// Unconditional (no collector cache needed): the policy alone admits the suffix, whatever the output directory holds, so a regression that
+// dropped policy-only admission cannot pass CI on a runner without the cache.
+test('policy v27 alone admits the suffix and refuses it without a declaration, with an empty output directory', () => {
+    const output = mkdtempSync(join(tmpdir(), 'nt-echh-policy-'));
+    try {
+        const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v27' };
+        assert.equal(includesEraseCharsHistoryEvidence(output, {}, context), true);
+        assert.throws(() => checkEraseCharsHistoryEvidence(output, {}, runId, context), /Missing or changed erase-character.saved-lines adapter declaration/);
+        assert.equal(includesEraseCharsHistoryEvidence(output, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v26' }), false);
+        assert.equal(includesEraseCharsHistoryEvidence(output, {}, {}), false);
+    } finally { rmSync(output, { recursive: true, force: true }); }
+});
+
 maybe('policy v27 requires the erase-character/saved-lines binding even without artifacts', () => fixture(f => {
     for (const file of ownFiles) rmSync(join(f.output, file));
     const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v27' };

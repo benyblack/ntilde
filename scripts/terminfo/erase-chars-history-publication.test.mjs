@@ -95,8 +95,10 @@ test('ECH: the other spellings are observations that match ECMA-48 and never aff
     for (const name of ['omitted', 'explicit0', 'explicit1']) assert.deepEqual(roleOf(report, id, name).viewport, ['0:  BCDE'], name);
     assert.deepEqual(roleOf(report, id, 'explicit5').viewport, []);
     assert.deepEqual(roleOf(report, id, 'wideOversized').viewport, ['0: ABOVE-ROW!', '1: AB', '2: BELOW-ROW!']);
-    for (const name of ['omitted', 'explicit0', 'explicit1', 'explicit5', 'wideOversized']) assert.equal(roleOf(report, id, name).kind, 'observed', name);
-    assert.deepEqual(byId(report, id).observed.spellingControls.names, ['omitted', 'explicit0', 'explicit1', 'explicit5', 'wideOversized']);
+    for (const name of ['omitted', 'explicit0', 'explicit1', 'explicit5']) assert.equal(roleOf(report, id, name).kind, 'observed', name);
+    assert.equal(roleOf(report, id, 'wideOversized').kind, 'measured', 'the oversized count is graded: it cannot spill onto the rows around the line');
+    assert.equal(roleOf(report, id, 'wideOversized').matchesModel, true);
+    assert.deepEqual(byId(report, id).observed.spellingControls.names, ['omitted', 'explicit0', 'explicit1', 'explicit5']);
 });
 
 test('ECH: retained cells keep their stored attributes, erased cells carry no stale text attribute, and the stored background is a resolved literal', () => {

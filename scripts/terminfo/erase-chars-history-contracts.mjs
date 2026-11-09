@@ -150,8 +150,13 @@ function characterCase(rows, cols) {
     const wideErase = b.feed(echPinned);
     const wide = b.read('wide', 'measured');
     for (const [label, bytes] of wrongRange.slice(0, 4)) b.alternative(wide, label, wideErase, bytes);
-    b.feed(clear); b.feed(wideSeed); b.feed('\x1b[999X');
-    b.read('wideOversized', 'observed');
+    // A count past the end of the line is clamped there: it neither wraps onto the next row nor erases the rows around it (graded, so a spill cannot be masked by the next clear).
+    b.feed(clear); b.feed(wideSeed);
+    const oversizedErase = b.feed('\x1b[999X');
+    const oversized = b.read('wideOversized', 'measured');
+    b.alternative(oversized, 'no-op: nothing was erased', oversizedErase, '\x1b[0m');
+    b.alternative(oversized, 'the whole line was erased', oversizedErase, '\x1b[2K');
+    b.alternative(oversized, 'the erase did not stop at the cursor: it started at the line start', oversizedErase, '\x1b[1K');
     b.feed(clear); b.feed(edgeSeed);
     b.read('edgeBefore', 'control');
     const edgeErase = b.feed('\x1b[2X');
@@ -349,8 +354,8 @@ function briefCase(contract, observation) {
         roles };
     if (contract.family !== 'erase-character') return common;
     const attributes = characterAttributes(observation);
-    return { ...common, spellingControls: { policy: 'observed, not graded: separate ECH spellings and counts, kept distinct from the pinned explicit-3 spelling',
-        names: ['omitted', 'explicit0', 'explicit1', 'explicit5', 'wideOversized'] },
+    return { ...common, spellingControls: { policy: 'observed, not graded: separate ECH spellings, kept distinct from the pinned explicit-3 spelling',
+        names: ['omitted', 'explicit0', 'explicit1', 'explicit5'] },
     attributes: { policy: 'retained cells keep their stored tuple and erased cells carry no stale text attribute (required); the erased background is observed against a same-pen reference, not required',
         retainedKeepAttributes: attributes.retainedOk, erasedNoStaleAttributes: attributes.noStale, createdBlankBackground: attributes.background,
         createdBlankBackgroundDetail: attributes.detail } };

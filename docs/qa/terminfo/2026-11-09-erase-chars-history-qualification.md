@@ -28,15 +28,16 @@ stored cell details, attribute runs, resolved colors, buffer state) plus the act
 states and the parent re-executes it. Expected states come from the byte-interpreting model of the scrolling/history suite (extended with ECH, DCH, EL,
 CHA, CUF and CUB, never from readback) and from a second, plain-operation oracle in the test fixtures; the two derivations are required to agree.
 
-**erase.character** (15 reads, nothing here is a pinned grade except `erased`):
+**erase.character** (15 reads; `erased` is the pinned grade, the other graded reads are contract refinements):
 
 - controls: the observed blank baseline; the seed and cursor; a three-row wide fixture (`ABOVE-ROW!` / `ABCDEFGHIJ` / `BELOW-ROW!`, cursor on the middle row's
   column 2); a right-edge fixture (`WXY` in the last three columns, cursor on `W`); a bold-seeded attribute fixture with a blue-background pen;
 - graded: the whole row after the pinned ECH, the wide fixture (an in-place erase, not DCH shifting, whole-line erasure or row bleed), the edge fixture
   (`ESC[2X` erases `W` and `X` and keeps `Y`), and the attribute fixture (retained cells keep their bold-only tuple; erased cells carry **no stale text
   attribute**); the cursor must not move; margins, modes, active buffer and saved lines may not drift;
-- observed, never graded: the omitted, explicit 0, 1, 5 and oversized (`ESC[999X` from the middle of a row, no wrap onto the next row) spellings, each
-  recorded against ECMA-48. The pinned graded spelling is exactly `ESC[3X`;
+- graded: an oversized count (`ESC[999X` from the middle of the wide fixture's row) is clamped at the line end, with no wrap onto the next row and the rows
+  above and below intact, so a spill cannot be masked by the next clear;
+- observed, never graded: the omitted, explicit 0, 1 and 5 spellings, each recorded against ECMA-48. The pinned graded spelling is exactly `ESC[3X`;
 - background: the erased cells' stored background is **observed** against a reference cell written under the same `SGR 44` pen, resolved color and stored
   representation separately. Ntilde stores the pen as palette index 4 but the erased blanks as the resolved literal (ARGB `0xff0000ee`, RGB 0,0,238): the
   same resolved blue, a different stored form. Palette storage is not assumed and no pixel or rendered-appearance claim is made.

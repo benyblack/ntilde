@@ -127,7 +127,7 @@ test('a pinned unsupported over an invalid unrelated control is recorded as the 
 
 test('observed spellings never change a grade, and are recorded against ECMA-48', () => {
     const base = build(syntheticEraseCharsHistoryEvidence(runId));
-    for (const name of ['omitted', 'explicit0', 'explicit1', 'explicit5', 'wideOversized']) assert.equal(byId(base, ECH).observed.roles[name].matchesModel, true, name);
+    for (const name of ['omitted', 'explicit0', 'explicit1', 'explicit5']) assert.equal(byId(base, ECH).observed.roles[name].matchesModel, true, name);
     const odd = build(evidenceWith(ECH, 'explicit1', state => { state.lines[0] = 'ABCDE'; }));
     assert.equal(byId(odd, ECH).conclusion.outcome, 'supported');
     assert.equal(byId(odd, ECH).observed.roles.explicit1.matchesModel, false);
