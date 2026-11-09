@@ -173,7 +173,7 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v30');
     assert.equal(receipt.fixtureRemoved, true);
     assert.equal(summary.ownedRunId, summary.context.runId);
-    assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
+    assert.equal(summary.stockCollectorRunId, undefined, 'no stock collector run belongs to this batch');
     // The predecessor inventory is derived from the merged contracts (every suite merged before this one), not assumed.
     const expected = [];
     for (const suite of benchmarkSuites.slice(0, benchmarkSuites.findIndex(item => item.suite === 'selective-erase'))) {
@@ -198,7 +198,8 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
 
 test('the untouched stock run keeps its own grades: both pinned cases are inconclusive there (the pinned paths only query the cursor)', () => {
     const { summary } = load();
-    assert.deepEqual(summary.stockCollector.counts, { inconclusive: 168, supported: 86, unsupported: 1 });
+    assert.equal(summary.stockCollector.rerun, false);
+    assert.deepEqual(summary.stockCollector.carriedCounts, { inconclusive: 168, supported: 86, unsupported: 1 });
     assert.equal(summary.stockCollector.suiteComplete, false);
     assert.equal(summary.stockCollector.probeHash, '16a690f34c0e');
     for (const id of ids) {

@@ -4,7 +4,6 @@
   "note": "Pinned terminfo.dev@4.0.0 cases erase.selective (DECSED CSI ? 2 J) and editing.decsera (DECSERA CSI 1;1;1;5 $ {), graded by the twenty-third layered collector extension over stored cells, the cursor, stored attributes, buffer state and opt-in per-cell protection. Stored state only; the pinned terminal pixel paths only query the cursor and never carry a verdict; ASCII only; DECSEL and ISO SPA/EPA are not qualified.",
   "measuredAt": "2026-11-09T20:12:48.041Z",
   "ownedRunId": "9cbce8ece66991681e2ccf76551b8881",
-  "stockCollectorRunId": "c2dc49045d14dabf651fff59236b8692",
   "scriptsRevision": "32b776ff1e6bdcaa1a33ee987ef1650fefc52d4f",
   "appRevision": "4a2c55ce305c2e3aa91a484ecb169c5aed018f57",
   "context": {
@@ -1388,7 +1387,9 @@
     ]
   },
   "stockCollector": {
-    "counts": {
+    "rerun": false,
+    "note": "The stock collector (scripts/terminfo-baseline.mjs) needs an interactive Ntilde tab and was not re-run for this batch. The pinned bundle (aa5f2bf9...), probeHash 16a690f34c0e and the pinned probes are unchanged since the retained stock baseline (168 inconclusive, 86 supported, 1 unsupported), so those counts are carried, not re-measured. The owned run raw.json is the pinned bundle executed through the owned adapter inside the owned worker, not the stock collector. No stock grade is changed by this batch.",
+    "carriedCounts": {
       "inconclusive": 168,
       "supported": 86,
       "unsupported": 1
@@ -1398,11 +1399,15 @@
     "probes": {
       "erase.selective": {
         "outcome": "inconclusive",
-        "evidence": "query"
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "source": "docs/qa/terminfo/2026-11-09-stock-baseline.json (both ids are stock-inconclusive); the pinned term path ends in unmeasuredCellResult: \"Cursor response does not measure erased cells or scrollback\""
       },
       "editing.decsera": {
         "outcome": "inconclusive",
-        "evidence": "query"
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "source": "docs/qa/terminfo/2026-11-09-stock-baseline.json (both ids are stock-inconclusive); the pinned term path ends in unmeasuredCellResult: \"Cursor response does not measure erased cells or scrollback\""
       }
     }
   },
