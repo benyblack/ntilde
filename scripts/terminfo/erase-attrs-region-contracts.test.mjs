@@ -241,6 +241,7 @@ test('ED: where ED stopped relative to the margins is an observation, never a gr
     assert.equal(unclipped.boundary.erasedInsideRegion, true);
     assert.equal(unclipped.boundary.erasedBelowBottomMargin, true);
     assert.equal(unclipped.boundary.keptAboveCursor, true);
+    assert.equal(unclipped.boundary.partialRows, 0);
     assert.deepEqual(unclipped.boundary.margins, [2, 9]);
     assert.match(unclipped.boundary.policy, /observed, not graded, no standards claim/);
     // A terminal that kept every row below the bottom margin is recorded differently and graded identically.
@@ -253,6 +254,27 @@ test('ED: where ED stopped relative to the margins is an observation, never a gr
     assert.equal(grade(ED, reads => { reads.fill = { cells: markers, cursor: [2, 0], buffer: margins }; }).outcome, 'supported');
     assert.equal(grade(ED, reads => { reads.fill = { cells: [], cursor: [9, 9] }; reads.fillBefore = { cells: [], cursor: [0, 0] }; }).outcome, 'supported', 'an unseeded boundary control is not a grade input');
     assert.equal(clippedReads.setup.buffer.scrollTop, 2);
+});
+
+test('ED: the boundary observation inspects every cell of a row, so a partial erase is neither reported as erased nor as kept', () => {
+    const observe = edit => {
+        const reads = syntheticEraseAttrsRegionReads(ED);
+        edit(reads);
+        return contractOf(ED).observed(eraseAttrsRegionObservation(contractOf(ED), syntheticEraseAttrsRegionScreens(ED, undefined, () => reads))).boundary;
+    };
+    // ED erased only column 0 of every row from the cursor: the remaining marker text and the tail marker are still there.
+    const partial = observe(reads => {
+        reads.fill = { cells: reads.fillBefore.cells.filter(([row, col]) => row < 2 || col > 0), cursor: [2, 0], buffer: margins };
+    });
+    assert.equal(partial.erasedInsideRegion, false);
+    assert.equal(partial.erasedBelowBottomMargin, false);
+    assert.equal(partial.partialRows, 38, 'rows 2-39 each lost one cell');
+    assert.deepEqual(partial.rowsKept, { first: 0, last: 1, count: 2 }, 'only the two untouched rows are whole');
+    // A row that lost its tail marker only is also partial.
+    const tail = observe(reads => { reads.fill = { cells: reads.fillBefore.cells.filter(([row, col]) => !(row === 5 && col === 139)), cursor: [2, 0], buffer: margins }; });
+    assert.equal(tail.partialRows, 1);
+    assert.equal(tail.erasedInsideRegion, false);
+    assert.equal(tail.rowsKept.count, 39);
 });
 
 test('ED: the explicit-0 spelling is a labeled observation and never changes the grade', () => {

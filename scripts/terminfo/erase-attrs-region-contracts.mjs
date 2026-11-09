@@ -303,16 +303,25 @@ function gradeEd(observation) {
     return firstOutcome([...edPreconditions(observation), ...edVerdict(observation)]) ?? { outcome: 'supported' };
 }
 
-/** Which rows of the marker fill an ED 0 left in place: the labeled boundary observation, never a grade. */
+/** The stored cells of one row of a group's ink, in column order. */
+const rowInk = (state, row) => state.ink.filter(cell => cell.row === row);
+/** Whether a row still holds exactly its complete marker (text and tail) with neutral storage. */
+const rowIntact = (state, row) => inkIs({ ink: rowInk(state, row) }, fillPlacementsFor([row]));
+/** Whether a row holds no stored cell at all (blank with default storage). */
+const rowBlank = (state, row) => rowInk(state, row).length === 0;
+
+/** Which rows of the marker fill an ED 0 left whole, blank or partly erased: the labeled boundary observation, never a grade. Every cell of a
+ * row is inspected, so a partial erase is neither reported as erased nor as kept. */
 function boundaryObservation(before, after) {
-    const present = (state, row) => state.ink.some(cell => cell.row === row && cell.col === 0 && cell.char === 'R');
     const seeded = inkIs(before, edFillPlacements) && sameCursor(before, edCursor) && marginsAre(before, edMargins);
-    const rowsKept = allRows.filter(row => present(after, row));
-    const group_ = (from, to) => rangeRows(from, to).every(row => !present(after, row));
+    const intact = allRows.filter(row => rowIntact(after, row));
+    const partial = allRows.filter(row => !rowIntact(after, row) && !rowBlank(after, row));
+    const blankIn = (from, to) => rangeRows(from, to).every(row => rowBlank(after, row));
     return { seeded, cursor: after.cursor, margins: [after.buffer.scrollTop, after.buffer.scrollBottom],
-        rowsKept: rowsKept.length === 0 ? null : { first: rowsKept[0], last: rowsKept.at(-1), count: rowsKept.length },
-        keptAboveCursor: rangeRows(0, 1).every(row => present(after, row)),
-        erasedInsideRegion: group_(2, 9), erasedBelowBottomMargin: group_(10, lastRow),
+        rowsKept: intact.length === 0 ? null : { first: intact[0], last: intact.at(-1), count: intact.length },
+        partialRows: partial.length,
+        keptAboveCursor: rangeRows(0, 1).every(row => rowIntact(after, row)),
+        erasedInsideRegion: blankIn(2, 9), erasedBelowBottomMargin: blankIn(10, lastRow),
         inkAfter: after.ink.length, modesUnchanged: modesUnchanged(before, after) };
 }
 
@@ -397,7 +406,7 @@ export const eraseAttrsRegionContracts = Object.freeze([
         pinnedExpected: 'ED0 erases measured cells below the cursor and preserves the preceding row',
         pinnedCriterion: 'with KEEP! on row 0, ERASE on row 2, margins 3;10 and the cursor at row 2 column 0, ESC[J leaves row 0 reading KEEP! and the first five cells of row 2 blank; '
             + 'the termless probe reads rows 0 and 2 (first five cells) and the cursor before the erase only',
-        terminalFixture: { writes: ['\x1B[2J\x1B[H', 'KEEP_THIS\r\n', 'row1\r\n', '\x1B[3;10r', '\x1B[3;1H', '\x1B[J', '\x1B[r'], demand: 'cursor position report only (never a verdict)', minimum: { rows: 10, cols: 10 },
+        terminalFixture: { writes: ['\x1B[2J\x1B[H', 'KEEP_THIS\r\n', ...[1, 2, 3, 4, 5].map(index => `row${index}\r\n`), '\x1B[3;10r', '\x1B[3;1H', '\x1B[J', '\x1B[r'], demand: 'cursor position report only (never a verdict)', minimum: { rows: 10, cols: 10 },
             note: 'upstream terminal path is a cursor-query path (unmeasuredCellResult) and never a grade' },
         appearanceScope: 'stored cells, cursor, margins and mode flags only: the preceding row is preserved and the cells from the cursor read blank; whether ED is clipped to the margins '
             + 'is not claimed (a full-screen marker fill is observed separately); rendered appearance is not claimed',

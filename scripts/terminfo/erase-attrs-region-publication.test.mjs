@@ -135,6 +135,7 @@ test('erase.ed-scroll-region: the pinned CSI r restored the margins; the cursor 
     assert.equal(boundary.seeded, true);
     assert.deepEqual([boundary.cursor, boundary.margins], [[2, 0], [2, 9]]);
     assert.deepEqual(boundary.rowsKept, { first: 0, last: 1, count: 2 });
+    assert.equal(boundary.partialRows, 0, 'every row is either whole or blank');
     // ED 0 erased the rows inside the region and, in this measurement, every row below the bottom margin too; the pinned criterion does not ask either.
     assert.equal(boundary.keptAboveCursor, true);
     assert.equal(boundary.erasedInsideRegion, true);
