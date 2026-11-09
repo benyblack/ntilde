@@ -200,9 +200,9 @@ test('prior publications still rederive beside this batch and the attempt record
     assert.equal(earlier.receipt.schemaVersion, 28);
     assert.equal(earlier.receipt.savedResetEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 3);
-    assert.equal(attempts[2].runId, context.runId);
-    for (const attempt of attempts.slice(0, 2)) assert.notEqual(attempt.runId, context.runId);
-    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [true, true, true]);
+    assert.equal(attempts.length, 4);
+    assert.equal(attempts[3].runId, context.runId);
+    for (const attempt of attempts.slice(0, 3)) assert.notEqual(attempt.runId, context.runId);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [true, true, true, true]);
     assert.deepEqual(Object.values(attempts[0].verdicts), ['supported', 'inconclusive', 'inconclusive', 'supported', 'supported']);
 });
