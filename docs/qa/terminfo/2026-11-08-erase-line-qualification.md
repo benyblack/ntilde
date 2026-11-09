@@ -29,7 +29,7 @@ different bytes (explicit 0/1/2, no neighbor row). Those are Ntilde observations
 
 ## Method
 
-Eleventh digest-checked collector extension `ntilde-owned-erase-line-grading-v1` (derived over the selective-reset one; it refuses
+Twelfth digest-checked collector extension `ntilde-owned-erase-line-grading-v1` (derived over the SGR closure one; it refuses
 derivation unless the three registrations and the `isBlank`, `rowCells`, `eraseRowResult` and `captureEraseFixture` bodies are
 present verbatim once), contracts v1, suite `ntilde-owned-erase-line-graded-v1`, prefix `erln`, nonce `NTILDE_EL_`. The pinned
 setup and erase bytes are fed byte-exactly, one write each, on a measured reset screen (the setup is read before the erase is
@@ -55,8 +55,8 @@ stale or incoherent evidence or incomplete restoration is inconclusive or refuse
 
 ## Measurement
 
-Scripts `2410ef71`; the App source is unchanged since `783dd991` (the sidecar was built there; no App change). Owned run
-`198d5b2c5f163ce1fc47994aa90865bb`, receipt schema 24, source policy v18 (inventory v25, 168 files), default theme, 40x140,
+Scripts `5a3b9533` (the merge of current main with the SGR closure layer); the App source is unchanged since `783dd991` (the sidecar was built there; no App change). Owned run
+`be21c8c78a42205d3be915a1a44ebd79`, receipt schema 25, source policy v19 (inventory v26, 173 files), default theme, 40x140,
 disposable sidecar `erase-line` built from this checkout.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
@@ -73,14 +73,16 @@ column 2 through the last column) carry the pen's resolved color `(0,0,238)`, bu
 palette index 4 a cell written under the same pen stores**. That representation difference is an Ntilde-specific observation, not a
 requirement and not a benchmark grade; it affects nothing the pinned criteria read.
 
-**Preserved attempts** (all six in the summary, with run ids and script revisions): (1) the disposable app aborted at startup (Avalonia
+**Preserved attempts** (all seven in the summary, with run ids and script revisions): (1) the disposable app aborted at startup (Avalonia
 render timer, display asleep); (2) the suite ran but the later private-clipboard stage timed out and no receipt was completed; (3)
 `owned-CEXOUy`, complete but superseded — the first full measurement graded the attribute control over columns 0–4 only, so the correct
 end-of-line background fill read as damage and two cases graded unsupported; the contract was fixed (re-deriving that retained run with
 the fixed contract gives three supported) and the measurement repeated; (4) `owned-iVrLXY`, complete, superseded when the observed
 record was compacted for reviewable file sizes; (5) `owned-cAU9u2`, complete, superseded after Codex review found the background
 observation called any non-default color the current pen (a pen reference read was added); (6) `owned-w6W0UA`, complete, superseded
-because that reference showed the same color stored in a different representation, which the observation now reports separately.
+because that reference showed the same color stored in a different representation, which the observation now reports separately; (7) `owned-aBspA8`, the pre-integration final run (receipt 24, policy v18, 168 files), superseded because main
+meanwhile merged the SGR closure layer: this layer was restacked as the twelfth extension over it (receipt 25, policy v19, 173 files) and the
+whole suite re-measured on the merged scripts.
 Every complete attempt graded all three cases supported except (3).
 
 Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (the inventory is derived from the

@@ -17,6 +17,7 @@ import { sgrTruecolorContracts } from './sgr-truecolor-contracts.mjs';
 import { sgrUnderlineContracts } from './sgr-underline-contracts.mjs';
 import { sgrUnderlineColorContracts } from './sgr-underline-color-contracts.mjs';
 import { sgrResetContracts } from './sgr-reset-contracts.mjs';
+import { sgrClosureContracts } from './sgr-closure-contracts.mjs';
 
 const dir = new URL('../../docs/qa/terminfo/2026-11-08-erase-line/', import.meta.url);
 const read = name => JSON.parse(readFileSync(new URL(name, dir)));
@@ -43,7 +44,7 @@ test('the published erase-in-line evidence re-derives exactly from its retained 
     assert.equal(JSON.stringify(report), JSON.stringify(derived));
     assert.equal(report.suiteId, eraseLineSuiteId);
     assert.equal(report.adapter.id, eraseLineAdapterId);
-    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-sgr-selective-reset-grading-v1');
+    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-sgr-closure-grading-v1');
     assert.equal(report.snapshots.length, 3 + 3 * 11);
     assert.deepEqual(report.cases.map(item => item.caseId), ids);
     assert.deepEqual(report.cases.map(item => [item.conclusion.outcome, item.pinned.observation.outcome]), ids.map(() => ['supported', 'supported']));
@@ -111,7 +112,7 @@ test('retained cells keep bold; background-color erase is observed (not required
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', () => {
     const { summary, run, report } = load();
     const { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 24);
+    assert.equal(receipt.schemaVersion, 25);
     assert.equal(receipt.eraseLineEvidence.suiteId, eraseLineSuiteId);
     assert.equal(receipt.eraseLineEvidence.runId, summary.context.runId);
     assert.deepEqual(receipt.eraseLineEvidence.counts, { supported: 3 });
@@ -124,13 +125,13 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.retained.eraseLineObservationsSha256, observationsHash);
     assert.equal(summary.retained.eraseLineRunSha256, runHash);
     assert.equal(summary.retained.eraseLineJournalSha256, journalHash);
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v18');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v19');
     assert.equal(receipt.fixtureRemoved, true);
     assert.equal(summary.ownedRunId, summary.context.runId);
     assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
     // The predecessor inventory is derived from the merged contracts, not assumed.
     const expected = new Set([...asciiSgrContracts, ...sgrColorsContracts, ...sgrRgbContracts, ...sgrAttrsContracts, ...sgrPaletteContracts,
-        ...sgrTruecolorContracts, ...sgrUnderlineContracts, ...sgrUnderlineColorContracts, ...sgrResetContracts].map(contract => contract.caseId));
+        ...sgrTruecolorContracts, ...sgrUnderlineContracts, ...sgrUnderlineColorContracts, ...sgrResetContracts, ...sgrClosureContracts].map(contract => contract.caseId));
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.deepEqual([...unique].sort(), [...expected].sort());
     for (const suite of Object.values(summary.sameRun)) assert.ok(suite.cases.every(item => item.outcome === 'supported'));
@@ -162,10 +163,10 @@ test('prior publications still rederive beside this batch and the failed and sup
     assert.equal(reset.receipt.schemaVersion, 23);
     assert.equal(reset.receipt.eraseLineEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 6);
-    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [false, false, true, true, true, true]);
+    assert.equal(attempts.length, 7);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [false, false, true, true, true, true, true]);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
     const superseded = attempts.filter(attempt => attempt.verdicts);
-    assert.equal(superseded.length, 4);
+    assert.equal(superseded.length, 5);
     assert.deepEqual(Object.values(superseded.find(attempt => /attribute control/.test(attempt.outcome)).verdicts).sort(), ['supported', 'unsupported', 'unsupported']);
 });
