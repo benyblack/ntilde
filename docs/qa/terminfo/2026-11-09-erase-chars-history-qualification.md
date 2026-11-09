@@ -61,8 +61,8 @@ is recorded with both verdicts (`contract-stricter-than-pinned` and the like).
 
 ## Measurement
 
-Scripts `9c4ff3dc` (the committed tree, measured from the private captured source snapshot); the App source is unchanged since `c16997c2` (the Release
-sidecar was built from this checkout with no App change). Owned run `f3353296aafbe75f8c5ff7a91447c213`, taken through the shared desktop lock, receipt
+Scripts `70aa8518` (the committed tree, measured from the private captured source snapshot); the App source is unchanged since `c16997c2` (the Release
+sidecar was built from this checkout with no App change). Owned run `699523bf75e5c19de68e6fcd71258660`, taken through the shared desktop lock, receipt
 schema 32, source policy v26 (inventory v33, 209 files), default theme, 40x140, disposable sidecar `artifacts/sidecar-erase-chars-history`, macOS, Node 24.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
@@ -90,7 +90,9 @@ the rows above and below untouched. Every spelling matched ECMA-48.
 
 **Preserved attempts:** (1) run `6c190bf0011e78895f46eb4b04580d20` (scripts `4e1fb402`), complete, both cases supported, superseded before review because the ECH
 conclusion named actual scrollback as a measured layer although only its preserved-state controls read saved lines and the pinned total was not recorded
-per read; the per-case evidence layer and the explicit total were added and the measurement repeated on the committed scripts; (2) the final run above.
+per read; (2) run `f3353296aafbe75f8c5ff7a91447c213` (scripts `9c4ff3dc`), complete, both cases supported, superseded after review because the Sonar findings this
+PR introduced were fixed with behavior-preserving refactors of the contracts, grading, receipt schema selection and fixtures, so the measurement was repeated on
+the exact merged scripts; (3) the final run above.
 
 Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (63 unique ids, including the saved-state/reset suite with its
 two preserved pinned-inconclusive verdicts beside their supported effect contracts); the separate 10/10 truecolor-literal finding; the separate 3/3

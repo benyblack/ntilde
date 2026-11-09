@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-erase-chars-history-graded-v1",
-  "runId": "f3353296aafbe75f8c5ff7a91447c213",
+  "runId": "699523bf75e5c19de68e6fcd71258660",
   "contractsVersion": 1,
   "adapter": {
     "id": "ntilde-owned-erase-chars-history-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-saved-reset-grading-v1",
-    "bundleSha256": "6939baef54e21d9045ea1da7a92a9b30cfd924e5a49e17c5086b75f0d9d2d848",
+    "bundleSha256": "334ebd3f77183a798604ab05a2391c6de14042ffc179d2a321e4c9a5904df4b3",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 termless criteria erase.character (ECH `ESC[3X` with the explicit count 3 over ABCDE at column 0) and erase.screen.scrollback (ED 3 `ESC[3J` after rows+2 line feeds) replayed byte-exactly on a disposable App main screen and graded from parent-journaled readScreen viewport text, stored cell details, the cursor, margins, modes, active buffer, actual readScrollback lines and count. Controls: the observed blank baseline; the exact erased and retained cells across the whole row, a wide three-row fixture, a right-edge fixture and a bold-seeded attribute fixture (DCH shifting, whole-line erase, no-op and wrong counts are told apart; the omitted, explicit 0, 1, 5 and oversized spellings are observed, not graded); nonempty ordered saved lines before CSI 3J (the pinned fixture saves three blank rows, the marked control nine HIST-N rows), CSI 2J and ordinary scrolling keeping every saved line, CSI 3J on empty history, and scrolling after CSI 3J saving only the newly scrolled rows. History counts are physical rows. ASCII fixtures only; no wide-cell or combining-character erasure, wrapped-line, selective-erase, rectangle, pixel or terminal-query claim; the pinned pixel/query paths never carry a verdict and are not qualified; no stock grades.",
