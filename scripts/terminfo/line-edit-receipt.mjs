@@ -11,6 +11,7 @@ import { lineEditSuiteId, lineEditContractsVersion } from './line-edit-contracts
 import { adaptLineEditCollector, lineEditAdapterId } from './line-edit-grading-collector.mjs';
 import { adaptEraseLineCollector } from './erase-line-grading-collector.mjs';
 import { adaptCharEditCollector } from './char-edit-grading-collector.mjs';
+import { adaptEraseDisplayCollector } from './erase-display-grading-collector.mjs';
 import { adaptSgrResetCollector } from './sgr-reset-grading-collector.mjs';
 import { adaptSgrClosureCollector } from './sgr-closure-grading-collector.mjs';
 import { adaptSgrUnderlineColorCollector } from './sgr-underline-color-grading-collector.mjs';
@@ -36,11 +37,11 @@ function present(path) {
     }
 }
 
-/** Any retained line-editing artifact or declaration requires the v27 suffix, and a
- * policy-v21 run always carries them, because the current worker collects this suite
- * unconditionally after the character-editing suite. */
+/** Any retained line-editing artifact or declaration requires the v28 suffix, and a
+ * policy-v22 run always carries them, because the current worker collects this suite
+ * unconditionally after the erase-in-display suite. */
 export function includesLineEditEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v21'
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v22'
         || context.lineEditAdapterId !== undefined || context.lineEditSuiteId !== undefined
         || context.lineEditBundleSha256 !== undefined || context.lineEditContractsVersion !== undefined
         || evidence.lineEditEvidence !== undefined
@@ -60,7 +61,8 @@ export function checkLineEditEvidence(output, evidence, runId, context) {
     if (context.lineEditAdapterId !== lineEditAdapterId || context.lineEditSuiteId !== lineEditSuiteId) {
         throw new Error('Missing or changed line-editing adapter declaration.');
     }
-    if (context.charEditAdapterId === undefined || evidence.charEditEvidence === undefined
+    if (context.eraseDisplayAdapterId === undefined || evidence.eraseDisplayEvidence === undefined
+        || context.charEditAdapterId === undefined || evidence.charEditEvidence === undefined
         || context.eraseLineAdapterId === undefined || evidence.eraseLineEvidence === undefined
         || context.sgrClosureAdapterId === undefined || evidence.sgrClosureEvidence === undefined
         || context.sgrResetAdapterId === undefined || evidence.sgrResetEvidence === undefined
@@ -71,7 +73,7 @@ export function checkLineEditEvidence(output, evidence, runId, context) {
         || context.sgrRgbAdapterId === undefined || evidence.sgrRgbEvidence === undefined
         || context.sgrAttrsAdapterId === undefined || evidence.sgrAttrsEvidence === undefined
         || context.sgrPaletteAdapterId === undefined || evidence.sgrPaletteEvidence === undefined) {
-        throw new Error('line-editing evidence requires its character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
+        throw new Error('line-editing evidence requires its erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
     }
     const binding = evidence.lineEditEvidence;
     if (binding === undefined) throw new Error('Missing line-editing suite receipt binding.');
@@ -109,7 +111,8 @@ export function checkLineEditEvidence(output, evidence, runId, context) {
     const sgrClosureBytes = Buffer.from(adaptSgrClosureCollector(sgrResetBytes.toString()));
     const eraseLineBytes = Buffer.from(adaptEraseLineCollector(sgrClosureBytes.toString()));
     const charEditBytes = Buffer.from(adaptCharEditCollector(eraseLineBytes.toString()));
-    const derivedBytes = Buffer.from(adaptLineEditCollector(charEditBytes.toString()));
+    const eraseDisplayBytes = Buffer.from(adaptEraseDisplayCollector(charEditBytes.toString()));
+    const derivedBytes = Buffer.from(adaptLineEditCollector(eraseDisplayBytes.toString()));
     if (Buffer.compare(derivedBytes, adapterBytes) !== 0) {
         throw new Error('line-editing adapter is not the retained layered derivation.');
     }
@@ -118,8 +121,9 @@ export function checkLineEditEvidence(output, evidence, runId, context) {
         || hash(sgrTruecolorBytes) !== context.sgrTruecolorBundleSha256 || hash(sgrUnderlineBytes) !== context.sgrUnderlineBundleSha256
         || hash(sgrUnderlineColorBytes) !== context.sgrUnderlineColorBundleSha256 || hash(sgrResetBytes) !== context.sgrResetBundleSha256
         || hash(sgrClosureBytes) !== context.sgrClosureBundleSha256 || hash(eraseLineBytes) !== context.eraseLineBundleSha256
-        || hash(charEditBytes) !== context.charEditBundleSha256) {
-        throw new Error('line-editing adapter is not derived from the retained character-editing, erase-in-line, SGR closure and earlier extensions.');
+        || hash(charEditBytes) !== context.charEditBundleSha256
+        || hash(eraseDisplayBytes) !== context.eraseDisplayBundleSha256) {
+        throw new Error('line-editing adapter is not derived from the retained erase-in-display, character-editing, erase-in-line, SGR closure and earlier extensions.');
     }
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
     if (report.adapter.bundleSha256 !== binding.adapterBundleSha256

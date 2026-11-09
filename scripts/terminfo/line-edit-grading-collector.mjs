@@ -1,20 +1,20 @@
 // Explicitly versioned collector extension for the line-editing qualification
-// (editing.insert-lines and editing.delete-lines). This is a fourteenth digest-checked
-// derivation layered on top of the character-editing grading extension: the pinned bundle, the
+// (editing.insert-lines and editing.delete-lines). This is a fifteenth digest-checked
+// derivation layered on top of the erase-in-display grading extension: the pinned bundle, the
 // owned adapter and every earlier grading extension stay byte-for-byte unchanged, and each graded
 // result carries this extension's identity so it can never be presented as stock output.
 //
 // The extension adds no probe of its own. It exposes the PINNED termless probe definitions of the
 // two contracted cases so live, independently observed cells can be graded by the collector's own
-// criteria. Derivation refuses unless the retained character-editing extension still contains the exact pinned
+// criteria. Derivation refuses unless the retained erase-in-display extension still contains the exact pinned
 // registrations (termless and terminal functions, which never carries a verdict), the parserStateResult and
 // isBlank helper bodies and the unmeasuredCellResult pixel helper, each verbatim and once.
 import { lineEditCaseIds } from './line-edit-contracts.mjs';
 
-/** Identity of this fourteenth layered extension. */
+/** Identity of this fifteenth layered extension. */
 export const lineEditAdapterId = 'ntilde-owned-line-editing-grading-v1';
 
-/** Exact pinned seams from terminfo.dev@4.0.0 (as retained by the character-editing extension). Each must appear
+/** Exact pinned seams from terminfo.dev@4.0.0 (as retained by the erase-in-display extension). Each must appear
  * exactly once, in this order: the insert-lines registration; the delete-lines registration; parserStateResult; isBlank;
  * unmeasuredCellResult (the never-a-verdict pixel path result); then the retained previous layer's exports. */
 const pinnedLineEditSeams = Object.freeze([
@@ -24,16 +24,16 @@ const pinnedLineEditSeams = Object.freeze([
     "function isBlank(char) {\n  return char === \"\" || char === \" \";\n}",
     "function unmeasuredCellResult(position, feature) {\n  return {\n    pass: false,\n    ...position && { response: `${position.row};${position.col}` },\n    note: position ? `Cursor response does not measure ${feature}` : `No cursor response after ${feature}`,\n    observation: {\n      outcome: \"inconclusive\",\n      reason: position ? \"insufficient-evidence\" : \"no-response\",\n      evidence: \"query\"\n    }\n  };\n}",
     // the retained previous layer's exports
-    'export const ntildeCharEditAdapter = Object.freeze({',
-    'export function ntildeRunCharEditTermless(probeId, ctx) {',
+    'export const ntildeEraseDisplayAdapter = Object.freeze({',
+    'export function ntildeRunEraseDisplayTermless(probeId, ctx) {',
 ]);
 
 /** The pinned seams, exposed so portable tests can build a synthetic layered source. */
 export const lineEditSeams = pinnedLineEditSeams;
 
-/** Derive the line-editing grading extension from the character-editing grading extension. */
-export function adaptLineEditCollector(charEditSource) {
-    const source = String(charEditSource);
+/** Derive the line-editing grading extension from the erase-in-display grading extension. */
+export function adaptLineEditCollector(eraseDisplaySource) {
+    const source = String(eraseDisplaySource);
     for (const seam of pinnedLineEditSeams) {
         if (source.split(seam).length !== 2) throw new Error('Pinned line-editing probe seam changed; refusing derivation.');
     }
@@ -41,7 +41,7 @@ export function adaptLineEditCollector(charEditSource) {
     return source + `
 
 // Local line-editing grading extension ${JSON.stringify(lineEditAdapterId)}.
-// Derived from the character-editing grading extension; probe definitions, policy
+// Derived from the erase-in-display grading extension; probe definitions, policy
 // gates and stock grading remain intact.
 export const ntildeLineEditAdapter = Object.freeze({
   id: ${JSON.stringify(lineEditAdapterId)},

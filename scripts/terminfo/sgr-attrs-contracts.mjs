@@ -51,14 +51,20 @@ const underlineNames = Object.freeze([false, 'single', 'double', 'curly', 'dotte
 /** Every boolean attribute the controls hold off unless a case sets it. */
 const attributeNames = Object.freeze(['bold', 'dim', 'italic', 'underline', 'inverse', 'hidden', 'strikethrough', 'blink', 'overline']);
 
+/** Expand a screen's run-length projections to per-cell arrays once, so a caller reading many cells does not repeat the expansion. */
+export function sgrAttrsExpand(screen) {
+    return { flags: expandScreenFlags(screen), details: expandCellDetails(screen.cellDetails, screen.rows * screen.cols, true),
+        resolved: expandResolvedColors(screen.resolvedColors, screen.rows * screen.cols, screen.colorBinding) };
+}
+
 /** Project one observed cell to the pinned getCell shape plus the storage the
  * attribute came from. `underline` is the stored style name or false, so the
  * pinned truthy check and this suite's single-style check read one field. */
-export function sgrAttrsCellAt(screen, row, col) {
+export function sgrAttrsCellAt(screen, row, col, expanded = sgrAttrsExpand(screen)) {
     const position = row * screen.cols + col;
-    const flags = expandScreenFlags(screen)[position] ?? 0;
-    const detail = expandCellDetails(screen.cellDetails, screen.rows * screen.cols, true)[position];
-    const resolved = expandResolvedColors(screen.resolvedColors, screen.rows * screen.cols, screen.colorBinding)[position];
+    const flags = expanded.flags[position] ?? 0;
+    const detail = expanded.details[position];
+    const resolved = expanded.resolved[position];
     if (!detail || !resolved) throw new Error(`Missing stored cell evidence at ${row},${col}.`);
     // The attribute runs and the stored cell details are two projections of one cell: every
     // flag must agree and the underline flag must match the stored style, or the evidence

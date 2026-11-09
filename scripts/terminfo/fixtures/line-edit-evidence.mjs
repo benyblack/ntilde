@@ -29,7 +29,7 @@ export function syntheticLineEditScreen(rows, cursor, { margins = [0, lineEditRo
         const cells = rows[index] ?? [];
         leading.push(...cells, ...Array.from({ length: sgrPaletteCols - cells.length }, () => plainCell(' ')));
     }
-    const screen = syntheticSgrPaletteScreen(leading, binding, lineEditRows, sgrPaletteCols);
+    const screen = syntheticSgrPaletteScreen(leading, binding, { rows: lineEditRows, cols: sgrPaletteCols });
     const lines = Array.from({ length: lineEditRows }, (_, index) => (rows[index] ?? []).map(cell => cell.char).join('').trimEnd());
     return { ...screen, lines, cursorRow: cursor[0], cursorCol: cursor[1],
         bufferState: { scrollTop: margins[0], scrollBottom: margins[1], originMode: origin, autoWrap: true, insertMode: insert, pendingWrap: false,
@@ -72,9 +72,10 @@ export function syntheticLineEditReads(caseId) {
 }
 
 const lineEditSuite = Object.freeze({ noncePrefix: 'NTILDE_LE_', prefix: 'ledt', contracts: lineEditContracts,
-    adapterId: lineEditAdapterId, derivedFrom: 'ntilde-owned-char-edit-grading-v1', reset: lineEditReset,
-    blankScreen: binding => syntheticLineEditScreen([], [0, 0], {}, binding),
-    bindScreen: (binding, nonce) => ({ ...syntheticLineEditScreen([rowOf(nonce)], [0, nonce.length], {}, binding) }),
+    adapterId: lineEditAdapterId, derivedFrom: 'ntilde-owned-erase-display-grading-v1', reset: lineEditReset,
+    geometry: { rows: lineEditRows, cols: sgrPaletteCols },
+    decorate: screen => ({ ...screen, bufferState: { scrollTop: 0, scrollBottom: lineEditRows - 1, originMode: false, autoWrap: true, insertMode: false,
+        pendingWrap: false, alternateScreen: true, scrollbackLines: 0 }, history: { startLine: 0, totalLines: 0, lines: [] } }),
     screens: (caseId, binding, readsOf) => {
         const reads = readsOf?.(caseId) ?? syntheticLineEditReads(caseId);
         const contract = lineEditContracts.find(item => item.caseId === caseId);

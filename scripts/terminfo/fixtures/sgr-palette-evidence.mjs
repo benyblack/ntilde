@@ -51,8 +51,17 @@ export const colorCell = (char, { fg = defaultChannel, bg = defaultChannel, attr
 export const plainCell = char => colorCell(char);
 
 /** Coalesce adjacent identical runs (every field but count) so fixtures stay canonical. */
+const runKeys = new WeakMap();
 function coalesce(runs) {
-    const key = run => JSON.stringify(Object.entries(run).filter(([field]) => field !== 'count').sort(([a], [b]) => a.localeCompare(b)));
+    // The key of a run object is memoized: runs shared by many identical cells are keyed once.
+    const key = run => {
+        let value = runKeys.get(run);
+        if (value === undefined) {
+            value = JSON.stringify(Object.entries(run).filter(([field]) => field !== 'count').sort(([a], [b]) => a.localeCompare(b)));
+            runKeys.set(run, value);
+        }
+        return value;
+    };
     const out = [];
     for (const run of runs) {
         const previous = out.at(-1);
@@ -79,24 +88,29 @@ function resolvedChannel(spec, channel, binding) {
 }
 
 /** A complete valid observation screen with the given leading cells; the rest is plain. */
-export function syntheticSgrPaletteScreen(leading, binding = paletteBinding(), rows = sgrPaletteRows, cols = sgrPaletteCols) {
+export function syntheticSgrPaletteScreen(leading, binding = paletteBinding(), geometry = { rows: sgrPaletteRows, cols: sgrPaletteCols }) {
     const plainSpec = colorCell(' ');
-    const total = rows * cols;
+    const total = geometry.rows * geometry.cols;
     const specs = [...leading, ...Array.from({ length: total - leading.length }, () => plainSpec)];
+    // Identical spec objects (the plain filler above all) share one computed part, so a large screen costs one part per distinct cell.
+    const cache = new Map();
     const parts = specs.map(spec => {
+        if (cache.has(spec)) return cache.get(spec);
         const fg = stored(spec.fg, 'fg'), bg = stored(spec.bg, 'bg');
         const flags = spec.attrs.reduce((value, name) => value | attrBits[name === 'dim' ? 'faint' : name], 0) | fg.flag | bg.flag
             | (spec.underlineStyle ? attrBits.underline : 0);
-        return {
+        const part = {
             attribute: { count: 1, flags, fg: fg.index, bg: bg.index },
             resolved: { count: 1, fg: resolvedChannel(spec.fg, 'fg', binding), bg: resolvedChannel(spec.bg, 'bg', binding) },
             detail: { count: 1, flags, fg: fg.index, bg: bg.index, foregroundArgb: fg.literal, backgroundArgb: bg.literal,
                 overline: spec.attrs.includes('overline'), underlineStyle: spec.underlineStyle ?? 0,
                 underlineColorIndex: spec.underlineColorIndex ?? -1, underlineArgb: spec.underlineArgb ?? null },
         };
+        cache.set(spec, part);
+        return part;
     });
-    return { rows, cols,
-        lines: [leading.map(spec => spec.char).join(''), ...Array.from({ length: rows - 1 }, () => '')],
+    return { rows: geometry.rows, cols: geometry.cols,
+        lines: [leading.map(spec => spec.char).join(''), ...Array.from({ length: geometry.rows - 1 }, () => '')],
         cursorRow: 0, cursorCol: leading.length, cursorVisible: true,
         attributeRuns: coalesce(parts.map(part => part.attribute)),
         resolvedColors: coalesce(parts.map(part => part.resolved)),
@@ -140,8 +154,12 @@ function frame(index, kind, screenValue, barrier) {
  * override the per-case cell specs to build negative evidence. */
 export function syntheticColorEvidence(suite, runId, bundleSha256, binding, readsOf) {
     const nonce = suite.noncePrefix + runId;
-    const blank = suite.blankScreen?.(binding) ?? syntheticSgrPaletteScreen([], binding);
-    const bindScreen = suite.bindScreen?.(binding, nonce) ?? { ...syntheticSgrPaletteScreen([], binding), lines: [nonce, '', '', '', '', ''], cursorCol: nonce.length };
+    // A suite may run on another geometry and decorate every screen (for example with buffer state and history).
+    const geometry = suite.geometry ?? { rows: sgrPaletteRows, cols: sgrPaletteCols };
+    const decorate = suite.decorate ?? (value => value);
+    const blank = decorate(syntheticSgrPaletteScreen([], binding, geometry));
+    const bindScreen = decorate({ ...syntheticSgrPaletteScreen([], binding, geometry),
+        lines: [nonce, ...Array.from({ length: geometry.rows - 1 }, () => '')], cursorCol: nonce.length });
     const frames = [frame(0, suite.prefix + '-start', blank, null), frame(1, suite.prefix + '-bind', bindScreen, deviceAttribute)];
     const cases = suite.contracts.map(contract => {
         const feeds = planFeeds(contract);
