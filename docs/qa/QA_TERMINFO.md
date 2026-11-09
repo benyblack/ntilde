@@ -950,3 +950,14 @@ erase of the same seed (protected text is not read-only), a no-op, a protection-
 edges, bold seeding and incorrect rectangle bounds; the pinned finalizer must restore the unprotected pen. The pinned terminal pixel and cursor-query paths
 never carry a verdict and are not qualified; ASCII only; stored state, not rendered appearance. Receipt schema 36 and source policy v30 (231 files) bind it;
 earlier policies stay frozen.
+
+### Rectangle-editing qualification (DECFRA, DECERA, DECCRA)
+
+The [rectangle-editing batch](terminfo/2026-11-09-rectangle-editing-qualification.md) grades exactly `editing.decfra`, `editing.decera` and `editing.deccra`
+through a twenty-fourth layered collector extension (`ntilde-owned-rectangle-editing-grading-v1`) over the selective-erasure one, replaying the pinned bytes and running the
+pinned termless code over parent-journaled stored cells of the whole screen, the cursor, the App-stored margins, origin and insert mode and stored attribute tuples.
+Controls cover bounds, defaults, clipping, no-ops, margins, origin mode, insert mode, the live pen (including a literal-RGB pen), attributed seed cells, DECERA over
+DECSCA-marked text and, for DECCRA, overlap in every direction, a page copied onto itself, destination clipping and attribute preservation. DECCRA's unsupported
+pages are an Ntilde policy that is observed and never graded. The pinned terminal cursor-query paths never carry a verdict and are not qualified. Checksums,
+Unicode, the image plane and rendered appearance are not claimed; DECSERA is graded by the selective-erasure batch and DECCARA, DECRARA and DECSACE by the attribute-rectangle batch, not here. Receipt schema 37
+and source policy v31 (236 files) bind it; earlier policies stay frozen.

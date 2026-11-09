@@ -50,6 +50,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('cursor', '2026-11-09-cursor', '2026-11-09-cursor-qualification.md'), module: 'cursor-qual-contracts.mjs', exports: ['cursorQualSuiteId', 'cursorQualContractsVersion', 'cursorQualCaseIds'], test: 'cursor-qual-publication.test.mjs' },
     { ...directory('erase-chars-history', '2026-11-09-erase-chars-history', '2026-11-09-erase-chars-history-qualification.md'), module: 'erase-chars-history-contracts.mjs', exports: ['eraseCharsHistorySuiteId', 'eraseCharsHistoryContractsVersion', 'eraseCharsHistoryCaseIds'], test: 'erase-chars-history-publication.test.mjs' },
     { ...directory('selective-erase', '2026-11-09-selective-erase', '2026-11-09-selective-erase-qualification.md'), module: 'selective-erase-contracts.mjs', exports: ['selectiveEraseSuiteId', 'selectiveEraseContractsVersion', 'selectiveEraseCaseIds'], test: 'selective-erase-publication.test.mjs' },
+    { ...directory('rect-edit', '2026-11-09-rectangle-editing', '2026-11-09-rectangle-editing-qualification.md'), module: 'rect-edit-contracts.mjs', exports: ['rectEditSuiteId', 'rectEditContractsVersion', 'rectEditCaseIds'], test: 'rect-edit-publication.test.mjs' },
 ]);
 
 /** Ntilde-specific findings: separate evidence, separate claims, never part of the benchmark id totals. */

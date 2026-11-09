@@ -50,7 +50,7 @@ function present(path) {
  * policy-v29 or v30 run always carries them, because the current worker collects this suite
  * unconditionally after the cursor suite. */
 export function includesEraseCharsHistoryEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30', 'readonly-owned-source-graph-v31'].includes(context.sourceSnapshotPolicy)
         || context.eraseCharsHistoryAdapterId !== undefined || context.eraseCharsHistorySuiteId !== undefined
         || context.eraseCharsHistoryBundleSha256 !== undefined || context.eraseCharsHistoryContractsVersion !== undefined
         || evidence.eraseCharsHistoryEvidence !== undefined

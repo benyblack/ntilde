@@ -31,6 +31,7 @@ import { collectAttrRectGrading } from './attr-rect-collector.mjs';
 import { collectCursorQualGrading } from './cursor-qual-collector.mjs';
 import { collectEraseCharsHistoryGrading } from './erase-chars-history-collector.mjs';
 import { collectSelectiveEraseGrading } from './selective-erase-collector.mjs';
+import { collectRectEditGrading } from './rect-edit-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -274,6 +275,14 @@ try {
         const selectiveEraseModule = await import(pathToFileURL(config.selectiveEraseBundle).href);
         const selectiveEraseRun = await collectSelectiveEraseGrading({ config, fence, owner, gradingModule: selectiveEraseModule });
         writeFileSync(join(config.output, 'sels-run.json'), JSON.stringify(selectiveEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered rectangle-editing qualification follows the selective-erasure suite on the same fence.
+        const rectEditSource = readFileSync(config.rectEditBundle);
+        if (createHash('sha256').update(rectEditSource).digest('hex') !== config.rectEditBundleSha256) {
+            throw new Error('Local rectangle-editing adapter bundle changed.');
+        }
+        const rectEditModule = await import(pathToFileURL(config.rectEditBundle).href);
+        const rectEditRun = await collectRectEditGrading({ config, fence, owner, gradingModule: rectEditModule });
+        writeFileSync(join(config.output, 'rect-run.json'), JSON.stringify(rectEditRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

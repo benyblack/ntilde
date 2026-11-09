@@ -229,5 +229,10 @@
     "selectiveEraseCollectorSourceSha256": "selective-erase-collector.mjs",
     "selectiveEraseGradingSourceSha256": "selective-erase-grading.mjs",
     "selectiveEraseGradingCollectorSourceSha256": "selective-erase-grading-collector.mjs",
-    "selectiveEraseReceiptSourceSha256": "selective-erase-receipt.mjs"
+    "selectiveEraseReceiptSourceSha256": "selective-erase-receipt.mjs",
+    "rectEditContractsSourceSha256": "rect-edit-contracts.mjs",
+    "rectEditCollectorSourceSha256": "rect-edit-collector.mjs",
+    "rectEditGradingSourceSha256": "rect-edit-grading.mjs",
+    "rectEditGradingCollectorSourceSha256": "rect-edit-grading-collector.mjs",
+    "rectEditReceiptSourceSha256": "rect-edit-receipt.mjs"
 }

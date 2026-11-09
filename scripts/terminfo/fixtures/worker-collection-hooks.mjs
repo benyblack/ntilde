@@ -45,6 +45,7 @@ code.set(new URL('attr-rect-collector.mjs', root).href, log + `export async func
 code.set(new URL('cursor-qual-collector.mjs', root).href, log + `export async function collectCursorQualGrading() { record('CursorQual'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('erase-chars-history-collector.mjs', root).href, log + `export async function collectEraseCharsHistoryGrading() { record('EraseCharsHistory'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('selective-erase-collector.mjs', root).href, log + `export async function collectSelectiveEraseGrading() { record('SelectiveErase'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('rect-edit-collector.mjs', root).href, log + `export async function collectRectEditGrading() { record('RectEdit'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);
