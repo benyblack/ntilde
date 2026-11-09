@@ -153,7 +153,9 @@ public partial class TerminalBuffer
             int start = col;
             while (col < to && !IsProtectedOrInProtectedBlock(rowIndex, col)) col++;
             EraseTextSizingRange(start, col, absolute, absolute + 1, blank);
-            row.NoteColumnsWritten(col);
+            // DECERA counts what it erases as authored; ED does too, but a selective display erase over default-colored blanks adds
+            // nothing the row did not already hold, and must not extend the extent reflow uses to tell typed spaces from wide padding.
+            if (!edShortcut || !blank.IsDefaultBackground) row.NoteColumnsWritten(col);
             for (int c = start; c < col; c++)
             {
                 row.Cells[c] = blank;

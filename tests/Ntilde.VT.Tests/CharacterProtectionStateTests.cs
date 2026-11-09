@@ -195,6 +195,22 @@ public sealed class CharacterProtectionStateTests
         Assert.False(Protection(buffer, 0)[6]);
     }
 
+    /// <summary>A selective display erase over default blanks does not extend the authored extent, so a later wide glyph still reflows without a phantom space.</summary>
+    [Fact]
+    public void Selective_display_erase_does_not_extend_the_authored_extent()
+    {
+        var (buffer, parser) = Create(5, 3);
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"qP" + Esc + "[0\"q" + Esc + "[?2J" + Esc + "[1;2Habc界");
+        buffer.Resize(8, 3);
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            var row = buffer.GetRowAbsolute(buffer.Scrollback.Count)!;
+            Assert.Equal("Pabc界", new string(row.Cells.Where(cell => !cell.IsWideContinuation).Select(cell => cell.Character == '\0' ? ' ' : cell.Character).ToArray()).TrimEnd());
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
     /// <summary>The protection queries follow the cell accessors' lock pattern: callable with the read lock already held.</summary>
     [Fact]
     public void Protection_queries_work_under_a_caller_held_read_lock()
