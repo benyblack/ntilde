@@ -27,9 +27,9 @@ each plan replays only its own bytes and a test checks that no case grades anoth
 
 ## Method
 
-Fourteenth digest-checked collector extension `ntilde-owned-charsets-grading-v1` (over character editing; refuses derivation unless
+Fifteenth digest-checked collector extension `ntilde-owned-charsets-grading-v1` (over erase-in-display; refuses derivation unless
 `parserStateResult` and the four registrations are present verbatim once), contracts v1, suite `ntilde-owned-charsets-graded-v1`, prefix
-`chrs`, nonce `NTILDE_CS_`, receipt schema 27, source policy v21 (inventory v28, 183 files). The pinned bytes (UTF-8 text, escape
+`chrs`, nonce `NTILDE_CS_`, receipt schema 28, source policy v22 (inventory v29, 188 files). The pinned bytes (UTF-8 text, escape
 designations and shift controls) are fed untouched, one write each; the pinned termless code runs over the parent-journaled cells and the
 parent re-executes it; the independent contract grader must agree wherever semantics coincide (recorded divergences: none).
 
@@ -57,8 +57,8 @@ incomplete restoration is inconclusive.
 
 ## Measurement
 
-Scripts `4d733c88` (main including the character-editing layer, plus this batch); App unchanged since `4e32f6d9` (sidecar built there). Owned run
-`d26056b83ad7d53b674f70c481779916`, default theme, 40x140, disposable sidecar `ntilde-sidecar-charsets`.
+Scripts `9cb590ac` (main including the character-editing and erase-in-display layers, plus this batch); App unchanged since `4e32f6d9` (sidecar built there). Owned run
+`0d755a3e8384126589de9a5fb06adbd4`, default theme, 40x140, disposable sidecar `ntilde-sidecar-charsets`.
 
 | Case | Pinned (parent replay + live pinned code) | Contract |
 |---|---|---|
@@ -72,10 +72,10 @@ cursor (0,4), no extended text; dec-special `q ─ q`; dec-line-drawing `┘┐�
 read as contracted. Ntilde finding: none.
 
 Same-run reconfirmation (kept separate): every merged predecessor case supported (inventory derived from merged contracts by the
-publication test, including erase-in-line and character editing), the 10/10 truecolor-literal finding, the 3/3 underline-color resolution; stock counts unchanged
+publication test, including erase-in-line, character editing and erase-in-display), the 10/10 truecolor-literal finding, the 3/3 underline-color resolution; stock counts unchanged
 (86 supported, 1 unsupported, 168 inconclusive).
 
-**Preserved attempt:** the first measurement (`3fb3237e…`, scripts `acb85372`, receipt 26 over erase-in-line) also graded all four supported; it was superseded when main merged the character-editing layer and this batch was restacked and re-measured. Both are listed in the summary.
+**Preserved attempts:** the first measurement (`3fb3237e…`, scripts `acb85372`, receipt 26 over erase-in-line) and the second (scripts `4d733c88`, receipt 27 over character editing) also graded all four supported; each was superseded when main merged another layer (character editing, then erase-in-display) and this batch was restacked and re-measured. All three are listed in the summary.
 
 ## Limits
 
