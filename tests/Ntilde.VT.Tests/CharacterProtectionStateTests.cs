@@ -517,6 +517,29 @@ public sealed class CharacterProtectionStateTests
         Assert.DoesNotContain('P', Mask(buffer, 0));
     }
 
+    /// <summary>ICH and DCH that split a protected wide glyph leave no protected half behind.</summary>
+    [Theory]
+    [InlineData("\u001b[1;1H\u001b[@")]      // ICH at the head pushes the glyph right, its tail past nothing: pair intact
+    [InlineData("\u001b[1;2H\u001b[P")]      // DCH at the continuation removes it
+    [InlineData("\u001b[1;1H\u001b[P")]      // DCH at the head removes it
+    public void Character_shifts_do_not_leave_a_protected_half(string shift)
+    {
+        var (buffer, parser) = Create(4, 2);
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"q界" + Esc + "[0\"q");
+        parser.Process(shift);
+        var mask = Protection(buffer, 0);
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            for (int col = 0; col < 4; col++)
+            {
+                var cell = buffer.GetCell(col, 0);
+                if (mask[col]) Assert.True(cell.IsWide ? buffer.GetCell(col + 1, 0).IsWideContinuation : cell.IsWideContinuation && buffer.GetCell(col - 1, 0).IsWide, $"orphan protected half at {col}");
+            }
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

@@ -658,6 +658,23 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>
+        /// After cells shift, a wide glyph may have lost one half; a protected half with no partner is not part of any protected glyph.
+        /// Scans [<paramref name="from"/>, <paramref name="to"/>) and unprotects such cells.
+        /// </summary>
+        private static void NormalizeWideProtection(TerminalRow row, int from, int to)
+        {
+            if (!row.HasProtectedCells) return;
+            int last = Math.Min(to, row.Cells.Length);
+            for (int col = Math.Max(0, from); col < last; col++)
+            {
+                if (!row.IsProtected(col)) continue;
+                bool orphanHead = row.Cells[col].IsWide && !(col + 1 < row.Cells.Length && row.Cells[col + 1].IsWideContinuation);
+                bool orphanTail = row.Cells[col].IsWideContinuation && !(col > 0 && row.Cells[col - 1].IsWide);
+                if (orphanHead || orphanTail) row.SetProtected(col, false);
+            }
+        }
+
         private void InsertCharactersInternal(int count)
         {
             // Lock must be held by caller
@@ -688,6 +705,7 @@ namespace Ntilde.VT
             {
                 row.Cells[c] = empty;
             }
+            NormalizeWideProtection(row, _cursorCol - 1, Cols);
             row.TouchRevision();
         }
 
@@ -756,6 +774,7 @@ namespace Ntilde.VT
             {
                 row.Cells[c] = empty;
             }
+            NormalizeWideProtection(row, _cursorCol - 1, Cols);
             row.TouchRevision();
         }
     }

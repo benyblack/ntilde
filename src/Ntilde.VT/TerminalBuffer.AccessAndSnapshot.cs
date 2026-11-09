@@ -1255,6 +1255,14 @@ namespace Ntilde.VT
                         int c = key % snapshot.Cols;
                         if (r < restoredRows && c < restoredCols) _viewport[r].SetProtected(c, true);
                     }
+
+                    // Protected cells in the columns the snapshot did not replace are authored content: keep their extent.
+                    for (int r = 0; r < restoredRows; r++)
+                    {
+                        var kept = _viewport[r];
+                        if (!kept.HasProtectedCells) continue;
+                        for (int c = restoredCols; c < Cols; c++) if (kept.IsProtected(c)) kept.NoteColumnsWritten(c + 1);
+                    }
                 }
 
                 ImportTextSizingState(ReplaySizingEnvelope(snapshot), activeOnly: true);
